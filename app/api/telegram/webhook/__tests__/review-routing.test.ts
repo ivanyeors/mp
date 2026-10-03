@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Review cards share the inventory bot's webhook. Review updates are routed
  * before TELEGRAM_ALLOWED_CHATS (they carry their own gate: the measurements
- * group plus Telegram RBAC) and are handled after the 200, so a slow Claude
- * redraft never makes Telegram retry. Everything else reaches the inventory
+ * group plus Telegram RBAC) and are handled after the 200, so a slow Google
+ * post never makes Telegram retry. Everything else reaches the inventory
  * bot exactly as before.
  */
 

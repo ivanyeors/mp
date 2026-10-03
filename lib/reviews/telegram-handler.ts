@@ -1,6 +1,7 @@
 import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 import {
   answerCallback,
+  deleteGroupMessage,
   editGroupCard,
   replyInChat,
   replyInGroup,
@@ -10,6 +11,7 @@ import { TELEGRAM_ROLE_LABELS, type TelegramAction, type TelegramRole } from "@/
 import { isRateLimited } from "@/lib/rate-limit";
 import {
   GOOGLE_CARD_HEADER,
+  PREVIEW_CARD_PREFIX,
   PREVIEW_REVIEW_ID,
   REVIEW_CALLBACK_PREFIX,
   parseReviewCallback,
@@ -21,7 +23,6 @@ import { getGoogleReviewByCard, type GoogleReviewRow } from "@/lib/reviews/googl
 import {
   claimGoogleReviewPost,
   executeGoogleReviewPost,
-  redraftGoogleReview,
   setStaffDraft,
   skipGoogleReview,
   type Actor,
@@ -58,6 +59,13 @@ export type ReviewTelegramUpdate = {
 
 const LINK_COMMAND = /^\/link(?:@\w+)?(?:\s+(.*))?$/i;
 
+/** A Google card, real or preview (PREVIEW line first, header second). */
+function isGoogleCardText(text: string | undefined): boolean {
+  if (!text) return false;
+  if (text.startsWith(GOOGLE_CARD_HEADER)) return true;
+  return text.startsWith(PREVIEW_CARD_PREFIX) && text.split("\n")[1] === GOOGLE_CARD_HEADER;
+}
+
 /** Does this update belong to the review flow? Cheap: no I/O. */
 export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
   const data = update.callback_query?.data;
@@ -69,7 +77,7 @@ export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
   return (
     message.chat.id === MP_CONFIG_TELEGRAM_CHAT_ID &&
     !text.startsWith("/") &&
-    (message.reply_to_message?.text ?? "").startsWith(GOOGLE_CARD_HEADER)
+    isGoogleCardText(message.reply_to_message?.text)
   );
 }
 
@@ -110,8 +118,7 @@ async function authorize(
 
 const PREVIEW_EFFECT: Record<ReviewCallback["action"], string> = {
   post: "publish the reply on Google Maps",
-  redraft: "ask Claude for a new draft",
-  skip: "close the card without replying",
+  skip: "remove this card without replying",
   approve: "show the review on the product page",
   reject: "hide the review from the shop",
 };
@@ -179,17 +186,10 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
     return;
   }
 
-  if (parsed.action === "redraft") {
-    await answerCallback(cq.id, "Asking Claude for a new draft…");
-    const result = await redraftGoogleReview(parsed.id, auth.actor);
-    await showGoogleCard(result.row, messageId);
-    if (!result.ok) await replyInGroup(`❌ ${result.message}`, messageId);
-    return;
-  }
-
   const result = await skipGoogleReview(parsed.id, auth.actor);
   await answerCallback(cq.id, result.ok ? "Skipped — no reply will be posted." : result.message, !result.ok);
-  await showGoogleCard(result.row, messageId);
+  // A card Telegram will not delete (older than 48h) is marked skipped instead.
+  if (!result.ok || !(await deleteGroupMessage(messageId))) await showGoogleCard(result.row, messageId);
 }
 
 async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["message"]>): Promise<void> {
@@ -197,6 +197,18 @@ async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["messa
   const cardId = message.reply_to_message?.message_id;
   const text = message.text?.trim();
   if (!from || !cardId || !text) return;
+
+  // A preview card: show what a reply would do, and the replier's access.
+  if (message.reply_to_message?.text?.startsWith(PREVIEW_CARD_PREFIX)) {
+    const auth = await authorize(from, "google_review.reply");
+    await replyInGroup(
+      auth.ok
+        ? `🧪 On a real card, your wording would replace the draft and you'd tap ✅ Post reply to publish it. You're set up as ${auth.actor.name} (${TELEGRAM_ROLE_LABELS[auth.role]}).`
+        : auth.message,
+      message.message_id,
+    );
+    return;
+  }
 
   const row = await getGoogleReviewByCard(message.chat.id, cardId);
   if (!row) return;

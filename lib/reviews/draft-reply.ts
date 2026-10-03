@@ -159,7 +159,7 @@ export async function draftReviewReply(
     return { ok: true, reply: checked.text, model: response.model };
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
-      return { ok: false, error: "Claude is rate-limited right now — try Redraft in a minute" };
+      return { ok: false, error: "Claude is rate-limited right now — the next sync will try again" };
     }
     if (error instanceof Anthropic.AuthenticationError) {
       return { ok: false, error: "ANTHROPIC_API_KEY was rejected" };

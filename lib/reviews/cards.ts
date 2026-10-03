@@ -4,9 +4,10 @@ import { replyWarnings } from "@/lib/reviews/reply-rules";
 import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
 
 /**
- * Telegram cards for reviews. Pure: given a row, the text and buttons a card
- * should show right now. Every state change re-renders the whole card, so a
- * card never shows buttons for an action that no longer applies.
+ * Telegram cards for reviews. Given a row, the text and buttons a card should
+ * show right now (the only outside input is GOOGLE_PLACE_ID, for the Maps
+ * link). Every state change re-renders the whole card, so a card never shows
+ * buttons for an action that no longer applies.
  *
  * The first line names the source in capitals so nobody mistakes a public
  * Google review (we reply on Google Maps) for a website review (no reply;
@@ -37,17 +38,19 @@ export const REVIEW_CALLBACK_PREFIX = "rv:";
  * access instead of acting.
  */
 export const PREVIEW_REVIEW_ID = "00000000-0000-4000-8000-000000000000";
+/** First line of every preview card; the real header follows on the next line. */
+export const PREVIEW_CARD_PREFIX = "🧪 PREVIEW — ";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ReviewCallback =
   | { source: "google"; action: "post"; id: string; version: number }
-  | { source: "google"; action: "redraft" | "skip"; id: string }
+  | { source: "google"; action: "skip"; id: string }
   | { source: "shop"; action: "approve" | "reject"; id: string };
 
 export function encodeReviewCallback(cb: ReviewCallback): string {
   if (cb.source === "google") {
-    return cb.action === "post" ? `rv:g:post:${cb.id}:${cb.version}` : `rv:g:${cb.action}:${cb.id}`;
+    return cb.action === "post" ? `rv:g:post:${cb.id}:${cb.version}` : `rv:g:skip:${cb.id}`;
   }
   return `rv:s:${cb.action}:${cb.id}`;
 }
@@ -60,9 +63,7 @@ export function parseReviewCallback(data: string): ReviewCallback | null {
     if (action === "post" && parts.length === 5 && /^\d{1,6}$/.test(version ?? "")) {
       return { source: "google", action: "post", id, version: Number(version) };
     }
-    if ((action === "redraft" || action === "skip") && parts.length === 4) {
-      return { source: "google", action, id };
-    }
+    if (action === "skip" && parts.length === 4) return { source: "google", action, id };
   }
   if (source === "s" && (action === "approve" || action === "reject") && parts.length === 4) {
     return { source: "shop", action, id };
@@ -91,6 +92,12 @@ export function formatCardDate(iso: string | null | undefined): string | null {
     minute: "2-digit",
     hour12: true,
   }).format(d);
+}
+
+/** The business's reviews on Google Maps; null until GOOGLE_PLACE_ID is set. */
+export function googleReviewsUrl(): string | null {
+  const placeId = process.env.GOOGLE_PLACE_ID?.trim();
+  return placeId ? `https://search.google.com/local/reviews?placeid=${encodeURIComponent(placeId)}` : null;
 }
 
 function clip(text: string, max: number): string {
@@ -169,6 +176,8 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card
       const by = row.acted_by_name ? ` by ${row.acted_by_name}` : "";
       const at = formatCardDate(row.posted_at);
       lines.push(`✅ Replied on Google Maps${by}${at ? ` · ${at}` : ""}`, row.posted_reply ?? "");
+      const url = googleReviewsUrl();
+      if (url) lines.push("", `🔗 Check it on Google Maps: ${url}`);
       return { text: lines.join("\n").trimEnd() };
     }
 
@@ -188,7 +197,7 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card
   // A reopened review usually already has a reply on Google; posting replaces it.
   const replacing = !!row.google_reply;
   if (replacing) {
-    lines.push("💬 Our reply on Google now (Replace swaps it for the new one):", clip(row.google_reply ?? "", MAX_CURRENT_REPLY_CHARS), "");
+    lines.push("💬 Our reply on Google now (posting replaces it):", clip(row.google_reply ?? "", MAX_CURRENT_REPLY_CHARS), "");
   }
   if (row.draft_reply) {
     const heading =
@@ -204,17 +213,17 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card
   lines.push(
     "",
     !row.draft_reply
-      ? "👉 Review managers: reply to this message with the wording to post, or tap Redraft."
+      ? "👉 Review managers: reply to this message with the wording to post."
       : replacing
-        ? "👉 Review managers: tap Replace reply to swap our reply on Google Maps for this one, or reply to this message with your own wording to replace the draft."
-        : "👉 Review managers: tap Post to publish this reply on Google Maps, or reply to this message with your own wording to replace the draft.",
+        ? "👉 Review managers: tap Post reply to swap our reply on Google Maps for this one, or reply to this message with your own wording to replace the draft."
+        : "👉 Review managers: tap Post reply to publish this on Google Maps, or reply to this message with your own wording to replace the draft.",
   );
 
   const buttons = [
     ...(row.draft_reply
       ? [
           {
-            text: replacing ? "✅ Replace reply" : "✅ Post reply",
+            text: "✅ Post reply",
             callback_data: encodeReviewCallback({
               source: "google",
               action: "post",
@@ -224,7 +233,6 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card
           },
         ]
       : []),
-    { text: "🔁 Redraft", callback_data: encodeReviewCallback({ source: "google", action: "redraft", id: row.id }) },
     { text: "🙈 Skip", callback_data: encodeReviewCallback({ source: "google", action: "skip", id: row.id }) },
   ];
   return { text: lines.join("\n"), replyMarkup: { inline_keyboard: [buttons] } };

@@ -93,6 +93,13 @@ export async function editGroupCard(
   return true;
 }
 
+/** Removes a card from the group. Telegram refuses after 48 hours; the caller falls back to editing. */
+export async function deleteGroupMessage(messageId: number): Promise<boolean> {
+  const res = await callTelegram("deleteMessage", { chat_id: MP_CONFIG_TELEGRAM_CHAT_ID, message_id: messageId });
+  if (!res.ok) console.error("[telegram] delete card failed", res.error);
+  return res.ok;
+}
+
 /** A short threaded reply in the group, e.g. confirming a staff edit. */
 export async function replyInGroup(text: string, replyToMessageId?: number): Promise<void> {
   await callTelegram("sendMessage", {

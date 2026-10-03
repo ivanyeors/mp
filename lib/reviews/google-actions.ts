@@ -5,7 +5,6 @@ import {
   getBusinessProfileConfig,
   type BusinessProfileClient,
 } from "@/lib/google/business-profile";
-import { draftInputFor, draftReviewReply } from "@/lib/reviews/draft-reply";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
 import {
   GOOGLE_REVIEW_COLUMNS,
@@ -15,7 +14,7 @@ import {
 
 /**
  * What a review manager can do to a Google review card: post the current
- * draft, redraft it with Claude, replace it with their own words, or skip.
+ * draft, replace it with their own words, or skip.
  *
  * Every write is a guarded update on `status` (and on `draft_version` where
  * the draft matters), so two people tapping at once cannot both act, and a
@@ -123,46 +122,6 @@ export async function executeGoogleReviewPost(
       error instanceof BusinessProfileError || error instanceof Error ? error.message : "Google rejected the reply";
     return fail("google_error", message);
   }
-}
-
-/** Ask Claude for a fresh draft. Guarded on the version it replaces. */
-export async function redraftGoogleReview(
-  id: string,
-  actor: Actor,
-  deps: { draft?: typeof draftReviewReply } = {},
-): Promise<{ ok: true; row: GoogleReviewRow } | ActionFailure> {
-  const row = await getGoogleReview(id);
-  if (!row) return { ok: false, reason: "not_found", message: "This review is no longer in the inbox." };
-  if (row.status !== "pending") {
-    return { ok: false, reason: "not_pending", message: "Someone already dealt with this review.", row };
-  }
-
-  const draft = deps.draft ?? draftReviewReply;
-  const result = await draft(draftInputFor(row));
-  const patch = result.ok
-    ? {
-        draft_reply: result.reply,
-        draft_source: "claude" as const,
-        draft_version: row.draft_version + 1,
-        draft_error: null,
-        last_error: null,
-        ...actorFields(actor),
-      }
-    : { draft_error: result.error };
-
-  const { data } = await supabaseAdmin()
-    .from("google_reviews")
-    .update(patch)
-    .eq("id", id)
-    .eq("status", "pending")
-    .eq("draft_version", row.draft_version)
-    .select(GOOGLE_REVIEW_COLUMNS)
-    .maybeSingle();
-  if (!data) return explainMiss(id, row.draft_version);
-  if (!result.ok) {
-    return { ok: false, reason: "invalid", message: result.error, row: data as GoogleReviewRow };
-  }
-  return { ok: true, row: data as GoogleReviewRow };
 }
 
 /** A review manager's own wording replaces the draft (and becomes what Post sends). */

@@ -4296,8 +4296,8 @@
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
-    "mtime": 1790957613.3562298,
-    "seen": 1790989515.2752771,
+    "mtime": 1790989985.0256941,
+    "seen": 1790990238.756958,
     "ast_hash": "7a9281e20275540b7cfbf3d925569282",
     "semantic_hash": ""
   },
@@ -11532,8 +11532,8 @@
     "semantic_hash": ""
   },
   "lib/shopify/route-auth.ts": {
-    "mtime": 1790957402.8258386,
-    "seen": 1790989515.275744,
+    "mtime": 1790989985.0502746,
+    "seen": 1790990238.7575092,
     "ast_hash": "17e381238c2608ef6d09a8b2a24ccf71",
     "semantic_hash": ""
   },
@@ -13860,14 +13860,14 @@
     "semantic_hash": ""
   },
   "app/api/shipping/easyship/webhook/__tests__/route.test.ts": {
-    "mtime": 1790989369.850425,
-    "seen": 1790989515.27514,
+    "mtime": 1790989985.0252278,
+    "seen": 1790990238.7567968,
     "ast_hash": "03b2c8168b13946f78013c54f55fee08",
     "semantic_hash": ""
   },
   "app/api/shipping/easyship/webhook/route.ts": {
-    "mtime": 1790989369.8154767,
-    "seen": 1790989515.27514,
+    "mtime": 1790989985.0254283,
+    "seen": 1790990238.756798,
     "ast_hash": "ea620439df69e7f75fd9a7b0a34772ee",
     "semantic_hash": ""
   },
@@ -13962,8 +13962,8 @@
     "semantic_hash": ""
   },
   "lib/shipping/easyship.ts": {
-    "mtime": 1790989349.4761667,
-    "seen": 1790989515.275715,
+    "mtime": 1790989985.0499856,
+    "seen": 1790990238.757477,
     "ast_hash": "3d57a259a1e677c269c754b12c94f8c4",
     "semantic_hash": ""
   },
@@ -14070,9 +14070,9 @@
     "semantic_hash": ""
   },
   "app/api/telegram/webhook/__tests__/review-routing.test.ts": {
-    "mtime": 1790988977.5891724,
-    "seen": 1790989515.275181,
-    "ast_hash": "351d3c68aa8e27ebdc2599632a649366",
+    "mtime": 1790990131.3392918,
+    "seen": 1790990238.756844,
+    "ast_hash": "b05de23476f21988b2230bb6abfd20d2",
     "semantic_hash": ""
   },
   "app/api/webhooks/google-reviews/__tests__/route.test.ts": {
@@ -14100,9 +14100,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/cards.test.ts": {
-    "mtime": 1790988977.6392858,
-    "seen": 1790989515.2756438,
-    "ast_hash": "0058c6a94561174e0bad929830331cc3",
+    "mtime": 1790990101.435762,
+    "seen": 1790990238.757388,
+    "ast_hash": "5d8a362c62463f3017d7c77ff95e4d74",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
@@ -14118,9 +14118,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/google-sync.test.ts": {
-    "mtime": 1790988977.6397305,
-    "seen": 1790989515.275646,
-    "ast_hash": "99f98499295756a5961ad1f28c94eec4",
+    "mtime": 1790990126.8043637,
+    "seen": 1790990238.75739,
+    "ast_hash": "119d23ed1afb639fcee438a69c487ce4",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/reply-rules.test.ts": {
@@ -14136,27 +14136,27 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/telegram-handler.test.ts": {
-    "mtime": 1790988977.6403043,
-    "seen": 1790989515.275649,
-    "ast_hash": "526d3fb81ee2da9d1f30e7e1a5948816",
+    "mtime": 1790990124.2669573,
+    "seen": 1790990238.757393,
+    "ast_hash": "345eb9237621753114b63a9d7cb75777",
     "semantic_hash": ""
   },
   "lib/reviews/cards.ts": {
-    "mtime": 1790988977.6406028,
-    "seen": 1790989515.275649,
-    "ast_hash": "6413f28127e5cf95e207e0a867633a99",
+    "mtime": 1790990025.2782924,
+    "seen": 1790990238.7573938,
+    "ast_hash": "3b1c63786224c429328a28b1b635efd0",
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
-    "mtime": 1790988977.6407852,
-    "seen": 1790989515.27565,
-    "ast_hash": "bfa739cdf061e9263f75cf6cd2aa1495",
+    "mtime": 1790990069.8088274,
+    "seen": 1790990238.7573938,
+    "ast_hash": "3aa029e2e1f870f20803a5cad757164c",
     "semantic_hash": ""
   },
   "lib/reviews/google-actions.ts": {
-    "mtime": 1790988977.641701,
-    "seen": 1790989515.275651,
-    "ast_hash": "17b0be648c73f5f46462c34b33a268eb",
+    "mtime": 1790990068.0053897,
+    "seen": 1790990238.757395,
+    "ast_hash": "07a59280f4e04442e0167cba4cd7abd3",
     "semantic_hash": ""
   },
   "lib/reviews/google-reviews.ts": {
@@ -14196,9 +14196,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/telegram-handler.ts": {
-    "mtime": 1790988977.6430454,
-    "seen": 1790989515.275656,
-    "ast_hash": "858c080778f438441e62c319e32401eb",
+    "mtime": 1790990057.6686714,
+    "seen": 1790990238.757403,
+    "ast_hash": "9ea796999272c31cfb2da929b2c11ad3",
     "semantic_hash": ""
   },
   "lib/telegram/__tests__/roles.test.ts": {
@@ -14208,9 +14208,9 @@
     "semantic_hash": ""
   },
   "lib/telegram/bot-api.ts": {
-    "mtime": 1790988977.6451302,
-    "seen": 1790989515.275799,
-    "ast_hash": "760d33a600664c21361dafd3b38f2180",
+    "mtime": 1790989995.0507185,
+    "seen": 1790990238.757568,
+    "ast_hash": "9480ead70a12d82ec777e17ef0e3489f",
     "semantic_hash": ""
   },
   "lib/telegram/link-codes.ts": {
@@ -14268,15 +14268,15 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/preview.test.ts": {
-    "mtime": 1790988977.6398962,
-    "seen": 1790989515.275647,
-    "ast_hash": "96808924fa882bb997d3d67dc16ca7bd",
+    "mtime": 1790990196.6406846,
+    "seen": 1790990238.7573912,
+    "ast_hash": "8a5498e2e6c08401ca7b995ba07dd00f",
     "semantic_hash": ""
   },
   "lib/reviews/preview.ts": {
-    "mtime": 1790988977.6423965,
-    "seen": 1790989515.2756531,
-    "ast_hash": "ea4959ea6078f79da2041224b22ea9d2",
+    "mtime": 1790990079.8917882,
+    "seen": 1790990238.7574,
+    "ast_hash": "9191ca2e589e8fe3dfdda1cca1caba40",
     "semantic_hash": ""
   },
   "scripts/telegram-review-preview.ts": {
@@ -14292,92 +14292,92 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/integrations/easyship/easyship-client.tsx": {
-    "mtime": 1790958206.2427478,
-    "seen": 1790989515.275006,
+    "mtime": 1790989985.0240932,
+    "seen": 1790990238.756638,
     "ast_hash": "ddff32e694111ecfb20857a0782382b6",
     "semantic_hash": ""
   },
   "app/[lang]/settings/integrations/easyship/page.tsx": {
-    "mtime": 1790957863.7467818,
-    "seen": 1790989515.275006,
+    "mtime": 1790989985.0242624,
+    "seen": 1790990238.756639,
     "ast_hash": "a55db61ec00a3cc190cc02835322a347",
     "semantic_hash": ""
   },
   "app/[lang]/settings/integrations/easyship/shipping-rules-editor.tsx": {
-    "mtime": 1790958071.9660883,
-    "seen": 1790989515.275007,
+    "mtime": 1790989985.0244722,
+    "seen": 1790990238.75664,
     "ast_hash": "b1de4f1a73589fb211a0d9ba6b6938e2",
     "semantic_hash": ""
   },
   "app/api/settings/easyship/reference/route.ts": {
-    "mtime": 1790957740.1841083,
-    "seen": 1790989515.2751338,
+    "mtime": 1790989985.024857,
+    "seen": 1790990238.756791,
     "ast_hash": "a2d2a361796745882cfc7bd85ba76fa8",
     "semantic_hash": ""
   },
   "app/api/settings/easyship/route.ts": {
-    "mtime": 1790957740.1789517,
-    "seen": 1790989515.275135,
+    "mtime": 1790989985.0250041,
+    "seen": 1790990238.756791,
     "ast_hash": "e9ad30b3c0f7537be9124a83e1fbeb5d",
     "semantic_hash": ""
   },
   "lib/auth/bearer-or-admin.ts": {
-    "mtime": 1790957402.8240635,
-    "seen": 1790989515.275423,
+    "mtime": 1790989985.0482802,
+    "seen": 1790990238.757132,
     "ast_hash": "b96c8721d98da86dda6a6b14ef979797",
     "semantic_hash": ""
   },
   "lib/easyship/__tests__/sync.test.ts": {
-    "mtime": 1790958071.9661925,
-    "seen": 1790989515.275467,
+    "mtime": 1790989985.0485222,
+    "seen": 1790990238.757181,
     "ast_hash": "fc0bdcecc08a121e5d051c76e53ba085",
     "semantic_hash": ""
   },
   "lib/easyship/client.ts": {
-    "mtime": 1790989349.4822893,
-    "seen": 1790989515.275468,
+    "mtime": 1790989985.048673,
+    "seen": 1790990238.757182,
     "ast_hash": "a753b089db52d2614f746769219d562c",
     "semantic_hash": ""
   },
   "lib/easyship/schema.ts": {
-    "mtime": 1790957740.1839416,
-    "seen": 1790989515.275468,
+    "mtime": 1790989985.0490913,
+    "seen": 1790990238.757183,
     "ast_hash": "f27ee4a97994389926a25c295b58d038",
     "semantic_hash": ""
   },
   "lib/easyship/store.ts": {
-    "mtime": 1790989349.4857013,
-    "seen": 1790989515.275469,
+    "mtime": 1790989985.0492399,
+    "seen": 1790990238.757183,
     "ast_hash": "bbb9604beca2c0cbf3c68b982d01c941",
     "semantic_hash": ""
   },
   "lib/easyship/sync-report.ts": {
-    "mtime": 1790957402.8328915,
-    "seen": 1790989515.275469,
+    "mtime": 1790989985.049381,
+    "seen": 1790990238.757184,
     "ast_hash": "139aa2dee4e22e5114b3d150deb6e723",
     "semantic_hash": ""
   },
   "lib/easyship/sync.ts": {
-    "mtime": 1790958071.9659111,
-    "seen": 1790989515.27547,
+    "mtime": 1790989985.0497303,
+    "seen": 1790990238.757185,
     "ast_hash": "ac6589558880df8abba88152cd13860a",
     "semantic_hash": ""
   },
   ".claude/PRD-easyship-settings-sync/easyship-settings-sync-prd.md": {
-    "mtime": 1790989369.8552165,
-    "seen": 1790989515.2759879,
+    "mtime": 1790989985.0234718,
+    "seen": 1790990238.75777,
     "ast_hash": "89a9555e611d96dfec89e995f79b5471",
     "semantic_hash": ""
   },
   ".claude/skills/easyship/SKILL.md": {
-    "mtime": 1790989369.8584588,
-    "seen": 1790989515.276203,
+    "mtime": 1790989985.0237584,
+    "seen": 1790990238.7580009,
     "ast_hash": "2597ce1bc8de7e907e44ab006e21bee1",
     "semantic_hash": ""
   },
   "docs/adr/0020-easyship-settings-source-of-truth.md": {
-    "mtime": 1790989384.9962728,
-    "seen": 1790989515.276394,
+    "mtime": 1790989985.025899,
+    "seen": 1790990238.7581491,
     "ast_hash": "9da4dd510fabde45b3d88abd8b453314",
     "semantic_hash": ""
   }
