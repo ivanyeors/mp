@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   GOOGLE_CARD_HEADER,
+  PREVIEW_CARD_PREFIX,
   PREVIEW_REVIEW_ID,
   SHOP_CARD_HEADER,
   parseReviewCallback,
@@ -52,7 +53,8 @@ describe("buildReviewCardPreview", () => {
     expect(recovery.text).toContain("🛟 SERVICE RECOVERY");
     expect(recovery.text).toContain("WhatsApp at +65 8780 5311");
     expect(reopened.text).toContain("🔄 REOPENED — the rating changed from 5★ to 2★ after it was answered.");
-    expect(reopened.replyMarkup?.inline_keyboard.flat()[0].text).toBe("✅ Replace reply");
+    expect(reopened.text).toContain("💬 Our reply on Google now (posting replaces it):");
+    expect(reopened.replyMarkup?.inline_keyboard.flat().map((b) => b.text)).toEqual(["✅ Post reply", "🙈 Skip"]);
     expect(posted.text).toContain("✅ Replied on Google Maps by Ivan");
     expect(posted.replyMarkup).toBeUndefined();
   });
@@ -78,18 +80,20 @@ describe("buildReviewCardPreview", () => {
     expect(cards[0].card.text).toContain("The reply is sample text standing in for Claude's draft.");
   });
 
-  it("is never taken for a real card when someone replies to it", async () => {
+  it("routes a reply to a Google preview card, marked so the handler explains instead of saving", async () => {
     const { cards } = await buildReviewCardPreview({ now: NOW, draft: null });
-    const reply = {
+    const reply = (text: string) => ({
       message: {
         message_id: 9,
         chat: { id: -1001279910218 },
         from: { id: 1 },
         text: "Looks good!",
-        reply_to_message: { message_id: 8, text: cards[0].card.text },
+        reply_to_message: { message_id: 8, text },
       },
-    };
-    expect(isReviewUpdate(reply)).toBe(false);
+    });
+    expect(cards[0].card.text.startsWith(PREVIEW_CARD_PREFIX)).toBe(true);
+    expect(isReviewUpdate(reply(cards[0].card.text))).toBe(true);
+    expect(isReviewUpdate(reply(cards.at(-1)!.card.text))).toBe(false);
   });
 });
 

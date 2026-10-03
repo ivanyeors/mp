@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, GOOGLE_REVIEW_DEFAULTS, type Row } from "./fake-supabase";
 import { hashLinkCode } from "@/lib/telegram/link-codes";
-import { GOOGLE_CARD_HEADER, PREVIEW_REVIEW_ID, encodeReviewCallback } from "@/lib/reviews/cards";
+import { GOOGLE_CARD_HEADER, PREVIEW_CARD_PREFIX, PREVIEW_REVIEW_ID, encodeReviewCallback } from "@/lib/reviews/cards";
 
 /**
  * The Telegram side of review cards: who may press what (RBAC), that a Post
@@ -23,6 +23,7 @@ const h = vi.hoisted(() => ({
   draft: vi.fn(),
   answerCallback: vi.fn(),
   editGroupCard: vi.fn(),
+  deleteGroupMessage: vi.fn(),
   replyInGroup: vi.fn(),
   replyInChat: vi.fn(),
 }));
@@ -31,6 +32,7 @@ vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
 vi.mock("@/lib/telegram/bot-api", () => ({
   answerCallback: h.answerCallback,
   editGroupCard: h.editGroupCard,
+  deleteGroupMessage: h.deleteGroupMessage,
   replyInGroup: h.replyInGroup,
   replyInChat: h.replyInChat,
   sendGroupCard: vi.fn(),
@@ -79,7 +81,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   resetRateLimits();
   h.updateReply.mockResolvedValue({ comment: "Thanks, Jane!", updateTime: "2026-10-02T08:00:00Z" });
-  h.draft.mockResolvedValue({ ok: true, reply: "A fresh draft from Claude.", model: "claude-opus-5-5" });
+  h.deleteGroupMessage.mockResolvedValue(true);
   h.tables = {
     telegram_operators: [
       { id: "op-ivan", display_name: "Ivan", role: "review_manager", is_active: true, telegram_user_id: IVAN.id },
@@ -128,6 +130,8 @@ describe("isReviewUpdate", () => {
     expect(isReviewUpdate(msg("/stock"))).toBe(false);
     const card = { reply_to_message: { message_id: 77, text: `${GOOGLE_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thanks so much!", card))).toBe(true);
+    const preview = { reply_to_message: { message_id: 78, text: `${PREVIEW_CARD_PREFIX}a 5★ review.\n${GOOGLE_CARD_HEADER}\n…` } };
+    expect(isReviewUpdate(msg("Thanks so much!", preview))).toBe(true);
     expect(isReviewUpdate(msg("/help", card))).toBe(false);
     expect(isReviewUpdate({ message: { message_id: 1, chat: { id: 42 }, from: IVAN, text: "hi", ...card } })).toBe(false);
     expect(isReviewUpdate(msg("12", { reply_to_message: { message_id: 9, text: "Enter quantity for OUT" } }))).toBe(false);
@@ -231,18 +235,28 @@ describe("preview cards", () => {
   });
 });
 
-describe("Redraft, Skip and staff wording", () => {
-  it("replaces the draft with Claude's new one and bumps the version", async () => {
-    await tap(IVAN, encodeReviewCallback({ source: "google", action: "redraft", id: REVIEW_ID }));
-    expect(h.draft).toHaveBeenCalledOnce();
-    expect(review()).toMatchObject({ draft_reply: "A fresh draft from Claude.", draft_version: 3, draft_source: "claude" });
-    expect(lastEditText()).toContain("A fresh draft from Claude.");
-  });
+describe("Skip and staff wording", () => {
+  const skip = encodeReviewCallback({ source: "google", action: "skip", id: REVIEW_ID });
 
-  it("skips without posting", async () => {
-    await tap(IVAN, encodeReviewCallback({ source: "google", action: "skip", id: REVIEW_ID }));
+  it("skips without posting and removes the card", async () => {
+    await tap(IVAN, skip);
     expect(review()).toMatchObject({ status: "skipped", acted_by_name: "Ivan" });
     expect(h.updateReply).not.toHaveBeenCalled();
+    expect(h.deleteGroupMessage).toHaveBeenCalledWith(77);
+    expect(h.editGroupCard).not.toHaveBeenCalled();
+  });
+
+  it("marks the card skipped when Telegram will not delete it", async () => {
+    h.deleteGroupMessage.mockResolvedValue(false);
+    await tap(IVAN, skip);
+    expect(review().status).toBe("skipped");
+    expect(lastEditText()).toContain("🙈 Skipped by Ivan");
+  });
+
+  it("explains a reply to a preview card instead of saving it", async () => {
+    await say(IVAN, "My own wording", { replyTo: 78, replyText: `${PREVIEW_CARD_PREFIX}a 5★ review.\n${GOOGLE_CARD_HEADER}\n…` });
+    expect(review().draft_reply).toBe("Thanks, Jane!");
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/On a real card.*Ivan \(Review manager\)/), 500);
   });
 
   it("takes a review manager's reply to the card as the new draft — Post still required", async () => {

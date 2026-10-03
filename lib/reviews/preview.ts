@@ -1,5 +1,6 @@
 import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 import {
+  PREVIEW_CARD_PREFIX,
   PREVIEW_REVIEW_ID,
   renderGoogleReviewCard,
   renderShopReviewCard,
@@ -16,9 +17,9 @@ import { sendGroupMessage } from "@/lib/telegram/bot-api";
  * ("Send preview") or scripts/telegram-review-preview.ts.
  *
  * Nothing here touches the database or Google. Every card opens with a PREVIEW
- * line — nobody mistakes it for a real review, and a reply to it is not read
- * as a draft edit — and its buttons carry PREVIEW_REVIEW_ID, which the Telegram
- * handler answers with the tapper's access instead of acting. With an
+ * line so nobody mistakes it for a real review, and its buttons carry
+ * PREVIEW_REVIEW_ID: the Telegram handler answers a tap, or a reply to the
+ * card, with the person's access instead of acting. With an
  * ANTHROPIC_API_KEY the Google replies are real Claude drafts of the samples;
  * without one, sample text is used and the card says so.
  */
@@ -27,7 +28,7 @@ export const PREVIEW_INTRO = [
   "🧪 REVIEW CARDS — PREVIEW",
   "Sample cards showing how new Google Maps and shop reviews will arrive here. None of them are real, and nothing will be posted to Google.",
   "",
-  "Tap any button to check your access: it tells you whether you're set up, and as what. Not set up yet? An admin adds you under Settings → Staff Management → Telegram access.",
+  "Tap any button to check your access: it tells you whether you're set up, and as what. Reply to a Google card with your own wording to see how editing a draft works. Not set up yet? An admin adds you under Settings → Staff Management → Telegram access.",
 ].join("\n");
 
 export type PreviewCard = { what: string; card: Card };
@@ -140,7 +141,7 @@ function googleSamples(now: Date): GoogleSample[] {
 
 function marked(what: string, card: Card, note = ""): Card {
   return {
-    text: `🧪 PREVIEW — ${what}. Sample review, not real.${note}\n${card.text}`,
+    text: `${PREVIEW_CARD_PREFIX}${what}. Sample review, not real.${note}\n${card.text}`,
     replyMarkup: card.replyMarkup,
   };
 }
