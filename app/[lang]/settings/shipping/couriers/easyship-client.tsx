@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Download, Loader2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,8 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="connection" className="mt-4">
+        {/* Kept mounted so unsaved Connection edits survive a tab switch. */}
+        <TabsContent value="connection" forceMount className="mt-4 data-[state=inactive]:hidden">
           <EasyshipPanel onShowAddresses={() => setTab("addresses")} />
         </TabsContent>
 
@@ -505,7 +506,8 @@ function BoxesSection({
   boxForType: EasyshipSettings["box_for_type"];
   update: Update;
 }) {
-  // Renaming or removing a box carries its "Used for" mapping with it.
+  const renaming = useRef("");
+  // Renaming (on blur, so mid-typing names never collide) or removing a box carries its "Used for" mapping with it.
   const remap = (d: EasyshipSettings, from: string, to: string | null) => {
     for (const t of BOX_TYPES) {
       const m = d.box_for_type[t];
@@ -530,7 +532,14 @@ function BoxesSection({
                 <Input
                   id={`box-${i}-name`}
                   value={b.name}
-                  onChange={(e) => update((d) => { remap(d, d.boxes[i].name, e.target.value); d.boxes[i].name = e.target.value; })}
+                  onFocus={() => { renaming.current = b.name; }}
+                  onChange={(e) => update((d) => { d.boxes[i].name = e.target.value; })}
+                  onBlur={() => update((d) => {
+                    const from = renaming.current;
+                    const to = d.boxes[i].name;
+                    const taken = (n: string) => d.boxes.some((o, j) => j !== i && sameBox(o.name, n));
+                    if (from !== to && !taken(from) && !taken(to)) remap(d, from, to);
+                  })}
                 />
               </div>
               {BOX_DIMS.map((f) => (
@@ -582,7 +591,7 @@ function BoxesSection({
                         aria-label={`${titleCase(t)} content weight (g)`}
                         type="number"
                         inputMode="numeric"
-                        min={0}
+                        min={1}
                         step="10"
                         className="h-7 w-24 text-xs"
                         value={m.weight_grams}

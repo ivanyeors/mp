@@ -458,11 +458,10 @@ export default function SettingsShippingPage({
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        {method.rate_source !== "easyship" && (
-                                            <span className="font-medium text-foreground">
-                                                {formatCurrency(method.base_rate, method.currency)}
-                                            </span>
-                                        )}
+                                        <span className="font-medium text-foreground">
+                                            {method.rate_source === "easyship" && "Customisation orders "}
+                                            {formatCurrency(method.base_rate, method.currency)}
+                                        </span>
                                         <span>
                                             {method.free_above !== null
                                                 ? `Free above ${formatCurrency(method.free_above, method.currency)}`
@@ -703,9 +702,10 @@ export default function SettingsShippingPage({
 
                         {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
-                            {form.rate_source !== "easyship" && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
+                                <Label htmlFor="base_rate">
+                                    {form.rate_source === "easyship" ? "Customisation order rate" : "Base rate"} ({CURRENCY_SYMBOL})
+                                </Label>
                                 <Input
                                     id="base_rate"
                                     type="number"
@@ -715,8 +715,12 @@ export default function SettingsShippingPage({
                                     onChange={(e) => setField("base_rate", e.target.value)}
                                     placeholder="e.g. 8.00"
                                 />
+                                {form.rate_source === "easyship" && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Customisation orders charge this flat price; they don&apos;t quote couriers.
+                                    </p>
+                                )}
                             </div>
-                            )}
 
                             <div className="space-y-1.5">
                                 <Label htmlFor="free_above">Free shipping above ({CURRENCY_SYMBOL})</Label>

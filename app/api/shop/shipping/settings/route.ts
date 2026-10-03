@@ -27,7 +27,11 @@ export type ShippingSettingsResponse = {
 
 async function respond(settings: ShippingSettings) {
   const config = easyshipConfig();
-  const sender = await readSenderAddress();
+  // A failed courier-doc read shows as "no sender" instead of failing the whole response.
+  const sender = await readSenderAddress().catch((err) => {
+    console.error("[shipping] Could not read the sender address:", err);
+    return null;
+  });
   const body: ShippingSettingsResponse = {
     ok: true,
     settings,

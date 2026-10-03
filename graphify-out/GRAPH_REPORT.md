@@ -1,16 +1,16 @@
 # Graph Report - shipping-couriers  (2026-10-03)
 
 ## Corpus Check
-- 2212 files · ~6,243,678 words
+- 2212 files · ~6,243,999 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 13643 nodes · 30574 edges · 1057 communities (956 shown, 101 thin omitted)
+- 13643 nodes · 30574 edges · 1058 communities (955 shown, 103 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 87 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `db7c58ce`
+- Built from commit: `714d8149`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -45,7 +45,7 @@
 - seo-actions.ts
 - orders-list.ts
 - partner/page.tsx
-- xray-cross-section.tsx
+- fit.ts
 - mp-config/page.tsx
 - registry.ts
 - AnalyticsClient.tsx
@@ -123,7 +123,7 @@
 - cards.ts
 - orders/[id]/page.tsx
 - order-mirror-catchup.ts
-- sla-reminders/index.ts
+- results-sla/route.ts
 - Shopify export (active products)
 - journey-tracker.tsx
 - business-profile.ts
@@ -165,7 +165,7 @@
 - product-slide-section-renderer.tsx
 - PRD: Landing Slide-In Safe-Area Fix
 - replace.ts
-- fit.ts
+- configurator-staff-reference-photos-prd.md
 - inspector.check.ts
 - api-request-tracker.tsx
 - PRD: Rules Engine — node-based measurement → recommendation authority
@@ -235,7 +235,7 @@
 - feed.ts
 - Shopify inventory sync (buildable → Shopify)
 - Slice 05 — Staging mobile QA signoff
-- configurator-staff-reference-photos-prd.md
+- 04 — Bolster reference-photo upload UI + session UUID
 - Slice 17 — Adopt product slide section configs onto Assets (or defer)
 - Ops checklist — Media Asset Library (Drive)
 - PRD: Mobile UX/UI Optimization — Round 2 (Jul 2026)
@@ -252,7 +252,7 @@
 - Slice 18 — Staging E2E signoff: full library QA checklist
 - PRD: Returns/RMA workflow
 - Domain Migration OPS Checklist — work → custom.mpillow.com
-- results-sla/route.ts
+- email/index.ts
 - UI Debug Agent (Senior Frontend Manager + Senior QA Designer Manager)
 - finding-the-perfect-neck-support-pillow-in-singapore.mdx
 - how-to-choose-the-best-pillow-in-singapore.mdx
@@ -875,6 +875,7 @@
 - Easyship account configuration is owned by the platform and pushed, never pulled
 - authErrorMessage
 - referral-rows.tsx
+- ripple/index.tsx
 - Page: Work With Us
 - @fullcalendar/timegrid
 - reorder.ts
@@ -914,10 +915,10 @@
   app/api/shop/reviews/route.ts → lib/supabase/server.ts
 
 ## Import Cycles
-- 3-file cycle: `lib/spatial-fillings/dimensions.ts -> lib/spatial-fillings/xray-layout.ts -> lib/spatial-fillings/xray-stage.ts -> lib/spatial-fillings/dimensions.ts`
 - 3-file cycle: `lib/spatial-fillings/dimensions.ts -> lib/spatial-fillings/xray-layout.ts -> lib/spatial-fillings/settle.ts -> lib/spatial-fillings/dimensions.ts`
+- 3-file cycle: `lib/spatial-fillings/dimensions.ts -> lib/spatial-fillings/xray-layout.ts -> lib/spatial-fillings/xray-stage.ts -> lib/spatial-fillings/dimensions.ts`
 
-## Communities (1057 total, 101 thin omitted)
+## Communities (1058 total, 103 thin omitted)
 
 ### Community 0 - "inventory/actions.ts"
 Cohesion: 0.07
@@ -961,7 +962,7 @@ Nodes (100): AccountProfilePage(), initialsFrom(), Props, generateMetadata, Prop
 
 ### Community 10 - "dimensions.ts"
 Cohesion: 0.04
-Nodes (93): AllowanceSchema, DeleteSchema, GET(), loadPayload(), mm, NeckSchema, optionalMm, PouchSchema (+85 more)
+Nodes (98): AllowanceSchema, DeleteSchema, GET(), loadPayload(), mm, NeckSchema, optionalMm, PouchSchema (+90 more)
 
 ### Community 11 - "[card]/page.tsx"
 Cohesion: 0.04
@@ -977,15 +978,15 @@ Nodes (86): BaselineState, BASIC_PILLOW_SIZES, BOLSTER_VARIANT_ORDER, BOLSTER_VA
 
 ### Community 14 - "xray-bolster.tsx"
 Cohesion: 0.07
-Nodes (45): BolsterCompartmentList(), BolsterListItem, ADR-0008, BolsterGauge(), SHELL_REGIONS, ADR-0008, ADR-0009, XrayBolster() (+37 more)
+Nodes (46): FillingItem, BolsterCompartmentList(), BolsterListItem, ADR-0008, BolsterGauge(), SHELL_REGIONS, ADR-0008, ADR-0009 (+38 more)
 
 ### Community 15 - "image-usages.ts"
-Cohesion: 0.09
-Nodes (38): GET(), runtime, addAll(), addExactId(), addExactUrl(), addSubstringMatches(), applyTerms(), AssetIndex (+30 more)
+Cohesion: 0.07
+Nodes (48): GET(), runtime, addAll(), addExactId(), addExactUrl(), addSubstringMatches(), applyTerms(), AssetIndex (+40 more)
 
 ### Community 16 - "xray-layout.ts"
-Cohesion: 0.07
-Nodes (36): bolsterCapsulePath(), client, page, renderer, route, ADR-0009, BOLSTER_DIMENSIONS, BolsterDimensions (+28 more)
+Cohesion: 0.05
+Nodes (66): bolsterCapsulePath(), client, page, renderer, route, ADR-0009, cellLayerGroups(), BOLSTER_DIMENSIONS (+58 more)
 
 ### Community 17 - "requireAdmin"
 Cohesion: 0.02
@@ -996,8 +997,8 @@ Cohesion: 0.09
 Nodes (38): assertMarketingCopySafe(), GatedString, BandUnit, BANNED_CLINICAL, checkBand(), checkBannedClinical(), HERO_H1_CHAR_BAND, HERO_H1_CHAR_MAX (+30 more)
 
 ### Community 19 - "results.ts"
-Cohesion: 0.10
-Nodes (58): dynamic, POST(), runtime, ADR-0017, renderApplicationOutcomeEmail(), renderBackupEmailOtpEmail(), renderEmailShell(), addressBlock() (+50 more)
+Cohesion: 0.13
+Nodes (46): dynamic, POST(), runtime, ADR-0017, renderApplicationOutcomeEmail(), renderBackupEmailOtpEmail(), renderEmailShell(), amountPanel() (+38 more)
 
 ### Community 20 - "reconfigure/route.ts"
 Cohesion: 0.05
@@ -1039,9 +1040,9 @@ Nodes (29): GET(), runtime, AddressSchema, CreateOrderSchema, GET(), OrderItemSc
 Cohesion: 0.09
 Nodes (27): reacceptAgreement(), resolveLocale(), submitApplication(), SubmitResult, ApplyForm(), onSubmit(), PartnerApplyPage(), PartnerHubPage() (+19 more)
 
-### Community 30 - "xray-cross-section.tsx"
-Cohesion: 0.05
-Nodes (58): BolsterCrossSection, XrayBolsterEditor, XrayCrossSection, XrayEditor, BUILD_SIZES, CalibrationPage(), dynamic, runtime (+50 more)
+### Community 30 - "fit.ts"
+Cohesion: 0.04
+Nodes (88): BolsterCrossSection, XrayBolsterEditor, XrayCrossSection, XrayEditor, BolsterCrossSection, XrayCrossSection, XrayEditor, ADR-0019 (+80 more)
 
 ### Community 31 - "mp-config/page.tsx"
 Cohesion: 0.03
@@ -1049,7 +1050,7 @@ Nodes (126): GET(), runtime, dynamic, GET(), runtime, BlogPostPage(), generateMe
 
 ### Community 32 - "registry.ts"
 Cohesion: 0.08
-Nodes (44): EmailFixture, HOSTILE, pick(), sampleApplication(), sampleBalanceDue(), sampleBalanceDueFinish(), sampleContact(), sampleHeldReminder() (+36 more)
+Nodes (46): EmailFixture, HOSTILE, pick(), sampleApplication(), sampleBalanceDue(), sampleBalanceDueFinish(), sampleContact(), sampleHeldReminder() (+38 more)
 
 ### Community 33 - "AnalyticsClient.tsx"
 Cohesion: 0.04
@@ -1300,8 +1301,8 @@ Cohesion: 0.06
 Nodes (56): POST(), runtime, BodySchema, POST(), runtime, POST(), RefundSchema, runtime (+48 more)
 
 ### Community 96 - "usage-fixtures.ts"
-Cohesion: 0.07
-Nodes (29): AssetRef, jsonRefsAsset(), UsageConsumerRows, columnValue(), createFakeSupabase(), dequote(), evaluate(), FakeQuery (+21 more)
+Cohesion: 0.10
+Nodes (19): columnValue(), dequote(), evaluate(), FakeQuery, FakeRow, FakeSupabaseOptions, FakeTables, FixtureOptions (+11 more)
 
 ### Community 97 - "rma/[id]/page.tsx"
 Cohesion: 0.19
@@ -1351,9 +1352,9 @@ Nodes (26): DELETE(), DeleteBodySchema, GET(), ParamsSchema, POST(), PostBodySch
 Cohesion: 0.11
 Nodes (27): authorizeCron(), dynamic, GET(), POST(), runtime, CatchupBudget, CatchupResult, main() (+19 more)
 
-### Community 109 - "sla-reminders/index.ts"
-Cohesion: 0.15
-Nodes (20): v(), abandoned, base, NOW, off, route, addWorkingDays(), authExpiresAt() (+12 more)
+### Community 109 - "results-sla/route.ts"
+Cohesion: 0.08
+Nodes (46): authorizeCron(), dynamic, GET(), POST(), runtime, sendCustomerExpiredEmail(), sendOpsReminderEmail(), ADR-0016 (+38 more)
 
 ### Community 110 - "Shopify export (active products)"
 Cohesion: 0.06
@@ -1506,10 +1507,6 @@ Nodes (22): Agent template correction, Expected diff size, Further Notes, Implem
 ### Community 161 - "replace.ts"
 Cohesion: 0.19
 Nodes (16): POST(), runtime, emptyReplaceSummary(), isLandingAssetIdKey(), LANDING_ASSET_ID_SUFFIX, landingSlotKeyFromAssetIdKey(), planReplaceEverywhere(), ReplaceInput (+8 more)
-
-### Community 162 - "fit.ts"
-Cohesion: 0.05
-Nodes (66): FitBanner(), ADR-0019, LoftGauge(), cellLayerGroups(), PillowSize, SEAM_MM, acrossOf(), applyFitChange() (+58 more)
 
 ### Community 163 - "inspector.check.ts"
 Cohesion: 0.25
@@ -1787,9 +1784,9 @@ Nodes (9): Deploy on Vercel, Getting Started, Learn More, Manual sync endpoint, 
 Cohesion: 0.22
 Nodes (9): Acceptance criteria, Automated checks (all ok), Blocked by, Code-audit wiring (AFK proxy — not a device pass), Deploy gate — **closed**, HITL status, Preflight (AFK) — 2026-07-11, Slice 05 — Staging mobile QA signoff (+1 more)
 
-### Community 233 - "configurator-staff-reference-photos-prd.md"
-Cohesion: 0.22
-Nodes (6): 04 — Bolster reference-photo upload UI + session UUID, Acceptance criteria, Blocked by, Parent, What to build, PRD — Staff reference-photo upload for the customisation forms
+### Community 233 - "04 — Bolster reference-photo upload UI + session UUID"
+Cohesion: 0.33
+Nodes (5): 04 — Bolster reference-photo upload UI + session UUID, Acceptance criteria, Blocked by, Parent, What to build
 
 ### Community 234 - "Slice 17 — Adopt product slide section configs onto Assets (or defer)"
 Cohesion: 0.22
@@ -1851,9 +1848,9 @@ Nodes (7): Acceptance Criteria, Decisions, Out of Scope, PRD: Returns/RMA workfl
 Cohesion: 0.25
 Nodes (7): Analytics (Slice 11), Domain Migration OPS Checklist — work → custom.mpillow.com, Google Search Console (Slice 11 — manual), Post-deploy verification, Pre-deploy (code — done in repo), Supabase Auth (manual dashboard), Vercel / DNS
 
-### Community 250 - "results-sla/route.ts"
-Cohesion: 0.06
-Nodes (57): authorizeCron(), dynamic, GET(), POST(), runtime, sendCustomerExpiredEmail(), sendOpsReminderEmail(), ADR-0016 (+49 more)
+### Community 250 - "email/index.ts"
+Cohesion: 0.07
+Nodes (41): RFC-2047, addressBlock(), dataTable(), buildOrderEmailData(), dispatchOrderEmail(), OrderRow, planOrderConfirmedEmails(), sendOrderConfirmedEmails() (+33 more)
 
 ### Community 251 - "UI Debug Agent (Senior Frontend Manager + Senior QA Designer Manager)"
 Cohesion: 0.25
@@ -2056,7 +2053,7 @@ Cohesion: 0.33
 Nodes (5): 01 — Glossary + ADR: Reference photo, Sizing photo, Customisation session, Acceptance criteria, Blocked by, Parent, What to build
 
 ### Community 301 - "02 — `config_upload` backend: schema + module + guard + API + tests"
-Cohesion: 0.33
+Cohesion: 0.40
 Nodes (5): 02 — `config_upload` backend: schema + module + guard + API + tests, Acceptance criteria, Blocked by, Parent, What to build
 
 ### Community 302 - "03 — Pillow reference-photo upload UI"
@@ -3172,8 +3169,8 @@ Cohesion: 0.22
 Nodes (8): 07 — Sign-off: a real bank app, a real QR, a real Singapore dollar, Acceptance criteria, Handset, Live, Prerequisites, Sandbox, Test matrix, Why this cannot be AFK
 
 ### Community 605 - "rma.ts"
-Cohesion: 0.11
-Nodes (33): voidCommissionsForRma(), bulletList(), dispatchRmaEmail(), itemLabels(), itemsText(), lowerFirst(), orderUrl(), requested() (+25 more)
+Cohesion: 0.09
+Nodes (36): voidCommissionsForRma(), bulletList(), setEmailTransport(), dispatchRmaEmail(), itemLabels(), itemsText(), lowerFirst(), orderUrl() (+28 more)
 
 ### Community 607 - "05: Cross-section view — a live across / along cut of the pillow beside every x-ray"
 Cohesion: 0.29
@@ -3357,11 +3354,11 @@ Nodes (6): 06 — "Who is STRIPE PAYMENTS SINGAPORE?", and telling PayNow orders
 
 ### Community 767 - "types/landing-sections.ts"
 Cohesion: 0.07
-Nodes (56): CredibilitySection(), CredibilitySectionProps, ICONS, CustomFullWidthImageSection(), CustomFullWidthImageSectionProps, CustomRichTextSection(), CustomRichTextSectionProps, CustomTextImageSection() (+48 more)
+Nodes (54): CredibilitySection(), CredibilitySectionProps, ICONS, CustomFullWidthImageSection(), CustomFullWidthImageSectionProps, CustomRichTextSection(), CustomRichTextSectionProps, CustomTextImageSection() (+46 more)
 
 ### Community 769 - "site-url.ts"
-Cohesion: 0.16
-Nodes (21): robots(), ReferralShareCard(), authCallbackUrl(), env, localCallback, firstHeaderValue(), getClientPublicOrigin(), getClientSiteOrigin() (+13 more)
+Cohesion: 0.20
+Nodes (18): robots(), ReferralShareCard(), authCallbackUrl(), env, localCallback, firstHeaderValue(), getClientPublicOrigin(), getClientSiteOrigin() (+10 more)
 
 ### Community 770 - "select-labels.check.ts"
 Cohesion: 0.27
@@ -4010,16 +4007,16 @@ Nodes (5): buttonVariants, Ripple, RippleButton(), RippleButtonProps, rippleVari
 ## Knowledge Gaps
 - **5645 isolated node(s):** `npx`, `supabase`, `vercel`, `supabase`, `AddressActionResult` (+5640 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **101 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `supabaseAdmin()` connect `supabaseAdmin` to `inventory/actions.ts`, `appointments/settings.ts`, `page-faq/index.ts`, `media-assets/index.ts`, `dimensions.ts`, `withLocale`, `requireAdmin`, `results.ts`, `reconfigure/route.ts`, `operators.ts`, `touchLastUsed`, `partner-application/index.ts`, `seo-actions.ts`, `orders-list.ts`, `partner/page.tsx`, `xray-cross-section.tsx`, `mp-config/page.tsx`, `order-mirror-ingest.ts`, `drive.ts`, `getPartnerContext`, `rules-engine/recommend.ts`, `testimonials-grid-with-add.tsx`, `coupons.ts`, `easyship-client.tsx`, `telegram-handler.ts`, `rules-engine/index.ts`, `addons.ts`, `telegram/webhook/route.ts`, `referrals/index.ts`, `pricing.ts`, `whatsapp/route.ts`, `seed-rule-graphs.ts`, `engine.ts`, `google-sync.ts`, `commissions/ledger.ts`, `config-upload/index.ts`, `hold/route.ts`, `detail-prep.ts`, `shopify/sync.ts`, `customization-steps.tsx`, `locales.ts`, `migrate-public-apply.ts`, `import-drive.ts`, `staff-assist-panel.tsx`, `SearchVisibilityCard.tsx`, `book/route.ts`, `shop-listings.ts`, `rma.ts`, `rma/actions.ts`, `rma/[id]/page.tsx`, `unpromoted/route.ts`, `partners/index.ts`, `checkout/route.ts`, `price-sync.ts`, `exchange-rates.ts`, `overlays.ts`, `orders/[id]/page.tsx`, `order-mirror-catchup.ts`, `shopify/webhook/route.ts`, `business-profile.ts`, `appointment-reminders/route.ts`, `store.ts`, `pre-order-restock.ts`, `listAssetUsages`, `journey/ingest.ts`, `shipping/settings.ts`, `milestones/ledger.ts`, `slots.ts`, `response-detail.ts`, `admin/customers.ts`, `easyship.test.ts`, `discovery-source/index.ts`, `replace.ts`, `inventory-deduction.ts`, `stripe/webhook/route.ts`, `order-shipment.ts`, `quote/route.ts`, `channel-sales.ts`, `reviews/[id]/route.ts`, `responses/route.ts`, `answer-lede-coverage.check.ts`, `recordAdminAction`, `results-sla/route.ts`, `types/landing-sections.ts`, `auth/admin.ts`, `blogs.ts`, `discounts.ts`, `stripe/sync.ts`, `events/route.ts`, `analytics/actions.ts`, `mp-config-sync.ts`, `faq/categories/route.ts`, `server.ts`, `faq/items/route.ts`, `accept/route.ts`, `queue-counts/route.ts`, `fulfill/route.ts`?**
+- **Why does `supabaseAdmin()` connect `supabaseAdmin` to `inventory/actions.ts`, `appointments/settings.ts`, `page-faq/index.ts`, `media-assets/index.ts`, `dimensions.ts`, `withLocale`, `requireAdmin`, `results.ts`, `reconfigure/route.ts`, `operators.ts`, `touchLastUsed`, `partner-application/index.ts`, `seo-actions.ts`, `orders-list.ts`, `partner/page.tsx`, `mp-config/page.tsx`, `order-mirror-ingest.ts`, `drive.ts`, `getPartnerContext`, `rules-engine/recommend.ts`, `testimonials-grid-with-add.tsx`, `coupons.ts`, `easyship-client.tsx`, `telegram-handler.ts`, `rules-engine/index.ts`, `addons.ts`, `telegram/webhook/route.ts`, `referrals/index.ts`, `pricing.ts`, `whatsapp/route.ts`, `seed-rule-graphs.ts`, `engine.ts`, `google-sync.ts`, `commissions/ledger.ts`, `config-upload/index.ts`, `hold/route.ts`, `detail-prep.ts`, `shopify/sync.ts`, `customization-steps.tsx`, `locales.ts`, `migrate-public-apply.ts`, `import-drive.ts`, `staff-assist-panel.tsx`, `SearchVisibilityCard.tsx`, `book/route.ts`, `shop-listings.ts`, `rma.ts`, `rma/actions.ts`, `rma/[id]/page.tsx`, `unpromoted/route.ts`, `partners/index.ts`, `checkout/route.ts`, `price-sync.ts`, `exchange-rates.ts`, `overlays.ts`, `orders/[id]/page.tsx`, `order-mirror-catchup.ts`, `results-sla/route.ts`, `shopify/webhook/route.ts`, `business-profile.ts`, `appointment-reminders/route.ts`, `store.ts`, `pre-order-restock.ts`, `listAssetUsages`, `journey/ingest.ts`, `shipping/settings.ts`, `milestones/ledger.ts`, `slots.ts`, `response-detail.ts`, `admin/customers.ts`, `easyship.test.ts`, `discovery-source/index.ts`, `replace.ts`, `inventory-deduction.ts`, `stripe/webhook/route.ts`, `order-shipment.ts`, `quote/route.ts`, `channel-sales.ts`, `reviews/[id]/route.ts`, `responses/route.ts`, `answer-lede-coverage.check.ts`, `recordAdminAction`, `email/index.ts`, `types/landing-sections.ts`, `auth/admin.ts`, `blogs.ts`, `discounts.ts`, `stripe/sync.ts`, `events/route.ts`, `analytics/actions.ts`, `mp-config-sync.ts`, `faq/categories/route.ts`, `server.ts`, `faq/items/route.ts`, `accept/route.ts`, `queue-counts/route.ts`, `fulfill/route.ts`?**
   _High betweenness centrality (0.111) - this node is a cross-community bridge._
-- **Why does `cn()` connect `cn` to `product-detail-client.tsx`, `workbench.tsx`, `app-dock.tsx`, `sheet.tsx`, `page-faq/index.ts`, `checkout/page.tsx`, `ecommerce.ts`, `apple-cards-carousel.tsx`, `[card]/page.tsx`, `withLocale`, `costings/page.tsx`, `[lang]/appointments/page.tsx`, `product-slide-section-renderer.tsx`, `AnalyticsClient.tsx`, `[lang]/results/[id]/page.tsx`, `button.tsx`, `ripple-button/index.tsx`, `firmness-compare-section.tsx`, `product-slide-section.tsx`, `easyship-client.tsx`, `appointments-calendar.tsx`, `dimensions-section.tsx`, `shopify-sales-section.tsx`, `split-hero-section.tsx`, `customization-steps.tsx`, `support-contact-page.tsx`, `core.ts`, `staff-assist-panel.tsx`, `sunburst-menu-layout.check.ts`, `mp-config-client.tsx`, `types/landing-sections.ts`?**
+- **Why does `cn()` connect `cn` to `product-detail-client.tsx`, `workbench.tsx`, `app-dock.tsx`, `sheet.tsx`, `page-faq/index.ts`, `checkout/page.tsx`, `ecommerce.ts`, `apple-cards-carousel.tsx`, `[card]/page.tsx`, `withLocale`, `costings/page.tsx`, `ripple/index.tsx`, `[lang]/appointments/page.tsx`, `product-slide-section-renderer.tsx`, `AnalyticsClient.tsx`, `[lang]/results/[id]/page.tsx`, `button.tsx`, `ripple-button/index.tsx`, `firmness-compare-section.tsx`, `product-slide-section.tsx`, `easyship-client.tsx`, `appointments-calendar.tsx`, `dimensions-section.tsx`, `shopify-sales-section.tsx`, `split-hero-section.tsx`, `customization-steps.tsx`, `support-contact-page.tsx`, `core.ts`, `staff-assist-panel.tsx`, `sunburst-menu-layout.check.ts`, `mp-config-client.tsx`?**
   _High betweenness centrality (0.030) - this node is a cross-community bridge._
-- **Why does `DEFAULT_LOCALE` connect `locales.ts` to `product-detail-client.tsx`, `workbench.tsx`, `app-dock.tsx`, `sheet.tsx`, `page-faq/index.ts`, `response-detail.ts`, `ecommerce.ts`, `cn`, `[card]/page.tsx`, `withLocale`, `costings/page.tsx`, `copy-fit.ts`, `auth/admin.ts`, `blogs.ts`, `partner-application/index.ts`, `[lang]/appointments/page.tsx`, `partner/page.tsx`, `xray-cross-section.tsx`, `mp-config/page.tsx`, `discovery-source/index.ts`, `stripe/sync.ts`, `[lang]/results/[id]/page.tsx`, `button.tsx`, `easyship-client.tsx`, `telegram-handler.ts`, `dimensions-section.tsx`, `shopify-sales-section.tsx`, `server.ts`, `media-client.tsx`, `detail-prep.ts`, `hold/route.ts`, `supabaseAdmin`, `customization-steps.tsx`, `rma/[id]/page.tsx`, `results-client.tsx`, `section-editor.tsx`, `partners/index.ts`, `checkout/route.ts`, `results-sla/route.ts`, `orders/[id]/page.tsx`, `mp-config-client.tsx`, `page-builder-client.tsx`, `createSupabaseServerClient`?**
+- **Why does `DEFAULT_LOCALE` connect `locales.ts` to `product-detail-client.tsx`, `workbench.tsx`, `app-dock.tsx`, `sheet.tsx`, `page-faq/index.ts`, `response-detail.ts`, `ecommerce.ts`, `cn`, `dimensions.ts`, `[card]/page.tsx`, `withLocale`, `costings/page.tsx`, `copy-fit.ts`, `auth/admin.ts`, `blogs.ts`, `partner-application/index.ts`, `[lang]/appointments/page.tsx`, `partner/page.tsx`, `discovery-source/index.ts`, `mp-config/page.tsx`, `stripe/sync.ts`, `[lang]/results/[id]/page.tsx`, `button.tsx`, `easyship-client.tsx`, `telegram-handler.ts`, `dimensions-section.tsx`, `shopify-sales-section.tsx`, `server.ts`, `media-client.tsx`, `detail-prep.ts`, `hold/route.ts`, `supabaseAdmin`, `customization-steps.tsx`, `rma/[id]/page.tsx`, `results-client.tsx`, `section-editor.tsx`, `partners/index.ts`, `checkout/route.ts`, `orders/[id]/page.tsx`, `results-sla/route.ts`, `mp-config-client.tsx`, `page-builder-client.tsx`, `createSupabaseServerClient`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
 - **What connects `npx`, `supabase`, `vercel` to the rest of the system?**
   _5645 weakly-connected nodes found - possible documentation gaps or missing edges._

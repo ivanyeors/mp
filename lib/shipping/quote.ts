@@ -9,11 +9,10 @@ import {
   requestRates,
   type EasyshipConfig,
 } from "@/lib/shipping/easyship";
-import { readTypeBoxes } from "@/lib/easyship/store";
 import { buildParcels } from "@/lib/shipping/parcels";
 import { deliveryWindow, normalizeEasyshipRates, pickRate, priceLiveRate } from "@/lib/shipping/rates";
 import { missingOriginFields } from "@/lib/shipping/settings";
-import { readSenderAddress } from "@/lib/easyship/store";
+import { readSenderAddress, readTypeBoxes } from "@/lib/easyship/store";
 import type { EasyshipAddress } from "@/lib/easyship/schema";
 import type {
   CourierRate,

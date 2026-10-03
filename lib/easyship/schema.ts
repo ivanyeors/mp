@@ -90,7 +90,7 @@ export const BoxSchema = z.object({
 
 /** Which box an item type ships in, plus one unit's content weight. Kept on the doc only; never synced. */
 export const BOX_TYPES = ["pillow", "bolster", "accessory"] as const;
-const BoxForTypeSchema = z.object({ box: z.string().trim().min(1), weight_grams: z.number().int().nonnegative().max(70_000) });
+const BoxForTypeSchema = z.object({ box: z.string().trim().min(1), weight_grams: z.number().int().positive().max(70_000) });
 export const BoxForTypesSchema = z
   .object({ pillow: BoxForTypeSchema, bolster: BoxForTypeSchema, accessory: BoxForTypeSchema })
   .partial();

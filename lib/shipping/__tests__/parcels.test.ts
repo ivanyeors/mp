@@ -102,6 +102,14 @@ describe("buildParcels", () => {
     expect(typeBoxes(null)).toEqual({});
   });
 
+  it("lets a weighed accessory ride without an accessory box, but not an unweighed one or one shipping alone", () => {
+    const noAccessory = typeBoxes({ ...doc, box_for_type: { pillow: doc.box_for_type.pillow } });
+    const [p] = buildParcels([line({}), line({ product_type: "accessory", weight_grams: 200 })], noAccessory)!;
+    expect(p.items).toHaveLength(2);
+    expect(buildParcels([line({}), line({ product_type: "accessory", weight_grams: null })], noAccessory)).toBeNull();
+    expect(buildParcels([line({ product_type: "accessory", weight_grams: 200 })], noAccessory)).toBeNull();
+  });
+
   it("refuses a cart that needs more boxes than a checkout quote should price", () => {
     expect(buildParcels([line({ quantity: MAX_PARCELS })], packages)).toHaveLength(MAX_PARCELS);
     expect(buildParcels([line({ quantity: MAX_PARCELS + 1 })], packages)).toBeNull();

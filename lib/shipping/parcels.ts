@@ -77,7 +77,8 @@ function parcelOf(box: TypeBox, items: ParcelItem[]): Parcel {
  *   to ride in, they share one accessory box.
  * - A parcel weighs its box's empty weight plus its contents.
  *
- * Returns null when the cart needs more than MAX_PARCELS boxes, or a line's type has no box.
+ * Returns null when the cart needs more than MAX_PARCELS boxes, or a line's type has no box
+ * (an accessory with its own weight only needs a box when nothing else ships).
  */
 export function buildParcels(lines: ShippableLine[], boxes: TypeBoxes): Parcel[] | null {
   const parcels: Parcel[] = [];
@@ -88,11 +89,14 @@ export function buildParcels(lines: ShippableLine[], boxes: TypeBoxes): Parcel[]
     if (line.quantity <= 0) continue;
     const type = packageTypeOf(line.product_type);
     const box = boxes[type];
-    if (!box) return null;
     if (type === "accessory") {
-      loose.push(itemOf(line, box, line.quantity));
+      const weighed = line.weight_grams != null && line.weight_grams > 0;
+      // An accessory with its own weight needs no box of its own: it rides in the first box.
+      if (!box && !weighed) return null;
+      loose.push(itemOf(line, box ?? { length_cm: 0, width_cm: 0, height_cm: 0, weight_grams: 0 }, line.quantity));
       continue;
     }
+    if (!box) return null;
     for (let n = 0; n < line.quantity; n++) {
       if (parcels.length >= MAX_PARCELS) return null;
       parcels.push(parcelOf(box, [itemOf(line, box, 1)]));
@@ -101,9 +105,9 @@ export function buildParcels(lines: ShippableLine[], boxes: TypeBoxes): Parcel[]
   }
 
   if (loose.length > 0) {
-    // Accessories have a box here: an unmapped type already returned null.
     if (firstBox) parcels[0] = parcelOf(firstBox, [...parcels[0].items, ...loose]);
-    else parcels.push(parcelOf(boxes.accessory!, loose));
+    else if (boxes.accessory) parcels.push(parcelOf(boxes.accessory, loose));
+    else return null;
   }
 
   return parcels;
