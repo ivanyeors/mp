@@ -13,6 +13,7 @@ import { CartItemRow } from "@/components/shop/cart/cart-item-row";
 import { CartShippingBar } from "@/components/shop/cart/cart-shipping-bar";
 import { CartCouponField } from "@/components/shop/cart/cart-coupon-field";
 import { CartSummary } from "@/components/shop/cart/cart-summary";
+import { DeliveryEstimator } from "@/components/shop/delivery-estimator";
 import { Button } from "@/components/ui/button";
 import {
   MobileStickyActionBar,
@@ -135,6 +136,14 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
           applyCoupon={applyCoupon}
           currency={currency}
           messages={messages}
+        />
+        {/* Live delivery options for this cart; the shipping bar above already tracks free shipping. */}
+        <DeliveryEstimator
+          locale={locale}
+          items={items.map((item) => ({ variant_id: item.variantId, quantity: item.quantity }))}
+          compact
+          hideFreeThreshold
+          className="rounded-lg border p-3"
         />
       </div>
 

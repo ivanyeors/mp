@@ -19,6 +19,7 @@ import {
 import {
   fingerprintPlacements,
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   rowsToPillowPlacements,
   validatePillowPlacements,
   type PillowPlacementRow,
@@ -56,6 +57,8 @@ const ReconfigureSchema = z.object({
           .nullable()
           .optional(),
         insert_order: z.number().int().min(1).nullable().optional(),
+        offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+        offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
       }),
     )
     .default([]),
@@ -292,6 +295,8 @@ export async function POST(
         item_id: r.item_id,
         row_index: r.row_index ?? null,
         insert_order: r.insert_order ?? null,
+        offset_x_mm: r.offset_x_mm ?? null,
+        offset_y_mm: r.offset_y_mm ?? null,
       })),
     );
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });

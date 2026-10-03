@@ -4,6 +4,8 @@
 @import "../components/effects/MagicBento.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Inside the x-ray dive panel (phone dock or host slot), not on the stage. */
+@custom-variant dock (&:where([data-xray-dive-dock] *));
 
 @theme inline {
   --color-background: var(--background);

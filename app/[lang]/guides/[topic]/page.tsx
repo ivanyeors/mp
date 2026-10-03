@@ -5,7 +5,8 @@ import { buildPageMetadata, buildFaqPageJsonLd } from "@/lib/seo";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
-import { getGuideContent, type GuideTopic } from "@/lib/seo/guides-content";
+import { getGuideContent, isGuideTopic, type GuideTopic } from "@/lib/seo/guides-content";
+import { getTopicReviews } from "@/lib/seo/topic-reviews-loader";
 
 type Props = {
   params: Promise<{ lang: string; topic: string }>;
@@ -48,12 +49,42 @@ export default async function GuideHubPage({ params }: Props) {
   }
 
   const faqJsonLd = buildFaqPageJsonLd(guide.faqs);
+  const reviews = isGuideTopic(topic) ? await getTopicReviews(topic) : [];
+  const zh = locale.startsWith("zh");
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 md:py-16">
       <JsonLdScript data={faqJsonLd} />
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{guide.h1}</h1>
       <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{guide.answerLede}</p>
+
+      {/* Real customer quotes matched to this topic (slice 12). No Review JSON-LD by design. */}
+      {reviews.length ? (
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold">{zh ? "顾客怎么说" : "What customers say"}</h2>
+          <ul className="mt-4 space-y-4">
+            {reviews.map((r, i) => (
+              <li key={i}>
+                <figure className="rounded-xl border p-4">
+                  <blockquote className="leading-relaxed">&ldquo;{r.quote}&rdquo;</blockquote>
+                  <figcaption className="mt-2 text-sm text-muted-foreground">
+                    {r.name}
+                    {r.rating ? (
+                      <span>
+                        {" · "}
+                        <span aria-hidden>{"★".repeat(r.rating)}</span>
+                        <span className="sr-only">{r.rating} out of 5</span>
+                      </span>
+                    ) : null}
+                    {" · "}
+                    {r.source === "google" ? (zh ? "Google 评价" : "Google review") : zh ? "已验证购买" : "Verified review"}
+                  </figcaption>
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-10">
         <h2 className="text-xl font-semibold">Related reading</h2>

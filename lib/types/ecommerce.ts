@@ -239,6 +239,13 @@ export interface Order {
   paid_at: string | null;
   tracking_number: string | null;
   tracking_url: string | null;
+  /** Courier the shopper chose at checkout, or the label's courier (Easyship). Customer-visible. */
+  shipping_courier?: string | null;
+  /** Latest courier status from Easyship tracking webhooks. Customer-visible. */
+  shipping_tracking_status?: string | null;
+  /** Courier transit days from the label's rate (Easyship). Customer-visible. */
+  shipping_min_days?: number | null;
+  shipping_max_days?: number | null;
   shipped_at: string | null;
   delivered_at: string | null;
   cancelled_at: string | null;
@@ -255,6 +262,24 @@ export interface Order {
   items?: OrderItem[];
   timeline?: OrderTimelineEvent[];
   customer?: Customer | null;
+}
+
+/**
+ * An order's Easyship shipment (`order_shipments`, server-only). Kept off `orders`
+ * because customers read their own orders with `select *`, and what the courier
+ * costs us is not theirs to see.
+ */
+export interface OrderShipment {
+  order_id: string;
+  courier_service_id: string | null;
+  quoted_carrier_cost: number | null;
+  /** `pending:<uuid>` while a label purchase is in flight. */
+  easyship_shipment_id: string | null;
+  label_state: string | null;
+  label_url: string | null;
+  carrier_cost: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface OrderItemCustomizationSnapshot {
@@ -372,16 +397,29 @@ export interface Coupon {
 
 // --- Shipping ---
 
+export type ShippingRateSource = "flat" | "easyship";
+/** How an Easyship method picks one courier from the live rates (ADR 0020). */
+export type EasyshipStrategy = "cheapest" | "fastest" | "best_value" | "courier";
+
 export interface ShippingMethod {
   id: string;
   slug: string;
   content: Record<string, LocalizedShippingContent>;
+  /** Flat price. A live method with no courier quote is hidden, never charged this. */
   base_rate: number;
   free_above: number | null;
   currency: string;
   countries: string[];
   is_active: boolean;
   position: number;
+  /** Absent on rows read before the Easyship migration — treat as "flat". */
+  rate_source?: ShippingRateSource;
+  easyship_strategy?: EasyshipStrategy;
+  easyship_courier_service_id?: string | null;
+  markup_percent?: number;
+  markup_fixed?: number;
+  /** Round the marked-up live rate up to this increment; 0 = no rounding. */
+  rate_rounding?: number;
   created_at: string;
   updated_at: string;
 }

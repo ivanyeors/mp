@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { COURIER_PIN_ERROR, courierPinned, LIVE_PRICE_ERROR, LiveRateFields, livePriced } from "@/lib/shipping/method-schema";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
@@ -17,7 +18,8 @@ const CreateShippingMethodSchema = z.object({
   countries: z.array(z.string()).optional().default(["SG"]),
   is_active: z.boolean().optional().default(true),
   position: z.number().int().nonnegative().optional().default(0),
-});
+  ...LiveRateFields,
+}).refine(courierPinned, COURIER_PIN_ERROR).refine(livePriced, LIVE_PRICE_ERROR);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

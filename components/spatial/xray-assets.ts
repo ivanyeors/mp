@@ -1,28 +1,30 @@
 /**
  * X-ray SVG assets (ADR 0009 guardrail 5: one asset pipeline).
  *
- * PLACEHOLDER standing in for the designer SVG export. When the export lands
- * (silhouette + 9 cell boundary paths + per-filling fluid shapes), replace the
- * path data below — the exported contract (these names and record shapes) is
- * the drop-in point; renderer and layout stay untouched.
+ * Slice 02 (ADR 0019): the pillow silhouette, the Section columns and the
+ * nine cell regions are per Size — `stageGeometry(size)` in
+ * lib/spatial-fillings/xray-stage builds them from the dimension registry (the
+ * M master outline scaled to the Size, no neck tab). The constants below are
+ * the M stage, kept for callers that read one geometry (tests, thumbnails);
+ * every renderer takes the Size and reads its own stage.
  *
- * ponytail: cell/section paths are generated wavy-divider polygons so no clip
- * edge is a plain straight line; designer curves replace the generated data.
+ * The filling shapes are still the PLACEHOLDER standing in for the designer
+ * SVG export; when it lands, replace the path data below — the exported
+ * contract (these names and record shapes) is the drop-in point.
  */
 
-import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "@/lib/spatial-fillings/core";
-import { parsePathPolygon } from "@/lib/spatial-fillings/conform";
+import type { Section } from "@/lib/spatial-fillings/core";
 import {
-  BOLSTER_CAPSULE_HEIGHT,
-  BOLSTER_CAPSULE_LENGTHS,
-  COL_X,
-  ROW_Y,
+  stageGeometry,
   XRAY_VIEW,
-  type BolsterLength,
-} from "@/lib/spatial-fillings/xray-layout";
+  type CellKey,
+  type Pt,
+} from "@/lib/spatial-fillings/xray-stage";
+import { bolsterStage, type BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import type { ShapeId } from "@/lib/spatial-fillings/visuals";
 
-export { XRAY_VIEW };
+export { XRAY_VIEW, stageGeometry };
+export type { CellKey };
 
 /**
  * Mbolster capsule silhouette (shared with the /mbolster-config preview).
@@ -33,109 +35,25 @@ export { XRAY_VIEW };
 export const BOLSTER_SILHOUETTE_PATH =
   "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
 
-/** Pillow silhouette (shared with the configurator preview). */
-export const SILHOUETTE_PATH =
-  "M441.322 14.7728C409.558 27.3692 379.727 35.5927 331.965 35.5927C284.202 35.5927 254.372 27.3692 222.607 14.7728C182.901 -0.972711 120.418 -7.80227 69.7585 31.9038C19.099 71.6098 -2.80784 127.746 1.29974 209.896C5.52474 294.395 33.4738 349.165 83.8767 349.165C134.28 349.165 132.251 315.979 160.907 298.148C183.771 283.922 213.925 285.205 229.723 298.148C251.964 316.368 255.062 333.726 263.277 352.894C269.849 368.229 295.474 372.828 331.271 372.828L332.658 372.828C368.455 372.828 394.08 368.229 400.652 352.894C408.867 333.726 411.966 316.368 434.206 298.148C450.005 285.205 480.158 283.922 503.022 298.148C531.678 315.979 529.65 349.165 580.052 349.165C630.455 349.165 658.404 294.395 662.629 209.896C666.737 127.746 644.83 71.6098 594.171 31.9038C543.511 -7.80226 481.029 -0.972712 441.322 14.7728Z";
+const M_STAGE = stageGeometry("M");
 
-// --- Generated wavy 3×3 grid (placeholder for designer cell boundaries) ------
-// Outer frame extends past the silhouette so only interior dividers ever show;
-// adjacent cells share identical sampled edge points, so regions tile exactly.
+/** Pillow silhouette of the M stage (the registry outline; other Sizes via `stageGeometry`). */
+export const SILHOUETTE_PATH: string = M_STAGE.silhouettePath;
 
-const XS = [-10, COL_X[1], COL_X[2], XRAY_VIEW.width + 10];
-const YS = [-10, ROW_Y[1], ROW_Y[2], XRAY_VIEW.height + 10];
-const AMP = 9;
-const STEPS = 6;
-
-const wave = (t: number, seed: number) => AMP * Math.sin(t * Math.PI * 2 + seed);
-const dx = (i: number, y: number) => (i > 0 && i < 3 ? wave(y / YS[3], i * 2.1) : 0);
-const dy = (j: number, x: number) => (j > 0 && j < 3 ? wave(x / XS[3], j * 1.7) : 0);
-
-type Pt = [number, number];
-const r1 = (n: number) => Math.round(n * 10) / 10;
-
-const corner = (i: number, j: number): Pt => [r1(XS[i] + dx(i, YS[j])), r1(YS[j] + dy(j, XS[i]))];
-
-/** Interior samples along vertical divider i between rows j0→j1 (corners excluded). */
-function vEdge(i: number, j0: number, j1: number): Pt[] {
-  const pts: Pt[] = [];
-  for (let s = 1; s < STEPS; s++) {
-    const y = YS[j0] + ((YS[j1] - YS[j0]) * s) / STEPS;
-    pts.push([r1(XS[i] + dx(i, y)), r1(y)]);
-  }
-  return pts;
-}
-
-/** Interior samples along horizontal divider j between columns i0→i1 (corners excluded). */
-function hEdge(j: number, i0: number, i1: number): Pt[] {
-  const pts: Pt[] = [];
-  for (let s = 1; s < STEPS; s++) {
-    const x = XS[i0] + ((XS[i1] - XS[i0]) * s) / STEPS;
-    pts.push([r1(x), r1(YS[j] + dy(j, x))]);
-  }
-  return pts;
-}
-
-const poly = (pts: Pt[]) => `M${pts.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
-
-function cellPts(a: number, b: number): Pt[] {
-  return [
-    corner(a, b),
-    ...hEdge(b, a, a + 1),
-    corner(a + 1, b),
-    ...vEdge(a + 1, b, b + 1),
-    corner(a + 1, b + 1),
-    ...hEdge(b + 1, a + 1, a),
-    corner(a, b + 1),
-    ...vEdge(a, b + 1, b),
-  ];
-}
-
-function sectionPath(a: number): string {
-  return poly([
-    corner(a, 0),
-    ...hEdge(0, a, a + 1),
-    corner(a + 1, 0),
-    ...vEdge(a + 1, 0, 1),
-    corner(a + 1, 1),
-    ...vEdge(a + 1, 1, 2),
-    corner(a + 1, 2),
-    ...vEdge(a + 1, 2, 3),
-    corner(a + 1, 3),
-    ...hEdge(3, a + 1, a),
-    corner(a, 3),
-    ...vEdge(a, 3, 2),
-    corner(a, 2),
-    ...vEdge(a, 2, 1),
-    corner(a, 1),
-    ...vEdge(a, 1, 0),
-  ]);
-}
-
-export type CellKey = `${Section}/${SubSection}`;
-
-/** Nine cell boundary paths — `clipPath` regions (columns = Sections, rows = sub-sections). */
-export const CELL_CLIP_PATHS = {} as Record<CellKey, string>;
+/** Nine cell boundary paths of the M stage — `clipPath` regions (columns = Sections, rows = sub-sections). */
+export const CELL_CLIP_PATHS: Record<CellKey, string> = M_STAGE.cellClipPaths;
 /** The same nine cell regions as sampled polygons, for pouch-conform geometry. */
-export const CELL_POLYGONS = {} as Record<CellKey, Pt[]>;
-SECTIONS.forEach((section, a) => {
-  SUB_SECTIONS.forEach((subSection, b) => {
-    const pts = cellPts(a, b);
-    CELL_CLIP_PATHS[`${section}/${subSection}`] = poly(pts);
-    CELL_POLYGONS[`${section}/${subSection}`] = pts;
-  });
-});
+export const CELL_POLYGONS: Record<CellKey, Pt[]> = M_STAGE.cellPolygons;
 
-/** Three full-height Section regions for hover highlight / dive hit areas. */
-export const SECTION_HIT_PATHS: Record<Section, string> = {
-  left: sectionPath(0),
-  center: sectionPath(1),
-  right: sectionPath(2),
-};
+/** Three full-height Section regions of the M stage for hover highlight / dive hit areas. */
+export const SECTION_HIT_PATHS: Record<Section, string> = M_STAGE.sectionHitPaths;
+/** The same three regions as polygons — what a settled pouch conforms against (slice 11). */
+export const SECTION_POLYGONS: Record<Section, Pt[]> = M_STAGE.sectionPolygons;
 
 // --- Filling shape (normalized to a 100×100 box) -----------------------------
 // ponytail: one rounded-square pouch for every filling type; color (per
-// subtype) + scale (per Item size) differentiate. Designer fluid shapes
-// re-expand this record when they land — renderer and morph pipeline are ready.
+// subtype) + true-scale footprint (per registry) differentiate. Designer fluid
+// shapes re-expand this record when they land — renderer and morph pipeline are ready.
 
 // Puffed fabric pouch: rounded square with gently bulging edges, like the
 // stuffed product pouch (photo reference), not a flat UI rect. Fills its full
@@ -150,25 +68,24 @@ export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
 };
 
 /**
- * Visible air line between the fillings and the shell, in view units — pouch
- * outlines deform to stay this far inside the shell (see conform.ts), so the
- * seam reads at the rounded ends too. Pouch-to-pouch seams stay at the layout
- * GAP; this one is wider so it survives next to the shell's thick outline.
+ * Air line between the fillings and the shell, in view units — pouch outlines
+ * deform to stay this far inside the shell (see conform.ts). A hair (Ivan,
+ * 26-9-2026: the fill presses to the shell, fully stuffed): the shell's own
+ * 3-unit outline covers most of it, so what shows is a thread of seam.
  */
-export const SHELL_SEAM = 4;
+export const SHELL_SEAM = 2;
 
-/** Pillow silhouette sampled as a polygon, for pouch-conform geometry. */
-export const SILHOUETTE_POLYGON = parsePathPolygon(SILHOUETTE_PATH, 10);
+/** The M silhouette sampled as a polygon, for pouch-conform geometry. */
+export const SILHOUETTE_POLYGON: Pt[] = M_STAGE.silhouettePolygon;
 
 // --- Mbolster capsule silhouette ---------------------------------------------
 
 /** Long-pill silhouette, length driven by the Mbolster length (shared 664×374 view). */
 export function bolsterCapsulePath(length: BolsterLength): string {
-  const len = BOLSTER_CAPSULE_LENGTHS[length];
-  const r = BOLSTER_CAPSULE_HEIGHT / 2;
-  const x0 = (XRAY_VIEW.width - len) / 2;
+  // The length's stage (slice 09): the registry diameter sets the height.
+  const { lengthView: len, heightView, x0, cy } = bolsterStage(length);
+  const r = heightView / 2;
   const x1 = x0 + len;
-  const cy = XRAY_VIEW.height / 2;
   return (
     `M${x0 + r} ${cy - r} L${x1 - r} ${cy - r} A${r} ${r} 0 0 1 ${x1 - r} ${cy + r} ` +
     `L${x0 + r} ${cy + r} A${r} ${r} 0 0 1 ${x0 + r} ${cy - r} Z`

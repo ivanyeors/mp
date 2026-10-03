@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import { ShoppingCart, Package, Check, ShieldCheck, RotateCcw } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { PriceDisplay } from "@/components/shop/price-display";
+import { DeliveryEstimator } from "@/components/shop/delivery-estimator";
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { VariantSelector } from "@/components/shop/variant-selector";
 import { QuantitySelector } from "@/components/shop/quantity-selector";
 import { ProductGrid } from "@/components/shop/product-grid";
@@ -79,9 +81,12 @@ function getCategoryName(product: Product, lang: string): string {
   );
 }
 
-function getDefaultVariant(product: Product): ProductVariant | null {
+function getDefaultVariant(product: Product, preferredId?: string): ProductVariant | null {
   const active = product.variants?.filter((v) => v.is_active) ?? [];
-  return active[0] ?? product.variants?.[0] ?? null;
+  // A linked variant (e.g. from a Merchant Center listing) wins when it is still on sale,
+  // so the landing page shows that listing's exact price. Unknown ids fall back silently.
+  const preferred = preferredId ? active.find((v) => v.id === preferredId) : undefined;
+  return preferred ?? active[0] ?? product.variants?.[0] ?? null;
 }
 
 function getStockStatus(variant: ProductVariant | null): "in_stock" | "low_stock" | "out_of_stock" {
@@ -98,6 +103,8 @@ interface ProductDetailClientProps {
   relatedProducts: Product[];
   lang: string;
   answerLede?: string | null;
+  /** Variant to preselect from `?variant=`; ignored unless it is an active variant of this product. */
+  initialVariantId?: string;
   /** Server-rendered Page FAQ (after tabs). Null/empty when surface has no visible items. */
   pageFaq?: React.ReactNode;
 }
@@ -107,13 +114,14 @@ export function ProductDetailClient({
   relatedProducts,
   lang,
   answerLede,
+  initialVariantId,
   pageFaq,
 }: ProductDetailClientProps) {
   const { addItem } = useCart();
   const isMobile = useIsMobile();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    getDefaultVariant(product)
+    getDefaultVariant(product, initialVariantId)
   );
   const [quantity, setQuantity] = useState(1);
   const [mainImageIndex, setMainImageIndex] = useState(0);
@@ -459,10 +467,20 @@ export function ProductDetailClient({
 
             {/* Trust signals */}
             <div className="flex flex-col gap-2 pt-1 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Truck className="size-4 shrink-0" />
-                <span>Free shipping over S$150</span>
-              </div>
+              {/* Free-shipping threshold and live delivery rates, from the shipping methods (was a hardcoded S$150). */}
+              <DeliveryEstimator
+                locale={isSupportedLocale(lang) ? lang : DEFAULT_LOCALE}
+                variantId={selectedVariant?.id}
+                profile={
+                  product.product_type === "bolster"
+                    ? "bolster"
+                    : product.product_type === "accessory"
+                      ? "accessory"
+                      : "pillow"
+                }
+                compact
+                className="rounded-lg border p-3"
+              />
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-4 shrink-0" />
                 <span>30-day satisfaction guarantee</span>

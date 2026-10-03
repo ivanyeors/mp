@@ -150,6 +150,30 @@ _Avoid_: calling the shopper's read-only preview x-ray an **X-ray editor**; the 
 An **Accessories** **Item** that **Staff** may also place inside a **premium** pillow on the **X-ray editor**, drawn as a pill. Unlike a filling it is not part of the Costings row: each placed piece is charged at its own MSRP, like an add-on, and comes out of its own stock. Never on a basic pillow or an **Mbolster**; a **Filling Template** (scoped by size, never by **Tier**) may hold one, and a basic **Result** refuses it at assign.
 _Avoid_: re-categorising it as a filling (it is still sold as an accessory); placing it free of charge
 
+**Product dimensions** (x-ray):
+The physical measurements the x-ray draws and budgets with, in millimetres, in one pure registry (`lib/spatial-fillings/dimensions.ts`, ADR 0019). Pillow geometry per **Size** — the silhouette (the M master scaled to the Size's width and body length, no neck tab), the **Section** widths at the protector's divider seams, the gusset heights (side 4''–8'', centre one inch lower) — comes from the 2018 drawings and is code only. Filling pouch, **Neck support** and **Mbolster** dimensions ship as code defaults and may be overridden per entry in **Product Visualize** (slice 12); a row wins, no row means the code value, Reset deletes the row. Pouch and **Neck support** dimensions (and a pouch's fine offset) describe the piece in a **Size** M pillow, the reference Size; every other Size scales them by its own proportions to M — width by the pillow width, length by the body length, thickness by the side gusset — because the fillings are cut to the pillow and one recipe serves several Sizes. On the x-ray the pillow fills the stage at every Size, so a filling keeps its share of the pillow from XS to XL while the fit budgets the Size's real millimetres. An entry nobody has measured resolves as a *fallback* (a plausible family-sized pouch) and is labelled so wherever it is shown. Never stored on the **Item** and never in a **Result**.
+_Avoid_: dimension columns on `items`; editing pillow geometry anywhere; presenting a fallback as measured; a second registry keyed on `subtype` alone (live inventory leaves it null — key off the same descriptor the picker uses)
+
+**Loft**:
+The height a **cell** or **Section** of filling stands at: the sum of each **Layer**'s thickest piece, relaxed or compressed. A pillow **Size** has a max loft per **Section** — the gusset height (centre one inch lower than the sides) plus the loft allowance, 10 % by default because the case is cloth and gives — and the fit model budgets against it.
+_Avoid_: one loft budget for the whole pillow (the centre is lower); treating loft as a stored value (it is derived on every read)
+
+**Fit status**:
+`ok`, `compressed` or `over`, derived on every read for each **Layer** (width against the **Section** width) and each **cell** (**Loft** against the **Size**'s budget), never persisted. `compressed` means it fits only by squeezing, each piece no further than its minimum; `over` means it does not fit even fully squeezed. Advisory, never blocking: an `over` cell warns and asks for a confirm on save or hold, like the **Spatially authored** warning. Compression is shared pro rata by each piece's compressible range.
+_Avoid_: refusing a save on `over`; storing the status; a second rule set for the add / move refusal (it is the same function on the hypothetical result)
+
+**Cross-section view**:
+A live cut of the pillow beside every x-ray, on all three surfaces and the shopper's read-only preview: **Across** (left, centre, right **Sections** at a chosen **sub-section**) or **Along** (front, middle, back of the dived **Section**). The shell is a lens per **Section** at that Section's max **Loft**; each **Layer** a slab of its compressed thickness in the filling's colour, hatched when compressed, through the loft line in red when `over`. Reads the same fit object the x-ray uses; recomputes nothing.
+_Avoid_: a second fit computation for the cut; edit affordances on the shopper's cut
+
+**Nudge**:
+A fine, millimetre-step move of one piece within its **cell** (slice 08, gated on the calibration sign-off), persisted as visual-only offsets that never change the **cell**, the **Layer** or the **Insert order** — so the pack list and the fingerprint cannot see it. Distinct from a move, which changes the **cell** or **Layer**.
+_Avoid_: letting a nudge cross a cell edge; reading offsets into anything but the drawing
+
+**Natural settle**:
+A display-and-fit pass between layout and fit: a pouch spreads front-to-back into an empty neighbouring **sub-section** of its own **Section** and **Layer**, thinning by volume (never below its minimum thickness), on screen and in the **Loft** arithmetic. The pillow's protector walls the three **Sections** and nothing else, so settle never crosses a Section and applies to every pillow **Size**; a product whose sub-sections are physically walled turns it off. Two views of one recipe: **Authored** — the **cells** as **Staff** placed them, shown in the dived **Section** with the settled outline as a ghost — and **Settled** — what the chamber does, the default everywhere else. It writes nothing: the **Placement** rows, the pack list, the fingerprint and **Promote** grouping are untouched.
+_Avoid_: rewriting a **Placement**'s cell because it settled; spreading across a **Section** wall or a **Layer**; dynamic physics (gravity, sag between Layers) — settle is static and per plane
+
 **Size membership** (Filling Templates):
 The set of size keys a **Filling Template** serves, stored in `bom_template_keys` and the single authority for "does this recipe apply here". `bom_templates.key` survives as the **primary** key and is kept in step with the canonically-first member by the one writer that changes membership, so it is always a real member — a partial answer, never a divergent one. At least one size is required; a template serving none would be invisible in every list with no way back. Editing a shared recipe edits it for every size it serves, so the editor warns and offers a per-size copy (the **Fork**) rather than letting a size diverge by accident. Deleting is likewise not scoped to the size on screen. Past **Results** are unaffected either way: a **Filling configuration** is a snapshot, so a build already assigned keeps the mix it was built with.
 _Avoid_: reading `bom_templates.key` as the scope (it is only the primary — filtering on it hides every template shared in from another size); a template with an empty membership; treating **Size membership** as a tier scope (Filling Templates have never carried **Tier**)
@@ -314,6 +338,66 @@ _Avoid_: mutating `rma_requests.status` without appending an event (status is a 
 **Return window**:
 The eligibility period, `site_settings.rma_return_window_days` (default **30**), measured from `orders.delivered_at`. Only delivered orders within the window are returnable.
 _Avoid_: measuring the window from order/ship date
+
+## Reviews (PRD-google-review-replies)
+
+**Google review**:
+A review of the business on Google Maps, read through the Google Business Profile API and kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us.
+_Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read-only, never stored)
+
+**Shop review**:
+A review a signed-in **Customer** leaves on a **Storefront product** (`product_reviews`). Starts `pending`; a **Shop moderator** approves it onto the product page or rejects it. No public reply.
+_Avoid_: "product review" when the source matters on a Telegram card — the card says SHOP REVIEW
+
+**Review card**:
+The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft, and nothing reaches Google until someone taps Post on the version they are looking at.
+_Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
+
+**Reply type**:
+Which kind of reply a **Google review** gets, chosen from its star rating in code (`lib/reviews/reply-style.ts`), never by the model: **Thank-you** (4–5★), **Constructive** (3★ or no rating), **Service recovery** (1–2★ — apologise for the specific problem, own it, offer one concrete next step, and always ask them to message us on the staffed support WhatsApp; no promotion and no compensation in public). A 1–2★ **Review card** is flagged SERVICE RECOVERY so someone also follows up with the customer personally. When the rating later moves into another type — after we answered, skipped, or never carded it — the review **reopens** as a fresh card whose reply replaces the one on Google.
+_Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
+
+**Telegram operator**:
+A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
+_Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login
+
+## Shipping (ADR 0020, ADR 0022)
+
+**Shipping method**:
+A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express), scoped to `countries`. Its **Rate source** decides how it is priced; `free_above` and free-shipping coupons apply to either source. Edited in Settings → Shipping.
+_Avoid_: "courier" (a method may be served by different couriers per address)
+
+**Rate source**:
+How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is its customisation order rate: Results charge it flat because they don't quote couriers. It is never charged at checkout.
+_Avoid_: "fallback rate" — a live method with no quote is hidden, not priced flat (ADR 0022)
+
+**Live rate**:
+The price of an Easyship **Shipping method** for one cart to one postal code: Easyship's courier price for the courier the method's strategy picks (`cheapest`, `fastest`, `best_value`, or one pinned **Courier service**), plus the method's markup, rounded up to its increment. Quoted by the server from the **Variants** in the database — never from a client price — and cached as a **Rate quote**.
+_Avoid_: treating it as a stored price on the method; showing a live rate the checkout route would not charge
+
+**Hidden live method**:
+A live method with no quote for this cart and address (no token, couriers down, wrong currency, no box for an item type, or no allowed courier serves it) is left out of checkout. Only an active flat method guarantees the shopper an option, and the Shipping page warns when there is none.
+
+**Rate quote**:
+One Easyship rates answer for one destination postal code and set of **Parcels**, stored in `shipping_rate_quotes` for the settings' TTL. The checkout page and the checkout route hash the same parcels to the same quote, which is how the shopper is charged exactly the rate they were shown.
+
+**Parcel** (shipping):
+One box a courier prices. Every pillow, bolster or bundle unit is its own parcel in its type's **Box for type**; accessories ride in the first box, or share one accessory box. Built by the pure `buildParcels`.
+
+**Courier account**:
+The one synced doc in `api_configs[slug=easyship]`, edited in Settings → Shipping → Couriers and pushed to the provider on Save & sync. It holds the addresses, boxes, shipping rules, tracking and webhook settings. Its address flagged default sender is where every quote and label ships from.
+_Avoid_: "ship-from address" or "package profile" stored anywhere else
+
+**Box for type**:
+Which **Courier account** box an item type (pillow, bolster, accessory) ships in, plus one unit's content weight, set by the "Used for" chips on the Boxes tab. Kept on the doc only and never synced. A **Variant**'s own `weight_grams` wins over the content weight; the dimensions and tare always come from the box.
+_Avoid_: "package profile"
+
+**Courier service**:
+One Easyship service (e.g. "Ninja Van Standard"), identified by its Easyship id. The one a shopper paid for is recorded with the **Order shipment**; Staff may choose another when buying the label.
+
+**Order shipment**:
+An **Order**'s Easyship shipment in `order_shipments` (one per order): the **Courier service** chosen at checkout and what it was quoted at, the label, and what the label cost. Server-only — what a courier costs us is never on `orders`, which customers read. The courier's name and its latest tracking status are on `orders`, because customers see those.
+_Avoid_: putting carrier cost or label URLs on `orders`
 
 ## Relationships
 
@@ -563,7 +647,7 @@ Admin Panel tab on Store → Products (formerly the standalone **Product Builder
 _Avoid_: a parallel upload silo outside **Media Assets**; hard-coding overlay files in the configurator; putting this under Inventory Configure (recipe) instead of the Products presentation tab
 
 **Filling visual**:
-The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. The default color is per filling **family** (3D, 6D, 6D+), so every size and variant of a family ("6D Fold", "6D Round") shares it; the family is read from whichever of `subtype`/`name` carries the density, because live inventory leaves `subtype` empty. Each front piece carries its type + size written inside it. Staff can see the mapping and edit the **color** in **Product Visualize**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
+The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. The default color is per filling **family** (3D, 6D, 6D+), so every size and variant of a family ("6D Fold", "6D Round") shares it; the family is read from whichever of `subtype`/`name` carries the density, because live inventory leaves `subtype` empty. Each front piece carries its type + size written inside it. Its drawn size comes from **Product dimensions** × the pillow **Size**'s scale, never from `items.size` alone. Staff can see the mapping and edit the **color** in **Product Visualize**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
 _Avoid_: rect/bounding-box cropping of filling shapes; gooey-merging pieces so the count is unreadable; generating random blob shapes in v1
 
 **Landing section**:

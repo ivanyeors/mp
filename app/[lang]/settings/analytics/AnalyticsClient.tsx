@@ -30,6 +30,7 @@ import {
 const CardSkeleton = () => <div className="min-h-[360px] w-full animate-pulse rounded-xl bg-muted" />;
 const ProductConfigurationCard = dynamic(() => import("./ProductConfigurationCard").then((m) => m.ProductConfigurationCard), { ssr: false, loading: CardSkeleton });
 const ProspectJourneyCard = dynamic(() => import("./ProspectJourneyCard").then((m) => m.ProspectJourneyCard), { ssr: false, loading: CardSkeleton });
+const SearchVisibilityCard = dynamic(() => import("./SearchVisibilityCard").then((m) => m.SearchVisibilityCard), { ssr: false, loading: CardSkeleton });
 const MarginByCategoryVisx = dynamic(() => import("./MarginByCategoryVisx").then((m) => m.MarginByCategoryVisx), { ssr: false });
 const MarginByProductVisx = dynamic(() => import("./MarginByProductVisx").then((m) => m.MarginByProductVisx), { ssr: false });
 const ProductTimelineVisx = dynamic(() => import("./ProductTimelineVisx").then((m) => m.ProductTimelineVisx), { ssr: false });
@@ -705,7 +706,7 @@ export default function AnalyticsClient() {
             ? "Timeline view of different products being sold over time."
             : "Timeline view of parts sold by category over time."}
         </CardDescription>
-        <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+        <CardAction>
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <Tabs value={timelineView} onValueChange={(v) => setTimelineView(v as "parts" | "products")} className="w-full sm:w-auto">
               <TabsList className="w-full sm:w-fit">
@@ -758,7 +759,7 @@ export default function AnalyticsClient() {
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <CardTitle>Results</CardTitle>
         <CardDescription>Mp-config answer breakdown from released results (final responses) in the selected date range.</CardDescription>
-        <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+        <CardAction>
           <Button
             variant="ghost"
             size="icon"
@@ -860,6 +861,8 @@ export default function AnalyticsClient() {
         </Card>
       )}
 
+      <SearchVisibilityCard />
+
       <ProspectJourneyCard
         from={timelineDateRange.from.toISOString()}
         to={timelineDateRange.to.toISOString()}
@@ -929,7 +932,7 @@ export default function AnalyticsClient() {
                 ? "Shows cost vs margin value by pillow product over the selected date range (units sold)."
                 : "Shows cost vs margin value by part category over the selected date range (units sold), with drill-down into items."}
             </CardDescription>
-            <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+            <CardAction>
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                 <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")} className="w-full sm:w-auto">
                   <TabsList className="w-full sm:w-fit">
@@ -1029,7 +1032,7 @@ export default function AnalyticsClient() {
             <CardDescription>
               Waterfall comparison between start vs end quantities. Click a part to drill into size, then type.
             </CardDescription>
-            <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+            <CardAction>
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                 {(inventoryGroup === "size" || inventoryGroup === "type") && (
                   <Button

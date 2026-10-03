@@ -7,6 +7,7 @@
 import {
   MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
+  MAX_OFFSET_MM,
   MAX_PIECES_PER_LAYER,
   placementsExactMatch,
   SECTIONS,
@@ -253,6 +254,143 @@ export function moveLayer(
   return applyLayerOrder(placements, cell, order);
 }
 
+// --- Per-piece moves (X-ray pillow UX slice 06) --------------------------------
+
+/** One piece, addressed by its cell and slot — the key the layout and the fit use. */
+export type PieceRef = Cell & { slot: number };
+
+/** Where a move puts a piece: a cell, optionally a Layer (`null` / omitted = the topmost with room, else a new one) and a position in it. */
+export type MoveTarget = { cell: Cell; layer?: number | null; index?: number };
+
+export type MoveResult =
+  | { ok: true; placements: PillowPlacement[]; ref: PieceRef }
+  | { ok: false; error: string };
+
+const sameCell = (a: Cell, b: Cell) => a.section === b.section && a.subSection === b.subSection;
+
+/** The lowest free slot in a cell. */
+function freeSlot(placements: PillowPlacement[], cell: Cell): number {
+  const used = new Set(placements.filter((p) => inCell(p, cell)).map((p) => p.slot));
+  let slot = 1;
+  while (used.has(slot)) slot += 1;
+  return slot;
+}
+
+/**
+ * Put a Layer's pieces in `order` by rewriting their slots: a Layer's position
+ * is slot order, so the pieces trade the slots the Layer already holds. Slot
+ * is unique per CELL, so nothing outside the Layer moves; the fingerprint and
+ * the pack list ignore slots, so nothing downstream moves either.
+ */
+function writeLayerOrder(placements: PillowPlacement[], cell: Cell, order: PillowPlacement[]): PillowPlacement[] {
+  const slots = order.map((p) => p.slot).sort((a, b) => a - b);
+  const slotFor = new Map(order.map((p, i) => [p.slot, slots[i]]));
+  return placements.map((p) => (inCell(p, cell) && slotFor.has(p.slot) ? { ...p, slot: slotFor.get(p.slot)! } : p));
+}
+
+/**
+ * Move one piece to a cell, Layer and position. Re-slots in the target cell
+ * (its own slot when the cell is unchanged, else the lowest free one),
+ * compacts the Layers of both cells, keeps `insertOrder` while the Section is
+ * unchanged and drops it otherwise (the assembly sequence never names a pouch
+ * that left). Refuses with `addPiece`'s shapes when the target Layer is full
+ * or the cell is at its cap. Fit never refuses: an overfull cell only warns.
+ */
+export function movePiece(
+  placements: PillowPlacement[],
+  ref: PieceRef,
+  to: MoveTarget,
+): MoveResult {
+  const moving = placements.find((p) => inCell(p, ref) && p.slot === ref.slot);
+  if (!moving) return { ok: false, error: `No piece at ${ref.section} ${ref.subSection} slot ${ref.slot}` };
+  const staying = sameCell(ref, to.cell);
+  const without = placements.filter((p) => p !== moving);
+  const layers = cellLayers(without, to.cell);
+  const target = to.layer ?? Math.min(layers.findIndex((l) => l.length < MAX_PIECES_PER_LAYER), layers.length);
+  const at = target < 0 ? layers.length : target;
+  if (at > layers.length || at >= MAX_LAYERS_PER_CELL) {
+    return { ok: false, error: `Max ${MAX_LAYERS_PER_CELL} layers per cell` };
+  }
+  if ((layers[at]?.length ?? 0) >= MAX_PIECES_PER_LAYER) {
+    return { ok: false, error: `Max ${MAX_PIECES_PER_LAYER} pieces per layer` };
+  }
+  if (!staying && without.filter((p) => inCell(p, to.cell)).length >= MAX_PIECES_PER_CELL) {
+    return { ok: false, error: `Max ${MAX_PIECES_PER_CELL} pieces per cell` };
+  }
+  const slot = staying ? moving.slot : freeSlot(without, to.cell);
+  const sameSection = ref.section === to.cell.section;
+  // A fine offset is a position in the cell it was set in: a new cell starts at home.
+  const { insertOrder, offsetXMm, offsetYMm, ...rest } = moving;
+  const placed: PillowPlacement = {
+    ...rest,
+    ...(staying && offsetXMm !== undefined ? { offsetXMm } : {}),
+    ...(staying && offsetYMm !== undefined ? { offsetYMm } : {}),
+    section: to.cell.section,
+    subSection: to.cell.subSection,
+    slot,
+    row: at,
+    ...(sameSection && insertOrder !== undefined ? { insertOrder } : {}),
+  };
+  let next = compactLayers([...without, placed], to.cell);
+  if (!staying) next = compactLayers(next, ref);
+  if (to.index !== undefined) {
+    // Position i of a Layer holds its i-th lowest slot, so the moved piece's
+    // new slot is known before the rewrite.
+    const layer = cellLayers(next, to.cell).find((l) => l.some((p) => p.slot === slot)) ?? [];
+    const others = layer.filter((p) => p.slot !== slot);
+    const index = Math.max(0, Math.min(to.index, others.length));
+    const slots = layer.map((p) => p.slot).sort((a, b) => a - b);
+    next = writeLayerOrder(next, to.cell, [...others.slice(0, index), layer.find((p) => p.slot === slot)!, ...others.slice(index)]);
+    return { ok: true, placements: next, ref: { section: to.cell.section, subSection: to.cell.subSection, slot: slots[index] ?? slot } };
+  }
+  return { ok: true, placements: next, ref: { section: to.cell.section, subSection: to.cell.subSection, slot } };
+}
+
+/**
+ * One Layer up (−1, toward the top) or down (+1, deeper): the adjacent Layer,
+ * a new one under the deepest when needed; the Layer it leaves closes up if
+ * empty. Already at the top going up is a no-op that returns the input.
+ */
+export function shiftPieceLayer(placements: PillowPlacement[], ref: PieceRef, dir: 1 | -1): MoveResult {
+  const moving = placements.find((p) => inCell(p, ref) && p.slot === ref.slot);
+  if (!moving) return { ok: false, error: `No piece at ${ref.section} ${ref.subSection} slot ${ref.slot}` };
+  const depth = layerOf(moving);
+  const layers = cellLayers(placements, ref);
+  // A single piece in its own Layer has nothing below it to swap with: moving
+  // it "down" would only recreate the same Layer one step deeper.
+  const alone = (layers[depth]?.length ?? 0) === 1;
+  const target = depth + dir;
+  if (target < 0 || (dir === 1 && alone && depth === layers.length - 1)) return { ok: true, placements, ref };
+  // Leaving a Layer alone shifts the deeper ones up by one on compaction, so
+  // the piece lands one deeper than its old index only when the Layer stays.
+  const landing = dir === 1 && alone ? target - 1 : target;
+  return movePiece(placements, ref, { cell: ref, layer: landing });
+}
+
+/**
+ * Swap the piece with its neighbour in its Layer: left (−1) or right (+1).
+ * At the row's end there is nothing to swap with — the same array comes back.
+ */
+export function reorderInLayer(placements: PillowPlacement[], ref: PieceRef, dir: 1 | -1): PillowPlacement[] {
+  const layer = cellLayers(placements, ref).find((l) => l.some((p) => p.slot === ref.slot));
+  if (!layer) return placements;
+  const i = layer.findIndex((p) => p.slot === ref.slot);
+  const j = i + dir;
+  if (j < 0 || j >= layer.length) return placements;
+  const order = [...layer];
+  [order[i], order[j]] = [order[j], order[i]];
+  return writeLayerOrder(placements, ref, order);
+}
+
+/** The ref the piece holds after `reorderInLayer(placements, ref, dir)`: the neighbour's slot, or its own at the row's end. */
+export function reorderedRef(placements: PillowPlacement[], ref: PieceRef, dir: 1 | -1): PieceRef {
+  const layer = cellLayers(placements, ref).find((l) => l.some((p) => p.slot === ref.slot));
+  if (!layer) return ref;
+  const j = layer.findIndex((p) => p.slot === ref.slot) + dir;
+  if (j < 0 || j >= layer.length) return ref;
+  return { ...ref, slot: layer[j].slot };
+}
+
 // --- Insert order (per Section; sub-sections and layers ignored) --------------
 
 /**
@@ -348,8 +486,31 @@ export function mirrorSection(placements: PillowPlacement[], from: Section): Pil
   if (source.length === 0) return placements; // an empty source would silently CLEAR the other side
   return [
     ...placements.filter((p) => p.section !== to),
-    ...source.map((p) => ({ ...p, section: to })),
+    // Across the mirror plane: a pouch pushed to one side's outer edge lands at the other's.
+    ...source.map((p) => (p.offsetXMm ? { ...p, section: to, offsetXMm: -p.offsetXMm } : { ...p, section: to })),
   ];
+}
+
+/**
+ * Set a pouch's fine position in its cell (slice 08): mm from home, rounded,
+ * bounded by MAX_OFFSET_MM; 0 drops the field so an un-nudged pouch stays
+ * byte-identical to one that never moved. Returns the input when nothing
+ * changes. The layout clamps the drawn pouch (across: its cell; front ↔ back: its Section).
+ */
+export function nudgePiece(placements: PillowPlacement[], ref: PieceRef, offset: { xMm: number; yMm: number }): PillowPlacement[] {
+  const bound = (v: number) => Math.max(-MAX_OFFSET_MM, Math.min(MAX_OFFSET_MM, Math.round(v))) || 0;
+  const x = bound(offset.xMm);
+  const y = bound(offset.yMm);
+  const i = placements.findIndex((p) => inCell(p, ref) && p.slot === ref.slot);
+  if (i < 0) return placements;
+  const p = placements[i];
+  if ((p.offsetXMm ?? 0) === x && (p.offsetYMm ?? 0) === y) return placements;
+  const rest: PillowPlacement = { ...p };
+  delete rest.offsetXMm;
+  delete rest.offsetYMm;
+  const next = [...placements];
+  next[i] = { ...rest, ...(x ? { offsetXMm: x } : {}), ...(y ? { offsetYMm: y } : {}) };
+  return next;
 }
 
 // --- Mbolster session mix (single compartment, no cap in v1 — ADR 0008) ------

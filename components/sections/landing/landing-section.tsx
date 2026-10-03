@@ -18,6 +18,7 @@ import { CustomRichTextSection } from "./custom-rich-text-section";
 import { CustomFullWidthImageSection } from "./custom-full-width-image-section";
 import { FeaturedProductsSection } from "./featured-products-section";
 import { ShopCtaSection } from "./shop-cta-section";
+import { DeliveryEstimatorSection } from "./delivery-estimator-section";
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 
 import type { LandingRatings } from "@/lib/seo/review-aggregate";
@@ -133,6 +134,9 @@ export function LandingSection({
     case "faq":
       // ponytail: content {} — Q&A owned by Page FAQ store (`home`)
       return <PageFaqSection surfaceKey="home" locale={locale} />;
+
+    case "delivery_estimator":
+      return <DeliveryEstimatorSection section={section} locale={locale} />;
 
     default:
       return null;

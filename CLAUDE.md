@@ -135,6 +135,15 @@ before pushing:
 ./scripts/graphify-digest.py graphify-out/graph.json   # must be unchanged
 ```
 
+**Delete the local cache first.** `graphify-out/cache/` (gitignored) makes
+`update` re-extract only what it thinks changed, and it has been seen to skip
+new and moved code entirely while reporting a stable digest — CI rebuilds from
+a fresh checkout with no cache and fails the PR. Before the digest check, run:
+
+```bash
+rm -rf graphify-out/cache && ./scripts/graphify update .
+```
+
 The digest covers nodes and edges only. Community assignment is reseeded by
 whatever graph the rebuild started from and is not reproducible, so it is
 excluded deliberately — a digest mismatch always means the source really

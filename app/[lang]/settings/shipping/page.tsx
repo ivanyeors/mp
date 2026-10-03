@@ -1,6 +1,11 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
+import { withLocale } from "@/lib/i18n/routing";
+import { easyshipConfig } from "@/lib/shipping/easyship";
+import { readEasyshipConfig } from "@/lib/easyship/store";
+import { BOX_TYPES } from "@/lib/easyship/schema";
+import { typeBoxes } from "@/lib/shipping/parcels";
 import SettingsShippingPage from "./shipping-client";
 
 export const runtime = "nodejs";
@@ -21,6 +26,18 @@ export default async function ShippingSettingsRoute({
 
   // A failed read must not look like "no shipping methods": leave `initialData`
   // undefined so the client runs its own mount fetch and surfaces the error.
-  const rows = await readShippingMethods(true, null).catch(() => null);
-  return <SettingsShippingPage initialData={rows ? { ok: true, rows } : undefined} />;
+  const [rows, account] = await Promise.all([
+    readShippingMethods(true, null).catch(() => null),
+    readEasyshipConfig().catch(() => null),
+  ]);
+  const mapped = typeBoxes(account?.settings);
+  const unboxed = account?.settings ? BOX_TYPES.filter((t) => !mapped[t]) : [];
+  const couriers = {
+    environment: easyshipConfig()?.environment ?? null,
+    boxes: account?.settings?.boxes.length ?? null,
+    unboxed,
+    unreadable: account ? account.settingsError ?? null : "The courier settings could not be loaded",
+    href: withLocale(`/settings/shipping/couriers${unboxed.length ? "?tab=boxes" : ""}`, locale),
+  };
+  return <SettingsShippingPage initialData={rows ? { ok: true, rows } : undefined} couriers={couriers} />;
 }

@@ -335,6 +335,27 @@ export type Messages = {
       customizationAddon: string;
       closeCart: string;
     };
+    /** The delivery estimator (product page, landing section, shipping policy). */
+    delivery: {
+      title: string;
+      subtitle: string;
+      country: string;
+      postalCode: string;
+      postalPlaceholder: string;
+      check: string;
+      checking: string;
+      free: string;
+      freeOver: string; // e.g. "Free shipping over {amount}"
+      via: string; // e.g. "via {courier}"
+      noOptions: string;
+      error: string;
+      note: string;
+      noteCart: string;
+      sameDay: string;
+      day: string; // e.g. "{n} business day"
+      days: string; // e.g. "{n} business days"
+      range: string; // e.g. "{min}–{max} business days"
+    };
     checkout: {
       title: string;
       information: string;

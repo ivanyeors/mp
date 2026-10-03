@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { notifyNewShopReview } from "@/lib/reviews/shop-reviews";
 
 export const runtime = "nodejs";
 
@@ -99,5 +100,9 @@ export async function POST(req: Request) {
     console.error("[shop/reviews] insert failed", error.message);
     return NextResponse.json({ error: "Failed to submit review" }, { status: 500 });
   }
+  // A moderation card in the measurements Telegram group, after the response:
+  // the shopper never waits on Telegram.
+  const reviewId = (data as { id?: string } | null)?.id;
+  if (reviewId) after(() => notifyNewShopReview(reviewId));
   return NextResponse.json({ ok: true, row: data }, { status: 201 });
 }

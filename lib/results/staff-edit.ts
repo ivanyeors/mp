@@ -138,7 +138,7 @@ export async function loadStaffEditResult(
 
   const { data: placements } = await admin
     .from("result_filling_placements")
-    .select("section, sub_section, slot, item_id, row_index, insert_order")
+    .select("section, sub_section, slot, item_id, row_index, insert_order, offset_x_mm, offset_y_mm")
     .eq("result_id", id)
     .order("slot");
 

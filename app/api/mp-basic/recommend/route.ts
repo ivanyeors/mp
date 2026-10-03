@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { recommendWithEngine, toPersistedRecommendationRecord } from "@/lib/rules-engine";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
 import { getAvailableFillings, getBomTemplates } from "@/lib/shop/customization-llm";
+import { loadDimensionOverrides } from "@/lib/spatial-fillings/dimension-overrides.server";
 import {
   basicBodyToEngineInputs,
   incompleteEngineInputs,
@@ -113,12 +114,13 @@ export async function POST(req: Request) {
     const fillings = await getAvailableFillings();
     const { data: tplPlacements } = await admin
       .from("filling_template_placements")
-      .select("template_id, section, sub_section, slot, item_id, row_index")
+      .select("template_id, section, sub_section, slot, item_id, row_index, offset_x_mm, offset_y_mm")
       .in("template_id", templates.map((t) => t.id))
       .order("slot");
     const { data: colorOverrides } = await admin
       .from("filling_color_overrides")
       .select("subtype, color");
+    const dimension_overrides = await loadDimensionOverrides(admin);
 
     return NextResponse.json({
       ok: true,
@@ -158,6 +160,7 @@ export async function POST(req: Request) {
       })),
       available_fillings: fillings,
       color_overrides: colorOverrides ?? [],
+      dimension_overrides,
       buildable_counts,
       composed_buildable,
     });

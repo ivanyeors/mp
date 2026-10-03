@@ -97,6 +97,9 @@ import {
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { BolsterCrossSection } from "@/components/spatial/xray-cross-section";
+import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
+import { fitBolster } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -110,6 +113,7 @@ import {
   xrayColorVarStyle,
   type ColorOverrideRow,
 } from "@/lib/spatial-fillings/color-overrides";
+import { resolveItemDims } from "@/lib/spatial-fillings/dimension-overrides";
 import {
   SavedAddressSelect,
   useSavedShippingPrefill,
@@ -123,6 +127,7 @@ import {
 import { soleCaseId } from "@/lib/configurator/preference-policy";
 import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
 import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
+import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
@@ -341,6 +346,14 @@ export function MbolsterConfigClient({
     () => new Map(assistItems.map((i) => [i.id, i.size])),
     [assistItems],
   );
+  // Slice 02 / 09: registry dimensions draw the capsule pack at true scale.
+  const assistItemDims = React.useMemo(() => resolveItemDims(assistItems), [assistItems]);
+  // Slice 09: the physical fit of the session mix at the recommended length —
+  // one object for the x-ray, the hold confirm and the end-on cross-section.
+  const assistBolsterFit = React.useMemo(
+    () => fitBolster(assistPlacements, suggestedLength ?? DEFAULT_BOLSTER_LENGTH, { dims: assistItemDims }),
+    [assistPlacements, suggestedLength, assistItemDims],
+  );
   // Same DB table either way — assist rows win once the Staff panel loads them,
   // guests ride the shop customize response (RE slice 07).
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -383,6 +396,11 @@ export function MbolsterConfigClient({
   const guestItemSizes = new Map(
     (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.size ?? null]),
   );
+  const guestItemDims = resolveItemDims(
+    (shopRecommendation?.available_fillings ?? []).map((f) => ({ id: f.item_id, name: f.name, subtype: f.subtype ?? null, size: f.size ?? null })),
+  );
+  // The guest's fit of the recommended mix: read-only x-ray and cross-section.
+  const guestBolsterFit = fitBolster(guestPlacements, suggestedLength ?? DEFAULT_BOLSTER_LENGTH, { dims: guestItemDims });
   // Legacy-flat templates (no placements) keep the text mix summary.
   // Assisted runs show LENGTH ONLY — no filling x-ray (AC3).
   const guestXray =
@@ -888,6 +906,8 @@ export function MbolsterConfigClient({
       setFieldErrors(errors);
       return;
     }
+    // Slice 09: a mix the bolster cannot fit is a confirm, never a block (ADR 0019).
+    if (staffAssist && !confirmSaveWithBolsterFit(assistBolsterFit, "Hold")) return;
 
     setHoldSubmitting(true);
     try {
@@ -949,7 +969,20 @@ export function MbolsterConfigClient({
       } catch {
         // private mode — nothing was stored
       }
-      window.location.href = next as string;
+      // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
+      trackGaEventThen(
+        {
+          name: "generate_lead",
+          params: {
+            product_type: "bolster",
+            ...(typeof data.authorizedAmount === "number" ? { value: data.authorizedAmount } : {}),
+            ...(data.currency ? { currency: String(data.currency) } : {}),
+          },
+        },
+        () => {
+          window.location.href = next as string;
+        },
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
       setHoldSubmitting(false);
@@ -972,6 +1005,7 @@ export function MbolsterConfigClient({
     shopRecommendation?.recommendation_record,
     staffAssist,
     assistPlacements,
+    assistBolsterFit,
     sessionFillingTemplateId,
     partner,
     configSessionId,
@@ -1129,6 +1163,8 @@ export function MbolsterConfigClient({
                     length={suggestedLength ?? DEFAULT_BOLSTER_LENGTH}
                     itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
                     itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                    itemDims={staffAssist ? assistItemDims : guestItemDims}
+                    fit={staffAssist ? assistBolsterFit : guestBolsterFit}
                     // Guests view, never edit: omitting these keeps the renderer read-only.
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
@@ -1141,6 +1177,16 @@ export function MbolsterConfigClient({
                   </div>
                 )}
               </div>
+              {/* Slice 09: the end-on cut under the capsule, Staff and guest, read-only. */}
+              {xrayVisible && (
+                <BolsterCrossSection
+                  fit={staffAssist ? assistBolsterFit : guestBolsterFit}
+                  itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                  colorOverrides={assistColorOverrides.length ? assistColorOverrides : (shopColorOverrides ?? [])}
+                  themed={false}
+                  className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
+                />
+              )}
               {(() => {
                 const why = previewRecord
                   ? plainLanguageWhy(previewRecord)

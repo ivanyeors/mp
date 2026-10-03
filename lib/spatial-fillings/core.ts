@@ -30,7 +30,21 @@ export type PillowPlacement = {
    * list and the fingerprint, like `row`.
    */
   insertOrder?: number;
+  /**
+   * Fine position (X-ray pillow UX slice 08): how far, in mm, the pouch sits
+   * from its home in the cell — +x toward the right of the pillow, +y toward
+   * the back — in Size M millimetres, like every pouch dimension (the other
+   * Sizes scale it, `sizeFactors`). undefined = at home (centred in the free space). Across,
+   * the layout clamps it to the cell; front ↔ back, to the Section, so it may
+   * overhang its cell (the editor re-homes it to the sub-section its centre is
+   * in). Visual only: out of the pack list and the fingerprint, like `row`.
+   */
+  offsetXMm?: number;
+  offsetYMm?: number;
 };
+
+/** A fine offset's bound, mm: the DB check and the validator share it. */
+export const MAX_OFFSET_MM = 200;
 
 /** One Mbolster piece: single compartment, slot ≥ 1, no cap in v1. */
 export type BolsterPlacement = {
@@ -46,6 +60,8 @@ export type PillowPlacementRow = {
   item_id: number;
   row_index?: number | null;
   insert_order?: number | null;
+  offset_x_mm?: number | null;
+  offset_y_mm?: number | null;
 };
 
 /** Snake_case API/DB row shape for bolster placements. */
@@ -68,6 +84,23 @@ export const MAX_PIECES_PER_CELL = MAX_LAYERS_PER_CELL * MAX_PIECES_PER_LAYER;
 export const SECTIONS: readonly Section[] = ["left", "center", "right"];
 export const SUB_SECTIONS: readonly SubSection[] = ["front", "middle", "back"];
 
+/**
+ * One cell's pieces grouped into Layers, top→deep (`row`, absent = layer 0),
+ * with the numbering COMPACTED so a hole left by a deleted layer never reads
+ * as an empty one. The layout and the fit model group with this so they can
+ * never disagree about which pieces share a plane. Pieces keep their order.
+ */
+export function cellLayerGroups(pieces: readonly PillowPlacement[]): PillowPlacement[][] {
+  const byLayer = new Map<number, PillowPlacement[]>();
+  for (const piece of pieces) {
+    const layer = piece.row ?? 0;
+    const list = byLayer.get(layer);
+    if (list) list.push(piece);
+    else byLayer.set(layer, [piece]);
+  }
+  return [...byLayer.entries()].sort(([a], [b]) => a - b).map(([, list]) => list);
+}
+
 type Validation = { ok: true } | { ok: false; error: string };
 
 /** Map snake_case API/DB rows into lib placements (validate afterwards). */
@@ -79,6 +112,8 @@ export function rowsToPillowPlacements(rows: PillowPlacementRow[]): PillowPlacem
     itemId: r.item_id,
     ...(r.row_index == null ? {} : { row: r.row_index }),
     ...(r.insert_order == null ? {} : { insertOrder: r.insert_order }),
+    ...(r.offset_x_mm == null || r.offset_x_mm === 0 ? {} : { offsetXMm: r.offset_x_mm }),
+    ...(r.offset_y_mm == null || r.offset_y_mm === 0 ? {} : { offsetYMm: r.offset_y_mm }),
   }));
 }
 
@@ -91,6 +126,8 @@ export function pillowPlacementsToRows(placements: PillowPlacement[]): PillowPla
     item_id: p.itemId,
     row_index: p.row ?? null,
     insert_order: p.insertOrder ?? null,
+    offset_x_mm: p.offsetXMm || null,
+    offset_y_mm: p.offsetYMm || null,
   }));
 }
 
@@ -163,6 +200,11 @@ export function validatePillowPlacements(
     }
     if (p.insertOrder !== undefined && (!Number.isInteger(p.insertOrder) || p.insertOrder < 1)) {
       return { ok: false, error: `Insert order must be an integer ≥ 1 (got ${p.insertOrder})` };
+    }
+    for (const [axis, v] of [["x", p.offsetXMm], ["y", p.offsetYMm]] as const) {
+      if (v !== undefined && (!Number.isInteger(v) || Math.abs(v) > MAX_OFFSET_MM)) {
+        return { ok: false, error: `Offset ${axis} must be an integer −${MAX_OFFSET_MM}…${MAX_OFFSET_MM} mm (got ${v})` };
+      }
     }
     // `row: undefined` and `row: 0` are the same layer — count them together.
     const layerKey = `${p.section}/${p.subSection}/${p.row ?? 0}`;

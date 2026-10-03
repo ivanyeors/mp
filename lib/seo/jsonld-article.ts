@@ -8,9 +8,21 @@ export type ArticleJsonLdInput = {
   description: string;
   imageUrl?: string | null;
   publishedAt?: string | null;
-  updatedAt?: string;
+  /** Editorial update time; falls back to publishedAt. Never the row's updated_at. */
+  contentUpdatedAt?: string | null;
   author: string;
 };
+
+/** Brand bylines ("Mpillow", "TheMpillow SG") are the organisation, not a person. */
+export function isBrandAuthor(author: string | null | undefined): boolean {
+  return !author?.trim() || /mpillow/i.test(author);
+}
+
+export function buildAuthorJsonLd(author: string | null | undefined): Record<string, unknown> {
+  const origin = getSiteOrigin();
+  const org = { "@type": "Organization", name: "Mpillow", url: origin };
+  return isBrandAuthor(author) ? org : { "@type": "Person", name: author!.trim(), worksFor: org };
+}
 
 export function buildArticleJsonLd(input: ArticleJsonLdInput): Record<string, unknown> {
   const origin = getSiteOrigin();
@@ -21,8 +33,8 @@ export function buildArticleJsonLd(input: ArticleJsonLdInput): Record<string, un
     description: input.description,
     image: input.imageUrl ? [input.imageUrl] : [],
     datePublished: input.publishedAt,
-    dateModified: input.updatedAt,
-    author: { "@type": "Person", name: input.author },
+    dateModified: input.contentUpdatedAt ?? input.publishedAt,
+    author: buildAuthorJsonLd(input.author),
     publisher: {
       "@type": "Organization",
       name: "Mpillow",

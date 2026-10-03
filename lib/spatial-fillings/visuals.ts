@@ -48,13 +48,6 @@ function familyColor(descriptor: string | null): string {
   return EXTRA_COLORS[hash % EXTRA_COLORS.length];
 }
 
-/** Pouch render scale per Item size (items.size); unknown/null sizes render at 1. */
-const SIZE_SCALES: Record<string, number> = { XS: 0.7, S: 0.85, M: 1, L: 1.15, XL: 1.3 };
-
-export function sizeScale(size: string | null | undefined): number {
-  return SIZE_SCALES[size?.toUpperCase() ?? ""] ?? 1;
-}
-
 /** CSS-safe slug for a subtype: "6D+ (Folded)" → "6d-plus-folded". */
 export function subtypeSlug(subtype: string | null): string {
   if (!subtype) return "default";

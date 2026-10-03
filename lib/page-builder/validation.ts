@@ -33,6 +33,7 @@ export const CUSTOM_SECTION_TYPES = [
   "featured_products",
   "shop_cta",
   "faq",
+  "delivery_estimator",
 ] as const;
 
 export const SECTION_TYPES = [...BUILT_IN_SECTION_TYPES, ...CUSTOM_SECTION_TYPES] as const;
@@ -53,6 +54,8 @@ export const SINGLETON_SECTION_TYPES = [
   "why_choose_highlights",
   "credibility",
   "founder_note",
+  // One per page: its form fields carry fixed ids.
+  "delivery_estimator",
 ] as const;
 
 export function isCustomSectionType(type: string): type is CustomSectionType {

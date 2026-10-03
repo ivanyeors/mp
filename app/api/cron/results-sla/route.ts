@@ -21,7 +21,9 @@ import {
 } from "@/lib/sla-reminders";
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
+import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
+import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -416,6 +418,15 @@ export async function GET(req: Request) {
     gaSync = { ok: false, error: e instanceof Error ? e.message : "ga sync failed" };
   }
 
+  // Chain: Search Console snapshot → seo_daily_metrics (PRD-search-visibility
+  // slice 01). No-op until the GOOGLE_SEARCH_CONSOLE_* / service-account env is set.
+  let gscIngest: Awaited<ReturnType<typeof runGscIngestFromEnv>> | { ok: false; error: string };
+  try {
+    gscIngest = await runGscIngestFromEnv(admin);
+  } catch (e) {
+    gscIngest = { ok: false, error: e instanceof Error ? e.message : "gsc ingest failed" };
+  }
+
   // Chain: Pre-order restock emails when inventory recovered (slice 07).
   // Manual ops: GET/POST /api/cron/preorder-restock with CRON_SECRET.
   let preOrderRestock:
@@ -430,13 +441,26 @@ export async function GET(req: Request) {
     };
   }
 
+  // Chain: Google review catch-up (PRD-google-review-replies). Pub/Sub push is
+  // the real-time path; this finds anything a dropped notification missed.
+  // No-op until the GOOGLE_BUSINESS_* env is set. Manual ops: GET/POST
+  // /api/cron/google-reviews-sync with CRON_SECRET.
+  let googleReviews: Awaited<ReturnType<typeof syncGoogleReviews>> | { ok: false; error: string };
+  try {
+    googleReviews = await syncGoogleReviews({ maxCards: 3 });
+  } catch (e) {
+    googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
     settings,
     catchup,
     gaSync,
+    gscIngest,
     preOrderRestock,
+    googleReviews,
   });
 }
 

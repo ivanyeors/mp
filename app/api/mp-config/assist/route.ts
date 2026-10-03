@@ -7,12 +7,14 @@ import { isBolsterLength } from "@/lib/results/composed-sellable";
 import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
 import {
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
   validatePillowPlacements,
 } from "@/lib/spatial-fillings";
 import { PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+import { loadDimensionOverrides } from "@/lib/spatial-fillings/dimension-overrides.server";
 import { loadTemplateKeys, setTemplateKeys, templateIdsForKey } from "@/lib/filling-templates/membership";
 
 type Scope = { kind: "pillow" | "bolster"; key: string };
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
     // (shop/customize, mp-basic/recommend) renders it stacked. See
     // spatial-fillings/api-contract.check.ts for the render-path reader list.
     const cols =
-      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index,insert_order";
+      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index,insert_order,offset_x_mm,offset_y_mm";
     const { data: placements, error: pErr } = await admin
       .from(table)
       .select(cols)
@@ -99,6 +101,7 @@ export async function GET(req: NextRequest) {
     { data: templates, error: listErr },
     { data: items, error: itemsErr },
     { data: colorOverrides, error: colorsErr },
+    dimensionOverrides,
   ] = await Promise.all([
     memberIds.length
       ? admin
@@ -119,6 +122,8 @@ export async function GET(req: NextRequest) {
       .order("name"),
     // Slice 11: Product Builder color overrides for the x-ray CSS-variable pipeline.
     admin.from("filling_color_overrides").select("subtype,color"),
+    // Slice 02/12: Settings dimension overrides for the true-scale x-ray.
+    loadDimensionOverrides(admin),
   ]);
   if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
   if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 });
@@ -134,6 +139,7 @@ export async function GET(req: NextRequest) {
       msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
     })),
     colorOverrides: colorOverrides ?? [],
+    dimensionOverrides,
   });
 }
 
@@ -154,6 +160,8 @@ const PlacementRowSchema = z.object({
     .nullable()
     .optional(),
   insert_order: z.number().int().min(1).nullable().optional(),
+  offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+  offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
 });
 
 const SaveSchema = z
@@ -295,6 +303,8 @@ export async function POST(req: NextRequest) {
           item_id: r.item_id,
           row_index: r.row_index ?? null,
           insert_order: r.insert_order ?? null,
+          offset_x_mm: r.offset_x_mm ?? null,
+          offset_y_mm: r.offset_y_mm ?? null,
         },
   );
   const { error: delErr } = await admin.from(table).delete().eq("template_id", templateId);

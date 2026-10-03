@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { secretMatches } from '@/lib/auth/secret'
 import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/[lang]/settings/inventory/actions'
+import { handleReviewUpdate, isReviewUpdate } from '@/lib/reviews/telegram-handler'
 
 export const runtime = 'nodejs'
+// Review buttons can redraft with Claude after the response (see below).
+export const maxDuration = 120
 
 type TelegramUpdate = {
   update_id: number
@@ -616,6 +619,17 @@ export async function POST(req: NextRequest) {
 
     const allowed = parseAllowedChats()
     const update = (await req.json()) as TelegramUpdate
+
+    // Review cards (Google + shop) and /link run before the allowlist: they have
+    // their own, stricter gate — the measurements group only, and a linked
+    // operator whose role grants the action (lib/reviews/telegram-handler.ts).
+    // The work runs after the 200 so a slow Claude redraft never makes Telegram
+    // retry the update.
+    if (isReviewUpdate(update)) {
+      after(() => handleReviewUpdate(update))
+      return NextResponse.json({ ok: true })
+    }
+
     const msgChatId = update?.message?.chat?.id
     const cbChatId = update?.callback_query?.message?.chat?.id
     const text = update?.message?.text || ''

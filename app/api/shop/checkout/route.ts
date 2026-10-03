@@ -9,6 +9,9 @@ import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
 import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
+import { toShippableLine } from "@/lib/shipping/lines";
+import { quoteShippingMethods } from "@/lib/shipping/quote";
+import { readShippingSettings } from "@/lib/shipping/settings";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
@@ -533,8 +536,61 @@ export async function POST(req: Request) {
   }
 
   const shippingMethod = shippingMethodRow as ShippingMethod;
-  const shippingAmount = isFreeShipping ? 0 : calculateShippingRate(shippingMethod, subtotal);
-  const shippingLabel = resolveShippingContent(shippingMethod).name;
+  if (
+    Array.isArray(shippingMethod.countries) &&
+    shippingMethod.countries.length > 0 &&
+    !shippingMethod.countries.includes(shipping_address.country.toUpperCase())
+  ) {
+    return NextResponse.json(
+      { error: "This shipping method does not deliver to the selected country" },
+      { status: 400 },
+    );
+  }
+
+  let shippingAmount: number;
+  let shippingLabel = resolveShippingContent(shippingMethod).name;
+  // Set only for a live (Easyship) method; flat methods leave the courier columns untouched.
+  let courierColumns: Record<string, unknown> = {};
+  let shipmentQuote: { courier_service_id: string; quoted_carrier_cost: number | null } | null = null;
+  if ((shippingMethod.rate_source ?? "flat") === "easyship") {
+    // Re-priced here from the database, never taken from the client. The page's
+    // quote built the same parcels from the same variants, so this reads the
+    // rate the shopper was shown from the quote cache (ADR 0020).
+    const { options } = await quoteShippingMethods(admin, {
+      methods: [shippingMethod],
+      lines: cart.items.map((item) =>
+        toShippableLine({ ...item.variant, products: item.product ?? null }, item.quantity),
+      ),
+      destination: {
+        country: shipping_address.country,
+        postal_code: shipping_address.postal_code,
+        city: shipping_address.city,
+        state: shipping_address.state ?? null,
+        line1: shipping_address.line1,
+        line2: shipping_address.line2 ?? null,
+      },
+      subtotal,
+      loadSettings: () => readShippingSettings(),
+    });
+    const option = options[0];
+    if (!option) {
+      return NextResponse.json(
+        { error: "This shipping method is not available for this address right now. Please choose another method." },
+        { status: 400 },
+      );
+    }
+    shippingAmount = isFreeShipping ? 0 : option.amount;
+    if (option.courier) {
+      shippingLabel = `${shippingLabel} — ${option.courier.name}`;
+      courierColumns = { shipping_courier: option.courier.name };
+      shipmentQuote = {
+        courier_service_id: option.courier.service_id,
+        quoted_carrier_cost: option.carrier_cost,
+      };
+    }
+  } else {
+    shippingAmount = isFreeShipping ? 0 : calculateShippingRate(shippingMethod, subtotal);
+  }
 
   // Referral attribution (#74): resolved BEFORE tax so a self-purchase discount
   // (#82) reduces the taxable base. Invalid code silently attributes nothing.
@@ -611,6 +667,7 @@ export async function POST(req: Request) {
       total,
       shipping_address: shipping_address,
       shipping_method_id,
+      ...courierColumns,
       coupon_id: couponId,
       coupon_code: appliedCouponCode,
       partner_id: referralPartner?.id ?? null,
@@ -633,6 +690,17 @@ export async function POST(req: Request) {
       { error: orderError?.message ?? "Failed to create order" },
       { status: 500 }
     );
+  }
+
+  // The courier the shopper chose and what it cost us, for the label later.
+  // Server-only table; a failure here must not lose the sale.
+  if (shipmentQuote) {
+    const { error: shipmentError } = await admin
+      .from("order_shipments")
+      .insert({ order_id: orderRow.id, ...shipmentQuote });
+    if (shipmentError) {
+      console.error(`[checkout] Could not record the courier quote for ${orderRow.id}:`, shipmentError.message);
+    }
   }
 
   // 13. Create order_items from cart items

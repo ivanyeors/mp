@@ -6,9 +6,11 @@ import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { normalizeTemplateKeys } from '@/lib/filling-templates/keys'
 import { assertTemplateNameFree, loadTemplateKeys, setTemplateKeys } from '@/lib/filling-templates/membership'
 import { lookupItemCategories, lookupPlacementKinds, rejectFillingLines } from '@/lib/bom-sanitizer'
+import { loadDimensionOverrides } from '@/lib/spatial-fillings/dimension-overrides.server'
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -73,7 +75,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   let placements: Array<{ item_id: number }> = []
   if (tpl.role === 'filling') {
     const table = tpl.kind === 'bolster' ? 'bolster_template_placements' : 'filling_template_placements'
-    const cols = tpl.kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id,row_index,insert_order'
+    const cols = tpl.kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id,row_index,insert_order,offset_x_mm,offset_y_mm'
     const { data: pl, error: pErr } = await admin.from(table).select(cols).eq('template_id', id).order('slot')
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
     placements = (pl ?? []) as unknown as Array<{ item_id: number }>
@@ -98,6 +100,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     .from('filling_color_overrides')
     .select('subtype,color')
   if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 })
+  // Slice 02/12: Settings dimension overrides, same route for the same reason.
+  let dimensionOverrides
+  try {
+    dimensionOverrides = await loadDimensionOverrides(admin)
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
+  }
 
   return NextResponse.json({
     ok: true,
@@ -107,6 +116,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     placements,
     packList,
     colorOverrides: colorOverrides ?? [],
+    dimensionOverrides,
   })
 }
 
@@ -125,6 +135,8 @@ const PlacementRowSchema = z.object({
   row_index: z.number().int().min(0).max(MAX_STACK_DEPTH).nullable().optional(),
   // Insert order: 1-based per-Section assembly step; null = not authored.
   insert_order: z.number().int().min(1).nullable().optional(),
+  offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+  offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
 })
 
 const UpdateSchema = z.object({
@@ -264,7 +276,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     const payload = rows.map((r) =>
       isBolster
         ? { template_id: id, slot: r.slot, item_id: r.item_id }
-        : { template_id: id, section: r.section, sub_section: r.sub_section, slot: r.slot, item_id: r.item_id, row_index: r.row_index ?? null, insert_order: r.insert_order ?? null },
+        : { template_id: id, section: r.section, sub_section: r.sub_section, slot: r.slot, item_id: r.item_id, row_index: r.row_index ?? null, insert_order: r.insert_order ?? null, offset_x_mm: r.offset_x_mm ?? null, offset_y_mm: r.offset_y_mm ?? null },
     )
     const { error: delErr } = await admin.from(table).delete().eq('template_id', id)
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
