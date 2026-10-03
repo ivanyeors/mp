@@ -72,6 +72,18 @@ describe("easyshipConfig", () => {
 });
 
 describe("request bodies", () => {
+  it("always sends a destination city, since Easyship refuses a blank one", () => {
+    const cityFor = (destination: { country: string; postal_code: string; city?: string | null }) =>
+      ratesRequestBody({ settings, destination, parcels, currency: "SGD" }).destination_address.city;
+    // A quote from a postal code alone (the delivery checker, Settings' test) sends the main city.
+    expect(cityFor({ country: "sg", postal_code: "807997" })).toBe("Singapore");
+    expect(cityFor({ country: "MY", postal_code: "80000", city: "  " })).toBe("Kuala Lumpur");
+    // The shopper's own city wins.
+    expect(cityFor({ country: "MY", postal_code: "80000", city: " Johor Bahru " })).toBe("Johor Bahru");
+    // No main city on file: none is invented, and the method falls back.
+    expect(cityFor({ country: "FR", postal_code: "75001" })).toBeUndefined();
+  });
+
   it("asks for rates in the store currency, in kg and cm, with the HS code", () => {
     const body = ratesRequestBody({
       settings,
