@@ -142,8 +142,8 @@ function defaultClient(): Anthropic | null {
     maxRetries: 2,
     credentials: federationRuleId
       ? oidcFederationProvider({
-          // Read per exchange, inside a request: Vercel injects the token into every function invocation.
-          identityTokenProvider: () => getVercelOidcToken(),
+          // Per exchange, inside a request: Vercel re-mints its per-invocation token with Anthropic as the audience.
+          identityTokenProvider: () => getVercelOidcToken({ audience: "https://api.anthropic.com" }),
           federationRuleId,
           organizationId: process.env.ANTHROPIC_ORGANIZATION_ID ?? "",
           serviceAccountId: process.env.ANTHROPIC_SERVICE_ACCOUNT_ID,

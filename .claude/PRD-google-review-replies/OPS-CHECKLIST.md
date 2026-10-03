@@ -51,11 +51,15 @@ Prod uses Workload Identity Federation — no API key in Vercel. The function's 
 is exchanged for a short-lived Anthropic token.
 
 1. Claude Console → Settings → **Workload identity** → **Connect workload** → **Custom OIDC**:
-   - Issuer URL `https://oidc.vercel.com/ivanyeors-projects` (JWKS: discovery)
-   - Match: audience `https://vercel.com/ivanyeors-projects`,
+   - Issuer: name `vercel-mp-inv`, URL `https://oidc.vercel.com/ivanyeors-projects`, JWKS: OIDC
+     discovery, single-use (JTI) **off** (Vercel tokens carry no `jti` and are reused for up to
+     90 min), max token lifetime **2 h** (function tokens live 2 h).
+   - Rule match: audience `https://api.anthropic.com` (the code asks Vercel for that audience),
      subject prefix `owner:ivanyeors-projects:project:mp-inv:environment:production`,
      claim `project_id` = `prj_74SAGUQsw4QgeSqWVIwDAopbt0p9`
    - Scope `workspace:developer`, token lifetime 3600 s, service account for the workspace to bill.
+   - Test step waits 15 min for an exchange: set the env vars below, redeploy, then Settings →
+     Telegram access → Send preview triggers one. The test can be re-run from the rule page.
 2. Vercel env (plain, not secret): `ANTHROPIC_FEDERATION_RULE_ID` (`fdrl_…`),
    `ANTHROPIC_ORGANIZATION_ID`, `ANTHROPIC_SERVICE_ACCOUNT_ID` (`svac_…`),
    `ANTHROPIC_WORKSPACE_ID` (`wrkspc_…`). Redeploy. Do not set `ANTHROPIC_API_KEY` in prod — the
