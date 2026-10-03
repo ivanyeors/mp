@@ -106,7 +106,10 @@ async function emailStatus(admin: ReturnType<typeof supabaseAdmin>, orderId: str
     const { settings } = await readEasyshipConfig();
     if (!settings?.tracking_email.allowed_statuses.includes(key)) return;
     const { data: order } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
-    if (order) await sendTrackingEmail(orderId, key, order, admin);
+    if (!order || !["confirmed", "processing", "shipped", "delivered"].includes(order.status)) return;
+    // A late "out for delivery" after delivery would say it's still coming.
+    if (order.delivered_at && key !== "delivered") return;
+    await sendTrackingEmail(orderId, key, order, admin);
   } catch (err) {
     console.error(`[easyship/webhook] ${key} email for ${orderId} failed:`, err);
   }

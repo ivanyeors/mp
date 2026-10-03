@@ -70,6 +70,12 @@ function trackingBody<T extends { advertising: unknown }>(t: T) {
   return { ...rest, ...(advertising ? { advertising } : {}) };
 }
 
+/** We send status emails once tracking webhooks reach us; until then the courier account keeps sending its own. */
+export function courierEmailStatuses(s: EasyshipSettings): string[] {
+  const ours = s.webhook.enabled && s.webhook.event_types.includes("shipment_tracking_status_changed");
+  return ours ? [] : s.tracking_email.allowed_statuses;
+}
+
 export async function syncEasyship(desired: EasyshipSettings, endpoint: string | null): Promise<SyncOutcome> {
   const started_at = new Date().toISOString();
   const steps: SyncStep[] = [];
@@ -90,9 +96,8 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
   try {
     await easyship("/account/settings", {
       method: "POST",
-      // Status emails go out from our webhook in our template, so the courier account sends none.
       body: {
-        tracking_email: { ...trackingBody(desired.tracking_email), allowed_statuses: [] },
+        tracking_email: { ...trackingBody(desired.tracking_email), allowed_statuses: courierEmailStatuses(desired) },
         tracking_page: trackingBody(desired.tracking_page),
       },
     });

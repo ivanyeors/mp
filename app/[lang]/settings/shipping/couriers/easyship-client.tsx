@@ -120,7 +120,14 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
       const r = await call("GET", undefined, "?live=1");
       if (!r.live) throw new Error("No live snapshot returned");
       const imported = importFromLive(r.live, endpoint ? new URL(endpoint).origin : null);
-      setSettings((s) => ({ ...imported, ...keepMappedBoxes(s, imported.boxes) }));
+      setSettings((s) => ({
+        ...imported,
+        ...keepMappedBoxes(s, imported.boxes),
+        // The courier's list is [] once we send status emails, so ours is kept.
+        tracking_email: s.tracking_email.allowed_statuses.length
+          ? { ...imported.tracking_email, allowed_statuses: s.tracking_email.allowed_statuses }
+          : imported.tracking_email,
+      }));
       toast.success("Imported from courier account — review, then Save & sync");
     });
 
@@ -264,7 +271,7 @@ function SyncReportCard({ sync }: { sync: SyncView }) {
 /* ── Tracking ──────────────────────────────────────────────────────────── */
 
 const STATUS_HINTS: Record<(typeof TRACKING_STATUSES)[number], string> = {
-  in_transit: "The “Order shipped” email",
+  in_transit: "Same as “Order shipped”, which always goes out at label",
   out_for_delivery: "Arriving today",
   unsuccessful_delivery_attempt: "Courier couldn't deliver",
   delivered: "Confirms it arrived",
@@ -286,7 +293,8 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
             <h2 className="font-medium">Status emails</h2>
             <p className="text-xs text-muted-foreground">
               We email the customer at these statuses, in the same template as every other email. The courier
-              account&apos;s own emails are switched off on sync.
+              account&apos;s own emails are switched off on sync while the Webhook tab sends tracking status changes;
+              otherwise the courier keeps sending them.
             </p>
           </div>
           <div className="space-y-2">

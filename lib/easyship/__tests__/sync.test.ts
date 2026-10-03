@@ -83,7 +83,7 @@ describe("syncEasyship", () => {
     const out = await syncEasyship(desired, ENDPOINT);
 
     const tracking = find("POST", "/account/settings")[0].body as { tracking_email: Record<string, unknown>; tracking_page: Record<string, unknown> };
-    expect(tracking.tracking_email.allowed_statuses).toEqual([]);
+    expect(tracking.tracking_email.allowed_statuses).toEqual(["delivered"]);
     expect("advertising" in tracking.tracking_email).toBe(false);
 
     expect(find("PATCH", "/addresses/a1")[0].body?.default_for).toEqual({ pickup: true, billing: true, sender: true, return: true });
@@ -135,5 +135,15 @@ describe("syncEasyship", () => {
     await syncEasyship(renamed, ENDPOINT);
     expect(find("POST", "/addresses")).toHaveLength(0);
     expect(find("PATCH", "/addresses/a1")[0].body?.company_name).toBe("Mellow Life");
+  });
+});
+
+describe("courierEmailStatuses", () => {
+  it("switches the courier's emails off only while tracking webhooks reach us", async () => {
+    const { courierEmailStatuses } = await import("@/lib/easyship/sync");
+    const s = { ...DEFAULT_SETTINGS, tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["delivered" as const] } };
+    expect(courierEmailStatuses({ ...s, webhook: { enabled: true, event_types: ["shipment_tracking_status_changed"] } })).toEqual([]);
+    expect(courierEmailStatuses({ ...s, webhook: { enabled: false, event_types: ["shipment_tracking_status_changed"] } })).toEqual(["delivered"]);
+    expect(courierEmailStatuses({ ...s, webhook: { enabled: true, event_types: ["shipment_label_created"] } })).toEqual(["delivered"]);
   });
 });

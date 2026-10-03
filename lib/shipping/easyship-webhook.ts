@@ -63,7 +63,9 @@ const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ?
 export function parseEasyshipEvent(body: unknown): EasyshipWebhookEvent | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
-  const data = (b.data && typeof b.data === "object" ? b.data : {}) as Record<string, unknown>;
+  // 2023-01 payloads nest under `tracking_status` instead of `data`.
+  const raw = b.data ?? b.tracking_status;
+  const data = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const eventType = text(b.event_type);
   const shipmentId = text(data.easyship_shipment_id) ?? text(b.resource_id);
   if (!eventType || !shipmentId) return null;
@@ -91,7 +93,7 @@ export function trackingStatusKey(status: string | null | undefined): TrackingSt
   if (s === "delivered") return "delivered";
   if (s.includes("outfordelivery")) return "out_for_delivery";
   if (s.includes("attempt") || s.includes("faileddelivery")) return "unsuccessful_delivery_attempt";
-  if (s.includes("exception") || s.includes("lost") || s.includes("returned")) return "exception";
+  if (s.includes("exception") || s.includes("lost") || s.includes("returned") || s.includes("liquidated")) return "exception";
   if (s.includes("transit")) return "in_transit";
   return null;
 }

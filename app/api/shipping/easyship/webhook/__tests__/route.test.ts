@@ -201,6 +201,18 @@ describe("POST /api/shipping/easyship/webhook", () => {
     expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
   });
 
+  it("sends no status email to a cancelled order, nor a stale one after delivery", async () => {
+    const settings = { ...DEFAULT_SETTINGS, tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["out_for_delivery", "delivered"] } };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
+    await send(labelCreated);
+    await send(tracking("Delivered"));
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail.mock.calls.map((c) => c[1])).toEqual(["delivered"]);
+    h.tables.orders = { ...h.tables.orders!, status: "cancelled", delivered_at: null };
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
+  });
+
   it("acknowledges events for shipments it does not know", async () => {
     const res = await send({ ...labelCreated, data: { ...labelCreated.data, easyship_shipment_id: "OTHER" } });
     expect(res.status).toBe(200);

@@ -161,7 +161,7 @@ export const DEFAULT_SETTINGS: EasyshipSettings = {
   boxes: [],
   box_for_type: {},
   shipping_rules: [],
-  webhook: { enabled: false, event_types: ["shipment_label_created", "shipment_tracking_status_changed"] },
+  webhook: { enabled: false, event_types: ["shipment_label_created", "shipment_label_failed", "shipment_tracking_status_changed"] },
 };
 
 /* ── Live Easyship shapes (the subset the sync and import read) ─────────── */

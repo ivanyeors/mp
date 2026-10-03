@@ -9,6 +9,8 @@ describe("trackingStatusKey", () => {
     ["Delivered", "delivered"],
     ["Exception", "exception"],
     ["Lost by Courier", "exception"],
+    ["Liquidated", "exception"],
+    ["To be returned", "exception"],
     ["Pending", null],
     [null, null],
   ])("%s → %s", (status, key) => expect(trackingStatusKey(status)).toBe(key));
