@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
+import type { TelegramOperatorRow } from "@/lib/telegram/operators";
+import { TelegramAccessTab } from "./telegram-access-client";
 
 export type StaffRow = {
   id: string;
@@ -18,10 +21,17 @@ export type StaffRow = {
 /** The `/api/staff` payload the page mounts with. */
 export type StaffInitialData = { ok: true; rows: StaffRow[] };
 
+export type StaffManagementTab = "staff" | "telegram";
+
 export default function StaffManagementPage({
   initialData,
+  telegram,
+  initialTab = "staff",
 }: {
   initialData?: StaffInitialData;
+  /** Present only for owners/admins (the `staff` permission): the Telegram access tab. */
+  telegram?: { initialRows?: TelegramOperatorRow[] } | null;
+  initialTab?: StaffManagementTab;
 }) {
   const [rows, setRows] = useState<StaffRow[]>(initialData?.rows ?? []);
   const [loading, setLoading] = useState(!initialData);
@@ -79,20 +89,8 @@ export default function StaffManagementPage({
     }
   }, [load, name]);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1>Staff management</h1>
-          <p className="text-sm text-muted-foreground">
-            Create staff members so you can tag who measured each configuration.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={load} disabled={loading || saving}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </Button>
-      </div>
-
+  const staffContent = (
+    <>
       <Card className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
@@ -147,6 +145,41 @@ export default function StaffManagementPage({
           </Table>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1>Staff management</h1>
+          <p className="text-sm text-muted-foreground">
+            Create staff members so you can tag who measured each configuration
+            {telegram ? ", and choose who can act on review cards in Telegram" : ""}.
+          </p>
+        </div>
+        <Button variant="secondary" onClick={load} disabled={loading || saving}>
+          {loading ? "Refreshing…" : "Refresh"}
+        </Button>
+      </div>
+
+      {telegram ? (
+        <Tabs defaultValue={initialTab}>
+          <TabsList>
+            <TabsTrigger value="staff">Staff</TabsTrigger>
+            <TabsTrigger value="telegram">Telegram access</TabsTrigger>
+          </TabsList>
+          <TabsContent value="staff" className="space-y-6 pt-4">
+            {staffContent}
+          </TabsContent>
+          {/* Kept mounted so a just-issued link code survives a tab switch. */}
+          <TabsContent value="telegram" forceMount className="pt-4 data-[state=inactive]:hidden">
+            <TelegramAccessTab initialRows={telegram.initialRows} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        staffContent
+      )}
     </div>
   );
 }
