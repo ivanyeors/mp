@@ -14387,10 +14387,10 @@
     "ast_hash": "4c1bb76b5a43d78eb55081c351d01d8c",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261003000000_dimension_overrides_service_role_only.sql": {
-    "mtime": 1790996487.2959483,
-    "seen": 1790997212.8185112,
-    "ast_hash": "5ac60d62484eae1f5cd41b5ea86e5013",
+  "supabase/migrations/20261003033500_dimension_overrides_service_role_only.sql": {
+    "mtime": 1790998522.9892142,
+    "seen": 1790998644.0867536,
+    "ast_hash": "a5dcb085bc4798a65bbf25eb8545df79",
     "semantic_hash": ""
   }
 }

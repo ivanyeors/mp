@@ -1,11 +1,20 @@
 -- Dimension override tables are server-only (Oct 2026 security review).
 --
+-- Applied to the live project on 2026-10-03; the filename carries the version
+-- the remote ledger recorded, so `supabase db push` sees it as already done.
+--
 -- 20260925090000_dimension_overrides created filling_dimension_overrides and
 -- neck_support_dimension_overrides with "Service role full access" policies
 -- that carry no TO clause, so they apply to `public` — anon included. With the
--- default table grants, anyone holding the public anon key could insert, update
--- or delete these rows over PostgREST. They feed the size recommendation
+-- default table grants (anon and authenticated get every privilege on new
+-- public tables), anyone holding the public anon key could have written these
+-- rows over PostgREST. They feed the size recommendation
 -- (app/api/mp-basic/recommend, app/api/shop/customize) and the configurator.
+--
+-- Checked on the live project before applying: both policies were already
+-- scoped to service_role and anon / authenticated held no grants — fixed out of
+-- band. A fresh database built from these migrations would not have been, so
+-- this records that state where the migration history can see it.
 --
 -- 20260902000000 fixed every policy of this shape that existed then, but its
 -- sweep ran once, before these two tables existed.
