@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { easyshipConfig } from "@/lib/shipping/easyship";
 import { invalidateTag } from "@/lib/cache/invalidate";
-import { EasyshipSettingsSchema, type EasyshipSettings } from "./schema";
+import { EasyshipSettingsSchema, type EasyshipAddress, type EasyshipSettings } from "./schema";
 import type { SyncReport } from "./sync-report";
 
 /** Desired state + sync bookkeeping live in the `easyship` row of api_configs (service-role only). */
@@ -33,6 +33,12 @@ export async function readEasyshipConfig(): Promise<EasyshipConfig> {
     settings: parsed.success ? parsed.data : null,
     sync: { ...EMPTY_SYNC, ...(cfg.sync ?? {}) },
   };
+}
+
+/** The doc address flagged default sender: where every quote and label ships from. Null when none. */
+export async function readSenderAddress(): Promise<EasyshipAddress | null> {
+  const { settings } = await readEasyshipConfig();
+  return settings?.addresses.find((a) => a.default_for.sender) ?? null;
 }
 
 export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promise<EasyshipConfig> {

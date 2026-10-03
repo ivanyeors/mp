@@ -1,19 +1,14 @@
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type {
-  PackageProfile,
-  PackageType,
-  ShippingOriginAddress,
-  ShippingSettings,
-} from "@/lib/shipping/types";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
+import type { PackageProfile, PackageType, ShippingSettings } from "@/lib/shipping/types";
 
 export const PACKAGE_TYPES: readonly PackageType[] = ["pillow", "bolster", "accessory"];
 
 /** Mirrors the column defaults in 20261002090000_easyship_shipping.sql. */
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
   easyship_enabled: false,
-  origin_address: {},
   packages: {
     pillow: { length_cm: 70, width_cm: 45, height_cm: 20, weight_grams: 1500 },
     bolster: { length_cm: 60, width_cm: 25, height_cm: 25, weight_grams: 1200 },
@@ -56,7 +51,8 @@ const OriginAddressSchema = z.object({
 /** The body Settings → Shipping saves. Every field is required so a save is a whole state. */
 export const ShippingSettingsSchema = z.object({
   easyship_enabled: z.boolean(),
-  origin_address: OriginAddressSchema,
+  // Legacy column, no longer read: the default sender address on Couriers › Addresses replaced it.
+  origin_address: OriginAddressSchema.optional(),
   packages: z.object({
     pillow: PackageProfileSchema,
     bolster: PackageProfileSchema,
@@ -88,10 +84,6 @@ export function parseShippingSettings(row: Record<string, unknown> | null | unde
   };
   return {
     easyship_enabled: row.easyship_enabled === true,
-    origin_address:
-      row.origin_address && typeof row.origin_address === "object"
-        ? (row.origin_address as Partial<ShippingOriginAddress>)
-        : {},
     packages: {
       pillow: profileOf(packages.pillow, d.packages.pillow),
       bolster: profileOf(packages.bolster, d.packages.bolster),
@@ -118,8 +110,8 @@ const REQUIRED_ORIGIN_FIELDS = [
   "country_alpha2",
 ] as const;
 
-/** The origin fields still empty; Easyship needs all of them to quote or ship. */
-export function missingOriginFields(origin: Partial<ShippingOriginAddress>): string[] {
+/** The sender address fields still empty; Easyship needs all of them to quote or ship. */
+export function missingOriginFields(origin: EasyshipAddress): string[] {
   return REQUIRED_ORIGIN_FIELDS.filter((f) => !String(origin[f] ?? "").trim());
 }
 

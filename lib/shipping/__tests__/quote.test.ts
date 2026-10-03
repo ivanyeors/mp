@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
+
+const h = vi.hoisted(() => ({ sender: null as EasyshipAddress | null }));
+vi.mock("@/lib/easyship/store", () => ({ readSenderAddress: async () => h.sender }));
+
 import { fetchCourierRates, priceMethod, quoteCacheKey, quoteShippingMethods } from "@/lib/shipping/quote";
 import { DEFAULT_SHIPPING_SETTINGS } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
@@ -50,16 +55,26 @@ const settings: ShippingSettings = {
   ...DEFAULT_SHIPPING_SETTINGS,
   easyship_enabled: true,
   handling_days: 1,
-  origin_address: {
-    contact_name: "Mpillow",
-    contact_phone: "+6560000000",
-    contact_email: "ops@mpillow.test",
-    line_1: "1 Office Road",
-    city: "Singapore",
-    postal_code: "123456",
-    country_alpha2: "SG",
-  },
 };
+
+/** The courier account doc's default sender address. */
+const sender: EasyshipAddress = {
+  line_1: "1 Office Road",
+  line_2: null,
+  city: "Singapore",
+  state: null,
+  postal_code: "123456",
+  country_alpha2: "SG",
+  company_name: "Mpillow",
+  contact_name: "Mpillow",
+  contact_phone: "+6560000000",
+  contact_email: "ops@mpillow.test",
+  default_for: { sender: true, return: false, pickup: false, billing: false },
+};
+
+beforeEach(() => {
+  h.sender = sender;
+});
 
 const config = { token: "sand_t", baseUrl: "https://es.test/2024-09", environment: "sandbox" as const };
 
@@ -141,8 +156,11 @@ describe("fetchCourierRates", () => {
       await fetchCourierRates(admin, { ...base, config, settings: { ...settings, easyship_enabled: false } }),
     ).toMatchObject({ reason: "disabled" });
     expect(
-      await fetchCourierRates(admin, { ...base, config, settings: { ...settings, origin_address: {} } }),
+      await fetchCourierRates(admin, { ...base, config, origin: { ...sender, postal_code: null } }),
     ).toMatchObject({ reason: "invalid_origin" });
+    h.sender = null;
+    expect(await fetchCourierRates(admin, { ...base, config })).toMatchObject({ reason: "invalid_origin" });
+    h.sender = sender;
     expect(await fetchCourierRates(admin, { ...base, config, parcels: null })).toMatchObject({
       reason: "too_many_parcels",
     });
@@ -162,9 +180,28 @@ describe("fetchCourierRates", () => {
       },
     ];
     const key = (d: string, postal = "018989") =>
-      quoteCacheKey({ settings, destination: { country: "SG", postal_code: postal }, parcels: parcel(d), currency: "SGD" });
+      quoteCacheKey({
+        settings,
+        origin: sender,
+        destination: { country: "SG", postal_code: postal },
+        parcels: parcel(d),
+        currency: "SGD",
+      });
     expect(key("Mpillow")).toBe(key("Mpillow — renamed"));
     expect(key("Mpillow")).not.toBe(key("Mpillow", "018990"));
+  });
+
+  it("quotes from the current default sender address", async () => {
+    const admin = fakeAdmin();
+    const fetchImpl = okFetch();
+    const parcels = [{ length_cm: 70, width_cm: 45, height_cm: 20, weight_kg: 1.5, items: [] }];
+    const input = { settings, destination, parcels, currency: "SGD", config, fetchImpl };
+    await fetchCourierRates(admin, input);
+    h.sender = { ...sender, postal_code: "654321" };
+    expect(await fetchCourierRates(admin, input)).toMatchObject({ ok: true, cached: false });
+    const body = (n: number) => JSON.parse((fetchImpl.mock.calls[n] as unknown as [string, RequestInit])[1].body as string);
+    expect(body(0).origin_address.postal_code).toBe("123456");
+    expect(body(1).origin_address.postal_code).toBe("654321");
   });
 });
 

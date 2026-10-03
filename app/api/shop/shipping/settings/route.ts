@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getSiteOrigin } from "@/lib/site-url";
 import { easyshipConfig } from "@/lib/shipping/easyship";
+import { readSenderAddress } from "@/lib/easyship/store";
 import { missingOriginFields, parseShippingSettings, ShippingSettingsSchema } from "@/lib/shipping/settings";
 import type { ShippingSettings } from "@/lib/shipping/types";
 
@@ -18,12 +19,15 @@ export type ShippingSettingsResponse = {
     environment: "sandbox" | "production" | null;
     webhookSecretConfigured: boolean;
     webhookUrl: string;
+    /** A default sender address exists on Couriers › Addresses. */
+    hasSender: boolean;
     missingOrigin: string[];
   };
 };
 
 async function respond(settings: ShippingSettings) {
   const config = easyshipConfig();
+  const sender = await readSenderAddress();
   const body: ShippingSettingsResponse = {
     ok: true,
     settings,
@@ -32,7 +36,8 @@ async function respond(settings: ShippingSettings) {
       environment: config?.environment ?? null,
       webhookSecretConfigured: Boolean(process.env.EASYSHIP_WEBHOOK_SECRET?.trim()),
       webhookUrl: `${getSiteOrigin()}/api/shipping/easyship/webhook`,
-      missingOrigin: missingOriginFields(settings.origin_address),
+      hasSender: sender !== null,
+      missingOrigin: sender ? missingOriginFields(sender) : [],
     },
   };
   return NextResponse.json(body);
@@ -61,13 +66,20 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Live rates need a complete ship-from address; refuse to switch them on without one.
-  const missing = missingOriginFields(parsed.data.origin_address);
-  if (parsed.data.easyship_enabled && missing.length > 0) {
-    return NextResponse.json(
-      { error: `Complete the ship-from address before turning on live rates (missing: ${missing.join(", ")})` },
-      { status: 400 },
-    );
+  // Live rates need a complete default sender address; refuse to switch them on without one.
+  if (parsed.data.easyship_enabled) {
+    const sender = await readSenderAddress();
+    const missing = sender ? missingOriginFields(sender) : [];
+    if (!sender || missing.length > 0) {
+      return NextResponse.json(
+        {
+          error: sender
+            ? `Complete the default sender address before turning on live rates (missing: ${missing.join(", ")})`
+            : "Set a default sender address on Couriers › Addresses before turning on live rates",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const { data, error } = await supabaseAdmin()

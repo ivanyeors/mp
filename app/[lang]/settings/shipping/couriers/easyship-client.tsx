@@ -73,6 +73,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
   const [sync, setSync] = useState<SyncView>(initial?.sync ?? EMPTY_SYNC);
   const endpoint = initial?.webhook_endpoint ?? null;
   const [busy, setBusy] = useState<"save" | "sync" | "import" | null>(null);
+  const [tab, setTab] = useState("connection");
 
   const update: Update = useCallback((fn) => {
     setSettings((s) => {
@@ -152,7 +153,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
 
       <SyncReportCard sync={sync} />
 
-      <Tabs defaultValue="connection">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="connection">Connection</TabsTrigger>
           <TabsTrigger value="addresses">Addresses <Count n={settings.addresses.length} /></TabsTrigger>
@@ -163,7 +164,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
         </TabsList>
 
         <TabsContent value="connection" className="mt-4">
-          <EasyshipPanel />
+          <EasyshipPanel onShowAddresses={() => setTab("addresses")} />
         </TabsContent>
 
         <TabsContent value="tracking" className="mt-4">

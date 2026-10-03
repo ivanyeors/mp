@@ -11,23 +11,8 @@ export interface PackageProfile {
   weight_grams: number;
 }
 
-/** Where parcels leave from. Field names follow Easyship's address shape. */
-export interface ShippingOriginAddress {
-  contact_name: string;
-  company_name?: string;
-  contact_phone: string;
-  contact_email: string;
-  line_1: string;
-  line_2?: string;
-  city: string;
-  state?: string;
-  postal_code: string;
-  country_alpha2: string;
-}
-
 export interface ShippingSettings {
   easyship_enabled: boolean;
-  origin_address: Partial<ShippingOriginAddress>;
   packages: Record<PackageType, PackageProfile>;
   /** DDU: the receiver pays any duties. DDP: duties are quoted into the rate. */
   incoterms: "DDU" | "DDP";

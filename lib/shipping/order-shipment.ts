@@ -14,6 +14,7 @@ import { loadOrderShippableLines } from "@/lib/shipping/lines";
 import { buildParcels } from "@/lib/shipping/parcels";
 import { fetchCourierRates } from "@/lib/shipping/quote";
 import { readShippingSettings } from "@/lib/shipping/settings";
+import { readSenderAddress } from "@/lib/easyship/store";
 import type { RatesResult, ShippingDestination } from "@/lib/shipping/types";
 
 const ORDER_SHIPPING_COLUMNS =
@@ -186,6 +187,11 @@ export async function buyOrderLabel(
   if (!parcels || parcels.length === 0) {
     return { ok: false, status: 400, error: "This order cannot be boxed for a label" };
   }
+  // The same default sender the quote used.
+  const origin = await readSenderAddress();
+  if (!origin) {
+    return { ok: false, status: 400, error: "No default sender address: set one in Settings → Shipping → Couriers → Addresses" };
+  }
 
   // Claim: make sure the row exists, then take it only while it has no shipment.
   // The guarded update succeeds for one request; every other one sees 409.
@@ -216,6 +222,7 @@ export async function buyOrderLabel(
       config,
       shipmentRequestBody({
         settings,
+        origin,
         destination,
         contact: {
           name: order.shipping_address?.recipient || order.email,
