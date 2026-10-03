@@ -17,8 +17,8 @@ Notes:
 
 ## Acceptance criteria
 
-- [ ] The migration drops the three columns. Build, tests and `bundle:check` are green.
-- [ ] `grep -rn "origin_address\|easyship_enabled" lib app` finds only the doc schema.
+- [x] The migration drops the three columns. Build, tests and `bundle:check` are green.
+- [x] `grep -rn "origin_address\|easyship_enabled" lib app` finds only the doc schema.
 
 ## Blocked by
 

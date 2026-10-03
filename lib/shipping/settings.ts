@@ -17,39 +17,8 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
   estimate_declared_value: 150,
 };
 
-const PackageProfileSchema = z.object({
-  length_cm: z.number().positive().max(300),
-  width_cm: z.number().positive().max(300),
-  height_cm: z.number().positive().max(300),
-  weight_grams: z.number().int().positive().max(70_000),
-});
-
-const OriginAddressSchema = z.object({
-  contact_name: z.string().trim().max(120).default(""),
-  company_name: z.string().trim().max(120).optional(),
-  contact_phone: z.string().trim().max(40).default(""),
-  contact_email: z.string().trim().max(200).default(""),
-  line_1: z.string().trim().max(200).default(""),
-  line_2: z.string().trim().max(200).optional(),
-  city: z.string().trim().max(120).default(""),
-  state: z.string().trim().max(120).optional(),
-  postal_code: z.string().trim().max(20).default(""),
-  country_alpha2: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{2}$/)
-    .default("SG"),
-});
-
 /** The body Settings → Shipping saves. Every field is required so a save is a whole state. */
 export const ShippingSettingsSchema = z.object({
-  // Legacy column, no longer read: the default sender address on Couriers › Addresses replaced it.
-  origin_address: OriginAddressSchema.optional(),
-  // ponytail: no longer read (boxes come from the courier account); slice 05 drops it
-  packages: z
-    .object({ pillow: PackageProfileSchema, bolster: PackageProfileSchema, accessory: PackageProfileSchema })
-    .optional(),
   incoterms: z.enum(["DDU", "DDP"]),
   insure_shipments: z.boolean(),
   /** Empty: classify by item_category instead. */
