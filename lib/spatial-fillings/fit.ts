@@ -129,6 +129,20 @@ export type ColumnFit = {
   planes: ColumnPlane[];
 };
 
+/** One settled piece seen along its Section: where it lies front → back and how thick it draws. */
+export type SectionPieceFit = {
+  key: string;
+  itemId: number;
+  depth: number;
+  spanFrom: SubSection;
+  spanTo: SubSection;
+  startMm: number;
+  endMm: number;
+  /** Settled × the tightest squeeze of the columns it spans, mm. */
+  thicknessMm: number;
+  status: FitStatus;
+};
+
 export type SectionFit = {
   section: Section;
   widthMm: number;
@@ -137,6 +151,8 @@ export type SectionFit = {
   loftBySubSection: Record<SubSection, number>;
   /** The stack behind each of those numbers; null where the column is empty. */
   columns: Record<SubSection, ColumnFit | null>;
+  /** Every settled piece once, as the along cut draws it. */
+  pieces: SectionPieceFit[];
   status: FitStatus;
 };
 
@@ -260,13 +276,9 @@ export type FitContext = {
   pillow?: PillowDimensions;
 };
 
-/** Extent across the Section (left ↔ right) and its floor, from the pouch's orientation. */
+/** Extent across the Section (left ↔ right) and its floor. */
 function acrossOf(d: PouchDimensions): { across: number; min: number } {
-  const across = d.orientation === "along" ? d.lengthMm : d.widthMm;
-  // The registry's minimum is for the width; a pouch lying along squeezes its
-  // length by the same proportion.
-  const floor = Math.min(d.minWidthMm, d.widthMm) / d.widthMm;
-  return { across, min: across * floor };
+  return { across: d.widthMm, min: Math.min(d.minWidthMm, d.widthMm) };
 }
 
 /**
@@ -503,6 +515,21 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
       maxLoftMm: r1(budget[a]),
       loftBySubSection,
       columns,
+      pieces: settled.map((s) => {
+        const ratio = pieceRatio.get(s.key) ?? 1;
+        const spanned = stacks.slice(subSectionIndex(s.spanFrom), subSectionIndex(s.spanTo) + 1);
+        return {
+          key: s.key,
+          itemId: s.itemId,
+          depth: s.depth,
+          spanFrom: s.spanFrom,
+          spanTo: s.spanTo,
+          startMm: s.startMm,
+          endMm: s.endMm,
+          thicknessMm: r1(s.settledThicknessMm * ratio),
+          status: spanned.some((st) => st?.fit.status === "over") ? "over" : ratio < 1 - 1e-6 ? "compressed" : "ok",
+        };
+      }),
       status: sectionStatus,
     };
     status = worstStatus(status, sectionStatus);

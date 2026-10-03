@@ -54,7 +54,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
         <p className="text-muted-foreground">
           What the x-ray predicts for each bench check in slice 10, from the dimensions in Settings at {generatedAt}.
           Write the ruler reading in the empty column; anything more than a few millimetres (or one Layer) apart is a
-          number to change in Settings → Product Visualize → Dimensions. Print with your browser (⌘P / Ctrl+P).
+          number to change in Settings → Products → Dimensions. Print with your browser (⌘P / Ctrl+P).
           Loft allowance: {Math.round(sheet.loftAllowance * 100)} %.
         </p>
         {sheet.unmeasured.length > 0 && (
@@ -93,7 +93,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
       {sheet.templates.length > 0 && (
         <Section
           title="2. Default Filling Templates"
-          hint="Build each one and measure the loft at each Section's middle. The x-ray reads the same numbers on its Across cut."
+          hint="Build each one and measure the loft at each Section's middle. The x-ray reads the same numbers."
         >
           <Table>
             <TableHeader>

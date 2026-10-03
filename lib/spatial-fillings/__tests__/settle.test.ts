@@ -26,16 +26,14 @@ const CELL = M.lengthMm / 3; // 110 mm
 const WALLED = { ...M, subSectionDividers: true };
 
 // 140 mm along, 45 → 25 mm thick: V/(w × minT) − L = 140 × (45/25 − 1) = 112 mm of spread.
-const SPREADER = { widthMm: 180, lengthMm: 140, thicknessMm: 45, minThicknessMm: 25, orientation: "across" as const };
+const SPREADER = { widthMm: 180, lengthMm: 140, thicknessMm: 45, minThicknessMm: 25 };
 const dims = new Map([resolved(1, SPREADER), resolved(2, { ...SPREADER, thicknessMm: 30, minThicknessMm: 25 })]);
 const find = (pieces: PieceSettle[], key: string) => pieces.find((s) => s.key === key)!;
 
 describe("spread capacity", () => {
-  it("is the compression variable read the other way, along the axis that lies front ↔ back", () => {
+  it("is the compression variable read the other way, along the length (front ↔ back)", () => {
+    expect(alongMm(pouch(SPREADER))).toBe(140);
     expect(spreadCapacityMm(pouch(SPREADER))).toBeCloseTo(112, 6);
-    const along = pouch({ ...SPREADER, orientation: "along" }); // its 180 mm width runs front ↔ back
-    expect(alongMm(along)).toBe(180);
-    expect(spreadCapacityMm(along)).toBeCloseTo(180 * (45 / 25 - 1), 6);
   });
 
   it("is capped by the fabric's flat length when the registry has it, and never negative", () => {

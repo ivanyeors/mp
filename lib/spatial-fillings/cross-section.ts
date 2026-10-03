@@ -1,17 +1,17 @@
 /**
  * Cross-section model (X-ray pillow UX slice 05, ADR 0019): the fit result cut
- * across the pillow (left, center, right at one sub-section) or along one
- * Section (front, middle, back), as columns of slabs against the loft line.
+ * along one Section (front, middle, back), as columns against the loft line.
  * Pure: reads the fit the host already computed; the renderer never recomputes
  * it, so the x-ray and the cross-section cannot disagree.
  */
 
-import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "./core";
+import { SUB_SECTIONS, type Section, type SubSection } from "./core";
 import type { ColumnFit, FitStatus, PillowFit } from "./fit";
+import { SEAM_MM } from "./dimensions";
 
-export type Cut = { axis: "across"; subSection: SubSection } | { axis: "along"; section: Section };
+export type Cut = { section: Section };
 
-export const DEFAULT_CUT: Cut = { axis: "across", subSection: "middle" };
+export const DEFAULT_CUT: Cut = { section: "center" };
 
 export type CrossSectionSlab = {
   depth: number;
@@ -24,9 +24,9 @@ export type CrossSectionSlab = {
 };
 
 export type CrossSectionColumn = {
-  key: Section | SubSection;
+  key: SubSection;
   label: string;
-  /** The column's extent along the cut, mm: a Section's width across, a sub-section's length along. */
+  /** The sub-section's length, mm. */
   widthMm: number;
   maxLoftMm: number;
   loftMm: number;
@@ -35,7 +35,7 @@ export type CrossSectionColumn = {
   slabs: CrossSectionSlab[];
 };
 
-function columnOf(key: Section | SubSection, widthMm: number, maxLoftMm: number, column: ColumnFit | null): CrossSectionColumn {
+function columnOf(key: SubSection, widthMm: number, maxLoftMm: number, column: ColumnFit | null): CrossSectionColumn {
   return {
     key,
     label: key,
@@ -58,23 +58,60 @@ function columnOf(key: Section | SubSection, widthMm: number, maxLoftMm: number,
 }
 
 /**
- * The columns of one cut. Across: the three Sections at `subSection`, each as
- * wide as its Section. Along: the three sub-sections of `section`, each one
- * cell long. Slab heights sum to the column's `loftMm` and never exceed
- * `maxLoftMm` unless the column is `over`.
+ * The three sub-sections of the cut's Section, each one cell long. Slab
+ * heights sum to the column's `loftMm` and never exceed `maxLoftMm` unless the
+ * column is `over`.
  */
 export function crossSectionSlabs(fit: PillowFit, cut: Cut): CrossSectionColumn[] {
-  if (cut.axis === "across") {
-    return SECTIONS.map((section) => {
-      const sf = fit.sections[section];
-      return columnOf(section, sf.widthMm, sf.maxLoftMm, sf.columns[cut.subSection]);
-    });
-  }
   const sf = fit.sections[cut.section];
   return SUB_SECTIONS.map((subSection) => columnOf(subSection, fit.settle.cellLengthMm, sf.maxLoftMm, sf.columns[subSection]));
 }
 
-/** Where the cut is taken, for a caption: "across · middle" / "along · center". */
+/** One piece in the along cut: drawn once over its settled span, stacked on what lies under it. */
+export type AlongSlab = {
+  key: string;
+  itemId: number;
+  depth: number;
+  /** mm from the Section's front. */
+  startMm: number;
+  endMm: number;
+  /** mm above the back panel. */
+  bottomMm: number;
+  heightMm: number;
+  status: FitStatus;
+  hatched: boolean;
+};
+
+/**
+ * The along cut piece by piece: a pouch that settles front-to-back is one
+ * slab, not one per column. Deepest first, each rests on the tallest deeper
+ * slab it overlaps, else on the back panel.
+ */
+export function alongSlabs(fit: PillowFit, section: Section): AlongSlab[] {
+  const placed: AlongSlab[] = [];
+  for (const p of [...fit.sections[section].pieces].sort((a, b) => b.depth - a.depth)) {
+    const bottomMm = Math.max(
+      0,
+      ...placed
+        .filter((q) => q.depth > p.depth && Math.min(q.endMm, p.endMm) - Math.max(q.startMm, p.startMm) > SEAM_MM)
+        .map((q) => q.bottomMm + q.heightMm),
+    );
+    placed.push({
+      key: p.key,
+      itemId: p.itemId,
+      depth: p.depth,
+      startMm: p.startMm,
+      endMm: p.endMm,
+      bottomMm,
+      heightMm: p.thicknessMm,
+      status: p.status,
+      hatched: p.status !== "ok",
+    });
+  }
+  return placed;
+}
+
+/** Where the cut is taken, for a caption: "along · center". */
 export function cutLabel(cut: Cut): string {
-  return cut.axis === "across" ? `across · ${cut.subSection}` : `along · ${cut.section}`;
+  return `along · ${cut.section}`;
 }

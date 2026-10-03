@@ -78,8 +78,8 @@ export function useFitAtSizes(
 }
 
 /**
- * The cut a host holds (slice 05): the cross-section's controls set it and an
- * along cut follows the dived Section (the x-ray itself draws no cut line).
+ * The cut a host holds (slice 05): the cross-section's controls set it and it
+ * follows the dived Section (the x-ray itself draws no cut line).
  * Here rather than beside the cross-section so a page can lazy-load that
  * component and still hold the state statically.
  */
@@ -87,7 +87,7 @@ export function useCut(initial: Cut = DEFAULT_CUT) {
   const [cut, setCut] = useState<Cut>(initial);
   const onDiveChange = useCallback((section: Section | null) => {
     if (!section) return;
-    setCut((c) => (c.axis === "along" && c.section !== section ? { axis: "along", section } : c));
+    setCut((c) => (c.section !== section ? { section } : c));
   }, []);
   return { cut, setCut, onDiveChange };
 }

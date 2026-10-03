@@ -51,15 +51,6 @@ describe("fitLayer", () => {
     expect(layer.minMm).toBe(260 + SEAM_MM);
   });
 
-  it("squeezes a pouch lying along by its length, in the width's proportion", () => {
-    const layer = fitLayer([piece(1, { widthMm: 200, lengthMm: 100, minWidthMm: 150, orientation: "along" })], 80);
-    expect(layer.pieces[0].acrossMm).toBe(100);
-    expect(layer.pieces[0].minAcrossMm).toBe(75);
-    // 75 ≤ 80 < 100: squeezed to the budget, not over.
-    expect(layer.status).toBe("compressed");
-    expect(layer.pieces[0].acrossMm * layer.pieces[0].widthRatio).toBeCloseTo(80, 6);
-    expect(fitLayer([piece(1, { widthMm: 200, lengthMm: 100, minWidthMm: 150, orientation: "along" })], 70).status).toBe("over");
-  });
 });
 
 describe("fitCell", () => {

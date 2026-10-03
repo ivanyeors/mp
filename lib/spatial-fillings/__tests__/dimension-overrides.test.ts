@@ -53,10 +53,20 @@ describe("effectiveRegistry", () => {
   });
 
   it("applies a size-less row to every size of that variant and carries the fabric limits", () => {
-    const registry = effectiveRegistry([row("6d/folded", { orientation: "along", flat_length_mm: 260 })], [], null);
+    const registry = effectiveRegistry([row("6d/folded", { flat_length_mm: 260 })], [], null);
     const r = resolveDims({ name: "6D Fold", size: "L" }, registry);
-    expect(r).toMatchObject({ key: "6d/folded/l", source: "configured", dims: { orientation: "along", flatLengthMm: 260 } });
+    expect(r).toMatchObject({ key: "6d/folded/l", source: "configured", dims: { flatLengthMm: 260 } });
     expect(r.dims.flatWidthMm).toBeUndefined();
+  });
+
+  it("reads a legacy along row with width and length swapped", () => {
+    const registry = effectiveRegistry(
+      [row("6d/folded", { orientation: "along", width_mm: 200, length_mm: 100, min_width_mm: 150, flat_width_mm: 260 })],
+      [],
+      null,
+    );
+    expect(registry.pouches["6d/folded"]).toMatchObject({ widthMm: 100, lengthMm: 200, minWidthMm: 75, flatLengthMm: 260 });
+    expect(registry.pouches["6d/folded"].flatWidthMm).toBeUndefined();
   });
 
   it("applies Neck support rows per size and ignores a size outside XS–L", () => {
@@ -70,7 +80,7 @@ describe("effectiveRegistry", () => {
     );
     expect(resolveDims({ name: "Cervical Neck Support", category: "accessories", size: "S" }, registry)).toMatchObject({
       source: "configured",
-      dims: { widthMm: 280 },
+      dims: { widthMm: 280, thicknessMm: 45, minThicknessMm: 25 },
     });
     expect(resolveDims({ name: "Cervical Neck Support", category: "accessories", size: "M" }, registry).source).toBe("fallback");
     expect(Object.keys(registry.neck)).toEqual(["S"]);
@@ -90,7 +100,7 @@ describe("catalogues", () => {
   it("lists the four Neck support sizes", () => {
     const rows = neckCatalog(effectiveRegistry([], [{ size: "L", width_mm: 320, length_mm: 90, thickness_mm: 55, min_thickness_mm: 30 }], null));
     expect(rows.map((r) => r.size)).toEqual(["XS", "S", "M", "L"]);
-    expect(rows[3]).toMatchObject({ source: "configured", dims: { widthMm: 320 } });
+    expect(rows[3]).toMatchObject({ source: "configured", dims: { lengthMm: 320, radiusMm: 27.5, minRadiusMm: 15 } });
     expect(rows[0].source).toBe("unmeasured");
   });
 });

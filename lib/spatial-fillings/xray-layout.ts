@@ -107,11 +107,9 @@ function depthSlabs(frame: CellFrame, thicknessesMm: number[], k: number): Piece
   }));
 }
 
-/** A pouch's drawn footprint: the long axis across the Section unless it lies along it. */
+/** A pouch's drawn footprint: width across the Section, length along it. */
 function footprint(dims: PouchDimensions, k: number): { w: number; h: number } {
-  return dims.orientation === "along"
-    ? { w: dims.lengthMm * k, h: dims.widthMm * k }
-    : { w: dims.widthMm * k, h: dims.lengthMm * k };
+  return { w: dims.widthMm * k, h: dims.lengthMm * k };
 }
 
 /**
@@ -146,7 +144,8 @@ export type NudgeRange = { minX: number; maxX: number; minY: number; maxY: numbe
  * footprint (× the fit's squeeze), the row centred in the slab with a seam
  * between pieces, slot order left → right; a piece longer than the slab is
  * cut to it. A piece's fine offset (mm × k) moves it from home within its
- * range — the slab less the room its neighbours need — and a piece that is
+ * range — across, the slab less the room its neighbours need; front ↔ back,
+ * the whole Section, so it can overhang its cell — and a piece that is
  * moved into a neighbour pushes it along, so order and seams always hold.
  */
 function packTrue(
@@ -155,6 +154,8 @@ function packTrue(
   k: number,
   widthRatios: readonly number[] | undefined,
   offsets: ReadonlyArray<{ x: number; y: number }>,
+  /** Front ↔ back, the pouch may slide the whole Section; the slab's depth drop still applies. */
+  along: { minY: number; maxY: number },
 ): TruePack[] {
   const seams = GAP * (pieces.length - 1);
   const feet = pieces.map((d, i) => {
@@ -176,8 +177,8 @@ function packTrue(
     const range = {
       minX: slab.x + before(i),
       maxX: slab.x + slab.w - after(i) - w,
-      minY: slab.y,
-      maxY: slab.y + slab.h - h,
+      minY: along.minY,
+      maxY: along.maxY - h,
     };
     const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
     // Push right past the previous piece; the ranges guarantee it still fits.
@@ -275,6 +276,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
           cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
           // Offsets are M millimetres too, so a pouch pushed to the edge stays at the edge at every Size.
           layers[d].map((p) => ({ x: (p.offsetXMm ?? 0) * sizeF.across, y: (p.offsetYMm ?? 0) * sizeF.along })),
+          { minY: stage.rowY[0] + INSET + (slabs[d].y - frame.y), maxY: stage.rowY[3] - INSET },
         );
         layers[d].forEach((piece, idx) => {
           const key = `${section}/${subSection}/${piece.slot}`;
@@ -381,10 +383,10 @@ export function layoutBolsterPlacements(
   const stage = bolsterStage(length);
   const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
   const fitOf = new Map((ctx.fit?.pieces ?? []).map((p) => [p.slot, p] as const));
-  // The width axis runs along the capsule whatever the pillow orientation says.
+  // The width axis runs along the capsule.
   const drawn = pieces.map((p) => {
     const d = dimsOf(p.itemId);
-    return { ...d, orientation: "across" as const, widthMm: fitOf.get(p.slot)?.settledWidthMm ?? d.widthMm };
+    return { ...d, widthMm: fitOf.get(p.slot)?.settledWidthMm ?? d.widthMm };
   });
   const rects = packFill(
     bolsterFrame(length),

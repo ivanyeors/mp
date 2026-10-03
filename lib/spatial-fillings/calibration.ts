@@ -11,6 +11,7 @@ import { MAX_LAYERS_PER_CELL, type PillowPlacement, type Section } from "./core"
 import { neckCatalog, pouchCatalog, type CatalogSource } from "./dimension-overrides";
 import {
   maxLoftMm,
+  neckAsPouch,
   PILLOW_DIMENSIONS,
   PILLOW_SIZES,
   pouchAtSize,
@@ -78,7 +79,7 @@ export type TemplateRow = {
   tier: string;
   name: string;
   status: FitStatus;
-  /** Loft at each Section's middle, mm, as the Across cut reads it. */
+  /** Loft at each Section's middle, mm. */
   middleLoftMm: Record<Section, number>;
   maxLoftMm: Record<Section, number>;
   /** The fit messages of any cell that squeezes or cannot close. */
@@ -192,7 +193,7 @@ export function calibrationSheet(registry: DimensionRegistry, templates: readonl
       key: `neck/${n.size.toLowerCase()}`,
       label: `Neck support ${n.size}`,
       source: n.source,
-      bySize: atSizes({ ...n.dims, minWidthMm: n.dims.widthMm, orientation: "across" }),
+      bySize: atSizes(neckAsPouch(n.dims)),
     }),
   );
 

@@ -55,7 +55,7 @@ export default async function SettingsProductsPage({
         <ProductsClient
             initialData={initialData}
             canVisualize={canVisualize}
-            initialTab={tab === "categories" || (tab === "visualize" && canVisualize) ? tab : "products"}
+            initialTab={tab === "categories" || ((tab === "visualize" || tab === "dimensions") && canVisualize) ? tab : "products"}
         />
     );
 }
