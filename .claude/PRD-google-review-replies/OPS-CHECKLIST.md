@@ -101,7 +101,12 @@ Apply `supabase/migrations/20261002060000_google_review_replies.sql` and
    bot is in privacy mode and ignores a plain `/link` in the group, use `/link@<bot_username> CODE`
    or send it privately.
 4. The first sync after setup posts cards for unanswered reviews from the last 14 days; older ones
-   are recorded as `backlog` without a card.
+   are recorded as `backlog` without a card. To card every unanswered review regardless of age:
+
+   ```bash
+   npx tsx --env-file=.env.local scripts/google-reviews-backfill.ts --dry-run   # list, change nothing
+   npx tsx --env-file=.env.local scripts/google-reviews-backfill.ts             # card them, newest first
+   ```
 
 ## 9. Preview the cards in Telegram
 
