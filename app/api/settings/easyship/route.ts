@@ -53,7 +53,10 @@ export async function PUT(req: Request) {
   const parsed = EasyshipSettingsSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   try {
-    const saved = await writeEasyshipConfig({ settings: parsed.data });
+    // A body without box_for_type (older automation) keeps the saved mapping instead of wiping it.
+    const keep = body && typeof body === "object" && !("box_for_type" in body);
+    const box_for_type = keep ? (await readEasyshipConfig()).settings?.box_for_type ?? {} : parsed.data.box_for_type;
+    const saved = await writeEasyshipConfig({ settings: { ...parsed.data, box_for_type } });
     const { report, next } = await runSync(saved);
     return NextResponse.json({ ok: report.ok, ...view(next), report });
   } catch (err) {

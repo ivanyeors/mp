@@ -14,6 +14,7 @@ import { loadOrderShippableLines } from "@/lib/shipping/lines";
 import { buildParcels } from "@/lib/shipping/parcels";
 import { fetchCourierRates } from "@/lib/shipping/quote";
 import { readShippingSettings } from "@/lib/shipping/settings";
+import { readTypeBoxes } from "@/lib/easyship/store";
 import type { RatesResult, ShippingDestination } from "@/lib/shipping/types";
 
 const ORDER_SHIPPING_COLUMNS =
@@ -90,13 +91,13 @@ export async function quoteOrderShipment(
   const destination = orderDestination(order);
   if (!destination) return { ok: false, status: 400, error: "This order has no shipping address" };
 
-  const settings = await readShippingSettings();
+  const [settings, boxes] = await Promise.all([readShippingSettings(), readTypeBoxes()]);
   const lines = await loadOrderShippableLines(admin, order.id, order.currency);
   // Labels are bought by Staff on purpose, so the shopper-facing on/off switch does not gate them.
   const rates = await fetchCourierRates(admin, {
     settings: { ...settings, easyship_enabled: true },
     destination,
-    parcels: buildParcels(lines, settings.packages),
+    parcels: buildParcels(lines, boxes),
     currency: order.currency,
     fresh: true,
     config,
@@ -180,9 +181,9 @@ export async function buyOrderLabel(
   const destination = orderDestination(order);
   if (!destination) return { ok: false, status: 400, error: "This order has no shipping address" };
 
-  const settings = await readShippingSettings();
+  const [settings, boxes] = await Promise.all([readShippingSettings(), readTypeBoxes()]);
   const lines = await loadOrderShippableLines(admin, order.id, order.currency);
-  const parcels = buildParcels(lines, settings.packages);
+  const parcels = buildParcels(lines, boxes);
   if (!parcels || parcels.length === 0) {
     return { ok: false, status: 400, error: "This order cannot be boxed for a label" };
   }

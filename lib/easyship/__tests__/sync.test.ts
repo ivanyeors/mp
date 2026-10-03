@@ -42,6 +42,7 @@ const desired: EasyshipSettings = {
     { name: "Keep", outer_length: 20, outer_width: 20, outer_height: 40, weight: 0 },
     { name: "New", outer_length: 10, outer_width: 10, outer_height: 10, weight: 0.1 },
   ],
+  box_for_type: { pillow: { box: "Keep", weight_grams: 1500 } },
   shipping_rules: [
     { name: "Same", description: "d", priority: 1, active: true, conditions: [{ type: "match_all", options: {} }], actions: [{ type: "force_insurance", options: { insured: true } }] },
     { name: "Changed", description: "d", priority: 2, active: true, conditions: [{ type: "match_all", options: {} }], actions: [{ type: "force_insurance", options: { insured: true } }] },
@@ -92,6 +93,8 @@ describe("syncEasyship", () => {
     expect(find("DELETE", "/boxes/b-old")).toHaveLength(1);
     expect(find("DELETE", "/boxes/b-flat")).toHaveLength(0);
     expect(find("PATCH", "/boxes/b-keep")).toHaveLength(0);
+    // The type → box mapping is ours alone; the courier account never sees it.
+    expect(calls.some((c) => JSON.stringify(c.body ?? {}).includes("box_for_type") || JSON.stringify(c.body ?? {}).includes("weight_grams"))).toBe(false);
 
     expect(find("DELETE", "/shipping_rules/r-same")).toHaveLength(0);
     expect(find("DELETE", "/shipping_rules/r-changed")).toHaveLength(1);

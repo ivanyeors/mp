@@ -11,6 +11,14 @@ export interface PackageProfile {
   weight_grams: number;
 }
 
+/** A courier account box an item type ships in: its outer size and empty weight, plus one unit's content weight. */
+export interface TypeBox extends PackageProfile {
+  tare_grams: number;
+}
+
+/** A type with no box gets no live quote. */
+export type TypeBoxes = Partial<Record<PackageType, TypeBox>>;
+
 /** Where parcels leave from. Field names follow Easyship's address shape. */
 export interface ShippingOriginAddress {
   contact_name: string;
@@ -28,7 +36,6 @@ export interface ShippingOriginAddress {
 export interface ShippingSettings {
   easyship_enabled: boolean;
   origin_address: Partial<ShippingOriginAddress>;
-  packages: Record<PackageType, PackageProfile>;
   /** DDU: the receiver pays any duties. DDP: duties are quoted into the rate. */
   incoterms: "DDU" | "DDP";
   insure_shipments: boolean;
@@ -45,7 +52,7 @@ export interface ShippingSettings {
 export interface ShippableLine {
   product_type: ProductType;
   quantity: number;
-  /** The variant's weight; null falls back to the package profile. */
+  /** The variant's weight; null falls back to its type's content weight. */
   weight_grams: number | null;
   /** Per-unit declared value (customs and insurance). */
   unit_value: number;

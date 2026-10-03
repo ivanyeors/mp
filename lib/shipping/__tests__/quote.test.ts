@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchCourierRates, priceMethod, quoteCacheKey, quoteShippingMethods } from "@/lib/shipping/quote";
 import { DEFAULT_SHIPPING_SETTINGS } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
-import type { RatesResult, ShippableLine, ShippingSettings } from "@/lib/shipping/types";
+import type { RatesResult, ShippableLine, ShippingSettings, TypeBoxes } from "@/lib/shipping/types";
+
+const h = vi.hoisted(() => ({ readTypeBoxes: vi.fn() }));
+vi.mock("@/lib/easyship/store", () => ({ readTypeBoxes: h.readTypeBoxes }));
 
 /** In-memory `shipping_rate_quotes`, enough of the query builder for the quote service. */
 function fakeAdmin() {
@@ -104,6 +107,7 @@ const method = (over: Partial<ShippingMethod>): ShippingMethod => ({
 });
 
 const destination = { country: "SG", postal_code: "018 989" };
+const boxes: TypeBoxes = { pillow: { length_cm: 70, width_cm: 45, height_cm: 20, tare_grams: 0, weight_grams: 1500 } };
 
 describe("fetchCourierRates", () => {
   it("calls Easyship once, then serves the same cart and postal code from the cache", async () => {
@@ -272,6 +276,7 @@ describe("quoteShippingMethods", () => {
       destination,
       subtotal: 40,
       loadSettings: async () => settings,
+      loadBoxes: async () => boxes,
       config,
       fetchImpl,
     });
@@ -281,6 +286,25 @@ describe("quoteShippingMethods", () => {
       ["exp", 18, "cs_fast"],
       ["flat", 5, null],
     ]);
+  });
+
+  it("reads boxes from the courier account by default, and a type with no box gets no live call", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    h.readTypeBoxes.mockResolvedValue({});
+    const fetchImpl = okFetch();
+    const { rates } = await quoteShippingMethods(fakeAdmin(), {
+      methods: [method({ rate_source: "easyship" })],
+      lines,
+      destination,
+      subtotal: 40,
+      loadSettings: async () => settings,
+      config,
+      fetchImpl,
+    });
+    expect(h.readTypeBoxes).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(rates).toMatchObject({ ok: false, reason: "too_many_parcels" });
+    spy.mockRestore();
   });
 
   it("falls back when settings cannot be read", async () => {
