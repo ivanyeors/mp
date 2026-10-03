@@ -168,38 +168,70 @@ ${amountPanel({ label: "Total charged", amount: money(data.total, data.currency)
   return { subject, html, text };
 }
 
+type Row = { label: string; value: string; strong?: boolean };
+
+function deliveryDays(data: OrderEmailData): string | null {
+  if (data.minDays == null) return null;
+  const max = data.maxDays ?? data.minDays;
+  if (max === data.minDays) return `${max} ${max === 1 ? "day" : "days"}`;
+  return `${data.minDays}–${max} days`;
+}
+
+/** Courier, delivery estimate, latest checkpoint and tracking number, whichever are known. */
+function shipmentRows(data: OrderEmailData, opts: { eta?: boolean; checkpoint?: boolean }): Row[] {
+  const eta = opts.eta ? deliveryDays(data) : null;
+  const rows: Array<Row | null> = [
+    data.courierName ? { label: "Courier", value: data.courierName } : null,
+    eta ? { label: "Estimated delivery", value: eta } : null,
+    opts.checkpoint && data.trackingCheckpoint ? { label: "Latest update", value: data.trackingCheckpoint } : null,
+    data.trackingNumber ? { label: "Tracking number", value: data.trackingNumber, strong: true } : null,
+  ];
+  return rows.filter((r): r is Row => r !== null);
+}
+
+const rowsText = (rows: Row[]) => rows.map((r) => `\n${r.label}: ${r.value}`).join("");
+
 function shipping(data: OrderEmailData): RenderedEmail {
   const subject = `Order ${data.orderNumber} has shipped`;
-  const trackingText = data.trackingNumber
-    ? `\nTracking number: ${data.trackingNumber}${
-        data.trackingUrl ? `\nTrack it: ${data.trackingUrl}` : ""
-      }`
-    : "";
+  const rows = shipmentRows(data, { eta: true });
   const url = data.trackingUrl || orderUrl(data.orderNumber);
+  const label = data.trackingUrl ? "Track your package" : "View your order";
   const text = `Hi ${data.customerName},
 
-Good news — order ${data.orderNumber} has shipped!${trackingText}
+Good news — order ${data.orderNumber} has shipped!${rowsText(rows)}
 
-${data.trackingUrl ? "" : `View your order: ${url}`}`.trimEnd();
+${label}: ${url}`;
 
   const html = renderEmailShell({
     title: "Your order is on its way",
     preheader: `Order ${data.orderNumber} has shipped.`,
-    bodyHtml: `${paragraph(
-      `Hi ${data.customerName}, good news — order ${data.orderNumber} has shipped!`
-    )}
-${
-  data.trackingNumber
-    ? infoList([{ label: "Tracking number", value: data.trackingNumber, strong: true }])
-    : ""
-}`,
-    cta: {
-      href: url,
-      label: data.trackingUrl ? "Track your package" : "View your order",
-    },
+    bodyHtml: `${paragraph(`Hi ${data.customerName}, good news — order ${data.orderNumber} has shipped!`)}
+${infoList(rows)}`,
+    cta: { href: url, label },
   });
 
   return { subject, html, text };
+}
+
+/** A courier status update: same shell as "shipped", with a status-specific line. */
+function trackingUpdate(title: string, subject: (n: string) => string, line: string, opts: { checkpoint?: boolean } = {}) {
+  return (data: OrderEmailData): RenderedEmail => {
+    const url = data.trackingUrl || orderUrl(data.orderNumber);
+    const label = data.trackingUrl ? "Track your package" : "View your order";
+    const body = `Hi ${data.customerName}, order ${data.orderNumber}: ${line}`;
+    const rows = shipmentRows(data, opts);
+    return {
+      subject: subject(data.orderNumber),
+      text: `${body}${rowsText(rows)}\n\n${label}: ${url}`,
+      html: renderEmailShell({
+        title,
+        preheader: subject(data.orderNumber),
+        bodyHtml: `${paragraph(body)}
+${infoList(rows)}`,
+        cta: { href: url, label },
+      }),
+    };
+  };
 }
 
 function refund(data: OrderEmailData): RenderedEmail {
@@ -238,6 +270,28 @@ export const ORDER_EMAIL_TEMPLATES: Record<
   order_confirmation: orderConfirmation,
   payment_receipt: paymentReceipt,
   shipping,
+  tracking_out_for_delivery: trackingUpdate(
+    "Out for delivery",
+    (n) => `Order ${n} is out for delivery`,
+    "it's out for delivery and should arrive today."
+  ),
+  tracking_delivery_attempt: trackingUpdate(
+    "We missed you",
+    (n) => `Delivery attempt for order ${n}`,
+    "the courier tried to deliver it but couldn't. They'll try again or leave instructions on the tracking page.",
+    { checkpoint: true }
+  ),
+  tracking_delivered: trackingUpdate(
+    "Delivered",
+    (n) => `Order ${n} has been delivered`,
+    "it's been delivered. We hope you love it."
+  ),
+  tracking_exception: trackingUpdate(
+    "There's a problem with your delivery",
+    (n) => `Delivery problem with order ${n}`,
+    "the courier has reported a problem with the delivery. We're looking into it and will be in touch.",
+    { checkpoint: true }
+  ),
   refund,
 };
 

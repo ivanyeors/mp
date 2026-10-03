@@ -193,7 +193,7 @@ describe("parseShipment", () => {
             { category: "label", base64_encoded_strings: ["JVBERi0="] },
           ],
           courier_service: { id: "cs_ninja", name: "Ninja Van Standard" },
-          rates: [{ total_charge: 6.42, currency: "SGD" }],
+          rates: [{ total_charge: 6.42, currency: "SGD", min_delivery_time: 2, max_delivery_time: 4 }],
         },
       }),
     ).toEqual({
@@ -207,6 +207,8 @@ describe("parseShipment", () => {
       courierServiceId: "cs_ninja",
       totalCharge: 6.42,
       currency: "SGD",
+      minDays: 2,
+      maxDays: 4,
     });
   });
 
@@ -263,8 +265,26 @@ describe("webhooks", () => {
       trackingUrl: "https://track.test/ESTEST00000",
       labelUrl: "https://labels.test/ESTEST00000.pdf",
       status: null,
+      checkpoint: null,
     });
     expect(parseEasyshipEvent({ data: {} })).toBeNull();
+  });
+
+  it("reads the latest checkpoint off a checkpoint event", () => {
+    const event = parseEasyshipEvent({
+      event_type: "shipment.tracking.checkpoints.created",
+      data: {
+        easyship_shipment_id: "ES1",
+        status: "Exception",
+        checkpoints: [
+          { message: "Held at customs", city: "Singapore", country_name: "Singapore", checkpoint_time: "2026-10-02T09:00:00Z" },
+          { message: "Arrived at facility", location: "HUB, SG", checkpoint_time: "2026-10-01T09:00:00Z" },
+        ],
+      },
+    });
+    expect(event?.checkpoint).toBe("Held at customs — Singapore, Singapore");
+    const bare = parseEasyshipEvent({ event_type: "x", data: { easyship_shipment_id: "ES1", checkpoints: [{ message: "Picked up" }] } });
+    expect(bare?.checkpoint).toBe("Picked up");
   });
 
   it("knows a delivery when it sees one", () => {

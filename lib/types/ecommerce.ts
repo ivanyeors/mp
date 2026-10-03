@@ -243,6 +243,9 @@ export interface Order {
   shipping_courier?: string | null;
   /** Latest courier status from Easyship tracking webhooks. Customer-visible. */
   shipping_tracking_status?: string | null;
+  /** Courier transit days from the label's rate (Easyship). Customer-visible. */
+  shipping_min_days?: number | null;
+  shipping_max_days?: number | null;
   shipped_at: string | null;
   delivered_at: string | null;
   cancelled_at: string | null;

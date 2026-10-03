@@ -12,9 +12,10 @@ const h = vi.hoisted(() => ({
   updates: [] as Array<{ table: string; row: Record<string, unknown> }>,
   timeline: [] as Array<Record<string, unknown>>,
   sendShippingEmail: vi.fn(),
+  sendTrackingEmail: vi.fn(),
 }));
 
-vi.mock("@/lib/email", () => ({ sendShippingEmail: h.sendShippingEmail }));
+vi.mock("@/lib/email", () => ({ sendShippingEmail: h.sendShippingEmail, sendTrackingEmail: h.sendTrackingEmail }));
 vi.mock("@/lib/supabase/server", () => ({
   /** One row per table — enough for one order and its shipment. */
   supabaseAdmin: () => ({
@@ -67,6 +68,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
+const { DEFAULT_SETTINGS } = await import("@/lib/easyship/schema");
 const { POST } = await import("@/app/api/shipping/easyship/webhook/route");
 
 const SECRET = "whsec_test";
@@ -118,6 +120,7 @@ beforeEach(() => {
   h.updates.length = 0;
   h.timeline.length = 0;
   h.sendShippingEmail.mockReset();
+  h.sendTrackingEmail.mockReset();
 });
 
 afterEach(() => vi.unstubAllEnvs());
@@ -186,6 +189,46 @@ describe("POST /api/shipping/easyship/webhook", () => {
     const again = await send(tracking("Delivered"));
     expect(await again.json()).toMatchObject({ delivered: false });
     expect(h.tables.orders!.delivered_at).toBe(deliveredAt);
+  });
+
+  it("emails a status update in our template only for the ticked statuses", async () => {
+    const settings = { ...DEFAULT_SETTINGS, tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["out_for_delivery"] } };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
+    await send(labelCreated);
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail).toHaveBeenCalledWith("order-1", "out_for_delivery", expect.objectContaining({ order_number: "MP-1" }), expect.anything(), null);
+    await send(tracking("Delivered"));
+    expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends no status email to a cancelled order, nor a stale one after delivery", async () => {
+    const settings = { ...DEFAULT_SETTINGS, tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["out_for_delivery", "delivered"] } };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
+    await send(labelCreated);
+    await send(tracking("Delivered"));
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail.mock.calls.map((c) => c[1])).toEqual(["delivered"]);
+    h.tables.orders = { ...h.tables.orders!, status: "cancelled", delivered_at: null };
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a problem email from the checkpoint event, with its checkpoint, when that event is subscribed", async () => {
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      webhook: { ...DEFAULT_SETTINGS.webhook, enabled: true },
+      tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["exception"] },
+    };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
+    await send(labelCreated);
+    await send(tracking("Exception"));
+    expect(h.sendTrackingEmail).not.toHaveBeenCalled();
+    await send({
+      event_type: "shipment.tracking.checkpoints.created",
+      resource_id: "ESSG1",
+      data: { easyship_shipment_id: "ESSG1", status: "Exception", checkpoints: [{ message: "Held at customs", location: "SG" }] },
+    });
+    expect(h.sendTrackingEmail).toHaveBeenCalledWith("order-1", "exception", expect.anything(), expect.anything(), "Held at customs — SG");
   });
 
   it("acknowledges events for shipments it does not know", async () => {
