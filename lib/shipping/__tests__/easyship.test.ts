@@ -18,7 +18,6 @@ import type { Parcel, ShippingSettings } from "@/lib/shipping/types";
 
 const settings: ShippingSettings = {
   ...DEFAULT_SHIPPING_SETTINGS,
-  easyship_enabled: true,
   origin_address: {
     contact_name: "Mpillow",
     company_name: "Mpillow Pte Ltd",

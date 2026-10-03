@@ -89,9 +89,6 @@ export async function fetchCourierRates(
   if (!config) {
     return { ok: false, reason: "not_configured", message: "EASYSHIP_API_TOKEN is not set" };
   }
-  if (!input.settings.easyship_enabled) {
-    return { ok: false, reason: "disabled", message: "Live rates are turned off in Settings → Shipping → Couriers" };
-  }
   const missing = missingOriginFields(input.settings.origin_address);
   if (missing.length > 0) {
     return {
@@ -141,8 +138,7 @@ export async function fetchCourierRates(
     rates = normalizeEasyshipRates(raw);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Easyship request failed";
-    // A 4xx about the address is the shopper's to fix, not an outage — but both
-    // fall back to the flat rate rather than blocking the sale.
+    // A 4xx about the address or an outage: either way the live methods are hidden.
     console.error("[shipping] Easyship rates failed:", message, err instanceof EasyshipError ? err.details : "");
     return { ok: false, reason: "error", message };
   }
@@ -178,15 +174,14 @@ function freeAbove(method: ShippingMethod, subtotal: number): boolean {
   return method.free_above !== null && method.free_above !== undefined && subtotal >= Number(method.free_above);
 }
 
-/** A flat method, or an Easyship method charging its flat fallback. */
-function flatOption(method: ShippingMethod, subtotal: number, source: "flat" | "fallback"): ShippingQuoteOption {
+function flatOption(method: ShippingMethod, subtotal: number): ShippingQuoteOption {
   const amount = calculateShippingRate(method, subtotal);
   return {
     method,
     amount,
     is_free: amount === 0,
     currency: method.currency,
-    source,
+    source: "flat",
     courier: null,
     carrier_cost: null,
     min_days: null,
@@ -195,8 +190,8 @@ function flatOption(method: ShippingMethod, subtotal: number, source: "flat" | "
 }
 
 /**
- * Price one method from already-fetched rates. Null when the method cannot ship
- * to this address — Easyship answered, and no courier the method allows serves it.
+ * Price one method from already-fetched rates. Null hides a live method with no
+ * courier quote: an outage, no rates, or a currency mismatch. There is no fallback.
  */
 export function priceMethod(
   method: ShippingMethod,
@@ -204,16 +199,16 @@ export function priceMethod(
   subtotal: number,
   handlingDays: number,
 ): ShippingQuoteOption | null {
-  if ((method.rate_source ?? "flat") !== "easyship") return flatOption(method, subtotal, "flat");
-  if (!rates || !rates.ok) return flatOption(method, subtotal, "fallback");
+  if ((method.rate_source ?? "flat") !== "easyship") return flatOption(method, subtotal);
+  if (!rates || !rates.ok) return null;
 
   const currency = method.currency.toUpperCase();
   const usable = rates.rates.filter((r) => r.currency === currency);
   if (usable.length === 0 && rates.rates.length > 0) {
     console.error(
-      `[shipping] Easyship quoted in ${rates.rates[0].currency}, method ${method.slug} charges ${currency}; using base_rate`,
+      `[shipping] Easyship quoted in ${rates.rates[0].currency}, method ${method.slug} charges ${currency}; hiding it`,
     );
-    return flatOption(method, subtotal, "fallback");
+    return null;
   }
   const rate = pickRate(usable, method.easyship_strategy ?? "cheapest", method.easyship_courier_service_id);
   if (!rate) return null;

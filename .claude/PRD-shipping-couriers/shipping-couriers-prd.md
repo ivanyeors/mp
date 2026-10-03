@@ -11,7 +11,7 @@ Shipping config is split across two pages that share the `shipping` permission:
 | Store › Shipping (`settings/shipping`) | Methods · Easyship (env status, live-rates switch, ship-from, package profiles, customs, test quote) | `shipping_settings` via `/api/shop/shipping/settings` |
 | Integration › Easyship (`settings/integrations/easyship`) | Tracking · Addresses · Boxes · Shipping rules · Webhook | `api_configs[slug=easyship]` via `/api/settings/easyship` |
 
-1. **Duplicate truth.** Ship-from address vs default sender address; package profiles vs custom boxes. Rating reads the first copy, while ADR 0020 (settings source of truth) says it should consume the doc.
+1. **Duplicate truth.** Ship-from address vs default sender address; package profiles vs custom boxes. Rating reads the first copy, while ADR 0021 (settings source of truth) says it should consume the doc.
 2. **Brand leakage.** The provider name is in nav, tabs, badges, method options and buttons.
 3. **False "fallback".** Flat methods aren't tied to any provider, so they are not a fallback. The only real fallback is a live method charging its `base_rate` during an outage, and that goes.
 

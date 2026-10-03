@@ -45,8 +45,6 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     settings = parseShippingSettings(data as Record<string, unknown> | null);
   }
-  // A test is a test: run it even while live rates are switched off for shoppers.
-  const testSettings = { ...settings, easyship_enabled: true };
 
   const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]);
   const currency = methods.find((m) => m.rate_source === "easyship")?.currency ?? methods[0]?.currency ?? "SGD";
@@ -61,11 +59,11 @@ export async function POST(req: Request) {
         description: "Test parcel",
       },
     ],
-    testSettings.packages,
+    settings.packages,
   );
 
   const rates = await fetchCourierRates(admin, {
-    settings: testSettings,
+    settings,
     destination,
     parcels,
     currency,
