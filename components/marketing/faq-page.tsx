@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { FaqContent } from "@/components/marketing/faq-content";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -100,14 +101,8 @@ export async function MarketingFaqPage({ params, searchParams }: FaqPageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+      <JsonLdScript data={faqJsonLd} />
+      <JsonLdScript data={breadcrumbJsonLd} />
 
       <main className="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
         <Breadcrumb className="mb-6">
