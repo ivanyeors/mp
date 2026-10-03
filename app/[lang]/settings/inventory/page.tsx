@@ -28,7 +28,8 @@ import {
   addInventoryItem,
   deleteInventoryItem,
   renameInventoryItem,
-  setItemPrimaryImage,
+  setItemsPrimaryImage,
+  getItemImageUrls,
 } from "./actions";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { toast } from "sonner";
@@ -2298,6 +2299,58 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
 }
 */
 
+/** One image for every size of a same-name item; it becomes the base image of its shop product. */
+function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
+  name: string;
+  itemIds: number[];
+  imageUrls: Record<number, string>;
+  setImageUrls: Dispatch<SetStateAction<Record<number, string>>>;
+}) {
+  const current = itemIds.map((id) => imageUrls[id]).find(Boolean);
+  const apply = (assetId: string | null, url: string | null) =>
+    setItemsPrimaryImage({ itemIds, assetId })
+      .then(() => {
+        setImageUrls((prev) => {
+          const next = { ...prev };
+          for (const id of itemIds) {
+            if (url) next[id] = url;
+            else delete next[id];
+          }
+          return next;
+        });
+        toast.success(url ? "Image set — shop product updated" : "Image cleared");
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "Failed to update image"),
+      );
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <ImagePicker onSelect={(sel) => void apply(sel.assetId, sel.url)}>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label={`${current ? "Change" : "Set"} image for ${name}`}
+          title="Item image — also the base image on its shop product"
+          className={current ? "overflow-hidden p-0" : undefined}
+        >
+          {current ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={current} alt="" className="h-full w-9 object-cover" />
+          ) : (
+            <ImageIcon className="h-4 w-4" />
+          )}
+        </Button>
+      </ImagePicker>
+      {current && (
+        <Button size="sm" variant="ghost" aria-label={`Clear image for ${name}`} onClick={() => void apply(null, null)}>
+          Clear
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, onSelectVariant, onDelete, onRename }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -2317,6 +2370,11 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   const [renameValue, setRenameValue] = useState("");
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [itemImageUrls, setItemImageUrls] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (open) void getItemImageUrls().then(setItemImageUrls).catch(() => {});
+  }, [open]);
 
   const sortedVariants = useMemo(() => {
     const list: Item[] = group?.items ?? [];
@@ -2476,10 +2534,11 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
           {variantsGroupedByName.map(({ name, variants, totalOnHand }) => (
             <Collapsible key={`${group?.key ?? "group"}:${name}`} defaultOpen>
               <div className="rounded border">
+                <div className="flex items-center gap-2 pr-3">
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className="group flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-2">
@@ -2494,9 +2553,24 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                         {variants.length} item{variants.length === 1 ? "" : "s"} • On hand: {totalOnHand}
                       </div>
                     </div>
-                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
                   </button>
                 </CollapsibleTrigger>
+                <FamilyImageControl
+                  name={name}
+                  itemIds={variants.map((v) => v.id)}
+                  imageUrls={itemImageUrls}
+                  setImageUrls={setItemImageUrls}
+                />
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Toggle ${name}`}
+                    className="group flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                  </button>
+                </CollapsibleTrigger>
+                </div>
                 <CollapsibleContent>
                   <div className="space-y-3 border-t p-3">
                     {variants.map((variant) => {
@@ -2564,25 +2638,6 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                                 </>
                               ) : (
                                 <>
-                                  {/* ponytail: minimal admin affordance — set-only picker, current image not shown here */}
-                                  <ImagePicker
-                                    onSelect={(sel) => {
-                                      void setItemPrimaryImage({ itemId: variant.id, assetId: sel.assetId })
-                                        .then(() => toast.success("Item image set"))
-                                        .catch((error: unknown) =>
-                                          toast.error(error instanceof Error ? error.message : "Failed to set item image"),
-                                        );
-                                    }}
-                                  >
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      aria-label={`Set image for ${description}`}
-                                      disabled={renameSaving}
-                                    >
-                                      <ImageIcon className="h-4 w-4" />
-                                    </Button>
-                                  </ImagePicker>
                                   <Button
                                     size="sm"
                                     variant="outline"
