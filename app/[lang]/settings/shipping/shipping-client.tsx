@@ -237,6 +237,8 @@ export type CouriersStatus = {
     boxes: number | null;
     /** Item types with no box, so no live rates. */
     unboxed: string[];
+    /** Why the saved courier settings can't be used; live methods are hidden until fixed. */
+    unreadable: string | null;
     href: string;
 };
 
@@ -326,6 +328,11 @@ export default function SettingsShippingPage({
         setError(null);
         setSaving(true);
         const payload = formToPayload(form);
+        if (form.rate_source === "easyship" && !(parseFloat(form.base_rate) > 0)) {
+            setError("Set a customisation order rate above 0. Customisation orders charge it instead of a courier quote.");
+            setSaving(false);
+            return;
+        }
 
         try {
             const url = editingId
@@ -394,6 +401,11 @@ export default function SettingsShippingPage({
                         <div className="min-w-0 flex-1">
                             <p className="font-medium">Couriers</p>
                             <p className="text-sm text-muted-foreground">{couriersSummary(couriers)}</p>
+                            {couriers.unreadable && (
+                                <p className="text-sm text-destructive">
+                                    Courier settings can&apos;t be read, so live rates are off: {couriers.unreadable}
+                                </p>
+                            )}
                             {couriers.unboxed.length > 0 && (
                                 <p className="text-sm text-amber-700 dark:text-amber-400">
                                     No box for {couriers.unboxed.join(", ")}: live rates are off for these. Set one under Boxes › Used for.
@@ -458,7 +470,13 @@ export default function SettingsShippingPage({
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <span className="font-medium text-foreground">
+                                        <span
+                                            className={
+                                                method.rate_source === "easyship" && Number(method.base_rate) <= 0
+                                                    ? "font-medium text-destructive"
+                                                    : "font-medium text-foreground"
+                                            }
+                                        >
                                             {method.rate_source === "easyship" && "Customisation orders "}
                                             {formatCurrency(method.base_rate, method.currency)}
                                         </span>
@@ -709,7 +727,7 @@ export default function SettingsShippingPage({
                                 <Input
                                     id="base_rate"
                                     type="number"
-                                    min="0"
+                                    min={form.rate_source === "easyship" ? "0.01" : "0"}
                                     step="0.01"
                                     value={form.base_rate}
                                     onChange={(e) => setField("base_rate", e.target.value)}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireBearerOrAdmin } from "@/lib/auth/bearer-or-admin";
-import { EasyshipSettingsSchema } from "@/lib/easyship/schema";
+import { EasyshipSettingsInputSchema } from "@/lib/easyship/schema";
 import { readEasyshipConfig, writeEasyshipConfig, type EasyshipConfig } from "@/lib/easyship/store";
 import { readLiveSnapshot, syncEasyship, webhookEndpoint } from "@/lib/easyship/sync";
 
@@ -16,7 +16,7 @@ const guard = (req: Request) => requireBearerOrAdmin(req, "EASYSHIP_SYNC_TOKEN",
 
 function view(cfg: EasyshipConfig) {
   const { webhook_secret_token, ...sync } = cfg.sync;
-  return { settings: cfg.settings, sync: { ...sync, webhook_secret_set: !!webhook_secret_token }, webhook_endpoint: webhookEndpoint() };
+  return { settings: cfg.settings, settingsError: cfg.settingsError ?? null, sync: { ...sync, webhook_secret_set: !!webhook_secret_token }, webhook_endpoint: webhookEndpoint() };
 }
 
 export async function GET(req: Request) {
@@ -50,7 +50,7 @@ export async function PUT(req: Request) {
   const denied = await guard(req);
   if (denied) return denied;
   const body = await req.json().catch(() => null);
-  const parsed = EasyshipSettingsSchema.safeParse(body);
+  const parsed = EasyshipSettingsInputSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   try {
     // A body without box_for_type (older automation) keeps the saved mapping instead of wiping it.

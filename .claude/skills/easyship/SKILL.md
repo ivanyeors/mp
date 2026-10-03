@@ -17,7 +17,7 @@ equal and the sync report is recorded.
 
 | Call | Does |
 |---|---|
-| `GET` | saved settings + last sync report + webhook endpoint |
+| `GET` | saved settings + last sync report + webhook endpoint; `settingsError` is set (and `settings` null) when the saved doc fails the schema |
 | `GET ?live=1` | same, plus a read-only snapshot of what Easyship holds now |
 | `PUT` body=full settings | validate → save → push to Easyship → return `report` |
 | `POST` body=`{"action":"sync"}` | re-push saved settings unchanged |
@@ -25,7 +25,13 @@ equal and the sync report is recorded.
 
 The body shape is `EasyshipSettingsSchema` in `lib/easyship/schema.ts`; rule condition/action
 option keys are `RULE_CONDITIONS` / `RULE_ACTIONS` there. `PUT` is whole-document: GET first,
-edit the JSON, PUT it back.
+edit the JSON, PUT it back. `PUT` also refuses repeated box names (`EasyshipSettingsInputSchema`).
+
+The doc also drives checkout rating and labels (Settings → Shipping → Couriers is its page):
+- The address with `default_for.sender` is where every quote and label ships from. No sender → no live rates.
+- `box_for_type` (`{pillow|bolster|accessory: {box, weight_grams}}`) names the box each item type
+  ships in. It lives on the doc only and is never pushed to Easyship. A body without it keeps the
+  saved mapping. A type with no box gets no live rates.
 
 ## Agent recipe
 
@@ -43,8 +49,8 @@ deactivated / skipped / error. `ok:false` means at least one `error` step; the s
 ## Gotchas
 
 - Boxes and shipping rules not in the saved settings are **deleted** in Easyship on sync. Import
-  from live (`GET ?live=1` → `importFromLive` in `lib/easyship/schema.ts`, or the page's button) before the first PUT.
-- Addresses match by line 1 + postal code + country + company. Only addresses with a default flag are imported; strays stay untouched.
+  from live (`GET ?live=1` → `importFromLive` in `lib/easyship/schema.ts`, or the page's button) before the first PUT. Import keeps local boxes a `box_for_type` mapping points at.
+- Addresses match by line 1 + postal code + country (an exact company match wins); a renamed company is updated, not duplicated. Only addresses with a default flag are imported; strays stay untouched.
 - A rule whose conditions/actions change is deleted and recreated (new Easyship id).
 - `match_country` takes numeric Easyship country ids, not alpha-2 — use `/reference`.
 - `allowed_statuses: []` leaves Easyship unchanged (clear it in the dashboard).

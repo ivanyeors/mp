@@ -38,6 +38,7 @@ vi.mock("@/lib/shipping/settings", async (orig) => {
 });
 vi.mock("@/lib/easyship/store", () => ({
   readSenderAddress: async () => h.sender,
+  readEasyshipConfig: async () => ({ settings: null, sync: {}, settingsError: null }),
   readTypeBoxes: async () => ({ pillow: { length_cm: 70, width_cm: 45, height_cm: 20, tare_grams: 0, weight_grams: 1500 } }),
 }));
 vi.mock("@/lib/shipping/lines", () => ({

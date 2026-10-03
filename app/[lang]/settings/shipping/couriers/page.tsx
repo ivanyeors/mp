@@ -8,8 +8,10 @@ export const runtime = "nodejs";
 
 export default async function EasyshipSettingsRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
@@ -20,6 +22,7 @@ export default async function EasyshipSettingsRoute({
   const initial = cfg
     ? {
         settings: cfg.settings,
+        settingsError: cfg.settingsError ?? null,
         sync: {
           last_at: cfg.sync.last_at,
           report: cfg.sync.report,
@@ -29,5 +32,6 @@ export default async function EasyshipSettingsRoute({
         webhook_endpoint: webhookEndpoint(),
       }
     : undefined;
-  return <EasyshipSettingsPage initial={initial} />;
+  const { tab } = await searchParams;
+  return <EasyshipSettingsPage initial={initial} initialTab={tab} />;
 }

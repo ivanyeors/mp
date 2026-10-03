@@ -129,4 +129,11 @@ describe("syncEasyship", () => {
     expect(calls.some((c) => c.path.startsWith("/webhooks"))).toBe(false);
     expect(local.steps.find((s) => s.area === "webhook")?.action).toBe("skipped");
   });
+
+  it("updates a renamed company at the same address instead of adding a second one", async () => {
+    const renamed = { ...desired, addresses: [{ ...desired.addresses[0], company_name: "Mellow Life" }] };
+    await syncEasyship(renamed, ENDPOINT);
+    expect(find("POST", "/addresses")).toHaveLength(0);
+    expect(find("PATCH", "/addresses/a1")[0].body?.company_name).toBe("Mellow Life");
+  });
 });

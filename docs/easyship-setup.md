@@ -1,7 +1,7 @@
 # Easyship setup
 
-How to switch on live shipping rates and labels (ADR 0020). Nothing changes for shoppers until
-step 6: until then every shipping method charges its flat rate, as before.
+How to switch on live shipping rates and labels (ADR 0020, ADR 0022). Flat methods are unaffected;
+live methods are hidden at checkout until the token, a default sender and boxes are in place.
 
 ## 1. Apply the migration
 
@@ -34,27 +34,30 @@ Redeploy after changing them.
 
 ## 4. Register the webhook
 
-In Easyship **Connect → API Integrations → Webhooks**, add the URL shown in
-**Settings → Shipping → Easyship** (`https://<your site>/api/shipping/easyship/webhook`), subscribed
-to `shipment.label.created`, `shipment.label.failed` and `shipment.tracking.status.changed`. Copy its
-secret into `EASYSHIP_WEBHOOK_SECRET`.
+**Settings → Shipping → Couriers → Save & sync** registers the webhook
+(`https://<your site>/api/shipping/easyship/webhook`) and captures its signing secret. Setting
+`EASYSHIP_WEBHOOK_SECRET` overrides the captured one. Use **Test** in your Easyship dashboard to
+confirm delivery.
 
-## 5. Fill in Settings → Shipping → Easyship
+## 5. Fill in Settings → Shipping → Couriers
 
-1. **Ship-from address** — where couriers collect. Every starred field is required.
-2. **Packaging** — measure the real packed box for a pillow, a bolster and an accessory. The page
-   shows the volumetric weight couriers will bill; a smaller box is the biggest saving available.
-3. **Customs & quotes** — DDU (receiver pays duties) is the default; HS code 940490 covers
-   pillows; handling days are added to courier transit times shown to shoppers.
-4. Save, then use **Test a quote** with a Singapore and a Malaysian postal code. Note the couriers
-   and costs. Copy a courier service id if you want to pin one to a method.
+1. **Import from courier account** first: Save & sync deletes boxes and rules that aren't on the page.
+2. **Addresses** — flag one address **Default sender**. Every quote and label ships from it; with no
+   sender, live methods are hidden at checkout.
+3. **Boxes** — measure the real packed box for a pillow, a bolster and an accessory. On each box,
+   tick **Used for** and set one unit's content weight. A type with no box gets no live rates.
+4. **Connection → Customs & quotes** — DDU (receiver pays duties) is the default; HS code 940490
+   covers pillows; handling days are added to courier transit times shown to shoppers.
+5. **Save & sync**, then use **Connection → Test a quote** with a Singapore and a Malaysian postal
+   code. Copy a courier service id if you want to pin one to a method.
 
 ## 6. Turn methods live
 
-1. In **Settings → Shipping → Methods**, edit a method (or add one, e.g. "Express") and set
-   **Pricing → Live rate (Easyship)**. Choose the courier strategy, markup and rounding. Keep a
-   sensible **Fallback rate** — it is charged if Easyship is unreachable.
-2. Back in the **Easyship** tab, switch on **Live rates for shoppers** and save.
+1. In **Settings → Shipping**, edit a method (or add one; new methods start live) and set
+   **Pricing → Live courier rate**. Choose the courier strategy, markup and rounding, and a
+   **Customisation order rate**: Results charge it flat, since they don't quote couriers.
+2. A live method with no quote is **hidden** — there is no fallback price (ADR 0022). Keep one
+   active flat method if checkout must always offer an option; the Shipping page warns when there is none.
 3. Check the storefront: the checkout shows a live rate with courier and delivery time once a postal
    code is entered; the cart, the product page and the shipping policy page have a delivery
    checker; a **Delivery Estimator** section can be added to the landing page from the page
@@ -62,7 +65,7 @@ secret into `EASYSHIP_WEBHOOK_SECRET`.
 
 ## 7. Buy a label (sandbox first)
 
-On a paid order in **Settings → Orders**, use **Ship with Easyship**. The customer's courier is
+On a paid order in **Settings → Orders**, use **Buy courier label**. The customer's courier is
 preselected with today's price. **Buy label** creates the shipment; once tracking exists the order is
 marked shipped and the customer emailed. Delivery events from the courier mark it delivered.
 
@@ -72,6 +75,6 @@ production token. Easyship's API field names have moved between versions; the co
 
 ## Not covered yet
 
-- Customised builds (Results) still charge the method's flat/fallback rate at the hold — see
+- Customised builds (Results) charge a live method's customisation order rate at the hold — see
   ADR 0020, Consequences.
 - `order_margins` does not subtract the courier cost yet; it is recorded in `order_shipments`.

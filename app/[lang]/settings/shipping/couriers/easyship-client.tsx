@@ -20,13 +20,14 @@ import {
   TRACKING_STATUSES,
   WEBHOOK_EVENTS,
   importFromLive,
+  keepMappedBoxes,
   type EasyshipAddress,
   type EasyshipSettings,
   type LiveSnapshot,
 } from "@/lib/easyship/schema";
 import type { SyncAction, SyncReport } from "@/lib/easyship/sync-report";
 import { ShippingRulesEditor } from "./shipping-rules-editor";
-import { EasyshipPanel } from "./easyship-panel";
+import { apiErrorMessage, EasyshipPanel } from "./easyship-panel";
 
 export type SyncView = {
   last_at: string | null;
@@ -37,6 +38,8 @@ export type SyncView = {
 
 export type EasyshipInitial = {
   settings: EasyshipSettings | null;
+  /** Set when a saved doc fails validation; the form then starts empty. */
+  settingsError?: string | null;
   sync: SyncView;
   webhook_endpoint: string | null;
 };
@@ -59,7 +62,7 @@ async function call(method: "GET" | "PUT" | "POST", body?: unknown, query = ""):
   });
   const json = (await res.json().catch(() => ({}))) as ApiResponse;
   if (!res.ok) {
-    throw new Error(typeof json.error === "string" ? json.error : `Request failed (${res.status})`);
+    throw new Error(apiErrorMessage(json.error, `Request failed (${res.status})`));
   }
   return json;
 }
@@ -68,13 +71,16 @@ type Update = (fn: (draft: EasyshipSettings) => void) => void;
 
 const titleCase = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
-export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipInitial }) {
+const TABS = ["connection", "addresses", "boxes", "rules", "tracking", "webhook"];
+
+export default function EasyshipSettingsPage({ initial, initialTab }: { initial?: EasyshipInitial; initialTab?: string }) {
   const [settings, setSettings] = useState<EasyshipSettings>(initial?.settings ?? DEFAULT_SETTINGS);
   const [seeded, setSeeded] = useState(!!initial?.settings);
   const [sync, setSync] = useState<SyncView>(initial?.sync ?? EMPTY_SYNC);
   const endpoint = initial?.webhook_endpoint ?? null;
   const [busy, setBusy] = useState<"save" | "sync" | "import" | null>(null);
-  const [tab, setTab] = useState("connection");
+  const [tab, setTab] = useState(initialTab && TABS.includes(initialTab) ? initialTab : "connection");
+  const [settingsError, setSettingsError] = useState(initial?.settingsError ?? null);
 
   const update: Update = useCallback((fn) => {
     setSettings((s) => {
@@ -86,6 +92,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
 
   const applyResponse = (r: ApiResponse) => {
     if (r.settings) setSettings(r.settings);
+    if (r.settings !== undefined) setSettingsError(r.settingsError ?? null);
     if (r.sync) setSync(r.sync);
     if (r.report) {
       if (r.report.ok) toast.success("Saved and synced");
@@ -116,8 +123,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
       const r = await call("GET", undefined, "?live=1");
       if (!r.live) throw new Error("No live snapshot returned");
       const imported = importFromLive(r.live, endpoint ? new URL(endpoint).origin : null);
-      // The courier account has no type → box mapping, so keep ours.
-      setSettings((s) => ({ ...imported, box_for_type: s.box_for_type }));
+      setSettings((s) => ({ ...imported, ...keepMappedBoxes(s, imported.boxes) }));
       toast.success("Imported from courier account — review, then Save & sync");
     });
 
@@ -146,7 +152,17 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
         </div>
       </div>
 
-      {!seeded && (
+      {settingsError && (
+        <Card className="border-destructive/50">
+          <CardContent className="py-4 text-sm">
+            <p className="font-medium text-destructive">The saved settings don&apos;t pass validation, so live rates are off.</p>
+            <p className="text-muted-foreground">{settingsError}</p>
+            <p className="text-muted-foreground">Import from courier account, review every tab, then Save &amp; sync to replace them.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!seeded && !settingsError && (
         <Card>
           <CardContent className="py-4 text-sm text-muted-foreground">
             Nothing saved yet. Import from courier account to start from the live account, or fill the tabs in and save.
@@ -431,7 +447,7 @@ function AddressesSection({ addresses, update }: { addresses: EasyshipAddress[];
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Default sender, return, pickup and billing addresses. Matched to the courier account by line 1 + postal code +
-        company; other addresses there are left alone.
+        country; other addresses there are left alone.
       </p>
       {addresses.map((a, i) => (
         <Card key={i}>

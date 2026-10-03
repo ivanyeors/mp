@@ -124,6 +124,12 @@ export const EasyshipSettingsSchema = z.object({
   webhook: WebhookSettingsSchema,
 });
 
+/** What a save accepts: also refuses repeated box names, which "Used for" can't tell apart. Reads stay lenient. */
+export const EasyshipSettingsInputSchema = EasyshipSettingsSchema.refine(
+  (s) => new Set(s.boxes.map((b) => b.name.trim().toLowerCase())).size === s.boxes.length,
+  { message: "Box names must be unique", path: ["boxes"] },
+);
+
 export type EasyshipSettings = z.infer<typeof EasyshipSettingsSchema>;
 export type EasyshipAddress = z.infer<typeof AddressSchema>;
 export type EasyshipBox = z.infer<typeof BoxSchema>;
@@ -347,3 +353,15 @@ export type EasyshipReference = {
   stores: { id: string; name: string }[];
   categories: { id: string; name: string }[];
 };
+
+/** The courier account has no type → box mapping: keep ours, and the boxes it names that the account lacks. */
+export function keepMappedBoxes(
+  current: Pick<EasyshipSettings, "boxes" | "box_for_type">,
+  imported: EasyshipSettings["boxes"],
+): Pick<EasyshipSettings, "boxes" | "box_for_type"> {
+  const key = (n: string) => n.trim().toLowerCase();
+  const have = new Set(imported.map((b) => key(b.name)));
+  const mapped = new Set(Object.values(current.box_for_type).map((m) => key(m!.box)));
+  const kept = current.boxes.filter((b) => mapped.has(key(b.name)) && !have.has(key(b.name)));
+  return { boxes: [...imported, ...kept], box_for_type: current.box_for_type };
+}

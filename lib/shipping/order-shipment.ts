@@ -14,7 +14,7 @@ import { loadOrderShippableLines } from "@/lib/shipping/lines";
 import { buildParcels } from "@/lib/shipping/parcels";
 import { fetchCourierRates } from "@/lib/shipping/quote";
 import { readShippingSettings } from "@/lib/shipping/settings";
-import { readSenderAddress, readTypeBoxes } from "@/lib/easyship/store";
+import { readEasyshipConfig, readSenderAddress, readTypeBoxes } from "@/lib/easyship/store";
 import type { RatesResult, ShippingDestination } from "@/lib/shipping/types";
 
 const ORDER_SHIPPING_COLUMNS =
@@ -82,6 +82,12 @@ export type OrderRatesResult =
   | { ok: false; status: number; error: string };
 
 /** Today's courier rates for an order's parcels — what the label will actually cost. */
+/** An invalid saved doc reads as "no boxes, no sender"; name the real cause instead. */
+async function invalidCourierDoc(): Promise<string | null> {
+  const { settingsError } = await readEasyshipConfig();
+  return settingsError ? `The saved courier settings are invalid (${settingsError}): fix them in Settings → Shipping → Couriers` : null;
+}
+
 export async function quoteOrderShipment(
   admin: SupabaseClient,
   order: OrderForShipping,
@@ -184,12 +190,16 @@ export async function buyOrderLabel(
   const lines = await loadOrderShippableLines(admin, order.id, order.currency);
   const parcels = buildParcels(lines, boxes);
   if (!parcels || parcels.length === 0) {
-    return { ok: false, status: 400, error: "This order cannot be boxed for a label" };
+    return { ok: false, status: 400, error: (await invalidCourierDoc()) ?? "This order cannot be boxed for a label" };
   }
   // The same default sender the quote used.
   const origin = await readSenderAddress();
   if (!origin) {
-    return { ok: false, status: 400, error: "No default sender address: set one in Settings → Shipping → Couriers → Addresses" };
+    return {
+      ok: false,
+      status: 400,
+      error: (await invalidCourierDoc()) ?? "No default sender address: set one in Settings → Shipping → Couriers → Addresses",
+    };
   }
 
   // Claim: make sure the row exists, then take it only while it has no shipment.

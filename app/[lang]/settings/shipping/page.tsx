@@ -31,11 +31,13 @@ export default async function ShippingSettingsRoute({
     readEasyshipConfig().catch(() => null),
   ]);
   const mapped = typeBoxes(account?.settings);
+  const unboxed = account?.settings ? BOX_TYPES.filter((t) => !mapped[t]) : [];
   const couriers = {
     environment: easyshipConfig()?.environment ?? null,
     boxes: account?.settings?.boxes.length ?? null,
-    unboxed: account ? BOX_TYPES.filter((t) => !mapped[t]) : [],
-    href: withLocale("/settings/shipping/couriers", locale),
+    unboxed,
+    unreadable: account ? account.settingsError ?? null : "The courier settings could not be loaded",
+    href: withLocale(`/settings/shipping/couriers${unboxed.length ? "?tab=boxes" : ""}`, locale),
   };
   return <SettingsShippingPage initialData={rows ? { ok: true, rows } : undefined} couriers={couriers} />;
 }

@@ -27,12 +27,11 @@ export function webhookEndpoint(): string | null {
 
 const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
 
-function sameAddress(a: EasyshipAddress, b: LiveAddress): boolean {
+function samePlace(a: EasyshipAddress, b: LiveAddress): boolean {
   return (
     norm(a.line_1) === norm(b.line_1) &&
     norm(a.postal_code) === norm(b.postal_code) &&
-    norm(a.country_alpha2) === norm(b.country_alpha2) &&
-    norm(a.company_name) === norm(b.company_name)
+    norm(a.country_alpha2) === norm(b.country_alpha2)
   );
 }
 
@@ -107,7 +106,10 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
     const live = await easyshipList<LiveAddress>("/addresses", "addresses");
     for (const a of desired.addresses) {
       const target = `${a.company_name} · ${a.line_1}`;
-      const match = live.find((l) => sameAddress(a, l));
+      // A renamed company at the same place is an update, not a second address.
+      const match =
+        live.find((l) => samePlace(a, l) && norm(a.company_name) === norm(l.company_name)) ??
+        live.find((l) => samePlace(a, l));
       const flags = trueFlags(a.default_for);
       if (!match) {
         await easyship("/addresses", { method: "POST", body: { ...addressFields(a), default_for: a.default_for } });

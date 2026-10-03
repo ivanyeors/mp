@@ -26,3 +26,13 @@ export const COURIER_PIN_ERROR = {
   message: "Choose the courier service to pin, or pick another strategy",
   path: ["easyship_courier_service_id"],
 };
+
+/** Customisation orders charge a live method's base_rate (they don't quote couriers), so it can't be free. */
+export function livePriced(body: { rate_source?: string; base_rate?: number }): boolean {
+  return body.rate_source !== "easyship" || body.base_rate === undefined || body.base_rate > 0;
+}
+
+export const LIVE_PRICE_ERROR = {
+  message: "Set a customisation order rate above 0 for a live method",
+  path: ["base_rate"],
+};
