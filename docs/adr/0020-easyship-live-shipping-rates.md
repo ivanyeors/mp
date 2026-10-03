@@ -69,5 +69,9 @@ Southeast Asian couriers in one integration, and landed-cost quotes for cross-bo
   (`courier_service.id`) and the 2023-01 one (`courier_id`); labels as a hosted URL or base64 pages.
   `EASYSHIP_API_VERSION` pins the version. Verify a label purchase in the sandbox before switching
   the production token on.
+- **Every address sent to Easyship has a city.** Easyship refuses a blank one, and most quotes are
+  made from a country and postal code alone. Those send the country's main city ("Singapore",
+  "Kuala Lumpur"); the shopper's own city wins once there is one. Rates are zoned by postal code,
+  which is also why the quote cache key leaves the city out.
 - **A method's countries are now enforced at checkout.** The route used to accept any method for any
   address; it now refuses a method whose `countries` do not include the address's country.
