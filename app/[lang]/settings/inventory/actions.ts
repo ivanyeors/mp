@@ -13,7 +13,7 @@ import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 import { aggregateSignedQuantities, combineTemplateSaleLines } from '@/lib/inventory/template-sale-lines'
 import { alterationBaseId, assertConvertible, stockInRows, type StockItem } from '@/lib/inventory/alteration-stock'
 import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
-import { syncItemImageToProducts } from '@/lib/ecommerce/item-image-sync'
+import { setProductBaseImage, syncItemImageToProducts } from '@/lib/ecommerce/item-image-sync'
 import { resolveAddonImageUrls } from '@/lib/results/addon-images'
 
 function scheduleMirrorReResolve(variantIds: number[]) {
@@ -927,6 +927,46 @@ export async function getItemImageUrls(): Promise<Record<number, string>> {
     .in('id', assetIds)
   if (aErr) throw new Error(aErr.message)
   return Object.fromEntries(resolveAddonImageUrls(items ?? [], assets ?? []))
+}
+
+const COMPOSED_PRODUCT_SLUGS = ['mpillow-basic', 'mpillow-premium', 'mbolster'] as const
+export type ComposedProductSlug = (typeof COMPOSED_PRODUCT_SLUGS)[number]
+
+const ComposedImageSchema = z.object({
+  slug: z.enum(COMPOSED_PRODUCT_SLUGS),
+  assetId: z.string().uuid().nullable(),
+})
+
+/** Set the base image of the basic / premium pillow or bolster storefront product. */
+export async function setComposedProductImage(input: z.infer<typeof ComposedImageSchema>) {
+  await assertAdmin('inventory')
+  const parsed = ComposedImageSchema.parse(input)
+  const admin = supabaseAdmin()
+  const { data: product, error } = await admin
+    .from('products')
+    .select('id')
+    .eq('slug', parsed.slug)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!product) throw new Error('Shop product not generated yet — run the product sync first')
+  const url = await setProductBaseImage(admin, product.id, parsed.assetId)
+  return { ok: true, url }
+}
+
+/** slug → current base image URL of the pillow/bolster storefront products. */
+export async function getComposedProductImageUrls(): Promise<Partial<Record<ComposedProductSlug, string>>> {
+  await assertAdmin('inventory')
+  const { data, error } = await supabaseAdmin()
+    .from('products')
+    .select('slug, product_variants(image_url)')
+    .in('slug', [...COMPOSED_PRODUCT_SLUGS])
+  if (error) throw new Error(error.message)
+  const out: Partial<Record<ComposedProductSlug, string>> = {}
+  for (const p of data ?? []) {
+    const url = (p.product_variants as Array<{ image_url: string | null }>).map((v) => v.image_url).find(Boolean)
+    if (url) out[p.slug as ComposedProductSlug] = url
+  }
+  return out
 }
 
 export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
