@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "components/marketing/faq-page.tsx": {
-    "mtime": 1790991721.2523377,
-    "seen": 1790998160.445857,
-    "ast_hash": "21bc71d5e75b8c3733c920a843285d72",
+    "mtime": 1791002569.1098983,
+    "seen": 1791002603.39924,
+    "ast_hash": "6e635351480311273a44225ff20da849",
     "semantic_hash": ""
   },
   "components/marketing/info-callout.tsx": {
@@ -4206,9 +4206,9 @@
     "semantic_hash": ""
   },
   "components/seo/json-ld-script.tsx": {
-    "mtime": 1790991721.2581072,
-    "seen": 1790998160.4459221,
-    "ast_hash": "01090985491165b35ee521091f17c047",
+    "mtime": 1791002569.1101062,
+    "seen": 1791002603.399298,
+    "ast_hash": "1a33ed4a7fa36e9639144f7fb6593386",
     "semantic_hash": ""
   },
   "components/seo/site-json-ld.tsx": {
@@ -6114,15 +6114,15 @@
     "semantic_hash": ""
   },
   "next.config.ts": {
-    "mtime": 1790991721.5816224,
-    "seen": 1790998160.446625,
-    "ast_hash": "6edc4219173a8c3d8ccf8de07a1453f6",
+    "mtime": 1791002569.1334152,
+    "seen": 1791002603.399959,
+    "ast_hash": "25abafc407a56ff761a9377109b05a40",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1790991721.5827026,
-    "seen": 1790998160.446626,
-    "ast_hash": "5716d230687d746ff7eb816c43fca841",
+    "mtime": 1791002569.133607,
+    "seen": 1791002603.399959,
+    "ast_hash": "6fe6707b90ffec800b41cdb4c06c0b69",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -13920,9 +13920,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/easyship.test.ts": {
-    "mtime": 1791000767.7483253,
-    "seen": 1791000961.983947,
-    "ast_hash": "50854edf0f51e31a70c40ce3f007fc13",
+    "mtime": 1791002629.0087202,
+    "seen": 1791002666.797962,
+    "ast_hash": "3535c102025451721087d4f91599e5e4",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/order-shipment.test.ts": {
@@ -13956,9 +13956,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/easyship.ts": {
-    "mtime": 1791000752.2568953,
-    "seen": 1791000961.983951,
-    "ast_hash": "e00734cc0a5c24c764dc7b234a638507",
+    "mtime": 1791002569.1329668,
+    "seen": 1791002603.399848,
+    "ast_hash": "2177241342d226a842cd6e8ebcc67a3c",
     "semantic_hash": ""
   },
   "lib/shipping/lines.ts": {
@@ -14022,9 +14022,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0020-easyship-live-shipping-rates.md": {
-    "mtime": 1791000752.2014222,
-    "seen": 1791000961.984811,
-    "ast_hash": "5746265ff8f353541dbbe7c1c8dee12d",
+    "mtime": 1791002569.1103382,
+    "seen": 1791002603.400577,
+    "ast_hash": "61d138194b70df4491cc3dda98e5135a",
     "semantic_hash": ""
   },
   "docs/easyship-setup.md": {
@@ -14100,9 +14100,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
-    "mtime": 1790991721.3652277,
-    "seen": 1790998160.4464068,
-    "ast_hash": "0fe4e506e883cfdcadbab1f0e94df239",
+    "mtime": 1791002569.131979,
+    "seen": 1791002603.3997598,
+    "ast_hash": "685b14add505f7184f7225eb72db2b01",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/fake-supabase.ts": {
@@ -14142,9 +14142,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
-    "mtime": 1790991721.3662176,
-    "seen": 1790998160.4464152,
-    "ast_hash": "3aa029e2e1f870f20803a5cad757164c",
+    "mtime": 1791002569.1322303,
+    "seen": 1791002603.399765,
+    "ast_hash": "a9541a96ccc70a8c7b4be220b8d51603",
     "semantic_hash": ""
   },
   "lib/reviews/google-actions.ts": {
@@ -14244,9 +14244,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/OPS-CHECKLIST.md": {
-    "mtime": 1790991721.1746984,
-    "seen": 1790998160.446835,
-    "ast_hash": "f9f88f475a1d9a54de5793376913e1cf",
+    "mtime": 1791002569.1096683,
+    "seen": 1791002603.400162,
+    "ast_hash": "0e4b966bfac2f8474e72fd807f185665",
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/google-review-replies-prd.md": {
@@ -14268,9 +14268,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/preview.ts": {
-    "mtime": 1790991721.3666818,
-    "seen": 1790998160.446419,
-    "ast_hash": "9191ca2e589e8fe3dfdda1cca1caba40",
+    "mtime": 1791002569.1323612,
+    "seen": 1791002603.399768,
+    "ast_hash": "8286dd7fbe7a509d6615a5eae7071319",
     "semantic_hash": ""
   },
   "scripts/telegram-review-preview.ts": {
@@ -14469,6 +14469,24 @@
     "mtime": 1791002148.9173753,
     "seen": 1791002194.15255,
     "ast_hash": "84d96cb9d1e2f92ca82d92c0f484e27c",
+    "semantic_hash": ""
+  },
+  "lib/seo/__tests__/jsonld-serialize.test.ts": {
+    "mtime": 1791002569.1324456,
+    "seen": 1791002603.399822,
+    "ast_hash": "4ba83d2906c5ff6e5a4aa6d503f31dce",
+    "semantic_hash": ""
+  },
+  "lib/seo/jsonld-serialize.ts": {
+    "mtime": 1791002569.1325035,
+    "seen": 1791002603.3998332,
+    "ast_hash": "4c1bb76b5a43d78eb55081c351d01d8c",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261003033500_dimension_overrides_service_role_only.sql": {
+    "mtime": 1791002569.134513,
+    "seen": 1791002603.400108,
+    "ast_hash": "a5dcb085bc4798a65bbf25eb8545df79",
     "semantic_hash": ""
   }
 }

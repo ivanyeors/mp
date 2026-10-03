@@ -126,6 +126,31 @@ export function originAddressBody(origin: EasyshipAddress) {
   });
 }
 
+/**
+ * Easyship refuses an address without a city ("destination_address.city can't be
+ * blank"), but most quotes are made from a country and postal code alone: the
+ * delivery checker, the checkout before the address is finished, Settings' test.
+ * Couriers zone rates by postal code (which is why `quoteCacheKey` leaves the city
+ * out), so those quotes send the country's main city. A country not listed here
+ * sends none, Easyship refuses it, and the method charges its Fallback rate.
+ */
+const QUOTE_CITY: Record<string, string> = {
+  SG: "Singapore",
+  HK: "Hong Kong",
+  MO: "Macau",
+  MY: "Kuala Lumpur",
+  ID: "Jakarta",
+  TH: "Bangkok",
+  PH: "Manila",
+  VN: "Ho Chi Minh City",
+  BN: "Bandar Seri Begawan",
+  AU: "Sydney",
+};
+
+function destinationCity(destination: Pick<ShippingDestination, "country" | "city">): string | undefined {
+  return destination.city?.trim() || QUOTE_CITY[destination.country.toUpperCase()];
+}
+
 export function destinationAddressBody(
   destination: ShippingDestination,
   contact?: { name?: string | null; email?: string | null; phone?: string | null },
@@ -136,7 +161,7 @@ export function destinationAddressBody(
     contact_phone: contact?.phone ?? undefined,
     line_1: destination.line1 ?? undefined,
     line_2: destination.line2 ?? undefined,
-    city: destination.city ?? undefined,
+    city: destinationCity(destination),
     state: destination.state ?? undefined,
     postal_code: destination.postal_code,
     country_alpha2: destination.country.toUpperCase(),
