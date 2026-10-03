@@ -203,6 +203,57 @@ export async function listFolder(opts?: {
   };
 }
 
+export type DriveImportKind = "image" | "video" | "pdf";
+
+const KIND_MIME_CLAUSE: Record<DriveImportKind, string> = {
+  image: "mimeType contains 'image/'",
+  video: "mimeType contains 'video/'",
+  pdf: "mimeType = 'application/pdf'",
+};
+
+/** Drive `q` for importable files whose name contains `text`; all importable kinds when `kind` is omitted. */
+export function buildSearchQuery(text: string, kind?: DriveImportKind): string {
+  const escaped = text.trim().replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  const mime = kind
+    ? KIND_MIME_CLAUSE[kind]
+    : `(${Object.values(KIND_MIME_CLAUSE).join(" or ")})`;
+  return `name contains '${escaped}' and trashed=false and ${mime}`;
+}
+
+/** Search by file name across one Shared Drive (recursive), or all drives when `driveId` is omitted. */
+export async function searchFiles(opts: {
+  text: string;
+  kind?: DriveImportKind;
+  driveId?: string;
+  pageToken?: string;
+}): Promise<DriveFolderListing> {
+  const qs = new URLSearchParams({
+    q: buildSearchQuery(opts.text, opts.kind),
+    pageSize: "50",
+    fields: `nextPageToken,files(${FILE_FIELDS})`,
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+  if (opts.driveId) {
+    qs.set("corpora", "drive");
+    qs.set("driveId", opts.driveId);
+  } else {
+    qs.set("corpora", "allDrives");
+  }
+  if (opts.pageToken) qs.set("pageToken", opts.pageToken);
+
+  const res = await driveFetch(`/files?${qs}`);
+  if (!res.ok) throw mapDriveHttpError(res.status, await res.text());
+  const json = (await res.json()) as {
+    files?: Array<Parameters<typeof toMeta>[0]>;
+    nextPageToken?: string;
+  };
+  return {
+    items: (json.files ?? []).filter((f) => f.id).map(toMeta),
+    nextPageToken: json.nextPageToken ?? null,
+  };
+}
+
 /** Download file bytes (binary files only — not Google Docs native formats). */
 export async function downloadFile(fileId: string): Promise<Buffer> {
   const id = fileId.trim();

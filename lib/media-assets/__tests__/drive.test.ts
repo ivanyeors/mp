@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDriveFileId } from "@/lib/media-assets/drive";
+import { buildSearchQuery, parseDriveFileId } from "@/lib/media-assets/drive";
 
 describe("parseDriveFileId", () => {
   it("parses /file/d/{id}/view URLs", () => {
@@ -37,5 +37,20 @@ describe("parseDriveFileId", () => {
     expect(parseDriveFileId("")).toBeNull();
     expect(parseDriveFileId("not a url")).toBeNull();
     expect(parseDriveFileId("https://example.com/foo")).toBeNull();
+  });
+});
+
+describe("buildSearchQuery", () => {
+  it("escapes quotes and backslashes and limits to importable kinds", () => {
+    const q = buildSearchQuery(" it's a\\b ");
+    expect(q).toContain("name contains 'it\\'s a\\\\b'");
+    expect(q).toContain("trashed=false");
+    expect(q).toContain("mimeType contains 'image/'");
+  });
+
+  it("narrows to one kind", () => {
+    const q = buildSearchQuery("x", "pdf");
+    expect(q).toContain("mimeType = 'application/pdf'");
+    expect(q).not.toContain("image/");
   });
 });
