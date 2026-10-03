@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AD_TITLES,
+  BOX_TYPES,
   DEFAULT_SETTINGS,
   TRACKING_STATUSES,
   WEBHOOK_EVENTS,
@@ -114,7 +115,9 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
     run("import", async () => {
       const r = await call("GET", undefined, "?live=1");
       if (!r.live) throw new Error("No live snapshot returned");
-      setSettings(importFromLive(r.live, endpoint ? new URL(endpoint).origin : null));
+      const imported = importFromLive(r.live, endpoint ? new URL(endpoint).origin : null);
+      // The courier account has no type → box mapping, so keep ours.
+      setSettings((s) => ({ ...imported, box_for_type: s.box_for_type }));
       toast.success("Imported from courier account — review, then Save & sync");
     });
 
@@ -177,7 +180,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
           <AddressesSection addresses={settings.addresses} update={update} />
         </TabsContent>
         <TabsContent value="boxes" className="mt-4">
-          <BoxesSection boxes={settings.boxes} update={update} />
+          <BoxesSection boxes={settings.boxes} boxForType={settings.box_for_type} update={update} />
         </TabsContent>
         <TabsContent value="rules" className="mt-4">
           <ShippingRulesEditor
@@ -491,36 +494,106 @@ const BOX_DIMS = [
   { key: "weight", label: "Box weight (kg)" },
 ] as const;
 
-function BoxesSection({ boxes, update }: { boxes: EasyshipSettings["boxes"]; update: Update }) {
+const sameBox = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+function BoxesSection({
+  boxes,
+  boxForType,
+  update,
+}: {
+  boxes: EasyshipSettings["boxes"];
+  boxForType: EasyshipSettings["box_for_type"];
+  update: Update;
+}) {
+  // Renaming or removing a box carries its "Used for" mapping with it.
+  const remap = (d: EasyshipSettings, from: string, to: string | null) => {
+    for (const t of BOX_TYPES) {
+      const m = d.box_for_type[t];
+      if (!m || !sameBox(m.box, from)) continue;
+      if (to === null) delete d.box_for_type[t];
+      else m.box = to;
+    }
+  };
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Your custom boxes (courier flat-rate boxes are built in). A box removed here is deleted from the courier account on sync.
+        &ldquo;Used for&rdquo; picks the box each item type ships in, with one unit&apos;s content weight (a variant&apos;s own
+        weight wins). A type with no box gets no live rates.
       </p>
       {boxes.map((b, i) => (
         <Card key={i}>
-          <CardContent className="grid items-end gap-3 py-4 sm:grid-cols-[1fr_repeat(4,6rem)_auto]">
-            <div className="space-y-1.5">
-              <Label htmlFor={`box-${i}-name`}>Name</Label>
-              <Input id={`box-${i}-name`} value={b.name} onChange={(e) => update((d) => { d.boxes[i].name = e.target.value; })} />
-            </div>
-            {BOX_DIMS.map((f) => (
-              <div key={f.key} className="space-y-1.5">
-                <Label htmlFor={`box-${i}-${f.key}`} className="text-xs">{f.label}</Label>
+          <CardContent className="space-y-3 py-4">
+            <div className="grid items-end gap-3 sm:grid-cols-[1fr_repeat(4,6rem)_auto]">
+              <div className="space-y-1.5">
+                <Label htmlFor={`box-${i}-name`}>Name</Label>
                 <Input
-                  id={`box-${i}-${f.key}`}
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="0.1"
-                  value={b[f.key]}
-                  onChange={(e) => update((d) => { d.boxes[i][f.key] = Number(e.target.value) || 0; })}
+                  id={`box-${i}-name`}
+                  value={b.name}
+                  onChange={(e) => update((d) => { remap(d, d.boxes[i].name, e.target.value); d.boxes[i].name = e.target.value; })}
                 />
               </div>
-            ))}
-            <Button variant="ghost" size="sm" aria-label="Remove box" onClick={() => update((d) => { d.boxes.splice(i, 1); })}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
+              {BOX_DIMS.map((f) => (
+                <div key={f.key} className="space-y-1.5">
+                  <Label htmlFor={`box-${i}-${f.key}`} className="text-xs">{f.label}</Label>
+                  <Input
+                    id={`box-${i}-${f.key}`}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.1"
+                    value={b[f.key]}
+                    onChange={(e) => update((d) => { d.boxes[i][f.key] = Number(e.target.value) || 0; })}
+                  />
+                </div>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Remove box"
+                onClick={() => update((d) => { remap(d, d.boxes[i].name, null); d.boxes.splice(i, 1); })}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Used for</span>
+              {BOX_TYPES.map((t) => {
+                const m = boxForType[t];
+                const on = !!m && !!b.name.trim() && sameBox(m.box, b.name);
+                return (
+                  <div key={t} className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={on ? "default" : "outline"}
+                      aria-pressed={on}
+                      disabled={!b.name.trim()}
+                      className="h-7 rounded-full px-3 text-xs"
+                      onClick={() => update((d) => {
+                        if (on) delete d.box_for_type[t];
+                        else d.box_for_type[t] = { box: b.name, weight_grams: d.box_for_type[t]?.weight_grams ?? 0 };
+                      })}
+                    >
+                      {titleCase(t)}
+                    </Button>
+                    {on && (
+                      <Input
+                        aria-label={`${titleCase(t)} content weight (g)`}
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step="10"
+                        className="h-7 w-24 text-xs"
+                        value={m.weight_grams}
+                        onChange={(e) => update((d) => { d.box_for_type[t]!.weight_grams = Math.max(0, Math.round(Number(e.target.value) || 0)); })}
+                      />
+                    )}
+                    {on && <span className="text-xs text-muted-foreground">g</span>}
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       ))}

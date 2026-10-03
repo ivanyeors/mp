@@ -232,7 +232,13 @@ function CountryBadges({ countries }: { countries: string[] }) {
 export type ShippingInitialData = { ok: true; rows: ShippingMethod[] };
 
 /** Courier account status for the Couriers card; `boxes` is null when the account doc could not be read. */
-export type CouriersStatus = { environment: "sandbox" | "production" | null; boxes: number | null; href: string };
+export type CouriersStatus = {
+    environment: "sandbox" | "production" | null;
+    boxes: number | null;
+    /** Item types with no box, so no live rates. */
+    unboxed: string[];
+    href: string;
+};
 
 function couriersSummary(c: CouriersStatus): string {
     if (!c.environment) return "Not connected";
@@ -388,6 +394,11 @@ export default function SettingsShippingPage({
                         <div className="min-w-0 flex-1">
                             <p className="font-medium">Couriers</p>
                             <p className="text-sm text-muted-foreground">{couriersSummary(couriers)}</p>
+                            {couriers.unboxed.length > 0 && (
+                                <p className="text-sm text-amber-700 dark:text-amber-400">
+                                    No box for {couriers.unboxed.join(", ")}: live rates are off for these. Set one under Boxes › Used for.
+                                </p>
+                            )}
                         </div>
                         <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
                             Manage <ChevronRight className="h-4 w-4" />

@@ -4,6 +4,8 @@ import { readShippingMethods } from "@/lib/shop/shipping-methods";
 import { withLocale } from "@/lib/i18n/routing";
 import { easyshipConfig } from "@/lib/shipping/easyship";
 import { readEasyshipConfig } from "@/lib/easyship/store";
+import { BOX_TYPES } from "@/lib/easyship/schema";
+import { typeBoxes } from "@/lib/shipping/parcels";
 import SettingsShippingPage from "./shipping-client";
 
 export const runtime = "nodejs";
@@ -28,9 +30,11 @@ export default async function ShippingSettingsRoute({
     readShippingMethods(true, null).catch(() => null),
     readEasyshipConfig().catch(() => null),
   ]);
+  const mapped = typeBoxes(account?.settings);
   const couriers = {
     environment: easyshipConfig()?.environment ?? null,
     boxes: account?.settings?.boxes.length ?? null,
+    unboxed: account ? BOX_TYPES.filter((t) => !mapped[t]) : [],
     href: withLocale("/settings/shipping/couriers", locale),
   };
   return <SettingsShippingPage initialData={rows ? { ok: true, rows } : undefined} couriers={couriers} />;

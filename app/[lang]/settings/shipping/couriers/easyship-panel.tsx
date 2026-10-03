@@ -32,11 +32,7 @@ type EasyshipStatus = {
 
 type SettingsPayload = { ok: true; settings: ShippingSettings; easyship: EasyshipStatus };
 
-/** Number inputs are edited as strings so a half-typed value is not coerced to 0. */
-type PackageForm = Record<"length_cm" | "width_cm" | "height_cm" | "weight_grams", string>;
-
 type FormState = {
-    packages: Record<PackageType, PackageForm>;
     incoterms: "DDU" | "DDP";
     insure_shipments: boolean;
     hs_code: string;
@@ -64,28 +60,12 @@ type TestResult =
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PACKAGE_LABELS: Record<PackageType, { title: string; hint: string }> = {
-    pillow: { title: "Pillow", hint: "One box per pillow (bundles box as a pillow)" },
-    bolster: { title: "Bolster", hint: "One box per bolster" },
-    accessory: { title: "Accessories", hint: "Ride in the first box, or share this one" },
-};
-
 const TEST_COUNTRIES = ["SG", "MY", "ID", "TH", "PH", "BN", "VN", "HK", "AU"];
-
-/** Most couriers bill the larger of actual and volumetric weight (L × W × H ÷ 5000). */
-const VOLUMETRIC_DIVISOR = 5000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toForm(s: ShippingSettings): FormState {
-    const pkg = (p: ShippingSettings["packages"][PackageType]): PackageForm => ({
-        length_cm: String(p.length_cm),
-        width_cm: String(p.width_cm),
-        height_cm: String(p.height_cm),
-        weight_grams: String(p.weight_grams),
-    });
     return {
-        packages: { pillow: pkg(s.packages.pillow), bolster: pkg(s.packages.bolster), accessory: pkg(s.packages.accessory) },
         incoterms: s.incoterms,
         insure_shipments: s.insure_shipments,
         hs_code: s.hs_code,
@@ -98,14 +78,7 @@ function toForm(s: ShippingSettings): FormState {
 
 function toPayload(f: FormState) {
     const num = (v: string) => Number(v);
-    const pkg = (p: PackageForm) => ({
-        length_cm: num(p.length_cm),
-        width_cm: num(p.width_cm),
-        height_cm: num(p.height_cm),
-        weight_grams: Math.round(num(p.weight_grams)),
-    });
     return {
-        packages: { pillow: pkg(f.packages.pillow), bolster: pkg(f.packages.bolster), accessory: pkg(f.packages.accessory) },
         incoterms: f.incoterms,
         insure_shipments: f.insure_shipments,
         hs_code: f.hs_code.trim(),
@@ -123,11 +96,6 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     const field = Object.entries(e?.fieldErrors ?? {}).find(([, v]) => v && v.length > 0);
     if (field) return `${field[0].replace(/_/g, " ")}: ${field[1]![0]}`;
     return e?.formErrors?.[0] ?? fallback;
-}
-
-function volumetricKg(p: PackageForm): number | null {
-    const v = (Number(p.length_cm) * Number(p.width_cm) * Number(p.height_cm)) / VOLUMETRIC_DIVISOR;
-    return Number.isFinite(v) && v > 0 ? Math.round(v * 10) / 10 : null;
 }
 
 function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail?: ReactNode }) {
@@ -199,12 +167,6 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
         );
     }
 
-    const setPackage = (type: PackageType, key: keyof PackageForm, value: string) =>
-        setForm((prev) =>
-            prev
-                ? { ...prev, packages: { ...prev.packages, [type]: { ...prev.packages[type], [key]: value } } }
-                : prev,
-        );
     const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
         setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
 
@@ -336,68 +298,6 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 </CardContent>
             </Card>
 
-            {/* Packaging */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Packaging</CardTitle>
-                    <CardDescription>
-                        Box size and packed weight per product type. A variant&apos;s own weight wins over the box
-                        weight. Couriers bill the larger of actual and volumetric weight, so measure the real box.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {(Object.keys(PACKAGE_LABELS) as PackageType[]).map((type) => {
-                        const p = form.packages[type];
-                        const vol = volumetricKg(p);
-                        const actual = Number(p.weight_grams) / 1000;
-                        return (
-                            <div key={type} className="rounded-lg border p-4">
-                                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                                    <div>
-                                        <p className="text-sm font-medium">{PACKAGE_LABELS[type].title}</p>
-                                        <p className="text-xs text-muted-foreground">{PACKAGE_LABELS[type].hint}</p>
-                                    </div>
-                                    {vol != null && (
-                                        <p className="text-xs text-muted-foreground">
-                                            Billed as ≈{" "}
-                                            <span className="font-medium text-foreground">
-                                                {Math.max(vol, Number.isFinite(actual) ? actual : 0).toFixed(1)} kg
-                                            </span>{" "}
-                                            ({vol.toFixed(1)} kg volumetric)
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                    {(
-                                        [
-                                            ["length_cm", "Length (cm)"],
-                                            ["width_cm", "Width (cm)"],
-                                            ["height_cm", "Height (cm)"],
-                                            ["weight_grams", "Weight (g)"],
-                                        ] as const
-                                    ).map(([key, label]) => (
-                                        <div key={key} className="space-y-1.5">
-                                            <Label htmlFor={`pkg-${type}-${key}`} className="text-xs">
-                                                {label}
-                                            </Label>
-                                            <Input
-                                                id={`pkg-${type}-${key}`}
-                                                type="number"
-                                                min="1"
-                                                step={key === "weight_grams" ? "10" : "0.5"}
-                                                value={p[key]}
-                                                onChange={(e) => setPackage(type, key, e.target.value)}
-                                                className="text-base md:text-sm"
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </CardContent>
-            </Card>
-
             {/* Customs & quotes */}
             <Card>
                 <CardHeader>
@@ -510,7 +410,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                         Test a quote
                     </CardTitle>
                     <CardDescription>
-                        Today&apos;s courier rates for a sample parcel, using the settings above (saved or not).
+                        Today&apos;s courier rates for a sample parcel, using the settings above (saved or not) and the saved Boxes.
                         Copy a courier service id to pin it on a method.
                     </CardDescription>
                 </CardHeader>

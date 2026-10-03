@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EasyshipAddress } from "@/lib/easyship/schema";
 
-const h = vi.hoisted(() => ({ sender: null as EasyshipAddress | null }));
-vi.mock("@/lib/easyship/store", () => ({ readSenderAddress: async () => h.sender }));
+const h = vi.hoisted(() => ({ sender: null as EasyshipAddress | null, readTypeBoxes: vi.fn() }));
+vi.mock("@/lib/easyship/store", () => ({ readSenderAddress: async () => h.sender, readTypeBoxes: h.readTypeBoxes }));
 
 import { fetchCourierRates, priceMethod, quoteCacheKey, quoteShippingMethods } from "@/lib/shipping/quote";
 import { DEFAULT_SHIPPING_SETTINGS } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
-import type { RatesResult, ShippableLine, ShippingSettings } from "@/lib/shipping/types";
+import type { RatesResult, ShippableLine, ShippingSettings, TypeBoxes } from "@/lib/shipping/types";
 
 /** In-memory `shipping_rate_quotes`, enough of the query builder for the quote service. */
 function fakeAdmin() {
@@ -73,6 +73,7 @@ const sender: EasyshipAddress = {
 
 beforeEach(() => {
   h.sender = sender;
+  h.readTypeBoxes.mockReset().mockResolvedValue({});
 });
 
 const config = { token: "sand_t", baseUrl: "https://es.test/2024-09", environment: "sandbox" as const };
@@ -118,6 +119,7 @@ const method = (over: Partial<ShippingMethod>): ShippingMethod => ({
 });
 
 const destination = { country: "SG", postal_code: "018 989" };
+const boxes: TypeBoxes = { pillow: { length_cm: 70, width_cm: 45, height_cm: 20, tare_grams: 0, weight_grams: 1500 } };
 
 describe("fetchCourierRates", () => {
   it("calls Easyship once, then serves the same cart and postal code from the cache", async () => {
@@ -309,6 +311,7 @@ describe("quoteShippingMethods", () => {
       destination,
       subtotal: 40,
       loadSettings: async () => settings,
+      loadBoxes: async () => boxes,
       config,
       fetchImpl,
     });
@@ -330,6 +333,26 @@ describe("quoteShippingMethods", () => {
       config: null,
     });
     expect(options.map((o) => [o.method.id, o.source])).toEqual([["flat", "flat"]]);
+  });
+
+  it("reads boxes from the courier account by default, and a type with no box gets no live call", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    h.readTypeBoxes.mockResolvedValue({});
+    const fetchImpl = okFetch();
+    const { rates, options } = await quoteShippingMethods(fakeAdmin(), {
+      methods: [method({ rate_source: "easyship" })],
+      lines,
+      destination,
+      subtotal: 40,
+      loadSettings: async () => settings,
+      config,
+      fetchImpl,
+    });
+    expect(h.readTypeBoxes).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(rates).toMatchObject({ ok: false, reason: "too_many_parcels" });
+    expect(options).toEqual([]);
+    spy.mockRestore();
   });
 
   it("hides live methods when settings cannot be read", async () => {

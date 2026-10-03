@@ -9,6 +9,7 @@ import {
   requestRates,
   type EasyshipConfig,
 } from "@/lib/shipping/easyship";
+import { readTypeBoxes } from "@/lib/easyship/store";
 import { buildParcels } from "@/lib/shipping/parcels";
 import { deliveryWindow, normalizeEasyshipRates, pickRate, priceLiveRate } from "@/lib/shipping/rates";
 import { missingOriginFields } from "@/lib/shipping/settings";
@@ -22,6 +23,7 @@ import type {
   ShippingDestination,
   ShippingQuoteOption,
   ShippingSettings,
+  TypeBoxes,
 } from "@/lib/shipping/types";
 
 /** Postal codes compare without spaces or case, so "s 123 456" and "S123456" share a quote. */
@@ -119,7 +121,7 @@ export async function fetchCourierRates(
     };
   }
   if (!input.parcels || input.parcels.length === 0) {
-    return { ok: false, reason: "too_many_parcels", message: "This cart cannot be boxed for a live quote" };
+    return { ok: false, reason: "too_many_parcels", message: "This cart cannot be boxed for a live quote (too many boxes, or an item type has no box)" };
   }
 
   const now = input.now ?? new Date();
@@ -257,6 +259,8 @@ export interface QuoteMethodsInput {
   subtotal: number;
   /** Loaded lazily: a cart with only flat methods never reads settings or calls Easyship. */
   loadSettings: () => Promise<ShippingSettings>;
+  /** Each item type's box; defaults to the courier account doc. */
+  loadBoxes?: () => Promise<TypeBoxes>;
   config?: EasyshipConfig | null;
   fetchImpl?: typeof fetch;
 }
@@ -275,8 +279,9 @@ export async function quoteShippingMethods(
   let handlingDays = 0;
   if (needsLive) {
     let settings: ShippingSettings | null = null;
+    let boxes: TypeBoxes = {};
     try {
-      settings = await input.loadSettings();
+      [settings, boxes] = await Promise.all([input.loadSettings(), (input.loadBoxes ?? readTypeBoxes)()]);
     } catch (err) {
       console.error("[shipping] Could not read shipping settings:", err);
       rates = { ok: false, reason: "error", message: "Shipping settings could not be read" };
@@ -287,7 +292,7 @@ export async function quoteShippingMethods(
       rates = await fetchCourierRates(admin, {
         settings,
         destination: input.destination,
-        parcels: buildParcels(input.lines, settings.packages),
+        parcels: buildParcels(input.lines, boxes),
         currency,
         config: input.config,
         fetchImpl: input.fetchImpl,

@@ -1,6 +1,8 @@
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { easyshipConfig } from "@/lib/shipping/easyship";
 import { invalidateTag } from "@/lib/cache/invalidate";
+import { typeBoxes } from "@/lib/shipping/parcels";
 import { EasyshipSettingsSchema, type EasyshipAddress, type EasyshipSettings } from "./schema";
 import type { SyncReport } from "./sync-report";
 
@@ -62,3 +64,10 @@ export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promi
   invalidateTag("api-configs");
   return next;
 }
+
+/** Each item type's box for quotes and labels. Cached behind `api-configs`, which every doc write invalidates. */
+export const readTypeBoxes = unstable_cache(
+  async () => typeBoxes((await readEasyshipConfig()).settings),
+  ["easyship-type-boxes"],
+  { tags: ["api-configs"], revalidate: 300 },
+);

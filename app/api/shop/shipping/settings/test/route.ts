@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
 import { buildParcels } from "@/lib/shipping/parcels";
+import { readTypeBoxes } from "@/lib/easyship/store";
 import { fetchCourierRates, priceMethod } from "@/lib/shipping/quote";
 import { parseShippingSettings, ShippingSettingsSchema } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
@@ -19,7 +20,7 @@ const TestSchema = z.object({
   }),
   profile: z.enum(["pillow", "bolster", "accessory"]).default("pillow"),
   quantity: z.number().int().min(1).max(10).default(1),
-  /** The unsaved form, so Staff can try a box size before saving it. Defaults to the saved row. */
+  /** The unsaved form, so Staff can try settings before saving them. Defaults to the saved row. Boxes are always the saved doc's. */
   settings: ShippingSettingsSchema.optional(),
 });
 
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
         description: "Test parcel",
       },
     ],
-    settings.packages,
+    await readTypeBoxes(),
   );
 
   const rates = await fetchCourierRates(admin, {

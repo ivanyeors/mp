@@ -2,17 +2,12 @@ import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { EasyshipAddress } from "@/lib/easyship/schema";
-import type { PackageProfile, PackageType, ShippingSettings } from "@/lib/shipping/types";
+import type { PackageType, ShippingSettings } from "@/lib/shipping/types";
 
 export const PACKAGE_TYPES: readonly PackageType[] = ["pillow", "bolster", "accessory"];
 
 /** Mirrors the column defaults in 20261002090000_easyship_shipping.sql. */
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
-  packages: {
-    pillow: { length_cm: 70, width_cm: 45, height_cm: 20, weight_grams: 1500 },
-    bolster: { length_cm: 60, width_cm: 25, height_cm: 25, weight_grams: 1200 },
-    accessory: { length_cm: 35, width_cm: 25, height_cm: 8, weight_grams: 400 },
-  },
   incoterms: "DDU",
   insure_shipments: false,
   hs_code: "940490",
@@ -51,11 +46,10 @@ const OriginAddressSchema = z.object({
 export const ShippingSettingsSchema = z.object({
   // Legacy column, no longer read: the default sender address on Couriers › Addresses replaced it.
   origin_address: OriginAddressSchema.optional(),
-  packages: z.object({
-    pillow: PackageProfileSchema,
-    bolster: PackageProfileSchema,
-    accessory: PackageProfileSchema,
-  }),
+  // ponytail: no longer read (boxes come from the courier account); slice 05 drops it
+  packages: z
+    .object({ pillow: PackageProfileSchema, bolster: PackageProfileSchema, accessory: PackageProfileSchema })
+    .optional(),
   incoterms: z.enum(["DDU", "DDP"]),
   insure_shipments: z.boolean(),
   /** Empty: classify by item_category instead. */
@@ -66,26 +60,15 @@ export const ShippingSettingsSchema = z.object({
   estimate_declared_value: z.number().positive().max(100_000),
 });
 
-function profileOf(raw: unknown, fallback: PackageProfile): PackageProfile {
-  const parsed = PackageProfileSchema.safeParse(raw);
-  return parsed.success ? parsed.data : fallback;
-}
-
 /** A stored row (or nothing) as complete settings: anything missing or malformed takes its default. */
 export function parseShippingSettings(row: Record<string, unknown> | null | undefined): ShippingSettings {
   const d = DEFAULT_SHIPPING_SETTINGS;
-  if (!row) return { ...d, packages: { ...d.packages } };
-  const packages = (row.packages ?? {}) as Record<string, unknown>;
+  if (!row) return { ...d };
   const n = (v: unknown, fallback: number) => {
     const parsed = typeof v === "number" || typeof v === "string" ? Number(v) : NaN;
     return Number.isFinite(parsed) ? parsed : fallback;
   };
   return {
-    packages: {
-      pillow: profileOf(packages.pillow, d.packages.pillow),
-      bolster: profileOf(packages.bolster, d.packages.bolster),
-      accessory: profileOf(packages.accessory, d.packages.accessory),
-    },
     incoterms: row.incoterms === "DDP" ? "DDP" : "DDU",
     insure_shipments: row.insure_shipments === true,
     // An empty HS code is a choice (classify by category), not a missing value.
