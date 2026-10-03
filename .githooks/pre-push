@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Refuse to push a commit Vercel will not build.
+#
+# Vercel blocks a deployment whose commit AUTHOR is not a member of the team
+# owning the project, and it blocks it silently: no build, no failing check,
+# just a pull request with no preview. The cost of finding that out is a round
+# trip through GitHub and Vercel; the cost of finding it out here is nothing.
+#
+# Installed by scripts/git-identity, which sets core.hooksPath to this
+# directory. That script also pins the author, so in the normal case this hook
+# has nothing to say. It exists for the cases the script cannot reach: a clone
+# made before it landed, a tool that writes its own identity, a machine where
+# nobody ran it.
+#
+# Bypass a single push with --no-verify. Do that knowing the preview will not
+# build — production still will, because GitHub re-authors on squash-merge.
+set -uo pipefail
+
+# One person, one GitHub account (`ivanyeors`), two addresses GitHub attributes
+# to it. Not two users.
+#
+# `ivanyeoart@gmail.com` is the one we author as — scripts/git-identity pins it
+# and every commit made here should carry it.
+#
+# The noreply is here only because GitHub writes it itself on every squash-merge
+# to main, and we do not get a say. Merging main into a branch and pushing —
+# which .github/workflows/pr-guard.yml tells you to do — puts those commits in
+# the push range. Dropping it would reject that push for commits nobody in this
+# repository authored.
+#
+# Nothing else belongs in this list. In particular a platform, mail or service
+# LOGIN address is not a git identity and must never be added, whoever it
+# belongs to: that mix-up is what blocked #198. Add a line only when a new
+# person actually joins the Vercel team, never to silence this hook — that
+# trades a loud local failure for the silent remote one it exists to prevent.
+ALLOWED=(
+  "ivanyeoart@gmail.com"                          # ivanyeors — the deploy identity
+  "47745593+ivanyeors@users.noreply.github.com"   # same account; GitHub's own merge stamp
+)
+
+zero='0000000000000000000000000000000000000000'
+offenders=""
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  # Deleting a remote branch pushes the null sha. Nothing to inspect.
+  [ "$local_sha" = "$zero" ] && continue
+
+  if [ "$remote_sha" = "$zero" ]; then
+    # A branch the remote has never seen: everything on it that is not already
+    # published somewhere on origin. Without --not this walks the whole history
+    # of main and reports years of commits nobody is pushing.
+    range=("$local_sha" --not --remotes=origin)
+  else
+    range=("${remote_sha}..${local_sha}")
+  fi
+
+  while read -r sha email subject; do
+    [ -z "$sha" ] && continue
+    for allowed in "${ALLOWED[@]}"; do
+      [ "$email" = "$allowed" ] && continue 2
+    done
+    offenders="${offenders}  ${sha:0:9}  ${email}  ${subject}"$'\n'
+  done < <(git log --format='%H %ae %s' "${range[@]}" 2>/dev/null)
+done
+
+[ -z "$offenders" ] && exit 0
+
+cat >&2 <<MSG
+
+---------------------------------------------------------------
+Push stopped: these commits are authored by someone Vercel will
+not build for.
+
+${offenders}
+Vercel only builds a commit whose author is a member of the team
+that owns mp-inv. A commit by anyone else is not built and not
+failed — the deployment is created in state BLOCKED and the pull
+request shows no preview at all, with nothing anywhere saying why.
+
+Fix, from the repo root:
+
+    ./scripts/git-identity          # pin this clone, once
+    git rebase --exec 'git commit --amend --no-edit --reset-author' \\
+      origin/main                   # re-author what is already committed
+    git push
+
+If this is a login address you use elsewhere, it is not a git
+identity — run the script above rather than adding it to ALLOWED.
+Widen ALLOWED only when a new person joins the Vercel team
+(Settings -> Members). See CLAUDE.md, "Commit author".
+
+To push anyway and accept no preview build: git push --no-verify
+---------------------------------------------------------------
+MSG
+
+exit 1

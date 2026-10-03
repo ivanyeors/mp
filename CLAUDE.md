@@ -14,6 +14,64 @@ Read these before making design decisions:
 - **`LLM.md`** — applies only to "sections-only" tasks (`agent/sections.md`).
 - **`docs/adr/`** — architecture decision records.
 
+## Commit author
+
+Every commit in this repository is authored as
+`ivanyeors <ivanyeoart@gmail.com>`. Not a style preference — Vercel will not
+build anything else.
+
+**A login address is not a git identity.** `sg@mpillow.com` is a platform
+login. It is not a committer, not a deploy identity, and never goes in
+`user.email` — nor does any other address used to sign in to something. The two
+are entirely separate and must not be mixed.
+
+Vercel only builds a deployment whose **git commit author** is a member of the
+team that owns `mp-inv`, and that team has one member: `ivanyeors`. A commit by
+anyone else is not built and not failed. The deployment is created in state
+`BLOCKED` with `buildingAt == ready == createdAt` and no build events, the pull
+request shows no preview, and nothing in the repo, in CI, or on the Checks tab
+says why. #198 lost its preview exactly this way — two agent sessions committed
+under a login address, which GitHub resolved to a different account. Production
+kept deploying throughout, because GitHub rewrites the author to `ivanyeors` on
+squash-merge, which is why it took six days to notice.
+
+Three things keep this true, and none of them is you remembering:
+
+- **`scripts/git-identity`** pins the clone's `user.name` / `user.email`. The
+  `SessionStart` hook in `.claude/settings.json` runs it, so an agent session is
+  already correct before it can commit. Run it by hand once in a new clone, or
+  on a machine where another tool writes its own identity:
+
+  ```bash
+  ./scripts/git-identity
+  ```
+
+- **`.githooks/pre-push`** refuses to push a commit Vercel would block, naming
+  the commits and the fix. It is installed by the script above, via
+  `core.hooksPath`. `--no-verify` bypasses it and costs you the preview.
+- **`ALLOWED` in `.githooks/pre-push`** holds two addresses, both belonging to
+  the one GitHub account `ivanyeors` — not two users. `ivanyeoart@gmail.com` is
+  what we author as; GitHub's `47745593+ivanyeors@users.noreply.github.com` is
+  there only because GitHub stamps it on every squash-merge to main, so merging
+  main into a branch and pushing carries commits nobody here authored. Widen the
+  list only when a new person actually joins the Vercel team — never to silence
+  the hook, and never with a login address.
+
+Authorship is not attribution: the `Co-Authored-By` trailer is what credits an
+agent on a commit, and it is unaffected. The author field is what Vercel reads.
+
+If a commit has already been made under the wrong identity, re-author it rather
+than pushing and hoping:
+
+```bash
+./scripts/git-identity
+git rebase --exec 'git commit --amend --no-edit --reset-author' origin/main
+```
+
+There is no second identity to fall back on, and adding a login address to the
+Vercel team is not the workaround — keeping those accounts separate is the
+point. The author is load-bearing.
+
 ## graphify knowledge graph
 
 This repo has a committed knowledge graph at `graphify-out/` — 9.5k nodes and
