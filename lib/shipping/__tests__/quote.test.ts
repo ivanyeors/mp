@@ -48,7 +48,6 @@ function fakeAdmin() {
 
 const settings: ShippingSettings = {
   ...DEFAULT_SHIPPING_SETTINGS,
-  easyship_enabled: true,
   handling_days: 1,
   origin_address: {
     contact_name: "Mpillow",
@@ -138,9 +137,6 @@ describe("fetchCourierRates", () => {
     const base = { settings, destination, parcels, currency: "SGD" };
     expect(await fetchCourierRates(admin, { ...base, config: null })).toMatchObject({ reason: "not_configured" });
     expect(
-      await fetchCourierRates(admin, { ...base, config, settings: { ...settings, easyship_enabled: false } }),
-    ).toMatchObject({ reason: "disabled" });
-    expect(
       await fetchCourierRates(admin, { ...base, config, settings: { ...settings, origin_address: {} } }),
     ).toMatchObject({ reason: "invalid_origin" });
     expect(await fetchCourierRates(admin, { ...base, config, parcels: null })).toMatchObject({
@@ -219,26 +215,30 @@ describe("priceMethod", () => {
     });
   });
 
-  it("falls back to base_rate when live rates failed, so the sale is not blocked", () => {
+  it("hides a live method on an outage, never charging base_rate", () => {
     const failed: RatesResult = { ok: false, reason: "error", message: "timeout" };
-    expect(priceMethod(method({ rate_source: "easyship" }), failed, 40, 0)).toMatchObject({
-      amount: 8,
-      source: "fallback",
-    });
+    expect(priceMethod(method({ rate_source: "easyship" }), failed, 40, 0)).toBeNull();
+    expect(priceMethod(method({ rate_source: "easyship" }), null, 40, 0)).toBeNull();
   });
 
-  it("drops a live method no courier can serve", () => {
+  it("hides a live method when there are no rates", () => {
     expect(priceMethod(method({ rate_source: "easyship" }), { ...live, rates: [] }, 40, 0)).toBeNull();
     expect(
       priceMethod(method({ rate_source: "easyship", easyship_strategy: "courier", easyship_courier_service_id: "gone" }), live, 40, 0),
     ).toBeNull();
   });
 
-  it("falls back rather than charge in the wrong currency", () => {
+  it("hides a live method rather than charge in the wrong currency", () => {
     const usd: RatesResult = { ...live, rates: live.ok ? live.rates.map((r) => ({ ...r, currency: "USD" })) : [] };
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(priceMethod(method({ rate_source: "easyship" }), usd, 40, 0)).toMatchObject({ source: "fallback" });
+    expect(priceMethod(method({ rate_source: "easyship" }), usd, 40, 0)).toBeNull();
     spy.mockRestore();
+  });
+
+  it("leaves flat methods unaffected when live rates fail", () => {
+    const failed: RatesResult = { ok: false, reason: "error", message: "timeout" };
+    expect(priceMethod(method({}), failed, 40, 0)).toMatchObject({ amount: 8, source: "flat" });
+    expect(priceMethod(method({}), null, 40, 0)).toMatchObject({ amount: 8, source: "flat" });
   });
 });
 
@@ -283,7 +283,19 @@ describe("quoteShippingMethods", () => {
     ]);
   });
 
-  it("falls back when settings cannot be read", async () => {
+  it("quotes only flat methods when the courier token is unset", async () => {
+    const { options } = await quoteShippingMethods(fakeAdmin(), {
+      methods: [method({ id: "live", rate_source: "easyship" }), method({ id: "flat", base_rate: 5 })],
+      lines,
+      destination,
+      subtotal: 40,
+      loadSettings: async () => settings,
+      config: null,
+    });
+    expect(options.map((o) => [o.method.id, o.source])).toEqual([["flat", "flat"]]);
+  });
+
+  it("hides live methods when settings cannot be read", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { options } = await quoteShippingMethods(fakeAdmin(), {
       methods: [method({ rate_source: "easyship" })],
@@ -295,7 +307,7 @@ describe("quoteShippingMethods", () => {
       },
       config,
     });
-    expect(options[0]).toMatchObject({ source: "fallback", amount: 8 });
+    expect(options).toEqual([]);
     spy.mockRestore();
   });
 });

@@ -35,7 +35,6 @@ type SettingsPayload = { ok: true; settings: ShippingSettings; easyship: Easyshi
 type PackageForm = Record<"length_cm" | "width_cm" | "height_cm" | "weight_grams", string>;
 
 type FormState = {
-    easyship_enabled: boolean;
     origin: Record<OriginField, string>;
     packages: Record<PackageType, PackageForm>;
     incoterms: "DDU" | "DDP";
@@ -105,7 +104,6 @@ function toForm(s: ShippingSettings): FormState {
         weight_grams: String(p.weight_grams),
     });
     return {
-        easyship_enabled: s.easyship_enabled,
         origin,
         packages: { pillow: pkg(s.packages.pillow), bolster: pkg(s.packages.bolster), accessory: pkg(s.packages.accessory) },
         incoterms: s.incoterms,
@@ -132,7 +130,6 @@ function toPayload(f: FormState) {
             .filter(([k, v]) => v !== "" || ORIGIN_FIELDS.find((o) => o.key === k)?.required),
     );
     return {
-        easyship_enabled: f.easyship_enabled,
         origin_address: origin,
         packages: { pillow: pkg(f.packages.pillow), bolster: pkg(f.packages.bolster), accessory: pkg(f.packages.accessory) },
         incoterms: f.incoterms,
@@ -239,9 +236,6 @@ export function EasyshipPanel() {
     const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
         setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
 
-    const missingOrigin = ORIGIN_FIELDS.filter((f) => f.required && !form.origin[f.key].trim()).map((f) => f.label);
-    const canEnable = status.tokenConfigured && missingOrigin.length === 0;
-
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -345,27 +339,6 @@ export function EasyshipPanel() {
                                     </button>
                                 </>
                             }
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
-                        <div className="space-y-0.5">
-                            <Label htmlFor="easyship_enabled" className="font-medium">
-                                Live rates for shoppers
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                                {canEnable || form.easyship_enabled
-                                    ? "Methods set to “Live courier rate” quote the courier price for each cart and address. Off: they charge their fallback rate."
-                                    : !status.tokenConfigured
-                                      ? "Connect the courier account first (API token)."
-                                      : `Complete the ship-from address first: ${missingOrigin.join(", ")}.`}
-                            </p>
-                        </div>
-                        <Switch
-                            id="easyship_enabled"
-                            checked={form.easyship_enabled}
-                            disabled={!canEnable && !form.easyship_enabled}
-                            onCheckedChange={(v) => setField("easyship_enabled", v)}
                         />
                     </div>
                 </CardContent>

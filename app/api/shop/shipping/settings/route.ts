@@ -61,15 +61,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Live rates need a complete ship-from address; refuse to switch them on without one.
-  const missing = missingOriginFields(parsed.data.origin_address);
-  if (parsed.data.easyship_enabled && missing.length > 0) {
-    return NextResponse.json(
-      { error: `Complete the ship-from address before turning on live rates (missing: ${missing.join(", ")})` },
-      { status: 400 },
-    );
-  }
-
   const { data, error } = await supabaseAdmin()
     .from("shipping_settings")
     .upsert({ id: true, ...parsed.data })

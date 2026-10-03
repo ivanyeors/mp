@@ -402,7 +402,7 @@ export interface ShippingMethod {
   id: string;
   slug: string;
   content: Record<string, LocalizedShippingContent>;
-  /** Flat price; for an Easyship method, the fallback when live rates are unavailable. */
+  /** Flat price. A live method with no courier quote is hidden, never charged this. */
   base_rate: number;
   free_above: number | null;
   currency: string;

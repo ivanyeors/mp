@@ -26,7 +26,6 @@ export interface ShippingOriginAddress {
 }
 
 export interface ShippingSettings {
-  easyship_enabled: boolean;
   origin_address: Partial<ShippingOriginAddress>;
   packages: Record<PackageType, PackageProfile>;
   /** DDU: the receiver pays any duties. DDP: duties are quoted into the rate. */
@@ -96,10 +95,9 @@ export interface CourierRate {
   value_for_money_rank: number | null;
 }
 
-/** Why live rates could not be used; every reason except "no_rates" falls back to base_rate. */
+/** Why live rates could not be used; live methods are then hidden. */
 export type RatesFailure =
   | "not_configured"
-  | "disabled"
   | "invalid_origin"
   | "too_many_parcels"
   | "error";
@@ -115,8 +113,8 @@ export interface ShippingQuoteOption {
   amount: number;
   is_free: boolean;
   currency: string;
-  /** flat = base_rate; easyship = live rate; fallback = base_rate because live rates failed. */
-  source: "flat" | "easyship" | "fallback";
+  /** flat = base_rate; easyship = live rate. */
+  source: "flat" | "easyship";
   courier: { service_id: string; name: string; umbrella_name: string | null } | null;
   /** What the courier charges us, before markup. Easyship only. */
   carrier_cost: number | null;
@@ -134,7 +132,7 @@ export interface ShippingQuoteOptionView {
   /** Before free_above: the client applies the threshold to its own subtotal; the checkout route re-prices. */
   price: number;
   free_above: number | null;
-  source: "flat" | "easyship" | "fallback";
+  source: "flat" | "easyship";
   courier: { name: string; umbrella_name: string | null } | null;
   min_days: number | null;
   max_days: number | null;
@@ -142,7 +140,7 @@ export interface ShippingQuoteOptionView {
 
 export interface ShippingQuoteResponse {
   ok: true;
-  /** False when live rates were wanted but unavailable, so live methods show their flat fallback. */
+  /** False when live rates were wanted but unavailable, so live methods are hidden. */
   live: boolean;
   options: ShippingQuoteOptionView[];
 }

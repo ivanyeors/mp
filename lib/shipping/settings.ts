@@ -12,7 +12,6 @@ export const PACKAGE_TYPES: readonly PackageType[] = ["pillow", "bolster", "acce
 
 /** Mirrors the column defaults in 20261002090000_easyship_shipping.sql. */
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
-  easyship_enabled: false,
   origin_address: {},
   packages: {
     pillow: { length_cm: 70, width_cm: 45, height_cm: 20, weight_grams: 1500 },
@@ -55,7 +54,6 @@ const OriginAddressSchema = z.object({
 
 /** The body Settings → Shipping saves. Every field is required so a save is a whole state. */
 export const ShippingSettingsSchema = z.object({
-  easyship_enabled: z.boolean(),
   origin_address: OriginAddressSchema,
   packages: z.object({
     pillow: PackageProfileSchema,
@@ -87,7 +85,6 @@ export function parseShippingSettings(row: Record<string, unknown> | null | unde
     return Number.isFinite(parsed) ? parsed : fallback;
   };
   return {
-    easyship_enabled: row.easyship_enabled === true,
     origin_address:
       row.origin_address && typeof row.origin_address === "object"
         ? (row.origin_address as Partial<ShippingOriginAddress>)
@@ -126,7 +123,7 @@ export function missingOriginFields(origin: Partial<ShippingOriginAddress>): str
 /**
  * Read on every live quote; edited rarely. Cached behind the `shipping-settings`
  * tag, which the settings PUT invalidates. A failed read throws so a database
- * blip is never mistaken for "Easyship disabled".
+ * blip is never mistaken for an empty settings row.
  */
 export const readShippingSettings = unstable_cache(
   async (): Promise<ShippingSettings> => {

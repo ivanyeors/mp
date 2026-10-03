@@ -92,9 +92,8 @@ export async function quoteOrderShipment(
 
   const settings = await readShippingSettings();
   const lines = await loadOrderShippableLines(admin, order.id, order.currency);
-  // Labels are bought by Staff on purpose, so the shopper-facing on/off switch does not gate them.
   const rates = await fetchCourierRates(admin, {
-    settings: { ...settings, easyship_enabled: true },
+    settings,
     destination,
     parcels: buildParcels(lines, settings.packages),
     currency: order.currency,

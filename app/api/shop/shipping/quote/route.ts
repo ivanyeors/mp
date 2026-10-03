@@ -32,7 +32,8 @@ const QuoteSchema = z
 
 /**
  * Shipping options for a cart (or one product type) to an address — the live
- * Easyship price for live methods, base_rate for flat ones. Public: the checkout
+ * courier price for live methods, base_rate for flat ones; a live method with no
+ * courier quote is left out. Public: the checkout
  * page, the product page and the landing-page estimator call it. What we pay the
  * courier is never in the response.
  */

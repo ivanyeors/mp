@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,7 +155,7 @@ const DEFAULT_FORM: ShippingForm = {
     free_above: "",
     countries: "SG",
     is_active: true,
-    rate_source: "flat",
+    rate_source: "easyship",
     easyship_strategy: "cheapest",
     easyship_courier_service_id: "",
     markup_percent: "0",
@@ -414,6 +414,13 @@ export default function SettingsShippingPage({
                 </div>
             ) : (
                 <div className="space-y-3">
+                    {/* Live methods are hidden when couriers can't quote, so only a flat method guarantees an option. */}
+                    {!methods.some((m) => m.is_active && (m.rate_source ?? "flat") !== "easyship") && (
+                        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                            <p>If couriers can&apos;t be reached, checkout shows no shipping option.</p>
+                        </div>
+                    )}
                     {methods.map((method) => (
                         <Card key={method.id}>
                             <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
@@ -440,11 +447,11 @@ export default function SettingsShippingPage({
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <span className="font-medium text-foreground">
-                                            {method.rate_source === "easyship"
-                                                ? `Fallback ${formatCurrency(method.base_rate, method.currency)}`
-                                                : formatCurrency(method.base_rate, method.currency)}
-                                        </span>
+                                        {method.rate_source !== "easyship" && (
+                                            <span className="font-medium text-foreground">
+                                                {formatCurrency(method.base_rate, method.currency)}
+                                            </span>
+                                        )}
                                         <span>
                                             {method.free_above !== null
                                                 ? `Free above ${formatCurrency(method.free_above, method.currency)}`
@@ -685,10 +692,9 @@ export default function SettingsShippingPage({
 
                         {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
+                            {form.rate_source !== "easyship" && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="base_rate">
-                                    {form.rate_source === "easyship" ? "Fallback rate" : "Base rate"} ({CURRENCY_SYMBOL})
-                                </Label>
+                                <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
                                 <Input
                                     id="base_rate"
                                     type="number"
@@ -698,12 +704,8 @@ export default function SettingsShippingPage({
                                     onChange={(e) => setField("base_rate", e.target.value)}
                                     placeholder="e.g. 8.00"
                                 />
-                                {form.rate_source === "easyship" && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Charged when live rates are off or the courier account is unreachable.
-                                    </p>
-                                )}
                             </div>
+                            )}
 
                             <div className="space-y-1.5">
                                 <Label htmlFor="free_above">Free shipping above ({CURRENCY_SYMBOL})</Label>
