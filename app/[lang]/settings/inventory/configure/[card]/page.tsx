@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import Link from "next/link";
 import { notFound, useParams, usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
@@ -1819,7 +1820,18 @@ function FillingConfigPanel({
   const fit = usePillowFit(placements, templateKey, gridItems, dimensionOverrides);
   const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
-  const { cut, setCut, onDiveChange } = useCut();
+  const { cut, setCut, onDiveChange: onCutDive } = useCut();
+  // Desktop (lg, the workbench grid): the dived section's controls render in the left column, off the x-ray.
+  const wideWorkbench = useMediaQuery("(min-width: 1024px)");
+  const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
+  const [divedSection, setDivedSection] = useState<string | null>(null);
+  const onDiveChange = useCallback(
+    (section: Parameters<typeof onCutDive>[0]) => {
+      onCutDive(section);
+      setDivedSection(section);
+    },
+    [onCutDive],
+  );
   const { itemSubtypes: gridItemSubtypes } = useItemMaps(gridItems, dimensionOverrides);
   // Slice 09: the Mbolster's fit at this card's length (a pillow card's empty mix costs nothing).
   const bolsterLength = BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium";
@@ -1850,6 +1862,89 @@ function FillingConfigPanel({
     );
   };
 
+  const templateRail = (
+    <TemplateRail
+      title="Filling Templates"
+      placement={kind === "pillow" ? "lg:max-h-[28rem]" : undefined}
+      total={templates.length}
+      search={search}
+      onSearchChange={setSearch}
+      action={
+        <Button size="sm" variant="outline" onClick={resetEditor} disabled={saving}>
+          <Plus className="size-4" />
+          New
+        </Button>
+      }
+      filters={
+        <>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v === "active" || v === "inactive" ? v : "all")}
+          >
+            <SelectTrigger className="w-full min-w-0">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={authoringFilter}
+            onValueChange={(v) => setAuthoringFilter(v === "authored" || v === "unauthored" ? v : "all")}
+          >
+            <SelectTrigger className="w-full min-w-0">
+              <SelectValue placeholder="Layout" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All layouts</SelectItem>
+              <SelectItem value="authored">Spatially authored</SelectItem>
+              <SelectItem value="unauthored">{`Not authored (${unauthoredCount})`}</SelectItem>
+            </SelectContent>
+          </Select>
+        </>
+      }
+      items={visibleTemplates.map((t) => (
+        <TemplateRailItem
+          key={t.id}
+          selected={selectedId === t.id}
+          onSelect={() => void selectTemplate(t.id)}
+          title={t.name}
+          onRename={() => setRenamingId(t.id)}
+          editing={
+            renamingId === t.id ? (
+              <TemplateNameEditor
+                value={t.name}
+                busy={renaming}
+                onCancel={() => setRenamingId("")}
+                onSubmit={(next) => void renameTemplate(t.id, next)}
+              />
+            ) : null
+          }
+          meta={
+            <>
+              {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
+              {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
+              <TemplateScopeChips
+                kind={kind}
+                keys={t.keys ?? [templateKey]}
+                currentKey={templateKey}
+              />
+            </>
+          }
+          trailing={
+            <Switch
+              checked={t.is_active}
+              onCheckedChange={(checked) => void toggleActive(t.id, checked)}
+              aria-label={`${t.name} active`}
+            />
+          }
+        />
+      ))}
+    />
+  );
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -1858,85 +1953,19 @@ function FillingConfigPanel({
         serve several.
       </p>
       <div className={WORKBENCH_GRID}>
-      <TemplateRail
-        title="Filling Templates"
-        total={templates.length}
-        search={search}
-        onSearchChange={setSearch}
-        action={
-          <Button size="sm" variant="outline" onClick={resetEditor} disabled={saving}>
-            <Plus className="size-4" />
-            New
-          </Button>
-        }
-        filters={
-          <>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v === "active" || v === "inactive" ? v : "all")}
-            >
-              <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={authoringFilter}
-              onValueChange={(v) => setAuthoringFilter(v === "authored" || v === "unauthored" ? v : "all")}
-            >
-              <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Layout" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All layouts</SelectItem>
-                <SelectItem value="authored">Spatially authored</SelectItem>
-                <SelectItem value="unauthored">{`Not authored (${unauthoredCount})`}</SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        }
-        items={visibleTemplates.map((t) => (
-          <TemplateRailItem
-            key={t.id}
-            selected={selectedId === t.id}
-            onSelect={() => void selectTemplate(t.id)}
-            title={t.name}
-            onRename={() => setRenamingId(t.id)}
-            editing={
-              renamingId === t.id ? (
-                <TemplateNameEditor
-                  value={t.name}
-                  busy={renaming}
-                  onCancel={() => setRenamingId("")}
-                  onSubmit={(next) => void renameTemplate(t.id, next)}
-                />
-              ) : null
-            }
-            meta={
-              <>
-                {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
-                {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
-                <TemplateScopeChips
-                  kind={kind}
-                  keys={t.keys ?? [templateKey]}
-                  currentKey={templateKey}
-                />
-              </>
-            }
-            trailing={
-              <Switch
-                checked={t.is_active}
-                onCheckedChange={(checked) => void toggleActive(t.id, checked)}
-                aria-label={`${t.name} active`}
-              />
-            }
-          />
-        ))}
-      />
+      {kind === "pillow" ? (
+        <aside className="hidden flex-col rounded-xl border lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]">
+          <div className="border-b p-3 text-sm font-medium capitalize">
+            {divedSection ? `Editing ${divedSection} section` : "Section editor"}
+          </div>
+          {!divedSection && (
+            <p className="p-3 text-sm text-muted-foreground">Click a section on the x-ray to edit its fillings.</p>
+          )}
+          <div ref={setControlsSlot} className="min-h-0 flex-1 overflow-y-auto p-2" />
+        </aside>
+      ) : (
+        templateRail
+      )}
       <div className="min-w-0 space-y-4">
       <WorkbenchHeader
         title={selectedId === "" ? "New Filling Template" : name.trim() || "Untitled Filling Template"}
@@ -2073,7 +2102,7 @@ function FillingConfigPanel({
           {/* Wide screens: the pack list sits beside the editor that derives it. */}
           <div className="space-y-3 xl:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start xl:gap-4 xl:space-y-0">
           {kind === "pillow" ? (
-            <Section title="Spatial recipe — click a section to dive in (up to 5 pieces per cell)">
+            <Section title="Spatial recipe — click a section to dive in (up to 5 layers × 5 pieces per cell)">
               {placements.length > 0 && !isSpatiallyAuthored(placements) && (
                 <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                   <div className="font-medium">Not spatially authored.</div>
@@ -2097,6 +2126,7 @@ function FillingConfigPanel({
                 dimensionOverrides={dimensionOverrides}
                 fit={fit}
                 onDiveChange={onDiveChange}
+                controlsSlot={wideWorkbench ? controlsSlot : null}
               />
               <XrayCrossSection
                 fit={fit}
@@ -2123,6 +2153,7 @@ function FillingConfigPanel({
             </Section>
           )}
           <div className="space-y-3">
+          {kind === "pillow" && templateRail}
           <Section title="Derived pack list">
             {kind === "pillow" ? (
               <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />
@@ -2366,6 +2397,7 @@ function TemplateRail({
   filters,
   action,
   items,
+  placement = "lg:sticky lg:top-4 lg:max-h-[calc(100svh-2rem)]",
 }: {
   title: string;
   total: number;
@@ -2374,9 +2406,11 @@ function TemplateRail({
   filters: ReactNode;
   action?: ReactNode;
   items: ReactNode[];
+  /** Sticky full-height column by default; a bounded box when it shares a column. */
+  placement?: string;
 }) {
   return (
-    <aside className="hidden flex-col rounded-xl border lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]">
+    <aside className={`hidden flex-col rounded-xl border lg:flex ${placement}`}>
       <div className="space-y-3 border-b p-3">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">

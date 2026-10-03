@@ -43,7 +43,8 @@ assert.match(renderer, /bolsterShellPolygon\(/, "capsule sampled for conform geo
 assert.match(renderer, /layoutBolsterPlacements\(/, "deterministic layout engine renders the mix");
 assert.match(renderer, /layoutBolsterPlacements\(placements, length, \{ dims: itemDims, fit \}\)/, "true scale (slice 09): the registry dimensions and the fit draw the pack");
 assert.match(renderer, /fitProp \?\? fitBolster\(placements, length, \{ dims: itemDims \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
-assert.match(renderer, /const would = fitBolster\(next, length, \{ dims: itemDims \}\);\s*if \(would\.status === "over"\) \{\s*toast\.error\(bolsterFitMessage\(would, pieceLabel\)\);\s*return;/, "an add the bolster cannot fit is refused with the numbers; compressed goes through");
+assert.match(renderer, /onPlacementsChange\?\.\(addBolsterPiece\(placements, itemId\)\);/, "fit never refuses a bolster add — the gauge warns");
+assert.match(renderer, /<FitWarning status=\{fit\.status\} message=\{bolsterFitMessage\(fit, label\)\}/, "the gauge's fit message lives in its warning tooltip");
 assert.match(renderer, /data-xray-bolster-ring=\{fit\.status\}/, "the capsule ring is a stroke on the capsule path, amber or red");
 assert.match(renderer, /<BolsterGauge fit=\{fit\} label=\{pieceLabel\} \/>/, "the length gauge sits with the editor");
 assert.match(renderer, /status=\{squeeze\.status\}/, "a squeezed pouch draws dashed");

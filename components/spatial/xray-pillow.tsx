@@ -11,12 +11,14 @@
  */
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { layerDragDestination, layerSortableId } from "@/lib/dnd/layer-drag";
 import type { SortableDragEndEvent } from "@/lib/dnd/sortable-move";
@@ -72,6 +74,7 @@ import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visual
 import {
   fitMessage,
   fitPillow,
+  layerFitMessage,
   pieceFitStatus,
   wouldFit,
   type CellFit,
@@ -157,7 +160,7 @@ type PouchDrag = {
   active: boolean;
   over: PouchDropTarget | null;
   /** The hovered target would leave its cell unable to close. */
-  refused: boolean;
+  overfull: boolean;
 };
 /** A stacked cell a pouch was dropped on: the Layer picker blooms at the drop point. */
 type LayerPick = {
@@ -344,7 +347,7 @@ export function MorphPiece({
 export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string; compact: boolean }) {
   const pct = Math.min(cell.loftMm / Math.max(cell.maxLoftMm, 1), 1) * 100;
   const bar = cell.status === "over" ? "bg-red-500" : cell.status === "compressed" ? "bg-amber-500" : "bg-emerald-500";
-  const tone = cell.status === "over" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400";
+  const tone = FIT_TONE[cell.status as Exclude<FitStatus, "ok">];
   return (
     <div
       className={`flex w-full flex-col gap-0.5 rounded border bg-background/90 px-1.5 py-0.5 shadow-sm ${compact ? "text-[9px] leading-4" : "text-[11px] leading-5"}`}
@@ -360,12 +363,52 @@ export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string
           {Math.round(cell.loftMm)} / {Math.round(cell.maxLoftMm)} mm
         </span>
         {cell.status !== "ok" && <span className={`capitalize ${tone}`}>{cell.status}</span>}
+        {cell.status !== "ok" && <FitWarning status={cell.status} message={fitMessage(cell, size)} className="ml-auto" />}
       </div>
       <div className="h-1 w-full overflow-hidden rounded bg-muted">
         <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
       </div>
-      {cell.status !== "ok" && <div className="text-muted-foreground">{fitMessage(cell, size)}</div>}
     </div>
+  );
+}
+
+const FIT_TONE: Record<Exclude<FitStatus, "ok">, string> = {
+  compressed: "text-amber-600 dark:text-amber-400",
+  over: "text-red-600 dark:text-red-400",
+};
+
+/**
+ * A fit problem as a small triangle; the numbers live in its tooltip. Tapping
+ * toggles it too — touch has no hover. Advisory only: nothing it marks is refused.
+ */
+export function FitWarning({
+  status,
+  message,
+  className = "",
+}: {
+  status: FitStatus;
+  message: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  if (status === "ok") return null;
+  return (
+    <Tooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={`pointer-events-auto inline-flex shrink-0 items-center justify-center rounded ${FIT_TONE[status]} ${className}`}
+          aria-label={message}
+          data-fit-warning={status}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <AlertTriangle className="size-3 max-md:size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-64">
+        {message}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -432,6 +475,7 @@ function LayerRow({
   dropCell,
   pieces,
   full,
+  warning,
   selectedSlot,
   onAdd,
   onRemoveLayer,
@@ -446,6 +490,8 @@ function LayerRow({
   dropCell: string;
   pieces: Array<{ slot: number; label: string }>;
   full: boolean;
+  /** This layer's width problem, if any: a triangle with the numbers on hover. */
+  warning?: { status: FitStatus; message: string };
   /** The selected piece's slot when it is in this cell (slice 06): its label reads pressed. */
   selectedSlot: number | null;
   onAdd: () => void;
@@ -465,6 +511,7 @@ function LayerRow({
       className={`pointer-events-auto flex w-full items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
     >
       <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
+      {warning && <FitWarning status={warning.status} message={warning.message} />}
       {/* Desktop NEVER wraps. The panel is an absolutely positioned box inside a
           fixed aspect-ratio, overflow-hidden frame, so a row that wraps grows the
           panel VERTICALLY until it is clipped off the frame and its controls stop
@@ -540,6 +587,7 @@ export function XrayPillow({
   onDiveChange,
   items,
   onPlacementsChange,
+  controlsSlot,
   className,
 }: {
   placements: PillowPlacement[];
@@ -561,6 +609,8 @@ export function XrayPillow({
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
   onPlacementsChange?: (next: PillowPlacement[]) => void;
+  /** Desktop: render the dive controls into this element instead of over the pillow art. */
+  controlsSlot?: HTMLElement | null;
   className?: string;
 }) {
   const uid = useId();
@@ -597,6 +647,7 @@ export function XrayPillow({
   // keeps the on-pillow cell highlight + tap-to-add, and the chips, toggle,
   // layer rows and add-layer move into a dock right under the pillow.
   const isMobile = useIsMobile();
+  const slotted = Boolean(controlsSlot) && !isMobile;
   // Ring 1 = filling family (3D/6D/6D+), leaves = deduped inventory items.
   const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
 
@@ -645,7 +696,7 @@ export function XrayPillow({
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
-      if (!rootRef.current || rootRef.current.contains(target)) return;
+      if (!rootRef.current || rootRef.current.contains(target) || controlsSlot?.contains(target)) return;
       // Toasts are portalled to the document, so every one of this editor's own
       // confirmations reads as "outside" — including Mirror's Undo, which would
       // then close the dive out from under the staff member using it.
@@ -661,7 +712,7 @@ export function XrayPillow({
       window.removeEventListener("keydown", onKey, true);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [dived, endDive]);
+  }, [dived, endDive, controlsSlot]);
 
   // The Size's stage: silhouette, Section columns and cell regions (slice 02).
   const stage = useMemo(() => stageGeometry(pillowSize), [pillowSize]);
@@ -781,14 +832,7 @@ export function XrayPillow({
       toast.error(result.error); // cap / rule feedback, visible on-canvas
       return;
     }
-    // Slice 04: the physical fit after the add. A cell that could not close
-    // even fully compressed is refused with the numbers; one that merely
-    // compresses is allowed — its ring turns amber. Advisory, after the caps.
-    const would = wouldFit(placements, { kind: "add", cell, itemId, layer }, { size: pillowSize, dims: itemDims, loftAllowance });
-    if (would.cell?.status === "over") {
-      toast.error(fitMessage(would.cell, pillowSize));
-      return;
-    }
+    // Fit never refuses: an overfull cell turns amber/red and its layer warns.
     onPlacementsChange?.(result.placements);
   };
 
@@ -800,6 +844,13 @@ export function XrayPillow({
   /** The dived cell's fit, for its gauge; undefined while the cell is empty. */
   const cellFitOf = (subSection: SubSection): CellFit | undefined =>
     dived ? fit.cells.find((c) => c.section === dived && c.subSection === subSection) : undefined;
+
+  /** A stacked layer's width problem, for its row's warning triangle. */
+  const layerWarning = (subSection: SubSection, depth: number) => {
+    const cell = cellFitOf(subSection);
+    const layer = cell?.layers.find((l) => l.depth === depth);
+    return cell && layer && layer.status !== "ok" ? { status: layer.status, message: layerFitMessage(cell, layer) } : undefined;
+  };
 
   /** The selection, only while the piece still exists (a remove leaves the state behind). */
   const selectedPiece: (PieceRef & { itemId: number }) | null = useMemo(() => {
@@ -877,7 +928,7 @@ export function XrayPillow({
     let nextRef: PieceRef = ref;
     let error: string | null = null;
     const toCell = (cell: Cell) => {
-      const r = movePiece(before, ref, { cell }, fitCtx);
+      const r = movePiece(before, ref, { cell });
       if (r.ok) {
         next = r.placements;
         nextRef = r.ref;
@@ -893,7 +944,7 @@ export function XrayPillow({
       }
       case "layerUp":
       case "layerDown": {
-        const r = shiftPieceLayer(before, ref, kind === "layerUp" ? -1 : 1, fitCtx);
+        const r = shiftPieceLayer(before, ref, kind === "layerUp" ? -1 : 1);
         if (r.ok) {
           next = r.placements;
           nextRef = r.ref;
@@ -916,7 +967,7 @@ export function XrayPillow({
       }
     }
     if (error) {
-      toast.error(error); // cap / fit feedback, the add's path
+      toast.error(error); // cap feedback, the add's path
       return;
     }
     if (next === before) return;
@@ -973,7 +1024,7 @@ export function XrayPillow({
       y: at.y,
       active: false,
       over: null,
-      refused: false,
+      overfull: false,
     };
     dragRef.current = d;
     setDrag(d);
@@ -988,10 +1039,10 @@ export function XrayPillow({
     }
     const over = dropTargetFromElement(document.elementFromPoint(e.clientX, e.clientY));
     const dest = pouchDropDestination(d.source, over);
-    const refused = dest
+    const overfull = dest
       ? wouldFit(placements, { kind: "move", from: d.source, to: dest }, fitCtx).cell?.status === "over"
       : false;
-    const next: PouchDrag = { ...d, ...toView(e.clientX, e.clientY), active: true, over, refused };
+    const next: PouchDrag = { ...d, ...toView(e.clientX, e.clientY), active: true, over, overfull };
     dragRef.current = next;
     setDrag(next);
   };
@@ -1044,11 +1095,9 @@ export function XrayPillow({
       });
       return;
     }
-    // A reorder within its own Layer changes no fit — like the arrow keys, it is never refused for one.
-    const reorder = sameCellRef(plan.to.cell, d.source) && plan.to.layer === d.source.depth;
-    const r = movePiece(placements, d.source, plan.to, reorder ? undefined : fitCtx);
+    const r = movePiece(placements, d.source, plan.to);
     if (!r.ok) {
-      toast.error(r.error); // cap / fit feedback, the add's path
+      toast.error(r.error); // cap feedback, the add's path
       return;
     }
     commitMove(placements, r.placements, d.source, r.ref);
@@ -1116,7 +1165,7 @@ export function XrayPillow({
     closeLayerPick();
     if (!pick) return;
     const layer = resolveLayerChoice(choice, layerPickSizes, layerPickOwn);
-    const r = movePiece(placements, pick.source, { cell: pick.cell, layer }, fitCtx);
+    const r = movePiece(placements, pick.source, { cell: pick.cell, layer });
     if (!r.ok) {
       toast.error(r.error);
       return;
@@ -1399,6 +1448,105 @@ export function XrayPillow({
       onPlacementsChange?.(moveLayer(placements, cell, from, to));
     };
 
+  /** The dived section's controls as a flow layout: the phone dock and the host slot share it. */
+  const diveControls = (chrome: string) =>
+    dived && (
+      <div className={`flex flex-col ${chrome}`}>
+        <div className="mb-1 flex shrink-0 flex-wrap items-center gap-2 px-1">
+          <span className="text-xs font-semibold capitalize">{dived} section</span>
+          <div className="ml-auto flex items-center gap-2">
+            {mirrorButton(dived, false)}
+            <button
+              type="button"
+              className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent"
+              onClick={endDive}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+        {/* Its own element, not a sibling of the header: `first:border-t-0`
+            below only reaches the first cell when the cells are the first
+            children of their container. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
+          const full = cellIsFull(subSection);
+          return (
+            <div
+              key={subSection}
+              className="flex flex-col gap-1.5 border-t border-border/60 px-1 py-2 first:border-t-0"
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {subSection}
+                </span>
+                {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
+                <button
+                  type="button"
+                  disabled={full}
+                  className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
+                  aria-label={
+                    full
+                      ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
+                      : `Add filling to ${dived} ${subSection}`
+                  }
+                  onClick={() => !full && openPicker(subSection, null)}
+                >
+                  <Plus className={CHIP_ICON_CLASS} />
+                  {full ? "Full" : "Add filling"}
+                </button>
+              </div>
+              {/* Phone parity (slice 04): the same gauge and message in the dock group. */}
+              {cellPcs.length > 0 && cellFitOf(subSection) && (
+                <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
+              )}
+              {!stacked && cellPcs.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {sideChips
+                    .filter((fc) => fc.subSection === subSection)
+                    .map((fc) => (
+                      <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
+                    ))}
+                </div>
+              )}
+              {/* One provider per CELL: see layerDragEnd. */}
+              {stacked && (
+                <DragDropProvider
+                  onDragStart={() => (draggingRef.current = true)}
+                  onDragEnd={layerDragEnd(cell, layers)}
+                >
+                  {layers.map((layer, depth) => (
+                    <LayerRow
+                      key={layerSortableId(layer)}
+                      id={layerSortableId(layer)}
+                      index={depth}
+                      depth={depth}
+                      dropCell={`${cell.section}/${cell.subSection}`}
+                      full={layer.length >= MAX_PIECES_PER_LAYER}
+                      warning={layerWarning(subSection, depth)}
+                      pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
+                      selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
+                      onSelectPiece={(slot) => selectPiece({ section: cell.section, subSection: cell.subSection, slot })}
+                      pieceDragHandle={(slot) => dragHandle({ section: cell.section, subSection: cell.subSection, slot })}
+                      onAdd={() => openPicker(subSection, depth)}
+                      onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
+                      onRemovePiece={(slot) =>
+                        onPlacementsChange?.(removePiece(placements, cell, slot))
+                      }
+                    />
+                  ))}
+                </DragDropProvider>
+              )}
+              {cellPcs.length > 0 &&
+                layers.length < MAX_LAYERS_PER_CELL &&
+                addLayerButton(cell, subSection, layers)}
+            </div>
+          );
+        })}
+        </div>
+      </div>
+    );
+
   return (
     <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
       <svg
@@ -1516,15 +1664,15 @@ export function XrayPillow({
             )}
 
             {/* Drag feedback (slice 07): the hovered drop cell highlights in the
-                selection blue — red when the fit says the drop could not close —
+                selection blue — red when the drop would leave the cell overfull —
                 and a ghost of the pouch's outline follows the pointer. (Blue, not
                 the add-target white: white is invisible on the unveiled Section.) */}
             {drag?.active && drag.over && (
               <path
                 d={stage.cellClipPaths[`${drag.over.section}/${drag.over.subSection}`]}
-                fill={drag.refused ? RING_OVER : "#38bdf8"}
-                fillOpacity={drag.refused ? 0.25 : 0.18}
-                data-xray-drop-hover={drag.refused ? "refused" : "ok"}
+                fill={drag.overfull ? RING_OVER : "#38bdf8"}
+                fillOpacity={drag.overfull ? 0.25 : 0.18}
+                data-xray-drop-hover={drag.overfull ? "overfull" : "ok"}
               />
             )}
             {drag?.active && (authoredPaths.get(drag.key) ?? settledPaths.get(drag.key)) && rectByKey.has(drag.key) && (
@@ -1720,7 +1868,7 @@ export function XrayPillow({
               happen to be. Parked over the column it mirrors INTO, which is the
               one place staff are about to look. Still inside the frame, so it is
               never the clipped gutter the per-cell controls had to move out of. */}
-          {!isMobile && (
+          {!isMobile && !slotted && (
             <div
               className="absolute z-30 flex -translate-x-1/2 justify-center"
               style={{
@@ -1735,7 +1883,7 @@ export function XrayPillow({
           )}
 
           {/* Side-by-side cells: centroid chips over their pouch group. */}
-          {!isMobile && sideChips.map((fc) => (
+          {!isMobile && !slotted && sideChips.map((fc) => (
             <div
               key={`${fc.subSection}-${fc.itemId}`}
               className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
@@ -1766,6 +1914,18 @@ export function XrayPillow({
               // layer is the Add-layer button, and a hover-gated button is
               // keyboard-unreachable. The toggle below still waits for two.
               if (cellPcs.length < 1 && !hinting) return null;
+              // Slotted: the controls live beside the pillow; the cell keeps only its hover hint.
+              if (slotted) {
+                return hinting ? (
+                  <span
+                    key={subSection}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                    style={cellCenter(subSection)}
+                  >
+                    {cellIsFull(subSection) ? `Cell full (max ${MAX_PIECES_PER_CELL})` : "Click to add filling"}
+                  </span>
+                ) : null;
+              }
               return (
                 <div
                   key={subSection}
@@ -1796,6 +1956,7 @@ export function XrayPillow({
                           depth={depth}
                           dropCell={`${cell.section}/${cell.subSection}`}
                           full={layer.length >= MAX_PIECES_PER_LAYER}
+                          warning={layerWarning(subSection, depth)}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
                           selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
                           onSelectPiece={(slot) => selectPiece({ section: cell.section, subSection: cell.subSection, slot })}
@@ -1919,101 +2080,11 @@ export function XrayPillow({
           {/* Bounded and scrollable: three cells of 44px layer rows overrun a
               small phone, and the dock is out of flow so the page cannot scroll
               to reach the bottom of it. The header stays put while the cells scroll. */}
-          <div className="flex max-h-[70vh] flex-col rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl">
-            <div className="mb-1 flex shrink-0 flex-wrap items-center gap-2 px-1">
-              <span className="text-xs font-semibold capitalize">{dived} section</span>
-              <div className="ml-auto flex items-center gap-2">
-                {mirrorButton(dived, false)}
-                <button
-                  type="button"
-                  className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent"
-                  onClick={endDive}
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-            {/* Its own element, not a sibling of the header: `first:border-t-0`
-                below only reaches the first cell when the cells are the first
-                children of their container. */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
-              const full = cellIsFull(subSection);
-              return (
-                <div
-                  key={subSection}
-                  className="flex flex-col gap-1.5 border-t border-border/60 px-1 py-2 first:border-t-0"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      {subSection}
-                    </span>
-                    {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
-                    <button
-                      type="button"
-                      disabled={full}
-                      className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
-                      aria-label={
-                        full
-                          ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
-                          : `Add filling to ${dived} ${subSection}`
-                      }
-                      onClick={() => !full && openPicker(subSection, null)}
-                    >
-                      <Plus className={CHIP_ICON_CLASS} />
-                      {full ? "Full" : "Add filling"}
-                    </button>
-                  </div>
-                  {/* Phone parity (slice 04): the same gauge and message in the dock group. */}
-                  {cellPcs.length > 0 && cellFitOf(subSection) && (
-                    <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
-                  )}
-                  {!stacked && cellPcs.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {sideChips
-                        .filter((fc) => fc.subSection === subSection)
-                        .map((fc) => (
-                          <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
-                        ))}
-                    </div>
-                  )}
-                  {/* One provider per CELL: see layerDragEnd. */}
-                  {stacked && (
-                    <DragDropProvider
-                      onDragStart={() => (draggingRef.current = true)}
-                      onDragEnd={layerDragEnd(cell, layers)}
-                    >
-                      {layers.map((layer, depth) => (
-                        <LayerRow
-                          key={layerSortableId(layer)}
-                          id={layerSortableId(layer)}
-                          index={depth}
-                          depth={depth}
-                          dropCell={`${cell.section}/${cell.subSection}`}
-                          full={layer.length >= MAX_PIECES_PER_LAYER}
-                          pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
-                          selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
-                          onSelectPiece={(slot) => selectPiece({ section: cell.section, subSection: cell.subSection, slot })}
-                          pieceDragHandle={(slot) => dragHandle({ section: cell.section, subSection: cell.subSection, slot })}
-                          onAdd={() => openPicker(subSection, depth)}
-                          onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
-                          onRemovePiece={(slot) =>
-                            onPlacementsChange?.(removePiece(placements, cell, slot))
-                          }
-                        />
-                      ))}
-                    </DragDropProvider>
-                  )}
-                  {cellPcs.length > 0 &&
-                    layers.length < MAX_LAYERS_PER_CELL &&
-                    addLayerButton(cell, subSection, layers)}
-                </div>
-              );
-            })}
-            </div>
-          </div>
+          {diveControls("max-h-[70vh] rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl")}
         </div>
       )}
+      {/* Host-provided slot (desktop): the same controls beside the pillow, off the art. */}
+      {dived && editable && slotted && createPortal(<div data-xray-dive-dock>{diveControls("")}</div>, controlsSlot!)}
     </div>
   );
 }

@@ -81,6 +81,7 @@ export function XrayEditor({
   dimensionOverrides,
   fit,
   onDiveChange,
+  controlsSlot,
   className,
 }: {
   placements: PillowPlacement[];
@@ -96,6 +97,8 @@ export function XrayEditor({
   /** The host's fit (`usePillowFit`), shared with its banner and cross-section; computed by the x-ray when omitted. */
   fit?: PillowFit;
   onDiveChange?: (section: Section | null) => void;
+  /** Desktop: where the dive controls render instead of over the pillow. */
+  controlsSlot?: HTMLElement | null;
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims, loftAllowance } = useItemMaps(items, dimensionOverrides);
@@ -113,6 +116,7 @@ export function XrayEditor({
         onDiveChange={onDiveChange}
         items={items}
         onPlacementsChange={onPlacementsChange}
+        controlsSlot={controlsSlot}
         className="absolute inset-0"
       />
     </XrayFrame>

@@ -110,24 +110,15 @@ describe("movePiece", () => {
     expect(movePiece(base, ref("right", "back", 9), { cell: { section: "left", subSection: "front" } }).ok).toBe(false);
   });
 
-  it("refuses a move that leaves the target unable to close, with the fit message, and allows one that only compresses", () => {
+  it("moves into a cell that cannot close — fit warns, never refuses", () => {
     const thick: ResolvedDims = { key: "k", kind: "pouch", source: "measured", measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, thicknessMm: 60, minThicknessMm: 50 } };
     const dims = new Map([[1, thick]]);
     const ctx = { size: "M", dims, pillow: { ...PILLOW_DIMENSIONS.M, subSectionDividers: true } };
     // Three 60 mm (min 50) planes in the centre: 150 min > 140.8 — a fourth cannot close either.
     const stack = [0, 1, 2].map((row) => at("center", "middle", row + 1, 1, { row }));
-    const placements = [...stack, at("left", "front", 1, 1)];
-    const over = movePiece(placements, ref("left", "front", 1), { cell: { section: "center", subSection: "middle" }, layer: 3 }, ctx);
-    expect(over.ok).toBe(false);
-    if (over.ok) return;
-    expect(over.error).toMatch(/center · middle: 4 layers need 240 mm relaxed, 200 mm fully compressed; Size M holds 141 mm/);
-    // The side budget (168.3) takes three of them compressed.
-    const two = [0, 1].map((row) => at("left", "middle", row + 1, 1, { row }));
-    const ok = movePiece([...two, at("left", "front", 1, 1)], ref("left", "front", 1), { cell: { section: "left", subSection: "middle" }, layer: 2 }, ctx);
-    expect(ok.ok).toBe(true);
-    if (ok.ok) expect(fitPillow(ok.placements, ctx).cells.find((c) => c.subSection === "middle")!.status).toBe("compressed");
-    // Without a fit context the schema caps are the only refusals.
-    expect(movePiece(placements, ref("left", "front", 1), { cell: { section: "center", subSection: "middle" }, layer: 3 }).ok).toBe(true);
+    const over = movePiece([...stack, at("left", "front", 1, 1)], ref("left", "front", 1), { cell: { section: "center", subSection: "middle" }, layer: 3 });
+    expect(over.ok).toBe(true);
+    if (over.ok) expect(fitPillow(over.placements, ctx).cells.find((c) => c.section === "center" && c.subSection === "middle")!.status).toBe("over");
   });
 });
 
