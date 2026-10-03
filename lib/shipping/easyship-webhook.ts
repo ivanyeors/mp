@@ -52,6 +52,8 @@ export interface EasyshipWebhookEvent {
   labelUrl: string | null;
   /** The courier status for tracking events, e.g. "In Transit to Customer", "Delivered". */
   status: string | null;
+  /** The latest checkpoint as "message — location", from checkpoint events only. */
+  checkpoint: string | null;
 }
 
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -76,7 +78,20 @@ export function parseEasyshipEvent(body: unknown): EasyshipWebhookEvent | null {
     trackingUrl: text(data.tracking_page_url),
     labelUrl: text(data.label_url),
     status: text(data.status),
+    checkpoint: latestCheckpoint(data.checkpoints),
   };
+}
+
+function latestCheckpoint(list: unknown): string | null {
+  if (!Array.isArray(list)) return null;
+  const time = (c: Record<string, unknown>) => Date.parse(String(c.checkpoint_time ?? "")) || 0;
+  const latest = list
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+    .reduce<Record<string, unknown> | null>((a, c) => (!a || time(c) >= time(a) ? c : a), null);
+  const message = text(latest?.message);
+  if (!latest || !message) return null;
+  const place = text(latest.location) ?? ([text(latest.city), text(latest.country_name)].filter(Boolean).join(", ") || null);
+  return place ? `${message} — ${place}` : message;
 }
 
 /** Easyship reports a finished delivery as "Delivered"; anything else is still on its way. */

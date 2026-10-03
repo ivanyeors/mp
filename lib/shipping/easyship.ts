@@ -290,6 +290,9 @@ export interface ParsedShipment {
   courierServiceId: string | null;
   totalCharge: number | null;
   currency: string | null;
+  /** Courier transit days from the label's rate. */
+  minDays: number | null;
+  maxDays: number | null;
 }
 
 type Obj = Record<string, unknown>;
@@ -321,6 +324,8 @@ export function parseShipment(raw: unknown): ParsedShipment | null {
   const rates = Array.isArray(s.rates) ? (s.rates.map(obj).filter(Boolean) as Obj[]) : [];
   const rate = rates[0] ?? null;
   const charge = rate?.total_charge ?? s.total_charge;
+  const days = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+  const minDays = days(rate?.min_delivery_time);
 
   return {
     shipmentId,
@@ -333,5 +338,7 @@ export function parseShipment(raw: unknown): ParsedShipment | null {
     courierServiceId: text(service?.id) ?? text(s.courier_id),
     totalCharge: typeof charge === "number" && Number.isFinite(charge) ? Math.round(charge * 100) / 100 : null,
     currency: text(rate?.currency) ?? text(s.currency),
+    minDays,
+    maxDays: days(rate?.max_delivery_time) ?? minDays,
   };
 }

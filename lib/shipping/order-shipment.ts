@@ -124,7 +124,7 @@ export async function applyShipmentToOrder(
   admin: SupabaseClient,
   order: Pick<OrderForShipping, "id" | "shipped_at" | "status">,
   shipment: Pick<ParsedShipment, "shipmentId" | "trackingNumber" | "trackingUrl" | "labelUrl"> &
-    Partial<Pick<ParsedShipment, "courierName" | "courierServiceId" | "totalCharge" | "labelState">>,
+    Partial<Pick<ParsedShipment, "courierName" | "courierServiceId" | "totalCharge" | "labelState" | "minDays" | "maxDays">>,
 ): Promise<{ shipped: boolean }> {
   const shipmentRow: Record<string, unknown> = {
     order_id: order.id,
@@ -141,6 +141,10 @@ export async function applyShipmentToOrder(
 
   const extra: Record<string, unknown> = {};
   if (shipment.courierName) extra.shipping_courier = shipment.courierName;
+  if (shipment.minDays != null) {
+    extra.shipping_min_days = shipment.minDays;
+    extra.shipping_max_days = shipment.maxDays ?? shipment.minDays;
+  }
 
   const alreadyShipped = order.shipped_at != null || !SHIPPABLE_STATUSES.has(order.status);
   if (shipment.trackingNumber && !alreadyShipped) {

@@ -81,6 +81,12 @@ export interface OrderEmailData {
   shippingAddress?: OrderEmailAddress | null;
   trackingNumber?: string | null;
   trackingUrl?: string | null;
+  courierName?: string | null;
+  /** Courier transit days, for "Estimated delivery". */
+  minDays?: number | null;
+  maxDays?: number | null;
+  /** The courier's latest checkpoint, e.g. "Held at customs — Singapore". */
+  trackingCheckpoint?: string | null;
   refundAmount?: number | null;
 }
 

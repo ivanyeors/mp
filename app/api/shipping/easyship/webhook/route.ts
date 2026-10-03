@@ -4,6 +4,7 @@ import { markOrderDeliveredByCourier } from "@/lib/ecommerce/fulfilment";
 import { sendTrackingEmail } from "@/lib/email";
 import {
   EASYSHIP_SIGNATURE_HEADER,
+  type EasyshipWebhookEvent,
   isDeliveredStatus,
   parseEasyshipEvent,
   trackingStatusKey,
@@ -16,8 +17,8 @@ export const runtime = "nodejs";
 
 /**
  * Easyship → order updates. Register this URL in Easyship (Connect → API
- * Integrations → Webhooks) for `shipment.label.created`, `shipment.label.failed`
- * and `shipment.tracking.status.changed`.
+ * Integrations → Webhooks) for `shipment.label.created`, `shipment.label.failed`,
+ * `shipment.tracking.status.changed` and `shipment.tracking.checkpoints.created`.
  *
  * Fails closed: without a secret (EASYSHIP_WEBHOOK_SECRET, else the one captured
  * when Settings → Easyship registered the webhook) nothing is accepted. Every write
@@ -75,6 +76,8 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ ok: true });
       }
+      // Checkpoint events carry the status too, so both run the same update and email.
+      case "shipment.tracking.checkpoints.created":
       case "shipment.tracking.status.changed": {
         let delivered: boolean | undefined;
         if (isDeliveredStatus(event.status)) {
@@ -85,7 +88,7 @@ export async function POST(req: Request) {
           if (event.trackingUrl) update.tracking_url = event.trackingUrl;
           await admin.from("orders").update(update).eq("id", order.id);
         }
-        await emailStatus(admin, order.id as string, event.status);
+        await emailStatus(admin, order.id as string, event);
         return NextResponse.json({ ok: true, ...(delivered === undefined ? {} : { delivered }) });
       }
       default:
@@ -98,18 +101,28 @@ export async function POST(req: Request) {
   }
 }
 
+const DETAIL_KEYS = new Set(["unsuccessful_delivery_attempt", "exception"]);
+
 /** Emails the customer, in our template, for the statuses ticked under Couriers › Tracking. Never throws. */
-async function emailStatus(admin: ReturnType<typeof supabaseAdmin>, orderId: string, status: string | null) {
-  const key = trackingStatusKey(status);
+async function emailStatus(
+  admin: ReturnType<typeof supabaseAdmin>,
+  orderId: string,
+  event: EasyshipWebhookEvent,
+) {
+  const key = trackingStatusKey(event.status);
   if (!key) return;
   try {
     const { settings } = await readEasyshipConfig();
     if (!settings?.tracking_email.allowed_statuses.includes(key)) return;
+    // Problem emails wait for the checkpoint event, which says what the problem is.
+    const checkpointsOn =
+      settings.webhook.enabled && settings.webhook.event_types.includes("shipment_tracking_checkpoints_created");
+    if (event.eventType === "shipment.tracking.status.changed" && checkpointsOn && DETAIL_KEYS.has(key)) return;
     const { data: order } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
     if (!order || !["confirmed", "processing", "shipped", "delivered"].includes(order.status)) return;
     // A late "out for delivery" after delivery would say it's still coming.
     if (order.delivered_at && key !== "delivered") return;
-    await sendTrackingEmail(orderId, key, order, admin);
+    await sendTrackingEmail(orderId, key, order, admin, event.checkpoint);
   } catch (err) {
     console.error(`[easyship/webhook] ${key} email for ${orderId} failed:`, err);
   }

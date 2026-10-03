@@ -196,7 +196,7 @@ describe("POST /api/shipping/easyship/webhook", () => {
     h.tables.api_configs = { slug: "easyship", config: { settings } };
     await send(labelCreated);
     await send(tracking("Out for Delivery"));
-    expect(h.sendTrackingEmail).toHaveBeenCalledWith("order-1", "out_for_delivery", expect.objectContaining({ order_number: "MP-1" }), expect.anything());
+    expect(h.sendTrackingEmail).toHaveBeenCalledWith("order-1", "out_for_delivery", expect.objectContaining({ order_number: "MP-1" }), expect.anything(), null);
     await send(tracking("Delivered"));
     expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
   });
@@ -211,6 +211,24 @@ describe("POST /api/shipping/easyship/webhook", () => {
     h.tables.orders = { ...h.tables.orders!, status: "cancelled", delivered_at: null };
     await send(tracking("Out for Delivery"));
     expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a problem email from the checkpoint event, with its checkpoint, when that event is subscribed", async () => {
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      webhook: { ...DEFAULT_SETTINGS.webhook, enabled: true },
+      tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["exception"] },
+    };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
+    await send(labelCreated);
+    await send(tracking("Exception"));
+    expect(h.sendTrackingEmail).not.toHaveBeenCalled();
+    await send({
+      event_type: "shipment.tracking.checkpoints.created",
+      resource_id: "ESSG1",
+      data: { easyship_shipment_id: "ESSG1", status: "Exception", checkpoints: [{ message: "Held at customs", location: "SG" }] },
+    });
+    expect(h.sendTrackingEmail).toHaveBeenCalledWith("order-1", "exception", expect.anything(), expect.anything(), "Held at customs — SG");
   });
 
   it("acknowledges events for shipments it does not know", async () => {

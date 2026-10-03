@@ -294,7 +294,9 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
             <p className="text-xs text-muted-foreground">
               We email the customer at these statuses, in the same template as every other email. The courier
               account&apos;s own emails are switched off on sync while the Webhook tab sends tracking status changes;
-              otherwise the courier keeps sending them.
+              otherwise the courier keeps sending them. Emails show the courier and, when shipped, its delivery
+              estimate; with tracking checkpoints on the Webhook tab, missed-attempt and problem emails also say
+              what the courier last reported.
             </p>
           </div>
           <div className="space-y-2">
