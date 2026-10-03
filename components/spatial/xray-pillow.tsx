@@ -187,9 +187,9 @@ export const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
 // stage (650px wide) they stay tiny; below md the stage is ~360px wide and
 // there is no hover or precise pointer, so the same chips grow to a readable
 // 11px with ~28px icon buttons — the largest that still fits three per cell.
-const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5";
-const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5";
-const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center";
+const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5 md:dock:text-xs md:dock:leading-5";
+const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5 md:dock:size-3.5";
+const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center md:dock:flex md:dock:size-7 md:dock:items-center md:dock:justify-center";
 
 // Layer rows are the one control staff DRAG, and a grab that misses scrolls the
 // page instead — so they get their own, larger scale rather than the read-mostly
@@ -197,10 +197,10 @@ const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-m
 // that still has to fit five rows inside a ~112px cell. Phone: the dock is in
 // normal flow with room, so the buttons go to the 44px minimum touch target.
 const LAYER_ROW_CLASS =
-  "rounded-md border bg-background/95 shadow-sm text-[10px] leading-4 max-md:text-[13px] max-md:leading-6";
-const LAYER_ICON_CLASS = "size-3 max-md:size-4";
+  "rounded-md border bg-background/95 shadow-sm text-[10px] leading-4 max-md:text-[13px] max-md:leading-6 md:dock:text-[13px] md:dock:leading-6";
+const LAYER_ICON_CLASS = "size-3 max-md:size-4 md:dock:size-4";
 const LAYER_ICON_BUTTON_CLASS =
-  "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11";
+  "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11 md:dock:size-8";
 const easeOut = (t: number) => t * (2 - t);
 
 /**
@@ -508,7 +508,7 @@ function LayerRow({
       ref={ref}
       data-drop-cell={dropCell}
       data-drop-layer={depth}
-      className={`pointer-events-auto flex w-full items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
+      className={`pointer-events-auto flex w-full items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 md:dock:gap-1.5 md:dock:px-1.5 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
     >
       <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
       {warning && <FitWarning status={warning.status} message={warning.message} />}
@@ -1289,7 +1289,7 @@ export function XrayPillow({
   /** Side ↔ Stacked arrangement toggle for a cell with 2+ pieces (overlay + dock). */
   const arrangementToggle = (cell: Cell, subSection: SubSection, stacked: boolean) => (
     <div
-      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5"
+      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5 md:dock:text-xs md:dock:leading-5"
       role="group"
       aria-label={`${cell.section} ${subSection} arrangement`}
     >
@@ -1300,7 +1300,7 @@ export function XrayPillow({
             key={mode}
             type="button"
             aria-pressed={on}
-            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 md:dock:px-2.5 md:dock:py-1 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             onClick={() => onPlacementsChange?.(setCellArrangement(placements, cell, mode))}
           >
             {mode === "side" ? "Side" : "Stacked"}
@@ -1379,7 +1379,7 @@ export function XrayPillow({
       // A pouch dropped here starts a new Layer under the deepest (slice 07).
       data-drop-cell={`${cell.section}/${cell.subSection}`}
       data-drop-layer={layers.length}
-      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
+      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 md:dock:min-h-7 md:dock:px-2 ${CHIP_CLASS}`}
       aria-label={`Add a layer under ${cell.section} ${subSection}`}
       onClick={() => openPicker(subSection, layers.length)}
     >
@@ -1484,7 +1484,7 @@ export function XrayPillow({
                 <button
                   type="button"
                   disabled={full}
-                  className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
+                  className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 md:dock:min-h-7 md:dock:px-2 ${CHIP_CLASS}`}
                   aria-label={
                     full
                       ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
