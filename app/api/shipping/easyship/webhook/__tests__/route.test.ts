@@ -12,9 +12,10 @@ const h = vi.hoisted(() => ({
   updates: [] as Array<{ table: string; row: Record<string, unknown> }>,
   timeline: [] as Array<Record<string, unknown>>,
   sendShippingEmail: vi.fn(),
+  sendTrackingEmail: vi.fn(),
 }));
 
-vi.mock("@/lib/email", () => ({ sendShippingEmail: h.sendShippingEmail }));
+vi.mock("@/lib/email", () => ({ sendShippingEmail: h.sendShippingEmail, sendTrackingEmail: h.sendTrackingEmail }));
 vi.mock("@/lib/supabase/server", () => ({
   /** One row per table — enough for one order and its shipment. */
   supabaseAdmin: () => ({
@@ -67,6 +68,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
+const { DEFAULT_SETTINGS } = await import("@/lib/easyship/schema");
 const { POST } = await import("@/app/api/shipping/easyship/webhook/route");
 
 const SECRET = "whsec_test";
@@ -118,6 +120,7 @@ beforeEach(() => {
   h.updates.length = 0;
   h.timeline.length = 0;
   h.sendShippingEmail.mockReset();
+  h.sendTrackingEmail.mockReset();
 });
 
 afterEach(() => vi.unstubAllEnvs());
@@ -186,6 +189,16 @@ describe("POST /api/shipping/easyship/webhook", () => {
     const again = await send(tracking("Delivered"));
     expect(await again.json()).toMatchObject({ delivered: false });
     expect(h.tables.orders!.delivered_at).toBe(deliveredAt);
+  });
+
+  it("emails a status update in our template only for the ticked statuses", async () => {
+    const settings = { ...DEFAULT_SETTINGS, tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["out_for_delivery"] } };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
+    await send(labelCreated);
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail).toHaveBeenCalledWith("order-1", "out_for_delivery", expect.objectContaining({ order_number: "MP-1" }), expect.anything());
+    await send(tracking("Delivered"));
+    expect(h.sendTrackingEmail).toHaveBeenCalledTimes(1);
   });
 
   it("acknowledges events for shipments it does not know", async () => {

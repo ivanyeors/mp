@@ -81,3 +81,17 @@ export function parseEasyshipEvent(body: unknown): EasyshipWebhookEvent | null {
 export function isDeliveredStatus(status: string | null | undefined): boolean {
   return (status ?? "").trim().toLowerCase().replace(/[^a-z]/g, "") === "delivered";
 }
+
+export type TrackingStatusKey = "in_transit" | "out_for_delivery" | "unsuccessful_delivery_attempt" | "delivered" | "exception";
+
+/** Maps a courier status string to the status a customer can be emailed about. Null for anything else. */
+export function trackingStatusKey(status: string | null | undefined): TrackingStatusKey | null {
+  const s = (status ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  // ponytail: keyword match on Easyship's free-text status; switch to its status ids if one is misfiled
+  if (s === "delivered") return "delivered";
+  if (s.includes("outfordelivery")) return "out_for_delivery";
+  if (s.includes("attempt") || s.includes("faileddelivery")) return "unsuccessful_delivery_attempt";
+  if (s.includes("exception") || s.includes("lost") || s.includes("returned")) return "exception";
+  if (s.includes("transit")) return "in_transit";
+  return null;
+}

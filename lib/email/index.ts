@@ -246,6 +246,30 @@ export async function sendShippingEmail(
   });
 }
 
+const TRACKING_TEMPLATE = {
+  in_transit: "shipping",
+  out_for_delivery: "tracking_out_for_delivery",
+  unsuccessful_delivery_attempt: "tracking_delivery_attempt",
+  delivered: "tracking_delivered",
+  exception: "tracking_exception",
+} as const satisfies Record<string, EmailTemplateName>;
+
+/** Send the email for a courier status (idempotent; "in transit" is the shipped email). */
+export async function sendTrackingEmail(
+  orderId: string,
+  status: keyof typeof TRACKING_TEMPLATE,
+  order: OrderRow,
+  admin?: SupabaseClient
+): Promise<void> {
+  await dispatchOrderEmail({
+    orderId,
+    template: TRACKING_TEMPLATE[status],
+    to: order.email,
+    data: buildOrderEmailData(order),
+    admin,
+  });
+}
+
 /** Send the refund email (idempotent). */
 export async function sendRefundEmail(
   orderId: string,

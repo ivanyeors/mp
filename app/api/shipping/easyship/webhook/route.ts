@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { markOrderDeliveredByCourier } from "@/lib/ecommerce/fulfilment";
+import { sendTrackingEmail } from "@/lib/email";
 import {
   EASYSHIP_SIGNATURE_HEADER,
   isDeliveredStatus,
   parseEasyshipEvent,
+  trackingStatusKey,
   verifyEasyshipSignature,
 } from "@/lib/shipping/easyship-webhook";
 import { applyShipmentToOrder } from "@/lib/shipping/order-shipment";
@@ -74,15 +76,17 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
       case "shipment.tracking.status.changed": {
+        let delivered: boolean | undefined;
         if (isDeliveredStatus(event.status)) {
-          const delivered = await markOrderDeliveredByCourier(admin, order.id as string, event.status!);
-          return NextResponse.json({ ok: true, delivered });
+          delivered = await markOrderDeliveredByCourier(admin, order.id as string, event.status!);
+        } else {
+          const update: Record<string, unknown> = { shipping_tracking_status: event.status };
+          if (event.trackingNumber) update.tracking_number = event.trackingNumber;
+          if (event.trackingUrl) update.tracking_url = event.trackingUrl;
+          await admin.from("orders").update(update).eq("id", order.id);
         }
-        const update: Record<string, unknown> = { shipping_tracking_status: event.status };
-        if (event.trackingNumber) update.tracking_number = event.trackingNumber;
-        if (event.trackingUrl) update.tracking_url = event.trackingUrl;
-        await admin.from("orders").update(update).eq("id", order.id);
-        return NextResponse.json({ ok: true });
+        await emailStatus(admin, order.id as string, event.status);
+        return NextResponse.json({ ok: true, ...(delivered === undefined ? {} : { delivered }) });
       }
       default:
         return NextResponse.json({ ok: true, ignored: event.eventType });
@@ -91,5 +95,19 @@ export async function POST(req: Request) {
     console.error(`[easyship/webhook] ${event.eventType} for ${event.shipmentId} failed:`, err);
     // 500 so Easyship retries; every handler above is safe to run twice.
     return NextResponse.json({ error: "Could not apply the event" }, { status: 500 });
+  }
+}
+
+/** Emails the customer, in our template, for the statuses ticked under Couriers › Tracking. Never throws. */
+async function emailStatus(admin: ReturnType<typeof supabaseAdmin>, orderId: string, status: string | null) {
+  const key = trackingStatusKey(status);
+  if (!key) return;
+  try {
+    const { settings } = await readEasyshipConfig();
+    if (!settings?.tracking_email.allowed_statuses.includes(key)) return;
+    const { data: order } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
+    if (order) await sendTrackingEmail(orderId, key, order, admin);
+  } catch (err) {
+    console.error(`[easyship/webhook] ${key} email for ${orderId} failed:`, err);
   }
 }

@@ -11,6 +11,10 @@ export type EmailTemplateName =
   | "order_confirmation"
   | "payment_receipt"
   | "shipping"
+  | "tracking_out_for_delivery"
+  | "tracking_delivery_attempt"
+  | "tracking_delivered"
+  | "tracking_exception"
   | "refund";
 
 /** A rendered template, before it is addressed to a recipient. */

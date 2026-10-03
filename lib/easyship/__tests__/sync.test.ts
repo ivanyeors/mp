@@ -83,7 +83,7 @@ describe("syncEasyship", () => {
     const out = await syncEasyship(desired, ENDPOINT);
 
     const tracking = find("POST", "/account/settings")[0].body as { tracking_email: Record<string, unknown>; tracking_page: Record<string, unknown> };
-    expect(tracking.tracking_email.allowed_statuses).toEqual(["delivered"]);
+    expect(tracking.tracking_email.allowed_statuses).toEqual([]);
     expect("advertising" in tracking.tracking_email).toBe(false);
 
     expect(find("PATCH", "/addresses/a1")[0].body?.default_for).toEqual({ pickup: true, billing: true, sender: true, return: true });

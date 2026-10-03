@@ -202,6 +202,26 @@ ${
   return { subject, html, text };
 }
 
+/** A courier status update: same shell as "shipped", with a status-specific line. */
+function trackingUpdate(title: string, subject: (n: string) => string, line: string) {
+  return (data: OrderEmailData): RenderedEmail => {
+    const url = data.trackingUrl || orderUrl(data.orderNumber);
+    const label = data.trackingUrl ? "Track your package" : "View your order";
+    const body = `Hi ${data.customerName}, order ${data.orderNumber}: ${line}`;
+    return {
+      subject: subject(data.orderNumber),
+      text: `${body}${data.trackingNumber ? `\nTracking number: ${data.trackingNumber}` : ""}\n\n${label}: ${url}`,
+      html: renderEmailShell({
+        title,
+        preheader: subject(data.orderNumber),
+        bodyHtml: `${paragraph(body)}
+${data.trackingNumber ? infoList([{ label: "Tracking number", value: data.trackingNumber, strong: true }]) : ""}`,
+        cta: { href: url, label },
+      }),
+    };
+  };
+}
+
 function refund(data: OrderEmailData): RenderedEmail {
   const refundAmount = data.refundAmount ?? data.total;
   const subject = `Refund issued for order ${data.orderNumber}`;
@@ -238,6 +258,26 @@ export const ORDER_EMAIL_TEMPLATES: Record<
   order_confirmation: orderConfirmation,
   payment_receipt: paymentReceipt,
   shipping,
+  tracking_out_for_delivery: trackingUpdate(
+    "Out for delivery",
+    (n) => `Order ${n} is out for delivery`,
+    "it's out for delivery and should arrive today."
+  ),
+  tracking_delivery_attempt: trackingUpdate(
+    "We missed you",
+    (n) => `Delivery attempt for order ${n}`,
+    "the courier tried to deliver it but couldn't. They'll try again or leave instructions on the tracking page."
+  ),
+  tracking_delivered: trackingUpdate(
+    "Delivered",
+    (n) => `Order ${n} has been delivered`,
+    "it's been delivered. We hope you love it."
+  ),
+  tracking_exception: trackingUpdate(
+    "There's a problem with your delivery",
+    (n) => `Delivery problem with order ${n}`,
+    "the courier has reported a problem with the delivery. We're looking into it and will be in touch."
+  ),
   refund,
 };
 

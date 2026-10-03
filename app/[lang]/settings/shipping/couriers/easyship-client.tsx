@@ -9,12 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  AD_TITLES,
   BOX_TYPES,
   DEFAULT_SETTINGS,
   TRACKING_STATUSES,
@@ -188,10 +185,7 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
         </TabsContent>
 
         <TabsContent value="tracking" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <TrackingCard kind="tracking_email" settings={settings} update={update} />
-            <TrackingCard kind="tracking_page" settings={settings} update={update} />
-          </div>
+          <TrackingSection settings={settings} update={update} />
         </TabsContent>
         <TabsContent value="addresses" className="mt-4">
           <AddressesSection addresses={settings.addresses} update={update} />
@@ -267,155 +261,76 @@ function SyncReportCard({ sync }: { sync: SyncView }) {
   );
 }
 
-/* ── Tracking email / page ─────────────────────────────────────────────── */
+/* ── Tracking ──────────────────────────────────────────────────────────── */
 
-const DISPLAY_LABELS: Record<string, string> = {
-  header: "Show company logo",
-  contact: "Show contact page & social links",
-  estimated_delivery_time: "Show estimated delivery time",
-  status_icon: "Show animated status icon",
-  contact_courier: "Show courier contact link",
+const STATUS_HINTS: Record<(typeof TRACKING_STATUSES)[number], string> = {
+  in_transit: "The “Order shipped” email",
+  out_for_delivery: "Arriving today",
+  unsuccessful_delivery_attempt: "Courier couldn't deliver",
+  delivered: "Confirms it arrived",
+  exception: "Lost, returned or held",
 };
 
-const NONE = "__none__";
+const PAGE_OPTIONS = [
+  { key: "estimated_delivery_time", label: "Show estimated delivery time" },
+  { key: "contact_courier", label: "Show courier contact link" },
+] as const;
 
-function TrackingCard({
-  kind,
-  settings,
-  update,
-}: {
-  kind: "tracking_email" | "tracking_page";
-  settings: EasyshipSettings;
-  update: Update;
-}) {
-  const value = settings[kind];
-  const isEmail = kind === "tracking_email";
-  const set = (fn: (t: EasyshipSettings["tracking_email"] | EasyshipSettings["tracking_page"]) => void) =>
-    update((d) => fn(d[kind]));
-
+function TrackingSection({ settings, update }: { settings: EasyshipSettings; update: Update }) {
+  const statuses = settings.tracking_email.allowed_statuses;
   return (
-    <Card>
-      <CardContent className="space-y-5 py-5">
-        <div>
-          <h2 className="font-medium">{isEmail ? "Tracking email" : "Tracking page"}</h2>
-          <p className="text-xs text-muted-foreground">
-            {isEmail ? "Status update emails the courier account sends your customers." : "The public trackmyshipment.co page."}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          {Object.entries(value.display_options).map(([key, on]) => (
-            <div key={key} className="flex items-center justify-between gap-3">
-              <Label htmlFor={`${kind}-${key}`} className="font-normal">{DISPLAY_LABELS[key] ?? titleCase(key)}</Label>
-              <Switch
-                id={`${kind}-${key}`}
-                checked={on}
-                onCheckedChange={(v) => set((t) => { (t.display_options as Record<string, boolean>)[key] = v; })}
-              />
-            </div>
-          ))}
-        </div>
-
-        {isEmail && (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardContent className="space-y-4 py-5">
+          <div>
+            <h2 className="font-medium">Status emails</h2>
+            <p className="text-xs text-muted-foreground">
+              We email the customer at these statuses, in the same template as every other email. The courier
+              account&apos;s own emails are switched off on sync.
+            </p>
+          </div>
           <div className="space-y-2">
-            <Label>Email on these statuses</Label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {TRACKING_STATUSES.map((s) => {
-                const checked = settings.tracking_email.allowed_statuses.includes(s);
-                return (
-                  <label key={s} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(v) =>
-                        update((d) => {
-                          const list = d.tracking_email.allowed_statuses.filter((x) => x !== s);
-                          d.tracking_email.allowed_statuses = v ? [...list, s] : list;
-                        })
-                      }
-                    />
-                    {titleCase(s)}
-                  </label>
-                );
-              })}
-            </div>
+            {TRACKING_STATUSES.map((s) => (
+              <label key={s} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={statuses.includes(s)}
+                  onCheckedChange={(v) =>
+                    update((d) => {
+                      const list = d.tracking_email.allowed_statuses.filter((x) => x !== s);
+                      d.tracking_email.allowed_statuses = v ? [...list, s] : list;
+                    })
+                  }
+                />
+                {titleCase(s)}
+                <span className="text-xs text-muted-foreground">· {STATUS_HINTS[s]}</span>
+              </label>
+            ))}
           </div>
-        )}
+        </CardContent>
+      </Card>
 
-        <div className="grid grid-cols-2 gap-3">
-          <ColorField
-            label="Button background"
-            value={value.button.background_color}
-            onChange={(v) => set((t) => { t.button.background_color = v; })}
-          />
-          <ColorField
-            label="Button text"
-            value={value.button.text_color}
-            onChange={(v) => set((t) => { t.button.text_color = v; })}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor={`${kind}-footnote`}>Footnote</Label>
-          <Textarea
-            id={`${kind}-footnote`}
-            value={value.footnote}
-            maxLength={350}
-            rows={3}
-            onChange={(e) => set((t) => { t.footnote = e.target.value; })}
-          />
-          <p className="text-right text-xs text-muted-foreground">{value.footnote.length}/350</p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Advertising button</Label>
-            <Select
-              value={value.advertising?.title ?? NONE}
-              onValueChange={(v) =>
-                set((t) => {
-                  t.advertising = v === NONE ? null : { title: v as (typeof AD_TITLES)[number], url: t.advertising?.url ?? "" };
-                })
-              }
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>None</SelectItem>
-                {AD_TITLES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
+      <Card>
+        <CardContent className="space-y-4 py-5">
+          <div>
+            <h2 className="font-medium">Tracking page</h2>
+            <p className="text-xs text-muted-foreground">
+              The courier&apos;s public page our emails&apos; “Track your package” button opens.
+            </p>
           </div>
-          {value.advertising && (
-            <div className="space-y-1.5">
-              <Label htmlFor={`${kind}-ad-url`}>Button link</Label>
-              <Input
-                id={`${kind}-ad-url`}
-                type="url"
-                placeholder="https://"
-                value={value.advertising.url}
-                onChange={(e) => set((t) => { if (t.advertising) t.advertising.url = e.target.value; })}
-              />
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={`${label} colour`}
-          className="h-9 w-11 cursor-pointer rounded-md border bg-transparent p-0.5"
-          value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000"}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-        />
-        <Input value={value} onChange={(e) => onChange(e.target.value)} className="font-mono uppercase" maxLength={7} />
-      </div>
+          <div className="space-y-2">
+            {PAGE_OPTIONS.map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <Label htmlFor={`page-${key}`} className="font-normal">{label}</Label>
+                <Switch
+                  id={`page-${key}`}
+                  checked={settings.tracking_page.display_options[key]}
+                  onCheckedChange={(v) => update((d) => { d.tracking_page.display_options[key] = v; })}
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -581,13 +496,13 @@ function BoxesSection({
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <span className="text-xs text-muted-foreground">Used for</span>
               {BOX_TYPES.map((t) => {
                 const m = boxForType[t];
                 const on = !!m && !!b.name.trim() && sameBox(m.box, b.name);
                 return (
-                  <div key={t} className="flex items-center gap-1">
+                  <div key={t} className="flex shrink-0 items-center gap-1.5">
                     <Button
                       type="button"
                       size="sm"
@@ -603,18 +518,23 @@ function BoxesSection({
                       {titleCase(t)}
                     </Button>
                     {on && (
-                      <Input
-                        aria-label={`${titleCase(t)} content weight (g)`}
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        step="10"
-                        className="h-7 w-24 text-xs"
-                        value={m.weight_grams}
-                        onChange={(e) => update((d) => { d.box_for_type[t]!.weight_grams = Math.max(0, Math.round(Number(e.target.value) || 0)); })}
-                      />
+                      <>
+                        {/* Input wraps number fields in a w-full box, so the width lives on this div. */}
+                        <div className="w-20 shrink-0">
+                          <Input
+                            aria-label={`${titleCase(t)} content weight (g)`}
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step="10"
+                            className="h-7 text-xs max-md:min-h-7"
+                            value={m.weight_grams}
+                            onChange={(e) => update((d) => { d.box_for_type[t]!.weight_grams = Math.max(0, Math.round(Number(e.target.value) || 0)); })}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">g</span>
+                      </>
                     )}
-                    {on && <span className="text-xs text-muted-foreground">g</span>}
                   </div>
                 );
               })}

@@ -65,14 +65,9 @@ function clausesEqual(a: RuleClause[], b: Array<RuleClause & { id?: string }>): 
   return stableJson(strip(a)) === stableJson(strip(b));
 }
 
-function trackingBody<T extends { advertising: unknown; allowed_statuses?: string[] }>(t: T) {
-  const { advertising, allowed_statuses, ...rest } = t;
-  return {
-    ...rest,
-    ...(advertising ? { advertising } : {}),
-    // ponytail: an empty list is omitted (left unchanged); clear statuses in the dashboard
-    ...(allowed_statuses && allowed_statuses.length ? { allowed_statuses } : {}),
-  };
+function trackingBody<T extends { advertising: unknown }>(t: T) {
+  const { advertising, ...rest } = t;
+  return { ...rest, ...(advertising ? { advertising } : {}) };
 }
 
 export async function syncEasyship(desired: EasyshipSettings, endpoint: string | null): Promise<SyncOutcome> {
@@ -95,7 +90,11 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
   try {
     await easyship("/account/settings", {
       method: "POST",
-      body: { tracking_email: trackingBody(desired.tracking_email), tracking_page: trackingBody(desired.tracking_page) },
+      // Status emails go out from our webhook in our template, so the courier account sends none.
+      body: {
+        tracking_email: { ...trackingBody(desired.tracking_email), allowed_statuses: [] },
+        tracking_page: trackingBody(desired.tracking_page),
+      },
     });
     step({ area: "tracking", action: "updated", target: "tracking email + page" });
   } catch (e) {
