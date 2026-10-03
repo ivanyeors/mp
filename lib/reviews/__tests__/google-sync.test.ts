@@ -278,8 +278,8 @@ describe("reopening a review whose rating changed reply type", () => {
     const card = send.mock.calls[0] as unknown as [string, Markup];
     expect(card[0]).toContain("🛟 SERVICE RECOVERY");
     expect(card[0]).toContain("🔄 REOPENED — the rating changed from 5★ to 2★ after it was answered.");
-    expect(card[0]).toContain(`💬 Our reply on Google now (Replace swaps it for the new one):\n${OUR_REPLY}`);
-    expect(card[1].inline_keyboard.flat()[0].text).toBe("✅ Replace reply");
+    expect(card[0]).toContain(`💬 Our reply on Google now (posting replaces it):\n${OUR_REPLY}`);
+    expect(card[1].inline_keyboard.flat()[0].text).toBe("✅ Post reply");
     // The old card stays as history and points at the new one.
     expect(edit).toHaveBeenCalledWith(
       101,

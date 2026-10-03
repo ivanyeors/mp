@@ -51,7 +51,6 @@ const buttons = (card: ReturnType<typeof renderGoogleReviewCard>) =>
 describe("review callback data", () => {
   const cases: ReviewCallback[] = [
     { source: "google", action: "post", id: ID, version: 12 },
-    { source: "google", action: "redraft", id: ID },
     { source: "google", action: "skip", id: ID },
     { source: "shop", action: "approve", id: ID },
     { source: "shop", action: "reject", id: ID },
@@ -76,7 +75,7 @@ describe("Google review card", () => {
     expect(card.text.split("\n")[0]).toBe(GOOGLE_CARD_HEADER);
     expect(card.text).toContain("★★★★★ 5/5 · Jane Tan");
     expect(card.text).toContain("drafted by Claude");
-    expect(buttons(card).map((b) => b.text)).toEqual(["✅ Post reply", "🔁 Redraft", "🙈 Skip"]);
+    expect(buttons(card).map((b) => b.text)).toEqual(["✅ Post reply", "🙈 Skip"]);
     expect(parseReviewCallback(buttons(card)[0].callback_data)).toMatchObject({ action: "post", version: 3 });
   });
 
@@ -111,7 +110,7 @@ describe("Google review card", () => {
     expect(given.text).not.toContain("⚠️");
   });
 
-  it("shows a reopened review with the reply on Google now, and Replace instead of Post", () => {
+  it("shows a reopened review with the reply on Google now, which Post replaces", () => {
     const card = renderGoogleReviewCard(
       row({
         star_rating: 2,
@@ -122,9 +121,9 @@ describe("Google review card", () => {
       }),
     );
     expect(card.text).toContain("🔄 REOPENED — the rating changed from 5★ to 2★ after it was answered.");
-    expect(card.text).toContain("💬 Our reply on Google now (Replace swaps it for the new one):\nThank you, Jane!");
-    expect(card.text).toContain("tap Replace reply");
-    expect(buttons(card)[0].text).toBe("✅ Replace reply");
+    expect(card.text).toContain("💬 Our reply on Google now (posting replaces it):\nThank you, Jane!");
+    expect(card.text).toContain("tap Post reply to swap our reply");
+    expect(buttons(card)[0].text).toBe("✅ Post reply");
     expect(parseReviewCallback(buttons(card)[0].callback_data)).toMatchObject({ action: "post" });
   });
 
@@ -161,7 +160,23 @@ describe("Google review card", () => {
   it("has no Post button without a draft and says why", () => {
     const card = renderGoogleReviewCard(row({ draft_reply: null, draft_error: "ANTHROPIC_API_KEY is not set" }));
     expect(card.text).toContain("No draft yet — ANTHROPIC_API_KEY is not set");
-    expect(buttons(card).map((b) => b.text)).toEqual(["🔁 Redraft", "🙈 Skip"]);
+    expect(buttons(card).map((b) => b.text)).toEqual(["🙈 Skip"]);
+  });
+
+  it("links a posted card to the reviews on Google Maps when the place id is known", () => {
+    const posted = row({ status: "posted", posted_reply: "Thanks!", acted_by_name: "Ivan" });
+    const before = process.env.GOOGLE_PLACE_ID;
+    try {
+      delete process.env.GOOGLE_PLACE_ID;
+      expect(renderGoogleReviewCard(posted).text).not.toContain("🔗");
+      process.env.GOOGLE_PLACE_ID = "ChIJ-test";
+      expect(renderGoogleReviewCard(posted).text).toContain(
+        "🔗 Check it on Google Maps: https://search.google.com/local/reviews?placeid=ChIJ-test",
+      );
+    } finally {
+      if (before === undefined) delete process.env.GOOGLE_PLACE_ID;
+      else process.env.GOOGLE_PLACE_ID = before;
+    }
   });
 
   it("flags a draft that Google may reject", () => {
