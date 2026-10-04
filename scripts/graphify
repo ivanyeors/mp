@@ -16,7 +16,7 @@
 # PreToolUse hooks in .claude/settings.json can never break a session.
 set -uo pipefail
 
-GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.48}"
+GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.75}"
 
 for uv_bin in uvx "$HOME/.local/bin/uvx"; do
   if command -v "$uv_bin" >/dev/null 2>&1; then
