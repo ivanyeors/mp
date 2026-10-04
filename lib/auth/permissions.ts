@@ -108,6 +108,16 @@ export function permissionForHref(href: string): Permission | undefined {
   return KEY_BY_HREF.get(href);
 }
 
+/**
+ * The page label for a `?denied=<key>` value, or null when it is not an
+ * Admin Panel page key (so a crafted value renders nothing).
+ */
+export function deniedPageLabel(value: string | null | undefined): string | null {
+  if (!isPermission(value)) return null;
+  const entry = permissionEntry(value);
+  return entry.surface === "admin-panel" ? entry.label : null;
+}
+
 /** Close a set under `requires`, so ticking a page also ticks what it calls. */
 export function applyRequires(keys: Iterable<Permission>): Set<Permission> {
   const out = new Set<Permission>();

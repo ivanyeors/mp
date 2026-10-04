@@ -1,6 +1,10 @@
+import Link from "next/link";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { withLocale } from "@/lib/i18n/routing";
+import { cn } from "@/lib/utils";
+import { ACCESS_ENTITY_TYPES, permissionDiff } from "@/lib/auth/audit-diff";
 
 export const runtime = "nodejs";
 
@@ -27,21 +31,45 @@ function formatTimestamp(iso: string): string {
 
 export default async function AuditLogPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ entity?: string | string[] }>;
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
   await requireAdminPage("audit-log", locale);
 
+  // Filter chips for the access changes Users & permissions writes; any other
+  // value is ignored rather than passed to the query.
+  const raw = (await searchParams).entity;
+  const wanted = Array.isArray(raw) ? raw[0] : raw;
+  const entity =
+    ACCESS_ENTITY_TYPES.find((e) => e.type === wanted)?.type ?? null;
+
   const admin = supabaseAdmin();
-  const { data } = await admin
-    .from("admin_audit_log")
-    .select("*")
+  let query = admin.from("admin_audit_log").select("*");
+  if (entity) query = query.eq("entity_type", entity);
+  const { data } = await query
     .order("created_at", { ascending: false })
     .limit(200);
   const rows = (data ?? []) as AuditRow[];
+
+  const chip = (href: string, label: string, active: boolean) => (
+    <Link
+      key={href}
+      href={withLocale(href, locale)}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+        active
+          ? "border-primary bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-accent",
+      )}
+    >
+      {label}
+    </Link>
+  );
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -51,6 +79,17 @@ export default async function AuditLogPage({
           A read-only record of mutating admin actions, newest first.
         </p>
       </div>
+
+      <nav aria-label="Filter by kind" className="mt-6 flex flex-wrap gap-2">
+        {chip("/settings/audit-log", "All", entity === null)}
+        {ACCESS_ENTITY_TYPES.map((e) =>
+          chip(
+            `/settings/audit-log?entity=${e.type}`,
+            e.label,
+            entity === e.type,
+          ),
+        )}
+      </nav>
 
       {rows.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
@@ -88,25 +127,53 @@ export default async function AuditLogPage({
                     {r.before == null && r.after == null ? (
                       <span className="text-muted-foreground">—</span>
                     ) : (
-                      <details>
-                        <summary className="cursor-pointer text-xs text-primary">
-                          View
-                        </summary>
-                        <div className="mt-2 grid gap-2 md:grid-cols-2">
-                          <div>
-                            <p className="text-[11px] font-medium text-muted-foreground">Before</p>
-                            <pre className="mt-1 max-w-full overflow-x-auto rounded bg-muted/50 p-2 text-[11px]">
-                              {JSON.stringify(r.before ?? null, null, 2)}
-                            </pre>
+                      <>
+                        {permissionDiff(r.before, r.after)?.map((d) => (
+                          <div
+                            key={d.field}
+                            className="mb-1 space-y-0.5 text-xs"
+                          >
+                            {d.added.length ? (
+                              <p className="text-green-700 dark:text-green-400">
+                                + {d.added.join(", ")}
+                              </p>
+                            ) : null}
+                            {d.removed.length ? (
+                              <p className="text-red-700 dark:text-red-400">
+                                − {d.removed.join(", ")}
+                              </p>
+                            ) : null}
+                            {!d.added.length && !d.removed.length ? (
+                              <p className="text-muted-foreground">
+                                No access change
+                              </p>
+                            ) : null}
                           </div>
-                          <div>
-                            <p className="text-[11px] font-medium text-muted-foreground">After</p>
-                            <pre className="mt-1 max-w-full overflow-x-auto rounded bg-muted/50 p-2 text-[11px]">
-                              {JSON.stringify(r.after ?? null, null, 2)}
-                            </pre>
+                        ))}
+                        <details>
+                          <summary className="cursor-pointer text-xs text-primary">
+                            View
+                          </summary>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            <div>
+                              <p className="text-[11px] font-medium text-muted-foreground">
+                                Before
+                              </p>
+                              <pre className="mt-1 max-w-full overflow-x-auto rounded bg-muted/50 p-2 text-[11px]">
+                                {JSON.stringify(r.before ?? null, null, 2)}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-medium text-muted-foreground">
+                                After
+                              </p>
+                              <pre className="mt-1 max-w-full overflow-x-auto rounded bg-muted/50 p-2 text-[11px]">
+                                {JSON.stringify(r.after ?? null, null, 2)}
+                              </pre>
+                            </div>
                           </div>
-                        </div>
-                      </details>
+                        </details>
+                      </>
                     )}
                   </td>
                 </tr>

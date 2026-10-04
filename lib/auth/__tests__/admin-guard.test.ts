@@ -21,12 +21,17 @@ vi.mock("@/lib/auth/user", () => ({
   getAuthUser: () => Promise.resolve(h.identity),
   getAuthIdentity: () => Promise.resolve(h.identity),
 }));
+vi.mock("next/navigation", () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
+}));
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
   return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
 });
 
-const { requireAdmin, requireAnyAdmin, assertAdmin, getAdminContext } = await import("@/lib/auth/admin");
+const { requireAdmin, requireAnyAdmin, requireAdminPage, assertAdmin, getAdminContext } = await import("@/lib/auth/admin");
 const { ADMIN_PERMISSIONS, ROLE_PERMISSIONS } = await import("@/lib/auth/permissions");
 
 const role = (id: string, key: string, permissions: string[], grantsAll = false) => ({
@@ -155,5 +160,24 @@ describe("getAdminContext (no non-RBAC path)", () => {
     // sufficient. This is the failure mode the OTP path used to bypass.
     h.identity = { id: "auth-x", email: "stranger@example.com" };
     expect(await getAdminContext()).toBeNull();
+  });
+});
+
+describe("requireAdminPage (page guard)", () => {
+  it("sends a Member without the page to the Admin Panel home naming the page", async () => {
+    signedInAs("r-viewer");
+    await expect(requireAdminPage("faq", "en-US")).rejects.toThrow("REDIRECT /en-US/settings?denied=faq");
+  });
+
+  it("sends a signed-out visitor to Sign in, with no denied key", async () => {
+    signedOut();
+    await expect(requireAdminPage("faq", "en-US")).rejects.toThrow(
+      `REDIRECT /en-US/account/login?next=${encodeURIComponent("/en-US/settings")}`,
+    );
+  });
+
+  it("returns the context when the role has the page", async () => {
+    signedInAs("r-viewer");
+    expect((await requireAdminPage("orders", "en-US")).roleKey).toBe("viewer");
   });
 });

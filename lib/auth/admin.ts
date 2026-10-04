@@ -235,7 +235,8 @@ export async function assertAnyAdmin(permissions: Permission[]): Promise<AdminCo
 
 /**
  * Server-component / page guard. Redirects to Sign in when not signed in, or
- * to the Admin Panel overview when signed in but lacking `permission`.
+ * to the Admin Panel home with `?denied=<key>` when signed in but lacking
+ * `permission`, where General shows which page was refused and why.
  */
 export async function requireAdminPage(
   permission: Permission,
@@ -249,7 +250,7 @@ export async function requireAdminPage(
     );
   }
   if (!hasPermission(ctx, permission)) {
-    redirect(withLocale("/settings", locale));
+    redirect(withLocale(`/settings?denied=${encodeURIComponent(permission)}`, locale));
   }
   return ctx;
 }

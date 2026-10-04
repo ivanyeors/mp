@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -284,6 +284,38 @@ export function SettingsSidebarNav({
       cancelled = true;
     };
   }, [isLoginRoute, initialAuth]);
+
+  // Re-read the Member's pages on each navigation after the first, so a role
+  // changed mid-session drops its pages from the sidebar on the next click
+  // instead of on the next full reload (the server layout is not re-run on a
+  // client navigation). The page guards are the real boundary; this is chrome.
+  const firstPath = useRef(basePathname);
+  useEffect(() => {
+    if (isLoginRoute || status !== "authed" || basePathname === firstPath.current) return;
+    firstPath.current = "";
+    let cancelled = false;
+    fetch("/api/admin/context")
+      .then((res) => res.json())
+      .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
+        if (cancelled) return;
+        if (!data?.signedIn) return setStatus("unauth");
+        setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basePathname]);
+
+  // The current page is no longer in the Member's role: send them to the
+  // Admin Panel home with the same notice a page guard gives.
+  const currentKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
+  const lostCurrentPage = status === "authed" && !!currentKey && !permissions.includes(currentKey);
+  useEffect(() => {
+    if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lostCurrentPage, currentKey]);
 
   // Redirect unauthorized visitors to unified Sign in (preserve deep link).
   useEffect(() => {

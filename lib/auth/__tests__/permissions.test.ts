@@ -10,6 +10,7 @@ import {
   isPermission,
   isSubset,
   permissionEntry,
+  deniedPageLabel,
   permissionForHref,
   roleHasPermission,
   permissionsForRole,
@@ -213,6 +214,16 @@ describe("permission catalog", () => {
     expect([...applyRequires(["categories"])].sort()).toEqual(["categories", "media", "products"]);
     expect(isSubset(["faq"], ["faq", "forms"])).toBe(true);
     expect(isSubset(["faq", "media"], ["faq"])).toBe(false);
+  });
+});
+
+describe("deniedPageLabel", () => {
+  it("labels an Admin Panel page key and ignores anything else", () => {
+    expect(deniedPageLabel("faq")).toBe("FAQ");
+    expect(deniedPageLabel("users")).toBe("Users & permissions");
+    expect(deniedPageLabel("telegram.google-review-reply")).toBeNull();
+    expect(deniedPageLabel("<script>")).toBeNull();
+    expect(deniedPageLabel(null)).toBeNull();
   });
 });
 

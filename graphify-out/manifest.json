@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/admin-guard.test.ts": {
-    "mtime": 1791110763.7142684,
-    "seen": 1791111050.5309725,
-    "ast_hash": "8c2d509d9daccefa20b06fd3771cd9ed",
+    "mtime": 1791111918.2338285,
+    "seen": 1791112067.5324821,
+    "ast_hash": "41ac9486718694da44bc0280ef39ef2d",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/customer-identity.test.ts": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/permissions.test.ts": {
-    "mtime": 1791111296.6866848,
-    "seen": 1791111716.7792692,
-    "ast_hash": "7c25bbde75c6749a86c4c11375bb7e68",
+    "mtime": 1791111870.7578676,
+    "seen": 1791112067.5325065,
+    "ast_hash": "9de42d736437b607fa52fc8be88d6d14",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/post-auth-redirect.test.ts": {
@@ -126,9 +126,9 @@
     "semantic_hash": ""
   },
   "lib/auth/admin.ts": {
-    "mtime": 1791110660.0508177,
-    "seen": 1791111050.5309935,
-    "ast_hash": "5ab6d1450dd72492955c6c5001c5192d",
+    "mtime": 1791111769.2496698,
+    "seen": 1791112067.5325286,
+    "ast_hash": "76a2bb6b21a1365a11b2358358b35922",
     "semantic_hash": ""
   },
   "lib/auth/audit.ts": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "lib/auth/permissions.ts": {
-    "mtime": 1791111296.686258,
-    "seen": 1791111716.779298,
-    "ast_hash": "c9ac93f40e82a0d25d7d69baa8118a88",
+    "mtime": 1791111787.6725984,
+    "seen": 1791112067.5325613,
+    "ast_hash": "9adff318e8ec48c52161494f78035d0e",
     "semantic_hash": ""
   },
   "lib/auth/post-auth-redirect.ts": {
@@ -1986,9 +1986,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/audit-log/page.tsx": {
-    "mtime": 1790948592.2065263,
-    "seen": 1791104068.0534117,
-    "ast_hash": "97ee732666e652e7c9821c13e649b1df",
+    "mtime": 1791111862.0659938,
+    "seen": 1791112067.5296595,
+    "ast_hash": "f8e4afe716c3fe16a8a27946257b7c63",
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/[id]/page.tsx": {
@@ -2202,9 +2202,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/page.tsx": {
-    "mtime": 1790948592.2150671,
-    "seen": 1791104068.0535364,
-    "ast_hash": "e09118ac1d47426843f193e487bbc02f",
+    "mtime": 1791111787.6730537,
+    "seen": 1791112067.5298645,
+    "ast_hash": "0235171bd16d3608f6d527d759e75499",
     "semantic_hash": ""
   },
   "app/[lang]/settings/partners/page.tsx": {
@@ -4290,9 +4290,9 @@
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
-    "mtime": 1791111296.6870167,
-    "seen": 1791111716.7786958,
-    "ast_hash": "2958eb1ba862c913e2195937aa413cf6",
+    "mtime": 1791111798.3849354,
+    "seen": 1791112067.531216,
+    "ast_hash": "c1717cdbc0ab2b3fbfffc4433a7e6a57",
     "semantic_hash": ""
   },
   "components/settings/shopify-sales-section.tsx": {
@@ -14952,9 +14952,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/09-denied-notice-audit.md": {
-    "mtime": 1791104393.626479,
-    "seen": 1791104446.7640471,
-    "ast_hash": "36add1342d3b7e34e56505231b65aad2",
+    "mtime": 1791112023.327764,
+    "seen": 1791112067.536242,
+    "ast_hash": "dea0f0138864f5ff9e65053060d2b79b",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/10-working-as-profile.md": {
@@ -14976,9 +14976,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/README.md": {
-    "mtime": 1791111624.4867446,
-    "seen": 1791111716.7813194,
-    "ast_hash": "00fe86eea6db6e1cdbda9f920204b74d",
+    "mtime": 1791112023.3282666,
+    "seen": 1791112067.5362537,
+    "ast_hash": "9f5b632ea81c089280e1f44640c35fe7",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md": {
@@ -15081,6 +15081,24 @@
     "mtime": 1791111142.5302598,
     "seen": 1791111716.7793012,
     "ast_hash": "5081cf849693cd71381b579e9fdb1faf",
+    "semantic_hash": ""
+  },
+  "components/settings/access-denied-notice.tsx": {
+    "mtime": 1791111787.658245,
+    "seen": 1791112067.5311503,
+    "ast_hash": "bacbf04c8c6947aa79d8c790704fe89b",
+    "semantic_hash": ""
+  },
+  "lib/auth/__tests__/audit-diff.test.ts": {
+    "mtime": 1791111813.176043,
+    "seen": 1791112067.532486,
+    "ast_hash": "a20f40c818cfe3a50d20fca134dc5bf6",
+    "semantic_hash": ""
+  },
+  "lib/auth/audit-diff.ts": {
+    "mtime": 1791111813.1702445,
+    "seen": 1791112067.5325308,
+    "ast_hash": "d3f3d71268e90e698f2738b97b708356",
     "semantic_hash": ""
   }
 }
