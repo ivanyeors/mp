@@ -2,7 +2,7 @@
 
 Type: HITL
 Parent: PRD `users-permissions-rbac`
-Triage: needs-triage
+Triage: ready
 User stories covered: all
 
 ## Setup
@@ -29,8 +29,12 @@ Three logins (Owner, Admin, and a custom role with only Results + Orders), one s
 - [ ] Phone width: matrix scrolls horizontally with sticky labels; mobile per-role list works.
 
 ### Staff profiles
-- [ ] Existing names appear under the chosen login; Results' measured-by labels unchanged.
+- [ ] Existing names (Kai Lin, Ivan, Darren, Jess, Wang Ying, Winnie) appear under `sg@mpillow.com`; Results' measured-by labels unchanged.
 - [ ] Move a profile to another login; archive one → hidden from picker, still labelled on old Results.
+
+### Working as
+- [ ] On the shared login, pick "Working as" a profile → a new Result defaults its measured-by to it and the Audit Log names it.
+- [ ] A login with one profile shows no picker.
 
 ### Telegram
 - [ ] Existing review manager can Post on a "Send preview" card.

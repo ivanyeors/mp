@@ -47,5 +47,5 @@ of that decision and folds the other two lists in.
   refused.
 - `admin_users.role` (text) and `telegram_operators.display_name` / `role` are kept during the
   expand phase and dropped once the new columns are the only ones read.
-- View-only access is not modelled. If it is needed, it is a second key per page (`<page>:read`),
-  not a level column, so the subset rule and the matrix stay boolean.
+- View-only access is not modelled here; it is the next PRD. It is a second key per page
+  (`<page>:read`), not a level column, so the subset rule and the matrix stay boolean.

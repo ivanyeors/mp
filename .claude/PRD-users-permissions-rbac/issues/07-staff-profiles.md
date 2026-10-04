@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `users-permissions-rbac`
-Triage: needs-triage
+Triage: ready
 User stories covered: 9, 25–29
 
 ## What to build
@@ -12,11 +12,11 @@ Give every `mp_staff` row an owning Member: one login, many Staff profiles.
 **Migration:**
 
 - `mp_staff` + `admin_user_id uuid references admin_users(id) on delete restrict`, + `archived_at timestamptz`.
-- Backfill existing rows to the owning Member chosen in triage (PRD open question 1; default oldest active Owner). Then `admin_user_id set not null`.
-- For every Member with no profile, insert one named from the email local part.
+- Backfill existing rows to `sg@mpillow.com` (PRD decision 1), looked up by email in the migration, not by id. Then `admin_user_id set not null`.
+- For every Member with no profile, insert one named from the email local part (today: `ivanyeoart`, `admin`).
 - Replace `idx_mp_staff_name_unique` with a partial unique index on `(admin_user_id, lower(name)) where archived_at is null`.
 
-**Before running:** count live `mp_staff` rows and name collisions per target Member; record here.
+**Live data (2026-10-04):** 6 rows (Kai Lin, Ivan, Darren, Jess, Wang Ying, Winnie), no name collisions under `sg@mpillow.com`, and no `mp_config_responses.measured_by_staff_id` references yet. `mp_staff` has no `is_active` column, so `archived_at` is the first lifecycle field. Re-check before running in production.
 
 **Code:**
 

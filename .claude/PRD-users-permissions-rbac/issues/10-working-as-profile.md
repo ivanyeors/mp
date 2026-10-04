@@ -1,8 +1,8 @@
-# Slice 10 — "Working as" profile on shared logins (optional)
+# Slice 10 — "Working as" profile on shared logins
 
 Type: AFK
 Parent: PRD `users-permissions-rbac`
-Triage: needs-triage — build only if confirmed (PRD open question 4)
+Triage: ready (confirmed, PRD decision 4)
 User stories covered: 38
 
 ## What to build

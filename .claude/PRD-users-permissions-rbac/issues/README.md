@@ -2,7 +2,7 @@
 
 Tracer-bullet breakdown of the PRD (`../users-permissions-rbac-prd.md`). Each slice is a thin, demoable path through schema / auth / UI with its tests. Published locally (no external issue tracker configured).
 
-**Triage label:** `needs-triage` (each slice)
+**Triage:** all slices ready — decisions confirmed 2026-10-04.
 
 ## Slices
 
@@ -17,9 +17,9 @@ Tracer-bullet breakdown of the PRD (`../users-permissions-rbac-prd.md`). Each sl
 | 07 | Staff profiles under logins | AFK | 04 | 9, 25–29 | todo |
 | 08 | Telegram under RBAC | AFK | 06, 07 | 11, 30–35 | todo |
 | 09 | Access-denied notice + audit coverage | AFK | 04 | 23, 36 | todo |
-| 10 | "Working as" profile on shared logins (optional) | AFK | 07 | 38 | todo |
+| 10 | "Working as" profile on shared logins | AFK | 07 | 38 | todo |
 | 11 | Contract: drop legacy columns and code paths | AFK | 03–08 soaked in prod | — | todo |
-| 12 | Staging QA signoff | HITL | 01–09 | all | todo |
+| 12 | Staging QA signoff | HITL | 01–10 | all | todo |
 
 ## Dependency graph
 
@@ -34,7 +34,7 @@ graph TD
   s07[07 Staff profiles]
   s08[08 Telegram RBAC]
   s09[09 Denied notice + audit]
-  s10[10 Working as - optional]
+  s10[10 Working as]
   s11[11 Contract]
   s12[12 Staging QA]
   s02 --> s03
@@ -52,6 +52,7 @@ graph TD
   s05 --> s12
   s08 --> s12
   s09 --> s12
+  s10 --> s12
 ```
 
 ## Recommended build order
@@ -61,13 +62,15 @@ graph TD
 3. **04**, then **06** and **07** in parallel.
 4. **05** (needs profiles for the first-profile-on-invite step) and **08** (needs both matrix and profiles).
 5. **09** any time after 04.
-6. **12** staging pass, then **11** after a week in production. **10** only if confirmed in triage.
+6. **10** after 07 (confirmed).
+7. **12** staging pass, then **11** after a week in production.
 
 ## PR grouping
 
-Suggested PRs, each one deployable on its own: **A** = 01 + 02 · **B** = 03 · **C** = 04 + 09 · **D** = 06 · **E** = 07 + 05 · **F** = 08 · **G** = 11. Every PR refreshes `graphify-out/` (cache deleted first) in the same commit.
+Suggested PRs, each one deployable on its own: **A** = 01 + 02 · **B** = 03 · **C** = 04 + 09 · **D** = 06 · **E** = 07 + 05 · **F** = 08 · **H** = 10 · **G** = 11. Every PR refreshes `graphify-out/` (cache deleted first) in the same commit.
 
 ## HITL notes
 
-- **Before slice 03 / 07 / 08 migrations:** confirm PRD open questions 1–2 (which login owns existing staff names and Telegram operators; existing Owners stay Owner).
+- **Decisions confirmed 2026-10-04** (PRD "Decisions"): staff names and Telegram operators move under `sg@mpillow.com`; existing Owners stay Owner; page-level access only (view-only is the next PRD); slice 10 is in.
+- **Before slice 03 / 07 / 08 migrations run in production:** re-read the live rows each slice records and stop if they differ.
 - **Slice 12:** device pass with three test logins (Owner, Admin, a narrow custom role) and one Telegram account.

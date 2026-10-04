@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `users-permissions-rbac` (`.claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md`)
-Triage: needs-triage
+Triage: ready
 User stories covered: — (language for all slices)
 
 ## What to build

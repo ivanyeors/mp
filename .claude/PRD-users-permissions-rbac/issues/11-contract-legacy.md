@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `users-permissions-rbac`
-Triage: needs-triage
+Triage: ready
 User stories covered: —
 
 ## What to build

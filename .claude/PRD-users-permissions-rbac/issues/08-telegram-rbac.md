@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `users-permissions-rbac`
-Triage: needs-triage
+Triage: ready
 User stories covered: 11, 30–35
 
 ## What to build
@@ -12,8 +12,10 @@ Make Telegram review-card buttons a role permission, linked per Staff profile.
 **Migration:**
 
 - `telegram_operators` + `staff_profile_id uuid unique references mp_staff(id)`, + `actions text[] not null default '{}'`.
-- For each operator row: match a Staff profile under the triage-chosen Member by `lower(name) = lower(display_name)`, else create one; set `staff_profile_id`; `actions` = `{telegram.google-review-reply, telegram.shop-review-moderate}` for `review_manager`, `{telegram.shop-review-moderate}` for `shop_moderator` (full catalog keys). Then `staff_profile_id set not null`.
-- Seeded custom roles do not get the `telegram.*` keys. No login role governs Telegram today, and the triage-chosen Member is an Owner (`grants_all`), so every migrated link keeps its current effect.
+- For each operator row: match a Staff profile under `sg@mpillow.com` (PRD decision 1) by `lower(name) = lower(display_name)`, else create one; set `staff_profile_id`; `actions` = `{telegram.google-review-reply, telegram.shop-review-moderate}` for `review_manager`, `{telegram.shop-review-moderate}` for `shop_moderator` (full catalog keys). Then `staff_profile_id set not null`.
+- Seeded custom roles do not get the `telegram.*` keys. No login role governs Telegram today, and `sg@mpillow.com` is an Owner (`grants_all`), so every migrated link keeps its current effect.
+
+**Live data (2026-10-04):** 1 operator — "Ivan", `review_manager`, active, linked. It matches the existing "Ivan" profile and gets both actions. Re-check before running in production.
 
 **Code:**
 

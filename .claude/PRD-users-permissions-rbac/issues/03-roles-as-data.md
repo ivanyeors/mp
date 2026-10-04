@@ -2,12 +2,12 @@
 
 Type: AFK
 Parent: PRD `users-permissions-rbac`
-Triage: needs-triage
+Triage: ready
 User stories covered: 4, 19, 22, 23, 24
 
 ## What to build
 
-Move the role → permission matrix from code into `admin_roles` and make every guard read it. After this slice the Admin Panel behaves exactly as before for everyone, except that non-Owners are now Admins (PRD open question 2).
+Move the role → permission matrix from code into `admin_roles` and make every guard read it. After this slice the Admin Panel behaves exactly as before for everyone, except that non-Owners are now Admins (PRD decision 2 — today there are none).
 
 **Migration (`supabase/migrations/<ts>_admin_roles.sql`):**
 
@@ -24,7 +24,7 @@ Move the role → permission matrix from code into `admin_roles` and make every 
 - `/api/admin/context` and the settings layout send `[...ctx.permissions]`.
 - Existing Admin Users page keeps working: role select lists roles from `admin_roles`; PATCH accepts `role_id`.
 
-**Before running in production:** read live `admin_users` (count by role, who is owner) and record the result here.
+**Live data (2026-10-04):** 3 `admin_users`, all `owner`, all active and bound. Backfill sets all three to the Owner role; the Admin role starts empty. Re-check before running in production.
 
 ## Acceptance criteria
 

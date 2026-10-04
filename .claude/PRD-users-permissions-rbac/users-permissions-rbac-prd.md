@@ -84,7 +84,7 @@ From the developer's perspective:
 26. As an admin, I want to add, rename, move between logins, and archive Staff profiles, so that the list tracks real people.
 27. As an admin, I want archived profiles to keep their name on historical Results but drop out of pickers, so that attribution is never lost.
 28. As Staff tagging a Result's "measured by", I want the picker grouped by login with archived profiles hidden, so that I pick the right person.
-29. As an admin migrating, I want the existing staff names attached to one login I choose (default: the oldest Owner), and reassignable afterwards, so that the move is lossless.
+29. As an admin migrating, I want the existing staff names attached to one login (`sg@mpillow.com`), and reassignable afterwards, so that the move is lossless.
 
 ### Telegram
 30. As an Owner, I want the Telegram actions (reply to Google reviews, moderate shop reviews) to be rows in the same permission matrix, so that Telegram access is governed by roles like everything else.
@@ -98,7 +98,7 @@ From the developer's perspective:
 36. As an Owner, I want every invite, role change, matrix edit, profile change and Telegram link change written to the Audit Log with before/after, so that access changes are traceable.
 37. As a developer, I want automated checks that every sidebar page has exactly one catalog permission and every catalog page has a sidebar entry, so that the matrix and the sidebar cannot drift.
 
-### Optional (slice 10)
+### Working as (slice 10)
 38. As Staff on a shared login, I want to choose "working as" one of my login's Staff profiles, so that new Results default their "measured by" and audit entries name the person.
 
 ## Implementation Decisions
@@ -158,7 +158,7 @@ mp_staff
   - unique(lower(name))            → unique(admin_user_id, lower(name)) where archived_at is null
 ```
 
-- Backfill: existing names attach to one chosen Member (default: oldest active Owner). Every Member without a profile gets one named from the email local part.
+- Backfill: existing names attach to `sg@mpillow.com` (decision 1). Every Member without a profile gets one named from the email local part.
 - Profiles are archived, never deleted; `measured_by_staff_id` keeps pointing at them.
 - `/api/staff` GET (used by Results) returns profiles with owner email and archived flag; the guard is `results` **or** `users`.
 
@@ -172,7 +172,7 @@ telegram_operators   (kept, reinterpreted as Telegram link)
 ```
 
 - `authorizeTelegramAction(telegramUserId, action)` resolves link → profile (not archived) → Member (active) → role, and allows only when the role grants `telegram.<action>` **and** the link's `actions` includes it. Any failed read refuses, as today.
-- Migration: each operator becomes (or matches by name) a Staff profile under the chosen Member; `review_manager` → both actions, `shop_moderator` → moderate only. The default owning Member is an Owner, so no existing access narrows.
+- Migration: each operator becomes (or matches by name) a Staff profile under `sg@mpillow.com`; `review_manager` → both actions, `shop_moderator` → moderate only. That Member is an Owner, so no existing access narrows.
 - `/link CODE` redemption is unchanged apart from writing to the profile-linked row.
 
 ### Invites
@@ -220,7 +220,7 @@ Test behaviour at the module boundary — inputs to permissions, write rules to 
 
 ## Out of Scope
 
-- View-only vs edit levels per page (the catalog shape leaves room: a later `page:read` key per page).
+- View-only vs edit levels per page. **Next PRD** (decision 3): a Member who can open a page but not change anything on it. The catalog shape leaves room — a second `<page>:read` key per page, with mutating routes keeping the full key — so nothing in this PRD needs undoing.
 - Per-member permission overrides; teams/groups.
 - Staff profiles signing in on their own, PINs, or device-level profile locks.
 - Moving the **Assist link** from Member to Staff profile (follow-up; today one code per login).
@@ -228,15 +228,20 @@ Test behaviour at the module boundary — inputs to permissions, write rules to 
 - Renaming `/settings` or `admin_users` / `mp_staff` tables.
 - SSO / SCIM / domain-restricted sign-in.
 
-## Open Questions (defaults chosen; confirm in triage)
+## Decisions (confirmed 2026-10-04)
 
-1. **Which login owns today's staff names and Telegram operators?** Default: the oldest active Owner (likely `sg@mpillow.com`). If the studio uses a separate shared login, name it and the migration uses that instead.
-2. **Should existing Owners stay Owner?** Default yes (`sg@mpillow.com`, `admin@mpillow.com` and any other `owner` row); everyone else becomes Admin, per "all of our current emails are admins". Bootstrap emails keep auto-provisioning as Owner.
-3. **Invite expiry.** Default none in v1 (revoke instead). Add a 14-day expiry if invites tend to be forwarded.
-4. **Slice 10 (working-as profile)** is optional; skip it if shared logins are rare.
+1. **Today's staff names and Telegram operators move under `sg@mpillow.com`.** Reassignable afterwards with "Move to…".
+2. **Existing Owners stay Owner.** All three current logins are `owner` rows, so the backfill changes no one; Admin is seeded but starts with no Members. Bootstrap emails keep auto-provisioning as Owner.
+3. **Page-level see / don't-see only.** View-only (open the page, change nothing) is the next PRD, not this one — see Out of Scope.
+4. **Slice 10 (working-as profile) is in.** It ships after slice 07.
+5. **Invite expiry:** none in v1 (revoke instead). Not raised; default kept.
 
 ## Further Notes
 
-- Supabase and Vercel MCP connections failed in the planning session, so live `admin_users` / `mp_staff` / `telegram_operators` row counts were not checked. Slice 03 and 07 start by reading them.
+- Live data (read 2026-10-04, project `mpillow`):
+  - `admin_users`: 3 rows, all `owner`, all active and bound to an auth user — `sg@mpillow.com` (oldest, 2026-06-21), `ivanyeoart@gmail.com`, `admin@mpillow.com`.
+  - `mp_staff`: 6 names (Kai Lin, Ivan, Darren, Jess, Wang Ying, Winnie); no `is_active` column; no Result references any of them yet (`measured_by_staff_id` unused).
+  - `telegram_operators`: 1 row — "Ivan", `review_manager`, active, linked.
+  Re-read before each migration runs in production; the slices note what each one expects.
 - Slices live in `.claude/PRD-users-permissions-rbac/issues/`.
 - Every slice that changes code refreshes `graphify-out/` in the same commit (CLAUDE.md).

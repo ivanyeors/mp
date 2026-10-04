@@ -14922,93 +14922,93 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/01-glossary-adr.md": {
-    "mtime": 1791103955.748983,
-    "seen": 1791104068.0565732,
-    "ast_hash": "20de91f1e9f28b156be2b9e73d6b4b82",
+    "mtime": 1791104393.6230676,
+    "seen": 1791104446.7640336,
+    "ast_hash": "82bd8671b04cad19a55cbab24c6a4b46",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/02-permission-catalog-split.md": {
-    "mtime": 1791103955.7533941,
-    "seen": 1791104068.0565748,
-    "ast_hash": "cc840069a94a5cc3b1413d8b595565bc",
+    "mtime": 1791104393.6237895,
+    "seen": 1791104446.7640367,
+    "ast_hash": "c72def1c8fdd41f66a81424153f9d71f",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/03-roles-as-data.md": {
-    "mtime": 1791103955.7558348,
-    "seen": 1791104068.056576,
-    "ast_hash": "1faf71e8dc3ff364d0d5ec6106fff925",
+    "mtime": 1791104393.6242142,
+    "seen": 1791104446.764038,
+    "ast_hash": "6955683ab6b8762a750ed0a4a312608b",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/04-users-page-members-tab.md": {
-    "mtime": 1791103955.7578998,
-    "seen": 1791104068.0565772,
-    "ast_hash": "1bf0eb9e2a2fcc6a102acb17db08c522",
+    "mtime": 1791104393.6246185,
+    "seen": 1791104446.7640398,
+    "ast_hash": "f80b95dc64d302f15fac24d51e8fb8f4",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/05-invites.md": {
-    "mtime": 1791103955.7603693,
-    "seen": 1791104068.0565784,
-    "ast_hash": "193305a75beecb8fc5d5ff20b29fea83",
+    "mtime": 1791104393.6250393,
+    "seen": 1791104446.7640412,
+    "ast_hash": "f00ef125f7f0e1e5de132dcdb981b82a",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/06-roles-matrix.md": {
-    "mtime": 1791104004.852918,
-    "seen": 1791104068.0565794,
-    "ast_hash": "bcac3e085243692c08659fd0715e5316",
+    "mtime": 1791104393.6254206,
+    "seen": 1791104446.764043,
+    "ast_hash": "56582fe4e7e60854b058e410977b1c70",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/07-staff-profiles.md": {
-    "mtime": 1791104004.8529818,
-    "seen": 1791104068.0565803,
-    "ast_hash": "9377a0becbf3c45bb506f78606b04155",
+    "mtime": 1791104393.6258488,
+    "seen": 1791104446.7640443,
+    "ast_hash": "89cae4f1e7a199dfb6f88df841b93256",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/08-telegram-rbac.md": {
-    "mtime": 1791104011.726461,
-    "seen": 1791104068.0565817,
-    "ast_hash": "26ce4d2c3a1fe1ea39409ff39f12695b",
+    "mtime": 1791104393.6261728,
+    "seen": 1791104446.7640455,
+    "ast_hash": "0ed494b30b2f4baf5929c364846b636a",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/09-denied-notice-audit.md": {
-    "mtime": 1791104004.859633,
-    "seen": 1791104068.0565827,
-    "ast_hash": "b345b3d4dc60f7cba2ee2cb423e50605",
+    "mtime": 1791104393.626479,
+    "seen": 1791104446.7640471,
+    "ast_hash": "36add1342d3b7e34e56505231b65aad2",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/10-working-as-profile.md": {
-    "mtime": 1791104004.8615317,
-    "seen": 1791104068.056584,
-    "ast_hash": "1c468601e76372720c1491fd2734d6ec",
+    "mtime": 1791104393.626924,
+    "seen": 1791104446.7640483,
+    "ast_hash": "7757d0509f4717f80a04b265a9974771",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/11-contract-legacy.md": {
-    "mtime": 1791104004.8635857,
-    "seen": 1791104068.0565853,
-    "ast_hash": "a8596979af244dd63ca1c842f987cbca",
+    "mtime": 1791104393.6273718,
+    "seen": 1791104446.7640498,
+    "ast_hash": "3bbf7eed893a41ba7ebadc9c237b17d8",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/12-staging-qa-signoff.md": {
-    "mtime": 1791104004.8655398,
-    "seen": 1791104068.0565865,
-    "ast_hash": "5bb781ca41590396c86a9d2e5978ee11",
+    "mtime": 1791104399.9751596,
+    "seen": 1791104446.7640517,
+    "ast_hash": "c17c7719668171188481cd7258841271",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/README.md": {
-    "mtime": 1791103907.4657092,
-    "seen": 1791104068.0565872,
-    "ast_hash": "f3eb9ca548bee676b94da28f6bf4356c",
+    "mtime": 1791104393.6337543,
+    "seen": 1791104446.7640526,
+    "ast_hash": "4f98f33a99c4583f45c611bdb11506dc",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md": {
-    "mtime": 1791103879.3489847,
-    "seen": 1791104068.0565891,
-    "ast_hash": "4daa309196a3d09d45f37831c546823f",
+    "mtime": 1791104388.5612926,
+    "seen": 1791104446.764054,
+    "ast_hash": "6e1da6410974f7baad7e526029df1e3b",
     "semantic_hash": ""
   },
   "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md": {
-    "mtime": 1791103894.2089844,
-    "seen": 1791104068.056822,
-    "ast_hash": "3aa2d0867ade8bebdde0c8aafb1af7c3",
+    "mtime": 1791104399.9756045,
+    "seen": 1791104446.764346,
+    "ast_hash": "c33d096f04320f23e7c1cf0c762c63ca",
     "semantic_hash": ""
   }
 }
