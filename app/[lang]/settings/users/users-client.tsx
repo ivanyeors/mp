@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { MemberRow, RoleRow } from "@/lib/auth/members";
 import type { Permission } from "@/lib/auth/permissions";
 import type { PolicyActor } from "@/lib/auth/role-policy";
-import type { TelegramOperatorRow } from "@/lib/telegram/operators";
+import type { TelegramLinkRow } from "@/lib/telegram/operators";
 import { MembersTab } from "./members-tab";
 import { RolesTab } from "./roles-tab";
 import { ProfilesTab } from "./profiles-tab";
@@ -107,7 +107,7 @@ export function UsersClient({
   initialMembers?: MemberRow[];
   initialRoles?: RoleRow[];
   initialProfiles?: StaffProfile[];
-  initialTelegram?: TelegramOperatorRow[];
+  initialTelegram?: TelegramLinkRow[];
 }) {
   const [tab, setTab] = useState<UsersTab>(initialTab);
   const actor = useMemo<PolicyActor>(
@@ -117,6 +117,19 @@ export function UsersClient({
   const directory = useDirectory(initialMembers, initialRoles);
   const profiles = useProfiles(initialProfiles);
   const [focusMemberId, setFocusMemberId] = useState<string | null>(null);
+  const [links, setLinks] = useState<TelegramLinkRow[]>(initialTelegram ?? []);
+  // A failed server read leaves the list undefined: fetch it here and say so.
+  useEffect(() => {
+    if (initialTelegram) return;
+    fetch("/api/staff/telegram-operators")
+      .then(async (res) => {
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(payload?.error ?? "Failed to load Telegram access");
+        setLinks((payload?.rows ?? []) as TelegramLinkRow[]);
+      })
+      .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Failed to load Telegram access"));
+  }, [initialTelegram]);
+  const linkedProfileIds = useMemo(() => new Set(links.map((l) => l.staff_profile_id)), [links]);
   const profileCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of profiles.rows) if (!p.archivedAt) counts.set(p.memberId, (counts.get(p.memberId) ?? 0) + 1);
@@ -175,7 +188,7 @@ export function UsersClient({
             roles={directory.roles}
             profiles={profiles.rows}
             setProfiles={profiles.setRows}
-            linkedProfileIds={new Set()}
+            linkedProfileIds={linkedProfileIds}
             focusMemberId={focusMemberId}
           />
         </TabsContent>
@@ -190,7 +203,14 @@ export function UsersClient({
         </TabsContent>
         {/* Kept mounted so a just-issued link code survives a tab switch. */}
         <TabsContent value="telegram" forceMount className="pt-4 data-[state=inactive]:hidden">
-          <TelegramAccessTab initialRows={initialTelegram} />
+          <TelegramAccessTab
+            actor={actor}
+            links={links}
+            setLinks={setLinks}
+            profiles={profiles.rows}
+            members={directory.members}
+            roles={directory.roles}
+          />
         </TabsContent>
       </Tabs>
     </div>

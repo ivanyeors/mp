@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminContext } from "@/lib/auth/admin";
-import { recordAdminAction } from "@/lib/auth/audit";
-import {
-  deleteTelegramOperator,
-  getTelegramOperator,
-  issueTelegramLinkCode,
-  unlinkTelegramOperator,
-  updateTelegramOperator,
-} from "@/lib/telegram/operators";
-import { TELEGRAM_ROLES } from "@/lib/telegram/roles";
+import { changeLink, removeLink, type LinkChange } from "@/lib/telegram/link-admin";
+import { TELEGRAM_ACTIONS, type TelegramAction } from "@/lib/telegram/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,17 +10,15 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * Edit one person's Telegram access: rename, change role, switch on/off,
- * issue a new link code, or unlink their Telegram account. `users` permission.
+ * One Telegram link: set its actions, switch it on or off, issue a new link
+ * code, or unlink the Telegram account. One change per request, so each is
+ * its own Audit Log entry. `users` permission.
  */
-const PatchSchema = z
-  .object({
-    display_name: z.string().trim().min(1).max(80).optional(),
-    role: z.enum(TELEGRAM_ROLES).optional(),
-    is_active: z.boolean().optional(),
-    action: z.enum(["new_link_code", "unlink"]).optional(),
-  })
-  .refine((v) => Object.values(v).some((x) => x !== undefined), { message: "Nothing to change" });
+const PatchSchema = z.union([
+  z.object({ actions: z.array(z.enum(TELEGRAM_ACTIONS as [TelegramAction, ...TelegramAction[]])).max(10) }).strict(),
+  z.object({ is_active: z.boolean() }).strict(),
+  z.object({ action: z.enum(["new_link_code", "unlink"]) }).strict(),
+]);
 
 const IdSchema = z.string().uuid();
 
@@ -43,39 +34,20 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!IdSchema.safeParse(id).success) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const parsed = PatchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "Send exactly one of: actions, is_active, action." }, { status: 400 });
   }
+  const body = parsed.data;
+  const change: LinkChange =
+    "actions" in body
+      ? { kind: "actions", actions: [...new Set(body.actions)] }
+      : "is_active" in body
+        ? { kind: "active", isActive: body.is_active }
+        : { kind: body.action };
 
   try {
-    const before = await getTelegramOperator(id);
-    if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    const { action, ...fields } = parsed.data;
-    let row = before;
-    let linkCode: string | undefined;
-
-    if (Object.keys(fields).length) {
-      row = (await updateTelegramOperator(id, fields)) ?? row;
-    }
-    if (action === "new_link_code") {
-      const issued = await issueTelegramLinkCode(id);
-      if (issued) {
-        row = issued.row;
-        linkCode = issued.linkCode;
-      }
-    } else if (action === "unlink") {
-      row = (await unlinkTelegramOperator(id)) ?? row;
-    }
-
-    await recordAdminAction({
-      actor: ctx,
-      action: action ? `telegram_operator.${action}` : "telegram_operator.update",
-      entityType: "telegram_operator",
-      entityId: id,
-      before,
-      after: row,
-    });
-    return NextResponse.json({ ok: true, row, ...(linkCode ? { linkCode } : {}) });
+    const result = await changeLink(ctx, id, change);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true, row: result.row, ...(result.linkCode ? { linkCode: result.linkCode } : {}) });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to update" },
@@ -84,6 +56,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
 }
 
+/** Remove a profile's Telegram access entirely. */
 export async function DELETE(_req: Request, { params }: Ctx) {
   let ctx;
   try {
@@ -95,17 +68,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const { id } = await params;
   if (!IdSchema.safeParse(id).success) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
-    const before = await getTelegramOperator(id);
-    if (!before || !(await deleteTelegramOperator(id))) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    await recordAdminAction({
-      actor: ctx,
-      action: "telegram_operator.delete",
-      entityType: "telegram_operator",
-      entityId: id,
-      before,
-    });
+    const result = await removeLink(ctx, id);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(

@@ -6,8 +6,12 @@ import {
   replyInChat,
   replyInGroup,
 } from "@/lib/telegram/bot-api";
-import { authorizeTelegramAction, redeemTelegramLinkCode } from "@/lib/telegram/operators";
-import { TELEGRAM_ROLE_LABELS, type TelegramAction, type TelegramRole } from "@/lib/telegram/roles";
+import {
+  authorizeTelegramAction,
+  redeemTelegramLinkCode,
+  type TelegramDenial,
+} from "@/lib/telegram/operators";
+import { describeActions, telegramActionLabel, type TelegramAction } from "@/lib/telegram/roles";
 import { isRateLimited } from "@/lib/rate-limit";
 import {
   GOOGLE_CARD_HEADER,
@@ -35,8 +39,9 @@ import { moderateShopReview } from "@/lib/reviews/shop-reviews";
  *
  * Runs before the inventory bot's TELEGRAM_ALLOWED_CHATS check on purpose:
  * this path has its own, stricter gate — cards live only in the measurements
- * group (MP_CONFIG_TELEGRAM_CHAT_ID), and every change needs a linked, active
- * operator whose role grants it (Users & permissions → Telegram).
+ * group (MP_CONFIG_TELEGRAM_CHAT_ID), and every change needs a linked Staff
+ * profile whose Telegram link and whose login's role both grant it
+ * (Users & permissions → Telegram and → Roles).
  */
 
 type TelegramUser = { id: number; username?: string; first_name?: string; last_name?: string };
@@ -82,37 +87,47 @@ export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
 }
 
 function deniedMessage(
-  reason: "not_linked" | "inactive" | "forbidden",
+  reason: TelegramDenial,
   action: TelegramAction,
   user: TelegramUser,
-  role?: keyof typeof TELEGRAM_ROLE_LABELS,
+  roleName?: string,
 ): string {
-  if (reason === "inactive") return "Your Telegram access is switched off. Ask an admin to turn it back on.";
-  if (reason === "forbidden") {
-    const label = role ? TELEGRAM_ROLE_LABELS[role] : "Your role";
-    return action === "google_review.reply"
-      ? `${label}s can't reply on Google. Only review managers can.`
-      : `${label}s can't moderate shop reviews.`;
+  const what = telegramActionLabel(action).toLowerCase();
+  switch (reason) {
+    case "inactive":
+      return "Your Telegram access is switched off. Ask an admin to turn it back on.";
+    case "profile_archived":
+      return "Your staff profile is archived, so your Telegram access is off. Ask an admin if this is a mistake.";
+    case "member_inactive":
+      return "Your Admin Panel login is deactivated, so your Telegram access is off. Ask an admin if this is a mistake.";
+    case "role_forbidden":
+      return `Your login's role${roleName ? ` (${roleName})` : ""} doesn't include "${what}". Ask an Owner to turn it on under Users & permissions → Roles.`;
+    case "forbidden":
+      return `Your Telegram access doesn't include "${what}". Ask an admin to turn it on under Users & permissions → Telegram.`;
+    case "not_linked":
+      return `You're not set up for review cards yet. Ask an admin to link your staff profile under Settings → Users & permissions → Telegram, then send /link with your code. (Your Telegram ID: ${user.id})`;
   }
-  return `You're not set up for review cards yet. Ask an admin to add you under Settings → Users & permissions → Telegram, then send /link with your code. (Your Telegram ID: ${user.id})`;
 }
 
 async function authorize(
   user: TelegramUser,
   action: TelegramAction,
-): Promise<{ ok: true; actor: Actor; role: TelegramRole } | { ok: false; message: string; linked: boolean }> {
+): Promise<
+  | { ok: true; actor: Actor; actions: TelegramAction[] }
+  | { ok: false; message: string; linked: boolean }
+> {
   const auth = await authorizeTelegramAction(user.id, action);
   if (!auth.ok) {
     return {
       ok: false,
       linked: auth.reason !== "not_linked",
-      message: deniedMessage(auth.reason, action, user, auth.operator?.role),
+      message: deniedMessage(auth.reason, action, user, auth.roleName),
     };
   }
   return {
     ok: true,
-    actor: { telegramUserId: user.id, name: auth.operator.display_name },
-    role: auth.operator.role,
+    actor: { telegramUserId: user.id, name: auth.name },
+    actions: auth.actions,
   };
 }
 
@@ -137,7 +152,8 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
     return;
   }
 
-  const action: TelegramAction = parsed.source === "google" ? "google_review.reply" : "shop_review.moderate";
+  const action: TelegramAction =
+    parsed.source === "google" ? "telegram.google-review-reply" : "telegram.shop-review-moderate";
   const auth = await authorize(cq.from, action);
   if (!auth.ok) {
     await answerCallback(cq.id, auth.message, true);
@@ -149,7 +165,7 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
   if (parsed.id === PREVIEW_REVIEW_ID) {
     await answerCallback(
       cq.id,
-      `✅ You're set up as ${auth.actor.name} (${TELEGRAM_ROLE_LABELS[auth.role]}). On a real review, this button would ${PREVIEW_EFFECT[parsed.action]}.`,
+      `✅ You're set up as ${auth.actor.name} (${describeActions(auth.actions)}). On a real review, this button would ${PREVIEW_EFFECT[parsed.action]}.`,
       true,
     );
     return;
@@ -200,10 +216,10 @@ async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["messa
 
   // A preview card: show what a reply would do, and the replier's access.
   if (message.reply_to_message?.text?.startsWith(PREVIEW_CARD_PREFIX)) {
-    const auth = await authorize(from, "google_review.reply");
+    const auth = await authorize(from, "telegram.google-review-reply");
     await replyInGroup(
       auth.ok
-        ? `🧪 On a real card, your wording would replace the draft and you'd tap ✅ Post reply to publish it. You're set up as ${auth.actor.name} (${TELEGRAM_ROLE_LABELS[auth.role]}).`
+        ? `🧪 On a real card, your wording would replace the draft and you'd tap ✅ Post reply to publish it. You're set up as ${auth.actor.name} (${describeActions(auth.actions)}).`
         : auth.message,
       message.message_id,
     );
@@ -213,7 +229,7 @@ async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["messa
   const row = await getGoogleReviewByCard(message.chat.id, cardId);
   if (!row) return;
 
-  const auth = await authorize(from, "google_review.reply");
+  const auth = await authorize(from, "telegram.google-review-reply");
   if (!auth.ok) {
     // People chat under cards; only answer someone who is set up but not allowed.
     if (auth.linked) await replyInGroup(auth.message, message.message_id);
@@ -252,7 +268,7 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
   const result = await redeemTelegramLinkCode(code, { id: from.id, username: from.username ?? null });
   if (result.ok) {
     await reply(
-      `✅ Linked. You're set up as ${result.operator.display_name} (${TELEGRAM_ROLE_LABELS[result.operator.role]}) and can act on review cards in the mpillow group.`,
+      `✅ Linked. You're set up as ${result.name} (${describeActions(result.link.actions)}) and can act on review cards in the mpillow group.`,
     );
     return;
   }
@@ -260,7 +276,7 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
     invalid: "That code isn't valid. Ask an admin for a new one.",
     expired: "That code has expired. Ask an admin for a new one.",
     inactive: "That access is switched off. Ask an admin to turn it back on.",
-    taken: `This Telegram account is already linked to ${result.takenBy ?? "someone else"}. Ask an admin to remove that entry first.`,
+    taken: `This Telegram account is already linked to ${result.takenBy ?? "someone else"}. Ask an admin to unlink that profile first.`,
   };
   await reply(messages[result.reason]);
 }

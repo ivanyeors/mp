@@ -3,6 +3,7 @@
 Type: AFK
 Parent: PRD `users-permissions-rbac`
 Triage: ready
+Status: done (migration file written and checked locally; not yet applied to production)
 User stories covered: 11, 30–35
 
 ## What to build
@@ -27,11 +28,22 @@ Make Telegram review-card buttons a role permission, linked per Staff profile.
 
 ## Acceptance criteria
 
-- [ ] Authorise tests: role ∩ link both required; deactivated Member refuses; archived profile refuses; read error refuses; `grants_all` role + link action allows.
-- [ ] Migration test: every operator has a profile; action sets match old roles; no linked `telegram_user_id` lost.
-- [ ] Existing route tests in `app/api/staff/telegram-operators/__tests__` updated and passing.
-- [ ] Manual: an existing review manager can still Post on a preview card after migration (slice 12).
-- [ ] `graphify-out/` refreshed.
+- [x] Authorise tests: role ∩ link both required; deactivated Member refuses; archived profile refuses; read error refuses; `grants_all` role + link action allows.
+- [x] Migration test: every operator has a profile; action sets match old roles; no linked `telegram_user_id` lost.
+- [x] Existing route tests in `app/api/staff/telegram-operators/__tests__` updated and passing.
+- [ ] (slice 12) Manual: an existing review manager can still Post on a preview card after migration (slice 12).
+- [x] `graphify-out/` refreshed.
+
+## Decisions made while building
+
+- **Authorisation reads link → profile → Member → role in four small queries**, not one join. Taps are rare, every read failure refuses, and it keeps the check testable against the in-memory fake. Reasons: `not_linked`, `inactive` (link off), `profile_archived`, `member_inactive`, `role_forbidden` (names the role), `forbidden` (link lacks the action); each has its own bot reply.
+- **The bot names effective actions**, not a role: "You're set up as Ivan (Reply to Google reviews, Moderate shop reviews)" — the link's actions the role also grants.
+- **Legacy `role` follows `actions`** via a trigger (`review_manager` if reply is on, else `shop_moderator` if moderate is on, else the new `none`), so a rolled-back app reads the same access; `display_name` is stamped with the profile name.
+- **A link can't grant beyond its login's role** (400, names the role) **or beyond the actor** (403 for a non-Owner/Admin). A role later narrowed leaves the link's actions as they are; the matrix wins at tap time and the tab shows "(granted, but the role doesn't allow it)".
+- **One link per profile** (unique index; 409); archived profiles can't be linked; a profile deleted by a revoked invite takes its link with it (`on delete cascade`).
+- **New links start with the actions the role allows and the actor may grant.**
+- `PATCH` takes exactly one change (`actions`, `is_active`, or `action: new_link_code | unlink`); audits `telegram_link.create | update | turn_on | turn_off | new_link_code | unlink | delete` with before/after action lists (rendered as added/removed on the Audit Log).
+- `TELEGRAM_ROLES`, `telegramRoleCan` and the role labels are gone from code; `lib/telegram/roles.ts` now describes the catalog's `telegram.*` actions.
 
 ## Blocked by
 

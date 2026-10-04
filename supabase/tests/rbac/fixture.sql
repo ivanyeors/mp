@@ -100,3 +100,5 @@ insert into mp_config_responses (measured_by_type, measured_by_staff_id)
   select 'staff', id from mp_staff where name = 'Jess';
 insert into telegram_operators (display_name, role, telegram_user_id, linked_at)
   values ('Ivan', 'review_manager', 111, now());
+-- A second, unlinked operator live data does not have: no profile by that name.
+insert into telegram_operators (display_name, role) values ('Nadia', 'shop_moderator');

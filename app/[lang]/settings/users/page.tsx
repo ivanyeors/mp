@@ -2,7 +2,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { requireAdminPage } from "@/lib/auth/admin";
 import { listMembers, listRoles } from "@/lib/auth/members";
 import { listStaffProfiles } from "@/lib/staff/admin";
-import { listTelegramOperators } from "@/lib/telegram/operators";
+import { listTelegramLinks } from "@/lib/telegram/operators";
 import { UsersClient, parseUsersTab } from "./users-client";
 
 export const runtime = "nodejs";
@@ -30,7 +30,7 @@ export default async function UsersPermissionsPage({
     listMembers().catch(() => null),
     listRoles().catch(() => null),
     listStaffProfiles({ includeArchived: true }).catch(() => null),
-    listTelegramOperators().catch(() => null),
+    listTelegramLinks().catch(() => null),
   ]);
 
   return (

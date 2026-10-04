@@ -15,6 +15,8 @@ const SHOP_ID = "5a5a5a5a-1111-4222-8333-444455556666";
 const IVAN = { id: 111, first_name: "Ivan", username: "ivan" };
 const SAM = { id: 222, first_name: "Sam" };
 const STRANGER = { id: 999, first_name: "Who" };
+const REPLY = "telegram.google-review-reply";
+const MODERATE = "telegram.shop-review-moderate";
 
 const h = vi.hoisted(() => ({
   db: null as unknown,
@@ -83,13 +85,28 @@ beforeEach(() => {
   h.updateReply.mockResolvedValue({ comment: "Thanks, Jane!", updateTime: "2026-10-02T08:00:00Z" });
   h.deleteGroupMessage.mockResolvedValue(true);
   h.tables = {
+    // Ivan and Nadia work under an Owner login; Sam under a login whose role
+    // allows moderation only. Effective access = role ∩ link actions.
+    admin_roles: [
+      { id: "r-owner", name: "Owner", grants_all: true, permissions: [] },
+      { id: "r-shop", name: "Shop desk", grants_all: false, permissions: ["orders", MODERATE] },
+    ],
+    admin_users: [
+      { id: "m-sg", email: "sg@mpillow.com", role_id: "r-owner", is_active: true },
+      { id: "m-shop", email: "shop@x.test", role_id: "r-shop", is_active: true },
+    ],
+    mp_staff: [
+      { id: "p-ivan", name: "Ivan", admin_user_id: "m-sg", archived_at: null },
+      { id: "p-sam", name: "Sam", admin_user_id: "m-shop", archived_at: null },
+      { id: "p-nadia", name: "Nadia", admin_user_id: "m-sg", archived_at: null },
+    ],
     telegram_operators: [
-      { id: "op-ivan", display_name: "Ivan", role: "review_manager", is_active: true, telegram_user_id: IVAN.id },
-      { id: "op-sam", display_name: "Sam", role: "shop_moderator", is_active: true, telegram_user_id: SAM.id },
+      { id: "op-ivan", staff_profile_id: "p-ivan", actions: [REPLY, MODERATE], is_active: true, telegram_user_id: IVAN.id },
+      { id: "op-sam", staff_profile_id: "p-sam", actions: [MODERATE], is_active: true, telegram_user_id: SAM.id },
       {
         id: "op-new",
-        display_name: "Nadia",
-        role: "review_manager",
+        staff_profile_id: "p-nadia",
+        actions: [REPLY, MODERATE],
         is_active: true,
         telegram_user_id: null,
         link_code_hash: hashLinkCode("K7Q2MX9P"),
@@ -146,10 +163,47 @@ describe("RBAC on review buttons", () => {
     expect(review().status).toBe("pending");
   });
 
-  it("does not let a shop moderator reply on Google", async () => {
+  it("does not let someone whose login role lacks Google replies reply on Google", async () => {
     await tap(SAM, post());
-    expect(lastAlert()?.[1]).toMatch(/Only review managers/);
+    expect(lastAlert()?.[1]).toBe(
+      `Your login's role (Shop desk) doesn't include "reply to google reviews". Ask an Owner to turn it on under Users & permissions → Roles.`,
+    );
     expect(h.updateReply).not.toHaveBeenCalled();
+  });
+
+  it("needs the action on the link too, even when the role allows it", async () => {
+    h.tables.telegram_operators[0].actions = [MODERATE];
+    await tap(IVAN, post());
+    expect(lastAlert()?.[1]).toMatch(/Your Telegram access doesn't include "reply to google reviews"/);
+    expect(h.updateReply).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the login is deactivated, with the login reason", async () => {
+    h.tables.admin_users[0].is_active = false;
+    await tap(IVAN, post());
+    expect(lastAlert()?.[1]).toMatch(/Admin Panel login is deactivated/);
+    expect(h.updateReply).not.toHaveBeenCalled();
+  });
+
+  it("refuses an archived staff profile", async () => {
+    h.tables.mp_staff[0].archived_at = "2026-10-01T00:00:00Z";
+    await tap(IVAN, post());
+    expect(lastAlert()?.[1]).toMatch(/staff profile is archived/);
+  });
+
+  it("refuses when the role's permissions cannot be read", async () => {
+    h.tables.admin_roles = [];
+    h.db = createFakeSupabase(h.tables);
+    await tap(IVAN, post());
+    expect(lastAlert()?.[1]).toMatch(/Your login's role doesn't include/);
+    expect(h.updateReply).not.toHaveBeenCalled();
+  });
+
+  it("follows a role change on the next tap", async () => {
+    h.tables.admin_roles[1].permissions = ["orders"];
+    await tap(SAM, encodeReviewCallback({ source: "shop", action: "approve", id: SHOP_ID }));
+    expect(lastAlert()?.[1]).toMatch(/Shop desk/);
+    expect(h.tables.product_reviews[0].status).toBe("pending");
   });
 
   it("refuses a switched-off operator", async () => {
@@ -214,7 +268,7 @@ describe("preview cards", () => {
     await tap(IVAN, preview("post"));
     expect(lastAlert()).toEqual([
       "cq1",
-      "✅ You're set up as Ivan (Review manager). On a real review, this button would publish the reply on Google Maps.",
+      "✅ You're set up as Ivan (Reply to Google reviews, Moderate shop reviews). On a real review, this button would publish the reply on Google Maps.",
       true,
     ]);
     expect(h.updateReply).not.toHaveBeenCalled();
@@ -226,10 +280,10 @@ describe("preview cards", () => {
     await tap(STRANGER, preview("post"));
     expect(lastAlert()?.[1]).toContain("Your Telegram ID: 999");
     await tap(SAM, preview("post"));
-    expect(lastAlert()?.[1]).toMatch(/Only review managers/);
+    expect(lastAlert()?.[1]).toMatch(/Shop desk/);
     await tap(SAM, preview("approve"));
     expect(lastAlert()?.[1]).toBe(
-      "✅ You're set up as Sam (Shop moderator). On a real review, this button would show the review on the product page.",
+      "✅ You're set up as Sam (Moderate shop reviews). On a real review, this button would show the review on the product page.",
     );
     expect(h.tables.product_reviews[0].status).toBe("pending");
   });
@@ -256,7 +310,7 @@ describe("Skip and staff wording", () => {
   it("explains a reply to a preview card instead of saving it", async () => {
     await say(IVAN, "My own wording", { replyTo: 78, replyText: `${PREVIEW_CARD_PREFIX}a 5★ review.\n${GOOGLE_CARD_HEADER}\n…` });
     expect(review().draft_reply).toBe("Thanks, Jane!");
-    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/On a real card.*Ivan \(Review manager\)/), 500);
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/On a real card.*Ivan \(Reply to Google reviews, Moderate shop reviews\)/), 500);
   });
 
   it("takes a review manager's reply to the card as the new draft — Post still required", async () => {
@@ -278,10 +332,10 @@ describe("Skip and staff wording", () => {
     expect(h.replyInGroup).not.toHaveBeenCalled();
   });
 
-  it("tells a linked shop moderator they can't change Google replies", async () => {
+  it("tells a linked person without Google replies they can't change them", async () => {
     await say(SAM, "Thanks!", { replyTo: 77 });
     expect(review().draft_reply).toBe("Thanks, Jane!");
-    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/Only review managers/), 500);
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/doesn't include "reply to google reviews"/), 500);
   });
 });
 
