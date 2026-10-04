@@ -10,6 +10,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { permissionsForRoleRow } from "@/lib/auth/permissions";
+import { loginRefusal } from "@/lib/auth/login-guard";
 import {
   createTelegramLink,
   deleteTelegramLink,
@@ -27,6 +28,7 @@ export type LinkWriteResult = { ok: true; row: TelegramLinkRow; linkCode?: strin
 type ProfileContext = {
   id: string;
   name: string;
+  memberId: string;
   archived: boolean;
   memberEmail: string;
   roleName: string;
@@ -53,11 +55,37 @@ async function profileContext(profileId: string): Promise<ProfileContext | null>
   return {
     id: profile.id as string,
     name: profile.name as string,
+    memberId: profile.admin_user_id as string,
     archived: profile.archived_at != null,
     memberEmail: (member?.email as string | undefined) ?? "",
     roleName: (role?.name as string | undefined) ?? "no role",
     roleGrants: role ? permissionsForRoleRow(role as { grants_all: boolean; permissions: string[] | null }) : new Set(),
   };
+}
+
+/**
+ * May the actor touch this link at all? Its login must be one they may manage
+ * (login-guard), and — unless they are Owner or Admin — they must hold every
+ * action the link can use today, so a new code, a switch-on or a relink never
+ * hands them access they lack.
+ */
+async function manageRefusal(
+  actor: AdminContext,
+  profile: ProfileContext,
+  link: TelegramLinkRow | null,
+): Promise<Refusal | null> {
+  const login = await loginRefusal(actor, profile.memberId);
+  if (login) return login;
+  if (!link || actor.grantsAll) return null;
+  const beyond = link.actions.filter((a) => profile.roleGrants.has(a) && !actor.permissions.has(a));
+  if (beyond.length) {
+    return {
+      ok: false,
+      status: 403,
+      error: `This link can ${beyond.map(telegramActionLabel).join(", ")}, which your role doesn't have.`,
+    };
+  }
+  return null;
 }
 
 /** Refusal for actions the profile's role or the actor does not hold; null when all are fine. */
@@ -109,6 +137,8 @@ export async function linkProfile(
     .eq("staff_profile_id", staffProfileId)
     .maybeSingle();
   if (existing) return { ok: false, status: 409, error: `${profile.name} already has Telegram access.` };
+  const manage = await manageRefusal(actor, profile, null);
+  if (manage) return manage;
 
   const refusal = actionsRefusal(actor, profile, actions);
   if (refusal) return refusal;
@@ -139,14 +169,16 @@ export async function changeLink(actor: AdminContext, id: string, change: LinkCh
   const before = await getTelegramLink(id);
   if (!before) return { ok: false, status: 404, error: "Not found" };
   const profile = await profileContext(before.staff_profile_id);
-  const name = profile?.name ?? "—";
+  if (!profile) return { ok: false, status: 404, error: "Staff profile not found." };
+  const name = profile.name;
+  const manage = await manageRefusal(actor, profile, before);
+  if (manage) return manage;
 
   let row: TelegramLinkRow | null = before;
   let linkCode: string | undefined;
   let action: string;
   switch (change.kind) {
     case "actions": {
-      if (!profile) return { ok: false, status: 404, error: "Staff profile not found." };
       const refusal = actionsRefusal(actor, profile, change.actions, before.actions);
       if (refusal) return refusal;
       row = await updateTelegramLink(id, { actions: change.actions });
@@ -184,8 +216,15 @@ export async function changeLink(actor: AdminContext, id: string, change: LinkCh
 
 export async function removeLink(actor: AdminContext, id: string): Promise<{ ok: true } | Refusal> {
   const before = await getTelegramLink(id);
-  if (!before || !(await deleteTelegramLink(id))) return { ok: false, status: 404, error: "Not found" };
-  const profile = await profileContext(before.staff_profile_id).catch(() => null);
+  if (!before) return { ok: false, status: 404, error: "Not found" };
+  const profile = await profileContext(before.staff_profile_id);
+  if (profile) {
+    const manage = await manageRefusal(actor, profile, before);
+    if (manage) return manage;
+  } else if (!actor.grantsAll) {
+    return { ok: false, status: 403, error: "Only an Owner or Admin can remove a link whose profile is gone." };
+  }
+  if (!(await deleteTelegramLink(id))) return { ok: false, status: 404, error: "Not found" };
   await recordAdminAction({
     actor,
     action: "telegram_link.delete",

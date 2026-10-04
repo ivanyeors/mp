@@ -104,6 +104,8 @@ type MpConfigResponseRow = {
 type StaffRow = {
   id: string;
   name: string;
+  memberId?: string;
+  /** Only for viewers with Users & permissions; the groups have no heading otherwise. */
   memberEmail?: string | null;
   archivedAt?: string | null;
 };
@@ -321,13 +323,17 @@ export default function ResultsPage({
 
   // The picker offers live profiles only, grouped by the login they work under.
   const staffGroups = useMemo(() => {
-    const groups = new Map<string, StaffRow[]>();
+    const groups = new Map<string, { label: string | null; profiles: StaffRow[] }>();
     for (const s of staffRows) {
       if (s.archivedAt) continue;
-      const key = s.memberEmail ?? "Other";
-      groups.set(key, [...(groups.get(key) ?? []), s]);
+      const key = s.memberId ?? "";
+      const group = groups.get(key) ?? { label: s.memberEmail ?? null, profiles: [] };
+      group.profiles.push(s);
+      groups.set(key, group);
     }
-    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+    return [...groups.entries()]
+      .map(([key, g]) => ({ key, ...g }))
+      .sort((a, b) => (a.label ?? a.profiles[0]!.name).localeCompare(b.label ?? b.profiles[0]!.name));
   }, [staffRows]);
 
   const measuredByValue = (row: MpConfigResponseRow): string => {
@@ -1085,10 +1091,12 @@ export default function ResultsPage({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="by_user">by user</SelectItem>
-                            {staffGroups.map(([login, profiles]) => (
-                              <Fragment key={login}>
-                                {staffGroups.length > 1 ? <SelectGroupLabel>{login}</SelectGroupLabel> : null}
-                                {profiles.map((s) => (
+                            {staffGroups.map((group) => (
+                              <Fragment key={group.key}>
+                                {staffGroups.length > 1 && group.label ? (
+                                  <SelectGroupLabel>{group.label}</SelectGroupLabel>
+                                ) : null}
+                                {group.profiles.map((s) => (
                                   <SelectItem key={s.id} value={`staff:${s.id}`} textValue={s.name}>
                                     {s.name}
                                   </SelectItem>

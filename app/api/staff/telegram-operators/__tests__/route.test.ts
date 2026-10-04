@@ -133,15 +133,65 @@ describe("Telegram access API", () => {
     expect((await collection.POST(json({ staff_profile_id: SHOPPER, actions: [MODERATE] }))).status).toBe(201);
   });
 
-  it("a non-Owner/Admin cannot grant an action they don't hold", async () => {
+  it("a non-Owner/Admin cannot link a login whose role has actions they don't hold", async () => {
     h.requireAdminContext.mockResolvedValue({
       ...OWNER,
       isOwner: false,
       grantsAll: false,
-      permissions: new Set(["users", MODERATE]),
+      permissions: new Set(["users", "orders"]),
     });
-    expect((await collection.POST(json({ staff_profile_id: JESS, actions: [REPLY] }))).status).toBe(403);
-    expect((await collection.POST(json({ staff_profile_id: JESS, actions: [MODERATE] }))).status).toBe(201);
+    expect((await collection.POST(json({ staff_profile_id: SHOPPER, actions: [MODERATE] }))).status).toBe(403);
+    h.requireAdminContext.mockResolvedValue({
+      ...OWNER,
+      isOwner: false,
+      grantsAll: false,
+      permissions: new Set(["users", "orders", MODERATE]),
+    });
+    expect((await collection.POST(json({ staff_profile_id: SHOPPER, actions: [MODERATE] }))).status).toBe(201);
+  });
+
+  describe("who may touch a link (review finding: link takeover)", () => {
+    const peopleManager = {
+      ...OWNER,
+      memberId: "m-pm",
+      isOwner: false,
+      grantsAll: false,
+      permissions: new Set(["users", "orders", MODERATE]),
+    };
+
+    it("a non-Owner with users cannot issue a code for, switch, unlink or remove an Owner login's link", async () => {
+      h.requireAdminContext.mockResolvedValue(peopleManager);
+      for (const body of [{ action: "new_link_code" }, { action: "unlink" }, { is_active: false }, { actions: [] }]) {
+        const res = await item.PATCH(json(body, "PATCH"), params());
+        expect(res.status, JSON.stringify(body)).toBe(403);
+        expect(JSON.stringify(await res.json())).not.toContain("linkCode");
+      }
+      expect((await item.DELETE(json({}, "DELETE"), params())).status).toBe(403);
+      expect(h.tables.telegram_operators[0]).toMatchObject({ telegram_user_id: 111, link_code_hash: null, is_active: true });
+    });
+
+    it("…nor link a profile under an Owner's login", async () => {
+      h.requireAdminContext.mockResolvedValue(peopleManager);
+      expect((await collection.POST(json({ staff_profile_id: JESS, actions: [] }))).status).toBe(403);
+    });
+
+    it("cannot reissue a code for a link that can do more than they can", async () => {
+      // Sam's login role allows moderation; the manager holds it, so a code is fine…
+      h.tables.telegram_operators.push({
+        id: "5b5b5b5b-1111-4222-8333-444455556666",
+        staff_profile_id: SHOPPER,
+        actions: [MODERATE],
+        is_active: true,
+        telegram_user_id: 222,
+      });
+      h.requireAdminContext.mockResolvedValue(peopleManager);
+      const ok = await item.PATCH(json({ action: "new_link_code" }, "PATCH"), params("5b5b5b5b-1111-4222-8333-444455556666"));
+      expect(ok.status).toBe(200);
+      // …but not for someone who lacks moderation themselves.
+      h.requireAdminContext.mockResolvedValue({ ...peopleManager, permissions: new Set(["users", "orders"]) });
+      const res = await item.PATCH(json({ action: "new_link_code" }, "PATCH"), params("5b5b5b5b-1111-4222-8333-444455556666"));
+      expect(res.status).toBe(403);
+    });
   });
 
   it("never lists link code hashes", async () => {

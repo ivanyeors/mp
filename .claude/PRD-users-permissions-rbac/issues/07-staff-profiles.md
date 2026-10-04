@@ -42,6 +42,8 @@ Give every `mp_staff` row an owning Member: one login, many Staff profiles.
 - **`PATCH /api/staff/[id]` takes exactly one change** (`name`, `memberId` or `archived`), so each lands in the Audit Log as its own `staff_profile.rename|move|archive|restore`.
 - **Results "measured by"**: `/api/staff?includeArchived=1` feeds labels ("Jess (archived)"); the picker shows live profiles grouped by login (headings only when there is more than one login) and the row's own archived profile as a disabled option. `POST /api/mp-config/responses` refuses newly picking an archived or missing profile, and leaves a row that already names one alone.
 - `SelectGroupLabel` added to `components/ui/select.tsx` for the group headings.
+- **Who may change a login's profiles** (`lib/auth/login-guard.ts`, after review): only an Owner touches profiles under an Owner's login, and a non-Owner/Admin only logins whose role is within their own pages. A move checks both logins, and refuses when the profile's Telegram link lists actions the actor lacks (the new login's role could switch them back on).
+- **Login emails** in `/api/staff` and the Results picker are only for `users` holders; others get names grouped by login without headings.
 - Members tab shows each login's live profile count, linking to its group on the Staff profiles tab.
 
 ## Blocked by

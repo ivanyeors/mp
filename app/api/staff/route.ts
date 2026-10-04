@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
-import { createStaffProfile, listStaffProfiles } from "@/lib/staff/admin";
+import { getAdminContext, requireAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
+import { createStaffProfile, listStaffProfiles, withoutLoginEmails } from "@/lib/staff/admin";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ const CreateSchema = z.object({
  * Staff profiles with the login each works under. Results reads this for its
  * "measured by" picker (`results`); Users & permissions manages them
  * (`users`). `?includeArchived=1` adds archived profiles, so old Results can
- * still be labelled.
+ * still be labelled. Login emails are for `users` holders only.
  */
 export async function GET(req: Request) {
   const denied = await requireAnyAdmin(["results", "users"]);
@@ -22,7 +23,12 @@ export async function GET(req: Request) {
 
   const includeArchived = new URL(req.url).searchParams.get("includeArchived") === "1";
   try {
-    return NextResponse.json({ ok: true, rows: await listStaffProfiles({ includeArchived }) });
+    const ctx = await getAdminContext();
+    const rows = await listStaffProfiles({ includeArchived });
+    return NextResponse.json({
+      ok: true,
+      rows: ctx && hasPermission(ctx, "users") ? rows : withoutLoginEmails(rows),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

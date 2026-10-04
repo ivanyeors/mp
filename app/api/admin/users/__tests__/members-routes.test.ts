@@ -273,6 +273,22 @@ describe("resend and revoke", () => {
     });
   });
 
+  it("does not delete an invitee who signs in while the revoke runs (review finding)", async () => {
+    // The row reads as Invited once (the check), then as bound (the delete).
+    const row = h.db.admin_users.find((m) => m.id === "inv1")!;
+    let reads = 0;
+    Object.defineProperty(row, "auth_user_id", { get: () => (reads++ === 0 ? null : "auth-late"), configurable: true });
+    signIn("owner1");
+    const res = await call(DELETE, "inv1");
+    expect(res.status).toBe(409);
+    expect(h.db.admin_users.some((m) => m.id === "inv1")).toBe(true);
+    // Their profiles are back under them, as they were.
+    expect(h.db.mp_staff.filter((p) => p.admin_user_id === "inv1").map((p) => [p.id, p.archived_at])).toEqual([
+      ["p-new", null],
+      ["p-used", null],
+    ]);
+  });
+
   it("refuses a narrower manager revoking an invite for a broader role", async () => {
     h.db.admin_users.push(member("inv2", "big@x.test", R.media, { auth_user_id: null }));
     signIn("people1");

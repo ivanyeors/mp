@@ -57,7 +57,7 @@ beforeEach(() => {
 
 describe("GET /api/staff", () => {
   it("lists live profiles with their login for results or users holders", async () => {
-    signIn(OTHER);
+    signIn(STUDIO);
     const body = await (await GET(req("/api/staff", "GET"))).json();
     expect(body.rows).toEqual([expect.objectContaining({ id: "p-jess", memberEmail: "studio@x.test", archivedAt: null })]);
     const all = await (await GET(req("/api/staff?includeArchived=1", "GET"))).json();
@@ -118,6 +118,53 @@ describe("profile writes", () => {
     expect((await patch("p-jess", { memberId: OTHER })).status).toBe(409);
     expect((await patch("p-jess", { memberId: "00000000-0000-4000-8000-000000000999" })).status).toBe(404);
     expect((await patch("p-jess", { name: "A", archived: true })).status).toBe(400);
+  });
+});
+
+describe("who may change a login's profiles (review finding)", () => {
+  const PM = "00000000-0000-4000-8000-0000000000b3";
+  beforeEach(() => {
+    h.db.admin_roles.push({ id: "r-pm", key: "people", name: "People", grants_all: false, permissions: ["users", "results"] });
+    h.db.admin_users.push({ id: PM, email: "pm@x.test", role_id: "r-pm", is_active: true, auth_user_id: "auth-pm" });
+    h.db.mp_staff.push({ id: "p-other", name: "Olu", admin_user_id: OTHER, archived_at: null });
+    signIn(PM);
+  });
+
+  it("a non-Owner cannot rename, archive or add profiles under an Owner's login", async () => {
+    expect((await patch("p-jess", { name: "X" })).status).toBe(403);
+    expect((await patch("p-jess", { archived: true })).status).toBe(403);
+    expect((await POST(req("/api/staff", "POST", { memberId: STUDIO, name: "Zed" }))).status).toBe(403);
+    expect(h.db.mp_staff.find((p) => p.id === "p-jess")).toMatchObject({ name: "Jess", archived_at: null });
+  });
+
+  it("…nor move a profile into an Owner's login", async () => {
+    expect((await patch("p-other", { memberId: STUDIO })).status).toBe(403);
+  });
+
+  it("may manage a login whose role is within their own pages", async () => {
+    expect((await patch("p-other", { name: "Olu A." })).status).toBe(200);
+    expect((await POST(req("/api/staff", "POST", { memberId: OTHER, name: "Bea" }))).status).toBe(201);
+  });
+
+  it("cannot move a profile whose Telegram link can do more than they can", async () => {
+    const THIRD = "00000000-0000-4000-8000-0000000000b4";
+    h.db.admin_users.push({ id: THIRD, email: "third@x.test", role_id: "r-results", is_active: true, auth_user_id: "a3" });
+    h.db.telegram_operators = [{ id: "l1", staff_profile_id: "p-other", actions: ["telegram.google-review-reply"] }];
+    const res = await patch("p-other", { memberId: THIRD });
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("Reply to Google reviews");
+    h.db.telegram_operators = [];
+    expect((await patch("p-other", { memberId: THIRD })).status).toBe(200);
+  });
+});
+
+describe("login emails", () => {
+  it("are only served to users holders", async () => {
+    signIn(OTHER);
+    const body = await (await GET(req("/api/staff", "GET"))).json();
+    expect(body.rows[0]).toMatchObject({ id: "p-jess", memberId: STUDIO, memberEmail: null });
+    signIn(STUDIO);
+    expect((await (await GET(req("/api/staff", "GET"))).json()).rows[0].memberEmail).toBe("studio@x.test");
   });
 });
 

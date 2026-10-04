@@ -34,6 +34,7 @@ Turn "invite" from a silent row insert into a real invitation.
 - **The invite email is registered** (`auth.admin_invite`) so it appears on the email preview surface and passes the shared email contract tests; it uses the staff audience shell.
 - **Sign-in link** is `/<default locale>/account/login?next=/<default locale>/settings` on the site origin.
 - **First profile name** defaults from `defaultProfileName` (now in the pure `lib/staff/profile-name.ts`, so the dialog shows the same placeholder the server will use).
+- **Revoke is safe against a sign-in mid-way:** profiles are parked (archived) under the revoker, the Member is deleted only while still unbound, and if that misses (they just signed in) the profiles go back and the API answers 409. A profile whose Result use can't be checked is kept, not deleted.
 - Audit order on invite: `staff_profile.create` then `member.invite` (with `emailSent`); revoke records profiles that were archived and moved to the revoker because Results name them.
 
 ## Blocked by

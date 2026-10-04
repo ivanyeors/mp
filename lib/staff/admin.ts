@@ -2,6 +2,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
+import { loginRefusal } from "@/lib/auth/login-guard";
+import { isPermission, permissionEntry } from "@/lib/auth/permissions";
 
 export { defaultProfileName } from "@/lib/staff/profile-name";
 
@@ -60,9 +62,17 @@ export async function listStaffProfiles({ includeArchived = false } = {}): Promi
   return ((data ?? []) as DbProfile[]).map(toProfile);
 }
 
+/**
+ * What a reader without `users` sees: names and grouping, not the login
+ * emails behind them (the Results picker needs no more).
+ */
+export function withoutLoginEmails(profiles: StaffProfile[]): StaffProfile[] {
+  return profiles.map((p) => ({ ...p, memberEmail: null }));
+}
+
 export type ProfileWriteResult =
   | { ok: true; profile: StaffProfile }
-  | { ok: false; status: 400 | 404 | 409; error: string };
+  | { ok: false; status: 400 | 403 | 404 | 409; error: string };
 
 const clash = (name: string): ProfileWriteResult => ({
   ok: false,
@@ -114,6 +124,10 @@ export async function createStaffProfile(
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, status: 400, error: "Name is required." };
   if (!(await memberExists(memberId))) return { ok: false, status: 404, error: "That login no longer exists." };
+  if (actor) {
+    const refusal = await loginRefusal(actor, memberId);
+    if (refusal) return refusal;
+  }
   if (await nameTaken(memberId, trimmed)) return clash(trimmed);
 
   const { data, error } = await supabaseAdmin()
@@ -150,6 +164,9 @@ export async function updateStaffProfile(
 ): Promise<ProfileWriteResult> {
   const before = await loadProfile(id);
   if (!before) return { ok: false, status: 404, error: "Profile not found." };
+  // The same rule as changing the login itself (lib/auth/login-guard.ts).
+  const here = await loginRefusal(actor, before.memberId);
+  if (here) return here;
 
   let patch: Record<string, unknown>;
   switch (change.kind) {
@@ -160,13 +177,26 @@ export async function updateStaffProfile(
       patch = { name };
       break;
     }
-    case "move":
+    case "move": {
       if (!(await memberExists(change.memberId))) return { ok: false, status: 404, error: "That login no longer exists." };
+      const there = await loginRefusal(actor, change.memberId);
+      if (there) return there;
+      // Its Telegram link moves with it, and the new login's role may allow
+      // actions the old one did not: only someone holding them may do that.
+      const beyond = await linkActionsBeyond(actor, id);
+      if (beyond.length) {
+        return {
+          ok: false,
+          status: 403,
+          error: `${before.name}'s Telegram link can ${beyond.join(", ")}, which your role doesn't have. Ask an Owner or Admin to move it.`,
+        };
+      }
       if (!before.archivedAt && (await nameTaken(change.memberId, before.name, id))) {
         return { ok: false, status: 409, error: `That login already has a profile named ${before.name}.` };
       }
       patch = { admin_user_id: change.memberId };
       break;
+    }
     case "archive":
       patch = { archived_at: before.archivedAt ?? new Date().toISOString() };
       break;
@@ -196,6 +226,19 @@ export async function updateStaffProfile(
     after: snapshot(after),
   });
   return { ok: true, profile: after };
+}
+
+/** Telegram actions on a profile's link that the actor does not hold (none for Owner / Admin). */
+async function linkActionsBeyond(actor: AdminContext, profileId: string): Promise<string[]> {
+  if (actor.grantsAll) return [];
+  const { data, error } = await supabaseAdmin()
+    .from("telegram_operators")
+    .select("actions")
+    .eq("staff_profile_id", profileId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const actions = ((data?.actions as string[] | undefined) ?? []).filter(isPermission);
+  return actions.filter((a) => !actor.permissions.has(a)).map((a) => permissionEntry(a).label);
 }
 
 /**

@@ -293,9 +293,14 @@ export function SettingsSidebarNav({
   // instead of on the next full reload (the server layout is not re-run on a
   // client navigation). The page guards are the real boundary; this is chrome.
   const firstPath = useRef(basePathname);
+  // The path the permissions above were read for: the first page (from the
+  // server layout) or the last refetch. A redirect is only decided on
+  // permissions that are current for this path, never on stale ones.
+  const [permissionsPath, setPermissionsPath] = useState(basePathname);
   useEffect(() => {
     if (isLoginRoute || status !== "authed" || basePathname === firstPath.current) return;
     firstPath.current = "";
+    const path = basePathname;
     let cancelled = false;
     fetch("/api/admin/context")
       .then((res) => res.json())
@@ -303,6 +308,7 @@ export function SettingsSidebarNav({
         if (cancelled) return;
         if (!data?.signedIn) return setStatus("unauth");
         setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+        setPermissionsPath(path);
       })
       .catch(() => {});
     return () => {
@@ -314,7 +320,11 @@ export function SettingsSidebarNav({
   // The current page is no longer in the Member's role: send them to the
   // Admin Panel home with the same notice a page guard gives.
   const currentKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
-  const lostCurrentPage = status === "authed" && !!currentKey && !permissions.includes(currentKey);
+  const lostCurrentPage =
+    status === "authed" &&
+    permissionsPath === basePathname &&
+    !!currentKey &&
+    !permissions.includes(currentKey);
   useEffect(() => {
     if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps

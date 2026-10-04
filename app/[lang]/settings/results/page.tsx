@@ -1,7 +1,8 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
-import { listStaffProfiles } from "@/lib/staff/admin";
+import { hasPermission } from "@/lib/auth/permissions";
+import { listStaffProfiles, withoutLoginEmails } from "@/lib/staff/admin";
 import ResultsPage, { type ResultsInitialData } from "./results-client";
 
 export const runtime = "nodejs";
@@ -19,7 +20,7 @@ export default async function ResultsRoute({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  await requireAdminPage("results", locale);
+  const ctx = await requireAdminPage("results", locale);
 
   const [responses, staff] = await Promise.all([
     // Mirrors the client's first-mount request: pageLimit 200, offset 0.
@@ -32,7 +33,8 @@ export default async function ResultsRoute({
       responses.status === 200
         ? (responses.body as unknown as ResultsInitialData["responses"])
         : null,
-    staff: staff ? { ok: true, rows: staff } : null,
+    // Login emails are for `users` holders only, as /api/staff serves them.
+    staff: staff ? { ok: true, rows: hasPermission(ctx, "users") ? staff : withoutLoginEmails(staff) } : null,
   };
 
   return <ResultsPage initialData={initialData} />;

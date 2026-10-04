@@ -334,38 +334,67 @@ export async function resendInvite(actor: AdminContext, id: string, now = Date.n
 
 /**
  * Revoke an invite: delete the Invited Member and its Staff profiles. A
- * profile already used as a Result's "measured by" is archived and moved to
- * the revoker instead, so attribution survives. Audited as `member.invite_revoke`.
+ * profile already used as a Result's "measured by" (or whose use can't be
+ * checked) is archived and moved to the revoker instead, so attribution
+ * survives. Audited as `member.invite_revoke`.
+ *
+ * The invitee may sign in while this runs. Every step is conditioned on the
+ * row still being unbound, and profiles are parked under the revoker until the
+ * Member row is gone, so a sign-in in between leaves them as they were.
  */
 export async function revokeInvite(actor: AdminContext, id: string): Promise<{ ok: true } | Refusal> {
   const target = await invitedTarget(actor, id);
   if ("ok" in target) return target;
   const { row, role } = target;
   const admin = supabaseAdmin();
+  const signedIn: Refusal = { ok: false, status: 409, error: `${row.email} has just signed in; deactivate them instead.` };
 
-  const { data: profiles, error: pErr } = await admin.from("mp_staff").select("id, name").eq("admin_user_id", id);
+  const { data: profiles, error: pErr } = await admin
+    .from("mp_staff")
+    .select("id, name, archived_at")
+    .eq("admin_user_id", id);
   if (pErr) throw new Error(pErr.message);
+  const own = (profiles ?? []) as { id: string; name: string; archived_at: string | null }[];
+
+  // 1. Park the profiles under the revoker, archived (frees the FK).
+  const parkedAt = new Date().toISOString();
+  for (const p of own) {
+    const { error } = await admin
+      .from("mp_staff")
+      .update({ admin_user_id: actor.memberId, archived_at: p.archived_at ?? parkedAt })
+      .eq("id", p.id);
+    if (error) throw new Error(error.message);
+  }
+
+  // 2. Delete the Member only while still unbound.
+  const { data: deleted, error } = await admin
+    .from("admin_users")
+    .delete()
+    .eq("id", id)
+    .is("auth_user_id", null)
+    .select("id");
+  if (error || !(deleted ?? []).length) {
+    // Signed in meanwhile (or the delete failed): put the profiles back.
+    for (const p of own) {
+      await admin.from("mp_staff").update({ admin_user_id: id, archived_at: p.archived_at }).eq("id", p.id);
+    }
+    if (error) throw new Error(error.message);
+    return signedIn;
+  }
+
+  // 3. Drop the parked profiles nothing names; keep any a Result uses.
   const kept: string[] = [];
-  for (const p of (profiles ?? []) as { id: string; name: string }[]) {
-    const { count } = await admin
+  for (const p of own) {
+    const { count, error: cErr } = await admin
       .from("mp_config_responses")
       .select("id", { count: "exact", head: true })
       .eq("measured_by_staff_id", p.id);
-    if (count) {
+    if (cErr || count) {
       kept.push(p.name);
-      const { error } = await admin
-        .from("mp_staff")
-        .update({ admin_user_id: actor.memberId, archived_at: new Date().toISOString() })
-        .eq("id", p.id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await admin.from("mp_staff").delete().eq("id", p.id);
-      if (error) throw new Error(error.message);
+      continue;
     }
+    await admin.from("mp_staff").delete().eq("id", p.id);
   }
-
-  const { error } = await admin.from("admin_users").delete().eq("id", id);
-  if (error) throw new Error(error.message);
 
   await recordAdminAction({
     actor,
