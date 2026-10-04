@@ -4,7 +4,7 @@ import { createFakeSupabase } from "@/lib/reviews/__tests__/fake-supabase";
 import { hashLinkCode } from "@/lib/telegram/link-codes";
 
 /**
- * Staff Management → Telegram access API. Owners/admins only (`users`), every
+ * Users & permissions → Telegram API. Owners/admins only (`users`), every
  * change audited, and a link code is returned once while only its hash is kept.
  */
 

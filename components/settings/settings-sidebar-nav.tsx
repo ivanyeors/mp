@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
-  Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
+  Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
   GitBranch, ClipboardCheck, Percent, Box,
@@ -82,8 +82,7 @@ const NAV_GROUPS: NavGroup[] = [
         items: [
           { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound },
           { href: "/settings/appointments", label: "Appointments", tooltip: "Appointment reminders", Icon: CalendarDays },
-          { href: "/settings/admins", label: "Admin Users", tooltip: "Admin users & roles", Icon: ShieldCheck },
-          { href: "/settings/staff-management", label: "Staff Management", tooltip: "Manufacturing staff", Icon: Users },
+          { href: "/settings/users", label: "Users & permissions", tooltip: "Members, roles, staff profiles and Telegram", Icon: ShieldCheck },
         ],
       },
     ],

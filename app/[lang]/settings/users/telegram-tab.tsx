@@ -26,7 +26,7 @@ import {
 type IssuedCode = { name: string; code: string; expiresAt: string | null };
 
 /**
- * Staff Management → Telegram access: who may press buttons on review cards
+ * Users & permissions → Telegram: who may press buttons on review cards
  * in the measurements Telegram group. Everyone in the group sees the cards;
  * only people listed here, linked and active, can act on them.
  */

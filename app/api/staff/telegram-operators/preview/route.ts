@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 /**
- * Staff Management → Telegram access → "Send preview": sample review cards to
+ * Users & permissions → Telegram → "Send preview": sample review cards to
  * the measurements group, so the team sees what real reviews will look like
  * and can tap a button to check their own access. Nothing is stored or posted
- * to Google. Owners/admins only (`staff`), like the rest of the tab.
+ * to Google. The `users` permission, like the rest of the page.
  */
 export async function POST() {
   let ctx;

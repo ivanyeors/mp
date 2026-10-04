@@ -3,6 +3,7 @@
 Type: AFK
 Parent: PRD `users-permissions-rbac`
 Triage: ready
+Status: done
 User stories covered: 1–3, 10–13, 15
 
 ## What to build
@@ -18,12 +19,22 @@ The new entry point, with the Members tab carrying everything Admin Users does t
 
 ## Acceptance criteria
 
-- [ ] Users & permissions is the only people/access entry in the sidebar; old URLs redirect to the right tab.
-- [ ] Role-policy unit tests: self-change, last Owner, Owner-only Owner, subset rule (allow and refuse cases).
-- [ ] Route tests: PATCH refuses each forbidden case with 400/403 and a readable message.
-- [ ] Every Member change writes `admin_audit_log` (`member.update`) with before/after.
-- [ ] Settings mobile check (`settings-mobile.check.ts`) updated for the renamed entry.
-- [ ] `graphify-out/` refreshed.
+- [x] Users & permissions is the only people/access entry in the sidebar; old URLs redirect to the right tab.
+- [x] Role-policy unit tests: self-change, last Owner, Owner-only Owner, subset rule (allow and refuse cases).
+- [x] Route tests: PATCH refuses each forbidden case with 400/403 and a readable message.
+- [x] Every Member change writes `admin_audit_log` (`member.update`) with before/after.
+- [x] Settings mobile check (`settings-mobile.check.ts`) updated for the renamed entry.
+- [x] `graphify-out/` refreshed.
+
+## Decisions made while building
+
+- **The client runs the same role policy** (`lib/auth/role-policy.ts` is pure) to disable role options and Deactivate buttons, with the server's sentence as the reason. The server re-checks every write against fresh rows.
+- **A Member whose current role the actor could not assign is locked for that actor** (no role change, no deactivate), as well as Owners for non-Owners. Without it, a narrower user-manager could deactivate an Admin.
+- **Profile count** is not on the Members table yet: Members don't own profiles until slice 07, which adds the column.
+- **Mobile:** one card per Member below `sm`, table from `sm` up.
+- `/api/admin/users` GET returns `{ members, roles }` (roles with member counts) for every tab; the old `rows` shape is gone with the old page.
+- The invite form stays inline until slice 05, but only lists roles the inviter may assign; invites are audited as `member.invite`.
+- The last-active-Owner rule is covered in `role-policy.test.ts`; through the API the actor is always an active Owner too, so a request only reaches it with stale rows.
 
 ## Blocked by
 

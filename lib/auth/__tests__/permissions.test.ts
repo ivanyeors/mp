@@ -169,9 +169,7 @@ describe("permission catalog", () => {
 
   it("every Admin Panel page key is in the sidebar", () => {
     for (const entry of catalogForSurface("admin-panel")) {
-      for (const href of [entry.href, ...(entry.alsoAt ?? [])]) {
-        if (href) expect(navHrefs, entry.key).toContain(href);
-      }
+      if (entry.href) expect(navHrefs, entry.key).toContain(entry.href);
     }
   });
 
@@ -184,10 +182,7 @@ describe("permission catalog", () => {
   });
 
   it("no two keys claim the same page", () => {
-    const hrefs = PERMISSION_CATALOG.flatMap((e) => [
-      ...("href" in e ? [e.href] : []),
-      ...("alsoAt" in e ? e.alsoAt : []),
-    ]);
+    const hrefs = PERMISSION_CATALOG.flatMap((e) => ("href" in e ? [e.href] : []));
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 

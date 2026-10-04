@@ -9,10 +9,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Staff Management → Telegram access. Who may act on review cards in the
- * measurements Telegram group. Owners and admins only (the `staff`
- * permission, same as Admin Users): a review manager speaks for the business
- * on Google Maps.
+ * Users & permissions → Telegram. Who may act on review cards in the
+ * measurements Telegram group. The `users` permission, like the rest of the
+ * page: a review manager speaks for the business on Google Maps.
  */
 
 const CreateSchema = z.object({

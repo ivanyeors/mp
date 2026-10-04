@@ -4,7 +4,7 @@
  * Same shape as lib/auth/permissions.ts — the role → action matrix lives in
  * code so it is deterministic and unit-testable; the people, their role and
  * whether they are active live in `telegram_operators`, managed from
- * Staff Management → Telegram access.
+ * Users & permissions → Telegram.
  *
  * Everyone in the group can SEE the cards. Only a linked, active operator
  * whose role grants the action can press a button that changes something.

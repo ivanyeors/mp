@@ -36,7 +36,7 @@ import { moderateShopReview } from "@/lib/reviews/shop-reviews";
  * Runs before the inventory bot's TELEGRAM_ALLOWED_CHATS check on purpose:
  * this path has its own, stricter gate — cards live only in the measurements
  * group (MP_CONFIG_TELEGRAM_CHAT_ID), and every change needs a linked, active
- * operator whose role grants it (Staff Management → Telegram access).
+ * operator whose role grants it (Users & permissions → Telegram).
  */
 
 type TelegramUser = { id: number; username?: string; first_name?: string; last_name?: string };
@@ -94,7 +94,7 @@ function deniedMessage(
       ? `${label}s can't reply on Google. Only review managers can.`
       : `${label}s can't moderate shop reviews.`;
   }
-  return `You're not set up for review cards yet. Ask an admin to add you under Settings → Staff Management → Telegram access, then send /link with your code. (Your Telegram ID: ${user.id})`;
+  return `You're not set up for review cards yet. Ask an admin to add you under Settings → Users & permissions → Telegram, then send /link with your code. (Your Telegram ID: ${user.id})`;
 }
 
 async function authorize(
@@ -241,7 +241,7 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
   const reply = (text: string) => replyInChat(message.chat.id, text, message.message_id);
 
   if (!code) {
-    await reply("Usage: /link CODE — an admin gets the code from Settings → Staff Management → Telegram access.");
+    await reply("Usage: /link CODE — an admin gets the code from Settings → Users & permissions → Telegram.");
     return;
   }
   if (isRateLimited({ bucket: "telegram-link", key: String(from.id), windowMs: 10 * 60_000, max: 5 })) {

@@ -6,10 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
-import type { TelegramOperatorRow } from "@/lib/telegram/operators";
-import { TelegramAccessTab } from "./telegram-access-client";
 
 export type StaffRow = {
   id: string;
@@ -21,18 +18,8 @@ export type StaffRow = {
 /** The `/api/staff` payload the page mounts with. */
 export type StaffInitialData = { ok: true; rows: StaffRow[] };
 
-export type StaffManagementTab = "staff" | "telegram";
-
-export default function StaffManagementPage({
-  initialData,
-  telegram,
-  initialTab = "staff",
-}: {
-  initialData?: StaffInitialData;
-  /** Present only for owners/admins (the `users` permission): the Telegram access tab. */
-  telegram?: { initialRows?: TelegramOperatorRow[] } | null;
-  initialTab?: StaffManagementTab;
-}) {
+/** Staff profiles tab: the people tagged as "measured by" on Results. */
+export function ProfilesTab({ initialData }: { initialData?: StaffInitialData }) {
   const [rows, setRows] = useState<StaffRow[]>(initialData?.rows ?? []);
   const [loading, setLoading] = useState(!initialData);
   // The server already loaded the staff; Refresh and saves still refetch.
@@ -149,38 +136,13 @@ export default function StaffManagementPage({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1>Staff management</h1>
-          <p className="text-sm text-muted-foreground">
-            Create staff members so you can tag who measured each configuration
-            {telegram ? ", and choose who can act on review cards in Telegram" : ""}.
-          </p>
-        </div>
+    <>
+      <div className="flex justify-end">
         <Button variant="secondary" onClick={load} disabled={loading || saving}>
           {loading ? "Refreshing…" : "Refresh"}
         </Button>
       </div>
-
-      {telegram ? (
-        <Tabs defaultValue={initialTab}>
-          <TabsList>
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-            <TabsTrigger value="telegram">Telegram access</TabsTrigger>
-          </TabsList>
-          <TabsContent value="staff" className="space-y-6 pt-4">
-            {staffContent}
-          </TabsContent>
-          {/* Kept mounted so a just-issued link code survives a tab switch. */}
-          <TabsContent value="telegram" forceMount className="pt-4 data-[state=inactive]:hidden">
-            <TelegramAccessTab initialRows={telegram.initialRows} />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        staffContent
-      )}
-    </div>
+      {staffContent}
+    </>
   );
 }
-

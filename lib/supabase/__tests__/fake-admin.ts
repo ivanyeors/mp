@@ -35,6 +35,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let head = false;
       let inserted: Row | null = null;
       let embeds: Array<[alias: string, table: string]> = [];
+      let sort: { col: string; asc: boolean } | null = null;
       const out = (row: Row): Row => {
         if (!embeds.length) return row;
         const copy = { ...row };
@@ -46,6 +47,10 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       const rows = () => {
         const r = inserted ? [inserted] : (db[table] ??= []).filter((row) => filters.every((f) => f(row)));
         if (patch) for (const row of r) Object.assign(row, patch);
+        if (sort) {
+          const { col, asc } = sort;
+          r.sort((a, b) => (String(a[col] ?? "") < String(b[col] ?? "") ? -1 : 1) * (asc ? 1 : -1));
+        }
         return r;
       };
       const q = {
@@ -55,6 +60,8 @@ export function fakeSupabaseAdmin(db: FakeDb) {
           return q;
         },
         eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
+        in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(r[col])), q),
+        order: (col: string, opts?: { ascending?: boolean }) => ((sort = { col, asc: opts?.ascending !== false }), q),
         neq: (col: string, val: unknown) => (filters.push((r) => r[col] !== val), q),
         is: (col: string, val: null) => (filters.push((r) => (r[col] ?? null) === val), q),
         not: (col: string, _op: "is", val: null) => (filters.push((r) => (r[col] ?? null) !== val), q),

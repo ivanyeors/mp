@@ -9,7 +9,7 @@ import {
 import { telegramRoleCan, type TelegramAction, type TelegramRole } from "@/lib/telegram/roles";
 
 /**
- * `telegram_operators` reads and writes. The settings tab (Staff Management →
+ * `telegram_operators` reads and writes. The settings tab (Users & permissions →
  * Telegram access) manages rows; the Telegram webhook authorizes taps and
  * redeems link codes. `link_code_hash` never leaves this module.
  */

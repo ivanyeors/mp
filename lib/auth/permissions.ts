@@ -29,8 +29,6 @@ type CatalogEntry = {
   readonly group: PermissionGroup;
   /** The sidebar page this key opens. Omitted for a tab of another page and for Telegram actions. */
   readonly href?: string;
-  /** Further sidebar pages still served by this key until they are merged into its page. */
-  readonly alsoAt?: readonly string[];
   readonly surface: PermissionSurface;
   /** Keys this page cannot work without (it calls their APIs); ticked with it. */
   readonly requires?: readonly string[];
@@ -39,7 +37,7 @@ type CatalogEntry = {
 export const PERMISSION_CATALOG = [
   { key: "api-configs", label: "API Configs", group: "General", href: "/settings/general", surface: "admin-panel" },
   { key: "appointments", label: "Appointments", group: "General", href: "/settings/appointments", surface: "admin-panel" },
-  { key: "users", label: "Admin Users", group: "General", href: "/settings/admins", surface: "admin-panel" },
+  { key: "users", label: "Users & permissions", group: "General", href: "/settings/users", surface: "admin-panel" },
 
   { key: "inventory", label: "Inventory", group: "Inventory", href: "/settings/inventory", surface: "admin-panel" },
   { key: "costings", label: "Costings", group: "Inventory", href: "/settings/costings", surface: "admin-panel" },
@@ -49,8 +47,7 @@ export const PERMISSION_CATALOG = [
   { key: "configure", label: "Configure", group: "Store", href: "/settings/inventory/configure", surface: "admin-panel" },
   { key: "rules-engine", label: "Rules Engine", group: "Store", href: "/settings/product-builder/rules-engine", surface: "admin-panel" },
   { key: "customers", label: "Customers", group: "Store", href: "/settings/customers", surface: "admin-panel" },
-  // Staff Management keeps the Results key until Users & permissions absorbs it (slice 04).
-  { key: "results", label: "Results", group: "Store", href: "/settings/results", alsoAt: ["/settings/staff-management"], surface: "admin-panel" },
+  { key: "results", label: "Results", group: "Store", href: "/settings/results", surface: "admin-panel" },
   { key: "orders", label: "Orders", group: "Store", href: "/settings/orders", surface: "admin-panel" },
   { key: "returns", label: "Returns / RMA", group: "Store", href: "/settings/rma", surface: "admin-panel" },
   { key: "discounts", label: "Discounts", group: "Store", href: "/settings/discounts", surface: "admin-panel" },
@@ -102,7 +99,7 @@ export function catalogForSurface(surface: PermissionSurface): PermissionEntry[]
 
 const KEY_BY_HREF = new Map<string, Permission>(
   PERMISSION_CATALOG.flatMap((e: CatalogEntry) =>
-    [e.href, ...(e.alsoAt ?? [])].filter((h): h is string => !!h).map((h) => [h, e.key as Permission] as const),
+    e.href ? [[e.href, e.key as Permission] as const] : [],
   ),
 );
 
