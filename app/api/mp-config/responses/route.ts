@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isPickableStaffProfile } from "@/lib/staff/admin";
+import { getWorkingAs } from "@/lib/staff/working-as";
 import {
   buildInstoreReviewOnlyPatch,
   shouldCreateInstoreReviewOnly,
@@ -12,7 +13,7 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
-import { requireAnyAdmin } from "@/lib/auth/admin";
+import { getAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
 import { getStaffByAssistCode } from "@/lib/assist-link";
 import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, isRateLimited } from "@/lib/rate-limit";
@@ -349,6 +350,18 @@ export async function POST(req: Request) {
       { error: "Too many new sessions. Please try again in a minute." },
       { status: 429 },
     );
+  }
+
+  // "Working as" (slice 10): a Result a Staff session creates without saying
+  // who measured defaults to the profile at this device. Attribution only, and
+  // re-validated against the signed-in login.
+  if (existing == null && !parsed.data.measuredBy) {
+    const staff = await getAdminContext();
+    const workingAs = staff ? await getWorkingAs(staff.memberId) : null;
+    if (workingAs) {
+      row.measured_by_type = "staff";
+      row.measured_by_staff_id = workingAs.id;
+    }
   }
 
   // A newly picked "measured by" must be a live Staff profile. A row that

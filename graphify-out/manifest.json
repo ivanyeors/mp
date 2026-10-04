@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "lib/auth/audit.ts": {
-    "mtime": 1790948592.369444,
-    "seen": 1791104068.0547376,
-    "ast_hash": "0cc4db97f16a3646378467ce33a52f07",
+    "mtime": 1791114100.703359,
+    "seen": 1791114507.8028433,
+    "ast_hash": "9650873ce7ed3a2061719f089fafa289",
     "semantic_hash": ""
   },
   "lib/auth/customer-identity.ts": {
@@ -1986,9 +1986,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/audit-log/page.tsx": {
-    "mtime": 1791111862.0659938,
-    "seen": 1791112067.5296595,
-    "ast_hash": "f8e4afe716c3fe16a8a27946257b7c63",
+    "mtime": 1791114230.278352,
+    "seen": 1791114507.8014588,
+    "ast_hash": "4ca03f7ab49f179ca2e7fd375e1080e7",
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/[id]/page.tsx": {
@@ -2154,9 +2154,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/layout.tsx": {
-    "mtime": 1791110670.5173447,
-    "seen": 1791111050.5297954,
-    "ast_hash": "fee7d31c7b252601570666a7fe7e6c41",
+    "mtime": 1791114184.5906177,
+    "seen": 1791114507.8015306,
+    "ast_hash": "5cb613850a54d19186f3d3cc9ebc0bdb",
     "semantic_hash": ""
   },
   "app/[lang]/settings/loading.tsx": {
@@ -2610,9 +2610,9 @@
     "semantic_hash": ""
   },
   "app/api/mp-config/responses/route.ts": {
-    "mtime": 1791112577.8312335,
-    "seen": 1791112891.2676408,
-    "ast_hash": "43355d8600fa626c08f752367e2ee5c0",
+    "mtime": 1791114208.9457035,
+    "seen": 1791114507.8018258,
+    "ast_hash": "c5aee4a94b60e1d315f1b5848031f305",
     "semantic_hash": ""
   },
   "app/api/page-faq/items/[id]/route.ts": {
@@ -4290,9 +4290,9 @@
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
-    "mtime": 1791111798.3849354,
-    "seen": 1791112067.531216,
-    "ast_hash": "c1717cdbc0ab2b3fbfffc4433a7e6a57",
+    "mtime": 1791114184.5912282,
+    "seen": 1791114507.8022633,
+    "ast_hash": "3b3d947284c2c9ce72596d73c2afff13",
     "semantic_hash": ""
   },
   "components/settings/shopify-sales-section.tsx": {
@@ -14958,9 +14958,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/10-working-as-profile.md": {
-    "mtime": 1791104393.626924,
-    "seen": 1791104446.7640483,
-    "ast_hash": "7757d0509f4717f80a04b265a9974771",
+    "mtime": 1791114462.8627179,
+    "seen": 1791114507.8048894,
+    "ast_hash": "122f9a77933fdb03fbf00b528227fc3b",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/11-contract-legacy.md": {
@@ -14976,9 +14976,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/README.md": {
-    "mtime": 1791113970.120051,
-    "seen": 1791114018.4054325,
-    "ast_hash": "6ec9c340bc18b87e0382a1013dc4a955",
+    "mtime": 1791114462.8632286,
+    "seen": 1791114507.8048944,
+    "ast_hash": "3bfb159824953e2ae94425f324ee96ab",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md": {
@@ -15213,6 +15213,42 @@
     "mtime": 1791113489.019674,
     "seen": 1791114018.4048507,
     "ast_hash": "4a61f410b772295845d2c7c6c36b481f",
+    "semantic_hash": ""
+  },
+  "app/api/admin/working-as/route.ts": {
+    "mtime": 1791114100.7103033,
+    "seen": 1791114507.8017077,
+    "ast_hash": "27d2d078cc37831f95537565036e05bb",
+    "semantic_hash": ""
+  },
+  "components/settings/working-as-picker.tsx": {
+    "mtime": 1791114184.5900905,
+    "seen": 1791114507.8022676,
+    "ast_hash": "aa31d799484be8808dd5b6f53fd24f67",
+    "semantic_hash": ""
+  },
+  "lib/staff/__tests__/working-as.test.ts": {
+    "mtime": 1791114249.0417914,
+    "seen": 1791114507.8038611,
+    "ast_hash": "6e69dfeff4f41f8b305ebe421ad49477",
+    "semantic_hash": ""
+  },
+  "lib/staff/working-as.ts": {
+    "mtime": 1791114086.0341926,
+    "seen": 1791114507.803867,
+    "ast_hash": "ad6045358ba26ccb238f8c53ddd71ebb",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261004140000_audit_actor_profile.sql": {
+    "mtime": 1791114084.1825893,
+    "seen": 1791114507.8042912,
+    "ast_hash": "609de03d9730b95875e0b15bfd63fe59",
+    "semantic_hash": ""
+  },
+  "supabase/tests/rbac/assert-10.sql": {
+    "mtime": 1791114084.184826,
+    "seen": 1791114507.8042974,
+    "ast_hash": "e10c3090c6903dd6a073c23cd6b9ba1a",
     "semantic_hash": ""
   }
 }

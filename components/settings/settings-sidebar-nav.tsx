@@ -52,6 +52,7 @@ import {
   SettingsBreadcrumbProvider,
   useSettingsBreadcrumbDetailLabel,
 } from "@/components/settings/settings-breadcrumb-context";
+import { WorkingAsPicker, type WorkingAsState } from "@/components/settings/working-as-picker";
 import {
   buildSettingsBreadcrumbs,
   findActiveHref,
@@ -198,6 +199,8 @@ type AdminStatus = "checking" | "authed" | "unauth";
 export type SettingsInitialAuth = {
   signedIn: boolean;
   permissions: Permission[];
+  /** The login's Staff profiles and who is at this device (slice 10). */
+  workingAs?: WorkingAsState;
 };
 
 export function SettingsSidebarNav({
@@ -358,6 +361,7 @@ export function SettingsSidebarNav({
       <div className="min-w-0 flex-1">
         <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
       </div>
+      {initialAuth?.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
     </header>
   );
 

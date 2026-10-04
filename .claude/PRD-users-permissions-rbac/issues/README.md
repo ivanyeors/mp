@@ -17,7 +17,7 @@ Tracer-bullet breakdown of the PRD (`../users-permissions-rbac-prd.md`). Each sl
 | 07 | Staff profiles under logins | AFK | 04 | 9, 25–29 | done |
 | 08 | Telegram under RBAC | AFK | 06, 07 | 11, 30–35 | done |
 | 09 | Access-denied notice + audit coverage | AFK | 04 | 23, 36 | done |
-| 10 | "Working as" profile on shared logins | AFK | 07 | 38 | todo |
+| 10 | "Working as" profile on shared logins | AFK | 07 | 38 | done |
 | 11 | Contract: drop legacy columns and code paths | AFK | 03–08 soaked in prod | — | todo |
 | 12 | Staging QA signoff | HITL | 01–10 | all | todo |
 

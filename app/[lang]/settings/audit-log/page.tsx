@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 type AuditRow = {
   id: string;
   actor_email: string | null;
+  actor_profile_id?: string | null;
   action: string;
   entity_type: string;
   entity_id: string | null;
@@ -55,6 +56,13 @@ export default async function AuditLogPage({
     .order("created_at", { ascending: false })
     .limit(200);
   const rows = (data ?? []) as AuditRow[];
+
+  // "email · profile" when the actor picked who they were working as.
+  const profileIds = [...new Set(rows.map((r) => r.actor_profile_id).filter((id): id is string => !!id))];
+  const { data: profiles } = profileIds.length
+    ? await admin.from("mp_staff").select("id,name").in("id", profileIds)
+    : { data: [] };
+  const profileName = new Map(((profiles ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
 
   const chip = (href: string, label: string, active: boolean) => (
     <Link
@@ -113,7 +121,12 @@ export default async function AuditLogPage({
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                     {formatTimestamp(r.created_at)}
                   </td>
-                  <td className="px-4 py-3">{r.actor_email ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {r.actor_email ?? "—"}
+                    {r.actor_profile_id && profileName.get(r.actor_profile_id) ? (
+                      <span className="text-muted-foreground"> · {profileName.get(r.actor_profile_id)}</span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs">{r.action}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {r.entity_type}
