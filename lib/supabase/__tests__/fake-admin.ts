@@ -5,6 +5,9 @@
  * `eq` is exact, so a wildcard in user input matches here exactly as it would in
  * Postgres — tests fail for the real reason, not because a call shape changed.
  * Same technique as lib/auth/__tests__/partner.test.ts.
+ *
+ * A to-one embed in the select list (`role:admin_roles(...)`) is resolved
+ * through the `<alias>_id` column, as PostgREST does through the foreign key.
  */
 type Row = Record<string, unknown>;
 export type FakeDb = Record<string, Row[]>;
@@ -31,13 +34,26 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let patch: Row | null = null;
       let head = false;
       let inserted: Row | null = null;
+      let embeds: Array<[alias: string, table: string]> = [];
+      const out = (row: Row): Row => {
+        if (!embeds.length) return row;
+        const copy = { ...row };
+        for (const [alias, other] of embeds) {
+          copy[alias] = (db[other] ?? []).find((o) => o.id === row[`${alias}_id`]) ?? null;
+        }
+        return copy;
+      };
       const rows = () => {
         const r = inserted ? [inserted] : (db[table] ??= []).filter((row) => filters.every((f) => f(row)));
         if (patch) for (const row of r) Object.assign(row, patch);
         return r;
       };
       const q = {
-        select: (_cols?: string, opts?: { head?: boolean }) => ((head = Boolean(opts?.head)), q),
+        select: (cols?: string, opts?: { head?: boolean }) => {
+          head = Boolean(opts?.head);
+          embeds = [...(cols ?? "").matchAll(/(\w+):(\w+)\(/g)].map((m) => [m[1], m[2]]);
+          return q;
+        },
         eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
         neq: (col: string, val: unknown) => (filters.push((r) => r[col] !== val), q),
         is: (col: string, val: null) => (filters.push((r) => (r[col] ?? null) === val), q),
@@ -54,18 +70,18 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         single: () => {
           const r = rows();
           return Promise.resolve(
-            r.length === 1 ? { data: r[0], error: null } : { data: null, error: { message: `${r.length} rows` } },
+            r.length === 1 ? { data: out(r[0]), error: null } : { data: null, error: { message: `${r.length} rows` } },
           );
         },
         maybeSingle: () => {
           const r = rows();
           return Promise.resolve(
-            r.length <= 1 ? { data: r[0] ?? null, error: null } : { data: null, error: { message: "multiple rows" } },
+            r.length <= 1 ? { data: r[0] ? out(r[0]) : null, error: null } : { data: null, error: { message: "multiple rows" } },
           );
         },
         then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
           const r = rows();
-          return Promise.resolve({ data: head ? null : r, count: r.length, error: null }).then(resolve, reject);
+          return Promise.resolve({ data: head ? null : r.map(out), count: r.length, error: null }).then(resolve, reject);
         },
       };
       return q;

@@ -1,6 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { listStaffRows } from "@/lib/staff/admin";
 import { listTelegramOperators } from "@/lib/telegram/operators";
 import StaffManagementPage from "./staff-management-client";
@@ -25,7 +25,7 @@ export default async function StaffManagementRoute({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const ctx = await requireAdminPage("results", locale);
-  const canManageTelegram = roleHasPermission(ctx.role, "users");
+  const canManageTelegram = hasPermission(ctx, "users");
   const { tab } = await searchParams;
 
   // A failed read must not look like "no staff": leave `initialData` undefined

@@ -6,8 +6,9 @@
  * to compile, and the sidebar reads each page's key from here by href, so a
  * page cannot be listed under one key and guarded under another.
  *
- * The role→permission matrix is still defined in code; staff membership, role,
- * and active status live in the `admin_users` table.
+ * Which roles hold which keys is data: `admin_roles.permissions`, edited on
+ * Users & permissions → Roles and read per request by `getAdminContext`.
+ * `ROLE_PERMISSIONS` below is only the seed those rows started from.
  */
 
 export type PermissionSurface = "admin-panel" | "telegram";
@@ -128,19 +129,39 @@ export function isSubset(keys: Iterable<Permission>, of: Iterable<Permission>): 
   return true;
 }
 
+/** What a role row stores: built-in roles grant every key, custom roles list theirs. */
+export type RoleGrant = { readonly grants_all: boolean; readonly permissions: readonly string[] | null };
+
+/**
+ * The keys a role row grants. `grants_all` means every catalog key, including
+ * ones added after the role was saved; a stored key the catalog no longer has
+ * is ignored, so retiring a page never breaks a role.
+ */
+export function permissionsForRoleRow(role: RoleGrant): ReadonlySet<Permission> {
+  if (role.grants_all) return new Set(ADMIN_PERMISSIONS);
+  return new Set((role.permissions ?? []).filter(isPermission));
+}
+
+/** Whether a resolved Member (see `getAdminContext`) holds `permission`. */
+export function hasPermission(ctx: { readonly permissions: ReadonlySet<Permission> }, permission: Permission): boolean {
+  return ctx.permissions.has(permission);
+}
+
+/**
+ * Legacy role names (the `admin_users.role` text column, dropped in slice 11).
+ * Nothing reads them at runtime any more; they name the seed below.
+ */
 export const ADMIN_ROLES = ["owner", "admin", "manager", "staff", "viewer"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 const ALL: Permission[] = [...ADMIN_PERMISSIONS];
 
 /**
- * Role → granted permissions. Owners and admins have full access (admins can
- * also manage users and view the audit log). Managers run day-to-day commerce
- * but cannot touch API configs, users, the audit log, or Telegram. Staff handle
- * fulfilment-adjacent areas. Viewers get read-oriented insight areas.
- *
- * Each list is the pre-split matrix with every coarse key expanded to the pages
- * it used to gate (`lib/auth/__tests__/permissions.test.ts` proves no gain, no loss).
+ * The code matrix the `admin_roles` rows were seeded from
+ * (`supabase/migrations/20261004100000_admin_roles.sql`; the old `staff` role
+ * is seeded as Fulfilment). Not read at runtime: a test keeps the seed and
+ * this list equal, and `permissions.test.ts` proves it is the pre-split matrix
+ * with every coarse key expanded (no gain, no loss).
  */
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   owner: ALL,

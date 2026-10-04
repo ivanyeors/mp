@@ -1,5 +1,4 @@
 import { getAdminContext } from "@/lib/auth/admin";
-import { permissionsForRole } from "@/lib/auth/permissions";
 import { SettingsSidebarNav } from "@/components/settings/settings-sidebar-nav";
 
 /**
@@ -13,7 +12,7 @@ import { SettingsSidebarNav } from "@/components/settings/settings-sidebar-nav";
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getAdminContext();
   const initialAuth = ctx
-    ? { signedIn: true as const, permissions: permissionsForRole(ctx.role) }
+    ? { signedIn: true as const, permissions: [...ctx.permissions] }
     : { signedIn: false as const, permissions: [] };
   return <SettingsSidebarNav initialAuth={initialAuth}>{children}</SettingsSidebarNav>;
 }

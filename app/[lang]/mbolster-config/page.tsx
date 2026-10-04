@@ -1,7 +1,7 @@
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
 import { getAdminContext } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
@@ -66,7 +66,7 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
           faqItems: faq?.items ?? [],
         }}
         // Same gate as /mp-config: assist edits a Result, `viewer` is read-only.
-        staffAssist={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
+        staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         partner={
           partner
             ? {

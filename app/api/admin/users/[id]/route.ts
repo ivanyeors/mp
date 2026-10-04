@@ -3,16 +3,15 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { ADMIN_ROLES } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 
 const UpdateSchema = z
   .object({
-    role: z.enum(ADMIN_ROLES).optional(),
+    role_id: z.string().uuid().optional(),
     is_active: z.boolean().optional(),
   })
-  .refine((v) => v.role !== undefined || v.is_active !== undefined, {
+  .refine((v) => v.role_id !== undefined || v.is_active !== undefined, {
     message: "Nothing to update",
   });
 
@@ -35,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const admin = supabaseAdmin();
   const { data: target, error: findError } = await admin
     .from("admin_users")
-    .select("id, email, role, is_active")
+    .select("id, email, role_id, is_active, role:admin_roles(key)")
     .eq("id", id)
     .maybeSingle();
 
@@ -52,15 +51,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   // Never leave the back office without an active owner.
+  const { data: ownerRole } = await admin.from("admin_roles").select("id").eq("key", "owner").maybeSingle();
   const losingOwner =
-    target.role === "owner" &&
-    ((parsed.data.role !== undefined && parsed.data.role !== "owner") ||
+    target.role_id === ownerRole?.id &&
+    ((parsed.data.role_id !== undefined && parsed.data.role_id !== ownerRole?.id) ||
       parsed.data.is_active === false);
   if (losingOwner) {
     const { count } = await admin
       .from("admin_users")
       .select("id", { count: "exact", head: true })
-      .eq("role", "owner")
+      .eq("role_id", ownerRole!.id)
       .eq("is_active", true)
       .neq("id", id);
     if (!count) {
@@ -75,7 +75,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .from("admin_users")
     .update(parsed.data)
     .eq("id", id)
-    .select("id, email, role, is_active, auth_user_id, created_at, updated_at")
+    .select("id, email, role_id, is_active, auth_user_id, created_at, updated_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

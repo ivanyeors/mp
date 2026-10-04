@@ -237,3 +237,33 @@ describe("first-admin bootstrap allowlist", () => {
     expect(isBootstrapEmail("intruder@example.com", allow)).toBe(false);
   });
 });
+
+describe("admin_roles seed (slice 03)", () => {
+  const SQL = readFileSync(
+    join(process.cwd(), "supabase", "migrations", "20261004100000_admin_roles.sql"),
+    "utf8",
+  );
+  const seeded = (key: string) => {
+    const m = SQL.match(new RegExp(`\\('${key}',[^]*?array\\[([^\\]]*)\\]`));
+    return m ? [...m[1].matchAll(/'([a-z.-]+)'/g)].map((k) => k[1]) : null;
+  };
+
+  it.each([
+    ["manager", "manager"],
+    ["fulfilment", "staff"],
+    ["viewer", "viewer"],
+  ] as const)("seeds %s with the code matrix's %s list", (key, legacy) => {
+    expect(seeded(key)?.sort()).toEqual([...ROLE_PERMISSIONS[legacy]].sort());
+  });
+
+  it("seeds owner and admin as grants_all system roles", () => {
+    expect(SQL).toMatch(/\('owner', 'Owner', '[^']*', true, true, '\{\}'\)/);
+    expect(SQL).toMatch(/\('admin', 'Admin', '[^']*', true, true, '\{\}'\)/);
+  });
+
+  it("every seeded key is a catalog key", () => {
+    for (const key of ["manager", "fulfilment", "viewer"]) {
+      for (const k of seeded(key) ?? []) expect(isPermission(k), `${key} → ${k}`).toBe(true);
+    }
+  });
+});

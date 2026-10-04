@@ -21,23 +21,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ADMIN_ROLES, type AdminRole } from "@/lib/auth/permissions";
 
 type AdminUser = {
   id: string;
   email: string;
-  role: AdminRole;
+  role_id: string;
   is_active: boolean;
   auth_user_id: string | null;
   created_at: string;
   updated_at: string;
 };
 
+type Role = { id: string; key: string; name: string };
+
 export function AdminsClient() {
   const [rows, setRows] = useState<AdminUser[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<AdminRole>("staff");
+  const [inviteRole, setInviteRole] = useState("");
   const [inviting, setInviting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -48,6 +50,9 @@ export function AdminsClient() {
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to load staff");
       setRows((payload?.rows ?? []) as AdminUser[]);
+      const loaded = (payload?.roles ?? []) as Role[];
+      setRoles(loaded);
+      setInviteRole((current) => current || (loaded.find((r) => r.key === "admin")?.id ?? ""));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load staff");
     } finally {
@@ -66,13 +71,12 @@ export function AdminsClient() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify({ email: inviteEmail, role_id: inviteRole }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to invite");
       toast.success("Staff member invited");
       setInviteEmail("");
-      setInviteRole("staff");
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to invite");
@@ -81,7 +85,7 @@ export function AdminsClient() {
     }
   }
 
-  async function patch(id: string, body: { role?: AdminRole; is_active?: boolean }) {
+  async function patch(id: string, body: { role_id?: string; is_active?: boolean }) {
     setBusyId(id);
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
@@ -121,14 +125,14 @@ export function AdminsClient() {
             <label htmlFor="invite-role" className="text-sm font-medium">
               Role
             </label>
-            <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AdminRole)}>
+            <Select value={inviteRole} onValueChange={setInviteRole}>
               <SelectTrigger id="invite-role" className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ADMIN_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -179,16 +183,16 @@ export function AdminsClient() {
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={u.role}
-                      onValueChange={(v) => patch(u.id, { role: v as AdminRole })}
+                      value={u.role_id}
+                      onValueChange={(v) => patch(u.id, { role_id: v })}
                     >
                       <SelectTrigger className="w-full min-w-0 sm:w-36" disabled={busyId === u.id}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ADMIN_ROLES.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
+                        {roles.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

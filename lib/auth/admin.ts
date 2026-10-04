@@ -7,17 +7,28 @@ import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
+  hasPermission,
   isBootstrapEmail,
   parseBootstrapEmails,
-  roleHasPermission,
-  type AdminRole,
+  permissionsForRoleRow,
   type Permission,
 } from "@/lib/auth/permissions";
 
+/** A signed-in, active Member with their role's permissions (ADR 0023). */
 export interface AdminContext {
+  /** `admin_users.id` — the Member. */
+  memberId: string;
+  /** Supabase auth user id. */
   userId: string;
   email: string;
-  role: AdminRole;
+  roleId: string;
+  roleKey: string;
+  roleName: string;
+  /** Holds the built-in Owner role. */
+  isOwner: boolean;
+  /** Holds a built-in role that grants every permission (Owner, Admin). */
+  grantsAll: boolean;
+  permissions: ReadonlySet<Permission>;
   /** True when access is granted via the bootstrap allowlist. */
   isBootstrap: boolean;
 }
@@ -35,45 +46,84 @@ function bootstrapEmails(): string[] {
   );
 }
 
+type RoleRow = { id: string; key: string; name: string; grants_all: boolean; permissions: string[] | null };
+type MemberRow = {
+  id: string;
+  is_active: boolean;
+  auth_user_id: string | null;
+  role: RoleRow | RoleRow[] | null;
+};
+
+/** The Member and their role in one round trip. */
+const MEMBER_SELECT = "id, is_active, auth_user_id, role:admin_roles(id, key, name, grants_all, permissions)";
+
+function roleOf(row: MemberRow): RoleRow | null {
+  return (Array.isArray(row.role) ? row.role[0] : row.role) ?? null;
+}
+
+function contextFor(
+  member: { id: string },
+  role: RoleRow,
+  identity: { userId: string; email: string },
+  isBootstrap: boolean,
+): AdminContext {
+  return {
+    memberId: member.id,
+    userId: identity.userId,
+    email: identity.email,
+    roleId: role.id,
+    roleKey: role.key,
+    roleName: role.name,
+    isOwner: role.key === "owner",
+    grantsAll: role.grants_all,
+    permissions: permissionsForRoleRow(role),
+    isBootstrap,
+  };
+}
+
 /**
  * Resolves the admin context for the current Supabase session, or null when
- * the visitor is not an authorized, active staff member.
+ * the visitor is not an authorized, active Member.
  *
  * Resolution order:
  *  1. `admin_users` row matched by auth user id.
- *  2. `admin_users` row matched by email (links the auth id on first match).
- *     A row already bound to a different auth user is refused, never shared.
- *  3. First-admin bootstrap: an allowlisted email auto-provisions an owner row.
+ *  2. `admin_users` row matched by email (links the auth id on first match —
+ *     this is how an Invited Member becomes Active). A row already bound to a
+ *     different auth user is refused, never shared.
+ *  3. First-admin bootstrap: an allowlisted email auto-provisions an Owner row.
  *
- * Memoised per request with React `cache()` so the settings layout gate, an
- * RSC page guard and any server action in the same render share one auth
- * round trip and one admin_users lookup.
+ * The role's permissions come from `admin_roles` in the same query, so a role
+ * or membership change applies on the caller's next request. Memoised per
+ * request with React `cache()` so the settings layout gate, an RSC page guard
+ * and any server action in the same render share one lookup.
  */
 export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
   const user = await getAuthIdentity();
   if (!user?.email) return null;
 
   const email = user.email.toLowerCase().trim();
+  const identity = { userId: user.id, email };
   const admin = supabaseAdmin();
 
   const { data: byAuthId } = await admin
     .from("admin_users")
-    .select("id, role, is_active, auth_user_id")
+    .select(MEMBER_SELECT)
     .eq("auth_user_id", user.id)
-    .maybeSingle();
+    .maybeSingle<MemberRow>();
 
   let row = byAuthId;
 
   if (!row) {
     const { data: byEmail } = await admin
       .from("admin_users")
-      .select("id, role, is_active, auth_user_id")
+      .select(MEMBER_SELECT)
       .ilike("email", escapeLikePattern(email))
-      .maybeSingle();
+      .maybeSingle<MemberRow>();
     // A matching email is not ownership once the row is bound to another user.
     if (byEmail?.auth_user_id && byEmail.auth_user_id !== user.id) return null;
     row = byEmail;
     if (row && !row.auth_user_id) {
+      if (!row.is_active) return null;
       const { data: bound } = await admin
         .from("admin_users")
         .update({ auth_user_id: user.id })
@@ -88,15 +138,27 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
 
   if (row) {
     if (!row.is_active) return null;
-    return { userId: user.id, email, role: row.role as AdminRole, isBootstrap: false };
+    const role = roleOf(row);
+    // A Member without a readable role gets nothing, never a default.
+    if (!role) return null;
+    return contextFor(row, role, identity, false);
   }
 
-  // First-admin bootstrap: provision an owner row for an allowlisted email.
+  // First-admin bootstrap: provision an Owner row for an allowlisted email.
   if (isBootstrapEmail(email, bootstrapEmails())) {
-    await admin
+    const { data: owner } = await admin
+      .from("admin_roles")
+      .select("id, key, name, grants_all, permissions")
+      .eq("key", "owner")
+      .maybeSingle<RoleRow>();
+    if (!owner) return null;
+    const { data: inserted } = await admin
       .from("admin_users")
-      .insert({ auth_user_id: user.id, email, role: "owner", is_active: true });
-    return { userId: user.id, email, role: "owner", isBootstrap: true };
+      .insert({ auth_user_id: user.id, email, role_id: owner.id, is_active: true })
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (!inserted) return null;
+    return contextFor(inserted, owner, identity, true);
   }
 
   return null;
@@ -112,7 +174,7 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
 export async function requireAdmin(permission: Permission): Promise<NextResponse | null> {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!roleHasPermission(ctx.role, permission)) {
+  if (!hasPermission(ctx, permission)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;
@@ -125,7 +187,7 @@ export async function requireAdmin(permission: Permission): Promise<NextResponse
 export async function requireAnyAdmin(permissions: Permission[]): Promise<NextResponse | null> {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!permissions.some((permission) => roleHasPermission(ctx.role, permission))) {
+  if (!permissions.some((permission) => hasPermission(ctx, permission))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;
@@ -138,7 +200,7 @@ export async function requireAnyAdmin(permissions: Permission[]): Promise<NextRe
 export async function requireAdminContext(permission: Permission): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!roleHasPermission(ctx.role, permission)) {
+  if (!hasPermission(ctx, permission)) {
     throw NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return ctx;
@@ -154,7 +216,7 @@ export async function requireAdminContext(permission: Permission): Promise<Admin
 export async function assertAdmin(permission: Permission): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw new Error("Unauthorized");
-  if (!roleHasPermission(ctx.role, permission)) throw new Error("Forbidden");
+  if (!hasPermission(ctx, permission)) throw new Error("Forbidden");
   return ctx;
 }
 
@@ -165,7 +227,7 @@ export async function assertAdmin(permission: Permission): Promise<AdminContext>
 export async function assertAnyAdmin(permissions: Permission[]): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw new Error("Unauthorized");
-  if (!permissions.some((permission) => roleHasPermission(ctx.role, permission))) {
+  if (!permissions.some((permission) => hasPermission(ctx, permission))) {
     throw new Error("Forbidden");
   }
   return ctx;
@@ -186,7 +248,7 @@ export async function requireAdminPage(
       withLocale(`/account/login?next=${encodeURIComponent(adminHome)}`, locale),
     );
   }
-  if (!roleHasPermission(ctx.role, permission)) {
+  if (!hasPermission(ctx, permission)) {
     redirect(withLocale("/settings", locale));
   }
   return ctx;

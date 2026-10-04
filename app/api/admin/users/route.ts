@@ -3,28 +3,29 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { ADMIN_ROLES } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 
 const InviteSchema = z.object({
   email: z.string().trim().email().max(320),
-  role: z.enum(ADMIN_ROLES).default("staff"),
+  role_id: z.string().uuid(),
 });
 
-/** List all staff members and their roles. */
+const MEMBER_COLUMNS = "id, email, role_id, is_active, auth_user_id, created_at, updated_at";
+
+/** List every Member and the roles one can hold. */
 export async function GET() {
   const denied = await requireAdmin("users");
   if (denied) return denied;
 
   const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("admin_users")
-    .select("id, email, role, is_active, auth_user_id, created_at, updated_at")
-    .order("created_at", { ascending: true });
-
+  const [members, roles] = await Promise.all([
+    admin.from("admin_users").select(MEMBER_COLUMNS).order("created_at", { ascending: true }),
+    admin.from("admin_roles").select("id, key, name, is_system, grants_all").order("name"),
+  ]);
+  const error = members.error ?? roles.error;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, rows: data ?? [] });
+  return NextResponse.json({ ok: true, rows: members.data ?? [], roles: roles.data ?? [] });
 }
 
 /**
@@ -49,8 +50,8 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("admin_users")
-    .insert({ email, role: parsed.data.role, is_active: true })
-    .select("id, email, role, is_active, auth_user_id, created_at, updated_at")
+    .insert({ email, role_id: parsed.data.role_id, is_active: true })
+    .select(MEMBER_COLUMNS)
     .single();
 
   if (error) {

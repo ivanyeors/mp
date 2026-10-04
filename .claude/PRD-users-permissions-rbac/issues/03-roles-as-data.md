@@ -3,6 +3,7 @@
 Type: AFK
 Parent: PRD `users-permissions-rbac`
 Triage: ready
+Status: done (migration file written and checked locally; not yet applied to production)
 User stories covered: 4, 19, 22, 23, 24
 
 ## What to build
@@ -28,13 +29,23 @@ Move the role → permission matrix from code into `admin_roles` and make every 
 
 ## Acceptance criteria
 
-- [ ] Migration is idempotent and re-runnable (`if not exists`, `on conflict do nothing` seeds).
-- [ ] Test: Owner/Admin context includes a permission key that is not in any stored array (`grants_all` covers future keys).
-- [ ] Test: a custom role's stored unknown key is ignored; a missing key is refused by `requireAdmin`.
-- [ ] Test: deactivated Member → `getAdminContext` null (unchanged).
-- [ ] Test: changing a role's permissions changes the next request's guard result (no in-process cache).
-- [ ] Every current login signs in and sees the same or more pages than before (staging check).
-- [ ] `graphify-out/` refreshed.
+- [x] Migration is idempotent and re-runnable (`if not exists`, `on conflict do nothing` seeds).
+- [x] Test: Owner/Admin context includes a permission key that is not in any stored array (`grants_all` covers future keys).
+- [x] Test: a custom role's stored unknown key is ignored; a missing key is refused by `requireAdmin`.
+- [x] Test: deactivated Member → `getAdminContext` null (unchanged).
+- [x] Test: changing a role's permissions changes the next request's guard result (no in-process cache).
+- [ ] (slice 12) Every current login signs in and sees the same or more pages than before (staging check).
+- [x] `graphify-out/` refreshed.
+
+## Decisions made while building
+
+- **A trigger keeps `role` and `role_id` in step** (`trg_admin_users_sync_role`). A write naming only the legacy `role` (app code from before the migration, e.g. during the deploy window) resolves `role_id` by key, with `staff` → Fulfilment; a write naming `role_id` stamps `role` with the key (`staff` for Fulfilment). So the migration can run before the deploy, and a rolled-back app still reads a role it knows.
+- **The one-time backfill follows PRD decision 2** (owner → Owner, everything else → Admin); the trigger maps legacy writes faithfully instead, so a pre-deploy invite as `viewer` stays narrow rather than becoming Admin.
+- **Only system roles can be `grants_all`** (check constraint), and role names are unique case-insensitively.
+- **Bootstrap inserts carry the Owner role id** and return null if the Owner role cannot be read, rather than granting a context with no row behind it.
+- **An unbound, deactivated Member row is no longer bound on sign-in** (it was bound and then refused).
+- **Migration check:** `scripts/check-rbac-migrations.sh` runs the migrations twice against a throwaway local Postgres seeded like production (`supabase/tests/rbac/fixture.sql`) and runs `assert-03.sql`.
+- The Admin Users page lists roles from `admin_roles` and sends `role_id`; the last-Owner check reads the Owner role id. Slice 04 replaces this page.
 
 ## Blocked by
 

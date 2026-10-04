@@ -90,7 +90,7 @@ describe("the staff-edit loader", () => {
 
   it("is Staff-gated and narrowed to results, so a viewer cannot open the editor", () => {
     expect(src).toMatch(/getAdminContext\(\)/);
-    expect(src).toMatch(/roleHasPermission\(staff\.role, "results"\)/);
+    expect(src).toMatch(/hasPermission\(staff, "results"\)/);
   });
 
   it("returns null rather than throwing, so a bad link falls through to the configurator", () => {
