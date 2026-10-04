@@ -24,6 +24,7 @@ export const ADMIN_PERMISSIONS = [
   "media",
   "staff",
   "audit-log",
+  "showroom",
 ] as const;
 
 export type Permission = (typeof ADMIN_PERMISSIONS)[number];
@@ -56,6 +57,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "page-builder",
     "blogs",
     "media",
+    "showroom",
   ],
   staff: ["orders", "results", "customers", "inventory"],
   viewer: ["orders", "analytics"],
