@@ -42,6 +42,31 @@ select initcap(regexp_replace(split_part(a.email, '@', 1), '[._-]+', ' ', 'g')),
 from admin_users a
 where not exists (select 1 from mp_staff s where s.admin_user_id = a.id);
 
+-- Expand phase: app code from before this migration adds a staff name with
+-- no login. Put it under the same login the backfill used, so that code keeps
+-- working between this migration and the deploy (and after a rollback).
+create or replace function mp_staff_default_member()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.admin_user_id is null then
+    select id into new.admin_user_id from admin_users where lower(email) = 'sg@mpillow.com';
+    if new.admin_user_id is null then
+      select a.id into new.admin_user_id from admin_users a join admin_roles r on r.id = a.role_id
+      where r.key = 'owner' and a.is_active order by a.created_at limit 1;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_mp_staff_default_member on mp_staff;
+create trigger trg_mp_staff_default_member
+before insert on mp_staff
+for each row execute procedure mp_staff_default_member();
+
 alter table mp_staff alter column admin_user_id set not null;
 
 -- Server-only, like admin_users: the public policies went in 20260902000000;

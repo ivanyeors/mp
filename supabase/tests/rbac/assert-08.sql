@@ -25,6 +25,24 @@ begin
   update telegram_operators set actions = array['telegram.shop-review-moderate'] where display_name = 'Nadia';
   assert (select role from telegram_operators where display_name = 'Nadia') = 'shop_moderator', 'role follows actions';
 
+  -- A writer from before the migration: (display_name, role), no profile.
+  insert into telegram_operators (display_name, role) values ('Legacy Op', 'review_manager');
+  assert exists (select 1 from telegram_operators t join mp_staff s on s.id = t.staff_profile_id
+                 join admin_users a on a.id = s.admin_user_id
+                 where t.display_name = 'Legacy Op' and s.name = 'Legacy Op' and a.email = 'sg@mpillow.com'),
+    'legacy insert gets a profile under sg@mpillow.com';
+  assert (select actions from telegram_operators where display_name = 'Legacy Op')
+         = array['telegram.google-review-reply', 'telegram.shop-review-moderate'], 'legacy role becomes actions';
+  -- …and a legacy role change moves actions with it.
+  update telegram_operators set role = 'shop_moderator' where display_name = 'Legacy Op';
+  assert (select actions from telegram_operators where display_name = 'Legacy Op')
+         = array['telegram.shop-review-moderate'], 'legacy role change follows into actions';
+  -- A legacy insert named after a profile that already has a link gets its own.
+  insert into telegram_operators (display_name, role) values ('Ivan', 'shop_moderator');
+  assert (select s.name from telegram_operators t join mp_staff s on s.id = t.staff_profile_id
+          where t.display_name = 'Ivan' and t.telegram_user_id is null) = 'Ivan (Telegram)', 'no two links on one profile';
+  delete from mp_staff where name in ('Legacy Op', 'Ivan (Telegram)');
+
   -- Deleting a profile removes its link.
   delete from mp_staff where name = 'Nadia';
   assert not exists (select 1 from telegram_operators where display_name = 'Nadia'), 'link cascades with its profile';

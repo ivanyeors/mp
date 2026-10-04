@@ -70,13 +70,53 @@ end $$;
 
 alter table telegram_operators alter column staff_profile_id set not null;
 
--- Legacy role mirrors actions while both exist (slice 11 drops role).
+-- Expand phase (slice 11 removes this): role and actions describe the same
+-- access, so keep them in step whichever one a writer sets.
+--  * App code from before this migration inserts (display_name, role) with no
+--    profile: give the row a profile under sg@mpillow.com, as the backfill did,
+--    and actions from the role. It changes access by updating role: follow it.
+--  * App code from after it writes actions: stamp role from them ('none' when
+--    there are none), so a rolled-back app reads the same access.
 create or replace function telegram_operators_sync_role()
 returns trigger
 language plpgsql
 set search_path = public
 as $$
+declare
+  owner_id uuid;
+  pid uuid;
 begin
+  if tg_op = 'INSERT' and new.staff_profile_id is null then
+    select id into owner_id from admin_users where lower(email) = 'sg@mpillow.com';
+    if owner_id is null then
+      select a.id into owner_id from admin_users a join admin_roles r on r.id = a.role_id
+      where r.key = 'owner' and a.is_active order by a.created_at limit 1;
+    end if;
+    select s.id into pid from mp_staff s
+    where s.admin_user_id = owner_id and s.archived_at is null and lower(s.name) = lower(new.display_name)
+      and not exists (select 1 from telegram_operators t where t.staff_profile_id = s.id)
+    limit 1;
+    if pid is null then
+      insert into mp_staff (name, admin_user_id)
+      values (
+        case when exists (select 1 from mp_staff s where s.admin_user_id = owner_id and s.archived_at is null
+                          and lower(s.name) = lower(new.display_name))
+             then new.display_name || ' (Telegram)' else new.display_name end,
+        owner_id)
+      returning id into pid;
+    end if;
+    new.staff_profile_id := pid;
+  end if;
+
+  if (tg_op = 'INSERT' and coalesce(array_length(new.actions, 1), 0) = 0
+        and new.role in ('review_manager', 'shop_moderator'))
+     or (tg_op = 'UPDATE' and new.role is distinct from old.role and new.actions is not distinct from old.actions) then
+    new.actions := case new.role
+      when 'review_manager' then array['telegram.google-review-reply', 'telegram.shop-review-moderate']
+      when 'shop_moderator' then array['telegram.shop-review-moderate']
+      else '{}'::text[] end;
+  end if;
+
   new.role := case
     when 'telegram.google-review-reply' = any(new.actions) then 'review_manager'
     when 'telegram.shop-review-moderate' = any(new.actions) then 'shop_moderator'
@@ -87,7 +127,7 @@ $$;
 
 drop trigger if exists trg_telegram_operators_sync_role on telegram_operators;
 create trigger trg_telegram_operators_sync_role
-before insert or update of actions on telegram_operators
+before insert or update of role, actions on telegram_operators
 for each row execute procedure telegram_operators_sync_role();
 
 comment on table telegram_operators is

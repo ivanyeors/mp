@@ -69,6 +69,20 @@ graph TD
 
 Suggested PRs, each one deployable on its own: **A** = 01 + 02 · **B** = 03 · **C** = 04 + 09 · **D** = 06 · **E** = 07 + 05 · **F** = 08 · **H** = 10 · **G** = 11. Every PR refreshes `graphify-out/` (cache deleted first) in the same commit.
 
+## Deploying (read before merging)
+
+The code needs these migrations, in order, **applied before the deploy** (the new `getAdminContext` reads `admin_roles`; without it nobody can open the Admin Panel):
+
+1. `20261004100000_admin_roles.sql` (slice 03)
+2. `20261004110000_staff_profiles.sql` (slice 07)
+3. `20261004120000_admin_invites.sql` (slice 05)
+4. `20261004130000_telegram_links.sql` (slice 08)
+5. `20261004140000_audit_actor_profile.sql` (slice 10)
+
+They are expand-only and safe to run while the current production app is serving. Triggers keep the legacy columns (`admin_users.role`, `telegram_operators.role` / `display_name`) in step in both directions, and give a profile or login to rows the old code inserts without one. `./scripts/check-rbac-migrations.sh` runs them twice against a local Postgres seeded like production and asserts each slice, including those old-code writes. Re-read the live rows the slices list before applying (re-checked 2026-10-04: unchanged).
+
+A Vercel preview of this branch uses the same database, so it only works once the migrations are applied.
+
 ## HITL notes
 
 - **Decisions confirmed 2026-10-04** (PRD "Decisions"): staff names and Telegram operators move under `sg@mpillow.com`; existing Owners stay Owner; page-level access only (view-only is the next PRD); slice 10 is in.

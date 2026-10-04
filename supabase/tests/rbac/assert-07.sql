@@ -28,5 +28,11 @@ begin
     where name = 'Jess' and admin_user_id = (select id from admin_users where email = 'admin@mpillow.com');
   insert into mp_staff (name, admin_user_id) select 'Jess', id from admin_users where email = 'admin@mpillow.com';
   delete from mp_staff where admin_user_id = (select id from admin_users where email = 'admin@mpillow.com') and name = 'Jess';
+
+  -- A writer from before the migration (name only) lands under sg@mpillow.com.
+  insert into mp_staff (name) values ('Legacy Name');
+  assert (select a.email from mp_staff s join admin_users a on a.id = s.admin_user_id
+          where s.name = 'Legacy Name') = 'sg@mpillow.com', 'legacy insert gets a login';
+  delete from mp_staff where name = 'Legacy Name';
 end $$;
 select 'slice 07 ok';

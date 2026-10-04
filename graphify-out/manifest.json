@@ -14976,9 +14976,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/README.md": {
-    "mtime": 1791114462.8632286,
-    "seen": 1791114507.8048944,
-    "ast_hash": "3bfb159824953e2ae94425f324ee96ab",
+    "mtime": 1791114628.7098176,
+    "seen": 1791114673.4669328,
+    "ast_hash": "242a0a215ac633c89c8dca25b043a6d6",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md": {
@@ -15162,15 +15162,15 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261004110000_staff_profiles.sql": {
-    "mtime": 1791112525.0102282,
-    "seen": 1791112891.2700627,
-    "ast_hash": "bccd0815762066d2e7b31cc7772c0912",
+    "mtime": 1791114609.2870147,
+    "seen": 1791114673.4660478,
+    "ast_hash": "2e45de1b8ff9899690fe68f0f60e5bde",
     "semantic_hash": ""
   },
   "supabase/tests/rbac/assert-07.sql": {
-    "mtime": 1791112525.0148513,
-    "seen": 1791112891.2700655,
-    "ast_hash": "40cb59e93662ec9173980cd1cbd58058",
+    "mtime": 1791114609.2879415,
+    "seen": 1791114673.4660656,
+    "ast_hash": "cf3ddf71be09e8e1e02ee7e26d49be7a",
     "semantic_hash": ""
   },
   "app/api/admin/users/[id]/resend-invite/route.ts": {
@@ -15204,15 +15204,15 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261004130000_telegram_links.sql": {
-    "mtime": 1791113488.9982061,
-    "seen": 1791114018.4048448,
-    "ast_hash": "1b170cf6c34a27ff59c8d7262c101ba5",
+    "mtime": 1791114609.287585,
+    "seen": 1791114673.4660556,
+    "ast_hash": "7c34ef831671c347c10a64cfb87aecfb",
     "semantic_hash": ""
   },
   "supabase/tests/rbac/assert-08.sql": {
-    "mtime": 1791113489.019674,
-    "seen": 1791114018.4048507,
-    "ast_hash": "4a61f410b772295845d2c7c6c36b481f",
+    "mtime": 1791114609.288326,
+    "seen": 1791114673.466069,
+    "ast_hash": "62f165a560b16bf6bc77b9859cbe4029",
     "semantic_hash": ""
   },
   "app/api/admin/working-as/route.ts": {
