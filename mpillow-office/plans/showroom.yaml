@@ -1,0 +1,348 @@
+# Mpillow showroom, Midview City -- the massing model as a plan spec.
+#
+# NOTE: plans/showroom.yaml rebuilds the committed showroom GLB and its cutaway
+# byte for byte. The two ID models would differ: build_massing now joins the
+# pieces of a zone that spans several regions instead of keeping only the last,
+# and the committed ones lack a floor piece because of that. Its source drawing is a presentation sketch, not a surveyed floor plan, so
+# plan_check on it is informational: it reports where the model and sketch
+# differ (columns, pantry line, partitions drawn at line weight, a 0.55 m gap
+# in the north wall at the A/C bay, Storage C offset) and those are left as is.
+# Format: tools/build_massing.py.  Check: python tools/plan_check.py plans/showroom.yaml
+#
+# Every dimension comes from the brief (source/Custom Pillow Showroom Design.pdf,
+# pages 3-6); every position is read off the page-4 plan. Authored north up, Z
+# measured from the south (box store) wall, mirrored on export (mirror_z).
+
+name: showroom
+output: {dir: ../model, base: showroom_massing}
+mirror_z: W
+
+source:
+  image: ../ref-img/floorplan/plan-p4-300dpi.png
+# inner faces of the drawn walls: west / south corner and east / north corner
+calibrate:
+  - {px: [195, 1031], at: [0, 0]}
+  - {px: [2007, 234], at: [L, W]}
+dims:
+  - {label: length (bottom chain), segments: [10450, 2750, 4550], total: 17750,
+     axis: x, at: -1.0, from: 0}
+  - {label: west wall (left chain), segments: [620, 1000, 440, 960, 2080, 2800], total: 7900,
+     axis: z, at: -1.0, from: 0}
+
+# Values that were uncertain when the plan was read, and how each was settled.
+# plan_check fails while any is `open`.
+assumptions:
+  - about: store strip depths through the workshop (rack + aisle + shelf)
+    drawing: 0.62 box row + 1.00 aisle + 0.44 shelf
+    text: 0.80 rack + 0.76 aisle + 0.44 shelf
+    used: text values; the difference is under 0.25 m
+    status: confirmed
+  - about: overall length -- site survey vs as-built
+    drawing: as-built 10.45 + 2.75 + 4.55 = 17.75 m
+    text: site gives main floor 12.18 x 7.89 m, patio 7.87 x 3.14 m
+    used: as-built; a measured survey is still needed
+    status: confirmed
+  # Found by the first plan_check run (2026-10-04): the original model was
+  # read off the plan by eye and these two disagree with the drawing.
+  - about: structural columns -- size and position
+    drawing: 0.52 x 0.52 m, straddling the wall line (0.19 m inside the room), x 2.20-2.72 / 9.58-10.10
+    model: 0.50 x 0.35 m, wholly inside the room, x 2.30-2.80 / 9.60-10.10 (COLUMNS_X)
+    question: follow the drawing, or are the columns really 0.35 m into the room on site?
+    status: confirmed
+    answer: "first 'follow the drawing', then (same day) 'the showroom isn't a real floor
+      plan' -- model kept as built; the drawing is a presentation sketch, not authoritative"
+    drawing_detail: two north columns only (no third); the third south one wholly outside the wall
+  - about: pantry / WC front wall line (NORTH_ROOMS_Z)
+    drawing: inner face at z = 5.93 m
+    model: 5.75 m, 0.18 m further into the room
+    question: move the line to the drawing (5.93), or is 5.75 a site measurement?
+    status: confirmed
+    answer: "first 'follow the drawing', then 'the showroom isn't a real floor plan' -- kept at 5.75"
+
+vars:
+  # ---- dimensions, from the brief, pages 3-6 ----
+  overall_len: 17.75      # as-built overall
+  width: 7.90
+  ceiling: 3.40           # floor to ceiling clear
+  main_floor_len: 10.45   # to the pantry line
+  patio_len: 4.55
+  shelf_depth: 0.44       # store strip = 0.80 rack + 0.76 aisle + 0.44 shelf
+  aisle: 0.76
+  rack_depth: 0.80
+  rack_bay: 1.70          # 5 bays, 1.70 m beams on 0.80 m frames
+  rack_levels: 3
+  rack_pitch: 0.95
+  box: 0.78
+  inv_bay_w: 0.95
+  backlit_top: 2.80
+  sign_band: [2.85, 3.40]
+  workbench_len: 7.20
+  workbench_h: 0.90
+  workbench_d: 0.60
+  sewing_len: 2.75
+  sewing_h: 0.75
+  bed_w: 1.07             # super single
+  bed_l: 1.90
+  bed_h: 0.45
+  photo_w: 1.40
+  photo_l: 1.80
+  feature_wall: 2.10
+  door_w: 1.80            # double door
+  door_recess: 0.70
+  door_h: 2.40
+  walk_in: 0.95           # opening in the inventory wall
+  wall_t: 0.15
+  store_a: [1.82, 2.60]
+  store_b: [1.40, 2.60]
+  store_c: [4.42, 1.16]
+
+  L: overall_len
+  W: width
+  H: ceiling
+  T: wall_t
+  SERVICE_BAND: overall_len - main_floor_len - patio_len   # 2.75
+  X_PANTRY: main_floor_len                                 # 10.45
+  X_PATIO: X_PANTRY + SERVICE_BAND                         # 13.20
+
+  # ---- positions, read off the page-4 plan ----
+  # West wall, north to south: 2.80 (door + fitting bays) / 2.08 (seats) /
+  # 0.96 (bench) / 0.44 (shelf) / 1.00 (aisle) / 0.62 (box row) = 7.90.
+  Z_RACK: [0.0, rack_depth]                         # 0.00 - 0.80
+  Z_AISLE: ["Z_RACK[1]", "Z_RACK[1] + aisle"]           # 0.80 - 1.56
+  Z_INV: ["Z_AISLE[1]", "Z_AISLE[1] + shelf_depth"]     # 1.56 - 2.00
+  Z_BENCH: [2.05, 2.05 + workbench_d]               # 2.05 - 2.65
+  X_WEST_BAY: [0.15, 1.85]    # one rack bay + two shelf bays west of the walk-in
+  X_WALK_IN: [1.85, 2.80]     # walk-in through the inventory wall
+  X_STRIP: 2.80               # main run starts here
+  X_BENCH: 2.90
+  DOOR_Z: [5.15, 5.15 + door_w]                     # 5.15 - 6.95, NW corner
+  SEATS: [0.15, 2.20, 0.85, 4.90]                   # x0 z0 x1 z1, along the west wall
+  FEATURE_X: 3.10                                   # N-S panel next to the door
+  BED_X: [4.55, 7.10]                               # bed 1, bed 2 west edges
+  BED_Z: [5.55, 5.55 + bed_l]                       # 5.55 - 7.45
+  TRACK: [6.05, 6.45, 2.75, 1.35]                   # ellipse cx cz rx rz
+  PHOTO_X: 8.95
+  PANTRY_X: [X_PANTRY, 11.30]
+  WC_X: [11.30, 12.85]
+  AC_X: [12.85, 13.75]
+  NORTH_ROOMS_Z: 5.75                               # pantry / WC / A/C ledge front
+  WORK_TABLE: [12.30, 2.70, 13.10, 5.20]
+  GLASS_DOOR_Z: [1.35, 2.70]
+  COLUMNS_X: [[2.30, 2.80], [9.60, 10.10], [13.15, 13.65]]
+
+  # 5 rack bays x 1.70 m: one west of the walk-in, four in the main run.
+  bays:
+    - ["X_WEST_BAY[0]", "X_WEST_BAY[0] + rack_bay"]
+    - [X_STRIP + 0 * rack_bay, X_STRIP + 1 * rack_bay]
+    - [X_STRIP + 1 * rack_bay, X_STRIP + 2 * rack_bay]
+    - [X_STRIP + 2 * rack_bay, X_STRIP + 3 * rack_bay]
+    - [X_STRIP + 3 * rack_bay, X_STRIP + 4 * rack_bay]
+  inv_x1: X_PANTRY - 0.05
+  n_bays: int(round((inv_x1 - X_STRIP) / inv_bay_w))
+  bx1: X_BENCH + workbench_len
+  cx: TRACK[0]
+  cz: TRACK[1]
+  rx: TRACK[2]
+  rz: TRACK[3]
+  zf: NORTH_ROOMS_Z
+  gd0: GLASS_DOOR_Z[0]
+  gd1: GLASS_DOOR_Z[1]
+
+  # area boundaries (= render_views plan constants)
+  X_ENTRY: 4.40
+  Z_INV_TOP: 2.08
+  Z_BENCH_TOP: 2.90
+
+palette:
+  shell: [196, 193, 188]
+  floor: [176, 173, 168]
+  joinery: [205, 178, 133]     # pale ash / oak
+  rack: [120, 124, 130]        # steel
+  soft: [150, 152, 160]        # beds, seating
+  glass: [150, 190, 205]
+  accent: [196, 150, 90]       # signage band, backlit panels
+  service: [168, 166, 162]
+  patio: [140, 142, 145]
+
+# Area slug (matches build_workflow.AREAS); index n = colour ZONE_RGB[n].
+zones:
+  - {slug: 01-entry-waiting, label: red}
+  - {slug: 02-fitting-bays, label: green}
+  - {slug: 03-inventory-wall, label: blue}
+  - {slug: 04-workshop, label: yellow}
+  - {slug: 05-service-pantry-wc, label: magenta}
+  - {slug: 06-patio-wash-dry, label: cyan}
+
+# Disjoint plan boxes that tile the plan; null = open.
+zone_regions:
+  - {zone: 06-patio-wash-dry, x: [X_PATIO, null]}
+  - {zone: 04-workshop, x: [X_PANTRY, X_PATIO], z: [null, 1.0]}           # sewing table
+  - {zone: 05-service-pantry-wc, x: [X_PANTRY, X_PATIO], z: [1.0, null]}
+  - {zone: 03-inventory-wall, x: [null, X_PANTRY], z: [null, Z_INV_TOP]}  # south strip
+  - {zone: 04-workshop, x: [null, X_PANTRY], z: [Z_INV_TOP, Z_BENCH_TOP]} # workbench
+  - {zone: 01-entry-waiting, x: [null, X_ENTRY], z: [Z_BENCH_TOP, null]}  # west end
+  - {zone: 02-fitting-bays, x: [X_ENTRY, X_PANTRY], z: [Z_BENCH_TOP, null]}
+
+# Parts dropped for the cutaway copies (= render_views.CUT_N): the wall nearest
+# the iso cameras and the patio roof, so a camera outside the box sees in.
+cutaway: [wall_north, patio_wall_n, poly_roof, poly_roof_n]
+
+items:
+  # ---- shell ----
+  - {name: floor, x: [0, L], z: [0, W], y: [-0.12, 0.0], color: floor}
+  - {name: wall_south, x: [0, X_PATIO], z: [-T, 0], y: [0, H], color: shell}
+  - {name: wall_north, x: [0, X_PATIO], z: [W, W + T], y: [0, H], color: shell}
+  # west wall in three pieces around the recessed double door (NW corner)
+  - {name: wall_west_s, x: [-T, 0], z: [0, "DOOR_Z[0]"], y: [0, H], color: shell}
+  - {name: wall_west_n, x: [-T, 0], z: ["DOOR_Z[1]", W], y: [0, H], color: shell}
+  - {name: wall_west_head, x: [-T, 0], z: ["DOOR_Z[0]", "DOOR_Z[1]"], y: [door_h, H], color: shell}
+  - {name: recess_s, x: [0, door_recess], z: ["DOOR_Z[0] - T", "DOOR_Z[0]"], y: [0, H], color: shell}
+  - {name: recess_n, x: [0, door_recess], z: ["DOOR_Z[1]", "DOOR_Z[1] + T"], y: [0, H], color: shell}
+  - {name: door_leaf, x: [door_recess - 0.06, door_recess], z: ["DOOR_Z[0]", "DOOR_Z[1]"],
+     y: [0, door_h], color: glass}
+
+  # structural columns on the north and south walls
+  - type: group
+    for: {i: range(len(COLUMNS_X))}
+    let: {cx0: "COLUMNS_X[i][0]", cx1: "COLUMNS_X[i][1]"}
+    items:
+      - {name: "col_s_{i}", x: [cx0, cx1], z: [0, 0.35], y: [0, H], color: shell}
+      - {name: "col_n_{i}", x: [cx0, cx1], z: [W - 0.35, W], y: [0, H], color: shell}
+
+  # ---- box store (south strip) ----
+  - type: group
+    for: {bi: range(len(bays))}
+    let: {bx0: "bays[bi][0]", bx1: "bays[bi][1]"}
+    items:
+      - name: "rack_deck_{bi}_{lvl}"
+        for: {lvl: range(rack_levels)}
+        let: {y: 0.05 + lvl * rack_pitch}
+        x: [bx0, bx1]
+        z: ["Z_RACK[0]", "Z_RACK[1]"]
+        y: [y, y + 0.04]
+        color: rack
+      - name: "rack_post_{bi}{side}"
+        for: {si: range(2)}
+        let: {side: "['a', 'b'][si]", x: "bx0 if si == 0 else bx1 - 0.06"}
+        x: [x, x + 0.06]
+        z: ["Z_RACK[0]", "Z_RACK[1]"]
+        y: [0, 2.85]
+        color: rack
+
+  # two boxes per level; slot 15 is the cleared position -> 29 boxes
+  - name: "box_{slot:02d}"
+    for: {bi: range(len(bays)), lvl: range(rack_levels), k: range(2)}
+    let:
+      slot: bi * 2 * rack_levels + lvl * 2 + k + 1
+      y: 0.09 + lvl * rack_pitch
+      x: "bays[bi][0] + 0.07 + k * (box + 0.05)"
+    if: slot != 15
+    x: [x, x + box]
+    z: [0.01, 0.79]
+    y: [y, y + box]
+    color: joinery
+
+  # ---- inventory wall (customer face of the store) ----
+  - {name: inv_wall_w, x: ["X_WEST_BAY[0]", "X_WALK_IN[0]"], z: ["Z_INV[0]", "Z_INV[1]"], y: [0, H], color: joinery}
+  - {name: inv_wall_head, x: ["X_WALK_IN[0]", "X_WALK_IN[1]"], z: ["Z_INV[0]", "Z_INV[1]"], y: [2.10, H], color: joinery}
+  - {name: inv_wall_e, x: [X_STRIP, inv_x1], z: ["Z_INV[0]", "Z_INV[1]"], y: [0, H], color: joinery}
+  - {name: backlit_panel, x: [X_STRIP, inv_x1], z: ["Z_INV[1]", "Z_INV[1] + 0.04"], y: [1.10, backlit_top], color: accent}
+  - {name: sign_band, x: [X_STRIP, inv_x1], z: ["Z_INV[1]", "Z_INV[1] + 0.06"],
+     y: ["sign_band[0]", "sign_band[1]"], color: accent}
+  - name: "inv_fin_{b}"
+    for: {b: range(n_bays + 1)}
+    let: {x: X_STRIP + b * (inv_x1 - X_STRIP) / n_bays}
+    x: [x - 0.02, x + 0.02]
+    z: ["Z_INV[0]", "Z_INV[1] + 0.10"]
+    y: [0, H]
+    color: shell
+  - name: inv_fin_w
+    let: {xm: "X_WEST_BAY[0] + (X_WALK_IN[0] - X_WEST_BAY[0]) / 2"}
+    x: [xm - 0.02, xm + 0.02]
+    z: ["Z_INV[0]", "Z_INV[1] + 0.10"]
+    y: [0, H]
+    color: shell
+
+  # ---- workshop ----
+  - {name: workbench, x: [X_BENCH, bx1], z: ["Z_BENCH[0]", "Z_BENCH[1]"], y: [0, workbench_h], color: joinery}
+  - {name: workbench_top, x: [X_BENCH - 0.05, bx1 + 0.05], z: ["Z_BENCH[0] - 0.05", "Z_BENCH[1] + 0.05"],
+     y: [workbench_h, workbench_h + 0.05], color: joinery}
+  - {name: light_panel, x: [X_BENCH, bx1], z: ["Z_BENCH[0] - 0.10", "Z_BENCH[1] + 0.10"],
+     y: [H - 0.30, H - 0.26], color: accent}
+  # sewing table sits in the service band against the south wall
+  - {name: sewing_table, x: [X_PANTRY + 0.05, X_PANTRY + 0.05 + sewing_len], z: [0.10, 0.65],
+     y: [0, sewing_h], color: joinery}
+
+  # ---- entry + waiting ----
+  - {name: seat_bench, x: ["SEATS[0]", "SEATS[2]"], z: ["SEATS[1]", "SEATS[3]"], y: [0, 0.42], color: soft}
+  - {name: rug, x: [0.95, 2.60], z: [2.30, 4.80], y: [0.0, 0.02], color: soft}
+  - {name: feature_wall, x: [FEATURE_X, FEATURE_X + 0.15], z: [W - 0.05 - feature_wall, W - 0.05],
+     y: [0, 2.40], color: joinery}
+
+  # ---- fitting bays ----
+  - type: group
+    for: {i: range(len(BED_X))}
+    let: {x0: "BED_X[i]"}
+    items:
+      - {name: "bed_{i}", x: [x0, x0 + bed_w], z: ["BED_Z[0]", "BED_Z[1]"], y: [0.12, bed_h], color: soft}
+      - {name: "pillow_{i}", x: [x0 + 0.12, x0 + bed_w - 0.12], z: ["BED_Z[1] - 0.55", "BED_Z[1] - 0.10"],
+         y: [bed_h, bed_h + 0.14], color: soft}
+      - {name: "cove_{i}", x: [x0 + 0.10, x0 + bed_w - 0.10], z: ["BED_Z[0] + 0.10", "BED_Z[1] - 0.10"],
+         y: [0.0, 0.12], color: accent}
+
+  # one oval curtain track around both beds, plus a divider between them
+  - type: segment
+    name: "track_{k:02d}"
+    for: {k: range(40)}
+    let: {j: (k + 1) % 40}
+    p0: ["cx + rx * cos(2 * pi * k / 40)", "cz + rz * sin(2 * pi * k / 40)"]
+    p1: ["cx + rx * cos(2 * pi * j / 40)", "cz + rz * sin(2 * pi * j / 40)"]
+    y: [H - 0.10, H - 0.05]
+    t: 0.05
+    color: rack
+  - {name: track_divider, x: [cx + 0.25, cx + 0.30], z: [cz - rz, cz + rz], y: [H - 0.10, H - 0.05], color: rack}
+
+  # photo station: floor mat + camera positions front and back
+  - {name: photo_floor, x: [PHOTO_X, PHOTO_X + photo_w], z: [W - 0.20 - photo_l, W - 0.20],
+     y: [0.0, 0.03], color: accent}
+  - {name: photo_cam_a, x: [PHOTO_X + 0.62, PHOTO_X + 0.78], z: [W - 0.24 - photo_l, W - 0.16 - photo_l],
+     y: [1.30, 1.55], color: rack}
+  - {name: photo_cam_b, x: [PHOTO_X + 0.62, PHOTO_X + 0.78], z: [W - 0.24, W - 0.16], y: [1.30, 1.55], color: rack}
+
+  # ---- service band: pantry, WC, A/C ledge, work table ----
+  - {name: north_rooms_front, x: ["PANTRY_X[0]", "WC_X[1]"], z: [zf - T, zf], y: [0, H], color: shell}
+  - {name: pantry_wall_e, x: ["PANTRY_X[1] - T", "PANTRY_X[1]"], z: [zf, W], y: [0, H], color: shell}
+  - {name: wc_wall_e, x: ["WC_X[1] - T", "WC_X[1]"], z: [zf, W], y: [0, H], color: shell}
+  - {name: pantry_counter, x: ["PANTRY_X[1] - T - 0.30", "PANTRY_X[1] - T"], z: [zf + 0.10, W - 0.10],
+     y: [0, 0.90], color: joinery}
+  - {name: wc_fixtures, x: ["WC_X[0] + 0.10", "WC_X[1] - T - 0.10"], z: [W - 0.80, W - 0.10],
+     y: [0, 0.90], color: service}
+  - {name: ac_ledge, x: ["AC_X[0]", "AC_X[1]"], z: [zf, W], y: [0, 0.60], color: patio}
+  - {name: work_table, x: ["WORK_TABLE[0]", "WORK_TABLE[2]"], z: ["WORK_TABLE[1]", "WORK_TABLE[3]"],
+     y: [0, 0.75], color: joinery}
+
+  # patio line: glazing with the glass door, solid head above
+  - {name: patio_glazing_s, x: [X_PATIO - 0.06, X_PATIO], z: [0, gd0], y: [0, 2.55], color: glass}
+  - {name: glass_door, x: [X_PATIO - 0.05, X_PATIO], z: [gd0, gd1], y: [0, 2.40], color: glass}
+  - {name: patio_glazing_n, x: [X_PATIO - 0.06, X_PATIO], z: [gd1, zf], y: [0, 2.55], color: glass}
+  - {name: patio_head, x: [X_PATIO - T, X_PATIO], z: [0, zf], y: [2.55, H], color: shell}
+
+  # ---- patio ----
+  - {name: patio_deck, x: [X_PATIO, L], z: [0, W], y: [-0.06, 0.0], color: patio}
+  - {name: patio_parapet_s, x: [X_PATIO, L], z: [-T, 0], y: [0, 1.10], color: shell}
+  - {name: ziptrack_s, x: [X_PATIO, L], z: [-0.08, -0.02], y: [1.10, 2.55], color: glass}
+  - {name: patio_parapet_e, x: [L, L + T], z: [0, W], y: [0, 1.10], color: shell}
+  - {name: patio_wall_n, x: ["AC_X[1]", L], z: [W, W + T], y: [0, 2.60], color: shell}
+  - {name: store_a, x: [X_PATIO + 0.10, "X_PATIO + 0.10 + store_a[0]"], z: [3.00, "3.00 + store_a[1]"],
+     y: [0, 2.20], color: service}
+  - {name: store_b, x: ["L - store_b[0]", L], z: [3.00, "3.00 + store_b[1]"], y: [0, 2.20], color: service}
+  - {name: store_c, x: ["L - store_c[0]", L], z: [0.10, "0.10 + store_c[1]"], y: [0, 2.20], color: service}
+  - name: "drying_rack_{k}"
+    for: {k: range(3)}
+    x: [X_PATIO + 0.90, L - 0.45]
+    z: [W - 0.20, W - 0.14]
+    y: [1.40 + 0.30 * k, 1.46 + 0.30 * k]
+    color: rack
+  # poly roof from the door head over the whole patio, open over the A/C bay
+  - {name: poly_roof, x: [X_PATIO, L], z: [0, zf], y: [2.55, 2.62], color: glass}
+  - {name: poly_roof_n, x: ["AC_X[1]", L], z: [zf, W], y: [2.55, 2.62], color: glass}

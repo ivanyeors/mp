@@ -21,7 +21,12 @@ model/       showroom_massing.glb / .obj  -- the dimensioned 3D model
              showroom_massing_cut.glb     -- north wall + patio roof off (cutaway)
              showroom_massing_ids.glb, showroom_massing_cut_ids.glb
                                           -- the same, coloured by area (ID model)
-tools/       build_massing.py, render_views.py, build_workflow.py
+plans/       <name>.yaml  -- plan specs: every number of a model (showroom.yaml,
+                             hdb-4rm-1bh.yaml); sources/ holds their drawings,
+                             presets/ the answers that hold for a kind of plan
+tools/       build_massing.py, plan_check.py, plan_read.py, plan_env.py,
+             render_views.py, build_workflow.py
+requirements.txt  -- the Python packages tools/ needs
 comfy_nodes/ mp_glb_parts/  -- GLB Part Filter, a custom ComfyUI node: show / hide
                                 named parts of a model on the canvas (junction it
                                 into ComfyUI/custom_nodes)
@@ -194,6 +199,45 @@ Qwen-Image-Edit-2509 (draft as image 1, hero as image 2). With a photo
 reference the edit model reproduces that photo; at partial denoise it
 changes nothing, and the depth ControlNet cannot override it.
 
+## The fast zoned variant
+
+`showroom_zoned_fast_16x9.json` (`python tools/build_workflow_fast.py`) is
+the zoned workflow, same sections and the same three renders, rebuilt to
+run quickly on a 16 GB card. Prompts, areas, colours and camera defaults are
+imported from `build_workflow.py`, so the two never drift apart. Outputs
+carry a `_fast` suffix so they sit next to the originals for comparison.
+
+- **One model, resident.** Qwen-Image-2.1 (7B, generates and edits) with
+  the Viggle turbo v0.3 LoRA merged in, int8, 7.3 GB. It replaces both 20B
+  models (Edit-2509 and Qwen-Image, 19 GB each), which never fitted in VRAM
+  and streamed from RAM on every step.
+- **6 steps, no CFG** (euler + BasicGuider). The turbo schedule's
+  resolution shift is computed by the build script into `ManualSigmas`
+  nodes, one per picture size, so no custom node is needed. Change a size in
+  the script and rebuild; do not hand-edit them.
+- **Depth lock:** the Qwen-Image-2.1 Fun ControlNet Union, a model patch
+  (`Load Model Patch` -> `Apply Fun ControlNet`), strength 0.85.
+- **Moodboards:** the mood and furniture contact sheets go in as reference
+  images 1 and 2 of `Text Encode Qwen Image 2.1`; no edit subgraph.
+- **Zone masks:** one KJNodes `Color To Mask` per area (RGB distance 120)
+  instead of 18 channel-arithmetic nodes per ID image.
+- **ZONING switch** (top of section 5): `false` drops the six regional
+  prompts and samples with the whole-scene prompt only, for quick look-dev.
+  The depth lock stays on.
+- Refines (section, free camera, muted 5.10b hi-res at 2560 x 1440) use the
+  last two turbo steps, starting near 0.7 noise.
+
+| File | Folder | Source |
+| --- | --- | --- |
+| `Qwen-Image-2.1-viggle-turbo-v0.3-6step-int8_convrot.safetensors` | diffusion_models | `Viggle/Qwen-Image-2.1-viggle-turbo` |
+| `qwen3vl_8b_int8_convrot.safetensors` | text_encoders | `Comfy-Org/Qwen-Image-2.1` |
+| `qwen_image_2.1_vae_bf16.safetensors` | vae | `Comfy-Org/Qwen-Image-2.1` |
+| `qwen_image_2.1_fun_controlnet_union_int8_convrot.safetensors` | model_patches | `Comfy-Org/Qwen-Image-2.1` |
+
+**Licence:** Qwen-Image-2.1 and the turbo are under the Qwen Research
+License (non-commercial). Use them for evaluation; clear the licence before
+any render goes to a client.
+
 ## Why the 3D step is computed, not generated
 
 Image-to-3D models (TRELLIS.2, Hunyuan3D, Tripo, Meshy, Rodin) rebuild a
@@ -202,14 +246,61 @@ individual items, not scenes or architecture". None will turn a plan into a
 room, and the ones installed here are paid cloud APIs.
 
 So `tools/build_massing.py` builds the room from numbers: every dimension
-from the brief, every position read off the page-4 plan. 165 parts. It is
-authored with north up, exactly as drawn, then mirrored on export so the GLB
-is right-handed for Y-up viewers.
+from the brief, every position read off the page-4 plan, all of it in
+`plans/showroom.yaml`. 165 parts. It is authored with north up, exactly as
+drawn, then mirrored on export so the GLB is right-handed for Y-up viewers.
+
+## New floor plans
+
+A new plan is a new spec, not new code. The `plan-to-3d` skill
+(`.claude/skills/plan-to-3d/`) runs the whole loop. By hand:
+
+```
+python tools/plan_env.py                          # ready? Python 3.10+, packages, poppler;
+                                                  # prints the install commands if not
+python -m pip install -r requirements.txt         # the packages (poppler is a system install)
+python tools/plan_read.py render plans/sources/<plan>.pdf --out plans/.cache/<plan>.png
+python tools/plan_read.py lines|ticks ...         # find the dimension chains -> calibrate
+python tools/plan_read.py --spec plans/<plan>.yaml solids | scan z=.. x=.. | grid
+python tools/plan_check.py plans/<plan>.yaml --breakdown   # the gate; exit 0 = PASS;
+                                                  # per wall / window / door scores
+python tools/build_massing.py plans/<plan>.yaml   # -> model/<base>*.glb
+```
+
+`plan_check` lays the model over the drawing (`model/<base>_check.png`) and
+fails unless every dimension chain adds up, at least 90% of the wall outlines
+sit on drawn lines (and every wall at least 60%), every solid fill on the
+plan is covered, and no entry in the spec's `assumptions:` is still `open`.
+That last point is deliberate: a plan never gives heights, and it is often
+ambiguous about a wall or two. Each such value is written down with the
+default used, and the skill asks the user about it until it is confirmed.
+
+`plans/hdb-4rm-1bh.yaml` is the worked example: an HDB 4-room type plan
+from a vector PDF. Every wall outline lands on the drawing, the dimension
+chains close exactly, and its nine assumptions (heights, an undrawn bedroom
+wall, the service yard parapet, zoning) were settled with the user. It
+passes. `plans/showroom.yaml` rebuilds the committed showroom GLB and its
+cutaway byte for byte. The two ID models would come out slightly different:
+pieces of a zone that spans several regions are now joined, where the old
+script kept only the last, so the committed ones lack a floor piece. The
+showroom drawing is a presentation sketch rather than a real plan, so its
+check is informational only.
+
+The skill asks first what kind of plan it is. Answers that hold for every
+plan of a kind live in `plans/presets/<kind>.yaml`. `hdb.yaml` holds the HDB
+heights, parapets and zone grouping, taken from the answers on the first HDB
+plan. A new HDB spec starts from that file, and the user accepts or changes
+all of its values in one question. Only what is particular to the drawing is
+still asked, such as an undrawn wall or an optional partition.
+
+`render_views.py` and the workflow builders still read the showroom's
+constants. Rendering a new plan needs them pointed at its spec (next step).
 
 ## Pipeline
 
 ```
-python tools/build_massing.py    # -> model/showroom_massing*.glb (+ ComfyUI/input/3d/)
+python tools/plan_check.py plans/showroom.yaml   # spec vs drawing -> model/showroom_massing_check.png
+python tools/build_massing.py    # plans/showroom.yaml -> model/showroom_massing*.glb (+ ComfyUI/input/3d/)
 python tools/render_views.py     # -> ref-img/massing/massing_<view>[_depth|_ids|_zoned].png
                                  #    and massing_sec_<area>*.png, zones.json
 python tools/build_workflow.py   # -> workflows/showroom_moodboard_16x9.json (+ sidebar)
