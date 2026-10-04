@@ -13,7 +13,7 @@ Tracer-bullet breakdown of the PRD (`../users-permissions-rbac-prd.md`). Each sl
 | 03 | Roles as data: `admin_roles`, `role_id`, backfill, context from DB | AFK | 02 | 4, 19, 22, 23, 24 | done |
 | 04 | Users & permissions page + Members tab + redirects | AFK | 03 | 1–3, 10–13, 15 | done |
 | 05 | Invites: email, Invited state, resend, revoke | AFK | 04, 07 | 5–9 | todo |
-| 06 | Roles tab: permission matrix editor + custom roles | AFK | 04 | 14, 16–22 | todo |
+| 06 | Roles tab: permission matrix editor + custom roles | AFK | 04 | 14, 16–22 | done |
 | 07 | Staff profiles under logins | AFK | 04 | 9, 25–29 | todo |
 | 08 | Telegram under RBAC | AFK | 06, 07 | 11, 30–35 | todo |
 | 09 | Access-denied notice + audit coverage | AFK | 04 | 23, 36 | done |

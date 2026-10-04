@@ -57,7 +57,13 @@ function useDirectory(initialMembers?: MemberRow[], initialRoles?: RoleRow[]) {
     void reload();
   }, [reload]);
 
-  return { members, setMembers, roles, loading, reload };
+  // Member counts follow the Members list as it changes, not the last load.
+  const counted = useMemo(
+    () => roles.map((r) => ({ ...r, memberCount: members.filter((m) => m.roleId === r.id).length })),
+    [roles, members],
+  );
+
+  return { members, setMembers, roles: counted, setRoles, loading, reload };
 }
 
 export function UsersClient({
@@ -109,13 +115,26 @@ export function UsersClient({
           <TabsTrigger value="telegram">Telegram</TabsTrigger>
         </TabsList>
         <TabsContent value="members" className="pt-4">
-          <MembersTab actor={actor} {...directory} />
+          <MembersTab
+            actor={actor}
+            members={directory.members}
+            setMembers={directory.setMembers}
+            roles={directory.roles}
+            loading={directory.loading}
+            reload={directory.reload}
+          />
         </TabsContent>
         <TabsContent value="profiles" className="space-y-6 pt-4">
           <ProfilesTab initialData={initialStaff} />
         </TabsContent>
         <TabsContent value="roles" className="pt-4">
-          <RolesTab actor={actor} roles={directory.roles} />
+          <RolesTab
+            actor={actor}
+            roles={directory.roles}
+            members={directory.members}
+            setRoles={directory.setRoles}
+            onShowMembers={() => selectTab("members")}
+          />
         </TabsContent>
         {/* Kept mounted so a just-issued link code survives a tab switch. */}
         <TabsContent value="telegram" forceMount className="pt-4 data-[state=inactive]:hidden">

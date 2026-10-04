@@ -57,7 +57,7 @@ const PAGES: [string[], Permission[]][] = [
   [[`${S}/integrations/shopify`, "app/api/shopify", "lib/shopify/route-auth.ts"], ["shopify-link"]],
   [[`${S}/appointments`, "app/api/settings/appointments"], ["appointments"]],
   [[`${S}/rma`], ["returns"]],
-  [[`${S}/users`, "app/api/admin/users", "app/api/staff/telegram-operators"], ["users"]],
+  [[`${S}/users`, "app/api/admin/users", "app/api/admin/roles", "app/api/staff/telegram-operators"], ["users"]],
   // Shared by Inventory, Shopify Link and Costings; each action names the pages that call it.
   [[`${S}/inventory/actions.ts`], ["inventory", "shopify-link", "costings"]],
 ];

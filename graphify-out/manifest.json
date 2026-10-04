@@ -11526,9 +11526,9 @@
     "semantic_hash": ""
   },
   "lib/supabase/__tests__/fake-admin.ts": {
-    "mtime": 1791111480.767482,
-    "seen": 1791111716.7802532,
-    "ast_hash": "44588880d1db180604df860f68846a65",
+    "mtime": 1791112150.7578948,
+    "seen": 1791112441.1740775,
+    "ast_hash": "cb092189c3e0eda22da711bad6bc8038",
     "semantic_hash": ""
   },
   "supabase/migrations/20260915170000_hide_variant_cost_price.sql": {
@@ -14934,9 +14934,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/06-roles-matrix.md": {
-    "mtime": 1791104393.6254206,
-    "seen": 1791104446.764043,
-    "ast_hash": "56582fe4e7e60854b058e410977b1c70",
+    "mtime": 1791112347.9032216,
+    "seen": 1791112441.1754768,
+    "ast_hash": "73724951c6053356555e991437e1807b",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/07-staff-profiles.md": {
@@ -14976,9 +14976,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/README.md": {
-    "mtime": 1791112023.3282666,
-    "seen": 1791112067.5362537,
-    "ast_hash": "9f5b632ea81c089280e1f44640c35fe7",
+    "mtime": 1791112347.9036994,
+    "seen": 1791112441.1754937,
+    "ast_hash": "c3e6a5cfe9316ac9f97ffe0ae4d2a3a0",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md": {
@@ -14994,9 +14994,9 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/page-keys-by-route.test.ts": {
-    "mtime": 1791111397.3000264,
-    "seen": 1791111716.7792666,
-    "ast_hash": "11bd9f55db03dc47f8fe2b98968ae4d5",
+    "mtime": 1791112150.780292,
+    "seen": 1791112441.1731327,
+    "ast_hash": "12aa58e30d1c10d9fc9be75fa97b6d1c",
     "semantic_hash": ""
   },
   "scripts/check-rbac-migrations.sh": {
@@ -15042,9 +15042,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/roles-tab.tsx": {
-    "mtime": 1791111374.270302,
-    "seen": 1791111716.7780936,
-    "ast_hash": "561c8a550195a7839f71dfdd702768d6",
+    "mtime": 1791112316.438233,
+    "seen": 1791112441.1719062,
+    "ast_hash": "aeb5341cfd21fd64c378d73151c4ec4b",
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/telegram-tab.tsx": {
@@ -15054,9 +15054,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/users-client.tsx": {
-    "mtime": 1791111234.985182,
-    "seen": 1791111716.7780967,
-    "ast_hash": "938f2f00d80b64f218e1c02644d683a1",
+    "mtime": 1791112323.1468663,
+    "seen": 1791112441.1719098,
+    "ast_hash": "0e39316afe598850b95e3bace12c314e",
     "semantic_hash": ""
   },
   "app/api/admin/users/__tests__/members-routes.test.ts": {
@@ -15099,6 +15099,48 @@
     "mtime": 1791111813.1702445,
     "seen": 1791112067.5325308,
     "ast_hash": "d3f3d71268e90e698f2738b97b708356",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/users/__tests__/users-render.test.tsx": {
+    "mtime": 1791112386.013883,
+    "seen": 1791112441.1718948,
+    "ast_hash": "3482f5235b5cb8ea200c5025bcccde4d",
+    "semantic_hash": ""
+  },
+  "app/api/admin/roles/[id]/route.ts": {
+    "mtime": 1791112150.7680757,
+    "seen": 1791112441.1719618,
+    "ast_hash": "f46c3d6ab287fc67e4ec7e9ab5a83b26",
+    "semantic_hash": ""
+  },
+  "app/api/admin/roles/__tests__/roles-routes.test.ts": {
+    "mtime": 1791112233.1742113,
+    "seen": 1791112441.1719632,
+    "ast_hash": "46ed49a259c1dac6f098b9643ddcbe87",
+    "semantic_hash": ""
+  },
+  "app/api/admin/roles/route.ts": {
+    "mtime": 1791112150.764204,
+    "seen": 1791112441.1719663,
+    "ast_hash": "fe13db3049c096c4a7dca830ea8f469c",
+    "semantic_hash": ""
+  },
+  "lib/auth/__tests__/permission-matrix.test.ts": {
+    "mtime": 1791112250.0191188,
+    "seen": 1791112441.1731367,
+    "ast_hash": "8d84ae4d1962678fbd64f829dd338983",
+    "semantic_hash": ""
+  },
+  "lib/auth/permission-matrix.ts": {
+    "mtime": 1791112250.0142345,
+    "seen": 1791112441.1731715,
+    "ast_hash": "7e0b3a9c73e0678c66cfb899b4631ac3",
+    "semantic_hash": ""
+  },
+  "lib/auth/roles.ts": {
+    "mtime": 1791112150.7573683,
+    "seen": 1791112441.1731777,
+    "ast_hash": "ba7bdd972b349d6684c84dca534f7144",
     "semantic_hash": ""
   }
 }

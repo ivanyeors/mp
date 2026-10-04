@@ -32,6 +32,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
     from(table: string) {
       const filters: Array<(r: Row) => boolean> = [];
       let patch: Row | null = null;
+      let removing = false;
       let head = false;
       let inserted: Row | null = null;
       let embeds: Array<[alias: string, table: string]> = [];
@@ -47,6 +48,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       const rows = () => {
         const r = inserted ? [inserted] : (db[table] ??= []).filter((row) => filters.every((f) => f(row)));
         if (patch) for (const row of r) Object.assign(row, patch);
+        if (removing) db[table] = (db[table] ?? []).filter((row) => !r.includes(row));
         if (sort) {
           const { col, asc } = sort;
           r.sort((a, b) => (String(a[col] ?? "") < String(b[col] ?? "") ? -1 : 1) * (asc ? 1 : -1));
@@ -68,6 +70,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         ilike: (col: string, pattern: string) =>
           (filters.push((r) => likeMatch(pattern.replaceAll("*", "%"), r[col])), q),
         update: (p: Row) => ((patch = p), q),
+        delete: () => ((removing = true), q),
         insert: (row: Row) => {
           inserted = { id: `${table}-${(db[table] ?? []).length + 1}`, ...row };
           db[table] = [...(db[table] ?? []), inserted];
