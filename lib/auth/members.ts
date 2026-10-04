@@ -75,24 +75,39 @@ function toMember(row: DbMember, lastSignIn: Map<string, string | null>): Member
   };
 }
 
-/** auth user id → last sign-in. Best-effort: an Auth API failure shows "—", never blocks the page. */
-async function lastSignIns(): Promise<Map<string, string | null>> {
-  try {
-    const { data } = await supabaseAdmin().auth.admin.listUsers({ page: 1, perPage: 1000 });
-    return new Map((data?.users ?? []).map((u) => [u.id, u.last_sign_in_at ?? null]));
-  } catch {
-    return new Map();
-  }
+/**
+ * auth user id → last sign-in, for these auth users only. auth.users also
+ * holds every customer and partner, so a page of listUsers would drop the
+ * oldest Members once there are enough of them. Best-effort: an Auth API
+ * failure shows "—", never blocks the page.
+ */
+async function lastSignIns(authUserIds: (string | null)[]): Promise<Map<string, string | null>> {
+  const ids = [...new Set(authUserIds.filter((id): id is string => !!id))];
+  const auth = supabaseAdmin().auth?.admin;
+  if (!auth) return new Map();
+  const entries = await Promise.all(
+    ids.map(async (id): Promise<[string, string | null]> => {
+      try {
+        const { data } = await auth.getUserById(id);
+        return [id, data?.user?.last_sign_in_at ?? null];
+      } catch {
+        return [id, null];
+      }
+    }),
+  );
+  return new Map(entries);
 }
 
 /** Every Member, oldest first. Throws on a read error. */
 export async function listMembers(): Promise<MemberRow[]> {
-  const [{ data, error }, signIns] = await Promise.all([
-    supabaseAdmin().from("admin_users").select(MEMBER_COLUMNS).order("created_at", { ascending: true }),
-    lastSignIns(),
-  ]);
+  const { data, error } = await supabaseAdmin()
+    .from("admin_users")
+    .select(MEMBER_COLUMNS)
+    .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as DbMember[]).map((row) => toMember(row, signIns));
+  const rows = (data ?? []) as DbMember[];
+  const signIns = await lastSignIns(rows.map((r) => r.auth_user_id));
+  return rows.map((row) => toMember(row, signIns));
 }
 
 /** Every role, built-in first then by name, with how many Members hold it. Throws on a read error. */
@@ -122,6 +137,12 @@ async function countActiveOwners(ownerRoleId: string | undefined): Promise<numbe
   return count ?? 0;
 }
 
+const CHANGED_MEANWHILE = {
+  ok: false,
+  status: 409,
+  error: "Someone else changed this Member just now. Reload and try again.",
+} as const;
+
 export type UpdateMemberResult = { ok: true; member: MemberRow } | Exclude<Decision, { ok: true }>;
 
 /**
@@ -134,13 +155,16 @@ export async function updateMember(
   change: MemberChange,
 ): Promise<UpdateMemberResult> {
   const admin = supabaseAdmin();
-  const { data: target, error: findError } = await admin
+  const { data: found, error: findError } = await admin
     .from("admin_users")
     .select(MEMBER_COLUMNS)
     .eq("id", id)
     .maybeSingle<DbMember>();
-  if (findError) throw new Error(findError.message);
-  if (!target) return { ok: false, status: 404, error: "Member not found." };
+  // 22P02: the id is not a uuid, so no Member has it.
+  if (findError && findError.code !== "22P02") throw new Error(findError.message);
+  if (!found) return { ok: false, status: 404, error: "Member not found." };
+  // The state the policy judges, and the write is conditioned on.
+  const target = { ...found };
 
   const roles = await listRoles();
   const byId = new Map<string, PolicyRole>(roles.map((r) => [r.id, r]));
@@ -161,13 +185,32 @@ export async function updateMember(
   if (change.roleId !== undefined) patch.role_id = change.roleId;
   if (change.isActive !== undefined) patch.is_active = change.isActive;
 
+  // Only while the row is still what the policy judged: a concurrent change
+  // (another admin promoting them, say) is not silently overwritten.
   const { data: updated, error } = await admin
     .from("admin_users")
     .update(patch)
     .eq("id", id)
+    .eq("role_id", target.role_id)
+    .eq("is_active", target.is_active)
     .select(MEMBER_COLUMNS)
-    .single<DbMember>();
+    .maybeSingle<DbMember>();
   if (error) throw new Error(error.message);
+  if (!updated) return CHANGED_MEANWHILE;
+
+  // Two Owners demoting each other at once both see two Owners. Whoever
+  // commits second finds none left and puts their target back.
+  const ownerId = roles.find((r) => r.key === "owner")?.id;
+  const wasOwner = target.role_id === ownerId && target.is_active;
+  const isOwner = updated.role_id === ownerId && updated.is_active;
+  if (wasOwner && !isOwner && (await countActiveOwners(ownerId)) === 0) {
+    const { error: undoError } = await admin
+      .from("admin_users")
+      .update({ role_id: target.role_id, is_active: target.is_active })
+      .eq("id", id);
+    if (undoError) throw new Error(undoError.message);
+    return { ok: false, status: 409, error: "That would leave no active Owner." };
+  }
 
   await recordAdminAction({
     actor,
@@ -178,7 +221,7 @@ export async function updateMember(
     after: { email: updated.email, role: roleName(updated.role_id), status: memberStatus(updated) },
   });
 
-  const signIns = await lastSignIns();
+  const signIns = await lastSignIns([updated.auth_user_id]);
   return { ok: true, member: toMember(updated, signIns) };
 }
 
@@ -293,7 +336,7 @@ async function invitedTarget(actor: AdminContext, id: string): Promise<{ row: Db
     .select(MEMBER_COLUMNS)
     .eq("id", id)
     .maybeSingle<DbMember>();
-  if (error) throw new Error(error.message);
+  if (error && error.code !== "22P02") throw new Error(error.message); // 22P02: not a uuid → 404
   if (!row) return { ok: false, status: 404, error: "Member not found." };
   if (memberStatus(row) !== "invited") {
     return { ok: false, status: 409, error: `${row.email} has already signed in; deactivate them instead.` };
@@ -382,7 +425,9 @@ export async function revokeInvite(actor: AdminContext, id: string): Promise<{ o
     return signedIn;
   }
 
-  // 3. Drop the parked profiles nothing names; keep any a Result uses.
+  // 3. Drop the parked profiles nothing names; keep any a Result uses, minus
+  //    their Telegram links (those were the invitee's, and a restore would
+  //    otherwise hand them back under the revoker's login).
   const kept: string[] = [];
   for (const p of own) {
     const { count, error: cErr } = await admin
@@ -391,6 +436,8 @@ export async function revokeInvite(actor: AdminContext, id: string): Promise<{ o
       .eq("measured_by_staff_id", p.id);
     if (cErr || count) {
       kept.push(p.name);
+      const { error: lErr } = await admin.from("telegram_operators").delete().eq("staff_profile_id", p.id);
+      if (lErr) throw new Error(lErr.message);
       continue;
     }
     await admin.from("mp_staff").delete().eq("id", p.id);

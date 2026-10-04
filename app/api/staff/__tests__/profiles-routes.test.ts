@@ -158,6 +158,37 @@ describe("who may change a login's profiles (review finding)", () => {
   });
 });
 
+describe("moving a profile to another login", () => {
+  beforeEach(() => signIn(STUDIO));
+
+  it("unbinds its Telegram account and voids a pending code, keeping the link's actions", async () => {
+    h.db.telegram_operators = [
+      {
+        id: "l1",
+        staff_profile_id: "p-jess",
+        actions: ["telegram.shop-review-moderate"],
+        telegram_user_id: 999,
+        telegram_username: "exstaff",
+        linked_at: "2026-09-01T00:00:00Z",
+        link_code_hash: "pending",
+        link_code_expires_at: "2999-01-01T00:00:00Z",
+      },
+    ];
+    expect((await patch("p-jess", { memberId: OTHER })).status).toBe(200);
+    expect(h.db.telegram_operators[0]).toMatchObject({
+      telegram_user_id: null,
+      telegram_username: null,
+      linked_at: null,
+      link_code_hash: null,
+      actions: ["telegram.shop-review-moderate"],
+    });
+    expect(h.db.admin_audit_log.at(-1)).toMatchObject({
+      action: "staff_profile.move",
+      after: expect.objectContaining({ telegramUnlinked: true }),
+    });
+  });
+});
+
 describe("login emails", () => {
   it("are only served to users holders", async () => {
     signIn(OTHER);

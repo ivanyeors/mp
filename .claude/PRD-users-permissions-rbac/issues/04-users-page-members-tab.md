@@ -35,6 +35,8 @@ The new entry point, with the Members tab carrying everything Admin Users does t
 - `/api/admin/users` GET returns `{ members, roles }` (roles with member counts) for every tab; the old `rows` shape is gone with the old page.
 - The invite form stays inline until slice 05, but only lists roles the inviter may assign; invites are audited as `member.invite`.
 - The last-active-Owner rule is covered in `role-policy.test.ts`; through the API the actor is always an active Owner too, so a request only reaches it with stale rows.
+- **Last sign-in is read per Member** (`auth.admin.getUserById`), not from one `listUsers` page: auth.users also holds every customer and partner, so a page would drop the oldest Members (second review).
+- A malformed Member or profile id is a 404, not a 500.
 
 ## Blocked by
 

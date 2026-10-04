@@ -261,8 +261,13 @@ export function TelegramAccessTab({
           {links.map((link) => {
             const { profile, member, role, grants } = contextFor(link.staff_profile_id);
             const telegramLinked = link.telegram_user_id != null;
+            // The server refuses any change to a link that can do something the
+            // actor can't (link-admin.ts), so don't offer one.
+            const beyond = actor.grantsAll ? [] : link.actions.filter((a) => !actor.permissions.has(a));
             const busy = busyId === link.id;
-            const off = !link.is_active || !!profile?.archivedAt || member?.status === "deactivated";
+            const frozen = busy || beyond.length > 0;
+            const off =
+              !link.is_active || !!profile?.archivedAt || member?.status === "deactivated" || member?.status === "invited";
             return (
               <Card key={link.id} className={cn("min-w-0 gap-3 p-4", off && "opacity-70")}>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
@@ -274,6 +279,7 @@ export function TelegramAccessTab({
                     <p className="break-all text-xs text-muted-foreground">
                       {member?.email ?? "—"} · {role?.name ?? "no role"}
                       {member?.status === "deactivated" ? " · login deactivated" : ""}
+                      {member?.status === "invited" ? " · login not accepted yet" : ""}
                       {profile?.archivedAt ? " · profile archived" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -298,6 +304,12 @@ export function TelegramAccessTab({
                   </span>
                 </div>
 
+                {beyond.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    This link can {beyond.map((a) => telegramActionLabel(a).toLowerCase()).join(" and ")}, which your role
+                    doesn&apos;t have. Ask an Owner or Admin to change it.
+                  </p>
+                ) : null}
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-5">
                   {TELEGRAM_ACTIONS.map((a) => {
                     const roleHas = grants.has(a);
@@ -315,8 +327,8 @@ export function TelegramAccessTab({
                         title={why ?? undefined}
                       >
                         <Checkbox
-                          checked={checked && roleHas}
-                          disabled={busy || (!!why && !checked)}
+                          checked={checked}
+                          disabled={frozen || (!!why && !checked)}
                           onCheckedChange={(v) => void setAction(link, a, v === true)}
                         />
                         {telegramActionLabel(a)}
@@ -329,23 +341,23 @@ export function TelegramAccessTab({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => patch(link, { action: "new_link_code" })}>
+                  <Button variant="outline" size="sm" disabled={frozen} onClick={() => patch(link, { action: "new_link_code" })}>
                     New code
                   </Button>
                   {telegramLinked ? (
-                    <Button variant="outline" size="sm" disabled={busy} onClick={() => patch(link, { action: "unlink" })}>
+                    <Button variant="outline" size="sm" disabled={frozen} onClick={() => patch(link, { action: "unlink" })}>
                       Unlink
                     </Button>
                   ) : null}
                   <Button
                     variant={link.is_active ? "outline" : "default"}
                     size="sm"
-                    disabled={busy}
+                    disabled={frozen}
                     onClick={() => patch(link, { is_active: !link.is_active })}
                   >
                     {link.is_active ? "Turn off" : "Turn on"}
                   </Button>
-                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => remove(link)}>
+                  <Button variant="ghost" size="sm" disabled={frozen} onClick={() => remove(link)}>
                     Remove
                   </Button>
                   {busy ? <Loader2 className="h-4 w-4 animate-spin self-center text-muted-foreground" /> : null}

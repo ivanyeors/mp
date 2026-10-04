@@ -23,7 +23,14 @@ export type RoleWriteResult = { ok: true; role: RoleRow } | Refusal;
 
 const ROLE_COLUMNS = "id, key, name, description, is_system, grants_all, permissions";
 
-/** A role key from its name: lowercase words joined by dashes, unique among `taken`. */
+/**
+ * Keys a new role never gets: the seeded roles' keys and the legacy role
+ * names. Until slice 11 drops `admin_users.role`, the database stamps it from
+ * these keys for a rolled-back app, so a custom role must not look like one.
+ */
+const RESERVED_KEYS: ReadonlySet<string> = new Set(["owner", "admin", "manager", "fulfilment", "staff", "viewer"]);
+
+/** A role key from its name: lowercase words joined by dashes, unique among `taken` and the reserved keys. */
 export function roleKeyFor(name: string, taken: ReadonlySet<string>): string {
   const base =
     name
@@ -33,7 +40,7 @@ export function roleKeyFor(name: string, taken: ReadonlySet<string>): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 40) || "role";
   let key = base;
-  for (let n = 2; taken.has(key); n++) key = `${base}-${n}`;
+  for (let n = 2; taken.has(key) || RESERVED_KEYS.has(key); n++) key = `${base}-${n}`;
   return key;
 }
 
@@ -94,9 +101,17 @@ export async function updateRole(
   id: string,
   input: { name?: string; description?: string | null; permissions?: readonly string[] },
 ): Promise<RoleWriteResult> {
+  // Read the version first: if the role changes after this, the conditional
+  // update below misses and nobody's edit is overwritten unseen.
+  const { data: version, error: versionError } = await supabaseAdmin()
+    .from("admin_roles")
+    .select("updated_at")
+    .eq("id", id)
+    .maybeSingle<{ updated_at: string }>();
+  if (versionError) throw new Error(versionError.message);
   const roles = await listRoles();
   const role = roles.find((r) => r.id === id);
-  if (!role) return { ok: false, status: 404, error: "Role not found." };
+  if (!role || !version) return { ok: false, status: 404, error: "Role not found." };
 
   let permissions = role.permissions as Permission[];
   if (input.permissions !== undefined) {
@@ -124,11 +139,15 @@ export async function updateRole(
     .from("admin_roles")
     .update(patch)
     .eq("id", id)
+    .eq("updated_at", version.updated_at)
     .select(ROLE_COLUMNS)
-    .single<Omit<RoleRow, "memberCount">>();
+    .maybeSingle<Omit<RoleRow, "memberCount">>();
   if (error) {
     if (isDuplicate(error.message)) return DUPLICATE_NAME;
     throw new Error(error.message);
+  }
+  if (!data) {
+    return { ok: false, status: 409, error: "Someone else changed this role just now. Reload and try again." };
   }
 
   await recordAdminAction({

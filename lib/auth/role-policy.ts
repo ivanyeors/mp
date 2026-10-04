@@ -142,8 +142,15 @@ export function canEditRole(actor: PolicyActor, role: PolicyRole, next: readonly
 }
 
 /** May the actor delete `role`, which `memberCount` Members (any state) hold? */
+const SEEDED_ROLE_KEYS: ReadonlySet<string> = new Set(["manager", "fulfilment", "viewer"]);
+
 export function canDeleteRole(actor: PolicyActor, role: PolicyRole, memberCount: number): Decision {
   if (role.is_system) return refuse(403, `${role.name} is built in and can't be deleted.`);
+  // Until slice 11 drops admin_users.role, code from before ADR 0023 (an app
+  // rollback) names these by their old keys; deleting one would break it.
+  if (SEEDED_ROLE_KEYS.has(role.key)) {
+    return refuse(409, `${role.name} came with the system and can't be deleted yet. Rename it or change its pages instead.`);
+  }
   const over = subsetRefusal(actor, role, "delete");
   if (over) return over;
   if (memberCount > 0) {

@@ -141,8 +141,65 @@ export type TelegramDenial =
   | "inactive"
   | "profile_archived"
   | "member_inactive"
+  | "member_invited"
   | "role_forbidden"
   | "forbidden";
+
+type LinkAccess =
+  | {
+      ok: true;
+      /** The Staff profile's name: who the card says acted. */
+      name: string;
+      /** What this person can do right now: the link's actions their role also grants. */
+      actions: TelegramAction[];
+      roleName: string;
+      /** Everything the login's role grants. */
+      granted: ReadonlySet<string>;
+    }
+  | { ok: false; reason: TelegramDenial; roleName?: string };
+
+/**
+ * What a link can do right now. Link → Staff profile → Member → role: nothing
+ * unless the link is on, the profile is not archived and the Member is active
+ * and has signed in (an Invited login has not accepted yet); then the link's
+ * actions the role grants. Any failed read refuses. The database stamps the
+ * legacy `role` column with the same rule (20261004130000_telegram_links.sql).
+ */
+async function linkAccess(link: TelegramLinkRow): Promise<LinkAccess> {
+  if (!link.is_active) return { ok: false, reason: "inactive" };
+  const admin = supabaseAdmin();
+
+  const { data: profile, error: profileError } = await admin
+    .from("mp_staff")
+    .select("id,name,archived_at,admin_user_id")
+    .eq("id", link.staff_profile_id)
+    .maybeSingle();
+  if (profileError || !profile) return { ok: false, reason: "not_linked" };
+  if (profile.archived_at) return { ok: false, reason: "profile_archived" };
+
+  const { data: member, error: memberError } = await admin
+    .from("admin_users")
+    .select("id,is_active,auth_user_id,role_id")
+    .eq("id", profile.admin_user_id)
+    .maybeSingle();
+  if (memberError || !member || !member.is_active) return { ok: false, reason: "member_inactive" };
+  if (!member.auth_user_id) return { ok: false, reason: "member_invited" };
+
+  const { data: role, error: roleError } = await admin
+    .from("admin_roles")
+    .select("id,name,grants_all,permissions")
+    .eq("id", member.role_id)
+    .maybeSingle();
+  if (roleError || !role) return { ok: false, reason: "role_forbidden" };
+  const granted = permissionsForRoleRow(role as { grants_all: boolean; permissions: string[] | null });
+  return {
+    ok: true,
+    name: profile.name as string,
+    actions: link.actions.filter((a) => granted.has(a)),
+    roleName: role.name as string,
+    granted,
+  };
+}
 
 export type TelegramAuthResult =
   | {
@@ -156,60 +213,38 @@ export type TelegramAuthResult =
   | { ok: false; reason: TelegramDenial; roleName?: string };
 
 /**
- * May this Telegram user take `action`? Link → Staff profile → Member → role:
- * allowed only when the link is on, the profile is not archived, the Member is
- * active, the role grants the action (or grants everything) AND the link lists
- * it. Any failed read refuses — never falls through to allowed.
+ * May this Telegram user take `action`? Allowed only when the link can do
+ * anything at all (see `linkAccess`), the role grants the action (or grants
+ * everything) AND the link lists it. Never falls through to allowed.
  */
 export async function authorizeTelegramAction(
   telegramUserId: number,
   action: TelegramAction,
 ): Promise<TelegramAuthResult> {
-  const admin = supabaseAdmin();
-  const { data: linkData, error: linkError } = await admin
+  const { data: linkData, error: linkError } = await supabaseAdmin()
     .from("telegram_operators")
     .select(COLUMNS)
     .eq("telegram_user_id", telegramUserId)
     .maybeSingle();
   if (linkError || !linkData) return { ok: false, reason: "not_linked" };
   const link = toRow(linkData);
-  if (!link.is_active) return { ok: false, reason: "inactive" };
 
-  const { data: profile, error: profileError } = await admin
-    .from("mp_staff")
-    .select("id,name,archived_at,admin_user_id")
-    .eq("id", link.staff_profile_id)
-    .maybeSingle();
-  if (profileError || !profile) return { ok: false, reason: "not_linked" };
-  if (profile.archived_at) return { ok: false, reason: "profile_archived" };
-
-  const { data: member, error: memberError } = await admin
-    .from("admin_users")
-    .select("id,is_active,role_id")
-    .eq("id", profile.admin_user_id)
-    .maybeSingle();
-  if (memberError || !member || !member.is_active) return { ok: false, reason: "member_inactive" };
-
-  const { data: role, error: roleError } = await admin
-    .from("admin_roles")
-    .select("id,name,grants_all,permissions")
-    .eq("id", member.role_id)
-    .maybeSingle();
-  if (roleError || !role) return { ok: false, reason: "role_forbidden" };
-  const granted = permissionsForRoleRow(role as { grants_all: boolean; permissions: string[] | null });
-  if (!granted.has(action)) return { ok: false, reason: "role_forbidden", roleName: role.name as string };
+  const access = await linkAccess(link);
+  if (!access.ok) return access;
+  if (!access.granted.has(action)) return { ok: false, reason: "role_forbidden", roleName: access.roleName };
   if (!link.actions.includes(action)) return { ok: false, reason: "forbidden" };
-
-  return {
-    ok: true,
-    link,
-    name: profile.name as string,
-    actions: link.actions.filter((a) => granted.has(a)),
-  };
+  return { ok: true, link, name: access.name, actions: access.actions };
 }
 
 export type RedeemResult =
-  | { ok: true; link: TelegramLinkRow; name: string }
+  | {
+      ok: true;
+      link: TelegramLinkRow;
+      name: string;
+      /** What the person can do now; empty with `denial` when the link is bound but can do nothing yet. */
+      actions: TelegramAction[];
+      denial?: TelegramDenial;
+    }
   | { ok: false; reason: "invalid" | "expired" | "inactive" | "taken"; takenBy?: string };
 
 async function profileName(staffProfileId: string): Promise<string | null> {
@@ -269,5 +304,9 @@ export async function redeemTelegramLinkCode(
     .maybeSingle();
   if (error || !bound) return { ok: false, reason: "invalid" };
   const boundRow = toRow(bound);
-  return { ok: true, link: boundRow, name: (await profileName(boundRow.staff_profile_id)) ?? "you" };
+  const name = (await profileName(boundRow.staff_profile_id)) ?? "you";
+  const access = await linkAccess(boundRow);
+  return access.ok
+    ? { ok: true, link: boundRow, name, actions: access.actions }
+    : { ok: true, link: boundRow, name, actions: [], denial: access.reason };
 }

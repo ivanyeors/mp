@@ -45,8 +45,10 @@ comment on table admin_roles is
 -- Seed: the two built-in roles, then the old code matrix kept as editable
 -- custom roles (expanded to the per-page keys of slice 02). The old `staff`
 -- role is renamed Fulfilment because Staff is a glossary term for any
--- signed-in Member. Seeds never overwrite a role someone has since edited.
-insert into admin_roles (key, name, description, is_system, grants_all, permissions) values
+-- signed-in Member. Seeds run only into an empty table, so a re-run never
+-- overwrites, renames into, or brings back a role someone has since changed.
+insert into admin_roles (key, name, description, is_system, grants_all, permissions)
+select * from (values
   ('owner', 'Owner', 'Every page, and the only role that can grant or remove Owner.', true, true, '{}'),
   ('admin', 'Admin', 'Every page, including ones added later.', true, true, '{}'),
   ('manager', 'Manager', 'Day-to-day commerce and the landing site. No users, API configs, audit log or Telegram.', false, false, array[
@@ -63,7 +65,8 @@ insert into admin_roles (key, name, description, is_system, grants_all, permissi
   ('viewer', 'Viewer', 'Orders, returns and analytics.', false, false, array[
     'orders', 'returns', 'analytics'
   ])
-on conflict (key) do nothing;
+) as seed (key, name, description, is_system, grants_all, permissions)
+where not exists (select 1 from admin_roles);
 
 alter table admin_users
   add column if not exists role_id uuid references admin_roles(id) on delete restrict;
@@ -85,8 +88,10 @@ alter table admin_users alter column role set default 'admin';
 -- Keep role and role_id in step while both exist. A write that names only the
 -- legacy role (code from before this migration) resolves the role by key, with
 -- the old `staff` name mapping to Fulfilment; a write that names role_id
--- stamps the legacy column with that role's key (`staff` for Fulfilment, so a
--- rolled-back app still recognises it).
+-- stamps the legacy column with a name the old code knows: the seeded role's
+-- key (`staff` for Fulfilment), or `viewer` for a custom role, so a
+-- rolled-back app gives a custom-role Member the least access rather than
+-- none. lib/auth/roles.ts never gives a new role a seeded or legacy key.
 create or replace function admin_users_sync_role()
 returns trigger
 language plpgsql
@@ -104,7 +109,10 @@ begin
       raise exception 'admin_users.role % names no admin_roles row', new.role;
     end if;
   end if;
-  select case key when 'fulfilment' then 'staff' else key end into new.role
+  select case
+    when key = 'fulfilment' then 'staff'
+    when key in ('owner', 'admin', 'manager', 'viewer') then key
+    else 'viewer' end into new.role
   from admin_roles
   where id = new.role_id;
   return new;

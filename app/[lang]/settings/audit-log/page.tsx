@@ -4,7 +4,7 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { withLocale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils";
-import { ACCESS_ENTITY_TYPES, permissionDiff } from "@/lib/auth/audit-diff";
+import { ACCESS_ENTITY_TYPES, entityTypesFor, permissionDiff } from "@/lib/auth/audit-diff";
 
 export const runtime = "nodejs";
 
@@ -46,12 +46,12 @@ export default async function AuditLogPage({
   // value is ignored rather than passed to the query.
   const raw = (await searchParams).entity;
   const wanted = Array.isArray(raw) ? raw[0] : raw;
-  const entity =
-    ACCESS_ENTITY_TYPES.find((e) => e.type === wanted)?.type ?? null;
+  const entityTypes = entityTypesFor(wanted);
+  const entity = entityTypes?.[0] ?? null;
 
   const admin = supabaseAdmin();
   let query = admin.from("admin_audit_log").select("*");
-  if (entity) query = query.eq("entity_type", entity);
+  if (entityTypes) query = query.in("entity_type", entityTypes);
   const { data } = await query
     .order("created_at", { ascending: false })
     .limit(200);

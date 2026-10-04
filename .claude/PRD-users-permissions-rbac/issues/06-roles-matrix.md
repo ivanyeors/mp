@@ -34,6 +34,7 @@ The "page to set all permissions for page access".
 - **"Start from"** copies another role's pages (a built-in role copies every current page); the server still applies the subset rule.
 - **Member counts** on column headers are recomputed from the Members list on the client, so a role change on Members updates them without a reload.
 - Delete asks for a browser confirm and is refused while Members hold the role (409, also on an FK race).
+- **The Roles tab stays mounted** (like Telegram), so unsaved column edits survive a look at the Members tab.
 
 ## Blocked by
 

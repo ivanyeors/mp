@@ -35,6 +35,7 @@ export function ProfilesTab({
   setProfiles,
   linkedProfileIds,
   focusMemberId,
+  onMoved,
 }: {
   members: MemberRow[];
   roles: RoleRow[];
@@ -44,6 +45,8 @@ export function ProfilesTab({
   linkedProfileIds: ReadonlySet<string>;
   /** Scroll to and highlight one login's group (from the Members tab). */
   focusMemberId?: string | null;
+  /** A move unbinds the profile's Telegram account: the Telegram tab reloads. */
+  onMoved?: () => void;
 }) {
   const [showArchived, setShowArchived] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -155,9 +158,13 @@ export function ProfilesTab({
                           </Button>
                           <Select
                             value=""
-                            onValueChange={(memberId) =>
-                              void run(p.id, `/api/staff/${p.id}`, "PATCH", { memberId }, `${p.name} moved`)
-                            }
+                            onValueChange={async (memberId) => {
+                              const linked = linkedProfileIds.has(p.id);
+                              const done = linked
+                                ? `${p.name} moved. Their Telegram account was unlinked: issue a new code for whoever works it now.`
+                                : `${p.name} moved`;
+                              if ((await run(p.id, `/api/staff/${p.id}`, "PATCH", { memberId }, done)) && linked) onMoved?.();
+                            }}
                           >
                             <SelectTrigger className="h-8 w-36" disabled={busyId === p.id}>
                               <SelectValue placeholder="Move to…" />

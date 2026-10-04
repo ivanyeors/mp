@@ -9,5 +9,8 @@
 alter table admin_audit_log
   add column if not exists actor_profile_id uuid references mp_staff(id) on delete set null;
 
+-- Deleting a profile (a revoked invite) nulls its references: keep that a lookup.
+create index if not exists idx_admin_audit_log_actor_profile_id on admin_audit_log (actor_profile_id);
+
 comment on column admin_audit_log.actor_profile_id is
   'The Staff profile the actor was working as (mp_working_as cookie, re-validated against the login). Null when not chosen.';

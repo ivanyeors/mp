@@ -7,13 +7,23 @@ import { isPermission, permissionEntry } from "@/lib/auth/permissions";
  * − Orders" instead of two JSON arrays. Unknown keys show as the raw key.
  */
 
-/** The access entity types Users & permissions writes, in filter-chip order. */
+/**
+ * The access entity types Users & permissions writes, in filter-chip order.
+ * `also` are the names the same changes were logged under before ADR 0023, so
+ * a chip shows the whole history.
+ */
 export const ACCESS_ENTITY_TYPES = [
-  { type: "member", label: "Members" },
-  { type: "role", label: "Roles" },
-  { type: "staff_profile", label: "Staff profiles" },
-  { type: "telegram_link", label: "Telegram links" },
+  { type: "member", label: "Members", also: ["admin_user"] },
+  { type: "role", label: "Roles", also: [] },
+  { type: "staff_profile", label: "Staff profiles", also: [] },
+  { type: "telegram_link", label: "Telegram links", also: ["telegram_operator"] },
 ] as const;
+
+/** Every entity_type a chip covers; null for an unknown chip (no filter). */
+export function entityTypesFor(chip: string | null | undefined): string[] | null {
+  const entry = ACCESS_ENTITY_TYPES.find((e) => e.type === chip);
+  return entry ? [entry.type, ...entry.also] : null;
+}
 
 const KEY_FIELDS = ["permissions", "actions"] as const;
 

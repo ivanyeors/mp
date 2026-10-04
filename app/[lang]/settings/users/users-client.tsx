@@ -118,17 +118,23 @@ export function UsersClient({
   const profiles = useProfiles(initialProfiles);
   const [focusMemberId, setFocusMemberId] = useState<string | null>(null);
   const [links, setLinks] = useState<TelegramLinkRow[]>(initialTelegram ?? []);
+  const reloadLinks = useCallback(
+    () =>
+      fetch("/api/staff/telegram-operators")
+        .then(async (res) => {
+          const payload = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(payload?.error ?? "Failed to load Telegram access");
+          setLinks((payload?.rows ?? []) as TelegramLinkRow[]);
+        })
+        .catch((e: unknown) => {
+          toast.error(e instanceof Error ? e.message : "Failed to load Telegram access");
+        }),
+    [],
+  );
   // A failed server read leaves the list undefined: fetch it here and say so.
   useEffect(() => {
-    if (initialTelegram) return;
-    fetch("/api/staff/telegram-operators")
-      .then(async (res) => {
-        const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to load Telegram access");
-        setLinks((payload?.rows ?? []) as TelegramLinkRow[]);
-      })
-      .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Failed to load Telegram access"));
-  }, [initialTelegram]);
+    if (!initialTelegram) void reloadLinks();
+  }, [initialTelegram, reloadLinks]);
   const linkedProfileIds = useMemo(() => new Set(links.map((l) => l.staff_profile_id)), [links]);
   const profileCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -170,7 +176,8 @@ export function UsersClient({
             roles={directory.roles}
             loading={directory.loading}
             reload={async () => {
-              await Promise.all([directory.reload(), profiles.reload()]);
+              // A revoke deletes profiles, and their Telegram links with them.
+              await Promise.all([directory.reload(), profiles.reload(), reloadLinks()]);
             }}
             profileCounts={profileCounts}
             onShowProfiles={(memberId) => {
@@ -190,9 +197,11 @@ export function UsersClient({
             setProfiles={profiles.setRows}
             linkedProfileIds={linkedProfileIds}
             focusMemberId={focusMemberId}
+            onMoved={() => void reloadLinks()}
           />
         </TabsContent>
-        <TabsContent value="roles" className="pt-4">
+        {/* Kept mounted so unsaved matrix edits survive a look at another tab. */}
+        <TabsContent value="roles" forceMount className="pt-4 data-[state=inactive]:hidden">
           <RolesTab
             actor={actor}
             roles={directory.roles}

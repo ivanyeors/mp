@@ -84,7 +84,7 @@ const isUnique = (message: string) => /duplicate key|unique/i.test(message);
 
 async function loadProfile(id: string): Promise<StaffProfile | null> {
   const { data, error } = await supabaseAdmin().from("mp_staff").select(PROFILE_COLUMNS).eq("id", id).maybeSingle<DbProfile>();
-  if (error) throw new Error(error.message);
+  if (error && error.code !== "22P02") throw new Error(error.message); // 22P02: not a uuid → not found
   return data ? toProfile(data) : null;
 }
 
@@ -217,15 +217,46 @@ export async function updateStaffProfile(
     throw new Error(error.message);
   }
   const after = toProfile(data);
+  // The person bound to this profile's Telegram belonged to the old login (an
+  // offboarded Member, say): they must not act under the new one. The link and
+  // its actions stay; whoever works it now gets a fresh code.
+  const telegramUnlinked = change.kind === "move" && (await unbindTelegram(id));
   await recordAdminAction({
     actor,
     action: `staff_profile.${change.kind}`,
     entityType: "staff_profile",
     entityId: id,
     before: snapshot(before),
-    after: snapshot(after),
+    after: { ...snapshot(after), ...(telegramUnlinked ? { telegramUnlinked: true } : {}) },
   });
   return { ok: true, profile: after };
+}
+
+/**
+ * Clear the Telegram account bound to a profile's link, and any pending code
+ * (it was handed to someone under the old login). True when anything was cleared.
+ */
+async function unbindTelegram(profileId: string): Promise<boolean> {
+  const admin = supabaseAdmin();
+  const { data: link, error: readError } = await admin
+    .from("telegram_operators")
+    .select("id, telegram_user_id, link_code_hash")
+    .eq("staff_profile_id", profileId)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!link || (link.telegram_user_id == null && link.link_code_hash == null)) return false;
+  const { error } = await admin
+    .from("telegram_operators")
+    .update({
+      telegram_user_id: null,
+      telegram_username: null,
+      linked_at: null,
+      link_code_hash: null,
+      link_code_expires_at: null,
+    })
+    .eq("id", link.id);
+  if (error) throw new Error(error.message);
+  return true;
 }
 
 /** Telegram actions on a profile's link that the actor does not hold (none for Owner / Admin). */

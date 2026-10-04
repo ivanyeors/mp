@@ -192,6 +192,22 @@ describe("Telegram access API", () => {
       const res = await item.PATCH(json({ action: "new_link_code" }, "PATCH"), params("5b5b5b5b-1111-4222-8333-444455556666"));
       expect(res.status).toBe(403);
     });
+
+    it("counts an action the login's role doesn't grant today: it returns when the role is widened", async () => {
+      h.tables.telegram_operators.push({
+        id: "5b5b5b5b-1111-4222-8333-444455556666",
+        staff_profile_id: SHOPPER,
+        actions: [MODERATE, REPLY],
+        is_active: true,
+        telegram_user_id: 222,
+      });
+      h.requireAdminContext.mockResolvedValue(peopleManager);
+      for (const body of [{ action: "new_link_code" }, { action: "unlink" }]) {
+        const res = await item.PATCH(json(body, "PATCH"), params("5b5b5b5b-1111-4222-8333-444455556666"));
+        expect(res.status, JSON.stringify(body)).toBe(403);
+      }
+      expect(h.tables.telegram_operators[1]).toMatchObject({ telegram_user_id: 222 });
+    });
   });
 
   it("never lists link code hashes", async () => {

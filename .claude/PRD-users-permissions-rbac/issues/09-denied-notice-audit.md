@@ -24,6 +24,7 @@ User stories covered: 23, 36
 - **The sidebar re-reads `/api/admin/context` on each client navigation after the first.** The server layout is not re-run on a soft navigation, so without this a role change would only reach the sidebar on a full reload. If the page being viewed is no longer held, it goes to the same `?denied=` notice the page guards use.
 - **Audit Log diff** (`lib/auth/audit-diff.ts`) renders `permissions` (roles) and `actions` (Telegram links) arrays as "+ added / − removed" page labels above the raw JSON. Filter chips are links (`?entity=`), with unknown values ignored.
 - Write-route audit tests were added with each slice (04: `member.update`, `member.invite`; later slices add their own).
+- **Filter chips include the pre-ADR names** (`admin_user` under Members, `telegram_operator` under Telegram links), so history from before the deploy still shows.
 
 ## Blocked by
 

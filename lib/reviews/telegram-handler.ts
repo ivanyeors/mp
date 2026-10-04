@@ -100,12 +100,28 @@ function deniedMessage(
       return "Your staff profile is archived, so your Telegram access is off. Ask an admin if this is a mistake.";
     case "member_inactive":
       return "Your Admin Panel login is deactivated, so your Telegram access is off. Ask an admin if this is a mistake.";
+    case "member_invited":
+      return "Your Admin Panel login hasn't been accepted yet. Sign in to the Admin Panel once with the invited email, then try again.";
     case "role_forbidden":
       return `Your login's role${roleName ? ` (${roleName})` : ""} doesn't include "${what}". Ask an Owner to turn it on under Users & permissions → Roles.`;
     case "forbidden":
       return `Your Telegram access doesn't include "${what}". Ask an admin to turn it on under Users & permissions → Telegram.`;
     case "not_linked":
       return `You're not set up for review cards yet. Ask an admin to link your staff profile under Settings → Users & permissions → Telegram, then send /link with your code. (Your Telegram ID: ${user.id})`;
+  }
+}
+
+/** Why a freshly linked account can't act yet (the link itself is bound). */
+function linkedButOff(reason: TelegramDenial): string {
+  switch (reason) {
+    case "profile_archived":
+      return "Your staff profile is archived. Ask an admin if this is a mistake.";
+    case "member_inactive":
+      return "Your Admin Panel login is deactivated. Ask an admin if this is a mistake.";
+    case "member_invited":
+      return "Sign in to the Admin Panel once with the invited email first.";
+    default:
+      return "Ask an admin to check your access under Users & permissions → Telegram.";
   }
 }
 
@@ -267,9 +283,17 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
 
   const result = await redeemTelegramLinkCode(code, { id: from.id, username: from.username ?? null });
   if (result.ok) {
-    await reply(
-      `✅ Linked. You're set up as ${result.name} (${describeActions(result.link.actions)}) and can act on review cards in the mpillow group.`,
-    );
+    if (result.denial) {
+      await reply(`✅ Linked as ${result.name}, but you can't act on review cards yet. ${linkedButOff(result.denial)}`);
+    } else if (result.actions.length === 0) {
+      await reply(
+        `✅ Linked as ${result.name}, but your access doesn't include any review actions yet. Ask an admin to turn them on under Users & permissions.`,
+      );
+    } else {
+      await reply(
+        `✅ Linked. You're set up as ${result.name} (${describeActions(result.actions)}) and can act on review cards in the mpillow group.`,
+      );
+    }
     return;
   }
   const messages: Record<typeof result.reason, string> = {

@@ -66,8 +66,9 @@ async function profileContext(profileId: string): Promise<ProfileContext | null>
 /**
  * May the actor touch this link at all? Its login must be one they may manage
  * (login-guard), and — unless they are Owner or Admin — they must hold every
- * action the link can use today, so a new code, a switch-on or a relink never
- * hands them access they lack.
+ * action the link lists, so a new code, a switch-on or a relink never hands
+ * them access they lack. That includes actions the login's role does not
+ * grant today: they come back the moment someone ticks them on the role.
  */
 async function manageRefusal(
   actor: AdminContext,
@@ -77,7 +78,7 @@ async function manageRefusal(
   const login = await loginRefusal(actor, profile.memberId);
   if (login) return login;
   if (!link || actor.grantsAll) return null;
-  const beyond = link.actions.filter((a) => profile.roleGrants.has(a) && !actor.permissions.has(a));
+  const beyond = link.actions.filter((a) => !actor.permissions.has(a));
   if (beyond.length) {
     return {
       ok: false,

@@ -88,6 +88,19 @@ describe("POST /api/admin/roles", () => {
     });
   });
 
+  it("never gives a new role a seeded or legacy key (a rolled-back app reads those)", async () => {
+    signIn("owner1");
+    for (const [name, key] of [
+      ["Staff", "staff-2"],
+      ["Viewer!", "viewer-2"],
+      ["Fulfilment", "fulfilment-2"],
+    ]) {
+      const res = await POST(json("POST", { name, permissions: ["orders"] }));
+      expect(res.status, name).toBe(201);
+      expect((await res.json()).role.key).toBe(key);
+    }
+  });
+
   it("refuses unknown keys, a taken name, and pages beyond a narrower creator", async () => {
     signIn("owner1");
     expect((await POST(json("POST", { name: "X", permissions: ["nope"] }))).status).toBe(400);
@@ -120,7 +133,36 @@ describe("PATCH /api/admin/roles/[id]", () => {
   });
 });
 
+describe("a concurrent role edit between the check and the write (review finding)", () => {
+  it("is not overwritten: 409", async () => {
+    const roles = h.db.admin_roles;
+    const orders = roles.find((r) => r.id === "r-orders")!;
+    orders.updated_at = "2026-10-01T00:00:00Z";
+    let reads = 0;
+    Object.defineProperty(h.db, "admin_roles", {
+      configurable: true,
+      get: () => {
+        // Read 4 is after the policy check and before the write: an Owner adds Media then.
+        if (++reads === 4) Object.assign(orders, { permissions: ["orders", "media"], updated_at: "2026-10-04T00:00:00Z" });
+        return roles;
+      },
+    });
+    signIn("people1");
+    const res = await PATCH(json("PATCH", { permissions: ["orders", "faq"] }), ctx("r-orders"));
+    expect(res.status).toBe(409);
+    expect(orders.permissions).toEqual(["orders", "media"]);
+  });
+});
+
 describe("DELETE /api/admin/roles/[id]", () => {
+  it("keeps the seeded roles until slice 11 (the legacy column names them)", async () => {
+    h.db.admin_roles.push(role("r-viewer", "viewer", ["orders"]));
+    signIn("owner1");
+    const res = await DELETE(json("DELETE"), ctx("r-viewer"));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/can't be deleted yet/);
+  });
+
   it("refuses a role with Members (409 with the count) and a built-in role", async () => {
     signIn("owner1");
     const res = await DELETE(json("DELETE"), ctx("r-orders"));

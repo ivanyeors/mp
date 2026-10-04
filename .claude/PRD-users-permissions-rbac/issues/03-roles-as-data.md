@@ -46,6 +46,9 @@ Move the role → permission matrix from code into `admin_roles` and make every 
 - **An unbound, deactivated Member row is no longer bound on sign-in** (it was bound and then refused).
 - **Migration check:** `scripts/check-rbac-migrations.sh` runs the migrations twice against a throwaway local Postgres seeded like production (`supabase/tests/rbac/fixture.sql`) and runs `assert-03.sql`.
 - The Admin Users page lists roles from `admin_roles` and sends `role_id`; the last-Owner check reads the Owner role id. Slice 04 replaces this page.
+- **Seeds run only into an empty `admin_roles`**, so a re-run never brings back or collides with a seed someone renamed or deleted (second review).
+- **The legacy `role` column reads `viewer` for a custom role**, so a rolled-back app gives that Member the least access rather than none. New roles never get a seeded or legacy key (`owner`, `admin`, `manager`, `fulfilment`, `staff`, `viewer` → `-2`), and the three seeded custom roles (Manager, Fulfilment, Viewer) can't be deleted until slice 11: the old code names them.
+- **Member and role writes are conditional on what the policy judged** (`role_id`/`is_active` for a Member, `updated_at` for a role): a concurrent change gives 409, not a silent overwrite. Two Owners removing each other at once: whoever commits second finds no Owner left and is put back (409).
 
 ## Blocked by
 

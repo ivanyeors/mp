@@ -1986,9 +1986,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/audit-log/page.tsx": {
-    "mtime": 1791114230.278352,
-    "seen": 1791114507.8014588,
-    "ast_hash": "4ca03f7ab49f179ca2e7fd375e1080e7",
+    "mtime": 1791118983.239603,
+    "seen": 1791119237.148766,
+    "ast_hash": "ee7bf0d26976fb22298c454881f49c6f",
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/[id]/page.tsx": {
@@ -3018,9 +3018,9 @@
     "semantic_hash": ""
   },
   "app/api/site-settings/route.ts": {
-    "mtime": 1791105376.1510143,
-    "seen": 1791105450.8546202,
-    "ast_hash": "c26313ae74972d747ce78c9a630f6fdb",
+    "mtime": 1791118328.157447,
+    "seen": 1791119237.149278,
+    "ast_hash": "ff17ca849b23109e8e7d9905b1b3c4df",
     "semantic_hash": ""
   },
   "app/api/staff/route.ts": {
@@ -9702,9 +9702,9 @@
     "semantic_hash": ""
   },
   "lib/staff/admin.ts": {
-    "mtime": 1791115100.8940964,
-    "seen": 1791115347.1088095,
-    "ast_hash": "2afa746b64adaf3f4d4c5cf58d5049f8",
+    "mtime": 1791119003.0160046,
+    "seen": 1791119237.1511524,
+    "ast_hash": "92de4e6a6d8d70d2acc88c5791d69300",
     "semantic_hash": ""
   },
   "scripts/bundle-budget.json": {
@@ -14010,9 +14010,9 @@
     "semantic_hash": ""
   },
   "app/api/staff/telegram-operators/__tests__/route.test.ts": {
-    "mtime": 1791115165.2651396,
-    "seen": 1791115347.1068094,
-    "ast_hash": "ddb8874eac63f7916a171efb9a1a24cd",
+    "mtime": 1791118702.610709,
+    "seen": 1791119237.1492887,
+    "ast_hash": "8ef875c5f8b535aac28b7e5aa555695e",
     "semantic_hash": ""
   },
   "app/api/staff/telegram-operators/route.ts": {
@@ -14088,9 +14088,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/telegram-handler.test.ts": {
-    "mtime": 1791113751.766259,
-    "seen": 1791114018.4039826,
-    "ast_hash": "b1c0ec4d78d2cd2077d68bab2417baca",
+    "mtime": 1791118677.2031465,
+    "seen": 1791119237.1507285,
+    "ast_hash": "abc9c38293a102898e3cf053237b3c0f",
     "semantic_hash": ""
   },
   "lib/reviews/cards.ts": {
@@ -14148,9 +14148,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/telegram-handler.ts": {
-    "mtime": 1791113558.7095618,
-    "seen": 1791114018.404003,
-    "ast_hash": "70cdf725e57479cb2205e71c44dc8d9d",
+    "mtime": 1791118625.7323098,
+    "seen": 1791119237.150745,
+    "ast_hash": "65133ff24427d88df6a061072922dded",
     "semantic_hash": ""
   },
   "lib/telegram/__tests__/roles.test.ts": {
@@ -14172,9 +14172,9 @@
     "semantic_hash": ""
   },
   "lib/telegram/operators.ts": {
-    "mtime": 1791113558.708899,
-    "seen": 1791114018.4043853,
-    "ast_hash": "47b316ee3607951cf535a920163bfc32",
+    "mtime": 1791118649.8952236,
+    "seen": 1791119237.1512032,
+    "ast_hash": "5dcc85fc931bc981a4013789c5a5bb35",
     "semantic_hash": ""
   },
   "lib/telegram/roles.ts": {
@@ -14910,21 +14910,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/02-permission-catalog-split.md": {
-    "mtime": 1791105401.8046756,
-    "seen": 1791105450.8576136,
-    "ast_hash": "8ae8485916b9be977de69451c97a6f63",
+    "mtime": 1791119050.881217,
+    "seen": 1791119237.152107,
+    "ast_hash": "a8c33397904982f9befcda780a9a2c7a",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/03-roles-as-data.md": {
-    "mtime": 1791111007.5907104,
-    "seen": 1791111050.5328538,
-    "ast_hash": "cd6393cb8e8e7f58327054e8ba23df9b",
+    "mtime": 1791119041.0854812,
+    "seen": 1791119237.152109,
+    "ast_hash": "d6585b0e361f161a83b5e4cbb6456c8e",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/04-users-page-members-tab.md": {
-    "mtime": 1791111624.486224,
-    "seen": 1791111716.7813058,
-    "ast_hash": "235df26673a0d455a55b405ff7ccc031",
+    "mtime": 1791119047.449805,
+    "seen": 1791119237.1521103,
+    "ast_hash": "3a7f86c8d16f20133aa1ac0435f4afff",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/05-invites.md": {
@@ -14934,9 +14934,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/06-roles-matrix.md": {
-    "mtime": 1791112347.9032216,
-    "seen": 1791112441.1754768,
-    "ast_hash": "73724951c6053356555e991437e1807b",
+    "mtime": 1791119047.45036,
+    "seen": 1791119237.1521132,
+    "ast_hash": "fd5cadd335eb706dd35a9dc6cdf53457",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/07-staff-profiles.md": {
@@ -14946,15 +14946,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/08-telegram-rbac.md": {
-    "mtime": 1791115300.3391247,
-    "seen": 1791115347.1097627,
-    "ast_hash": "69d3bc0080349ac9e97c80e07098a5ee",
+    "mtime": 1791119041.0859787,
+    "seen": 1791119237.152116,
+    "ast_hash": "2e2517097a5d54bba278bfdc5c469029",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/09-denied-notice-audit.md": {
-    "mtime": 1791112023.327764,
-    "seen": 1791112067.536242,
-    "ast_hash": "dea0f0138864f5ff9e65053060d2b79b",
+    "mtime": 1791119047.4507678,
+    "seen": 1791119237.1521173,
+    "ast_hash": "55e9c1293c9e671fffd932daee14952f",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/10-working-as-profile.md": {
@@ -14964,9 +14964,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/11-contract-legacy.md": {
-    "mtime": 1791104393.6273718,
-    "seen": 1791104446.7640498,
-    "ast_hash": "3bbf7eed893a41ba7ebadc9c237b17d8",
+    "mtime": 1791119041.086324,
+    "seen": 1791119237.1521199,
+    "ast_hash": "880f6f19baa606743e9a71828d92538b",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/12-staging-qa-signoff.md": {
@@ -15006,15 +15006,15 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261004100000_admin_roles.sql": {
-    "mtime": 1791110617.8672786,
-    "seen": 1791111050.5322905,
-    "ast_hash": "14279a098c0d0f274c4c920a86adbd59",
+    "mtime": 1791118505.5630927,
+    "seen": 1791119237.1516073,
+    "ast_hash": "f3f2f4243249ebae43193d7f06042956",
     "semantic_hash": ""
   },
   "supabase/tests/rbac/assert-03.sql": {
-    "mtime": 1791110611.440273,
-    "seen": 1791111050.5322917,
-    "ast_hash": "1545976ce7d862dbf321400945e0aab3",
+    "mtime": 1791118556.1153216,
+    "seen": 1791119237.151617,
+    "ast_hash": "acb7b046e36814d623b9035bbf0dd805",
     "semantic_hash": ""
   },
   "supabase/tests/rbac/fixture.sql": {
@@ -15036,9 +15036,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/profiles-tab.tsx": {
-    "mtime": 1791112631.2662258,
-    "seen": 1791112891.267484,
-    "ast_hash": "36ec76aa5d75a222da86e12154e0f062",
+    "mtime": 1791118916.3212392,
+    "seen": 1791119237.148954,
+    "ast_hash": "20506b1c2660fa827a29242a142c79b2",
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/roles-tab.tsx": {
@@ -15048,21 +15048,21 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/telegram-tab.tsx": {
-    "mtime": 1791113658.7302022,
-    "seen": 1791114018.4021096,
-    "ast_hash": "53e0fd5913fe8fa32d0ff1b1c8ae81f2",
+    "mtime": 1791118892.1077054,
+    "seen": 1791119237.1489575,
+    "ast_hash": "3e2657f4dbeb1bc76e8351c013db21ab",
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/users-client.tsx": {
-    "mtime": 1791113684.0200257,
-    "seen": 1791114018.402111,
-    "ast_hash": "27f4e3043141fa799e11aff2b404b71e",
+    "mtime": 1791118911.3914425,
+    "seen": 1791119237.1489594,
+    "ast_hash": "9c3a87073269bee4cc568e524a088e80",
     "semantic_hash": ""
   },
   "app/api/admin/users/__tests__/members-routes.test.ts": {
-    "mtime": 1791115151.5196157,
-    "seen": 1791115347.1065018,
-    "ast_hash": "9d258d3253762951c173cc068b8ea371",
+    "mtime": 1791118800.8285275,
+    "seen": 1791119237.1490266,
+    "ast_hash": "954e6ba91d4ecb584fef1d69340f1a38",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/role-policy.test.ts": {
@@ -15072,15 +15072,15 @@
     "semantic_hash": ""
   },
   "lib/auth/members.ts": {
-    "mtime": 1791115071.2131464,
-    "seen": 1791115347.1077583,
-    "ast_hash": "4b2c02f4ba7a52155ee72a3c97d8a697",
+    "mtime": 1791119003.0155027,
+    "seen": 1791119237.1501362,
+    "ast_hash": "a9e959cb3e7f08331bb2dc597c0abd25",
     "semantic_hash": ""
   },
   "lib/auth/role-policy.ts": {
-    "mtime": 1791111142.5302598,
-    "seen": 1791111716.7793012,
-    "ast_hash": "5081cf849693cd71381b579e9fdb1faf",
+    "mtime": 1791118570.2746658,
+    "seen": 1791119237.1501458,
+    "ast_hash": "49780f657cf023a2cd28472716428659",
     "semantic_hash": ""
   },
   "components/settings/access-denied-notice.tsx": {
@@ -15090,15 +15090,15 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/audit-diff.test.ts": {
-    "mtime": 1791111813.176043,
-    "seen": 1791112067.532486,
-    "ast_hash": "a20f40c818cfe3a50d20fca134dc5bf6",
+    "mtime": 1791118989.9046338,
+    "seen": 1791119237.1500938,
+    "ast_hash": "c4674e44fc4da893e1b43555a2e8eb31",
     "semantic_hash": ""
   },
   "lib/auth/audit-diff.ts": {
-    "mtime": 1791111813.1702445,
-    "seen": 1791112067.5325308,
-    "ast_hash": "d3f3d71268e90e698f2738b97b708356",
+    "mtime": 1791118983.23907,
+    "seen": 1791119237.1501215,
+    "ast_hash": "85dcc5de3c27955f6dd0dd547488c6be",
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/__tests__/users-render.test.tsx": {
@@ -15114,9 +15114,9 @@
     "semantic_hash": ""
   },
   "app/api/admin/roles/__tests__/roles-routes.test.ts": {
-    "mtime": 1791112233.1742113,
-    "seen": 1791112441.1719632,
-    "ast_hash": "46ed49a259c1dac6f098b9643ddcbe87",
+    "mtime": 1791118864.2419593,
+    "seen": 1791119237.1490173,
+    "ast_hash": "17c5604b4b3f7e334979b07cc6e3b517",
     "semantic_hash": ""
   },
   "app/api/admin/roles/route.ts": {
@@ -15138,9 +15138,9 @@
     "semantic_hash": ""
   },
   "lib/auth/roles.ts": {
-    "mtime": 1791112150.7573683,
-    "seen": 1791112441.1731777,
-    "ast_hash": "ba7bdd972b349d6684c84dca534f7144",
+    "mtime": 1791118866.7693424,
+    "seen": 1791119237.1501477,
+    "ast_hash": "16db4cec817ca1f85010a5dddb2da6e3",
     "semantic_hash": ""
   },
   "app/api/mp-config/__tests__/measured-by-archived.test.ts": {
@@ -15156,9 +15156,9 @@
     "semantic_hash": ""
   },
   "app/api/staff/__tests__/profiles-routes.test.ts": {
-    "mtime": 1791115165.2658873,
-    "seen": 1791115347.106799,
-    "ast_hash": "5458f35e6276a0c946c309b6fa4b7c5f",
+    "mtime": 1791118743.4538999,
+    "seen": 1791119237.1492834,
+    "ast_hash": "441c1185fd5c075a61394f1e810c99ba",
     "semantic_hash": ""
   },
   "supabase/migrations/20261004110000_staff_profiles.sql": {
@@ -15198,21 +15198,21 @@
     "semantic_hash": ""
   },
   "lib/telegram/link-admin.ts": {
-    "mtime": 1791115001.6416306,
-    "seen": 1791115347.1088552,
-    "ast_hash": "4099ca54492818f28cc2375a82a3d099",
+    "mtime": 1791118712.0818028,
+    "seen": 1791119237.1511974,
+    "ast_hash": "9b634332de42434cb6bd11d78fc1e39f",
     "semantic_hash": ""
   },
   "supabase/migrations/20261004130000_telegram_links.sql": {
-    "mtime": 1791114609.287585,
-    "seen": 1791114673.4660556,
-    "ast_hash": "7c34ef831671c347c10a64cfb87aecfb",
+    "mtime": 1791118533.3224149,
+    "seen": 1791119237.1516132,
+    "ast_hash": "ef1d58671fd3adc03f66abec130d8c84",
     "semantic_hash": ""
   },
   "supabase/tests/rbac/assert-08.sql": {
-    "mtime": 1791114609.288326,
-    "seen": 1791114673.466069,
-    "ast_hash": "62f165a560b16bf6bc77b9859cbe4029",
+    "mtime": 1791118556.1148152,
+    "seen": 1791119237.1516204,
+    "ast_hash": "e4d407434ac6d7d1d19c5170f9381d62",
     "semantic_hash": ""
   },
   "app/api/admin/working-as/route.ts": {
@@ -15240,9 +15240,9 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261004140000_audit_actor_profile.sql": {
-    "mtime": 1791114084.1825893,
-    "seen": 1791114507.8042912,
-    "ast_hash": "609de03d9730b95875e0b15bfd63fe59",
+    "mtime": 1791118505.563484,
+    "seen": 1791119237.151615,
+    "ast_hash": "871fa33350d3ae81a058011b3b42cdc4",
     "semantic_hash": ""
   },
   "supabase/tests/rbac/assert-10.sql": {
@@ -15255,6 +15255,12 @@
     "mtime": 1791115001.6261716,
     "seen": 1791115347.1077557,
     "ast_hash": "3c8d011bb002edaa5a1c756a6029b8c2",
+    "semantic_hash": ""
+  },
+  "app/api/__tests__/site-settings-keys.test.ts": {
+    "mtime": 1791118339.7350073,
+    "seen": 1791119237.1490066,
+    "ast_hash": "4766cb19cbc928e4cef117badb54c8c6",
     "semantic_hash": ""
   }
 }

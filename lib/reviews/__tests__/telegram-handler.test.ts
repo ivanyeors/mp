@@ -92,8 +92,8 @@ beforeEach(() => {
       { id: "r-shop", name: "Shop desk", grants_all: false, permissions: ["orders", MODERATE] },
     ],
     admin_users: [
-      { id: "m-sg", email: "sg@mpillow.com", role_id: "r-owner", is_active: true },
-      { id: "m-shop", email: "shop@x.test", role_id: "r-shop", is_active: true },
+      { id: "m-sg", email: "sg@mpillow.com", role_id: "r-owner", is_active: true, auth_user_id: "u-sg" },
+      { id: "m-shop", email: "shop@x.test", role_id: "r-shop", is_active: true, auth_user_id: "u-shop" },
     ],
     mp_staff: [
       { id: "p-ivan", name: "Ivan", admin_user_id: "m-sg", archived_at: null },
@@ -182,6 +182,13 @@ describe("RBAC on review buttons", () => {
     h.tables.admin_users[0].is_active = false;
     await tap(IVAN, post());
     expect(lastAlert()?.[1]).toMatch(/Admin Panel login is deactivated/);
+    expect(h.updateReply).not.toHaveBeenCalled();
+  });
+
+  it("refuses an Invited login that hasn't signed in yet", async () => {
+    h.tables.admin_users[0].auth_user_id = null;
+    await tap(IVAN, post());
+    expect(lastAlert()?.[1]).toMatch(/hasn't been accepted yet/);
     expect(h.updateReply).not.toHaveBeenCalled();
   });
 
@@ -367,6 +374,24 @@ describe("/link", () => {
 
     await say({ id: 444 }, "/link K7Q2MX9P", { chat: 444 });
     expect(h.replyInChat).toHaveBeenLastCalledWith(444, expect.stringMatching(/isn't valid/), 500);
+  });
+
+  it("names what the person can do now, not just what the link lists", async () => {
+    h.tables.mp_staff[2].admin_user_id = "m-shop";
+    await say({ id: 333 }, "/link K7Q2MX9P", { chat: 333 });
+    const text = h.replyInChat.mock.calls.at(-1)?.[1] as string;
+    expect(text).toMatch(/You're set up as Nadia \(Moderate shop reviews\)/);
+    expect(text).not.toMatch(/Reply to Google/);
+  });
+
+  it("says so when the freshly linked login can't act yet", async () => {
+    h.tables.admin_users[0].is_active = false;
+    await say({ id: 333 }, "/link K7Q2MX9P", { chat: 333 });
+    expect(h.replyInChat).toHaveBeenLastCalledWith(
+      333,
+      expect.stringMatching(/Linked as Nadia, but you can't act on review cards yet.*deactivated/),
+      500,
+    );
   });
 
   it("refuses an expired code", async () => {

@@ -34,7 +34,17 @@ begin
     where email = 'legacy-staff@example.com';
   assert (select role from admin_users where email = 'legacy-staff@example.com') = 'staff',
     'role_id change stamps the legacy name';
+  -- A custom role reads as viewer to a rolled-back app: least access, not none.
+  insert into admin_roles (key, name, permissions) values ('ops', 'Ops', array['orders']);
+  update admin_users set role_id = (select id from admin_roles where key = 'ops')
+    where email = 'legacy-staff@example.com';
+  assert (select role from admin_users where email = 'legacy-staff@example.com') = 'viewer',
+    'custom role stamps viewer';
   delete from admin_users where email = 'legacy-staff@example.com';
+  delete from admin_roles where key = 'ops';
+
+  -- A re-run does not bring back a seed someone renamed or deleted.
+  assert (select count(*) from admin_roles) = 5, 'five seeds, once';
 
   -- A system role cannot be deleted while Members hold it.
   begin

@@ -160,6 +160,46 @@ describe("PATCH /api/admin/users/[id]", () => {
     });
   });
 
+  describe("a concurrent change between the check and the write (review finding)", () => {
+    it("is not overwritten: 409 when the Member changed after it was read", async () => {
+      // Someone promotes orders1 to Admin while people1's demotion is in flight.
+      const roles = h.db.admin_roles;
+      let reads = 0;
+      Object.defineProperty(h.db, "admin_roles", {
+        configurable: true,
+        get: () => {
+          if (++reads === 2) h.db.admin_users.find((m) => m.id === "orders1")!.role_id = R.admin;
+          return roles;
+        },
+      });
+      signIn("people1");
+      const res = await patch("orders1", { is_active: false });
+      expect(res.status).toBe(409);
+      expect(h.db.admin_users.find((m) => m.id === "orders1")).toMatchObject({ role_id: R.admin, is_active: true });
+    });
+
+    it("two Owners removing each other at once leave one Owner, not none", async () => {
+      h.db.admin_users.push(member("owner2", "owner2@x.test", R.owner));
+      const owner2 = h.db.admin_users.find((m) => m.id === "owner2")!;
+      let active = true;
+      Object.defineProperty(owner2, "is_active", {
+        configurable: true,
+        enumerable: true,
+        get: () => active,
+        set: (v: boolean) => {
+          active = v;
+          // owner2's own request, demoting owner1, commits at the same moment.
+          if (!v) h.db.admin_users.find((m) => m.id === "owner1")!.role_id = R.admin;
+        },
+      });
+      signIn("owner1");
+      const res = await patch("owner2", { is_active: false });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toMatch(/no active Owner/);
+      expect(owner2).toMatchObject({ role_id: R.owner, is_active: true });
+    });
+  });
+
   it("deactivating and reactivating report the status", async () => {
     signIn("owner1");
     expect((await (await patch("media1", { is_active: false })).json()).member.status).toBe("deactivated");
@@ -271,6 +311,16 @@ describe("resend and revoke", () => {
       before: { email: "new@x.test", status: "invited" },
       after: { archivedProfilesMovedToRevoker: ["Used"] },
     });
+  });
+
+  it("revoking removes the Telegram link of a kept profile: it was the invitee's", async () => {
+    h.db.telegram_operators = [
+      { id: "l-used", staff_profile_id: "p-used", actions: ["telegram.shop-review-moderate"], telegram_user_id: 777 },
+    ];
+    signIn("owner1");
+    expect((await call(DELETE, "inv1")).status).toBe(200);
+    expect(h.db.mp_staff.map((p) => p.id)).toEqual(["p-used"]);
+    expect(h.db.telegram_operators).toEqual([]);
   });
 
   it("does not delete an invitee who signs in while the revoke runs (review finding)", async () => {
