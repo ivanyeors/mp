@@ -73,7 +73,7 @@ assert.doesNotMatch(section, /kind:\s*"pillow"|sectionWidthsMm|scaledOutline|SIL
 
 // --- Route: admin-gated, validated, never writes pillow geometry --------------
 const route = readFileSync("app/[lang]/settings/product-builder/dimensions/route.ts", "utf8");
-assert.equal(route.match(/const denied = await requireAdmin\('page-builder'\)/g)?.length, 3, "GET, POST and DELETE are admin-gated");
+assert.equal(route.match(/const denied = await requireAdmin\('products'\)/g)?.length, 3, "GET, POST and DELETE are admin-gated");
 assert.match(route, /min_thickness_mm <= d\.thickness_mm/, "the route enforces min thickness ≤ thickness");
 assert.match(route, /min_width_mm <= d\.width_mm/, "the route enforces min width ≤ width");
 assert.match(route, /LOFT_ALLOWANCE_MAX_PCT/, "the allowance is capped");

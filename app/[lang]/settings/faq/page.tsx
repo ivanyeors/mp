@@ -17,7 +17,7 @@ export default async function FaqSettingsRoute({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("faq", locale);
 
   const [categories, items] = await Promise.all([
     getAllFaqCategoriesAdmin(),

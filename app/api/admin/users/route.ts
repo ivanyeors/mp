@@ -14,7 +14,7 @@ const InviteSchema = z.object({
 
 /** List all staff members and their roles. */
 export async function GET() {
-  const denied = await requireAdmin("staff");
+  const denied = await requireAdmin("users");
   if (denied) return denied;
 
   const admin = supabaseAdmin();
@@ -33,7 +33,7 @@ export async function GET() {
  * `getAdminContext` links their auth id to this row by matching email.
  */
 export async function POST(req: Request) {
-  const denied = await requireAdmin("staff");
+  const denied = await requireAdmin("users");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

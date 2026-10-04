@@ -18,7 +18,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * Edit one person's Telegram access: rename, change role, switch on/off,
- * issue a new link code, or unlink their Telegram account. `staff` permission.
+ * issue a new link code, or unlink their Telegram account. `users` permission.
  */
 const PatchSchema = z
   .object({
@@ -34,7 +34,7 @@ const IdSchema = z.string().uuid();
 export async function PATCH(req: Request, { params }: Ctx) {
   let ctx;
   try {
-    ctx = await requireAdminContext("staff");
+    ctx = await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }
@@ -87,7 +87,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 export async function DELETE(_req: Request, { params }: Ctx) {
   let ctx;
   try {
-    ctx = await requireAdminContext("staff");
+    ctx = await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }

@@ -18,7 +18,7 @@ const UpdateSchema = z
 
 /** Change a staff member's role or active status. */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin("staff");
+  const denied = await requireAdmin("users");
   if (denied) return denied;
   const ctx = await getAdminContext();
 

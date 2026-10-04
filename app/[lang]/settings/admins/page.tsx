@@ -10,8 +10,8 @@ export default async function AdminUsersPage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // Only owners/admins (the "staff" permission) may manage staff and roles.
-  await requireAdminPage("staff", locale);
+  // Only owners/admins (the "users" permission) may manage staff and roles.
+  await requireAdminPage("users", locale);
 
   return (
     <div className="mx-auto w-full max-w-4xl">

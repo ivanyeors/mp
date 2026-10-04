@@ -11,7 +11,7 @@ import { recordAdminAction } from "@/lib/auth/audit";
  * id = a per-partner override. One scheme per (partner, product_type).
  */
 export async function upsertCommissionScheme(formData: FormData): Promise<void> {
-  const actor = await assertAdmin("page-builder");
+  const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();
 
   const partnerId = (formData.get("partner_id") as string) || null;

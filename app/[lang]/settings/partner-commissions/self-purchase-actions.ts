@@ -13,7 +13,7 @@ import { recordAdminAction } from "@/lib/auth/audit";
  * cap turns the feature off for that partner.
  */
 export async function upsertSelfPurchaseRate(formData: FormData): Promise<void> {
-  const actor = await assertAdmin("page-builder");
+  const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();
 
   const partnerId = (formData.get("partner_id") as string) || "";

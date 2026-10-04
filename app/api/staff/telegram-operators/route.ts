@@ -22,7 +22,7 @@ const CreateSchema = z.object({
 
 export async function GET() {
   try {
-    await requireAdminContext("staff");
+    await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }
@@ -39,7 +39,7 @@ export async function GET() {
 export async function POST(req: Request) {
   let ctx;
   try {
-    ctx = await requireAdminContext("staff");
+    ctx = await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }

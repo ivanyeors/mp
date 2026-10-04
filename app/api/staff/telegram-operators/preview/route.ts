@@ -17,7 +17,7 @@ export const maxDuration = 120;
 export async function POST() {
   let ctx;
   try {
-    ctx = await requireAdminContext("staff");
+    ctx = await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }

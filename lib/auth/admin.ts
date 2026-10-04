@@ -159,6 +159,19 @@ export async function assertAdmin(permission: Permission): Promise<AdminContext>
 }
 
 /**
+ * {@link assertAdmin} for a server action shared by several pages: the caller
+ * needs any one of the pages' permissions.
+ */
+export async function assertAnyAdmin(permissions: Permission[]): Promise<AdminContext> {
+  const ctx = await getAdminContext();
+  if (!ctx) throw new Error("Unauthorized");
+  if (!permissions.some((permission) => roleHasPermission(ctx.role, permission))) {
+    throw new Error("Forbidden");
+  }
+  return ctx;
+}
+
+/**
  * Server-component / page guard. Redirects to Sign in when not signed in, or
  * to the Admin Panel overview when signed in but lacking `permission`.
  */

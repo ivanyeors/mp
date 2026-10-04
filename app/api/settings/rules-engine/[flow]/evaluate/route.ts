@@ -34,7 +34,7 @@ const BodySchema = z.object({
 /** POST evaluate a graph (or latest published) with inputs — Staff test panel. */
 export async function POST(req: Request, ctx: Ctx) {
   try {
-    await requireAdminContext("page-builder");
+    await requireAdminContext("rules-engine");
   } catch (res) {
     return res as NextResponse;
   }

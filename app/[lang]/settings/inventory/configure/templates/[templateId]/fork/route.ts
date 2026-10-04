@@ -53,7 +53,7 @@ const ForkSchema = z.object({
 })
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId: string }> }) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const { templateId } = await ctx.params

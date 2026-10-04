@@ -196,12 +196,9 @@ function statusBadgeVariant(status: string): StatusVariant {
 
 export function ProductsClient({
     initialData,
-    canVisualize = false,
     initialTab = "products",
 }: {
     initialData?: ProductsInitialData;
-    /** Staff with the `page-builder` permission get the Product Visualize and Dimensions tabs. */
-    canVisualize?: boolean;
     initialTab?: string;
 }) {
     const pathname = usePathname() ?? "/";
@@ -738,10 +735,8 @@ export function ProductsClient({
                 <TabsList>
                     <TabsTrigger value="products">Products</TabsTrigger>
                     <TabsTrigger value="categories">Categories</TabsTrigger>
-                    {canVisualize && (
-                        <TabsTrigger value="visualize">Product Visualize</TabsTrigger>
-                    )}
-                    {canVisualize && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
+                    <TabsTrigger value="visualize">Product Visualize</TabsTrigger>
+                    <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="products" className="mt-6 space-y-6">
@@ -819,16 +814,12 @@ export function ProductsClient({
                     <CategoriesManager />
                 </TabsContent>
 
-                {canVisualize && (
-                    <TabsContent value="visualize" className="mt-6">
-                        <ProductVisualize />
-                    </TabsContent>
-                )}
-                {canVisualize && (
-                    <TabsContent value="dimensions" className="mt-6">
-                        <DimensionsSection settingsPath={to} />
-                    </TabsContent>
-                )}
+                <TabsContent value="visualize" className="mt-6">
+                    <ProductVisualize />
+                </TabsContent>
+                <TabsContent value="dimensions" className="mt-6">
+                    <DimensionsSection settingsPath={to} />
+                </TabsContent>
             </Tabs>
 
         </div>

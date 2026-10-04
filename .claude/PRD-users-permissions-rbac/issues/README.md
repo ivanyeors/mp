@@ -9,7 +9,7 @@ Tracer-bullet breakdown of the PRD (`../users-permissions-rbac-prd.md`). Each sl
 | # | Title | Type | Blocked by | User stories | Status |
 |---|-------|------|------------|--------------|--------|
 | 01 | Glossary + ADR 0023 accepted | AFK | none | — | todo |
-| 02 | Permission catalog: one key per page (no behaviour change) | AFK | none | 3, 24, 37 | todo |
+| 02 | Permission catalog: one key per page (no behaviour change) | AFK | none | 3, 24, 37 | done |
 | 03 | Roles as data: `admin_roles`, `role_id`, backfill, context from DB | AFK | 02 | 4, 19, 22, 23, 24 | todo |
 | 04 | Users & permissions page + Members tab + redirects | AFK | 03 | 1–3, 10–13, 15 | todo |
 | 05 | Invites: email, Invited state, resend, revoke | AFK | 04, 07 | 5–9 | todo |

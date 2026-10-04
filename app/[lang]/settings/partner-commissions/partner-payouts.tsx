@@ -32,8 +32,8 @@ const today = () => new Date().toISOString().slice(0, 10);
  * the Partner Commissions page. Per partner: RELEASED balance, payment details
  * (PayNow QR inline via a short-lived signed URL + bank fields), a record-payout
  * form (proof upload → server action), and immutable payout history. Staff-only:
- * the parent page already gates with requireAdminPage("page-builder"), and the
- * server action re-asserts assertAdmin("page-builder").
+ * the parent page already gates with requireAdminPage("partner-commissions"), and the
+ * server action re-asserts assertAdmin("partner-commissions").
  */
 export async function PartnerPayouts() {
   const admin = supabaseAdmin();

@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * the table mounts filled instead of fetching after hydration.
  *
  * The Telegram access tab (who may act on review cards in the measurements
- * group) is owners/admins only — the `staff` permission, as for Admin Users —
+ * group) is owners/admins only — the `users` permission, as for Admin Users —
  * because a review manager speaks for the business on Google Maps.
  */
 export default async function StaffManagementRoute({
@@ -25,7 +25,7 @@ export default async function StaffManagementRoute({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const ctx = await requireAdminPage("results", locale);
-  const canManageTelegram = roleHasPermission(ctx.role, "staff");
+  const canManageTelegram = roleHasPermission(ctx.role, "users");
   const { tab } = await searchParams;
 
   // A failed read must not look like "no staff": leave `initialData` undefined

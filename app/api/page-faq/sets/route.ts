@@ -22,7 +22,7 @@ const EnsureSetSchema = z.object({
 
 /** List all Page FAQ sets, or one set + items by surface_key. */
 export async function GET(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("faq");
   if (denied) return denied;
 
   const surfaceKey = new URL(req.url).searchParams.get("surface_key");
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
 
 /** Ensure a set exists for surface_key (creates empty set on demand). */
 export async function POST(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("faq");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

@@ -36,7 +36,7 @@ const readSiteSettings = unstable_cache(
  * lib/site-settings on the server.
  */
 export async function GET(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("media");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
  * dual-writes companion key `landing_*_asset_id` (slice 15).
  */
 export async function PUT(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("media");
   if (denied) return denied;
 
   try {
@@ -140,7 +140,7 @@ export async function PUT(req: Request) {
  * Also clears companion landing_*_asset_id when resetting a landing slot.
  */
 export async function DELETE(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("media");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);

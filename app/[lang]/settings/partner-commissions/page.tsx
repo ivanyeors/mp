@@ -33,8 +33,8 @@ export default async function PartnerCommissionsPage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // Reuses the "page-builder" permission (partner surfaces) — no new permission minted.
-  await requireAdminPage("page-builder", locale);
+  // The Partner Commissions page's own permission (ADR 0023).
+  await requireAdminPage("partner-commissions", locale);
 
   const admin = supabaseAdmin();
   const [{ data: schemeData }, { data: partnerData }] = await Promise.all([

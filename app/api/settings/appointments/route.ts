@@ -56,7 +56,7 @@ const PutSchema = z.object({
 });
 
 export async function GET() {
-  const denied = await requireAdmin("results");
+  const denied = await requireAdmin("appointments");
   if (denied) return denied;
 
   try {
@@ -70,7 +70,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const denied = await requireAdmin("results");
+  const denied = await requireAdmin("appointments");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

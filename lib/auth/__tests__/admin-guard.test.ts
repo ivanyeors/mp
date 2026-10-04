@@ -66,7 +66,7 @@ describe("requireAdmin (route guard)", () => {
 
   it("denies with 403 when the role lacks the permission", async () => {
     signedInAs({ id: "1", role: "manager", is_active: true, auth_user_id: "auth-1" });
-    const denied = await requireAdmin("staff");
+    const denied = await requireAdmin("users");
     expect(denied).not.toBeNull();
     expect(denied?.status).toBe(403);
   });

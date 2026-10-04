@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 /**
  * Guard contract for the six Shopify admin routes. The POSTs take the sync
- * token or an `inventory` Staff session and must fail closed when
+ * token or a `shopify-link` Staff session and must fail closed when
  * SHOPIFY_SYNC_TOKEN is unset; the GETs take the session only. Calls the real
  * handlers with a real Request and mocks only the Shopify/Supabase work behind
  * the guard, so a refused caller is also proven not to reach it.
@@ -104,11 +104,11 @@ describe.each(posts)("POST $path", ({ path, handler, work }) => {
     expect(h.requireAdmin).not.toHaveBeenCalled();
   });
 
-  it("serves an inventory Staff session", async () => {
+  it("serves a Shopify Link Staff session", async () => {
     h.requireAdmin.mockResolvedValue(null);
     const res = await handler(post(path));
     expect(res.status).toBe(200);
-    expect(h.requireAdmin).toHaveBeenCalledWith("inventory");
+    expect(h.requireAdmin).toHaveBeenCalledWith("shopify-link");
     expect(work()).toHaveBeenCalled();
   });
 });
@@ -164,11 +164,11 @@ describe.each([
   it("refuses a caller without a Staff session", async () => {
     const res = await call();
     expect(res.status).toBe(401);
-    expect(h.requireAdmin).toHaveBeenCalledWith("inventory");
+    expect(h.requireAdmin).toHaveBeenCalledWith("shopify-link");
     expect(h.listProducts).not.toHaveBeenCalled();
   });
 
-  it("refuses Staff without the inventory permission", async () => {
+  it("refuses Staff without the shopify-link permission", async () => {
     h.requireAdmin.mockResolvedValue(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
     const res = await call();
     expect(res.status).toBe(403);

@@ -16,10 +16,10 @@ import {
   type ApplicationStatus,
 } from "@/lib/partner-application";
 
-// Staff review queue for partner applications (#76). Reuses the existing
-// 'page-builder' admin permission (same as Locations CRUD). Server actions are
+// Staff review queue for partner applications (#76). Gated on the page's own
+// 'partner-applications' permission (ADR 0023). Server actions are
 // CSRF-safe and exempt from the settings static route-guard test.
-const PERM = "page-builder";
+const PERM = "partner-applications";
 const QUEUE_PATH = "/settings/partner-applications";
 const SUPPORT_EMAIL = "sg@mpillow.com";
 

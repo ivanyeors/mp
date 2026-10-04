@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export async function GET(_req: NextRequest) {
   try {
     void _req
-    const denied = await requireAdmin('inventory')
+    const denied = await requireAdmin('shopify-link')
     if (denied) return denied
     const products = await shopifyListActiveProductsWithVariants({ limit: 250 })
     const flattened = products.flatMap((p) =>

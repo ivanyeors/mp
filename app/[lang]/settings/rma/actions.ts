@@ -16,7 +16,7 @@ import { getSiteSettings } from "@/lib/site-settings";
  * proving mutation; deliberately does NOT append a status event.
  */
 export async function saveAdminNote(rmaId: string, note: string) {
-  const actor = await assertAdmin("orders");
+  const actor = await assertAdmin("returns");
   const admin = supabaseAdmin();
 
   const { data: before } = await admin
@@ -59,7 +59,7 @@ async function staffTransition(opts: {
   emailMessage?: string | null;
   patch?: Record<string, unknown>;
 }) {
-  const actor = await assertAdmin("orders");
+  const actor = await assertAdmin("returns");
   const admin = supabaseAdmin();
   const res = await applyRmaTransition(admin, { ...opts, actorType: "staff", actor });
   if (!res.ok) throw new Error(res.error ?? "Transition failed.");
@@ -123,7 +123,7 @@ export async function completeReturn(rmaId: string, trackingNumber: string, trac
  * RMA to `refunded` when the refund settles. The RMA stays `received` until then.
  */
 export async function issueRmaRefund(rmaId: string) {
-  const actor = await assertAdmin("orders");
+  const actor = await assertAdmin("returns");
   const admin = supabaseAdmin();
 
   const { data, error } = await admin

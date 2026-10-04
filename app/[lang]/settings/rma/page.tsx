@@ -37,8 +37,8 @@ export default async function RmaQueuePage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // Reuses the existing "orders" permission (ADR 0011) — no new permission minted.
-  await requireAdminPage("orders", locale);
+  // The Returns page's own permission (ADR 0023; split from "orders", ADR 0011).
+  await requireAdminPage("returns", locale);
 
   const { status: rawStatus } = await searchParams;
   const status = parseStatusFilter(rawStatus);

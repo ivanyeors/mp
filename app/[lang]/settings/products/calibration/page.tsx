@@ -24,7 +24,7 @@ const BUILD_SIZES = ["S", "M", "L"];
 export default async function CalibrationPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("products", locale);
 
   const admin = supabaseAdmin();
   const [overrides, products] = await Promise.all([

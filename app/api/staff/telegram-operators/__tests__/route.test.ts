@@ -4,7 +4,7 @@ import { createFakeSupabase } from "@/lib/reviews/__tests__/fake-supabase";
 import { hashLinkCode } from "@/lib/telegram/link-codes";
 
 /**
- * Staff Management → Telegram access API. Owners/admins only (`staff`), every
+ * Staff Management → Telegram access API. Owners/admins only (`users`), every
  * change audited, and a link code is returned once while only its hash is kept.
  */
 
@@ -58,13 +58,13 @@ beforeEach(() => {
 });
 
 describe("Telegram access API", () => {
-  it("requires the staff permission on every method", async () => {
+  it("requires the users permission on every method", async () => {
     h.requireAdminContext.mockRejectedValue(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
     expect((await collection.GET()).status).toBe(403);
     expect((await collection.POST(json({ display_name: "A", role: "review_manager" }))).status).toBe(403);
     expect((await item.PATCH(json({ is_active: false }, "PATCH"), params())).status).toBe(403);
     expect((await item.DELETE(json({}, "DELETE"), params())).status).toBe(403);
-    expect(h.requireAdminContext).toHaveBeenCalledWith("staff");
+    expect(h.requireAdminContext).toHaveBeenCalledWith("users");
     expect(h.tables.telegram_operators[0].is_active).toBe(true);
   });
 

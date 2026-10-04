@@ -29,7 +29,7 @@ export default function StaffManagementPage({
   initialTab = "staff",
 }: {
   initialData?: StaffInitialData;
-  /** Present only for owners/admins (the `staff` permission): the Telegram access tab. */
+  /** Present only for owners/admins (the `users` permission): the Telegram access tab. */
   telegram?: { initialRows?: TelegramOperatorRow[] } | null;
   initialTab?: StaffManagementTab;
 }) {
