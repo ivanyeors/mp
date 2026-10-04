@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { listMembers, listRoles } from "@/lib/auth/members";
-import { listStaffRows } from "@/lib/staff/admin";
+import { listStaffProfiles } from "@/lib/staff/admin";
 import { listTelegramOperators } from "@/lib/telegram/operators";
 import { UsersClient, parseUsersTab } from "./users-client";
 
@@ -26,10 +26,10 @@ export default async function UsersPermissionsPage({
   const ctx = await requireAdminPage("users", locale);
   const { tab } = await searchParams;
 
-  const [members, roles, staff, operators] = await Promise.all([
+  const [members, roles, profiles, operators] = await Promise.all([
     listMembers().catch(() => null),
     listRoles().catch(() => null),
-    listStaffRows().catch(() => null),
+    listStaffProfiles({ includeArchived: true }).catch(() => null),
     listTelegramOperators().catch(() => null),
   ]);
 
@@ -44,7 +44,7 @@ export default async function UsersPermissionsPage({
       }}
       initialMembers={members ?? undefined}
       initialRoles={roles ?? undefined}
-      initialStaff={staff ? { ok: true, rows: staff } : undefined}
+      initialProfiles={profiles ?? undefined}
       initialTelegram={operators ?? undefined}
     />
   );

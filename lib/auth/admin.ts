@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/auth/user";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { withLocale } from "@/lib/i18n/routing";
+import { createStaffProfile, defaultProfileName } from "@/lib/staff/admin";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
   hasPermission,
@@ -158,6 +159,8 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
       .select("id")
       .maybeSingle<{ id: string }>();
     if (!inserted) return null;
+    // Every Member has a Staff profile (ADR 0023); best-effort, never blocks sign-in.
+    await createStaffProfile(null, inserted.id, defaultProfileName(email)).catch(() => null);
     return contextFor(inserted, owner, identity, true);
   }
 

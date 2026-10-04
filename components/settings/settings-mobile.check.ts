@@ -44,9 +44,9 @@ assert.match(members, /w-full min-w-0 sm:w-40/);
 assert.match(members, /space-y-3 sm:hidden/);
 assert.match(members, /hidden min-w-0 sm:block/);
 
-// staff: relaxed widths; UUID hidden on xs
-assert.match(staff, /sm:w-\[260px\]/);
-assert.match(staff, /hidden sm:table-cell/);
+// Staff profiles: rows stack on phones, one line from sm; long emails wrap
+assert.match(staff, /flex flex-col gap-2 px-4 py-2\.5 sm:flex-row sm:items-center/);
+assert.match(staff, /min-w-0 break-all font-medium/);
 
 // appointments: title + settings gear share one row; phone blurb is short
 assert.match(appointments, /flex shrink-0 items-start justify-between gap-3/);

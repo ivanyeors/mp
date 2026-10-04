@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isPickableStaffProfile } from "@/lib/staff/admin";
 import {
   buildInstoreReviewOnlyPatch,
   shouldCreateInstoreReviewOnly,
@@ -347,6 +348,19 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "Too many new sessions. Please try again in a minute." },
       { status: 429 },
+    );
+  }
+
+  // A newly picked "measured by" must be a live Staff profile. A row that
+  // already names one keeps it after it is archived; only a change is checked.
+  if (
+    parsed.data.measuredBy?.type === "staff" &&
+    parsed.data.measuredBy.staffId !== (existing?.measured_by_staff_id ?? null) &&
+    !(await isPickableStaffProfile(parsed.data.measuredBy.staffId))
+  ) {
+    return NextResponse.json(
+      { error: "That staff profile is archived or no longer exists. Pick another." },
+      { status: 400 },
     );
   }
 

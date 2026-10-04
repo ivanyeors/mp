@@ -44,7 +44,10 @@ describe("Users & permissions render", () => {
         actor={actor}
         initialMembers={members}
         initialRoles={roles}
-        initialStaff={{ ok: true, rows: [] }}
+        initialProfiles={[
+          { id: "p1", name: "Kai Lin", memberId: "m1", memberEmail: "sg@mpillow.com", archivedAt: null, createdAt: "", updatedAt: "" },
+          { id: "p2", name: "Old", memberId: "m1", memberEmail: "sg@mpillow.com", archivedAt: "2026-10-01", createdAt: "", updatedAt: "" },
+        ]}
         initialTelegram={[]}
       />,
     );
@@ -52,6 +55,11 @@ describe("Users & permissions render", () => {
     if (tab === "members") {
       expect(html).toContain("sg@mpillow.com");
       expect(html).toContain("Invited");
+    }
+    if (tab === "members") expect(html).toContain("1 profile");
+    if (tab === "profiles") {
+      expect(html).toContain("Kai Lin");
+      expect(html).not.toContain(">Old<");
     }
     if (tab === "roles") {
       expect(html).toContain("Fulfilment");

@@ -7,7 +7,9 @@
  * Same technique as lib/auth/__tests__/partner.test.ts.
  *
  * A to-one embed in the select list (`role:admin_roles(...)`) is resolved
- * through the `<alias>_id` column, as PostgREST does through the foreign key.
+ * through the `<alias>_id` column, or the column named by a `!column` hint
+ * (`member:admin_users!admin_user_id(...)`), as PostgREST does through the
+ * foreign key.
  */
 type Row = Record<string, unknown>;
 export type FakeDb = Record<string, Row[]>;
@@ -35,13 +37,13 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let removing = false;
       let head = false;
       let inserted: Row | null = null;
-      let embeds: Array<[alias: string, table: string]> = [];
+      let embeds: Array<[alias: string, table: string, fk: string]> = [];
       let sort: { col: string; asc: boolean } | null = null;
       const out = (row: Row): Row => {
         if (!embeds.length) return row;
         const copy = { ...row };
-        for (const [alias, other] of embeds) {
-          copy[alias] = (db[other] ?? []).find((o) => o.id === row[`${alias}_id`]) ?? null;
+        for (const [alias, other, fk] of embeds) {
+          copy[alias] = (db[other] ?? []).find((o) => o.id === row[fk]) ?? null;
         }
         return copy;
       };
@@ -58,7 +60,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       const q = {
         select: (cols?: string, opts?: { head?: boolean }) => {
           head = Boolean(opts?.head);
-          embeds = [...(cols ?? "").matchAll(/(\w+):(\w+)\(/g)].map((m) => [m[1], m[2]]);
+          embeds = [...(cols ?? "").matchAll(/(\w+):(\w+)(?:!(\w+))?\(/g)].map((m) => [m[1], m[2], m[3] ?? `${m[1]}_id`]);
           return q;
         },
         eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),

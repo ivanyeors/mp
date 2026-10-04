@@ -44,11 +44,8 @@ create table mp_staff (
 );
 create unique index idx_mp_staff_name_unique on mp_staff (lower(name));
 create index idx_mp_staff_updated_at on mp_staff (updated_at desc);
+-- Public policies were dropped by 20260902000000_rls_hardening_and_hot_path_indexes.
 alter table mp_staff enable row level security;
-create policy "Public read staff" on mp_staff for select using (true);
-create policy "Public write staff" on mp_staff for insert with check (true);
-create policy "Public update staff" on mp_staff for update using (true) with check (true);
-create policy "Public delete staff" on mp_staff for delete using (true);
 
 create table mp_config_responses (
   id uuid primary key default gen_random_uuid(),

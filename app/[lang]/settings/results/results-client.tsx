@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MoreVertical, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react";
@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroupLabel, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -100,9 +100,12 @@ type MpConfigResponseRow = {
   payment_reminder_last_at?: string | null;
 };
 
+/** A Staff profile as `/api/staff?includeArchived=1` returns it. */
 type StaffRow = {
   id: string;
   name: string;
+  memberEmail?: string | null;
+  archivedAt?: string | null;
 };
 
 type LocationOption = {
@@ -289,7 +292,7 @@ export default function ResultsPage({
   const loadStaff = useCallback(async () => {
     setStaffLoading(true);
     try {
-      const res = await fetch("/api/staff", { method: "GET", cache: "no-store" });
+      const res = await fetch("/api/staff?includeArchived=1", { method: "GET", cache: "no-store" });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to load staff");
       setStaffRows((payload?.rows ?? []) as StaffRow[]);
@@ -309,10 +312,22 @@ export default function ResultsPage({
     void loadStaff();
   }, [loadStaff]);
 
+  // Archived profiles keep labelling the Results that name them.
   const staffNameById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const s of staffRows) m.set(s.id, s.name);
+    for (const s of staffRows) m.set(s.id, s.archivedAt ? `${s.name} (archived)` : s.name);
     return m;
+  }, [staffRows]);
+
+  // The picker offers live profiles only, grouped by the login they work under.
+  const staffGroups = useMemo(() => {
+    const groups = new Map<string, StaffRow[]>();
+    for (const s of staffRows) {
+      if (s.archivedAt) continue;
+      const key = s.memberEmail ?? "Other";
+      groups.set(key, [...(groups.get(key) ?? []), s]);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [staffRows]);
 
   const measuredByValue = (row: MpConfigResponseRow): string => {
@@ -1070,11 +1085,21 @@ export default function ResultsPage({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="by_user">by user</SelectItem>
-                            {staffRows.map((s) => (
-                              <SelectItem key={s.id} value={`staff:${s.id}`}>
-                                {s.name}
-                              </SelectItem>
+                            {staffGroups.map(([login, profiles]) => (
+                              <Fragment key={login}>
+                                {staffGroups.length > 1 ? <SelectGroupLabel>{login}</SelectGroupLabel> : null}
+                                {profiles.map((s) => (
+                                  <SelectItem key={s.id} value={`staff:${s.id}`} textValue={s.name}>
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </Fragment>
                             ))}
+                            {row.measured_by_staff_id && staffNameById.get(row.measured_by_staff_id)?.endsWith("(archived)") ? (
+                              <SelectItem value={`staff:${row.measured_by_staff_id}`} disabled>
+                                {staffNameById.get(row.measured_by_staff_id)}
+                              </SelectItem>
+                            ) : null}
                           </SelectContent>
                         </Select>
                         {!measuredByOk ? (

@@ -9,7 +9,8 @@ import type { PolicyActor } from "@/lib/auth/role-policy";
 import type { TelegramOperatorRow } from "@/lib/telegram/operators";
 import { MembersTab } from "./members-tab";
 import { RolesTab } from "./roles-tab";
-import { ProfilesTab, type StaffInitialData } from "./profiles-tab";
+import { ProfilesTab } from "./profiles-tab";
+import type { StaffProfile } from "@/lib/staff/admin";
 import { TelegramAccessTab } from "./telegram-tab";
 
 export const USERS_TABS = ["members", "profiles", "roles", "telegram"] as const;
@@ -66,19 +67,46 @@ function useDirectory(initialMembers?: MemberRow[], initialRoles?: RoleRow[]) {
   return { members, setMembers, roles: counted, setRoles, loading, reload };
 }
 
+/** Every Staff profile, archived included (the tab filters). */
+function useProfiles(initial?: StaffProfile[]) {
+  const [rows, setRows] = useState<StaffProfile[]>(initial ?? []);
+  const skipFirstFetch = useRef(initial != null);
+
+  const reload = useCallback(async () => {
+    try {
+      const res = await fetch("/api/staff?includeArchived=1");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to load Staff profiles");
+      setRows((payload?.rows ?? []) as StaffProfile[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load Staff profiles");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
+    void reload();
+  }, [reload]);
+
+  return { rows, setRows, reload };
+}
+
 export function UsersClient({
   initialTab,
   actor: serializedActor,
   initialMembers,
   initialRoles,
-  initialStaff,
+  initialProfiles,
   initialTelegram,
 }: {
   initialTab: UsersTab;
   actor: SerializedActor;
   initialMembers?: MemberRow[];
   initialRoles?: RoleRow[];
-  initialStaff?: StaffInitialData;
+  initialProfiles?: StaffProfile[];
   initialTelegram?: TelegramOperatorRow[];
 }) {
   const [tab, setTab] = useState<UsersTab>(initialTab);
@@ -87,6 +115,13 @@ export function UsersClient({
     [serializedActor],
   );
   const directory = useDirectory(initialMembers, initialRoles);
+  const profiles = useProfiles(initialProfiles);
+  const [focusMemberId, setFocusMemberId] = useState<string | null>(null);
+  const profileCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of profiles.rows) if (!p.archivedAt) counts.set(p.memberId, (counts.get(p.memberId) ?? 0) + 1);
+    return counts;
+  }, [profiles.rows]);
 
   // Keep ?tab= in the address bar so a tab can be linked and survives reload.
   const selectTab = (next: string) => {
@@ -121,11 +156,28 @@ export function UsersClient({
             setMembers={directory.setMembers}
             roles={directory.roles}
             loading={directory.loading}
-            reload={directory.reload}
+            reload={async () => {
+              await Promise.all([directory.reload(), profiles.reload()]);
+            }}
+            profileCounts={profileCounts}
+            onShowProfiles={(memberId) => {
+              setFocusMemberId(memberId);
+              selectTab("profiles");
+              requestAnimationFrame(() =>
+                document.getElementById(`profiles-${memberId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+              );
+            }}
           />
         </TabsContent>
         <TabsContent value="profiles" className="space-y-6 pt-4">
-          <ProfilesTab initialData={initialStaff} />
+          <ProfilesTab
+            members={directory.members}
+            roles={directory.roles}
+            profiles={profiles.rows}
+            setProfiles={profiles.setRows}
+            linkedProfileIds={new Set()}
+            focusMemberId={focusMemberId}
+          />
         </TabsContent>
         <TabsContent value="roles" className="pt-4">
           <RolesTab

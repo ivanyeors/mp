@@ -46,7 +46,11 @@ export function MembersTab({
   roles,
   loading,
   reload,
+  profileCounts,
+  onShowProfiles,
 }: {
+  profileCounts: ReadonlyMap<string, number>;
+  onShowProfiles: (memberId: string) => void;
   actor: PolicyActor;
   members: MemberRow[];
   setMembers: (rows: MemberRow[] | ((rows: MemberRow[]) => MemberRow[])) => void;
@@ -136,6 +140,19 @@ export function MembersTab({
   const lastSignIn = (m: MemberRow) =>
     m.lastSignInAt && nowMs != null ? (formatAdminRelative(m.lastSignInAt, nowMs) ?? "—") : "—";
 
+  const profilesLink = (m: MemberRow) => {
+    const n = profileCounts.get(m.id) ?? 0;
+    return (
+      <button
+        type="button"
+        onClick={() => onShowProfiles(m.id)}
+        className="text-sm text-primary underline-offset-2 hover:underline"
+      >
+        {`${n} ${n === 1 ? "profile" : "profiles"}`}
+      </button>
+    );
+  };
+
   const you = (m: MemberRow) =>
     m.id === actor.memberId ? <span className="text-xs font-normal text-muted-foreground">(you)</span> : null;
 
@@ -163,6 +180,7 @@ export function MembersTab({
                     <StatusPill status={m.status} />
                     <span suppressHydrationWarning>Last sign-in {lastSignIn(m)}</span>
                   </div>
+                  {profilesLink(m)}
                 </div>
                 {roleSelect(m, lock)}
                 {lock ? <p className="text-xs text-muted-foreground">{lock}</p> : null}
@@ -177,6 +195,7 @@ export function MembersTab({
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Profiles</TableHead>
                   <TableHead>Last sign-in</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -198,6 +217,7 @@ export function MembersTab({
                         {lock ? <span className="max-w-56 text-xs text-muted-foreground">{lock}</span> : null}
                       </div>
                     </TableCell>
+                    <TableCell>{profilesLink(m)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground" suppressHydrationWarning>
                       {lastSignIn(m)}
                     </TableCell>

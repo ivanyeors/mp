@@ -3,6 +3,7 @@
 Type: AFK
 Parent: PRD `users-permissions-rbac`
 Triage: ready
+Status: done (migration file written and checked locally; not yet applied to production)
 User stories covered: 9, 25–29
 
 ## What to build
@@ -27,10 +28,21 @@ Give every `mp_staff` row an owning Member: one login, many Staff profiles.
 
 ## Acceptance criteria
 
-- [ ] Migration test: every Member has ≥1 profile; every pre-existing profile has an owner; no Result's `measured_by_staff_id` changed.
-- [ ] Unit tests for create/rename/move/archive including name clash within a Member (409) and same name under two Members (allowed).
-- [ ] Archived profile cannot be picked for a new measured-by (API refuses), but existing rows keep it.
-- [ ] `graphify-out/` refreshed.
+- [x] Migration test: every Member has ≥1 profile; every pre-existing profile has an owner; no Result's `measured_by_staff_id` changed.
+- [x] Unit tests for create/rename/move/archive including name clash within a Member (409) and same name under two Members (allowed).
+- [x] Archived profile cannot be picked for a new measured-by (API refuses), but existing rows keep it.
+- [x] `graphify-out/` refreshed.
+
+## Decisions made while building
+
+- **Backfill falls back** to the oldest active Owner if `sg@mpillow.com` is ever missing, so `set not null` cannot fail on a renamed login.
+- **First-profile names** come from the email's local part with `.`, `_`, `-` as word breaks, title-cased (`ivanyeoart` → "Ivanyeoart"). The same rule (`defaultProfileName`) names the profile a bootstrap Owner gets on first sign-in.
+- **`mp_staff` client grants revoked.** Its public policies were already dropped by `20260902000000`; profiles now carry Telegram access, so no browser role may touch them.
+- **Name clashes are checked in code** (case-insensitive, live profiles under the same login) before the partial unique index, for a readable 409; moving into a clash and restoring into a clash are refused too.
+- **`PATCH /api/staff/[id]` takes exactly one change** (`name`, `memberId` or `archived`), so each lands in the Audit Log as its own `staff_profile.rename|move|archive|restore`.
+- **Results "measured by"**: `/api/staff?includeArchived=1` feeds labels ("Jess (archived)"); the picker shows live profiles grouped by login (headings only when there is more than one login) and the row's own archived profile as a disabled option. `POST /api/mp-config/responses` refuses newly picking an archived or missing profile, and leaves a row that already names one alone.
+- `SelectGroupLabel` added to `components/ui/select.tsx` for the group headings.
+- Members tab shows each login's live profile count, linking to its group on the Staff profiles tab.
 
 ## Blocked by
 

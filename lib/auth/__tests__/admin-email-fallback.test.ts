@@ -88,5 +88,7 @@ describe("getAdminContext email fallback", () => {
     expect(await getAdminContext()).toMatchObject({ roleKey: "owner", isBootstrap: true });
     expect(h.db.admin_users).toHaveLength(1);
     expect(h.db.admin_users[0]).toMatchObject({ email: "sg@mpillow.com", role_id: "r-owner" });
+    // …with a first Staff profile named from the email.
+    expect(h.db.mp_staff).toEqual([expect.objectContaining({ name: "Sg", admin_user_id: h.db.admin_users[0].id })]);
   });
 });
