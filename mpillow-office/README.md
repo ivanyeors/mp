@@ -21,6 +21,8 @@ model/       showroom_massing.glb / .obj  -- the dimensioned 3D model
              showroom_massing_cut.glb     -- north wall + patio roof off (cutaway)
              showroom_massing_ids.glb, showroom_massing_cut_ids.glb
                                           -- the same, coloured by area (ID model)
+             <base>_viewer.json           -- every part as JSON for the Admin Panel's
+                                             Showroom Model page (/settings/showroom)
 plans/       <name>.yaml  -- plan specs: every number of a model (showroom.yaml,
                              hdb-4rm-1bh.yaml); sources/ holds their drawings,
                              presets/ the answers that hold for a kind of plan

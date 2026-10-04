@@ -220,6 +220,12 @@ answers that changed the model, and the GLB paths. `render_views.py` and the
 workflow builders are still wired to the showroom. Say so if the user wants
 renders of the new plan.
 
+The build also writes `model/<base>_viewer.json`, which the Admin Panel's
+Showroom Model page (`/settings/showroom`) renders in 3D. That page shows the
+unit in `lib/showroom/midview-08-83.ts`. To show another plan there, add a unit
+file like it (part names, tags, dimension chains, home camera) and point the
+page at it. Its test fails if a part name doesn't match the spec.
+
 ## When a plan spec already exists
 
 Edit the spec, re-run `plan_check` and grill on anything new. Never delete a

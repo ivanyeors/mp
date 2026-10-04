@@ -1,0 +1,191 @@
+# Midview City Blk 22 #08-83 (Sin Ming Lane) -- Mpillow showroom unit, plan spec.
+# Format: tools/build_massing.py.  Check: python tools/plan_check.py plans/midview-08-83.yaml
+#
+# Read off sources/IMG_7242.PNG: a phone photo of the unit's strata / tenancy
+# plan, cropped just inside the patio's outer line on the east and at the
+# outer wall faces north and south. No dimensions are drawn on it; the scale
+# comes from the interior design brief ("Custom Pillow Showroom Design.pdf",
+# REV A) and the as-built it reproduces (Scopo FD-DD-001, 1:70):
+#   17.75 m overall (west face to patio edge) = 10.45 showroom + 2.75
+#   pantry / WC strip + 4.55 patio; 7.90 m between outer wall faces.
+# The photo is not true: door swings are ~10% wider than tall, so X and Z are
+# calibrated separately (assumptions).
+#
+# Axes as the drawing: X east (right), Z south (down), metres; no mirror.
+# Origin = outer face of the west wall (x) and of the north wall (z).
+
+name: midview-08-83
+output: {dir: ../model, base: midview_08_83}
+
+source:
+  image: sources/IMG_7242.PNG
+# west wall outer face (u 23.5) = 0, GD2 glass line centre (u 866) = 13.20;
+# north outer face (v 4) = 0, south outer face (v 551) = 7.90.
+# 63.8 px/m across, 69.2 px/m down.
+calibrate:
+  - {px: [23.5, 4], at: [0, 0]}
+  - {px: [866, 551], at: [13.20, 7.90]}
+
+dims:
+  - {label: overall (brief / as-built), segments: [10450, 2750, 4550], total: 17750, axis: x, at: -0.3, from: 0}
+  - {label: depth (brief), segments: [7900], total: 7900, axis: z, at: -0.25, from: 0}
+
+check:
+  ink_lum: 170
+
+assumptions:
+  - about: scale -- the photo has no dimensions and is not true (door swings ~10% wider than tall)
+    drawing: none
+    used: X from the as-built (GD2 line 13.20 m = 10.45 + 2.75 from the west face), Z from 7.90 m between outer faces
+    status: confirmed
+    answer: "As-built: X 13.20 m, Z 7.90 m"
+  - about: floor-to-ceiling height (H)
+    drawing: not given; brief says 3.40 m to structural soffit, services above 3.10 m
+    used: 3.40 m
+    status: confirmed
+    answer: 3.40 m to soffit
+  - about: door head height (door_h) -- FD2 entry, WC door D2, GD2 glass door
+    drawing: not given
+    used: FD2 2.40 m (fd2_h); D2 2.10 m (door_h); GD2 door to its 1.95 m transom (gd2_door_h), see GD2
+    status: confirmed
+    answer: "FD2 2.4; D2 2.10 m; GD2 door per the site video (see GD2)"
+  - about: GD2 partition (x 13.20, z 2.02-7.28) between the unit and the patio
+    drawing: heavy line with mullion ticks, glass door GD2 0.91 m at z 5.86-6.77 swinging out to the patio
+    used: window wall -- solid upstand to 0.95 m, black-framed glazing 0.95-3.00 over z 2.02-5.86, wall / beam above to 3.40;
+      door 0.91 m to a 1.95 m transom (solid lower panel, glazed upper), fixed glass over it to 3.00; 0.51 m solid pier south of the door
+    status: confirmed
+    answer: "First answered full glass to 3.4 m; superseded by the user's site video from FD2 (2026-10-04, frames 300 / 900 / 960),
+      which the user said to follow as the real thing. Heights scaled off frame 960 using the 0.91 m door width: sill ~0.95, transom ~1.95, head ~3.0"
+  - about: W3 (x 13.20, z 1.08-1.83) -- swing from the WC into the A/C ledge
+    drawing: drawn like a door (leaf + arc reaching the floor plane), tagged W3
+    used: high window, sill 2.10 m, head 2.70 m; wall below and above
+    status: confirmed
+    answer: "High wall, sill 2.1 m; follow-up -- head 2.70 m"
+  - about: A/C ledge enclosure (x 13.24-14.32, z 0.16-2.03) -- south and east sides
+    drawing: thin double lines (~0.05 m); site photo shows tall perforated screens round the condenser bay
+    used: screens 0.05 m thick, 2.10 m high (screen_h)
+    status: confirmed
+    answer: "Screens to 2.10 m"
+  - about: patio east edge (x 16.95-17.33) and the drawing's last line at x 17.52
+    drawing: lines at x 16.95 / 17.23 / 17.33 / 17.52; site photo shows a low parapet with a wide flat top
+    used: one parapet 16.95-17.33 (0.38 m deep), 1.00 m high; floor ends at its outer face 17.33; the 17.52 line and the as-built 17.75 edge not modelled
+    status: confirmed
+    answer: "As modelled"
+  - about: patio north and south sides (x 13.26-17.33, z 0 and 7.90)
+    drawing: same double line as the unit's party walls; photo shows the A/C screens then a low parapet on the north side
+    used: 1.00 m parapets (parapet_h), open above
+    status: confirmed
+    answer: "1.0 m parapets"
+  - about: north and south party walls of the showroom
+    drawing: double line with a light dashed centre, no glazing ticks; brief says daylight comes from the east only, but the main-floor site photo shows a band of windows on a long wall
+    used: solid full height, no windows
+    status: confirmed
+    answer: "Solid, no windows"
+  - about: FD2 entry (x -0.21-0, z 1.14-2.90)
+    drawing: double-leaf swing hinged at x -0.21, west of the west wall face; jambs = meter cabinet (north) and a 0.89 m wall return (south)
+    used: open doorway 1.76 m at the drawn door line, head at fd2_h 2.40; meter cabinet a full-height box 0-0.84 x 0.48-1.14; 0.89 m wall return south
+    status: confirmed
+    answer: "As modelled"
+  - about: colour zones (the render pipeline has six)
+    used: bare shell -- 0 shop floor (everything west of the GD2 line except the WC), 1 WC, 2 patio + A/C ledge
+    status: confirmed
+    answer: "Bare shell zones (shop floor / WC / patio)"
+
+vars:
+  H: 3.40
+  door_h: 2.10
+  fd2_h: 2.40
+  w3_sill: 2.10
+  gd2_sill: 0.95      # site video
+  gd2_head: 3.00
+  gd2_door_h: 1.95
+  w3_head: 2.70
+  parapet_h: 1.00
+  screen_h: 2.10
+  slab: 0.15
+
+  wc_w: 10.748        # WC west wall centre, faces 10.662 / 10.834
+  wc_s: 1.970         # WC south wall centre, faces 1.921 / 2.018
+  gl: 13.20           # GD2 / WC east line (calibration point)
+
+palette:
+  shell: [196, 193, 188]
+  structure: [178, 174, 168]
+  floor: [176, 173, 168]
+  glass: [150, 190, 205]
+  ledge: [140, 142, 145]
+
+zones:
+  - {slug: 01-shop-floor, label: red}
+  - {slug: 02-wc, label: green}
+  - {slug: 03-patio, label: blue}
+
+zone_regions:
+  - {zone: 02-wc, x: [wc_w, gl], z: [null, wc_s]}
+  - {zone: 01-shop-floor, x: [null, wc_w], z: [null, null]}
+  - {zone: 01-shop-floor, x: [wc_w, gl], z: [wc_s, null]}
+  - {zone: 03-patio, x: [gl, null], z: [null, null]}
+
+# the north party wall faces a camera looking from the north
+cutaway: [north_wall*, col_n_mid, col_nw, col_ne, meter_cab]
+
+items:
+  # ---- floor: outer faces, out to the FD2 door line and the patio parapet ----
+  - type: prism
+    name: floor
+    poly: [[0, 0], [17.328, 0], [17.328, 7.9], [0, 7.9], [0, 2.903], [-0.212, 2.903], [-0.212, 1.141], [0, 1.141]]
+    y: [-slab, 0]
+    color: floor
+
+  # ---- columns (drawn as outlined boxes), clipped at the unit's outer faces ----
+  - {name: col_nw, x: [0, 0.823], z: [0, 0.477], y: [0, H], color: structure}
+  - {name: col_sw, x: [0, 0.885], z: [7.452, 7.9], y: [0, H], color: structure}
+  - {name: col_n_mid, x: [8.594, 9.455], z: [0, 0.491], y: [0, H], color: structure}
+  - {name: col_s_mid, x: [8.594, 9.455], z: [7.38, 7.9], y: [0, H], color: structure}
+  - {name: col_ne, x: [12.808, 13.263], z: [0, 0.26], y: [0, H], color: structure}
+  - {name: rwdp, x: [12.84, 13.216], z: [7.279, 7.597], y: [0, H], color: structure}    # RWDP T/B casing
+
+  # ---- entry ----
+  - {name: meter_cab, x: [0, 0.838], z: [0.477, 1.141], y: [0, H]}                     # solid wall nib, north jamb of FD2; the DB (M) is wall-mounted on it
+  - {name: fd2_head, x: [-0.212, 0.141], z: [1.141, 2.903], y: [fd2_h, H], check: overhead}
+  - {type: wall, name: fd2_return, p0: [0, 3.141], p1: [0.885, 3.141], t: 0.101, y: [0, H]}
+
+  # ---- party walls ----
+  - {type: wall, name: west_wall, p0: [0.0705, 3.091], p1: [0.0705, 7.452], t: 0.141, y: [0, H]}
+  - {type: wall, name: north_wall, p0: [0.823, 0.0795], p1: [13.263, 0.0795], t: 0.159, y: [0, H]}
+  - {type: wall, name: south_wall, p0: [0.885, 7.8205], p1: [12.84, 7.8205], t: 0.159, y: [0, H]}
+
+  # ---- WC ----
+  - {type: wall, name: wc_west, p0: [wc_w, 0.159], p1: [wc_w, 2.018], t: 0.172, y: [0, H]}
+  - type: wall
+    name: wc_south                     # D2 0.83 m at x 12.025-12.855
+    p0: [10.662, wc_s]
+    p1: [gl, wc_s]
+    t: 0.097
+    y: [0, H]
+    openings: [{at: 1.363, w: 0.830}]
+  - type: wall
+    name: wc_east                      # W3 high window to the A/C ledge, z 1.083-1.834
+    p0: [gl, 0.26]
+    p1: [gl, 2.018]
+    t: 0.078
+    y: [0, H]
+    openings: [{at: 0.823, w: 0.751, kind: window, sill: w3_sill, head: w3_head}]
+
+  # ---- GD2 window wall to the patio (site video): upstand, glazing, beam above ----
+  - type: wall
+    name: gd2
+    p0: [gl, 2.018]
+    p1: [gl, 7.279]
+    t: 0.078
+    y: [0, H]
+    openings: [{at: 0, w: 3.846, kind: window, sill: gd2_sill, head: gd2_head},
+               {at: 3.846, w: 0.909, head: gd2_head}]                           # GD2 door; transom glass fills 1.95-3.00
+  - {name: gd2_transom, x: [13.185, 13.215], z: [5.864, 6.773], y: [gd2_door_h, gd2_head], color: glass, check: overhead}
+
+  # ---- patio ----
+  - {type: wall, name: patio_north, p0: [13.263, 0.0795], p1: [17.328, 0.0795], t: 0.159, y: [0, parapet_h], color: ledge}
+  - {type: wall, name: patio_south, p0: [13.216, 7.8205], p1: [17.328, 7.8205], t: 0.159, y: [0, parapet_h], color: ledge}
+  - {name: patio_parapet, x: [16.945, 17.328], z: [0.159, 7.741], y: [0, parapet_h], color: ledge}
+  - {type: wall, name: ac_south, p0: [13.239, 2.004], p1: [14.32, 2.004], t: 0.05, y: [0, screen_h], color: ledge}
+  - {type: wall, name: ac_east, p0: [14.295, 0.159], p1: [14.295, 1.979], t: 0.05, y: [0, screen_h], color: ledge}

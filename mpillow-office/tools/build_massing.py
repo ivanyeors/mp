@@ -20,6 +20,9 @@ ComfyUI/input/3d/ so the Load3D nodes in the workflows can open them:
                        its zone colour (the ID model: ComfyUI's RenderMesh bakes
                        an ID pass from it for any camera)
   <base>_cut_ids.glb   the ID model, cutaway
+  <base>_viewer.json   every part's mesh with its item, role, colour, zone and
+                       cutaway flag, for the Admin Panel's 3D viewer
+                       (app/[lang]/settings/showroom)
 
 Spec format
 -----------
@@ -55,6 +58,7 @@ south, which is what every Y-up viewer (ComfyUI Load3D, three.js) expects.
 
 import argparse
 import fnmatch
+import json
 import math
 import os
 import shutil
@@ -297,7 +301,30 @@ def clip_box(mesh, x0, x1, z0, z1):
     return m
 
 
-def export(spec, parts, id_parts):
+def viewer_json(spec, parts, id_parts, info, cut_match):
+    """The model as plain JSON for the web viewer: one entry per part, with the
+    item it came from, its role (wall / head / sill / glass / box ...), its
+    painted colour, and the same per-zone pieces as the ID model."""
+    def piece(name, mesh):
+        base, _, zone = name.partition("__z")
+        item, _, role, colour = info["origin"][base]
+        out = {"name": base, "item": item, "role": role,
+               "glass": role == "glass" or colour == "glass", "cut": cut_match(base)}
+        if zone:
+            out["zone"] = int(zone)
+        else:
+            out["rgb"] = [int(c) for c in mesh.visual.face_colors[0][:3]]
+        out["position"] = [round(float(v), 4) for v in mesh.vertices.flatten()]
+        out["index"] = [int(i) for i in mesh.faces.flatten()]
+        return out
+
+    return {"name": spec["name"],
+            "zones": [z["slug"] for z in spec.get("zones") or []],
+            "parts": [piece(n, m) for n, m in parts.items()],
+            "zonePieces": [piece(n, m) for n, m in id_parts.items()]}
+
+
+def export(spec, parts, id_parts, info=None):
     env = spec["_env"]
     if spec.get("mirror_z") is not None:
         # Mirror Z so the model is right-handed (X east, Y up, Z south). trimesh
@@ -330,15 +357,24 @@ def export(spec, parts, id_parts):
         print("glb:     %s  (%s bytes, %d parts)" % (path, format(os.path.getsize(path), ","), len(items)))
         return path
 
+    def is_cut(name):
+        return any(fnmatch.fnmatchcase(name.split("__z")[0], c) for c in cut)
+
     def without(items):
-        return {n: m for n, m in items.items()
-                if not any(fnmatch.fnmatchcase(n.split("__z")[0], c) for c in cut)}
+        return {n: m for n, m in items.items() if not is_cut(n)}
 
     export_glb(base + ".glb", parts)
     export_glb(base + "_cut.glb", without(parts))
     if id_parts:
         export_glb(base + "_ids.glb", id_parts)
         export_glb(base + "_cut_ids.glb", without(id_parts))
+
+    if info is not None:
+        path = os.path.join(out_dir, base + "_viewer.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(viewer_json(spec, parts, id_parts, info, is_cut), f, separators=(",", ":"))
+            f.write("\n")
+        print("viewer:  %s  (%s bytes)" % (path, format(os.path.getsize(path), ",")))
 
     merged = trimesh.util.concatenate(list(parts.values()))
     obj = os.path.join(out_dir, base + ".obj")
@@ -355,8 +391,8 @@ def main():
     ap.add_argument("spec", nargs="?", default=DEFAULT_SPEC)
     a = ap.parse_args()
     spec = S.load(a.spec)
-    parts, id_parts, _ = build(spec)
-    export(spec, parts, id_parts)
+    parts, id_parts, info = build(spec)
+    export(spec, parts, id_parts, info)
 
 
 if __name__ == "__main__":
