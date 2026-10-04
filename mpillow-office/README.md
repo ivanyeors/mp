@@ -21,7 +21,12 @@ model/       showroom_massing.glb / .obj  -- the dimensioned 3D model
              showroom_massing_cut.glb     -- north wall + patio roof off (cutaway)
              showroom_massing_ids.glb, showroom_massing_cut_ids.glb
                                           -- the same, coloured by area (ID model)
-tools/       build_massing.py, render_views.py, build_workflow.py
+plans/       <name>.yaml  -- plan specs: every number of a model (showroom.yaml,
+                             hdb-4rm-1bh.yaml); sources/ holds their drawings,
+                             presets/ the answers that hold for a kind of plan
+tools/       build_massing.py, plan_check.py, plan_read.py, plan_env.py,
+             render_views.py, build_workflow.py
+requirements.txt  -- the Python packages tools/ needs
 comfy_nodes/ mp_glb_parts/  -- GLB Part Filter, a custom ComfyUI node: show / hide
                                 named parts of a model on the canvas (junction it
                                 into ComfyUI/custom_nodes)
@@ -202,14 +207,61 @@ individual items, not scenes or architecture". None will turn a plan into a
 room, and the ones installed here are paid cloud APIs.
 
 So `tools/build_massing.py` builds the room from numbers: every dimension
-from the brief, every position read off the page-4 plan. 165 parts. It is
-authored with north up, exactly as drawn, then mirrored on export so the GLB
-is right-handed for Y-up viewers.
+from the brief, every position read off the page-4 plan, all of it in
+`plans/showroom.yaml`. 165 parts. It is authored with north up, exactly as
+drawn, then mirrored on export so the GLB is right-handed for Y-up viewers.
+
+## New floor plans
+
+A new plan is a new spec, not new code. The `plan-to-3d` skill
+(`.claude/skills/plan-to-3d/`) runs the whole loop. By hand:
+
+```
+python tools/plan_env.py                          # ready? Python 3.10+, packages, poppler;
+                                                  # prints the install commands if not
+python -m pip install -r requirements.txt         # the packages (poppler is a system install)
+python tools/plan_read.py render plans/sources/<plan>.pdf --out plans/.cache/<plan>.png
+python tools/plan_read.py lines|ticks ...         # find the dimension chains -> calibrate
+python tools/plan_read.py --spec plans/<plan>.yaml solids | scan z=.. x=.. | grid
+python tools/plan_check.py plans/<plan>.yaml --breakdown   # the gate; exit 0 = PASS;
+                                                  # per wall / window / door scores
+python tools/build_massing.py plans/<plan>.yaml   # -> model/<base>*.glb
+```
+
+`plan_check` lays the model over the drawing (`model/<base>_check.png`) and
+fails unless every dimension chain adds up, at least 90% of the wall outlines
+sit on drawn lines (and every wall at least 60%), every solid fill on the
+plan is covered, and no entry in the spec's `assumptions:` is still `open`.
+That last point is deliberate: a plan never gives heights, and it is often
+ambiguous about a wall or two. Each such value is written down with the
+default used, and the skill asks the user about it until it is confirmed.
+
+`plans/hdb-4rm-1bh.yaml` is the worked example: an HDB 4-room type plan
+from a vector PDF. Every wall outline lands on the drawing, the dimension
+chains close exactly, and its nine assumptions (heights, an undrawn bedroom
+wall, the service yard parapet, zoning) were settled with the user. It
+passes. `plans/showroom.yaml` rebuilds the committed showroom GLB and its
+cutaway byte for byte. The two ID models would come out slightly different:
+pieces of a zone that spans several regions are now joined, where the old
+script kept only the last, so the committed ones lack a floor piece. The
+showroom drawing is a presentation sketch rather than a real plan, so its
+check is informational only.
+
+The skill asks first what kind of plan it is. Answers that hold for every
+plan of a kind live in `plans/presets/<kind>.yaml`. `hdb.yaml` holds the HDB
+heights, parapets and zone grouping, taken from the answers on the first HDB
+plan. A new HDB spec starts from that file, and the user accepts or changes
+all of its values in one question. Only what is particular to the drawing is
+still asked, such as an undrawn wall or an optional partition.
+
+`render_views.py` and the workflow builders still read the showroom's
+constants. Rendering a new plan needs them pointed at its spec (next step).
 
 ## Pipeline
 
 ```
-python tools/build_massing.py    # -> model/showroom_massing*.glb (+ ComfyUI/input/3d/)
+python tools/plan_check.py plans/showroom.yaml   # spec vs drawing -> model/showroom_massing_check.png
+python tools/build_massing.py    # plans/showroom.yaml -> model/showroom_massing*.glb (+ ComfyUI/input/3d/)
 python tools/render_views.py     # -> ref-img/massing/massing_<view>[_depth|_ids|_zoned].png
                                  #    and massing_sec_<area>*.png, zones.json
 python tools/build_workflow.py   # -> workflows/showroom_moodboard_16x9.json (+ sidebar)

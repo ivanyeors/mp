@@ -1,0 +1,270 @@
+# HDB 4-Room Type 1B(H), Ulu Pandan C2 (Blk 57A / 57D / 58C) -- plan spec.
+# Format: tools/build_massing.py.  Check: python tools/plan_check.py plans/hdb-4rm-1bh.yaml
+#
+# Read off sources/hdb-4rm-1bh-ulu-pandan-c2.pdf (vector PDF, rasterised at
+# 300 dpi). Axes as the drawing: X east (right), Z south (down), metres; no
+# mirror. Origin = the start of the top and left dimension chains, i.e. the
+# outer faces of the main bedroom's west and north walls.
+#
+# Structural walls (black on the drawing) are traced outlines, snapped to
+# the nearest millimetre; thin walls are double lines, centred between them.
+
+name: hdb-4rm-1bh
+output: {dir: ../model, base: hdb_4rm_1bh}
+
+source:
+  pdf: sources/hdb-4rm-1bh-ulu-pandan-c2.pdf
+  page: 1
+  dpi: 300
+# dimension-chain end ticks: top-left (0, 0) and the far ends of the 12815
+# and 8580 chains. Measured 118.06 / 118.12 px per m: the drawing is true.
+calibrate:
+  - {px: [554, 555.5], at: [0, 0]}
+  - {px: [2067, 1569], at: [12.815, 8.580]}
+
+dims:
+  - {label: top (overall), segments: [3150, 3050, 3140, 3475], total: 12815, axis: x, at: -1.672, from: 0}
+  - {label: left (overall), segments: [3890, 1950, 2740], total: 8580, axis: z, at: -0.771, from: 0}
+  - {label: inner (baths + shelter), segments: [2250, 2030, 2550], axis: x, at: 3.581, from: 1.991}
+  - {label: bedroom 3 depth, segments: [3290], axis: z, at: 8.720, from: -0.495}
+  - {label: corridor + shelter, segments: [1100, 2050], axis: z, at: 9.652, from: 2.790}
+  - {label: right (living), segments: [6020], axis: z, at: 13.705, from: 0.504}
+  - {label: bottom (yard + kitchen), segments: [1420, 3965], axis: x, at: 9.181, from: 5.023}
+
+# Anything the drawing does not say. plan_check fails while one is `open`;
+# the plan-to-3d skill asks about each until it is settled.
+assumptions:
+  - about: floor-to-ceiling height (H)
+    drawing: not given
+    used: 2.60 m (typical HDB clear height)
+    status: confirmed
+    answer: 2.60 m
+  - about: door head height (door_h)
+    drawing: not given
+    used: 2.10 m
+    status: confirmed
+    answer: 2.10 m
+  - about: window sill / head -- bedrooms, living, west window of the main bedroom
+    drawing: not given; windows are drawn as triple lines in 0.15 m walls
+    used: sill 1.00 m, head 2.10 m; living east window the same
+    status: confirmed
+    answer: sill 1.00 / head 2.10, living east the same
+  - about: bath windows (dashed in the south wall of both baths)
+    drawing: dashed = high-level ventilation window
+    used: sill 1.60 m, head 2.10 m
+    status: confirmed
+    answer: sill 1.60 / head 2.10
+  - about: main bedroom -- east side between the bedroom and the corridor (x 3.13, z 2.80-3.89)
+    drawing: no wall drawn; only a dashed door swing near x 3.9-5.2
+    used: full-height wall on the bedroom 2 west wall line, 0.90 m door centred
+    status: confirmed
+    answer: wall + 0.9 m door; follow-up -- door centred in the 1.08 m run
+    note: "not on the drawing, so the wall is excluded from plan_check (check: none)"
+  - about: service yard west side (x 5.09, z 5.85-8.23) facing the laundry rack
+    drawing: double line, no glazing marks
+    used: 1.00 m parapet (parapet_h), open above
+    status: confirmed
+    answer: parapet only, 1.0 m
+  - about: kitchen / service yard divider (x 6.49)
+    drawing: framed glass panels with a folding door between z 6.55 and 7.45
+    used: no divider -- kitchen and yard as one space
+    status: confirmed
+    answer: fully open
+  - about: A/C ledge parapet height
+    drawing: not given
+    used: 1.00 m
+    status: confirmed
+    answer: 1.00 m
+  - about: colour zones (the render pipeline has six)
+    used: 0 living + dining + corridor, 1 main bedroom, 2 bedroom 2, 3 bedroom 3,
+      4 kitchen + service yard + A/C ledge, 5 baths + household shelter
+    status: confirmed
+    answer: proposed grouping
+
+vars:
+  H: 2.60          # floor to ceiling -- assumption
+  door_h: 2.10     # used by wall openings of kind door
+  window_head: 2.10
+  sill_h: 1.00     # used by wall openings of kind window
+  bath_sill: 1.60
+  parapet_h: 1.00
+  slab: 0.15
+
+  # centre lines, from the double-line scans
+  bed_s: 2.751         # bedroom 2 / 3 south wall, faces 2.696 / 2.806
+  bath_n: 3.9455       # bath north wall, faces 3.882 / 4.009
+  bath_s: 5.795        # bath south wall, faces 5.736 / 5.854
+  part_23: 6.247       # bedroom 2 / 3 partition, faces 6.192 / 6.302
+  bed2_w: 3.1935       # bedroom 2 west wall, faces 3.134 / 3.253
+  bed3_e: 9.296        # bedroom 3 east wall, faces 9.241 / 9.351
+  entry_z: 6.3535      # entrance wall, faces 6.167 / 6.540
+  kit_col: 10.236      # kitchen column centre, faces 10.054 / 10.418
+  shelter_e: 8.818
+  shelter_s: 5.939
+
+palette:
+  shell: [196, 193, 188]
+  structure: [178, 174, 168]
+  floor: [176, 173, 168]
+  glass: [150, 190, 205]
+  ledge: [140, 142, 145]
+
+zones:
+  - {slug: 01-living-dining, label: red}
+  - {slug: 02-main-bedroom, label: green}
+  - {slug: 03-bedroom-2, label: blue}
+  - {slug: 04-bedroom-3, label: yellow}
+  - {slug: 05-kitchen-yard, label: magenta}
+  - {slug: 06-baths-shelter, label: cyan}
+
+zone_regions:
+  - {zone: 02-main-bedroom, x: [null, bed2_w], z: [null, bath_n]}
+  - {zone: 03-bedroom-2, x: [bed2_w, part_23], z: [null, bed_s]}
+  - {zone: 04-bedroom-3, x: [part_23, bed3_e], z: [null, bed_s]}
+  - {zone: 01-living-dining, x: [bed2_w, bed3_e], z: [bed_s, bath_n]}          # corridor
+  - {zone: 01-living-dining, x: [bed3_e, null], z: [null, entry_z]}
+  - {zone: 06-baths-shelter, x: [null, 6.243], z: [bath_n, bath_s]}
+  - {zone: 06-baths-shelter, x: [6.243, shelter_e], z: [bath_n, shelter_s]}
+  - {zone: 01-living-dining, x: [shelter_e, bed3_e], z: [bath_n, shelter_s]}   # dining strip
+  - {zone: 05-kitchen-yard, x: [null, 6.243], z: [bath_s, null]}
+  - {zone: 05-kitchen-yard, x: [6.243, bed3_e], z: [shelter_s, null]}
+  - {zone: 05-kitchen-yard, x: [bed3_e, null], z: [entry_z, null]}
+
+# facades nearest a camera looking from the north, so the iso views see in
+cutaway: [mbr_north*, bed_facade*, living_north*, col_nw, col_ne]
+
+items:
+  # ---- floor: the flat's outline at the outer wall faces (the bedroom facade, not
+  #      the corner fins, between the two L columns) ----
+  - type: prism
+    name: floor
+    poly: [[0, 0], [3.142, 0], [3.142, -0.952], [4.159, -0.952], [4.159, -0.648], [8.326, -0.648],
+           [8.326, -0.952], [9.343, -0.952], [9.343, 0.495], [12.993, 0.495],
+           [12.993, 6.540], [10.418, 6.540], [10.418, 8.233], [10.859, 8.233], [10.859, 8.580],
+           [5.023, 8.580], [5.023, 5.854], [1.686, 5.854], [1.686, 4.195], [0, 4.195]]
+    y: [-slab, 0]
+    color: floor
+
+  # ---- structure (black on the drawing): traced outlines ----
+  - type: prism
+    name: col_nw                       # bedroom 2 NW corner, L-shaped
+    poly: [[3.142, -0.952], [4.159, -0.952], [4.159, -0.495], [3.498, -0.495], [3.498, 1.096], [3.142, 1.096]]
+    y: [0, H]
+    color: structure
+  - type: prism
+    name: col_ne                       # bedroom 3 NE corner, L-shaped
+    poly: [[8.326, -0.952], [9.343, -0.952], [9.343, 1.096], [8.987, 1.096], [8.987, -0.495], [8.326, -0.495]]
+    y: [0, H]
+    color: structure
+  - {name: mbr_west_n, x: [0, 0.356], z: [0, 1.604], y: [0, H], color: structure}
+  - type: prism
+    name: mbr_south                    # main bedroom SW: west wall foot + south wall + bath 1 west wall
+    poly: [[0, 3.289], [0.356, 3.289], [0.356, 3.890], [1.991, 3.890], [1.991, 5.846],
+           [1.686, 5.846], [1.686, 4.195], [0, 4.195]]
+    y: [0, H]
+    color: structure
+  - type: prism
+    name: shelter                      # household shelter, door gap on the north side
+    poly: [[6.243, 3.890], [7.166, 3.890], [7.166, 4.195], [6.573, 4.195], [6.573, 5.643],
+           [8.521, 5.643], [8.521, 4.195], [7.869, 4.195], [7.869, 3.890], [8.818, 3.890],
+           [8.818, 5.939], [6.243, 5.939]]
+    y: [0, H]
+    color: structure
+  - {name: shelter_head, x: [7.166, 7.869], z: [3.890, 4.195], y: [door_h, H], color: structure}
+  - type: prism
+    name: kitchen_s                    # kitchen column + south wall
+    poly: [[10.054, 6.167], [10.418, 6.167], [10.418, 8.233], [10.859, 8.233], [10.859, 8.580],
+           [5.023, 8.580], [5.023, 8.233], [10.054, 8.233]]
+    y: [0, H]
+    color: structure
+
+  # ---- facade walls with windows ----
+  - type: wall
+    name: mbr_west                     # main bedroom west window, 0.356 m structural wall
+    p0: [0.178, 1.604]
+    p1: [0.178, 3.289]
+    t: 0.356
+    y: [0, H]
+    openings: [{at: 0, w: 1.685, kind: window}]
+    color: structure
+  - type: wall
+    name: mbr_north
+    p0: [0.356, 0.075]
+    p1: [3.142, 0.075]
+    t: 0.15
+    y: [0, H]
+    openings: [{at: 0.440, w: 1.902, kind: window}]
+  - type: wall
+    name: bed_facade                   # bedrooms 2 + 3 north, piers 4.159-4.30 / 5.59-6.903 / 8.182-8.326
+    p0: [4.159, -0.5715]
+    p1: [8.326, -0.5715]
+    t: 0.153
+    y: [0, H]
+    openings: [{at: 0.141, w: 1.290, kind: window}, {at: 2.744, w: 1.279, kind: window}]
+  - type: wall
+    name: living_north
+    p0: [9.343, 0.580]
+    p1: [12.993, 0.580]
+    t: 0.170
+    y: [0, H]
+    openings: [{at: 0.497, w: 2.500, kind: window}]
+  - type: wall
+    name: living_east                  # structural both sides of the window
+    p0: [12.8155, 0.665]
+    p1: [12.8155, 6.531]
+    t: 0.355
+    y: [0, H]
+    openings: [{at: 1.989, w: 1.863, kind: window}]
+    color: structure
+
+  # ---- internal walls ----
+  - {type: wall, name: bed2_west, p0: [bed2_w, 1.096], p1: [bed2_w, 2.696], t: 0.119, y: [0, H]}
+  - {type: wall, name: part_23, p0: [part_23, -0.495], p1: [part_23, 2.696], t: 0.110, y: [0, H]}
+  - {type: wall, name: bed3_east, p0: [bed3_e, 1.096], p1: [bed3_e, 2.696], t: 0.110, y: [0, H]}
+  - type: wall
+    name: bed_south                    # bedroom 2 door 5.184-6.116, bedroom 3 door 6.380-7.300
+    p0: [3.134, bed_s]
+    p1: [9.351, bed_s]
+    t: 0.110
+    y: [0, H]
+    openings: [{at: 2.050, w: 0.932}, {at: 3.246, w: 0.920}]
+  - type: wall
+    name: bath_north                   # bi-fold doors 2.920-3.810, 5.209-6.099
+    p0: [1.991, bath_n]
+    p1: [6.243, bath_n]
+    t: 0.127
+    y: [0, H]
+    openings: [{at: 0.929, w: 0.890}, {at: 3.218, w: 0.890}]
+  - {type: wall, name: bath_part, p0: [4.282, 4.009], p1: [4.282, 5.736], t: 0.110, y: [0, H]}
+  - {type: wall, name: bath2_east, p0: [6.2045, 4.009], p1: [6.2045, 5.736], t: 0.077, y: [0, H]}
+  - type: wall
+    name: bath_south                   # high windows 2.804-3.473, 4.345-4.964
+    p0: [1.991, bath_s]
+    p1: [6.243, bath_s]
+    t: 0.118
+    y: [0, H]
+    openings: [{at: 0.813, w: 0.669, kind: window, sill: bath_sill},
+               {at: 2.354, w: 0.619, kind: window, sill: bath_sill}]
+  - type: wall
+    name: entrance                     # main door + gate 11.080-12.332
+    p0: [10.418, entry_z]
+    p1: [12.638, entry_z]
+    t: 0.373
+    y: [0, H]
+    openings: [{at: 0.662, w: 1.252}]
+  - {type: wall, name: yard_west, p0: [5.0865, 5.854], p1: [5.0865, 8.233], t: 0.127, y: [0, parapet_h]}
+  # kitchen / yard divider: none -- confirmed fully open (assumptions)
+  # main bedroom east wall: not on the drawing, confirmed with the user
+  - type: wall
+    name: mbr_east
+    p0: [bed2_w, 2.806]
+    p1: [bed2_w, 3.882]
+    t: 0.119
+    y: [0, H]
+    openings: [{at: (3.882 - 2.806 - 0.90) / 2, w: 0.90}]
+    check: none
+
+  # ---- A/C ledge: slab + parapet ----
+  - {name: ledge_slab, x: [1.838, 4.430], z: [5.854, 6.752], y: [-slab, 0], color: ledge}
+  - {name: ledge_parapet_w, x: [1.838, 1.948], z: [5.854, 6.752], y: [0, parapet_h], color: ledge}
+  - {name: ledge_parapet_s, x: [1.948, 4.430], z: [6.642, 6.752], y: [0, parapet_h], color: ledge}

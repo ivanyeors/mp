@@ -69,3 +69,10 @@ graphify-out/.graphify_analysis.json
 
 # Renders
 renders
+# mpillow-office: plan_check / plan_read raster cache, plan_check's pictures
+# and report (regenerated in seconds), Python caches
+mpillow-office/plans/.cache/
+mpillow-office/model/*_check.png
+mpillow-office/model/*_check.json
+mpillow-office/model/*_zones.png
+mpillow-office/**/__pycache__/
