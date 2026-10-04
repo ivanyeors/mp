@@ -40,6 +40,12 @@ describe("role → permission matrix", () => {
     expect(roleHasPermission("viewer", "products")).toBe(false);
   });
 
+  it("opens the showroom model to managers, not to staff or viewers", () => {
+    expect(roleHasPermission("manager", "showroom")).toBe(true);
+    expect(roleHasPermission("staff", "showroom")).toBe(false);
+    expect(roleHasPermission("viewer", "showroom")).toBe(false);
+  });
+
   it("every permission in the matrix is a known permission", () => {
     const known = new Set<Permission>(ADMIN_PERMISSIONS);
     for (const role of Object.keys(ROLE_PERMISSIONS) as AdminRole[]) {

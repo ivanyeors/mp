@@ -8,7 +8,7 @@ import {
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
-  GitBranch, ClipboardCheck, Percent,
+  GitBranch, ClipboardCheck, Percent, Box,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -145,6 +145,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp, perm: "analytics" },
       { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText, perm: "audit-log" },
+    ],
+  },
+  {
+    label: "Showroom",
+    items: [
+      { href: "/settings/showroom", label: "Showroom Model", tooltip: "3D model of the showroom unit", Icon: Box, perm: "showroom" },
     ],
   },
   {
