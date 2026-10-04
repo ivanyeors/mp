@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1791103556.0285137,
-    "seen": 1791104068.0566802,
-    "ast_hash": "41d094a6c2ccbd2d04657f78dd9440d6",
+    "mtime": 1791110345.448107,
+    "seen": 1791110404.8904514,
+    "ast_hash": "11b6ee3df39f3a74f4243ff1366af37e",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -14922,9 +14922,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/01-glossary-adr.md": {
-    "mtime": 1791104393.6230676,
-    "seen": 1791104446.7640336,
-    "ast_hash": "82bd8671b04cad19a55cbab24c6a4b46",
+    "mtime": 1791110354.6186426,
+    "seen": 1791110404.8903363,
+    "ast_hash": "8ba0e5135a069397b0d3be5576da0a3f",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/02-permission-catalog-split.md": {
@@ -14994,21 +14994,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/issues/README.md": {
-    "mtime": 1791105393.8771026,
-    "seen": 1791105450.8576303,
-    "ast_hash": "ff8828a9754518fbc28a067289a0f980",
+    "mtime": 1791110354.619317,
+    "seen": 1791110404.8903537,
+    "ast_hash": "a2167756e15a9a485f1bd630607dcf1a",
     "semantic_hash": ""
   },
   ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md": {
-    "mtime": 1791104388.5612926,
-    "seen": 1791104446.764054,
-    "ast_hash": "6e1da6410974f7baad7e526029df1e3b",
+    "mtime": 1791110354.6198232,
+    "seen": 1791110404.8903546,
+    "ast_hash": "8467321e7ead0153b75a79e4270afdb6",
     "semantic_hash": ""
   },
   "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md": {
-    "mtime": 1791104399.9756045,
-    "seen": 1791104446.764346,
-    "ast_hash": "c33d096f04320f23e7c1cf0c762c63ca",
+    "mtime": 1791110345.455491,
+    "seen": 1791110404.8906054,
+    "ast_hash": "36d3a6fa0e04c012fe3bf36bfc47ed0d",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/page-keys-by-route.test.ts": {

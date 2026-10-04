@@ -3,6 +3,7 @@
 Type: AFK
 Parent: PRD `users-permissions-rbac` (`.claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md`)
 Triage: ready
+Status: done
 User stories covered: — (language for all slices)
 
 ## What to build
@@ -17,10 +18,10 @@ Land the domain language before any code uses it.
 
 ## Acceptance criteria
 
-- [ ] All seven terms are in `CONTEXT.md` with _Avoid_ lines.
-- [ ] No glossary entry still describes `mp_staff` or `telegram_operators` as unrelated to logins.
-- [ ] ADR 0023 status reflects triage.
-- [ ] `graphify-out/` refreshed in the same commit.
+- [x] All seven terms are in `CONTEXT.md` with _Avoid_ lines.
+- [x] No glossary entry still describes `mp_staff` or `telegram_operators` as unrelated to logins.
+- [x] ADR 0023 status reflects triage.
+- [x] `graphify-out/` refreshed in the same commit.
 
 ## Blocked by
 

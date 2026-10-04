@@ -1,6 +1,6 @@
 # Admin Panel RBAC: roles are data, permissions are code
 
-Status: Proposed (PRD `users-permissions-rbac`)
+Status: Accepted (PRD `users-permissions-rbac`, triage 2026-10-04)
 
 Migration `0038_admin_rbac.sql` put the role → permission matrix in `lib/auth/permissions.ts` so it
 was deterministic and unit-testable, and kept only membership, role name and active state in

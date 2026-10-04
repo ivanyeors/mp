@@ -1,8 +1,8 @@
 # PRD: Users & permissions (Admin Panel RBAC)
 
-Status: Draft (needs-triage)
+Status: Ready (triaged 2026-10-04)
 Source: Request to merge **Admin Users** and **Staff Management** into one RBAC surface (Oct 2026)
-ADR: `docs/adr/0023-rbac-roles-are-data-permissions-are-code.md` (Proposed)
+ADR: `docs/adr/0023-rbac-roles-are-data-permissions-are-code.md` (Accepted)
 
 ## Problem Statement
 
