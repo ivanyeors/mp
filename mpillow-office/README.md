@@ -199,6 +199,45 @@ Qwen-Image-Edit-2509 (draft as image 1, hero as image 2). With a photo
 reference the edit model reproduces that photo; at partial denoise it
 changes nothing, and the depth ControlNet cannot override it.
 
+## The fast zoned variant
+
+`showroom_zoned_fast_16x9.json` (`python tools/build_workflow_fast.py`) is
+the zoned workflow, same sections and the same three renders, rebuilt to
+run quickly on a 16 GB card. Prompts, areas, colours and camera defaults are
+imported from `build_workflow.py`, so the two never drift apart. Outputs
+carry a `_fast` suffix so they sit next to the originals for comparison.
+
+- **One model, resident.** Qwen-Image-2.1 (7B, generates and edits) with
+  the Viggle turbo v0.3 LoRA merged in, int8, 7.3 GB. It replaces both 20B
+  models (Edit-2509 and Qwen-Image, 19 GB each), which never fitted in VRAM
+  and streamed from RAM on every step.
+- **6 steps, no CFG** (euler + BasicGuider). The turbo schedule's
+  resolution shift is computed by the build script into `ManualSigmas`
+  nodes, one per picture size, so no custom node is needed. Change a size in
+  the script and rebuild; do not hand-edit them.
+- **Depth lock:** the Qwen-Image-2.1 Fun ControlNet Union, a model patch
+  (`Load Model Patch` -> `Apply Fun ControlNet`), strength 0.85.
+- **Moodboards:** the mood and furniture contact sheets go in as reference
+  images 1 and 2 of `Text Encode Qwen Image 2.1`; no edit subgraph.
+- **Zone masks:** one KJNodes `Color To Mask` per area (RGB distance 120)
+  instead of 18 channel-arithmetic nodes per ID image.
+- **ZONING switch** (top of section 5): `false` drops the six regional
+  prompts and samples with the whole-scene prompt only, for quick look-dev.
+  The depth lock stays on.
+- Refines (section, free camera, muted 5.10b hi-res at 2560 x 1440) use the
+  last two turbo steps, starting near 0.7 noise.
+
+| File | Folder | Source |
+| --- | --- | --- |
+| `Qwen-Image-2.1-viggle-turbo-v0.3-6step-int8_convrot.safetensors` | diffusion_models | `Viggle/Qwen-Image-2.1-viggle-turbo` |
+| `qwen3vl_8b_int8_convrot.safetensors` | text_encoders | `Comfy-Org/Qwen-Image-2.1` |
+| `qwen_image_2.1_vae_bf16.safetensors` | vae | `Comfy-Org/Qwen-Image-2.1` |
+| `qwen_image_2.1_fun_controlnet_union_int8_convrot.safetensors` | model_patches | `Comfy-Org/Qwen-Image-2.1` |
+
+**Licence:** Qwen-Image-2.1 and the turbo are under the Qwen Research
+License (non-commercial). Use them for evaluation; clear the licence before
+any render goes to a client.
+
 ## Why the 3D step is computed, not generated
 
 Image-to-3D models (TRELLIS.2, Hunyuan3D, Tripo, Meshy, Rodin) rebuild a
