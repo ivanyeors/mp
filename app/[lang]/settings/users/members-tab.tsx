@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,15 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { defaultProfileName } from "@/lib/staff/profile-name";
 import { cn } from "@/lib/utils";
 import { formatAdminRelative } from "@/lib/format/admin-date";
 import type { MemberRow, MemberStatus, RoleRow } from "@/lib/auth/members";
@@ -19,7 +28,7 @@ const STATUS_LABEL: Record<MemberStatus, string> = {
   deactivated: "Deactivated",
 };
 
-function StatusPill({ status }: { status: MemberStatus }) {
+function StatusPill({ status, detail }: { status: MemberStatus; detail?: string }) {
   return (
     <span
       className={cn(
@@ -30,6 +39,11 @@ function StatusPill({ status }: { status: MemberStatus }) {
       )}
     >
       {STATUS_LABEL[status]}
+      {detail ? (
+        <span className="font-normal" suppressHydrationWarning>
+          &nbsp;· {detail}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -59,8 +73,8 @@ export function MembersTab({
   reload: () => Promise<void>;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [nowMs, setNowMs] = useState<number | null>(null);
-  useEffect(() => setNowMs(Date.now()), []);
+  // Sampled once per mount; relative labels are suppressHydrationWarning.
+  const [nowMs] = useState(() => Date.now());
 
   const rolesById = useMemo(() => new Map<string, PolicyRole>(roles.map((r) => [r.id, r])), [roles]);
   const ownerRoleId = roles.find((r) => r.key === "owner")?.id;
@@ -124,7 +138,59 @@ export function MembersTab({
     </Select>
   );
 
-  const toggleButton = (m: MemberRow, why: string | null) => (
+  async function invitedAction(m: MemberRow, action: "resend" | "revoke") {
+    if (action === "revoke" && !window.confirm(`Revoke the invite to ${m.email}?`)) return;
+    setBusyId(m.id);
+    try {
+      const res = await fetch(
+        action === "resend" ? `/api/admin/users/${m.id}/resend-invite` : `/api/admin/users/${m.id}`,
+        { method: action === "resend" ? "POST" : "DELETE" },
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed");
+      if (action === "revoke") {
+        setMembers((rows) => rows.filter((r) => r.id !== m.id));
+        toast.success(`Invite to ${m.email} revoked`);
+        await reload();
+      } else {
+        setMembers((rows) => rows.map((r) => (r.id === m.id ? (payload.member as MemberRow) : r)));
+        if (payload.emailSent) toast.success(`Invite re-sent to ${m.email}`);
+        else toast.error("The email failed to send. Try Resend again in a minute.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const sentLabel = (m: MemberRow) =>
+    m.inviteSentAt ? `sent ${formatAdminRelative(m.inviteSentAt, nowMs) ?? "just now"}` : "email not sent";
+
+  const toggleButton = (m: MemberRow, why: string | null) =>
+    m.status === "invited" ? (
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!!why || busyId === m.id}
+          title={why ?? undefined}
+          onClick={() => invitedAction(m, "resend")}
+        >
+          Resend
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={!!why || busyId === m.id}
+          title={why ?? undefined}
+          onClick={() => invitedAction(m, "revoke")}
+        >
+          {busyId === m.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+          Revoke
+        </Button>
+      </div>
+    ) : (
     <Button
       variant={m.isActive ? "outline" : "default"}
       size="sm"
@@ -135,10 +201,10 @@ export function MembersTab({
       {busyId === m.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
       {m.isActive ? "Deactivate" : "Reactivate"}
     </Button>
-  );
+    );
 
   const lastSignIn = (m: MemberRow) =>
-    m.lastSignInAt && nowMs != null ? (formatAdminRelative(m.lastSignInAt, nowMs) ?? "—") : "—";
+    m.lastSignInAt ? (formatAdminRelative(m.lastSignInAt, nowMs) ?? "—") : "—";
 
   const profilesLink = (m: MemberRow) => {
     const n = profileCounts.get(m.id) ?? 0;
@@ -158,7 +224,7 @@ export function MembersTab({
 
   return (
     <div className="space-y-6">
-      <InviteForm roles={roles} onInvited={reload} assignable={assignable} />
+      <InviteDialog roles={roles} onInvited={reload} assignable={assignable} />
 
       {loading && members.length === 0 ? (
         <div className="py-10 text-center text-muted-foreground">
@@ -177,7 +243,7 @@ export function MembersTab({
                     {m.email} {you(m)}
                   </span>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <StatusPill status={m.status} />
+                    <StatusPill status={m.status} detail={m.status === "invited" ? sentLabel(m) : undefined} />
                     <span suppressHydrationWarning>Last sign-in {lastSignIn(m)}</span>
                   </div>
                   {profilesLink(m)}
@@ -208,7 +274,7 @@ export function MembersTab({
                         <span className="font-medium">
                           {m.email} {you(m)}
                         </span>
-                        <StatusPill status={m.status} />
+                        <StatusPill status={m.status} detail={m.status === "invited" ? sentLabel(m) : undefined} />
                       </div>
                     </TableCell>
                     <TableCell>
@@ -233,7 +299,7 @@ export function MembersTab({
   );
 }
 
-function InviteForm({
+function InviteDialog({
   roles,
   assignable,
   onInvited,
@@ -244,10 +310,13 @@ function InviteForm({
 }) {
   const choices = roles.filter((r) => assignable.get(r.id)?.ok);
   const fallback = choices.find((r) => r.key === "admin")?.id ?? choices[0]?.id ?? "";
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
+  const [profileName, setProfileName] = useState("");
   const [inviting, setInviting] = useState(false);
   const selected = choices.some((r) => r.id === roleId) ? roleId : fallback;
+  const suggestedName = email.includes("@") ? defaultProfileName(email) : "";
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -256,12 +325,15 @@ function InviteForm({
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role_id: selected }),
+        body: JSON.stringify({ email, role_id: selected, profile_name: profileName.trim() || null }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to invite");
-      toast.success(`${email} invited`);
+      if (payload.emailSent) toast.success(`Invite sent to ${email}`);
+      else toast.error("Invite saved, but the email failed to send. Use Resend on their row.");
       setEmail("");
+      setProfileName("");
+      setOpen(false);
       await onInvited();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to invite");
@@ -271,43 +343,77 @@ function InviteForm({
   }
 
   return (
-    <Card className="p-5">
-      <form onSubmit={invite} className="flex flex-col gap-4 sm:flex-row sm:items-end">
-        <div className="flex-1 space-y-1.5">
-          <label htmlFor="invite-email" className="text-sm font-medium">
-            Invite by email
-          </label>
-          <Input
-            id="invite-email"
-            type="email"
-            placeholder="name@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="invite-role" className="text-sm font-medium">
-            Role
-          </label>
-          <Select value={selected} onValueChange={setRoleId}>
-            <SelectTrigger id="invite-role" className="w-full sm:w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {choices.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button type="submit" disabled={inviting || !selected}>
-          {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-          Invite
-        </Button>
-      </form>
-    </Card>
+    <div className="flex justify-end">
+      <Button onClick={() => setOpen(true)} disabled={!choices.length}>
+        <UserPlus className="mr-2 h-4 w-4" /> Invite member
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <form onSubmit={invite} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Invite a member</DialogTitle>
+              <DialogDescription>
+                They get an email with a Sign in button, and become Active the first time they sign in with this
+                address.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <label htmlFor="invite-email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="invite-role" className="text-sm font-medium">
+                Role
+              </label>
+              <Select value={selected} onValueChange={setRoleId}>
+                <SelectTrigger id="invite-role" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {choices.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="invite-profile" className="text-sm font-medium">
+                First staff profile
+              </label>
+              <Input
+                id="invite-profile"
+                placeholder={suggestedName || "Name"}
+                value={profileName}
+                maxLength={120}
+                onChange={(e) => setProfileName(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                The person Results are tagged with. Leave empty to use {suggestedName ? `"${suggestedName}"` : "the email"}.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={inviting || !selected}>
+                {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Send invite
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

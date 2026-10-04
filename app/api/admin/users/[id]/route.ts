@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminContext } from "@/lib/auth/admin";
-import { updateMember } from "@/lib/auth/members";
+import { revokeInvite, updateMember } from "@/lib/auth/members";
 
 export const runtime = "nodejs";
 
@@ -39,5 +39,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: true, member: result.member });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Update failed" }, { status: 500 });
+  }
+}
+
+/** Revoke an invite. Only while the Member is still Invited; an Active Member is deactivated instead. */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  let ctx;
+  try {
+    ctx = await requireAdminContext("users");
+  } catch (denied) {
+    return denied as NextResponse;
+  }
+  const { id } = await params;
+  try {
+    const result = await revokeInvite(ctx, id);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Revoke failed" }, { status: 500 });
   }
 }

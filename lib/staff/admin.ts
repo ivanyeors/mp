@@ -3,6 +3,8 @@ import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 
+export { defaultProfileName } from "@/lib/staff/profile-name";
+
 /**
  * Staff profiles (`mp_staff`, ADR 0023): the named people who work under a
  * Member (login). A Result is "measured by" a profile; a Telegram link
@@ -99,18 +101,6 @@ const snapshot = (p: StaffProfile) => ({
   member: p.memberEmail,
   archived: p.archivedAt != null,
 });
-
-/** The default first profile name for a login: its email's local part, title-cased. */
-export function defaultProfileName(email: string): string {
-  const local = email.split("@")[0] ?? email;
-  return (
-    local
-      .split(/[._-]+/)
-      .filter(Boolean)
-      .map((w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase())
-      .join(" ") || email
-  );
-}
 
 /**
  * Create a profile under a Member. `actor` null is a system write (first

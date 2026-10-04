@@ -3,6 +3,7 @@
 Type: AFK
 Parent: PRD `users-permissions-rbac`
 Triage: ready
+Status: done (migration file written and checked locally; not yet applied to production)
 User stories covered: 5–9
 
 ## What to build
@@ -19,11 +20,21 @@ Turn "invite" from a silent row insert into a real invitation.
 
 ## Acceptance criteria
 
-- [ ] Email render test (subject, inviter, role, link) in `lib/email/__tests__`.
-- [ ] Route tests: create, duplicate 409, resend rate limit, revoke refused for an Active Member.
-- [ ] Invited Member shows "Invited · sent <time>" with Resend / Revoke; binds to Active on first sign-in.
-- [ ] Email preview available through the existing email preview guard (`lib/email/preview-guard.ts`) if other templates use it.
-- [ ] `graphify-out/` refreshed.
+- [x] Email render test (subject, inviter, role, link) in `lib/email/__tests__`.
+- [x] Route tests: create, duplicate 409, resend rate limit, revoke refused for an Active Member.
+- [x] Invited Member shows "Invited · sent <time>" with Resend / Revoke; binds to Active on first sign-in.
+- [x] Email preview available through the existing email preview guard (`lib/email/preview-guard.ts`) if other templates use it.
+- [x] `graphify-out/` refreshed.
+
+## Decisions made while building
+
+- **Revoke and Resend follow the same Member rules** as a role change (`canUpdateMember`): not yourself, Owner invites only by an Owner, and only for a role the actor could have given. Both are refused (409) once the Member has signed in.
+- **Resend inside a minute is a 429** with "The invite just went out. Wait a minute before resending."
+- **A failed send leaves `invite_sent_at` null**, so the row reads "Invited · email not sent" and Resend is available at once; a successful send stamps it.
+- **The invite email is registered** (`auth.admin_invite`) so it appears on the email preview surface and passes the shared email contract tests; it uses the staff audience shell.
+- **Sign-in link** is `/<default locale>/account/login?next=/<default locale>/settings` on the site origin.
+- **First profile name** defaults from `defaultProfileName` (now in the pure `lib/staff/profile-name.ts`, so the dialog shows the same placeholder the server will use).
+- Audit order on invite: `staff_profile.create` then `member.invite` (with `emailSent`); revoke records profiles that were archived and moved to the revoker because Results name them.
 
 ## Blocked by
 

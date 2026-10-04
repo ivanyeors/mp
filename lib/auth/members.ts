@@ -8,7 +8,16 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
+import { escapeLikePattern } from "@/lib/auth/customer-identity";
+import { getEmailTransport } from "@/lib/email";
+import { renderAdminInviteEmail } from "@/lib/email/auth";
+import { getDefaultFromAddress } from "@/lib/email/transport";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
+import { getSiteOrigin } from "@/lib/site-url";
+import { createStaffProfile, defaultProfileName } from "@/lib/staff/admin";
 import {
+  canAssignRole,
   canUpdateMember,
   type Decision,
   type MemberChange,
@@ -25,6 +34,8 @@ export type MemberRow = {
   isActive: boolean;
   createdAt: string;
   lastSignInAt: string | null;
+  /** When the invite email last went out (Invited Members). */
+  inviteSentAt: string | null;
 };
 
 export type RoleRow = Omit<PolicyRole, "permissions"> & {
@@ -40,9 +51,10 @@ type DbMember = {
   is_active: boolean;
   auth_user_id: string | null;
   created_at: string;
+  invite_sent_at?: string | null;
 };
 
-const MEMBER_COLUMNS = "id, email, role_id, is_active, auth_user_id, created_at";
+const MEMBER_COLUMNS = "id, email, role_id, is_active, auth_user_id, created_at, invite_sent_at";
 const ROLE_COLUMNS = "id, key, name, description, is_system, grants_all, permissions";
 
 export function memberStatus(row: { is_active: boolean; auth_user_id: string | null }): MemberStatus {
@@ -59,6 +71,7 @@ function toMember(row: DbMember, lastSignIn: Map<string, string | null>): Member
     isActive: row.is_active,
     createdAt: row.created_at,
     lastSignInAt: row.auth_user_id ? (lastSignIn.get(row.auth_user_id) ?? null) : null,
+    inviteSentAt: row.invite_sent_at ?? null,
   };
 }
 
@@ -167,4 +180,200 @@ export async function updateMember(
 
   const signIns = await lastSignIns();
   return { ok: true, member: toMember(updated, signIns) };
+}
+
+// ---------------------------------------------------------------------------
+// Invites (slice 05)
+// ---------------------------------------------------------------------------
+
+/** Resend is refused within this long of the last send. */
+export const RESEND_COOLDOWN_MS = 60_000;
+
+const STATUS_LABEL: Record<MemberStatus, string> = { invited: "Invited", active: "Active", deactivated: "Deactivated" };
+
+type Refusal = Exclude<Decision, { ok: true }> | { ok: false; status: 429; error: string };
+
+function signInUrl(): string {
+  const next = withLocale("/settings", DEFAULT_LOCALE);
+  return `${getSiteOrigin()}${withLocale("/account/login", DEFAULT_LOCALE)}?next=${encodeURIComponent(next)}`;
+}
+
+/** Send (or re-send) the invite email; true when the transport accepted it. */
+async function sendInviteEmail(actor: AdminContext, email: string, roleName: string): Promise<boolean> {
+  try {
+    await getEmailTransport().send({
+      to: email,
+      from: getDefaultFromAddress(),
+      ...renderAdminInviteEmail({ inviterEmail: actor.email, invitedEmail: email, roleName, signInUrl: signInUrl() }),
+    });
+    return true;
+  } catch (e) {
+    console.error("[members] invite email failed:", (e as Error).message);
+    return false;
+  }
+}
+
+async function stampSent(id: string): Promise<string> {
+  const at = new Date().toISOString();
+  await supabaseAdmin().from("admin_users").update({ invite_sent_at: at }).eq("id", id);
+  return at;
+}
+
+export type InviteResult = { ok: true; member: MemberRow; emailSent: boolean } | Refusal;
+
+/**
+ * Invite a Member: an Invited row with an assignable role, its first Staff
+ * profile, and the invite email. A failed email does not undo the invite —
+ * the row stays and the caller offers Resend. Audited as `member.invite`.
+ */
+export async function inviteMember(
+  actor: AdminContext,
+  input: { email: string; roleId: string; profileName?: string | null },
+): Promise<InviteResult> {
+  const email = input.email.trim().toLowerCase();
+  const roles = await listRoles();
+  const role = roles.find((r) => r.id === input.roleId);
+  if (!role) return { ok: false, status: 400, error: "That role no longer exists." };
+  const decision = canAssignRole(actor, role);
+  if (!decision.ok) return decision;
+
+  const admin = supabaseAdmin();
+  const { data: existing, error: findError } = await admin
+    .from("admin_users")
+    .select(MEMBER_COLUMNS)
+    .ilike("email", escapeLikePattern(email))
+    .maybeSingle<DbMember>();
+  if (findError) throw new Error(findError.message);
+  if (existing) {
+    return {
+      ok: false,
+      status: 409,
+      error: `${existing.email} is already a Member (${STATUS_LABEL[memberStatus(existing)]}).`,
+    };
+  }
+
+  const { data: row, error } = await admin
+    .from("admin_users")
+    .insert({
+      email,
+      role_id: role.id,
+      is_active: true,
+      invited_by: actor.memberId,
+      invited_at: new Date().toISOString(),
+    })
+    .select(MEMBER_COLUMNS)
+    .single<DbMember>();
+  if (error) {
+    if (/duplicate key|unique/i.test(error.message)) {
+      return { ok: false, status: 409, error: `${email} is already a Member.` };
+    }
+    throw new Error(error.message);
+  }
+
+  const profileName = input.profileName?.trim() || defaultProfileName(email);
+  await createStaffProfile(actor, row.id, profileName).catch(() => null);
+
+  const emailSent = await sendInviteEmail(actor, email, role.name);
+  if (emailSent) row.invite_sent_at = await stampSent(row.id);
+
+  await recordAdminAction({
+    actor,
+    action: "member.invite",
+    entityType: "member",
+    entityId: row.id,
+    after: { email, role: role.name, status: "invited", profile: profileName, emailSent },
+  });
+  return { ok: true, member: toMember(row, new Map()), emailSent };
+}
+
+/** Load an Invited Member the actor may manage, or the refusal. */
+async function invitedTarget(actor: AdminContext, id: string): Promise<{ row: DbMember; role: PolicyRole } | Refusal> {
+  const { data: row, error } = await supabaseAdmin()
+    .from("admin_users")
+    .select(MEMBER_COLUMNS)
+    .eq("id", id)
+    .maybeSingle<DbMember>();
+  if (error) throw new Error(error.message);
+  if (!row) return { ok: false, status: 404, error: "Member not found." };
+  if (memberStatus(row) !== "invited") {
+    return { ok: false, status: 409, error: `${row.email} has already signed in; deactivate them instead.` };
+  }
+  const roles = await listRoles();
+  const byId = new Map<string, PolicyRole>(roles.map((r) => [r.id, r]));
+  // Same rules as any change to a Member: not yourself, Owner only by an Owner,
+  // and only a role the actor could have given. The owner count is moot for an
+  // invite, so pass one more than enough.
+  const decision = canUpdateMember(actor, { id: row.id, roleId: row.role_id, isActive: row.is_active }, {}, byId, 2);
+  if (!decision.ok) return decision;
+  return { row, role: byId.get(row.role_id)! };
+}
+
+export type ResendResult = { ok: true; member: MemberRow; emailSent: boolean } | Refusal;
+
+/** Re-send an invite; refused within a minute of the last send. Audited as `member.invite_resend`. */
+export async function resendInvite(actor: AdminContext, id: string, now = Date.now()): Promise<ResendResult> {
+  const target = await invitedTarget(actor, id);
+  if ("ok" in target) return target;
+  const { row, role } = target;
+  const last = row.invite_sent_at ? Date.parse(row.invite_sent_at) : 0;
+  if (now - last < RESEND_COOLDOWN_MS) {
+    return { ok: false, status: 429, error: "The invite just went out. Wait a minute before resending." };
+  }
+  const emailSent = await sendInviteEmail(actor, row.email, role.name);
+  if (emailSent) row.invite_sent_at = await stampSent(row.id);
+  await recordAdminAction({
+    actor,
+    action: "member.invite_resend",
+    entityType: "member",
+    entityId: row.id,
+    before: { email: row.email, sentAt: last ? new Date(last).toISOString() : null },
+    after: { email: row.email, sentAt: row.invite_sent_at ?? null, emailSent },
+  });
+  return { ok: true, member: toMember(row, new Map()), emailSent };
+}
+
+/**
+ * Revoke an invite: delete the Invited Member and its Staff profiles. A
+ * profile already used as a Result's "measured by" is archived and moved to
+ * the revoker instead, so attribution survives. Audited as `member.invite_revoke`.
+ */
+export async function revokeInvite(actor: AdminContext, id: string): Promise<{ ok: true } | Refusal> {
+  const target = await invitedTarget(actor, id);
+  if ("ok" in target) return target;
+  const { row, role } = target;
+  const admin = supabaseAdmin();
+
+  const { data: profiles, error: pErr } = await admin.from("mp_staff").select("id, name").eq("admin_user_id", id);
+  if (pErr) throw new Error(pErr.message);
+  const kept: string[] = [];
+  for (const p of (profiles ?? []) as { id: string; name: string }[]) {
+    const { count } = await admin
+      .from("mp_config_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("measured_by_staff_id", p.id);
+    if (count) {
+      kept.push(p.name);
+      const { error } = await admin
+        .from("mp_staff")
+        .update({ admin_user_id: actor.memberId, archived_at: new Date().toISOString() })
+        .eq("id", p.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await admin.from("mp_staff").delete().eq("id", p.id);
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  const { error } = await admin.from("admin_users").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  await recordAdminAction({
+    actor,
+    action: "member.invite_revoke",
+    entityType: "member",
+    entityId: id,
+    before: { email: row.email, role: role.name, status: "invited" },
+    after: kept.length ? { archivedProfilesMovedToRevoker: kept } : null,
+  });
+  return { ok: true };
 }

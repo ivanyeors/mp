@@ -30,8 +30,8 @@ const roles = [
 ];
 
 const members: MemberRow[] = [
-  { id: "m1", email: "sg@mpillow.com", roleId: "r-owner", status: "active", isActive: true, createdAt: "2026-06-21T00:00:00Z", lastSignInAt: "2026-10-03T00:00:00Z" },
-  { id: "m2", email: "new@x.test", roleId: "r-fulfilment", status: "invited", isActive: true, createdAt: "2026-10-04T00:00:00Z", lastSignInAt: null },
+  { id: "m1", email: "sg@mpillow.com", roleId: "r-owner", status: "active", isActive: true, createdAt: "2026-06-21T00:00:00Z", lastSignInAt: "2026-10-03T00:00:00Z", inviteSentAt: null },
+  { id: "m2", email: "new@x.test", roleId: "r-fulfilment", status: "invited", isActive: true, createdAt: "2026-10-04T00:00:00Z", lastSignInAt: null, inviteSentAt: "2026-10-04T00:00:00Z" },
 ];
 
 const actor = { memberId: "m1", isOwner: true, grantsAll: true, permissions: [] };

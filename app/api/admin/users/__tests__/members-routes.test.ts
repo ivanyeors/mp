@@ -10,12 +10,14 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
+  send: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/user", () => ({
   getAuthUser: () => Promise.resolve(h.identity),
   getAuthIdentity: () => Promise.resolve(h.identity),
 }));
+vi.mock("@/lib/email", () => ({ getEmailTransport: () => ({ send: h.send }) }));
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
   return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
@@ -23,6 +25,8 @@ vi.mock("@/lib/supabase/server", async () => {
 
 const { PATCH } = await import("../[id]/route");
 const { GET, POST } = await import("../route");
+const { DELETE } = await import("../[id]/route");
+const { POST: RESEND } = await import("../[id]/resend-invite/route");
 
 const R = {
   owner: "00000000-0000-4000-8000-0000000000a1",
@@ -78,6 +82,7 @@ const invite = (body: unknown) =>
 
 beforeEach(() => {
   delete process.env.ADMIN_BOOTSTRAP_EMAILS;
+  h.send.mockReset().mockResolvedValue({ id: "e1" });
   h.db = {
     admin_roles: [
       role(R.owner, "owner", [], true),
@@ -94,6 +99,8 @@ beforeEach(() => {
       member("media1", "media@x.test", R.media),
     ],
     admin_audit_log: [],
+    mp_staff: [],
+    mp_config_responses: [],
   };
 });
 
@@ -176,12 +183,42 @@ describe("/api/admin/users", () => {
     expect(body.roles.find((r: { key: string }) => r.key === "orders").memberCount).toBe(2);
   });
 
-  it("POST invites with an assignable role and audits member.invite", async () => {
+  it("POST invites: Invited row, first profile, email, audit", async () => {
     signIn("people1");
-    const res = await invite({ email: "New@X.test", role_id: R.orders });
+    const res = await invite({ email: "Kai.Lin@X.test", role_id: R.orders });
     expect(res.status).toBe(201);
-    expect(h.db.admin_users.at(-1)).toMatchObject({ email: "new@x.test", role_id: R.orders });
-    expect(h.db.admin_audit_log[0]).toMatchObject({ action: "member.invite", entity_type: "member" });
+    const body = await res.json();
+    expect(body).toMatchObject({ emailSent: true, member: { email: "kai.lin@x.test", status: "invited" } });
+    expect(h.db.admin_users.at(-1)).toMatchObject({ email: "kai.lin@x.test", role_id: R.orders, invited_by: "people1" });
+    expect(h.db.admin_users.at(-1)!.invite_sent_at).toBeTruthy();
+    expect(h.db.mp_staff).toEqual([expect.objectContaining({ name: "Kai Lin", admin_user_id: body.member.id })]);
+    expect(h.send).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "kai.lin@x.test", subject: "You're invited to the Mpillow Admin Panel" }),
+    );
+    expect(h.send.mock.calls[0][0].text).toContain("people@x.test");
+    expect(h.db.admin_audit_log.map((r) => r.action)).toEqual(["staff_profile.create", "member.invite"]);
+  });
+
+  it("POST uses the given first profile name", async () => {
+    signIn("owner1");
+    await invite({ email: "x@x.test", role_id: R.orders, profile_name: "Studio iPad" });
+    expect(h.db.mp_staff[0]).toMatchObject({ name: "Studio iPad" });
+  });
+
+  it("POST keeps the invite when the email fails, and says so", async () => {
+    h.send.mockRejectedValue(new Error("smtp down"));
+    signIn("owner1");
+    const res = await invite({ email: "x@x.test", role_id: R.orders });
+    expect(res.status).toBe(201);
+    expect((await res.json()).emailSent).toBe(false);
+    expect(h.db.admin_users.at(-1)!.invite_sent_at ?? null).toBeNull();
+  });
+
+  it("POST refuses a duplicate email with 409 naming the existing state", async () => {
+    signIn("owner1");
+    const res = await invite({ email: "ORDERS@x.test", role_id: R.orders });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("orders@x.test is already a Member (Active).");
   });
 
   it("POST refuses a role the inviter may not assign", async () => {
@@ -189,5 +226,56 @@ describe("/api/admin/users", () => {
     expect((await invite({ email: "n@x.test", role_id: R.admin })).status).toBe(403);
     signIn("admin1");
     expect((await invite({ email: "n@x.test", role_id: R.owner })).status).toBe(403);
+  });
+});
+
+describe("resend and revoke", () => {
+  const call = (fn: typeof DELETE, id: string) =>
+    fn(new Request(`https://x.test/api/admin/users/${id}`, { method: "POST" }), { params: Promise.resolve({ id }) });
+
+  beforeEach(() => {
+    h.db.admin_users.push(
+      member("inv1", "new@x.test", R.orders, { auth_user_id: null, invite_sent_at: "2026-01-01T00:00:00Z" }),
+    );
+    h.db.mp_staff.push(
+      { id: "p-new", name: "New", admin_user_id: "inv1", archived_at: null },
+      { id: "p-used", name: "Used", admin_user_id: "inv1", archived_at: null },
+    );
+    h.db.mp_config_responses.push({ id: "res1", measured_by_staff_id: "p-used" });
+  });
+
+  it("resends, then refuses a second resend inside a minute (429)", async () => {
+    signIn("owner1");
+    const first = await call(RESEND, "inv1");
+    expect(first.status).toBe(200);
+    expect(h.send).toHaveBeenCalledOnce();
+    expect((await call(RESEND, "inv1")).status).toBe(429);
+    expect(h.db.admin_audit_log.map((r) => r.action)).toEqual(["member.invite_resend"]);
+  });
+
+  it("refuses resend and revoke for an Active Member", async () => {
+    signIn("owner1");
+    expect((await call(RESEND, "orders1")).status).toBe(409);
+    expect((await call(DELETE, "orders1")).status).toBe(409);
+  });
+
+  it("revokes: deletes the Member and unused profiles, archives an attributed one to the revoker", async () => {
+    signIn("owner1");
+    expect((await call(DELETE, "inv1")).status).toBe(200);
+    expect(h.db.admin_users.some((m) => m.id === "inv1")).toBe(false);
+    expect(h.db.mp_staff.map((p) => p.id)).toEqual(["p-used"]);
+    expect(h.db.mp_staff[0]).toMatchObject({ admin_user_id: "owner1" });
+    expect(h.db.mp_staff[0].archived_at).toBeTruthy();
+    expect(h.db.admin_audit_log.at(-1)).toMatchObject({
+      action: "member.invite_revoke",
+      before: { email: "new@x.test", status: "invited" },
+      after: { archivedProfilesMovedToRevoker: ["Used"] },
+    });
+  });
+
+  it("refuses a narrower manager revoking an invite for a broader role", async () => {
+    h.db.admin_users.push(member("inv2", "big@x.test", R.media, { auth_user_id: null }));
+    signIn("people1");
+    expect((await call(DELETE, "inv2")).status).toBe(403);
   });
 });

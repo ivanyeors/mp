@@ -10,13 +10,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgresql/*/bin/initdb | tail -1)")}"
-MIGRATIONS=(
-  supabase/migrations/20261004100000_admin_roles.sql
-)
-ASSERTS=(supabase/tests/rbac/assert-03.sql)
-
-for f in supabase/migrations/2026100411*.sql; do [ -e "$f" ] && MIGRATIONS+=("$f"); done
-for f in supabase/tests/rbac/assert-0[4-9].sql supabase/tests/rbac/assert-1*.sql; do [ -e "$f" ] && ASSERTS+=("$f"); done
+# Every migration of the initiative, in order (they are all timestamped 2026-10-04 1x:00).
+MIGRATIONS=(supabase/migrations/202610041[0-9]0000_*.sql)
+ASSERTS=(supabase/tests/rbac/assert-*.sql)
 
 DIR="$(mktemp -d)"
 chmod 777 "$DIR"
