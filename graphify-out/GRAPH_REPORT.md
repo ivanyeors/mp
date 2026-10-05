@@ -1,17 +1,17 @@
-# Graph Report - mp  (2026-10-04)
+# Graph Report - mp  (2026-10-05)
 
 ## Corpus Check
-- 2315 files · ~6,472,247 words
+- 2317 files · ~6,472,391 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 34 file(s) not represented in the graph (top: .glb 12, .css 10, (none) 5)
 
 ## Summary
-- 14968 nodes · 38547 edges · 874 communities (666 shown, 208 thin omitted)
+- 14969 nodes · 38551 edges · 850 communities (643 shown, 207 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 1060 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `52ca7e9e`
+- Built from commit: `73aabcad`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,9 +20,9 @@
 - AnalyticsClient.tsx
 - appointments/settings.ts
 - xray-stage.ts
-- mbolster-config-client.tsx
-- customize/route.ts
-- cn
+- mp-config-client.tsx
+- hold/route.ts
+- settings-sidebar-nav.tsx
 - drive.ts
 - results.ts
 - showroom-viewer.tsx
@@ -32,37 +32,37 @@
 - costings/page.tsx
 - journey-tracker.tsx
 - image-usages.ts
-- seo-actions.ts
+- assertAdmin
 - supabaseAdmin
-- section-editor.tsx
+- copy-fit.check.ts
 - quote.ts
-- loadPageTransitionsFromDb
+- entry-nodes.check.ts
 - operators.ts
 - channel-mix.ts
 - easyship/schema.ts
 - blogs/[id]/route.ts
 - email/partner.ts
-- assign-prep.ts
+- templates/route.ts
 - whatsapp/route.ts
-- orders-dashboard.ts
+- server.ts
 - NestedTensor
-- ecommerce/products.ts
-- xray-bolster.tsx
+- mp-config/page.tsx
+- staff-assist.ts
 - registry.ts
 - email/index.ts
-- Proof
-- fitPillow
+- product-editor-client.tsx
+- dropdown-menu.tsx
 - conform.ts
-- Button
+- cn
 - calendar.ts
-- slice-04.check.ts
-- order-mirror-ingest.ts
-- google-sync.ts
+- ecommerce.ts
+- contact-sheet.ts
+- business-profile.ts
 - carry-over.test.ts
 - fit.ts
 - places-reviews.ts
 - stripe/sync.ts
-- seed-rule-graphs.ts
+- rules-engine/recommend.ts
 - suggest/route.ts
 - telegram-handler.ts
 - rules-engine/index.ts
@@ -72,7 +72,7 @@
 - MarginByProductVisx.tsx
 - rules-engine/types.ts
 - section-config.ts
-- slice-05.check.ts
+- detail-prep.ts
 - referrals/index.ts
 - plan3d.py
 - User Stories
@@ -80,35 +80,35 @@
 - section-surfaces.check.ts
 - ingest-gsc.ts
 - telegram-handler.test.ts
-- customization-llm.ts
-- react
-- staff-assist-panel.tsx
-- delivery-estimator.tsx
+- customize/route.ts
+- Button
+- booking-flow.tsx
+- Locale
 - [card]/page.tsx
 - config-upload/index.ts
-- hold-cancel-restore.check.ts
+- build-assembly/index.ts
 - resolve-slide-content.ts
 - order-shipment.ts
-- server.ts
+- backup-email/route.ts
 - transition.ts
-- easyship/sync.ts
+- easyship.ts
 - Badge
 - dependencies
-- rules-engine/recommend.ts
+- err
 - migrate-public-apply.ts
-- appointment-reminders/route.ts
-- AddressesClient
+- mappings/route.ts
+- rma.ts
 - slots.ts
 - permissions.ts
 - deformable_transformer_v2.py
 - order-mirror-catchup.ts
-- buildPageMetadata
+- messages/index.ts
 - Mobile UI and Interaction Optimization Plan
 - SearchVisibilityCard.tsx
-- merchant-feed/route.ts
+- ecommerce/products.ts
 - page-faq/index.ts
 - devDependencies
-- secretMatches
+- access.ts
 - shop-listings.ts
 - ProspectJourneyCard.tsx
 - import-drive.ts
@@ -116,24 +116,24 @@
 - FrozenBatchNorm2d
 - partners
 - part-category-low-stock.check.ts
-- hold/route.ts
+- requireAdmin
 - sunburst-menu-layout.check.ts
 - rma/actions.ts
-- getLocaleFromPathname
-- deformable_transformer.py
+- app/layout.tsx
+- MSDeformAttn
 - exchange-rates.ts
-- mp-config/page.tsx
+- google-sync.ts
 - identity.ts
-- locales.ts
+- auth/admin.ts
 - pre-order-restock.ts
 - Shopify export (active products)
-- discount-editor-client.tsx
+- product-detail-client.tsx
 - media-assets/index.ts
 - product-slide-sections/types.ts
-- members-routes.test.ts
+- fake-admin.ts
 - Slice 02 — Catalog + schema: site_settings options, Result columns, validation + checks
 - csv-import.ts
-- ecommerce.ts
+- Card
 - settings-breadcrumbs.ts
 - journey/ingest.ts
 - draft-reply.ts
@@ -146,13 +146,13 @@
 - 20260706120000_faq.sql
 - PRD: Prod hardening
 - workbench.tsx
-- auth/admin.ts
+- recordAdminAction
 - exactly-once.test.ts
-- step-validation.check.ts
-- next
+- reply-rules.ts
+- costings/save/route.ts
 - item-image-sync.ts
 - items
-- select-labels.check.ts
+- coupons/[id]/route.ts
 - apple-cards-carousel.tsx
 - members.ts
 - store.ts
@@ -161,14 +161,14 @@
 - locations/index.ts
 - customisation-binding.test.ts
 - partner-upload/index.ts
-- role-policy.ts
+- [id]/refund-request/route.ts
 - surface-parity.check.ts
 - shopify-apply-from-doc.mjs
 - from-inventory.ts
 - AspectRatio
 - discovery-source/index.ts
-- lifecycle.check.ts
-- customization.ts
+- customers/[id]/route.ts
+- vitest
 - PRD: Landing Slide-In Safe-Area Fix
 - MpConfigMetricsStackedBarVisx.tsx
 - result-detail-client.tsx
@@ -180,7 +180,7 @@
 - xray-pillow.tsx
 - inventory-deduction.ts
 - Implementation Decisions
-- order-mirror-ingest.check.ts
+- order-mirror-ingest.ts
 - staff/admin.ts
 - 20261004130000_telegram_links.sql
 - PRD: Marketing Copy Rewrite (Science of Sleep)
@@ -188,32 +188,32 @@
 - components.json
 - PRD — PayNow at checkout
 - returns.check.ts
-- fulfilment-gate.check.ts
+- createHoldCheckout
 - scripts
 - appointments-calendar.tsx
 - Preflight (AFK) — 2026-07-12
-- getAuthUser
+- next
 - cards.ts
 - main
-- single-select-option-rows.check.ts
+- locale.ts
 - bundle-budget.mjs
 - settings-mobile.check.ts
-- slice-02.check.ts
+- slice-04.check.ts
 - Implementation Decisions
 - Implementation Decisions
 - shopify-export.mjs
 - render_views.py
-- faq/index.ts
+- page-dock-actions.ts
 - ergonomic-pillow-vs-regular-pillow-is-it-worth-the-investment.mdx
 - PRD: Configurator Mobile UX
 - PRD: Dock + Unified Sign In
-- mp-config-link/route.ts
+- [id]/reorder/route.ts
 - MagicBento.jsx
 - MarginByCategoryVisx.tsx
 - ref_node_assert
 - Page: Basic Ergonomic Pillow
 - rule-nodes.tsx
-- carry-over.ts
+- refund/route.ts
 - commissions/ledger.ts
 - mpillow_final_report.md
 - PRD: Prospect journey analytics
@@ -222,13 +222,13 @@
 - PRD: Analytics DB channel facts
 - Slice 08 — Staging copy sign-off (mobile + desktop)
 - Slice 16 — Migrate `/public` marketing images into Asset library
-- completed
+- refundPayment
 - 0028_ecommerce.sql
 - responses/route.ts
-- PRD: Users & permissions (Admin Panel RBAC)
+- staff
 - Ops checklist — WhatsApp appointment confirm
-- [topic]/page.tsx
-- rma/route.ts
+- topic-reviews-loader.ts
+- create.ts
 - Padding guardrails (AI must follow)
 - Product slide-in section templates
 - PRD: Search & AI Visibility — Measurement and Discovery
@@ -237,47 +237,47 @@
 - Staging checklist (HITL)
 - Media Asset Library — Vertical Slices
 - Slice 03 — QA sign-off report
-- WhatsApp appointment confirm (v1)
-- auth/partner.ts
-- overlay-workbench.tsx
+- book/route.ts
+- google-actions.ts
+- Implementation Decisions
 - Shopify inventory sync (buildable → Shopify)
-- preview.check.ts
+- pick-mpillow-section.tsx
 - configurator-staff-reference-photos-prd.md
 - syncVariantPricesFromCostings
 - Ops checklist — Media Asset Library (Drive)
 - User Stories
-- PRD: End-to-End Money-Flow Traceability
-- createEvent
+- telegram/webhook/route.ts
+- dock/index.tsx
 - Stepper.jsx
 - Slice 01 — Domain glossary: Landing section, Section draft, Publish, Publish snapshot, Preview mode
-- history.check.ts
+- staff-edit.ts
 - Slice 02 — Integrity pass: typed section types, locked slugs, validated images, guarded list, audit log
-- configure/page.tsx
+- ProductConfigurationCard.tsx
 - PRD — Appointments UX: calendar RSVP, guest calendar save, booking page redesign
-- detail-prep.ts
+- cells.test.ts
 - 20260728030000_milestones.sql
 - Slice 18 — Staging E2E signoff: full library QA checklist
 - mobile-overflow.check.ts
 - Domain Migration OPS Checklist — work → custom.mpillow.com
-- quote/route.ts
+- @supabase/supabase-js
 - fixture.sql
 - finding-the-perfect-neck-support-pillow-in-singapore.mdx
 - how-to-choose-the-best-pillow-in-singapore.mdx
 - the-complete-guide-to-choosing-the-right-bolster-in-singapore.mdx
 - what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore.mdx
-- proxy.ts
+- withLocale
 - XS: $340-$360
 - phase.md
 - verify-money-flow-e2e.mjs
 - scrape-blogs.mjs
-- dock-chrome.ts
+- app-dock.tsx
 - locations-booking-prd.md
 - expanded-node.check.ts
 - order_payments
-- routes-guarded.test.ts
+- cost-column-grants.test.ts
 - OPS — Staging signoff (Slice 09)
 - Slice 06 — Section tracer: home tags + expand/collapse
-- support-contact-page.tsx
+- partners-page/route.ts
 - Slice 14 — Expanded node dig-in (replace side panel)
 - forms-preview-contact.check.ts
 - queue-line-price.ts
@@ -296,48 +296,48 @@
 - Slice 03 — Bilingual overrides: locale resolver + section language switch
 - 0025_staff_management.sql
 - discounts.ts
-- partner-commissions/page.tsx
+- webhook/__tests__/route.test.ts
 - Slice 01 — Domain glossary + ADR 0006
 - Slice 02 — Shopify order mirror schema + sync cursor
 - 20260925090000_dimension_overrides.sql
 - 0036_tax_rates.sql
-- Slice 05 — Chained daily catch-up / backfill
+- Shipping › Couriers — PRD
 - Page: Work With Us
 - order_emails
 - Slice 01 — Glossary: Discovery source in CONTEXT.md
 - Configurator Contact + Discovery Source — Vertical Slices (Issues)
 - 20260719210000_filling_color_overrides.sql
-- pre-order-persist.check.ts
-- sales-queue-idempotency.check.ts
 - User Stories
-- defaultProfileName
-- sendMorningOfTemplate
-- audit-diff.ts
+- isNearDocumentBottom
+- User Stories
+- Slice 07 — Staff profiles under logins
+- UI Debug Agent (Senior Frontend Manager + Senior QA Designer Manager)
+- checkout.test.ts
 - Guest Result Ownership — Vertical Slices (Issues)
-- 01 — Domain glossary and ADR 0017: Counter payment, Card reader, Terminal Location
-- Configure Product / Filling Config Tabs — Vertical Slices
-- 07 — Ops: a kill switch, fleet health, and a name against every charge
+- accept
+- sets/[id]/route.ts
+- Slice 03 — Unify currency on SGD
 - Slice 05 — Admin Panel dock: Home + Logout only on `/settings/*`
-- Staff-Assisted Customisation — Vertical Slices (Issues)
+- 06 — "Who is STRIPE PAYMENTS SINGAPORE?", and telling PayNow orders apart
 - Users & permissions (RBAC) — Vertical Slices (Issues)
-- sunburst-responsive.check.ts
-- customise-tier-picker.tsx
-- Drawer Pattern Matrix (Different Cases)
-- order-shipment.test.ts
+- assisted-cta.check.ts
+- Slice 08 — Sign-off runbook: one real link, one real card, one real order
+- PRD: Template-Linked Customisation, Authorize-Then-Capture, Accessories-Only Shop
+- marquee-section.tsx
 - Slice 10 — Staging E2E signoff
-- 01 — Glossary + ADRs: Location, Source clarification, custom booking
+- tabs-mobile.test.ts
 - Staging device QA — Mobile UX/UI Optimization R2 (Jul 2026)
 - Landing Slide-In Safe-Area Fix — Vertical Slices
 - Slice 04 — Single price source: Costings MSRP -> storefront price (locked)
 - Money-Flow Traceability — Vertical Slices (Issues)
 - Slice 09 — Staging signoff: Rich Results + Settings E2E
 - 14-whatsapp-opt-in.md
-- 03 — Locations admin page (type / address / postal, own studios)
+- Slice 04 — Landing Menu pill: Sign in / Profile / Admin Panel
 - Slice 01 — Domain glossary + ADR 0007
 - Slice 02 — Page-view tracer: schema + Visitor + ingest + Admin transitions
-- 04 — Result Location column
-- 06 — Review SLA relocation to /settings/general
-- 08 — Custom booking UI (location picker + slot grid)
+- 02 — Handle `refund.updated`, so an async refund reaches the money ledger
+- Slice 04 — Users & permissions page + Members tab + redirects
+- What to build
 - Slice 07 — Unique-node loops + custom node chrome + side panel
 - Slice 08 — Returns: dashed re-entry + return metrics
 - Slice 09 — Country: IP→ISO + multi-select color-by-country
@@ -347,71 +347,66 @@
 - Slice 01 — Rule graph schema + evaluation & validation core
 - Slice 04 — Configurator inputs: inches default, all required, no silent defaults
 - Slice 05 — Preview recommendation display + assign hint upgrade
-- Slice 06 — Flow route: upsell/cross-sell card, answer carry-over, journey record
+- Slice 12 — Roll Asset picker to blogs, categories, partners, page builder
 - Slice 08 — Top 10 Singapore blog retrofit
 - Technical SEO, AEO, and GEO — Vertical Slices
 - Slice 01 — Domain glossary: tier, Result, Filling Template
 - Slice 02 — Filling Templates in Configure
 - Slice 04 — Result model + lifecycle + pricing modules
-- Product Slide-In Section Templates — Vertical Slices
-- Slice 15 — Bing Webmaster Tools + IndexNow
+- openCervicalNeckSupportSheet
+- Slice 02 — Page FAQ store: schema, surface_key, CRUD helpers, bilingual seed, self-check
 - Slice 08 — Telegram under RBAC
-- Slice 09 — Access-denied notice + audit coverage
+- Slice 07 — Customer accept / decline / top-up / capture → Order
 - Slice 09 — Mbolster hold path (mbolster-config)
 - Slice 10 — Order build snapshot + fulfill wiring
 - Slice 11 — Post-delivery refund request + operator approve
-- Phase 3 - Case-by-case rollout (2-4 days)
-- A Location is the partners table extended with a type, not a new table
-- configurator-mobile-chrome.check.ts
+- Further Notes
+- 08: Fine nudge — persisted millimetre offsets, visual-only, out of the fingerprint (optional, gated)
+- commitment-cards-section.tsx
 - Slice 13 — Site-wide pinch-zoom lock
 - UX Polish + Pre-order Jul 2026 — Vertical Slices (Issues)
 - WhatsApp Appointment Confirm — Vertical Slices (Issues)
 - tsconfig.ci.json
 - input-zoom-safe.test.ts
-- users-render.test.tsx
+- Pre-order on authorization hold when inventory cannot fulfill now
 - theme.md
 - neck-support-pillows-in-singapore-your-key-to-comfortable-sleep.mdx
 - the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief.mdx
 - what-is-the-best-pillow-for-neck-pain-in-singapore.mdx
 - Fillings live only in Filling Templates
-- Slice 03 — Order-mirror ingest module + tests
+- A live shipping method with no courier quote is hidden, never charged a fallback
 - Slice 07 — Channel analytics queries (All/Orders/Shopify) + tests
 - Product: Bolsters
 - Slice 01 — Sheet primitive + Basic Mpillow proof
 - 16-spec-tests-money.md
 - Slice 02 — Basic Mpillow learn-more refactor
 - Slice 06 — Immediate re-resolve on mapping + Costings save
-- Slice 04 — Analytics notice bar
+- honestRoundTrip
 - Analytics DB channel facts — Vertical Slices (Issues)
-- Slice 05 — Admin approve / reject + instructions-sent (+ emails)
-- Slice 00 — Domain migration work.mpillow.com → custom.mpillow.com
-- Slice 02 — Root metadataBase + Organization/WebSite JSON-LD
-- Slice 04 — Booking page route `/[lang]/appointments` + inline pills
+- Slice 02 — Appointment RSVP status in admin calendar
+- Scope
+- Page: Our Story
+- Page: Contact
 - Slice 05 — Pill overlay on entries + retire Sheet (kills the "dupe")
 - Slice 06 — Redesign visual + real-device sign-off
 - Slice 01 — Glossary + ADR 0023 accepted
 - Slice 10 — Science of Sleep MeasureTile stack
-- Slice 04 — Reschedule: freeBusy → 3 slots → pick → Calendar patch
+- Page: Configuration Guide
 - Slice 02 — Non-filling-only warehouse + composed BOM enforcement
 - Slice 03 — Migrate legacy BOM fillings to Filling Templates
 - Slice 04 — Configure drawer tabs (Product / Filling Config)
-- icon-list-section.tsx
-- Slice 06 — Assign preview + confirm UX
 - Slice 01 — Domain glossary: Sign in / Admin Panel / Profile / Staff / Customer
 - text-callout-block-section.tsx
 - Slice 03 — Unified Sign in page + redirects + light polish
 - Slice 01 — Hero + Affluent Pain home stack
-- Slice 02 — Neck Pains + Cervical Tech Neck section
 - Slice 03 — Mbolster Families weave
 - Slice 04 — Premium/Basic slide-in + mp-config polish
-- Top and Bottom Spacing Strategy (Prevent Native UI Clashes)
 - Slice 06 — Page FAQ + Partners Local Ambassador copy
 - check-rbac-migrations.sh
 - Slice 01 — Domain glossary: Media Asset terms in CONTEXT
 - Slice 02 — HITL: Drive API + OAuth re-consent + Shared Drive access
 - Slice 03 — Asset registry: table + CRUD API + backfill bucket files
 - Slice 04 — Direct image upload → optimize → storage → Asset
-- Slice 05 — Drive connector: resolve URL + browse Shared Drives/folders
 - Slice 06 — Paste Drive link → preview → import image Asset
 - Slice 07 — Select from Drive dialog → select → import
 - Slice 08 — Video/PDF Drive import as link-only Assets + preview
@@ -429,7 +424,6 @@
 - Slice 05 — Stock-out gating end to end + multi-SKU/BOM availability
 - Slice 06 — Fix discount leak + adopt Stripe Tax
 - Slice 07 — Money ledger + partial/idempotent refunds + disputes
-- Slice 08 — Admin refund/cancel + manual restock linked to refund
 - Slice 09 — Cost-to-sale traceability (realized margin)
 - Slice 10 — Discounts & shipping hardening + order display fixes
 - Slice 01 — Domain glossary: Page FAQ, FAQ surface, TL;DR → Answer lede
@@ -455,11 +449,9 @@
 - 12-partner-self-purchase.md
 - 13-styled-email-notifications.md
 - 15-spec-tests-identity.md
-- authErrorMessage
 - 17-launch-hitl.md
 - measurement-grid-section.tsx
 - 0023_mp_config_responses.sql
-- Slice 03 — Premium Mpillow learn-more refactor
 - 0044_results.sql
 - Slice 05 — Mbolster learn-more refactor
 - Slice 13 — Staging E2E signoff
@@ -467,9 +459,6 @@
 - result_bolster_filling_placements
 - Slice 02 — RMA schema + eligibility & transition core
 - idx_admin_audit_log_actor_profile_id
-- Blog: A Word From The Founder
-- Page: Frequently Asked Questions Mpillow
-- Page: Measurement Guide
 - Slice 07 — X-ray read-only upgrade of the preview mix visual
 - idx_mp_config_responses_order_id
 - idx_mp_config_responses_held_queue
@@ -481,7 +470,6 @@
 - Slice 07 — Homepage answer lede + landing product card ratings
 - Slice 09 — /guides/ editorial hub pages (3 routes)
 - Slice 10 — Shop index metadata + accessory card ratings
-- Slice 11 — GSC verification + analytics migration
 - Slice 01 — Spatial placements: schema + core lib + template API round-trip
 - Slice 02 — Configure product cards open a full page with breadcrumbs
 - Slice 03 — Spatial cell editor in the Filling Config tab
@@ -497,7 +485,7 @@
 - Slice 13 — Mbolster: own spatial schema + assist + x-ray
 - faq-content.tsx
 - mp_config_responses_payment_reminder_idx
-- Slice 04 — Mbolster case-only preference + auto-select
+- soleCaseId
 - Slice 05 — Pre-order trigger + live CTA + waiting-time i18n
 - Slice 06 — Persist Pre-order on Result at hold create
 - mp_config_responses_reordered_from_idx
@@ -588,16 +576,13 @@
 - LLM.md
 - price-sync.ts
 - 20260902000000_rls_hardening_and_hot_path_indexes.sql
-- isValidSurfaceKey
 - held
 - build_massing.py
 - configure/save/route.ts
 - PRD: Unified Spatial Filling Editor — one x-ray everywhere, and templates that use all three Sections
 - GA4 setup runbook — custom.mpillow.com
-- rma/page.tsx
 - infer.py
 - main
-- ProductSlideSection
 - channel-sales.ts
 - Easyship setup
 - replace.ts
@@ -610,8 +595,7 @@
 - postcss.config.mjs
 - vercel.json
 - bom_templates
-- slice-10.smoke.ts
-- getSiteSettings
+- secretMatches
 - media_assets
 - Slice 08 — Real-device sign-off
 - mp_config_response_photos
@@ -633,11 +617,11 @@
 - 20260726000000_config_upload.sql
 - shopify_sales_queue
 - partner_users
-- checkout/route.ts
+- POST
 - 20260902010000_fk_indexes_and_invoker_views.sql
 - on-hand-value-kpis.check.ts
 - Workflow
-- messages/index.ts
+- marketing-copy-slice-04.check.ts
 - shell.check.ts
 - Slice 07 — Sign-off runbook: a real bank app, a real QR, a real Singapore dollar
 - shopify/webhook/route.ts
@@ -648,7 +632,7 @@
 - OPS checklist: Google review replies
 - plan_read.py
 - public.publish_landing_draft
-- shopify/products.ts
+- pricing.ts
 - 20260909000000_landing_section_drafts.sql
 - Unified filling editor 01: glossary — Spatially authored, X-ray editor
 - Unified filling editor 02: authoring-status module + unauthored badge on the template list
@@ -660,33 +644,29 @@
 - Assisted customisation 08 (HITL): Sign-off — one real link, one real card, one real order
 - 08 — Sign-off: one real reader, one real card, one real Singapore dollar
 - mpillow-office
-- particles/index.tsx
 - 10: Move to Vercel Pro and add Firewall rate-limit rules on the endpoints that spend money
 - gen-silhouette-master.mjs
-- staff
+- isOwnLogoUrl
 - 15: Supabase hygiene: function `search_path`, anon execute, policy initplan, leaked passwords
 - Prod hardening: vertical slices (issues)
 - 20261002090000_easyship_shipping.sql
-- sla-reminders/index.ts
 - B. GA4 MCP server in Claude Code on your laptop (~15 min)
 - Slice 08 — Sign-off runbook: one real reader, one real card, one real Singapore dollar
 - 17: Sign-off: prove every hole is closed in prod
 - ChannelMixVisx.tsx
 - 10: Physical calibration sign-off — real builds against the x-ray, tune compression, device pass
-- draft.ts
+- requireAdminContext
 - Slice 02 — Search & AI visibility section — KPI row + trend charts
 - Slice 03 — AI referral channel + channel mix + conversion join
 - Slice 04 — AI crawler hit logging
-- Filling Templates are scoped by size membership, not one size key
 - Slice 05 — SEO annotations on charts
 - Slice 06 — Target-query watchlist + movers
 - SetCriterion
-- easyship/webhook/route.ts
-- accept/route.ts
+- easyship.test.ts
+- stripe/webhook/route.ts
 - seo_daily_metrics
 - Slice 07 — CSV imports (GSC Gen-AI, Bing AI Performance) + Ahrefs DR
 - components.ts
-- ga-events.ts
 - Article: Zoom Session With Kh Poon Physiotherapist
 - Article: Macquarie Chiropractic X Mpillow Collaboration
 - Homepage
@@ -697,25 +677,21 @@
 - main
 - Slice 12 — Review-backed sections on guides and consolidated posts
 - results-sla/route.ts
-- .size
+- Implementation Decisions
 - shopify-sales-section.tsx
 - crawler-activity.ts
 - Slice 14 — Google Business Profile + post-visit review requests
-- vitest
 - Slice 16 — Earned mentions playbook
 - Slice 17 — Blog hygiene quick wins
-- google-reviews/route.ts
+- reviews/__tests__/route.test.ts
 - Article: What Is The Best Pillow For Neck Pain In Singapore
-- mp-config-client.tsx
-- stripe/webhook/route.ts
+- money-ledger.ts
 - Article: Why Are You Yawning So Much
-- referral-rows.tsx
 - Article: Guest Blog How To Improve Your Posture At Home By Porch
 - Article: What Led To The Creation Of The World S Best Pillow
 - Page: Our Partners
 - 20261002020000_ai_crawler_hits.sql
 - 20261002030000_seo_annotations.sql
-- composed-price.test.ts
 - test/route.ts
 - 20260710150000_faq_page.sql
 - templates.ts
@@ -742,75 +718,75 @@
 ## Surprising Connections (you probably didn't know these)
 - `Proof` --references--> `AnalyticsClient()`  [INFERRED]
   .claude/PRD-prospect-journey-analytics/issues/07-loops-chrome-side-panel.md → app/[lang]/settings/analytics/AnalyticsClient.tsx
-- `Implementation notes` --references--> `updateBlogStatus()`  [INFERRED]
-  .claude/PRD-search-visibility/issues/15-bing-indexnow.md → app/[lang]/settings/blogs/actions.ts
-- `What to build` --references--> `receiveStock()`  [INFERRED]
-  .claude/PRD-money-flow-traceability/issues/08-admin-refund-cancel-restock.md → app/[lang]/settings/inventory/actions.ts
 - `What to build` --references--> `SizeEditor()`  [INFERRED]
   .claude/PRD-configure-product-filling-tabs/issues/04-configure-drawer-tabs.md → app/[lang]/settings/inventory/configure/[card]/page.tsx
 - `Configure UI` --references--> `DynamicPartSection()`  [INFERRED]
   .claude/PRD-configure-product-filling-tabs/configure-product-filling-tabs-prd.md → app/[lang]/settings/inventory/configure/[card]/page.tsx
+- `Protecting Results that are no longer drafts` --references--> `held()`  [INFERRED]
+  .claude/PRD-guest-result-ownership/guest-result-ownership-prd.md → app/[lang]/settings/users/roles-tab.tsx
+- `What to build` --references--> `held()`  [INFERRED]
+  .claude/PRD-guest-result-ownership/issues/10-signoff-guest-flow.md → app/[lang]/settings/users/roles-tab.tsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (874 total, 208 thin omitted)
+## Communities (850 total, 207 thin omitted)
 
 ### Community 0 - "inventory/actions.ts"
-Cohesion: 0.03
-Nodes (105): answerCallback(), editTelegramMessage(), ForceReplyMarkup, getEnv(), handleCallback(), handleCommand(), helpText(), InlineKeyboardButton (+97 more)
+Cohesion: 0.05
+Nodes (56): addInventoryItem(), AddItemSchema, archiveShopifySaleQueueRow(), buildShopifyUnmappedVariants(), CategoryEnum, commitShopifySales(), CommitShopifySalesSchema, COMPOSED_PRODUCT_SLUGS (+48 more)
 
 ### Community 1 - "AnalyticsClient.tsx"
-Cohesion: 0.08
-Nodes (44): AnalyticsDashboardSlice, getAnalyticsDashboard(), getInventoryMovementWaterfall(), getMpConfigMetricsBreakdown(), getRealizedMarginSummary(), getShopifySalesTimeline(), InventoryMovementGroup, InventoryMovementRow (+36 more)
+Cohesion: 0.09
+Nodes (39): AnalyticsDashboardSlice, getAnalyticsDashboard(), getInventoryMovementWaterfall(), getMpConfigMetricsBreakdown(), getRealizedMarginSummary(), getShopifySalesTimeline(), InventoryMovementGroup, InventoryMovementRow (+31 more)
 
 ### Community 2 - "appointments/settings.ts"
-Cohesion: 0.18
-Nodes (20): AppointmentsCalendar, AppointmentSettingsPage(), AppointmentsInitialData, availabilityFromLegacy(), AvailabilityWindow, BlockedRange, DEFAULT_APPOINTMENT_SETTINGS, hhmm() (+12 more)
+Cohesion: 0.13
+Nodes (30): dynamic, GET(), runtime, dynamic, GET(), PUT(), PutSchema, runtime (+22 more)
 
 ### Community 3 - "xray-stage.ts"
-Cohesion: 0.23
-Nodes (15): PillowSize, build(), buildGrid(), cellPts(), hEdge(), sectionPts(), vEdge(), cache (+7 more)
+Cohesion: 0.26
+Nodes (14): PillowSize, build(), buildGrid(), cellPts(), hEdge(), sectionPts(), vEdge(), cache (+6 more)
 
-### Community 4 - "mbolster-config-client.tsx"
-Cohesion: 0.05
-Nodes (46): BolsterLength, FAQ_VIEW_ALL, FLOW_UI_LABEL, labelForSleepPosition(), MbolsterConfigClient(), MbolsterConfigInfo, normalizeStep(), ShopRecommendationData (+38 more)
+### Community 4 - "mp-config-client.tsx"
+Cohesion: 0.02
+Nodes (159): BolsterLength, FAQ_VIEW_ALL, FLOW_UI_LABEL, labelForSleepPosition(), MbolsterConfigClient(), MbolsterConfigInfo, normalizeStep(), ShopRecommendationData (+151 more)
 
-### Community 5 - "customize/route.ts"
-Cohesion: 0.05
-Nodes (59): dynamic, POST(), RecommendSchema, runtime, dynamic, runtime, dynamic, FinishSchema (+51 more)
+### Community 5 - "hold/route.ts"
+Cohesion: 0.06
+Nodes (46): dynamic, GET(), runtime, AssistFillingSchema, dynamic, HoldSchema, readCookie(), runtime (+38 more)
 
-### Community 6 - "cn"
-Cohesion: 0.04
-Nodes (118): BlogPostPage(), FaqPage(), generateMetadata, Props, ResultsLayout(), StatusPill(), buildPaginationParams(), ShopPage() (+110 more)
+### Community 6 - "settings-sidebar-nav.tsx"
+Cohesion: 0.06
+Nodes (77): AccountLayout(), generateMetadata(), Props, BlogPostPage(), generateMetadata(), Props, FaqPage(), generateMetadata (+69 more)
 
 ### Community 7 - "drive.ts"
-Cohesion: 0.13
-Nodes (36): GET(), runtime, GET(), runtime, buildSearchQuery(), downloadFile(), DriveError, DriveErrorCode (+28 more)
+Cohesion: 0.14
+Nodes (34): GET(), runtime, GET(), runtime, POST(), runtime, buildSearchQuery(), downloadFile() (+26 more)
 
 ### Community 8 - "results.ts"
-Cohesion: 0.08
-Nodes (43): POST(), BodySchema, dynamic, POST(), runtime, dynamic, POST(), runtime (+35 more)
+Cohesion: 0.14
+Nodes (35): What to build, Acceptance criteria, Assisted customisation 05: Save assignment notifies a customer who left no card, and Staff can copy the payment link, Blocked by, What to build, Acceptance criteria, Assisted customisation 07: Reminders for a build nobody has paid for, Blocked by (+27 more)
 
 ### Community 9 - "showroom-viewer.tsx"
-Cohesion: 0.07
-Nodes (43): createShowroomScene(), apply(), frame(), glow(), homePose(), info(), mesh(), resetView() (+35 more)
+Cohesion: 0.09
+Nodes (39): createShowroomScene(), apply(), frame(), glow(), homePose(), info(), mesh(), resetView() (+31 more)
 
 ### Community 10 - "dimensions.ts"
 Cohesion: 0.04
-Nodes (102): AllowanceSchema, DeleteSchema, GET(), loadPayload(), mm, NeckSchema, optionalMm, PouchSchema (+94 more)
+Nodes (103): AllowanceSchema, DeleteSchema, GET(), loadPayload(), mm, NeckSchema, optionalMm, PouchSchema (+95 more)
 
 ### Community 11 - "types/landing-sections.ts"
-Cohesion: 0.04
-Nodes (93): Acceptance criteria, Blocked by, Slice 05 — Proof surfaces, What to build, InfiniteImageMarquee(), InfiniteImageMarqueeProps, CredibilitySectionProps, CustomFullWidthImageSection() (+85 more)
+Cohesion: 0.08
+Nodes (52): CredibilitySection(), CredibilitySectionProps, ICONS, CustomFullWidthImageSection(), CustomFullWidthImageSectionProps, CustomRichTextSection(), CustomRichTextSectionProps, CustomTextImageSection() (+44 more)
 
 ### Community 12 - "chrome.ts"
 Cohesion: 0.05
 Nodes (53): binRangeLabel(), DigInTip(), formatDwell(), RouteRow, RoutesChart(), TimeOnPageChart(), tipStyles, edgeHueVar() (+45 more)
 
 ### Community 13 - "costings/page.tsx"
-Cohesion: 0.04
-Nodes (77): BlogEditorInitialData, BlogEditorPage(), BlogEditorRow, emptyContent(), LocaleContent, MDEditor, mergeContent(), MOBILE_MD_COMMANDS (+69 more)
+Cohesion: 0.03
+Nodes (90): BaselineState, BASIC_PILLOW_SIZES, BOLSTER_VARIANT_ORDER, BOLSTER_VARIANT_TITLES, BOLSTER_VARIANTS, bolsterKey(), BolsterVariant, CATEGORY_ORDER (+82 more)
 
 ### Community 14 - "journey-tracker.tsx"
 Cohesion: 0.17
@@ -818,147 +794,147 @@ Nodes (19): Acceptance criteria, Blocked by, Slice 03 — Visit lifecycle + Drop
 
 ### Community 15 - "image-usages.ts"
 Cohesion: 0.07
-Nodes (43): GET(), runtime, addAll(), addExactId(), addExactUrl(), addSubstringMatches(), applyTerms(), AssetIndex (+35 more)
+Nodes (46): DELETE(), runtime, GET(), runtime, addAll(), addExactId(), addExactUrl(), addSubstringMatches() (+38 more)
 
-### Community 16 - "seo-actions.ts"
-Cohesion: 0.17
-Nodes (29): SearchVisibilityCard(), fetchAllPages(), getAiAnswers(), getCrawlerActivity(), getSearchQueries(), getSearchVisibility(), getSeoAnnotations(), latestImport() (+21 more)
+### Community 16 - "assertAdmin"
+Cohesion: 0.14
+Nodes (37): AnnotationsPanel(), SearchVisibilityCard(), addTargetQuery(), createSeoAnnotation(), deleteSeoAnnotation(), fetchAllPages(), getAiAnswers(), getCrawlerActivity() (+29 more)
 
 ### Community 17 - "supabaseAdmin"
 Cohesion: 0.02
-Nodes (213): DELETE(), POST(), DELETE(), LabelsSchema, PATCH(), PatchCategorySchema, RouteContext, runtime (+205 more)
+Nodes (143): DELETE(), LabelsSchema, PATCH(), PatchCategorySchema, RouteContext, runtime, PUT(), ReorderSchema (+135 more)
 
-### Community 18 - "section-editor.tsx"
-Cohesion: 0.04
-Nodes (79): Acceptance criteria, Blocked by, Slice 07 — Stories chrome → i18n + claim/SEO self-check, What to build, Acceptance criteria, Blocked by, Slice 12 — Roll Asset picker to blogs, categories, partners, page builder, What to build (+71 more)
+### Community 18 - "copy-fit.check.ts"
+Cohesion: 0.06
+Nodes (51): Acceptance criteria, Blocked by, Slice 07 — Stories chrome → i18n + claim/SEO self-check, What to build, Acceptance criteria, assertMarketingCopySafe(), GatedString, BandUnit (+43 more)
 
 ### Community 19 - "quote.ts"
 Cohesion: 0.08
-Nodes (37): DisplayOption, EasyshipAddress, FetchRatesInput, flatOption(), freeAbove(), priceMethod(), QuoteMethodsInput, asRecord() (+29 more)
+Nodes (40): DisplayOption, EasyshipAddress, FetchRatesInput, flatOption(), freeAbove(), normalizePostalCode(), priceMethod(), quoteCacheKey() (+32 more)
 
-### Community 20 - "loadPageTransitionsFromDb"
-Cohesion: 0.08
-Nodes (38): attachReentryEdges(), landingsFromEvents(), loadNodeDetailFromDb(), loadPageTransitionsFromDb(), rowToVisitMeta(), attachEntrySources(), actions, aggregates (+30 more)
+### Community 20 - "entry-nodes.check.ts"
+Cohesion: 0.09
+Nodes (32): attachEntrySources(), actions, aggregates, aggregatesSrc, all, breakdown, byCountry, card (+24 more)
 
 ### Community 21 - "operators.ts"
-Cohesion: 0.08
-Nodes (55): Ctx, DELETE(), dynamic, IdSchema, PATCH(), PatchSchema, runtime, CreateSchema (+47 more)
+Cohesion: 0.06
+Nodes (64): Ctx, DELETE(), dynamic, IdSchema, PATCH(), PatchSchema, runtime, CreateSchema (+56 more)
 
 ### Community 22 - "channel-mix.ts"
-Cohesion: 0.09
-Nodes (26): getChannelMix(), AI_ASSISTANTS, AI_UTM_NAMES, aiAssistantForHost(), Channel, CHANNEL_LABELS, ChannelResult, classifyVisit() (+18 more)
+Cohesion: 0.12
+Nodes (21): getChannelMix(), AI_ASSISTANTS, AI_UTM_NAMES, aiAssistantForHost(), Channel, CHANNEL_LABELS, ChannelResult, classifyVisit() (+13 more)
 
 ### Community 23 - "easyship/schema.ts"
-Cohesion: 0.06
-Nodes (33): AD_TITLES, AddressSchema, Advertising, asBool(), asStr(), BOX_TYPES, BoxForTypes, BoxForTypeSchema (+25 more)
+Cohesion: 0.05
+Nodes (58): AD_TITLES, AddressSchema, Advertising, asBool(), asStr(), BoxForTypes, BoxForTypeSchema, BoxForTypesSchema (+50 more)
 
 ### Community 24 - "blogs/[id]/route.ts"
-Cohesion: 0.10
-Nodes (25): GET(), PATCH(), RouteParams, runtime, UpdateBlogSchema, CreateBlogSchema, GET(), runtime (+17 more)
+Cohesion: 0.09
+Nodes (28): DELETE(), PATCH(), RouteParams, runtime, UpdateBlogSchema, CreateBlogSchema, GET(), POST() (+20 more)
 
 ### Community 25 - "email/partner.ts"
 Cohesion: 0.18
-Nodes (22): amountPanel(), formatSgDate(), delivered, ms, noTitle, payout, shell, undelivered (+14 more)
+Nodes (20): amountPanel(), formatSgDate(), delivered, ms, noTitle, payout, shell, undelivered (+12 more)
 
-### Community 26 - "assign-prep.ts"
-Cohesion: 0.07
-Nodes (37): dynamic, PILLOW_SIZES, PrepQuerySchema, runtime, FIT_DOT, SharedTemplateNotice(), TemplateScopeChips(), TemplateScopeField() (+29 more)
+### Community 26 - "templates/route.ts"
+Cohesion: 0.04
+Nodes (72): dynamic, GET(), PILLOW_SIZES, PrepQuerySchema, runtime, CreateSchema, dedupeLines(), DELETE() (+64 more)
 
 ### Community 27 - "whatsapp/route.ts"
-Cohesion: 0.13
-Nodes (32): dynamic, GET(), handleAction(), parseSlotId(), POST(), runtime, Implementation Decisions, Why (+24 more)
+Cohesion: 0.07
+Nodes (56): authorizeCron(), dynamic, GET(), POST(), runtime, dynamic, GET(), handleAction() (+48 more)
 
-### Community 28 - "orders-dashboard.ts"
-Cohesion: 0.09
-Nodes (22): GET(), runtime, Acceptance criteria, Proof (2026-07-13), Slice 14 — Orders sales report by paid_at, What to build, aggNumber(), AggregateRow (+14 more)
+### Community 28 - "server.ts"
+Cohesion: 0.05
+Nodes (45): GET(), runtime, GET(), runtime, AddressSchema, CreateOrderSchema, GET(), OrderItemSchema (+37 more)
 
 ### Community 29 - "NestedTensor"
-Cohesion: 0.05
-Nodes (16): Backbone, BackboneBase, build_backbone(), Joiner, label_smoothed_nll_loss(), _max_by_axis(), nested_tensor_from_tensor_list(), NestedTensor (+8 more)
-
-### Community 30 - "ecommerce/products.ts"
-Cohesion: 0.05
-Nodes (69): assertConfiguratorWiring(), assertSurface(), introHtml, main(), read(), ROOT, generateMetadata(), ProductLayout() (+61 more)
-
-### Community 31 - "xray-bolster.tsx"
 Cohesion: 0.04
-Nodes (60): Scope, FillingItem, BolsterCompartmentList(), BolsterListItem, ADR-0008, SHELL_REGIONS, ADR-0008, ADR-0009 (+52 more)
+Nodes (20): Backbone, BackboneBase, build_backbone(), Joiner, DeformableTransformerDecoder, _get_clones(), MLP, label_smoothed_nll_loss() (+12 more)
+
+### Community 30 - "mp-config/page.tsx"
+Cohesion: 0.05
+Nodes (55): INTRO, MbolsterConfigPage(), Props, assertConfiguratorWiring(), assertSurface(), introHtml, main(), read() (+47 more)
+
+### Community 31 - "staff-assist.ts"
+Cohesion: 0.04
+Nodes (83): 06: Move pieces on the canvas — select a pouch, then keyboard or move-pad moves between cells, Layers and positions, with Undo, Acceptance criteria, Build notes (2026-09-25), Goal, Scope, The gap, precisely, Audit: what the x-ray does today, Further Notes (+75 more)
 
 ### Community 32 - "registry.ts"
-Cohesion: 0.06
-Nodes (59): dynamic, GET(), dynamic, GET(), parseFixture(), dynamic, EmailPreviewPage(), GROUP_ORDER (+51 more)
+Cohesion: 0.12
+Nodes (36): EmailFixture, HOSTILE, pick(), sampleApplication(), sampleBalanceDue(), sampleBalanceDueFinish(), sampleContact(), sampleHeldReminder() (+28 more)
 
 ### Community 33 - "email/index.ts"
-Cohesion: 0.05
-Nodes (51): Acceptance criteria, Blocked by, Slice 03 — Customer request flow (+ received email, RMA email ledger), What to build, Acceptance criteria, Blocked by, Slice 05 — Invites: email, Invited state, resend, revoke, What to build (+43 more)
+Cohesion: 0.06
+Nodes (44): Acceptance criteria, Blocked by, Decisions made while building, Slice 05 — Invites: email, Invited state, resend, revoke, What to build, RFC-2047, ContactMessage, getSupportInbox() (+36 more)
 
-### Community 34 - "Proof"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Blocked by, Proof, Slice 05 — Entry source freeze + filter + tests, What to build
+### Community 34 - "product-editor-client.tsx"
+Cohesion: 0.06
+Nodes (76): QueriesPanel(), ProductGroupSection(), CategoryRow, FaqInitialData, ItemEditor(), ItemRow, LOCALES, SettingsFaqPage() (+68 more)
 
-### Community 35 - "fitPillow"
-Cohesion: 0.08
-Nodes (38): 05: Cross-section view — a live across / along cut of the pillow beside every x-ray, Acceptance criteria, Build notes (2026-09-25), Goal, Scope, The gap, precisely, 11: Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic, Acceptance criteria (+30 more)
+### Community 35 - "dropdown-menu.tsx"
+Cohesion: 0.10
+Nodes (40): AccountProfilePage(), initialsFrom(), AccountSecurity(), Props, ProfileMenu(), NavProjects(), NavUser(), TeamSwitcher() (+32 more)
 
 ### Community 36 - "conform.ts"
-Cohesion: 0.09
-Nodes (39): SECTION_POLYGONS, SHELL_SEAM, CELL_REGIONS, pieces, PLACEMENTS, SIL_REGION, bolsterShellPolygon(), chaikin() (+31 more)
+Cohesion: 0.11
+Nodes (35): CELL_REGIONS, stageRegions, bolsterShellPolygon(), chaikin(), chord(), clipToConvex(), conformPouchPath(), dedupe() (+27 more)
 
-### Community 37 - "Button"
+### Community 37 - "cn"
 Cohesion: 0.05
-Nodes (106): PartDrawer(), PageBuilderPage(), SettingsPage(), ShippingRulesEditor(), RoleDetailSheet(), Acceptance criteria, Blocked by, Slice 02 — Remaining six slide-ins + layout doc (+98 more)
+Nodes (99): RoleDetailSheet(), generateMetadata, SupportPage(), Acceptance criteria, Blocked by, Slice 02 — Remaining six slide-ins + layout doc, What to build, BookAppointmentButton() (+91 more)
 
 ### Community 38 - "calendar.ts"
 Cohesion: 0.09
-Nodes (39): Acceptance criteria, Blocked by, Slice 02 — Appointment RSVP status in admin calendar, What to build, Further Notes, Implementation Decisions, Out of Scope, PRD: WhatsApp Appointment Confirm (+31 more)
+Nodes (41): What to build, What to build, RFC-3339, CalendarGuestEvent, calendarId(), CalendarRangeEvent, calFetch(), deleteEvent() (+33 more)
 
-### Community 39 - "slice-04.check.ts"
-Cohesion: 0.14
-Nodes (17): basicBodyToEngineInputs(), measurementPrefsToEngineInputs(), positiveCm(), WizardMeasurementData, wizardToEngineInputs(), yesNo(), basicApi, bolster (+9 more)
+### Community 39 - "ecommerce.ts"
+Cohesion: 0.07
+Nodes (34): ProductDetailClientProps, Acceptance criteria, Blocked by, Slice 03 — Product PDP full JSON-LD + review aggregate + seo_answer field, What to build, ProductCardProps, findBestVariant(), handleClick() (+26 more)
 
-### Community 40 - "order-mirror-ingest.ts"
-Cohesion: 0.11
-Nodes (32): Acceptance criteria, AdminClient, advanceShopifySyncCursor(), ApplyShopifyRefundResult, BomLine, buildMirrorLineFromShopify(), getShopifySyncState(), isRestockSignal() (+24 more)
+### Community 40 - "contact-sheet.ts"
+Cohesion: 0.09
+Nodes (24): dynamic, GET(), dynamic, GET(), parseFixture(), dynamic, EmailPreviewPage(), GROUP_ORDER (+16 more)
 
-### Community 41 - "google-sync.ts"
-Cohesion: 0.06
-Nodes (50): authorizeCron(), dynamic, GET(), maxDuration, POST(), runtime, BUSINESS_MANAGE_SCOPE, businessProfileClientFromConfig() (+42 more)
+### Community 41 - "business-profile.ts"
+Cohesion: 0.10
+Nodes (29): BUSINESS_MANAGE_SCOPE, businessProfileClientFromConfig(), BusinessProfileConfig, BusinessProfileError, createBusinessProfileClient(), call(), env(), errorMessage() (+21 more)
 
 ### Community 42 - "carry-over.test.ts"
-Cohesion: 0.12
-Nodes (20): carryOverAnswers(), FLOW_ROUTE_EXPECTATION, assertPreStripeRouteResolved(), isFlowRoutePending(), PreStripeRouteGate, stampAcceptedTargetRecord(), withJourneyOnAccept(), withJourneyOnDecline() (+12 more)
+Cohesion: 0.08
+Nodes (30): Acceptance criteria, Blocked by, Proof (2026-07-19), Slice 06 — Flow route: upsell/cross-sell card, answer carry-over, journey record, What to build, carryOverAnswers(), CUSTOMIZE_KEYS, EXPECTED_MISSING (+22 more)
 
 ### Community 43 - "fit.ts"
-Cohesion: 0.05
-Nodes (63): Scope, 09: Mbolster parity — capsule dimensions, a physical cap replacing "no cap", compression feedback, end-on cross-section, Acceptance criteria, Build notes (2026-09-25), Goal, The gap, precisely, confirmSaveWithBolsterFit(), confirmSaveWithOverCells() (+55 more)
+Cohesion: 0.04
+Nodes (90): Revision (2026-09-28): fillings scale with the pillow Size, Acceptance criteria, Scope, 09: Mbolster parity — capsule dimensions, a physical cap replacing "no cap", compression feedback, end-on cross-section, Acceptance criteria, Build notes (2026-09-25), Goal, 11: Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic (+82 more)
 
 ### Community 44 - "places-reviews.ts"
-Cohesion: 0.16
-Nodes (18): GET(), revalidate, sortByRatingThenRelevance(), StoriesSectionClient(), StoriesSection(), FALLBACK_TESTIMONIALS, Testimonial, DEFAULT_MIN_REVIEW_RATING (+10 more)
+Cohesion: 0.14
+Nodes (19): GET(), revalidate, StoriesSectionWrapper(), sortByRatingThenRelevance(), StoriesSectionClient(), StoriesSection(), FALLBACK_TESTIMONIALS, Testimonial (+11 more)
 
 ### Community 45 - "stripe/sync.ts"
 Cohesion: 0.05
-Nodes (54): GET(), runtime, UpdateProductSchema, CreateVariantSchema, POST(), runtime, PATCH(), runtime (+46 more)
+Nodes (55): DELETE(), GET(), PATCH(), runtime, UpdateProductSchema, CreateVariantSchema, GET(), POST() (+47 more)
 
-### Community 46 - "seed-rule-graphs.ts"
-Cohesion: 0.09
-Nodes (25): getDefaultFillingTemplateId(), ANY_BAND, basicSeedGraph(), BolsterTemplateIds, HEIGHT_BANDS_LEGACY, mbolsterSeedGraph(), PillowTemplateIds, premiumSeedGraph() (+17 more)
+### Community 46 - "rules-engine/recommend.ts"
+Cohesion: 0.06
+Nodes (45): BasicMpillowInput, BasicMpillowRecommendation, recommendBasicMpillow(), ballparkFromMpConfigData(), inferSizeFromMeasurements(), inferTierFromQuestions(), PillowSize, PillowTier (+37 more)
 
 ### Community 47 - "suggest/route.ts"
-Cohesion: 0.17
-Nodes (16): BOLSTER_SIZES, BolsterSize, bolsterSizeToVariant(), BolsterVariant, detectBolsterSize(), detectPillowKind(), detectPillowSize(), GET() (+8 more)
+Cohesion: 0.11
+Nodes (26): BOLSTER_SIZES, BolsterSize, bolsterSizeToVariant(), BolsterVariant, detectBolsterSize(), detectPillowKind(), detectPillowSize(), GET() (+18 more)
 
 ### Community 48 - "telegram-handler.ts"
-Cohesion: 0.09
-Nodes (44): ShopReviewForCard, ActionFailure, Actor, actorFields(), claimGoogleReviewPost(), executeGoogleReviewPost(), explainMiss(), setStaffDraft() (+36 more)
+Cohesion: 0.11
+Nodes (35): REVIEW_CALLBACK_PREFIX, ShopReviewForCard, getGoogleReviewByCard(), loadShopReviewForCard(), moderateShopReview(), notifyNewShopReview(), ProductContent, productTitle() (+27 more)
 
 ### Community 49 - "rules-engine/index.ts"
-Cohesion: 0.09
-Nodes (41): BodySchema, Ctx, dynamic, POST(), runtime, Ctx, dynamic, POST() (+33 more)
+Cohesion: 0.08
+Nodes (42): BodySchema, Ctx, dynamic, POST(), runtime, Ctx, dynamic, POST() (+34 more)
 
 ### Community 50 - "addons.ts"
-Cohesion: 0.12
-Nodes (24): dynamic, GET(), runtime, AddonItemMediaRef, AddonMediaAsset, resolveAddonImageUrls(), accessoryFitsProduct(), AddonItemRow (+16 more)
+Cohesion: 0.10
+Nodes (27): dynamic, GET(), runtime, AddonItemMediaRef, AddonMediaAsset, cards, route, urls (+19 more)
 
 ### Community 51 - "spec-table-section.tsx"
 Cohesion: 0.40
@@ -974,19 +950,19 @@ Nodes (22): asMoney(), BomLineRowDb, BomTemplateLineRowDb, BomTemplateRowDb, Cha
 
 ### Community 54 - "rules-engine/types.ts"
 Cohesion: 0.04
-Nodes (73): BASIC_CATALOG, catalogKeys(), CATALOGS, CUSTOMIZE_INPUTS, MBOLSTER_CATALOG, missingRequiredInputs(), PREMIUM_CATALOG, referencedInputKeys() (+65 more)
+Nodes (78): BASIC_CATALOG, CATALOGS, CUSTOMIZE_INPUTS, MBOLSTER_CATALOG, missingRequiredInputs(), PREMIUM_CATALOG, referencedInputKeys(), Adj (+70 more)
 
 ### Community 55 - "section-config.ts"
 Cohesion: 0.07
-Nodes (29): BaseSectionConfig, CommitmentCardsSectionConfig, FeatureCardGridSectionConfig, FeatureCarouselSectionConfig, FirmnessCompareSectionConfig, FullBleedMediaSectionConfig, HelpContactSectionConfig, IconListSectionConfig (+21 more)
+Nodes (28): MBOLSTER_GALLERY, mbolsterSlideSections, BaseSectionConfig, CommitmentCardsSectionConfig, FeatureCardGridSectionConfig, FeatureCarouselSectionConfig, FirmnessCompareSectionConfig, FullBleedMediaSectionConfig (+20 more)
 
-### Community 56 - "slice-05.check.ts"
-Cohesion: 0.11
-Nodes (22): Props, RecommendationReveal(), AssignHintInput, AssignHintSource, numericTemplateId(), resolveAssignHintTemplateId(), selectAssignHintSource(), RevealGateInput (+14 more)
+### Community 56 - "detail-prep.ts"
+Cohesion: 0.08
+Nodes (31): ResultDetailRoute(), runtime, ResultDetailInitialData, AssignSeedRow, canAssignResult(), FillingItemOption, loadFillingItems(), loadResultAssignPrep() (+23 more)
 
 ### Community 57 - "referrals/index.ts"
-Cohesion: 0.12
-Nodes (24): dynamic, POST(), runtime, GET(), runtime, adminUserIdForAuthUser(), AssistStaff, ensureAssistCode() (+16 more)
+Cohesion: 0.10
+Nodes (29): dynamic, POST(), runtime, GET(), runtime, Acceptance criteria, Assisted customisation 02: The Assist link — generate it, copy it, recognise it, Blocked by (+21 more)
 
 ### Community 58 - "plan3d.py"
 Cohesion: 0.07
@@ -997,152 +973,152 @@ Cohesion: 0.07
 Nodes (27): Build order, Dependency graph, HITL notes, Page Builder Redesign — Vertical Slices (Issues), Slices, API contracts (conceptual), Approved design decisions (adversarial review), Bilingual content (+19 more)
 
 ### Community 60 - "aggregates.ts"
-Cohesion: 0.07
-Nodes (47): emptyGraph, loadConvertedRecordsFromDb(), loadSectionGraphFromDb(), attachConvertedSink(), buildConvertedRecords(), buildConvertedSinkDetail(), actions, aggregates (+39 more)
+Cohesion: 0.05
+Nodes (61): attachReentryEdges(), emptyGraph, landingsFromEvents(), loadConvertedRecordsFromDb(), loadNodeDetailFromDb(), loadPageTransitionsFromDb(), loadSectionGraphFromDb(), rowToVisitMeta() (+53 more)
 
 ### Community 61 - "section-surfaces.check.ts"
-Cohesion: 0.13
-Nodes (13): checkout, mbolster, mpBasic, mpConfig, pages, pdp, results, root (+5 more)
+Cohesion: 0.06
+Nodes (30): adminReject, layout, { nodes, edges }, ok, root, tracker, card, drop (+22 more)
 
 ### Community 62 - "ingest-gsc.ts"
-Cohesion: 0.11
-Nodes (30): createGscClient(), env(), FetchLike, getGscConfig(), GSC_ROW_LIMIT, GscClient, GscConfig, GscDimension (+22 more)
+Cohesion: 0.10
+Nodes (31): createGscClient(), env(), FetchLike, getGscConfig(), GSC_ROW_LIMIT, GscClient, GscConfig, GscDimension (+23 more)
 
 ### Community 63 - "telegram-handler.test.ts"
-Cohesion: 0.05
-Nodes (40): 07: Remove dead endpoints, fix the reviews route, lock the product and blog GETs, Acceptance criteria, Goal, Scope, The gap, precisely, Admin data served to the public, Acceptance criteria, Blocked by (+32 more)
+Cohesion: 0.07
+Nodes (33): 07: Remove dead endpoints, fix the reviews route, lock the product and blog GETs, Acceptance criteria, Goal, Scope, The gap, precisely, Admin data served to the public, createFakeSupabase(), from() (+25 more)
 
-### Community 64 - "customization-llm.ts"
-Cohesion: 0.06
-Nodes (48): Acceptance criteria, Blocked by, Slice 12 — Retire hardcoded fillings; LLM proposal field hooks, Status, What to build, inputsFromBolsterHeight(), inputsFromMeasurementPrefs(), legacyOnlineMeasurementBallpark() (+40 more)
+### Community 64 - "customize/route.ts"
+Cohesion: 0.04
+Nodes (88): dynamic, POST(), RecommendSchema, runtime, ApplyRequestSchema, BolsterRecommendRequestSchema, handleApply(), handleApplyBolster() (+80 more)
 
-### Community 65 - "react"
+### Community 65 - "Button"
 Cohesion: 0.03
-Nodes (210): FormState, Props, Props, Selection, BODY_TYPES, FIRMNESS_LEVELS, SLEEP_POSITIONS, StepPreferences() (+202 more)
+Nodes (169): AddressesClient(), openCreate(), openEdit(), emptyForm(), FormState, toForm(), OrderRefundActions(), Props (+161 more)
 
-### Community 66 - "staff-assist-panel.tsx"
-Cohesion: 0.09
-Nodes (38): The gap, precisely, SaveFillingTemplate(), StaffAssistBolsterPanel(), TemplateRow, StaffAssistPanel(), TemplateRow, TIER_LABEL, sizes (+30 more)
+### Community 66 - "booking-flow.tsx"
+Cohesion: 0.07
+Nodes (39): Acceptance criteria, Blocked by, Slice 04 — Booking page route `/[lang]/appointments` + inline pills, What to build, Acceptance criteria, Blocked by, Implementation notes (AFK part done), Slice 08 — GA4 property confirmation + Data API cross-check (+31 more)
 
-### Community 67 - "delivery-estimator.tsx"
-Cohesion: 0.06
-Nodes (60): CartPage(), functionPaths(), renderPage(), CheckoutPage(), applyAddress(), handleSelectAddress(), handleSubmit(), OrderSummaryContent() (+52 more)
+### Community 67 - "Locale"
+Cohesion: 0.08
+Nodes (44): CartPage(), CartPageProps, functionPaths(), renderPage(), CartContent(), CartContentProps, CartCouponField(), CartCouponFieldProps (+36 more)
 
 ### Community 68 - "[card]/page.tsx"
 Cohesion: 0.03
-Nodes (131): ComposedProductSlug, BOLSTER_LENGTHS, BolsterCrossSection, BolsterEditor(), BolsterLength, BomByKind, BomLine, BomState (+123 more)
+Nodes (128): BOLSTER_LENGTHS, BolsterCrossSection, BolsterEditor(), BolsterLength, BomByKind, BomLine, BomState, ConfigureCardPage() (+120 more)
 
 ### Community 69 - "config-upload/index.ts"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (32): DELETE(), GET(), POST(), runtime, unauthorized(), uuid, Further Notes, Implementation Decisions (+24 more)
 
-### Community 70 - "hold-cancel-restore.check.ts"
-Cohesion: 0.14
-Nodes (22): bolster, draft, flowVariant, holdRoute, mem, mp, ROOT, roundTrip (+14 more)
+### Community 70 - "build-assembly/index.ts"
+Cohesion: 0.10
+Nodes (23): assertFillingLines(), AddonLine, assembleBuild(), AssembleBuildInput, AssembleBuildResult, BomLineInput, BuildLine, BuildLineRole (+15 more)
 
 ### Community 71 - "resolve-slide-content.ts"
 Cohesion: 0.21
 Nodes (23): MessagesSlice, optionalString(), optionalStringArray(), requireString(), requireStringArray(), resolveCommitmentCards(), resolveFeatureCardGrid(), resolveFeatureCarousel() (+15 more)
 
 ### Community 72 - "order-shipment.ts"
-Cohesion: 0.10
-Nodes (39): GET(), runtime, readTypeBoxes, clean(), createShipment(), DEFAULT_EASYSHIP_API_VERSION, destinationAddressBody(), destinationCity() (+31 more)
+Cohesion: 0.14
+Nodes (28): GET(), runtime, POST(), runtime, BuyLabelSchema, GET(), POST(), runtime (+20 more)
 
-### Community 73 - "server.ts"
-Cohesion: 0.05
-Nodes (56): bodySchema, POST(), runtime, GET(), runtime, bodySchema, PATCH(), runtime (+48 more)
+### Community 73 - "backup-email/route.ts"
+Cohesion: 0.09
+Nodes (36): bodySchema, POST(), runtime, bodySchema, POST(), runtime, PATCH(), POST() (+28 more)
 
 ### Community 74 - "transition.ts"
-Cohesion: 0.18
-Nodes (18): voidCommissionsForRma(), dispatchRmaEmail(), RmaEmailTemplateName, emailTemplateForStatus(), ADR-0011, applyRmaTransition(), ApplyRmaTransitionOpts, ApplyRmaTransitionResult (+10 more)
+Cohesion: 0.15
+Nodes (20): voidCommissionsForRma(), dispatchRmaEmail(), RmaEmailTemplateName, parseStatusFilter(), RMA_STATUSES, emailTemplateForStatus(), ADR-0011, applyRmaTransition() (+12 more)
 
-### Community 75 - "easyship/sync.ts"
-Cohesion: 0.06
-Nodes (42): GET(), maxDuration, readReference, runtime, Agent recipe, Easyship settings, Endpoint, Gotchas (+34 more)
+### Community 75 - "easyship.ts"
+Cohesion: 0.11
+Nodes (25): Agent recipe, Easyship settings, Endpoint, Gotchas, Shipping (ADR 0020, ADR 0022), Consequences, Decisions, Easyship account configuration is owned by the platform and pushed, never pulled (+17 more)
 
 ### Community 76 - "Badge"
-Cohesion: 0.08
-Nodes (57): BottomBar(), BottomBarProps, BolsterPreferences, BuilderContext, BuilderProvider(), BuilderProviderProps, BuilderStep, ProductType (+49 more)
+Cohesion: 0.06
+Nodes (71): handleDelete(), handleSetDefault(), BottomBar(), BottomBarProps, BolsterPreferences, BuilderContext, BuilderProvider(), BuilderProviderProps (+63 more)
 
 ### Community 77 - "dependencies"
 Cohesion: 0.03
 Nodes (71): dependencies, @anthropic-ai/sdk, class-variance-authority, clsx, d3-hierarchy, date-fns, @dnd-kit/react, flubber (+63 more)
 
-### Community 78 - "rules-engine/recommend.ts"
-Cohesion: 0.06
-Nodes (46): GET(), Acceptance criteria, Blocked by, Slice 06 — Ownership gate on read and update, and a redacted payload for Owners, What to build, Acceptance criteria, Blocked by, Proof (2026-07-19) (+38 more)
+### Community 78 - "err"
+Cohesion: 0.24
+Nodes (18): DELETE(), GET(), runtime, GET(), runtime, createMediaAsset(), deleteMediaAssetGuarded(), getMediaAsset() (+10 more)
 
 ### Community 79 - "migrate-public-apply.ts"
-Cohesion: 0.08
-Nodes (51): ADR-0004, listMediaAssets(), applyPublicMigration(), ApplyPublicMigrationResult, ensureAssetForPath(), formatPlanReport(), loadPublicMigrationContext(), repoPublicFilePath() (+43 more)
-
-### Community 80 - "appointment-reminders/route.ts"
 Cohesion: 0.09
-Nodes (35): BookSchema, dynamic, POST(), runtime, post(), valid, authorizeCron(), dynamic (+27 more)
+Nodes (47): ADR-0004, listMediaAssets(), applyPublicMigration(), ApplyPublicMigrationResult, ensureAssetForPath(), formatPlanReport(), loadPublicMigrationContext(), repoPublicFilePath() (+39 more)
 
-### Community 81 - "AddressesClient"
-Cohesion: 0.16
-Nodes (23): POST(), runtime, AddressActionResult, clearDefaults(), createAddress(), deleteAddress(), revalidate(), setDefaultAddress() (+15 more)
+### Community 80 - "mappings/route.ts"
+Cohesion: 0.11
+Nodes (19): DELETE(), DeleteSchema, GET(), POST(), runtime, UpsertSchema, listOverlayMappingItems(), MappingRow (+11 more)
+
+### Community 81 - "rma.ts"
+Cohesion: 0.12
+Nodes (19): Acceptance criteria, Blocked by, Slice 03 — Customer request flow (+ received email, RMA email ledger), What to build, itemLabels(), itemsText(), lowerFirst(), orderUrl() (+11 more)
 
 ### Community 82 - "slots.ts"
-Cohesion: 0.12
-Nodes (25): busyFrom(), dynamic, GET(), runtime, suggestions(), Acceptance criteria, Blocked by, Slice 07 — Weekly availability windows + sectioned gear sheet (+17 more)
+Cohesion: 0.06
+Nodes (47): busyFrom(), dynamic, GET(), runtime, suggestions(), Acceptance criteria, Blocked by, Slice 07 — Weekly availability windows + sectioned gear sheet (+39 more)
 
 ### Community 83 - "permissions.ts"
-Cohesion: 0.07
-Nodes (34): h, OWNER, Acceptance criteria, Blocked by, Slice 11 — Contract: drop legacy columns and code paths, What to build, Modules, AccessDeniedNotice() (+26 more)
+Cohesion: 0.05
+Nodes (54): h, params, CreateCategorySchema, GET(), LabelsSchema, POST(), runtime, CreateItemSchema (+46 more)
 
 ### Community 84 - "deformable_transformer_v2.py"
-Cohesion: 0.09
-Nodes (10): build_deforamble_transformer(), DeformableTransformer, Embedding(), get_1d_sincos_pos_embed_from_grid(), _get_activation_fn(), _get_clones(), TransformerDecoder, TransformerDecoderLayer (+2 more)
+Cohesion: 0.08
+Nodes (12): DeformableTransformerEncoder, DeformableTransformerEncoderLayer, build_deforamble_transformer(), DeformableTransformer, Embedding(), get_1d_sincos_pos_embed_from_grid(), _get_activation_fn(), _get_clones() (+4 more)
 
 ### Community 85 - "order-mirror-catchup.ts"
-Cohesion: 0.11
-Nodes (28): authorizeCron(), dynamic, GET(), POST(), runtime, What to build, CatchupBudget, CatchupResult (+20 more)
-
-### Community 86 - "buildPageMetadata"
 Cohesion: 0.10
-Nodes (20): AccountLayout(), generateMetadata(), Props, generateMetadata(), MbolsterConfigLayout(), META, Props, generateMetadata() (+12 more)
+Nodes (31): authorizeCron(), dynamic, GET(), POST(), runtime, refreshShopifySalesQueueFromShopify(), CatchupBudget, CatchupResult (+23 more)
+
+### Community 86 - "messages/index.ts"
+Cohesion: 0.10
+Nodes (26): AppointmentsPage(), metadata, metadata, PageBuilderPreview(), runtime, generateMetadata(), generateMetadata(), Props (+18 more)
 
 ### Community 87 - "Mobile UI and Interaction Optimization Plan"
-Cohesion: 0.11
-Nodes (17): Acceptance Criteria, Accessibility and Mobile Ergonomics, Current State (from codebase), File-Level Implementation Roadmap, Interaction and Gesture Rules, Mobile UI and Interaction Optimization Plan, Objective, Performance and Stability (+9 more)
+Cohesion: 0.06
+Nodes (33): 1) Standardize CSS variables in `app/globals.css`, 2) Top anchored elements, 3) Bottom anchored elements, 3A. Global menu drawer, 3B. Mobile select drawer, 3C. Long-form learn-more drawers, 3D. Task/edit drawers, 3E. Sidebar mobile sheet (+25 more)
 
 ### Community 88 - "SearchVisibilityCard.tsx"
-Cohesion: 0.06
-Nodes (46): AiAnswers, AiAnswersPanel(), AnnotationsPanel(), ChannelMixPanel(), ChannelMixVisx, compact, CrawlerPanel(), Crawlers (+38 more)
+Cohesion: 0.07
+Nodes (39): AiAnswers, AiAnswersPanel(), ChannelMixPanel(), ChannelMixVisx, compact, CrawlerPanel(), Crawlers, DeltaBadge() (+31 more)
 
-### Community 89 - "merchant-feed/route.ts"
-Cohesion: 0.17
-Nodes (16): dynamic, GET(), runtime, buildFeedItems(), FEED_COLUMNS, FeedItem, FeedProduct, FeedSkip (+8 more)
+### Community 89 - "ecommerce/products.ts"
+Cohesion: 0.05
+Nodes (50): dynamic, GET(), runtime, BlogHubPage(), metadata, PostCard(), Props, generateStaticParams() (+42 more)
 
 ### Community 90 - "page-faq/index.ts"
-Cohesion: 0.07
-Nodes (43): DELETE(), LocaleContentSchema, PATCH(), PatchItemSchema, RouteContext, runtime, apiFiles, emptyHtml (+35 more)
+Cohesion: 0.04
+Nodes (80): DELETE(), LocaleContentSchema, PATCH(), PatchItemSchema, RouteContext, runtime, PUT(), ReorderSchema (+72 more)
 
 ### Community 91 - "devDependencies"
 Cohesion: 0.11
 Nodes (18): devDependencies, cheerio, eslint, eslint-config-next, @eslint/eslintrc, shadcn, tailwindcss, @tailwindcss/postcss (+10 more)
 
-### Community 92 - "secretMatches"
-Cohesion: 0.03
-Nodes (64): authorizeCron(), bodySchema, POST(), runtime, GET(), Further Notes, Implementation Decisions, Out of Scope (+56 more)
+### Community 92 - "access.ts"
+Cohesion: 0.05
+Nodes (39): DataUrlSchema, POST(), runtime, UpsertSchema, ViewSchema, GET(), ParamsSchema, runtime (+31 more)
 
 ### Community 93 - "shop-listings.ts"
-Cohesion: 0.14
-Nodes (22): GET(), PATCH(), runtime, ToggleSchema, activate(), CATEGORY_SUFFIX, deactivate(), ExistingVariant (+14 more)
+Cohesion: 0.13
+Nodes (23): GET(), PATCH(), runtime, ToggleSchema, AccessoryFamilyItem, activate(), CATEGORY_SUFFIX, deactivate() (+15 more)
 
 ### Community 94 - "ProspectJourneyCard.tsx"
-Cohesion: 0.05
-Nodes (82): getProspectJourneyNodeDetail(), getProspectJourneyTransitions(), routesBlockH(), timeOnPageBlockH(), Camera, canExpandNode(), convertedDigInH(), cubicEdgePath() (+74 more)
+Cohesion: 0.04
+Nodes (85): getProspectJourneyNodeDetail(), getProspectJourneyTransitions(), JourneyConvertedDetail, JourneyGroupDetail, JourneyNodeDetail, JourneyTransitionEdge, JourneyTransitionNode, routesBlockH() (+77 more)
 
 ### Community 95 - "import-drive.ts"
-Cohesion: 0.10
-Nodes (28): POST(), runtime, Consequences, Considered options, Staff reference photos live in the media bucket but bypass the DAM, keyed by a shared session id, Why, downloadThumbnail(), defaultDeps() (+20 more)
+Cohesion: 0.09
+Nodes (32): POST(), runtime, GET(), POST(), runtime, Consequences, Considered options, Staff reference photos live in the media bucket but bypass the DAM, keyed by a shared session id (+24 more)
 
 ### Community 96 - "product-slide-section-renderer.tsx"
-Cohesion: 0.16
-Nodes (19): HelpContactSection(), HelpContactSectionProps, SectionTitle(), OutcomeGridSection(), OutcomeGridSectionProps, ProductSlideSectionRenderer(), ProductSlideSectionRendererProps, resolveButtonLabel() (+11 more)
+Cohesion: 0.18
+Nodes (18): ProductSlideSectionRenderer(), ProductSlideSectionRendererProps, resolveButtonLabel(), resolveCtaLabel(), resolveScaleTitles(), TrustStripSection(), TrustStripSectionProps, buildFeatureCarouselItems() (+10 more)
 
 ### Community 98 - "partners"
 Cohesion: 0.10
@@ -1152,89 +1128,89 @@ Nodes (25): idx_partners_position, partners, partners_page, trg_partners_page_up
 Cohesion: 0.22
 Nodes (9): BomLine, bom, low, lowUnused, onHand, collectLowStockCategories(), isCategoryBottleneckLow(), PART_CATEGORY_LOW_STOCK_RATIO (+1 more)
 
-### Community 100 - "hold/route.ts"
-Cohesion: 0.02
-Nodes (217): dynamic, GET(), PlacementRowSchema, POST(), resolveScope(), runtime, SaveSchema, Scope (+209 more)
+### Community 100 - "requireAdmin"
+Cohesion: 0.04
+Nodes (116): dynamic, GET(), PlacementRowSchema, POST(), resolveScope(), runtime, SaveSchema, Scope (+108 more)
 
 ### Community 101 - "sunburst-menu-layout.check.ts"
 Cohesion: 0.10
 Nodes (29): SunburstDemoPage(), tree, arcCentroid(), arcPath(), ArcSpec, buildArcs(), d, drilled (+21 more)
 
 ### Community 102 - "rma/actions.ts"
-Cohesion: 0.04
-Nodes (68): BodySchema, runtime, POST(), runtime, BodySchema, POST(), runtime, POST() (+60 more)
+Cohesion: 0.14
+Nodes (22): approveRma(), approveRmaForm(), completeReturn(), completeReturnForm(), issueRmaRefund(), issueRmaRefundForm(), markReceived(), markReceivedForm() (+14 more)
 
-### Community 103 - "getLocaleFromPathname"
-Cohesion: 0.03
-Nodes (94): metadata, RootLayout(), soraMono, soraSans, viewport, Status / proof, Acceptance criteria, Proof (2026-07-13) (+86 more)
+### Community 103 - "app/layout.tsx"
+Cohesion: 0.05
+Nodes (49): metadata, RootLayout(), soraMono, soraSans, viewport, Acceptance criteria, Blocked by, Slice 04 — Analytics notice bar (+41 more)
 
-### Community 104 - "deformable_transformer.py"
-Cohesion: 0.07
-Nodes (13): build_deforamble_transformer(), DeformableTransformer, DeformableTransformerDecoder, DeformableTransformerDecoderLayer, DeformableTransformerEncoder, DeformableTransformerEncoderLayer, _get_activation_fn(), _get_clones() (+5 more)
+### Community 104 - "MSDeformAttn"
+Cohesion: 0.13
+Nodes (7): build_deforamble_transformer(), DeformableTransformer, DeformableTransformerDecoderLayer, _get_activation_fn(), _is_power_of_2(), ms_deform_attn_core_pytorch(), MSDeformAttn
 
 ### Community 105 - "exchange-rates.ts"
 Cohesion: 0.31
 Nodes (8): GET(), convertPrice(), ExchangeRates, FALLBACK_RATES, getExchangeRates(), refreshExchangeRates(), roundForCurrency(), ZERO_DECIMAL_CURRENCIES
 
-### Community 106 - "mp-config/page.tsx"
-Cohesion: 0.15
-Nodes (19): INTRO, MbolsterConfigPage(), Props, INTRO, MpConfigPage(), Props, ADR-0017, Acceptance criteria (+11 more)
+### Community 106 - "google-sync.ts"
+Cohesion: 0.16
+Nodes (19): authorizeCron(), dynamic, GET(), maxDuration, POST(), runtime, renderGoogleReviewCard(), changedFields() (+11 more)
 
 ### Community 107 - "identity.ts"
 Cohesion: 0.20
 Nodes (14): newerEnded, olderEnded, open, linkVisitToPaidOrder(), mergeVisitorIdentity(), normalizeVisitorEmail(), parseVisitorId(), pickVisitForConversion() (+6 more)
 
-### Community 108 - "locales.ts"
-Cohesion: 0.04
-Nodes (114): dynamic, runtime, GET(), runtime, GET(), GET(), runtime, AccountProfilePage() (+106 more)
+### Community 108 - "auth/admin.ts"
+Cohesion: 0.03
+Nodes (129): GET(), dynamic, GET(), runtime, CreateCategorySchema, GET(), runtime, GET() (+121 more)
 
 ### Community 109 - "pre-order-restock.ts"
-Cohesion: 0.09
-Nodes (26): authorizeCron(), dynamic, GET(), POST(), runtime, copy, cronRoute, migration (+18 more)
+Cohesion: 0.07
+Nodes (33): HoldPreOrderLookup, ADR-0005, copy, cronRoute, migration, mod, mp, ROOT (+25 more)
 
 ### Community 110 - "Shopify export (active products)"
 Cohesion: 0.06
 Nodes (32): Basic Mpillow (ID 4311778492512) — `basic-ergonomic-pillow`, Cervical Neck Support (ID 4544437289056) — `cervical-neck-support`, Cover Sheets (ID 4257115013216) — `mpillow-cover-sheet`, (Currrent product / accessories), (Currrent product / accessories), (Currrent product / accessories), (Currrent product / accessories), (Currrent product / accessories) (+24 more)
 
-### Community 111 - "discount-editor-client.tsx"
-Cohesion: 0.08
-Nodes (37): AppliesTo, appliesToFromCoupon(), AppliesToSelection, buildAppliesToPayload(), buildSummary(), CatalogCategoriesResponse, CatalogCategory, CatalogProduct (+29 more)
+### Community 111 - "product-detail-client.tsx"
+Cohesion: 0.05
+Nodes (65): CheckoutPage(), applyAddress(), handleSelectAddress(), handleSubmit(), OrderSummaryContent(), validate(), COUNTRY_OPTIONS, FormData (+57 more)
 
 ### Community 112 - "media-assets/index.ts"
-Cohesion: 0.07
-Nodes (63): DELETE(), GET(), PATCH(), runtime, GET(), runtime, GET(), POST() (+55 more)
+Cohesion: 0.08
+Nodes (51): PATCH(), GET(), POST(), runtime, DELETE(), PATCH(), runtime, GET() (+43 more)
 
 ### Community 113 - "product-slide-sections/types.ts"
-Cohesion: 0.09
-Nodes (27): CommitmentCardsSection(), CommitmentCardsSectionProps, SectionTitle(), BenefitCard(), FeatureCardGridSection(), FeatureCardGridSectionProps, SectionTitle(), MediaIntroSection() (+19 more)
-
-### Community 114 - "members-routes.test.ts"
 Cohesion: 0.06
-Nodes (22): h, h, R, coupon, h, h, patch(), req() (+14 more)
+Nodes (48): BenefitCard(), FeatureCardGridSection(), FeatureCardGridSectionProps, SectionTitle(), FullBleedMediaSection(), FullBleedMediaSectionProps, HelpContactSection(), HelpContactSectionProps (+40 more)
+
+### Community 114 - "fake-admin.ts"
+Cohesion: 0.08
+Nodes (20): h, coupon, h, h, patch(), req(), Testing Decisions, h (+12 more)
 
 ### Community 115 - "Slice 02 — Catalog + schema: site_settings options, Result columns, validation + checks"
 Cohesion: 0.07
 Nodes (26): Acceptance criteria, Blocked by, Slice 02 — Catalog + schema: site_settings options, Result columns, validation + checks, Status, What to build, Acceptance criteria, Blocked by, Slice 03 — Landing Site → Forms admin (locale tabs, reorder, archive, Other lock) (+18 more)
 
 ### Community 116 - "csv-import.ts"
-Cohesion: 0.23
-Nodes (14): importAiReports(), count(), detectReport(), norm(), parseCsv(), ParsedReport, parseReport(), parseReportDate() (+6 more)
+Cohesion: 0.25
+Nodes (13): importAiReports(), count(), detectReport(), norm(), parseCsv(), ParsedReport, parseReport(), parseReportDate() (+5 more)
 
-### Community 117 - "ecommerce.ts"
-Cohesion: 0.03
-Nodes (137): PartnerHubPage(), PartnerStatusScreen(), BackupEmailCard(), NotificationsCard(), PartnerSettingsClient(), onPickLogo(), PaymentDetails, PayoutDetailsCard() (+129 more)
+### Community 117 - "Card"
+Cohesion: 0.04
+Nodes (114): PartnerHubPage(), PartnerStatusScreen(), BackupEmailCard(), NotificationsCard(), PartnerSettingsClient(), onPickLogo(), PaymentDetails, PayoutDetailsCard() (+106 more)
 
 ### Community 118 - "settings-breadcrumbs.ts"
 Cohesion: 0.12
 Nodes (22): 01 — Couriers page, nav, redirect, brand copy, Acceptance criteria, Blocked by, Parent, What to build, allNavEntries(), BreadcrumbNavGroup, BreadcrumbNavItem (+14 more)
 
 ### Community 119 - "journey/ingest.ts"
-Cohesion: 0.05
-Nodes (60): POST(), runtime, buildCountryLegend(), actions, aggregates, card, countrySrc, ingest (+52 more)
+Cohesion: 0.04
+Nodes (66): POST(), runtime, Acceptance criteria, Blocked by, Proof, Slice 05 — Entry source freeze + filter + tests, What to build, listCountriesFromDb() (+58 more)
 
 ### Community 120 - "draft-reply.ts"
-Cohesion: 0.11
-Nodes (25): buildReviewPrompt(), CLAUDE_NOT_CONFIGURED, claudeConfigured(), defaultClient(), DraftResult, draftReviewReply(), REVIEW_REPLY_MODEL, REVIEW_REPLY_SYSTEM_PROMPT (+17 more)
+Cohesion: 0.15
+Nodes (18): buildReviewPrompt(), CLAUDE_NOT_CONFIGURED, claudeConfigured(), defaultClient(), draftInputFor(), DraftResult, draftReviewReply(), REVIEW_REPLY_MODEL (+10 more)
 
 ### Community 121 - "compilerOptions"
 Cohesion: 0.11
@@ -1257,7 +1233,7 @@ Cohesion: 0.08
 Nodes (33): Acceptance criteria, Blocked by, Notes (shipped), Proof matrix, Slice 12 — GA→DB BigQuery sync + ga_client_id stitch, What to build, actions, aggregates (+25 more)
 
 ### Community 126 - "mp_glb_parts/__init__.py"
-Cohesion: 0.08
+Cohesion: 0.06
 Nodes (13): base_name(), comfy_entrypoint(), _list_models(), matches(), MPGLBPartFilter, MPGLBPartsExtension, parse_patterns(), _source_key() (+5 more)
 
 ### Community 127 - "20260706120000_faq.sql"
@@ -1269,24 +1245,24 @@ Cohesion: 0.12
 Nodes (15): Already fine (no work), Broken in prod right now, Customers who can be harmed, Further Notes, Implementation Decisions, Money that can be taken, Out of Scope, PRD: Prod hardening (+7 more)
 
 ### Community 129 - "workbench.tsx"
-Cohesion: 0.07
-Nodes (59): MpCarePage(), apiBase(), defaultRule(), NODE_TYPE_LABELS, NodeEditor(), PALETTE_GROUPS, PANEL_TITLES, prettyKey() (+51 more)
+Cohesion: 0.05
+Nodes (70): MpCarePage(), apiBase(), defaultRule(), NODE_TYPE_LABELS, NodeEditor(), PALETTE_GROUPS, PANEL_TITLES, prettyKey() (+62 more)
 
-### Community 130 - "auth/admin.ts"
-Cohesion: 0.03
-Nodes (109): GET(), runtime, DELETE(), PATCH(), runtime, UpdateSchema, CreateSchema, GET() (+101 more)
+### Community 130 - "recordAdminAction"
+Cohesion: 0.05
+Nodes (59): GET(), runtime, BodySchema, GET(), POST(), runtime, PUT(), ReorderSchema (+51 more)
 
 ### Community 131 - "exactly-once.test.ts"
 Cohesion: 0.10
 Nodes (15): h, query(), Row, tick(), Commit author, graphify knowledge graph, Keeping it current, mp — agent guide (+7 more)
 
-### Community 132 - "step-validation.check.ts"
-Cohesion: 0.10
-Nodes (24): Acceptance criteria, Blocked by, Proof, Slice 01 — Single-select rows + CTA copy, What to build, Automated checks (all ok), Code-audit wiring (AFK proxy — not a device pass), Deploy gate — **closed** (+16 more)
+### Community 132 - "reply-rules.ts"
+Cohesion: 0.18
+Nodes (15): DEFAULT_SUPPORT_WHATSAPP, formatWhatsAppDisplay(), SUPPORT_WHATSAPP_DIGITS, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL, executeGoogleReviewPost(), checkReplyText(), CHECKS (+7 more)
 
-### Community 133 - "next"
-Cohesion: 0.03
-Nodes (53): POST(), runtime, DataUrlSchema, POST(), runtime, UpsertSchema, ViewSchema, h (+45 more)
+### Community 133 - "costings/save/route.ts"
+Cohesion: 0.16
+Nodes (16): POST(), runtime, BOLSTER_VARIANTS, bolsterKey(), BolsterVariant, fetchProductSummaries(), PayloadSchema, pillowKey() (+8 more)
 
 ### Community 134 - "item-image-sync.ts"
 Cohesion: 0.27
@@ -1296,45 +1272,45 @@ Nodes (8): applyGalleryImage(), GalleryOp, GalleryRow, loadImage(), NewImage, pl
 Cohesion: 0.09
 Nodes (23): bom_lines, idx_items_category_size_subtype_name, inventory_balances, inventory_transactions, item_thresholds, items, pillow_products, product_buildable (+15 more)
 
-### Community 136 - "select-labels.check.ts"
-Cohesion: 0.29
-Nodes (8): configureLabels, labels, queueLabels, collectSelectItemLabels(), flattenChildrenToLabel(), isSelectItemElement(), SELECT_ITEM_MARK, selectItemLabel()
+### Community 136 - "coupons/[id]/route.ts"
+Cohesion: 0.14
+Nodes (15): DELETE(), GET(), PATCH(), runtime, UpdateCouponSchema, CreateCouponSchema, GET(), POST() (+7 more)
 
 ### Community 137 - "apple-cards-carousel.tsx"
-Cohesion: 0.18
-Nodes (12): AppleCarouselCard(), AppleCarouselCardData, BlurImage(), BlurImageProps, CardProps, CarouselContext, CarouselProps, Demo() (+4 more)
+Cohesion: 0.13
+Nodes (18): FeatureCarouselCard(), FeatureCarouselCardProps, FeatureCarouselSection(), FeatureCarouselSectionProps, SectionTitle(), AppleCarouselCard(), AppleCarouselCardData, BlurImage() (+10 more)
 
 ### Community 138 - "members.ts"
-Cohesion: 0.10
-Nodes (33): POST(), runtime, DELETE(), PATCH(), runtime, UpdateSchema, GET(), InviteSchema (+25 more)
+Cohesion: 0.04
+Nodes (83): DELETE(), PATCH(), runtime, UpdateSchema, CreateSchema, GET(), POST(), runtime (+75 more)
 
 ### Community 139 - "store.ts"
-Cohesion: 0.20
-Nodes (18): GET(), guard(), maxDuration, POST(), PUT(), runSync(), runtime, view() (+10 more)
+Cohesion: 0.13
+Nodes (26): GET(), maxDuration, readReference, runtime, GET(), guard(), maxDuration, POST() (+18 more)
 
 ### Community 140 - "User Stories"
 Cohesion: 0.08
 Nodes (24): Approved design decisions (grill session), Domain and glossary, Further Notes, Implementation Decisions, Modules, Modules to test, Operator — Forms settings, Operator — Results (+16 more)
 
 ### Community 141 - "PRD: Page FAQ Embeds + Answer Lede Coverage"
-Cohesion: 0.07
-Nodes (27): Acceptance criteria, Blocked by, Slice 02 — Page FAQ store: schema, surface_key, CRUD helpers, bilingual seed, self-check, What to build, Build order, Dependency graph, Page FAQ Embeds — Vertical Slices (Issues), Slices (+19 more)
+Cohesion: 0.08
+Nodes (22): Build order, Dependency graph, Page FAQ Embeds — Vertical Slices (Issues), Slices, Answer lede (TL;DR), API contracts (conceptual), APIs, permissions, and integrity, Approved design decisions (grill session) (+14 more)
 
 ### Community 144 - "locations/index.ts"
-Cohesion: 0.08
-Nodes (29): dynamic, GET(), runtime, dynamic, runtime, dynamic, GET(), PutSchema (+21 more)
+Cohesion: 0.07
+Nodes (36): dynamic, GET(), runtime, dynamic, GET(), PATCH(), PatchSchema, runtime (+28 more)
 
 ### Community 145 - "customisation-binding.test.ts"
-Cohesion: 0.05
-Nodes (41): basicXs, bolster(), bolsterConfig(), caseLine(), cheapRoleLines, fibrecoolLines, h, honestRoundTrip() (+33 more)
+Cohesion: 0.12
+Nodes (12): basicXs, bolsterConfig(), caseLine(), cheapRoleLines, fibrecoolLines, h, items, packagingBom (+4 more)
 
 ### Community 146 - "partner-upload/index.ts"
 Cohesion: 0.29
 Nodes (9): POST(), runtime, assertLogoAllowed(), LogoRefusedError, savePartnerLogo(), LOGO_ALLOWED_MIME, LOGO_GUIDELINES, LOGO_MAX_BYTES (+1 more)
 
-### Community 148 - "role-policy.ts"
-Cohesion: 0.10
-Nodes (27): Acceptance criteria, Blocked by, Decisions made while building, Slice 06 — Roles tab: permission matrix editor + custom roles, What to build, RoleGrant, allow, beyondActor() (+19 more)
+### Community 148 - "[id]/refund-request/route.ts"
+Cohesion: 0.24
+Nodes (15): BodySchema, POST(), runtime, customerCancelDeniedReason(), customerRefundRequestDeniedReason(), directRefundDeniedReason(), isPostDelivery(), isResultCustomisedOrder() (+7 more)
 
 ### Community 149 - "surface-parity.check.ts"
 Cohesion: 0.12
@@ -1345,36 +1321,36 @@ Cohesion: 0.18
 Nodes (24): applyPlan(), buildPlan(), extractDocLocationId(), extractHeaderInfo(), extractSectionLines(), extractVariantIdFromLabel(), formatPlanSummary(), getEnv() (+16 more)
 
 ### Community 155 - "from-inventory.ts"
-Cohesion: 0.24
-Nodes (10): AccessoryFamilyItem, parseMoney(), publishAccessoryFamily(), PublishAllAccessoriesResult, publishAllUnpublishedAccessories(), PublishFamilyResult, SIZE_ORDER, sizeSortKey() (+2 more)
+Cohesion: 0.27
+Nodes (9): parseMoney(), publishAccessoryFamily(), PublishAllAccessoriesResult, publishAllUnpublishedAccessories(), PublishFamilyResult, SIZE_ORDER, sizeSortKey(), slugify() (+1 more)
 
 ### Community 156 - "AspectRatio"
-Cohesion: 0.05
-Nodes (41): AspectRatio(), Common responsive layout recipes, Container + sections, Container + spacing defaults, CTA placement rules, Dock-safe bottom padding, Golden rules (follow these first), Grid/flex decision guide (+33 more)
+Cohesion: 0.07
+Nodes (34): AspectRatio(), Common responsive layout recipes, Container + sections, Container + spacing defaults, CTA placement rules, Dock-safe bottom padding, Golden rules (follow these first), Grid/flex decision guide (+26 more)
 
 ### Community 157 - "discovery-source/index.ts"
-Cohesion: 0.10
-Nodes (41): GET(), readDiscoverySourceCatalog, activeDiscoverySourceOptions(), archiveDiscoverySourceOption(), assertCatalogAllowsSave(), findDiscoverySourceOption(), isPlainObject(), normalizeDiscoverySourceCatalog() (+33 more)
+Cohesion: 0.09
+Nodes (45): dynamic, GET(), OptionSchema, PUT(), PutSchema, runtime, activeDiscoverySourceOptions(), archiveDiscoverySourceOption() (+37 more)
 
-### Community 158 - "lifecycle.check.ts"
-Cohesion: 0.08
-Nodes (26): listCountriesFromDb(), attachDropOffSink(), DROP_OFF_NODE, DropOffFeed, edges, laid, nodes, withReentry (+18 more)
+### Community 158 - "customers/[id]/route.ts"
+Cohesion: 0.15
+Nodes (14): GET(), PATCH(), runtime, UpdateCustomerSchema, CreateCustomerSchema, GET(), POST(), runtime (+6 more)
 
-### Community 159 - "customization.ts"
-Cohesion: 0.05
-Nodes (50): BuilderActions, BuilderState, 04: Bind a customised checkout line to its build: product match, price recomputed on the server, stock per Variant, Acceptance criteria, Goal, Scope, The gap, precisely, CustomizationStepRecommendationProps (+42 more)
+### Community 159 - "vitest"
+Cohesion: 0.03
+Nodes (75): CheckoutItemSchema, CheckoutSchema, CustomizationConfigRow, runtime, ShippingAddressSchema, ADR-0020, WorkingItem, h (+67 more)
 
 ### Community 160 - "PRD: Landing Slide-In Safe-Area Fix"
 Cohesion: 0.09
 Nodes (22): Agent template correction, Expected diff size, Further Notes, Implementation Decisions, Manual QA (required for acceptance), Modules to build or modify, Modules to test, Out of Scope (+14 more)
 
 ### Community 161 - "MpConfigMetricsStackedBarVisx.tsx"
-Cohesion: 0.20
-Nodes (13): MpConfigMetricBreakdown, MpConfigMetricSegment, Chart(), clamp(), defaultMargin, estimatedChartHeight(), estimateLabelWidth(), MpConfigMetricsStackedBarVisx() (+5 more)
+Cohesion: 0.24
+Nodes (11): MpConfigMetricSegment, Chart(), clamp(), defaultMargin, estimatedChartHeight(), estimateLabelWidth(), MpConfigMetricsStackedBarVisx(), palette (+3 more)
 
 ### Community 162 - "result-detail-client.tsx"
 Cohesion: 0.05
-Nodes (68): isUnauthoredTemplate(), AssignPrepData, BolsterCrossSection, BomLine, deriveSeed(), Field(), FillingTemplateOption, formatOrderMoney() (+60 more)
+Nodes (63): AssignPrepData, BolsterCrossSection, BomLine, deriveSeed(), Field(), FillingTemplateOption, formatOrderMoney(), MeasurementData (+55 more)
 
 ### Community 163 - "inspector.check.ts"
 Cohesion: 0.25
@@ -1397,24 +1373,24 @@ Cohesion: 0.09
 Nodes (21): Add-ons, Analytics & Promote, Configure & Product Builder, Configure & Product Builder, Domain & data model, Filling analytics & Promote, Further Notes, Implementation Decisions (+13 more)
 
 ### Community 168 - "xray-pillow.tsx"
-Cohesion: 0.04
-Nodes (111): Acceptance criteria, Blocked by, Parent, Unified filling editor 05: embeddable x-ray frame + Configure page authors templates in the X-ray editor, What to build, 04: Compression feedback and error handling in the X-ray editor — status rings, loft gauge, refused adds, save-time confirm, Acceptance criteria, Build notes (2026-09-25) (+103 more)
+Cohesion: 0.05
+Nodes (69): Acceptance criteria, Blocked by, Parent, Unified filling editor 05: embeddable x-ray frame + Configure page authors templates in the X-ray editor, What to build, 04: Compression feedback and error handling in the X-ray editor — status rings, loft gauge, refused adds, save-time confirm, Acceptance criteria, Build notes (2026-09-25) (+61 more)
 
 ### Community 169 - "inventory-deduction.ts"
-Cohesion: 0.12
-Nodes (30): BOLSTER_VARIANTS, buildSaleDeductionTransactions(), CustomizationSnapshot, deductInventoryForOrder(), filterNonFillingBomLines(), InventoryLine, isBolsterCustomizedItem(), isBolsterVariant() (+22 more)
+Cohesion: 0.10
+Nodes (33): POST(), RestockSchema, runtime, BOLSTER_VARIANTS, buildSaleDeductionTransactions(), CustomizationSnapshot, deductInventoryForOrder(), filterNonFillingBomLines() (+25 more)
 
 ### Community 170 - "Implementation Decisions"
 Cohesion: 0.10
 Nodes (20): Further Notes, Implementation Decisions, Module 1 — Media Asset registry, Module 2 — Image ingest & optimize, Module 3 — Drive connector, Module 4 — Drive import orchestrator, Module 5 — Usage resolver, Module 6 — Asset picker (+12 more)
 
-### Community 171 - "order-mirror-ingest.check.ts"
-Cohesion: 0.07
-Nodes (28): advanced, cheaperCtx, ctx, current, existingHealthy, firstRefund, forward, frozen (+20 more)
+### Community 171 - "order-mirror-ingest.ts"
+Cohesion: 0.05
+Nodes (59): Acceptance criteria, Blocked by, Slice 03 — Order-mirror ingest module + tests, Status, What to build, AdminClient, ApplyShopifyRefundResult, BomLine (+51 more)
 
 ### Community 172 - "staff/admin.ts"
-Cohesion: 0.14
-Nodes (26): CreateSchema, GET(), POST(), runtime, ResultsRoute(), runtime, ResultsInitialData, isPermission() (+18 more)
+Cohesion: 0.13
+Nodes (25): ChangeSchema, PATCH(), runtime, CreateSchema, GET(), POST(), runtime, clash() (+17 more)
 
 ### Community 173 - "20261004130000_telegram_links.sql"
 Cohesion: 0.11
@@ -1437,40 +1413,40 @@ Cohesion: 0.17
 Nodes (11): Non-goals, PayNow is already enabled on the account, PRD — PayNow at checkout, Problem statement, Risks, Solution, Success criteria, The blocker is a Stripe property, not a decision (+3 more)
 
 ### Community 178 - "returns.check.ts"
-Cohesion: 0.10
-Nodes (26): buildReentryEdges(), actions, aggregates, card, chrome, cohortNew, cohortRet, { edges: solid } (+18 more)
+Cohesion: 0.07
+Nodes (36): DROP_OFF_NODE, DropOffFeed, edges, laid, nodes, withReentry, LayoutEdge, LayoutIn (+28 more)
 
-### Community 179 - "fulfilment-gate.check.ts"
-Cohesion: 0.12
-Nodes (13): 01 — Glossary and ADR 0018: what PayNow is, and the one flow it cannot serve, Acceptance criteria, ADR 0018 — decisions to record, CONTEXT.md entries, Goal, branchBody, gate, holdStamp (+5 more)
+### Community 179 - "createHoldCheckout"
+Cohesion: 0.04
+Nodes (46): 01 — Glossary and ADR 0018: what PayNow is, and the one flow it cannot serve, Acceptance criteria, ADR 0018 — decisions to record, CONTEXT.md entries, Goal, 03 — Keep PayNow eligible: an SGD guard and a check that protects the two good paths, Acceptance criteria, Already proven — observed 2026-09-12 (+38 more)
 
 ### Community 180 - "scripts"
 Cohesion: 0.08
 Nodes (24): scripts, build, bundle:check, ci, costings:sync, db:gen-types, db:push, db:seed-faq (+16 more)
 
 ### Community 181 - "appointments-calendar.tsx"
-Cohesion: 0.07
-Nodes (36): AppointmentsCalendar(), ChipStatus, DAY_CHIPS, DESKTOP_VIEWS, DetailTarget, formatAllDayLabel(), formatRangeLabel(), LegendSwatch() (+28 more)
+Cohesion: 0.09
+Nodes (31): AppointmentsCalendar(), ChipStatus, DAY_CHIPS, DESKTOP_VIEWS, DetailTarget, formatAllDayLabel(), formatRangeLabel(), LegendSwatch() (+23 more)
 
 ### Community 182 - "Preflight (AFK) — 2026-07-12"
 Cohesion: 0.11
 Nodes (17): Acceptance criteria, Automated checks (all ok), Blocked by, Checklist, Code-audit wiring (AFK proxy — not a device pass), Deploy gate — **closed**, HITL session matrix (you run), Live HTTP smoke (2026-07-12) (+9 more)
 
-### Community 183 - "getAuthUser"
-Cohesion: 0.05
-Nodes (70): GET(), POST(), runtime, POST(), runtime, POST(), dynamic, GET() (+62 more)
+### Community 183 - "next"
+Cohesion: 0.03
+Nodes (97): GET(), POST(), runtime, POST(), runtime, BodySchema, POST(), runtime (+89 more)
 
 ### Community 184 - "cards.ts"
-Cohesion: 0.11
-Nodes (32): Card, clip(), editedLine(), encodeReviewCallback(), formatCardDate(), GOOGLE_CARD_HEADER, googleReviewsUrl(), parseReviewCallback() (+24 more)
+Cohesion: 0.12
+Nodes (30): Card, clip(), editedLine(), encodeReviewCallback(), formatCardDate(), GOOGLE_CARD_HEADER, googleReviewsUrl(), parseReviewCallback() (+22 more)
 
 ### Community 185 - "main"
-Cohesion: 0.18
+Cohesion: 0.27
 Nodes (24): concat(), folder_loader(), grid(), image_batch(), inp(), load_image(), main(), add_image() (+16 more)
 
-### Community 186 - "single-select-option-rows.check.ts"
-Cohesion: 0.15
-Nodes (15): Acceptance criteria, Blocked by, Proof, Slice 03 — Step validation + field errors, What to build, AGE_GROUP_OPTIONS, BED_FIRMNESS_OPTIONS, BLOOD_PRESSURE_OPTIONS (+7 more)
+### Community 186 - "locale.ts"
+Cohesion: 0.19
+Nodes (14): Checklist, Found during sign-off, OPS — Page Builder redesign sign-off (Slice 10), Production state at sign-off, Residual, IDENTIFIER_KEYS, isLocaleMap(), isPlainObject() (+6 more)
 
 ### Community 187 - "bundle-budget.mjs"
 Cohesion: 0.12
@@ -1480,17 +1456,17 @@ Nodes (17): APP_DIR, args, AS_JSON, BUDGET_FILE, budgetFor(), budgets, collectRo
 Cohesion: 0.08
 Nodes (23): analytics, appointments, apptSheet, auditLog, calendar, card, configureCard, costings (+15 more)
 
-### Community 189 - "slice-02.check.ts"
-Cohesion: 0.11
-Nodes (27): BandsEditor(), roundIn(), client, displayHeight(), heightInchesRoundTrip(), HeightUnit, normalizeHeightDraft(), mp (+19 more)
+### Community 189 - "slice-04.check.ts"
+Cohesion: 0.10
+Nodes (30): Acceptance criteria, Proof (2026-07-13), Slice 03 — Mbolster height decimal draft input, What to build, BandsEditor(), roundIn(), client, displayHeight() (+22 more)
 
 ### Community 190 - "Implementation Decisions"
 Cohesion: 0.12
 Nodes (16): ADR, Assign UI (`settings/results/[id]`), Configure UI, Deep modules (small surface, testable), Domain language, Further Notes, Implementation Decisions, Migration (C then A) (+8 more)
 
 ### Community 191 - "Implementation Decisions"
-Cohesion: 0.14
-Nodes (13): Approved section recipes, Deep modules (small surface, testable), Further Notes, Future settings (not built now), i18n, Implementation Decisions, Out of Scope, PRD: Product Slide-In Section Templates (+5 more)
+Cohesion: 0.13
+Nodes (14): Approved section recipes, Deep modules (small surface, testable), Further Notes, Future settings (not built now), i18n, Implementation Decisions, Out of Scope, PRD: Product Slide-In Section Templates (+6 more)
 
 ### Community 192 - "shopify-export.mjs"
 Cohesion: 0.26
@@ -1500,9 +1476,9 @@ Nodes (16): buildCurrentSection(), buildProductHeader(), buildUpdatedPlaceholder
 Cohesion: 0.17
 Nodes (9): basis(), clip_box(), depth_image(), id_image(), main(), rasterize(), section_box_glb(), zone_ids() (+1 more)
 
-### Community 194 - "faq/index.ts"
-Cohesion: 0.15
-Nodes (21): FAQ_DEFAULTS, ensureFaqSeeded(), getFaqCategories(), getFaqItems(), getFaqPageData(), mapCategory(), mapItem(), resolveItemContent() (+13 more)
+### Community 194 - "page-dock-actions.ts"
+Cohesion: 0.18
+Nodes (13): DockAction, DockTools, listeners, NONE, publish(), subscribe(), actions, tools (+5 more)
 
 ### Community 195 - "ergonomic-pillow-vs-regular-pillow-is-it-worth-the-investment.mdx"
 Cohesion: 0.12
@@ -1516,21 +1492,21 @@ Nodes (14): Further Notes, Implementation Decisions, Modules, Modules to test, O
 Cohesion: 0.13
 Nodes (14): Further Notes, Implementation Decisions, Modules, Modules to test, Out of Scope, PRD: Dock + Unified Sign In, Prior art, Problem Statement (+6 more)
 
-### Community 198 - "mp-config-link/route.ts"
-Cohesion: 0.11
-Nodes (22): DeleteBodySchema, GET(), ParamsSchema, PostBodySchema, runtime, GET(), runtime, UpdateOrderSchema (+14 more)
+### Community 198 - "[id]/reorder/route.ts"
+Cohesion: 0.18
+Nodes (11): BodySchema, dynamic, POST(), runtime, ASSIGNED_BUILD_COLUMNS, REORDER_CARRIED_COLUMNS, REORDERABLE_STATUSES, reorderResult (+3 more)
 
 ### Community 199 - "MagicBento.jsx"
-Cohesion: 0.36
-Nodes (9): BentoCardGrid(), calculateSpotlightValues(), createParticleElement(), DEFAULT_CARDS, GlobalSpotlight(), MagicBento(), ParticleCard(), updateCardGlowProperties() (+1 more)
+Cohesion: 0.12
+Nodes (18): Acceptance criteria, Blocked by, Slice 05 — Proof surfaces, What to build, BentoCardGrid(), calculateSpotlightValues(), createParticleElement(), DEFAULT_CARDS (+10 more)
 
 ### Community 200 - "MarginByCategoryVisx.tsx"
-Cohesion: 0.17
-Nodes (15): asMoney(), CategoryStackDatum, Chart(), clamp(), defaultMargin, estimateLabelWidth(), formatCompactCurrency, insightForMarginPct() (+7 more)
+Cohesion: 0.18
+Nodes (14): asMoney(), CategoryStackDatum, Chart(), clamp(), defaultMargin, estimateLabelWidth(), formatCompactCurrency, insightForMarginPct() (+6 more)
 
 ### Community 201 - "ref_node_assert"
 Cohesion: 0.02
-Nodes (119): dialog, source, DIR, actions, client, costingsSave, dir, inventoryActions (+111 more)
+Nodes (108): OPEN_BY_DESIGN, ROOT, routeFiles(), dialog, source, DIR, actions, client (+100 more)
 
 ### Community 202 - "Page: Basic Ergonomic Pillow"
 Cohesion: 0.13
@@ -1540,17 +1516,17 @@ Nodes (15): $170.00 SGD, Extracted Text Content, Key Images and Descriptions, L,
 Cohesion: 0.32
 Nodes (15): CombineNodeView(), FallbackView(), FlowRouteView(), InputNode(), makeNodeTypes(), MatchNodeView(), Props, RangeNodeView() (+7 more)
 
-### Community 204 - "carry-over.ts"
-Cohesion: 0.10
-Nodes (20): Acceptance criteria, Blocked by, Slice 05 — Configurator carries the token and starts a fresh session when refused, BASIC_STEPS, configPathFor(), FULL_STEPS, MpConfigStep, MpConfigVariant (+12 more)
+### Community 204 - "refund/route.ts"
+Cohesion: 0.30
+Nodes (10): POST(), runtime, POST(), RefundSchema, runtime, cancelRefundIdempotencyKey(), isPaidOrder(), refundableAmount() (+2 more)
 
 ### Community 205 - "commissions/ledger.ts"
-Cohesion: 0.12
-Nodes (31): AdminReferralRows(), COMMISSION_RELEASE_WINDOW_DAYS, CommissionProductType, CommissionScheme, CommissionStatus, CommissionTotals, CommissionTotalsRow, computeCommission() (+23 more)
+Cohesion: 0.08
+Nodes (38): AdminReferralRows(), dateFmt, money(), ReferralRowsTable(), releaseLabel(), statusText, COMMISSION_RELEASE_WINDOW_DAYS, CommissionProductType (+30 more)
 
 ### Community 206 - "mpillow_final_report.md"
 Cohesion: 0.14
-Nodes (13): Article: Flat Neck Syndrome In Children, Extracted Text Content, Extracted Text Content, Extracted Text Content, Extracted Text Content, Key Images and Descriptions, Key Images and Descriptions, Key Images and Descriptions (+5 more)
+Nodes (13): Article: Flat Neck Syndrome In Children, Blog: A Word From The Founder, Extracted Text Content, Extracted Text Content, Extracted Text Content, Extracted Text Content, Key Images and Descriptions, Key Images and Descriptions (+5 more)
 
 ### Community 207 - "PRD: Prospect journey analytics"
 Cohesion: 0.15
@@ -1565,44 +1541,44 @@ Cohesion: 0.18
 Nodes (12): GET(), runtime, call(), Acceptance criteria, Blocked by, Slice 03 — "Save to calendar" `.ics` on confirmation screen, What to build, RFC-5545 (+4 more)
 
 ### Community 210 - "PRD: Analytics DB channel facts"
-Cohesion: 0.18
-Nodes (10): Further Notes, Implementation Decisions, Modules (agreed), Out of Scope, PRD: Analytics DB channel facts, Problem Statement, Schema sketch (conceptual), Solution (+2 more)
+Cohesion: 0.25
+Nodes (7): Further Notes, Out of Scope, PRD: Analytics DB channel facts, Problem Statement, Solution, Testing Decisions, User Stories
 
 ### Community 211 - "Slice 08 — Staging copy sign-off (mobile + desktop)"
-Cohesion: 0.17
-Nodes (11): Acceptance criteria, Automated proof (2026-07-10), Blocked by, Branch for staging preview, Claim / offer gate (spot-check), CMS / DB override gaps (defaults alone may not change live), Desktop, HITL checklist (fill on staging) (+3 more)
+Cohesion: 0.18
+Nodes (10): Automated proof (2026-07-10), Blocked by, Branch for staging preview, Claim / offer gate (spot-check), CMS / DB override gaps (defaults alone may not change live), Desktop, HITL checklist (fill on staging), Mobile (~375px) (+2 more)
 
 ### Community 212 - "Slice 16 — Migrate `/public` marketing images into Asset library"
 Cohesion: 0.17
 Nodes (11): Acceptance criteria, Blocked by, How it works, Intentionally left static (slice 17), Migrated — blog featured images (75), Migrated — landing slots (9), Migration log, Proof (+3 more)
 
-### Community 213 - "completed"
-Cohesion: 0.08
-Nodes (24): completed(), h, Acceptance criteria, Blocked by, Slice 01 — Glossary + RMA lifecycle/model ADR, What to build, Acceptance criteria, Blocked by (+16 more)
+### Community 213 - "refundPayment"
+Cohesion: 0.06
+Nodes (33): completed(), h, Acceptance criteria, Blocked by, Slice 01 — Glossary + RMA lifecycle/model ADR, What to build, Acceptance criteria, Blocked by (+25 more)
 
 ### Community 214 - "0028_ecommerce.sql"
 Cohesion: 0.05
 Nodes (74): cart_items, carts, categories, collection_products, collections, coupons, customer_addresses, customers (+66 more)
 
 ### Community 215 - "responses/route.ts"
-Cohesion: 0.08
-Nodes (33): chunkItems(), dataUrlToBlob(), dynamic, ExistingMeasuredBySchema, formatTelegramTimestamp(), getOptionalEnv(), MeasuredBySchema, MeasurementSchema (+25 more)
+Cohesion: 0.06
+Nodes (44): chunkItems(), dataUrlToBlob(), dynamic, ExistingMeasuredBySchema, formatTelegramTimestamp(), getOptionalEnv(), MeasuredBySchema, MeasurementSchema (+36 more)
 
-### Community 216 - "PRD: Users & permissions (Admin Panel RBAC)"
-Cohesion: 0.09
-Nodes (22): Accountability, Decisions (confirmed 2026-10-04), Domain language (lands in `CONTEXT.md` with slice 01), Entry point, Further Notes, Implementation Decisions, Invites, Members and invites (+14 more)
+### Community 216 - "staff"
+Cohesion: 0.10
+Nodes (20): Decisions (confirmed 2026-10-04), Domain language (lands in `CONTEXT.md` with slice 01), Further Notes, Implementation Decisions, Invites, Out of Scope, Page and routes, Permission catalog (code) (+12 more)
 
 ### Community 217 - "Ops checklist — WhatsApp appointment confirm"
 Cohesion: 0.12
 Nodes (15): 0.5 The sandbox number trap, 0. Two numbers, different jobs, 1. Meta WhatsApp Cloud API, 2. English utility templates (approve in Business Manager), 3. Google OAuth (Calendar + People), 4. Dump sample Events (lock summary strings), 5. Vercel / env, 6. Staging E2E signoff (+7 more)
 
-### Community 218 - "[topic]/page.tsx"
-Cohesion: 0.20
-Nodes (15): generateMetadata(), GuideHubPage(), Props, getGuideContent(), GuideContent, GUIDES, GuideTopic, isGuideTopic() (+7 more)
+### Community 218 - "topic-reviews-loader.ts"
+Cohesion: 0.38
+Nodes (8): GuideTopic, getTopicReviews, RawReview, selectTopicReviews(), shortName(), TOPIC_KEYWORDS, TopicReview, trimQuote()
 
-### Community 219 - "rma/route.ts"
-Cohesion: 0.10
-Nodes (25): BodySchema, customerDisplayName(), POST(), runtime, CreatedRma, CreateRmaInput, createRmaRequest(), openReturnedQtyByOrder() (+17 more)
+### Community 219 - "create.ts"
+Cohesion: 0.17
+Nodes (13): RmaEmailData, CreatedRma, CreateRmaInput, PlanItemInput, PlannedRmaRows, PlanOrderItem, PlanRmaInput, PlanRmaResult (+5 more)
 
 ### Community 220 - "Padding guardrails (AI must follow)"
 Cohesion: 0.18
@@ -1617,16 +1593,16 @@ Cohesion: 0.10
 Nodes (20): Content audit baseline (Sep 2026), Content effectiveness, Deep modules, Design decisions, Env, Further Notes, Implementation Decisions, Measurement — AEO (+12 more)
 
 ### Community 223 - "answer-lede-coverage.check.ts"
-Cohesion: 0.12
-Nodes (19): Acceptance criteria, Blocked by, Slice 03 — Product PDP full JSON-LD + review aggregate + seo_answer field, What to build, assertEnLede(), assertZhLede(), cjkChars(), componentFiles (+11 more)
+Cohesion: 0.18
+Nodes (14): assertEnLede(), assertZhLede(), cjkChars(), componentFiles, enWords(), fillAndAssertProducts(), introHtml, isWeakEn() (+6 more)
 
 ### Community 224 - "rules-engine/layout.ts"
 Cohesion: 0.15
 Nodes (15): bary(), edges, ids, orphan, pos, slots, kahnRanks(), LayoutEdge (+7 more)
 
 ### Community 225 - "Staging checklist (HITL)"
-Cohesion: 0.06
-Nodes (30): Acceptance criteria, Blocked by, Proof, Slice 02 — Mobile chrome: Close, bg, padding, What to build, Acceptance criteria, Blocked by, Proof (+22 more)
+Cohesion: 0.04
+Nodes (43): Acceptance criteria, Blocked by, Proof, Slice 01 — Single-select rows + CTA copy, What to build, Acceptance criteria, Blocked by, Proof (+35 more)
 
 ### Community 226 - "Media Asset Library — Vertical Slices"
 Cohesion: 0.20
@@ -1636,33 +1612,33 @@ Nodes (9): Dependency graph, Media Asset Library — Vertical Slices, Parent PRD
 Cohesion: 0.29
 Nodes (6): Automated verification (agent — PASS), Defects found, Physical device matrix (HITL — requires your eyes), Platform prerequisites (unchanged — PASS), Slice 03 — QA sign-off report, Verdict
 
-### Community 228 - "WhatsApp appointment confirm (v1)"
-Cohesion: 0.20
-Nodes (9): Backend architecture, Deliverable shape for you, Env (illustrative), Flow, Key files to add/touch, Manual setup (before / alongside code), Runnable check, Scope (locked) (+1 more)
+### Community 228 - "book/route.ts"
+Cohesion: 0.06
+Nodes (34): BookSchema, dynamic, POST(), runtime, post(), valid, 11: BotID on booking, Result hold and checkout; a booking must be a real slot, Acceptance criteria (+26 more)
 
-### Community 229 - "auth/partner.ts"
-Cohesion: 0.07
-Nodes (33): reacceptAgreement(), resolveLocale(), submitApplication(), SubmitResult, dynamic, PartnerSettingsPage(), runtime, PendingApplication (+25 more)
+### Community 229 - "google-actions.ts"
+Cohesion: 0.24
+Nodes (12): BusinessProfileClient, ActionFailure, Actor, actorFields(), claimGoogleReviewPost(), explainMiss(), setStaffDraft(), skipGoogleReview() (+4 more)
 
-### Community 230 - "overlay-workbench.tsx"
-Cohesion: 0.25
-Nodes (12): BOLSTER_LENGTHS, clamp(), defaultBolsterLength(), OverlayStage(), OverlayWorkbench(), roleLabel(), silhouetteFor(), Thumb() (+4 more)
+### Community 230 - "Implementation Decisions"
+Cohesion: 0.17
+Nodes (12): ADR, Catalog, Configure / templates, Customisation entry (v1), Domain language, Implementation Decisions, Inventory, LLM (future) (+4 more)
 
 ### Community 231 - "Shopify inventory sync (buildable → Shopify)"
 Cohesion: 0.20
 Nodes (9): Deploy on Vercel, Getting Started, Learn More, Manual sync endpoint, Mapping (no SKU dependency), Optional helper endpoints, Required environment variables, Shopify inventory sync (buildable → Shopify) (+1 more)
 
-### Community 232 - "preview.check.ts"
-Cohesion: 0.20
-Nodes (10): data, dock, list, overlay, previewPage, publicPage, read(), readCode() (+2 more)
+### Community 232 - "pick-mpillow-section.tsx"
+Cohesion: 0.38
+Nodes (8): PickMpillowSection(), PickMpillowSectionProps, ProductCardSection(), ProductCardSectionProps, ProductRatingBadge(), CardFooter(), EMPTY, ReviewAggregate
 
 ### Community 233 - "configurator-staff-reference-photos-prd.md"
 Cohesion: 0.05
 Nodes (31): 01 — Glossary + ADR: Reference photo, Sizing photo, Customisation session, Acceptance criteria, Blocked by, Parent, What to build, 03 — Pillow reference-photo upload UI, Acceptance criteria, Blocked by (+23 more)
 
 ### Community 234 - "syncVariantPricesFromCostings"
-Cohesion: 0.26
-Nodes (12): GET(), POST(), runtime, Roles (data), requireAnyAdmin(), adoptManualProducts(), archiveUnsellableItemProducts(), syncAllProducts() (+4 more)
+Cohesion: 0.29
+Nodes (11): GET(), POST(), runtime, requireAnyAdmin(), adoptManualProducts(), archiveUnsellableItemProducts(), syncAllProducts(), syncBolsterProducts() (+3 more)
 
 ### Community 235 - "Ops checklist — Media Asset Library (Drive)"
 Cohesion: 0.22
@@ -1672,13 +1648,13 @@ Nodes (8): 1. Google Cloud — Drive API, 2. Consent Drive as `sg@` (separate re
 Cohesion: 0.20
 Nodes (10): Cross-section, Error handling, Fine nudge (optional, gated), Fit and compression, Mbolster, Moving pieces, Natural settle (display physics), Product scale (+2 more)
 
-### Community 237 - "PRD: End-to-End Money-Flow Traceability"
-Cohesion: 0.22
-Nodes (8): Further Notes, Implementation Decisions, Out of Scope, PRD: End-to-End Money-Flow Traceability, Problem Statement, Solution, Testing Decisions, User Stories
+### Community 237 - "telegram/webhook/route.ts"
+Cohesion: 0.06
+Nodes (44): answerCallback(), editTelegramMessage(), ForceReplyMarkup, getEnv(), handleCallback(), handleCommand(), helpText(), InlineKeyboardButton (+36 more)
 
-### Community 238 - "createEvent"
-Cohesion: 0.07
-Nodes (28): Acceptance criteria, Blocked by, Slice 01 — Email required + Google invite (`sendUpdates:"all"`), What to build, 07 — Booking backend: slots + createEvent, Acceptance criteria, Blocked by, Parent (+20 more)
+### Community 238 - "dock/index.tsx"
+Cohesion: 0.20
+Nodes (11): DocContextType, Dock(), DockContext, DockIconProps, DockItem, DockItemProps, DockLabelProps, DockProps (+3 more)
 
 ### Community 239 - "Stepper.jsx"
 Cohesion: 0.36
@@ -1688,25 +1664,25 @@ Nodes (7): CheckIcon(), SlideTransition(), StepConnector(), StepContentWrapper()
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 01 — Domain glossary: Landing section, Section draft, Publish, Publish snapshot, Preview mode, What to build
 
-### Community 241 - "history.check.ts"
-Cohesion: 0.14
-Nodes (13): api, compactAt, file, publishBody, read(), readCode(), restoreBody, ROOT (+5 more)
+### Community 241 - "staff-edit.ts"
+Cohesion: 0.18
+Nodes (9): AddonLine, EDITABLE_STATUSES, PrefLine, StaffEditableRow, StaffEditableVerdict, StaffEditPreference, StaffEditResult, pillow (+1 more)
 
 ### Community 242 - "Slice 02 — Integrity pass: typed section types, locked slugs, validated images, guarded list, audit log"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 02 — Integrity pass: typed section types, locked slugs, validated images, guarded list, audit log, What to build
 
-### Community 243 - "configure/page.tsx"
-Cohesion: 0.16
-Nodes (13): Item, ShopifyAdminPage(), ShopifyInitialData, fullShopifySync(), BOLSTER_CARDS, ConfigureInventoryPage(), makeEmptyCounts(), PillowKind (+5 more)
+### Community 243 - "ProductConfigurationCard.tsx"
+Cohesion: 0.11
+Nodes (26): BomTemplateLineRow, BomTemplateRow, CATEGORY_LABELS, CATEGORY_ORDER, DendrogramSvg(), describeItem(), humanize(), Node() (+18 more)
 
 ### Community 244 - "PRD — Appointments UX: calendar RSVP, guest calendar save, booking page redesign"
 Cohesion: 0.25
 Nodes (6): Decisions (from grill), Links, Non-goals, PRD — Appointments UX: calendar RSVP, guest calendar save, booking page redesign, Problem / user stories, PRD — Appointments UX: calendar RSVP, guest calendar save, booking page redesign
 
-### Community 245 - "detail-prep.ts"
-Cohesion: 0.19
-Nodes (11): ResultDetailRoute(), runtime, ResultDetailInitialData, AssignSeedRow, canAssignResult(), FillingItemOption, loadFillingItems(), loadResultAssignPrep() (+3 more)
+### Community 245 - "cells.test.ts"
+Cohesion: 0.29
+Nodes (9): cellKey(), CellMap, CELLS, cellsToPlacements(), placementsToCells(), MAX_PIECES_PER_LAYER, categories, fullGrid (+1 more)
 
 ### Community 246 - "20260728030000_milestones.sql"
 Cohesion: 0.36
@@ -1724,9 +1700,9 @@ Nodes (13): bolster, carousel, globals, header, home, input, marquee, mp (+5 mor
 Cohesion: 0.25
 Nodes (7): Analytics (Slice 11), Domain Migration OPS Checklist — work → custom.mpillow.com, Google Search Console (Slice 11 — manual), Post-deploy verification, Pre-deploy (code — done in repo), Supabase Auth (manual dashboard), Vercel / DNS
 
-### Community 250 - "quote/route.ts"
-Cohesion: 0.22
-Nodes (11): POST(), QuoteSchema, runtime, loadShippableLines(), OrderItemRow, productName(), toShippableLine(), VariantWithProduct (+3 more)
+### Community 250 - "@supabase/supabase-js"
+Cohesion: 0.13
+Nodes (16): POST(), QuoteSchema, runtime, loadShippableLines(), OrderItemRow, productName(), toShippableLine(), VariantWithProduct (+8 more)
 
 ### Community 251 - "fixture.sql"
 Cohesion: 0.21
@@ -1748,9 +1724,9 @@ Nodes (7): Final Tips: How to Pick the Best Bolster in Singapore, How Does a Bol
 Cohesion: 0.25
 Nodes (7): How can a pillow help relieve tech neck?, Is Mpillow suitable for tech neck recovery?, What is tech neck?, What pillow features help fix tech neck?, What symptoms does tech neck cause?, Who should use a tech neck pillow?, Why is tech neck common in Singapore?
 
-### Community 256 - "proxy.ts"
-Cohesion: 0.23
-Nodes (11): classifyCrawler(), LOCALE_COOKIE_NAME, refreshSupabaseSession(), supabaseAnonKey, supabaseUrl, clearLegacySettingsSession(), config, detectCurrencyFromAcceptLanguage() (+3 more)
+### Community 256 - "withLocale"
+Cohesion: 0.04
+Nodes (75): GET(), runtime, AccountLoginPage(), AccountResultsRedirect(), ArticlesPage(), PolicyParagraphs(), PolicySection, PolicySectionBlock() (+67 more)
 
 ### Community 257 - "XS: $340-$360"
 Cohesion: 0.25
@@ -1768,13 +1744,13 @@ Nodes (6): admin, fail(), http(), main(), pass(), results
 Cohesion: 0.27
 Nodes (9): cheerio, turndown, downloadImage(), extractBlogData(), IMAGE_DIR, main(), OUTPUT_DIR, scrapePage() (+1 more)
 
-### Community 261 - "dock-chrome.ts"
-Cohesion: 0.23
-Nodes (9): Acceptance criteria, Blocked by, Proof (2026-07-12), Slice 04 — Landing Menu pill: Sign in / Profile / Admin Panel, What to build, DockSessionRole, isAdminPanelDockPath(), landingAuthPill() (+1 more)
+### Community 261 - "app-dock.tsx"
+Cohesion: 0.13
+Nodes (22): toolsFor(), AppDock(), BasicMpillowLearnMoreSheet, BubbleMenu, CervicalNeckSupportSheet, dockItems, dockToolMotion, MbolsterLearnMoreSheet (+14 more)
 
 ### Community 262 - "locations-booking-prd.md"
-Cohesion: 0.17
-Nodes (8): 09 — Staging E2E sign-off, Acceptance criteria, Blocked by, Parent, Sign-off, What to build, PRD — Locations, Result Location, SLA relocation & custom booking, Status — all slices complete (2026-07-25)
+Cohesion: 0.05
+Nodes (33): 01 — Glossary + ADRs: Location, Source clarification, custom booking, Acceptance criteria, Blocked by, Parent, What to build, 03 — Locations admin page (type / address / postal, own studios), Acceptance criteria, Blocked by (+25 more)
 
 ### Community 263 - "expanded-node.check.ts"
 Cohesion: 0.15
@@ -1784,9 +1760,9 @@ Nodes (12): actions, aggregates, card, checkout, digIn, home, mbolster, mpConfig
 Cohesion: 0.38
 Nodes (5): idx_order_payments_order, idx_order_payments_stripe_object, idx_orders_needs_attention, order_payments, order_margins
 
-### Community 265 - "routes-guarded.test.ts"
-Cohesion: 0.15
-Nodes (6): OPEN_BY_DESIGN, ROOT, routeFiles(), cases, dir, sql
+### Community 265 - "cost-column-grants.test.ts"
+Cohesion: 0.33
+Nodes (3): cases, dir, sql
 
 ### Community 266 - "OPS — Staging signoff (Slice 09)"
 Cohesion: 0.29
@@ -1796,9 +1772,9 @@ Nodes (6): Checklist, Fixes found during signoff, How to re-run, Matrix (2026-07
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Proof (2026-07-15), Slice 06 — Section tracer: home tags + expand/collapse, What to build
 
-### Community 268 - "support-contact-page.tsx"
-Cohesion: 0.24
-Nodes (9): generateMetadata, SupportPage(), InfoCallout(), InfoCalloutProps, generateSupportMetadata(), IMPORTANT_NOTES, QUICK_LINKS, SupportContactPage() (+1 more)
+### Community 268 - "partners-page/route.ts"
+Cohesion: 0.32
+Nodes (7): BenefitCardSchema, GET(), PATCH(), PatchSchema, runtime, WorkWithUsContentSchema, getPartnersPageRow()
 
 ### Community 269 - "Slice 14 — Expanded node dig-in (replace side panel)"
 Cohesion: 0.33
@@ -1817,8 +1793,8 @@ Cohesion: 0.18
 Nodes (10): Audit, Checklist, Entry and redirects, Members and invites, Roles matrix, Setup, Slice 12 — Staging QA signoff, Staff profiles (+2 more)
 
 ### Community 273 - "Mpillow (mp)"
-Cohesion: 0.18
-Nodes (10): Configure (settings), Example dialogue, Flagged ambiguities, Learn-more slide-in section recipes (approved), Mpillow (mp), Partner portal, Relationships, Reviews (PRD-google-review-replies) (+2 more)
+Cohesion: 0.20
+Nodes (9): Configure (settings), Example dialogue, Flagged ambiguities, Learn-more slide-in section recipes (approved), Mpillow (mp), Partner portal, Relationships, Reviews (PRD-google-review-replies) (+1 more)
 
 ### Community 274 - "Template-Linked Customisation — Vertical Slices (Issues)"
 Cohesion: 0.29
@@ -1845,8 +1821,8 @@ Cohesion: 0.60
 Nodes (5): idx_rule_graphs_flow_status, rule_graphs, trg_rule_graphs_updated_at, uq_rule_graphs_draft, uq_rule_graphs_published_version
 
 ### Community 280 - "getSiteOrigin"
-Cohesion: 0.05
-Nodes (60): GET(), robots(), ChangeFrequency, entry(), getAllActiveProductSlugs(), revalidate, sitemap(), Acceptance criteria (+52 more)
+Cohesion: 0.03
+Nodes (96): GET(), runtime, POST(), runtime, generateMetadata(), MbolsterConfigLayout(), META, Props (+88 more)
 
 ### Community 281 - "0004_mp_maker_configs.sql"
 Cohesion: 0.60
@@ -1869,12 +1845,12 @@ Cohesion: 0.70
 Nodes (4): idx_mp_staff_name_unique, idx_mp_staff_updated_at, mp_staff, trg_mp_staff_updated_at
 
 ### Community 286 - "discounts.ts"
-Cohesion: 0.17
-Nodes (16): validateCartPrices(), validateCouponCode(), computeCouponDiscountAmount(), countCustomerCouponUses(), CouponLineItem, CouponUseOrder, CouponValidationResult, exceedsPerCustomerLimit() (+8 more)
+Cohesion: 0.10
+Nodes (25): POST(), runtime, ValidateCouponSchema, validateCartPrices(), validateCouponCode(), associateGuestOrdersToCustomer(), escapeLikePattern(), findCustomerByEmail() (+17 more)
 
-### Community 287 - "partner-commissions/page.tsx"
-Cohesion: 0.27
-Nodes (9): formatAmount(), PartnerCommissionsPage(), PartnerOption, runtime, SchemeRow, ADR-0023, MilestoneRungsEditor(), formatRate() (+1 more)
+### Community 287 - "webhook/__tests__/route.test.ts"
+Cohesion: 0.29
+Nodes (4): b64(), h, labelCreated, signature()
 
 ### Community 288 - "Slice 01 — Domain glossary + ADR 0006"
 Cohesion: 0.33
@@ -1892,9 +1868,9 @@ Nodes (4): filling_dimension_overrides, neck_support_dimension_overrides, trg_fi
 Cohesion: 0.83
 Nodes (3): idx_tax_rates_region_active, tax_rates, trg_tax_rates_updated_at
 
-### Community 292 - "Slice 05 — Chained daily catch-up / backfill"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Blocked by, Slice 05 — Chained daily catch-up / backfill, Status, What to build
+### Community 292 - "Shipping › Couriers — PRD"
+Cohesion: 0.25
+Nodes (7): Decisions, Out of scope, Problem, Risks, Shipping › Couriers — PRD, Slices, Target IA
 
 ### Community 293 - "Page: Work With Us"
 Cohesion: 0.67
@@ -1908,81 +1884,81 @@ Nodes (5): Acceptance criteria, Blocked by, Slice 01 — Glossary: Discovery sou
 Cohesion: 0.33
 Nodes (5): Configurator Contact + Discovery Source — Vertical Slices (Issues), Dependency graph, HITL notes, Recommended build order, Slices
 
-### Community 298 - "pre-order-persist.check.ts"
-Cohesion: 0.20
-Nodes (8): adminApi, adminPage, customer, hold, migration, persist, publicApi, ROOT
+### Community 298 - "User Stories"
+Cohesion: 0.25
+Nodes (8): Accountability, Entry point, Members and invites, Roles and the permission matrix, Staff profiles, Telegram, User Stories, Working as (slice 10)
 
-### Community 299 - "sales-queue-idempotency.check.ts"
-Cohesion: 0.20
-Nodes (5): grouped, SHOPIFY_QUEUE_LEDGER_KEY, SHOPIFY_QUEUE_UPSERT_ON_CONFLICT, ShopifyOrderGroup, ShopifyQueueGroupLine
+### Community 299 - "isNearDocumentBottom"
+Cohesion: 0.29
+Nodes (5): Acceptance criteria, Proof (2026-07-13), Slice 11 — Dock: show at page end + trim padding, What to build, isNearDocumentBottom()
 
 ### Community 300 - "User Stories"
 Cohesion: 0.22
 Nodes (9): Closing what needs no endpoint, Domain and glossary, Giving guests something to prove ownership with, Keeping it closed, Protecting Results that are no longer drafts, Seeing only what is mine, Sign-off, Staff keep the view they have (+1 more)
 
-### Community 301 - "defaultProfileName"
-Cohesion: 0.22
-Nodes (7): Decisions made while building, Acceptance criteria, Blocked by, Decisions made while building, Slice 07 — Staff profiles under logins, What to build, defaultProfileName()
-
-### Community 302 - "sendMorningOfTemplate"
-Cohesion: 0.39
-Nodes (7): sendMorningOfTemplate(), main(), mask(), pickRecipient(), main(), sleep(), statuses()
-
-### Community 303 - "audit-diff.ts"
+### Community 301 - "Slice 07 — Staff profiles under logins"
 Cohesion: 0.33
-Nodes (7): ACCESS_ENTITY_TYPES, entityTypesFor(), KEY_FIELDS, keysOf(), label(), permissionDiff, ADR-0023
+Nodes (5): Acceptance criteria, Blocked by, Decisions made while building, Slice 07 — Staff profiles under logins, What to build
+
+### Community 302 - "UI Debug Agent (Senior Frontend Manager + Senior QA Designer Manager)"
+Cohesion: 0.25
+Nodes (7): Alignment & Layout, Design Consistency, Interactions, Review Workflow, Section & Layout Compliance, Theme & Accessibility, UI Debug Agent (Senior Frontend Manager + Senior QA Designer Manager)
+
+### Community 303 - "checkout.test.ts"
+Cohesion: 0.25
+Nodes (4): base, createCoupon, createCustomer, createSession
 
 ### Community 304 - "Guest Result Ownership — Vertical Slices (Issues)"
 Cohesion: 0.25
 Nodes (6): Build order, Dependency graph, Guest Result Ownership — Vertical Slices (Issues), Hand-off, HITL notes, Slices
 
-### Community 305 - "01 — Domain glossary and ADR 0017: Counter payment, Card reader, Terminal Location"
-Cohesion: 0.25
-Nodes (7): 01 — Domain glossary and ADR 0017: Counter payment, Card reader, Terminal Location, Acceptance criteria, `CONTEXT.md` additions, Deliverable, `docs/adr/0017-in-store-counter-payments.md`, Notes, Why this is first
+### Community 305 - "accept"
+Cohesion: 0.04
+Nodes (49): accept(), Acceptance criteria, Blocked by, Slice 05 — Configurator carries the token and starts a fresh session when refused, What to build, Constraints and risks, Constraints found while researching, which decide the build, Knowing it will work before the customer is there (+41 more)
 
-### Community 306 - "Configure Product / Filling Config Tabs — Vertical Slices"
-Cohesion: 0.11
-Nodes (13): Acceptance criteria, Blocked by, Slice 01 — ADR + default filling schema + validation module, What to build, Acceptance criteria, Blocked by, Slice 05 — Default Filling Template picker on Product tab, What to build (+5 more)
+### Community 306 - "sets/[id]/route.ts"
+Cohesion: 0.33
+Nodes (6): LabelsSchema, PATCH(), PatchSetSchema, RouteContext, runtime, updatePageFaqSet()
 
-### Community 307 - "07 — Ops: a kill switch, fleet health, and a name against every charge"
+### Community 307 - "Slice 03 — Unify currency on SGD"
 Cohesion: 0.29
-Nodes (7): 07 — Ops: a kill switch, fleet health, and a name against every charge, Attribution (story 16), Fleet health, Goal, Kill switch (story 15), Notes, SlaSettings
+Nodes (6): Acceptance criteria, Apply note, Blocked by, Decision: relabel, not FX, Slice 03 — Unify currency on SGD, What to build
 
 ### Community 308 - "Slice 05 — Admin Panel dock: Home + Logout only on `/settings/*`"
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Proof (2026-07-12), Slice 05 — Admin Panel dock: Home + Logout only on `/settings/*`, What to build
 
-### Community 309 - "Staff-Assisted Customisation — Vertical Slices (Issues)"
-Cohesion: 0.25
-Nodes (7): Build order, Build state (2026-09-12), Coordination with Staff assist mode, Dependency graph, HITL notes, Slices, Staff-Assisted Customisation — Vertical Slices (Issues)
+### Community 309 - "06 — "Who is STRIPE PAYMENTS SINGAPORE?", and telling PayNow orders apart"
+Cohesion: 0.29
+Nodes (6): 06 — "Who is STRIPE PAYMENTS SINGAPORE?", and telling PayNow orders apart, Acceptance criteria, Goal, Instrument on the record, Revenue by instrument, The descriptor cannot be fixed, so it must be pre-empted
 
 ### Community 310 - "Users & permissions (RBAC) — Vertical Slices (Issues)"
 Cohesion: 0.25
 Nodes (7): Dependency graph, Deploying (read before merging), HITL notes, PR grouping, Recommended build order, Slices, Users & permissions (RBAC) — Vertical Slices (Issues)
 
-### Community 311 - "sunburst-responsive.check.ts"
-Cohesion: 0.25
-Nodes (6): bolster, layout, ROOT, sunburst, ADR-0009, xray
+### Community 311 - "assisted-cta.check.ts"
+Cohesion: 0.12
+Nodes (13): bolster, layout, ROOT, sunburst, ADR-0009, xray, CLIENT, guardAt (+5 more)
 
-### Community 312 - "customise-tier-picker.tsx"
+### Community 312 - "Slice 08 — Sign-off runbook: one real link, one real card, one real order"
+Cohesion: 0.29
+Nodes (6): 0. Where to run it — decide this first, it is not a free choice, 1. Pre-flight (stop if any of these fail), 2. The pass, 3. Verification SQL, 4. Results, Slice 08 — Sign-off runbook: one real link, one real card, one real order
+
+### Community 313 - "PRD: Template-Linked Customisation, Authorize-Then-Capture, Accessories-Only Shop"
+Cohesion: 0.29
+Nodes (6): Out of Scope, PRD: Template-Linked Customisation, Authorize-Then-Capture, Accessories-Only Shop, Problem Statement, Solution, Testing Decisions, User Stories
+
+### Community 314 - "marquee-section.tsx"
 Cohesion: 0.33
-Nodes (6): CustomiseTierPicker(), CustomiseTierPickerProps, isMobileViewport(), ROTATIONS, TierId, TierOption
-
-### Community 313 - "Drawer Pattern Matrix (Different Cases)"
-Cohesion: 0.29
-Nodes (7): Case A: Quick actions / global navigation (slide-up drawer), Case B: Option picking (slide-up drawer), Case C: Long-form education/content (full-page drawer), Case D: Task-oriented forms/editors (full-page drawer), Case E: External embedded experiences, Case F: Sidebar-as-sheet (admin mobile nav), Drawer Pattern Matrix (Different Cases)
-
-### Community 314 - "order-shipment.test.ts"
-Cohesion: 0.29
-Nodes (5): bought, config, h, order, SENDER
+Nodes (4): InfiniteImageMarquee(), InfiniteImageMarqueeProps, MarqueeSectionProps, MarqueeContent
 
 ### Community 315 - "Slice 10 — Staging E2E signoff"
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Checklist, Slice 10 — Staging E2E signoff, What to build
 
-### Community 316 - "01 — Glossary + ADRs: Location, Source clarification, custom booking"
-Cohesion: 0.33
-Nodes (5): 01 — Glossary + ADRs: Location, Source clarification, custom booking, Acceptance criteria, Blocked by, Parent, What to build
+### Community 316 - "tabs-mobile.test.ts"
+Cohesion: 0.29
+Nodes (5): collectTsx(), ROOT, SEARCH_DIRS, SKIP_DIRS, tabs
 
 ### Community 317 - "Staging device QA — Mobile UX/UI Optimization R2 (Jul 2026)"
 Cohesion: 0.33
@@ -1993,8 +1969,8 @@ Cohesion: 0.33
 Nodes (5): Dependency graph, Landing Slide-In Safe-Area Fix — Vertical Slices, Parent PRD context, Recommended build order, Slices
 
 ### Community 319 - "Slice 04 — Single price source: Costings MSRP -> storefront price (locked)"
-Cohesion: 0.40
-Nodes (4): Apply note, Blocked by, Slice 04 — Single price source: Costings MSRP -> storefront price (locked), What to build
+Cohesion: 0.33
+Nodes (5): Acceptance criteria, Apply note, Blocked by, Slice 04 — Single price source: Costings MSRP -> storefront price (locked), What to build
 
 ### Community 320 - "Money-Flow Traceability — Vertical Slices (Issues)"
 Cohesion: 0.33
@@ -2008,9 +1984,9 @@ Nodes (5): Acceptance criteria, Blocked by, Proof, Slice 09 — Staging signoff:
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Parent, Status, What to build
 
-### Community 323 - "03 — Locations admin page (type / address / postal, own studios)"
+### Community 323 - "Slice 04 — Landing Menu pill: Sign in / Profile / Admin Panel"
 Cohesion: 0.33
-Nodes (5): 03 — Locations admin page (type / address / postal, own studios), Acceptance criteria, Blocked by, Parent, What to build
+Nodes (5): Acceptance criteria, Blocked by, Proof (2026-07-12), Slice 04 — Landing Menu pill: Sign in / Profile / Admin Panel, What to build
 
 ### Community 324 - "Slice 01 — Domain glossary + ADR 0007"
 Cohesion: 0.33
@@ -2020,17 +1996,17 @@ Nodes (5): Acceptance criteria, Blocked by, Slice 01 — Domain glossary + ADR 0
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Slice 02 — Page-view tracer: schema + Visitor + ingest + Admin transitions, Status, What to build
 
-### Community 326 - "04 — Result Location column"
+### Community 326 - "02 — Handle `refund.updated`, so an async refund reaches the money ledger"
 Cohesion: 0.33
-Nodes (5): 04 — Result Location column, Acceptance criteria, Blocked by, Parent, What to build
+Nodes (5): 02 — Handle `refund.updated`, so an async refund reaches the money ledger, Acceptance criteria, Goal, Notes, The gap, precisely
 
-### Community 327 - "06 — Review SLA relocation to /settings/general"
+### Community 327 - "Slice 04 — Users & permissions page + Members tab + redirects"
 Cohesion: 0.33
-Nodes (5): 06 — Review SLA relocation to /settings/general, Acceptance criteria, Blocked by, Parent, What to build
+Nodes (5): Acceptance criteria, Blocked by, Decisions made while building, Slice 04 — Users & permissions page + Members tab + redirects, What to build
 
-### Community 328 - "08 — Custom booking UI (location picker + slot grid)"
-Cohesion: 0.33
-Nodes (5): 08 — Custom booking UI (location picker + slot grid), Acceptance criteria, Blocked by, Parent, What to build
+### Community 328 - "What to build"
+Cohesion: 0.40
+Nodes (4): Acceptance criteria, Blocked by, Slice 09 — Rate limit the open create path; structural guard against regressions, What to build
 
 ### Community 329 - "Slice 07 — Unique-node loops + custom node chrome + side panel"
 Cohesion: 0.33
@@ -2068,9 +2044,9 @@ Nodes (5): Acceptance criteria, Blocked by, Proof (2026-07-19), Slice 04 — Con
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Proof (2026-07-19), Slice 05 — Preview recommendation display + assign hint upgrade, What to build
 
-### Community 338 - "Slice 06 — Flow route: upsell/cross-sell card, answer carry-over, journey record"
-Cohesion: 0.29
-Nodes (6): Acceptance criteria, Blocked by, Proof (2026-07-19), Slice 06 — Flow route: upsell/cross-sell card, answer carry-over, journey record, What to build, basicWithPremiumUpsellGraph()
+### Community 338 - "Slice 12 — Roll Asset picker to blogs, categories, partners, page builder"
+Cohesion: 0.40
+Nodes (4): Acceptance criteria, Blocked by, Slice 12 — Roll Asset picker to blogs, categories, partners, page builder, What to build
 
 ### Community 339 - "Slice 08 — Top 10 Singapore blog retrofit"
 Cohesion: 0.33
@@ -2092,25 +2068,25 @@ Nodes (5): Acceptance criteria, Blocked by, Slice 02 — Filling Templates in Co
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Slice 04 — Result model + lifecycle + pricing modules, Status, What to build
 
-### Community 344 - "Product Slide-In Section Templates — Vertical Slices"
-Cohesion: 0.33
-Nodes (5): Dependency graph, Parent PRD context, Product Slide-In Section Templates — Vertical Slices, Recommended build order, Slices
+### Community 344 - "openCervicalNeckSupportSheet"
+Cohesion: 0.10
+Nodes (18): Acceptance criteria, Blocked by, Slice 02 — Neck Pains + Cervical Tech Neck section, What to build, Acceptance criteria, Blocked by, Slice 03 — Premium Mpillow learn-more refactor, What to build (+10 more)
 
-### Community 345 - "Slice 15 — Bing Webmaster Tools + IndexNow"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 15 — Bing Webmaster Tools + IndexNow, What to build
+### Community 345 - "Slice 02 — Page FAQ store: schema, surface_key, CRUD helpers, bilingual seed, self-check"
+Cohesion: 0.40
+Nodes (4): Acceptance criteria, Blocked by, Slice 02 — Page FAQ store: schema, surface_key, CRUD helpers, bilingual seed, self-check, What to build
 
 ### Community 346 - "Slice 08 — Telegram under RBAC"
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Decisions made while building, Slice 08 — Telegram under RBAC, What to build
 
-### Community 347 - "Slice 09 — Access-denied notice + audit coverage"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Blocked by, Decisions made while building, Slice 09 — Access-denied notice + audit coverage, What to build
+### Community 347 - "Slice 07 — Customer accept / decline / top-up / capture → Order"
+Cohesion: 0.40
+Nodes (4): Acceptance criteria, Blocked by, Slice 07 — Customer accept / decline / top-up / capture → Order, What to build
 
 ### Community 348 - "Slice 09 — Mbolster hold path (mbolster-config)"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Blocked by, Slice 09 — Mbolster hold path (mbolster-config), Status, What to build
+Cohesion: 0.16
+Nodes (9): Acceptance criteria, Blocked by, Slice 06 — Assign preview + confirm UX, What to build, Acceptance criteria, Blocked by, Slice 09 — Mbolster hold path (mbolster-config), Status (+1 more)
 
 ### Community 349 - "Slice 10 — Order build snapshot + fulfill wiring"
 Cohesion: 0.33
@@ -2120,17 +2096,17 @@ Nodes (5): Acceptance criteria, Blocked by, Slice 10 — Order build snapshot + 
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Slice 11 — Post-delivery refund request + operator approve, Status, What to build
 
-### Community 351 - "Phase 3 - Case-by-case rollout (2-4 days)"
-Cohesion: 0.33
-Nodes (6): 3A. Global menu drawer, 3B. Mobile select drawer, 3C. Long-form learn-more drawers, 3D. Task/edit drawers, 3E. Sidebar mobile sheet, Phase 3 - Case-by-case rollout (2-4 days)
+### Community 351 - "Further Notes"
+Cohesion: 0.40
+Nodes (5): Audit baseline, End-to-end flow, Further Notes, Non-blocking defaults, Relationship to money-flow PRD
 
-### Community 352 - "A Location is the partners table extended with a type, not a new table"
-Cohesion: 0.33
-Nodes (5): A Location is the partners table extended with a type, not a new table, Code shape, Consequences, Considered options, Why additive, not a rename
+### Community 352 - "08: Fine nudge — persisted millimetre offsets, visual-only, out of the fingerprint (optional, gated)"
+Cohesion: 0.40
+Nodes (4): 08: Fine nudge — persisted millimetre offsets, visual-only, out of the fingerprint (optional, gated), Acceptance criteria, Goal, The gap, precisely
 
-### Community 353 - "configurator-mobile-chrome.check.ts"
-Cohesion: 0.10
-Nodes (19): Acceptance criteria, Blocked by, Proof (2026-07-13), Slice 01 — Exit dialog: hide overlapping X, What to build, barHtml, bolster, chromeSrc (+11 more)
+### Community 353 - "commitment-cards-section.tsx"
+Cohesion: 0.50
+Nodes (4): CommitmentCardsSection(), CommitmentCardsSectionProps, SectionTitle(), CommitmentCardsContent
 
 ### Community 354 - "Slice 13 — Site-wide pinch-zoom lock"
 Cohesion: 0.33
@@ -2152,9 +2128,9 @@ Nodes (3): ./tsconfig.json, exclude, extends
 Cohesion: 0.40
 Nodes (4): collectFiles(), ROOT, SCAN_DIRS, walkTsx()
 
-### Community 359 - "users-render.test.tsx"
+### Community 359 - "Pre-order on authorization hold when inventory cannot fulfill now"
 Cohesion: 0.40
-Nodes (3): actor, members, roles
+Nodes (4): Consequences, Context, Decision, Pre-order on authorization hold when inventory cannot fulfill now
 
 ### Community 360 - "theme.md"
 Cohesion: 0.33
@@ -2176,13 +2152,13 @@ Nodes (5): Is a customised pillow better for neck pain than a regular pillow?, W
 Cohesion: 0.33
 Nodes (5): Consequences, Considered options, Context, Decision, Fillings live only in Filling Templates
 
-### Community 365 - "Slice 03 — Order-mirror ingest module + tests"
+### Community 365 - "A live shipping method with no courier quote is hidden, never charged a fallback"
 Cohesion: 0.40
-Nodes (4): Blocked by, Slice 03 — Order-mirror ingest module + tests, Status, What to build
+Nodes (4): A live shipping method with no courier quote is hidden, never charged a fallback, Consequences, Context, Decision
 
 ### Community 366 - "Slice 07 — Channel analytics queries (All/Orders/Shopify) + tests"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 07 — Channel analytics queries (All/Orders/Shopify) + tests, Status
+Cohesion: 0.33
+Nodes (5): Acceptance criteria, Blocked by, Slice 07 — Channel analytics queries (All/Orders/Shopify) + tests, Status, What to build
 
 ### Community 367 - "Product: Bolsters"
 Cohesion: 0.33
@@ -2193,8 +2169,8 @@ Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 01 — Sheet primitive + Basic Mpillow proof, What to build
 
 ### Community 369 - "16-spec-tests-money.md"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Parent, What to build
+Cohesion: 0.18
+Nodes (8): Acceptance criteria, Blocked by, Parent, What to build, Acceptance criteria, Blocked by, Slice 05 — Admin approve / reject + instructions-sent (+ emails), What to build
 
 ### Community 370 - "Slice 02 — Basic Mpillow learn-more refactor"
 Cohesion: 0.40
@@ -2204,29 +2180,29 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 02 — Basic Mpillow learn-mor
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Slice 06 — Immediate re-resolve on mapping + Costings save, Status, What to build
 
-### Community 372 - "Slice 04 — Analytics notice bar"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Analytics notice bar, What to build
+### Community 372 - "honestRoundTrip"
+Cohesion: 0.50
+Nodes (4): honestRoundTrip(), post(), recommend(), stripeLines()
 
 ### Community 373 - "Analytics DB channel facts — Vertical Slices (Issues)"
 Cohesion: 0.40
 Nodes (4): Analytics DB channel facts — Vertical Slices (Issues), Dependency graph, How to work a slice, Slices
 
-### Community 374 - "Slice 05 — Admin approve / reject + instructions-sent (+ emails)"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 05 — Admin approve / reject + instructions-sent (+ emails), What to build
+### Community 374 - "Slice 02 — Appointment RSVP status in admin calendar"
+Cohesion: 0.50
+Nodes (3): Acceptance criteria, Blocked by, Slice 02 — Appointment RSVP status in admin calendar
 
-### Community 375 - "Slice 00 — Domain migration work.mpillow.com → custom.mpillow.com"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 00 — Domain migration work.mpillow.com → custom.mpillow.com, What to build
+### Community 375 - "Scope"
+Cohesion: 0.67
+Nodes (3): bolster(), Result model, Scope
 
-### Community 376 - "Slice 02 — Root metadataBase + Organization/WebSite JSON-LD"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 02 — Root metadataBase + Organization/WebSite JSON-LD, What to build
+### Community 376 - "Page: Our Story"
+Cohesion: 0.67
+Nodes (3): Extracted Text Content, Key Images and Descriptions, Page: Our Story
 
-### Community 377 - "Slice 04 — Booking page route `/[lang]/appointments` + inline pills"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Booking page route `/[lang]/appointments` + inline pills, What to build
+### Community 377 - "Page: Contact"
+Cohesion: 0.67
+Nodes (3): Extracted Text Content, Key Images and Descriptions, Page: Contact
 
 ### Community 378 - "Slice 05 — Pill overlay on entries + retire Sheet (kills the "dupe")"
 Cohesion: 0.40
@@ -2244,9 +2220,9 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 01 — Glossary + ADR 0023 acc
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Proof (2026-07-13), Slice 10 — Science of Sleep MeasureTile stack, What to build
 
-### Community 382 - "Slice 04 — Reschedule: freeBusy → 3 slots → pick → Calendar patch"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Reschedule: freeBusy → 3 slots → pick → Calendar patch, What to build
+### Community 382 - "Page: Configuration Guide"
+Cohesion: 0.67
+Nodes (3): Extracted Text Content, Key Images and Descriptions, Page: Configuration Guide
 
 ### Community 383 - "Slice 02 — Non-filling-only warehouse + composed BOM enforcement"
 Cohesion: 0.40
@@ -2259,14 +2235,6 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 03 — Migrate legacy BOM fill
 ### Community 385 - "Slice 04 — Configure drawer tabs (Product / Filling Config)"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Configure drawer tabs (Product / Filling Config), What to build
-
-### Community 386 - "icon-list-section.tsx"
-Cohesion: 0.50
-Nodes (4): IconListSection(), IconListSectionProps, SectionTitle(), IconListContent
-
-### Community 387 - "Slice 06 — Assign preview + confirm UX"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 06 — Assign preview + confirm UX, What to build
 
 ### Community 388 - "Slice 01 — Domain glossary: Sign in / Admin Panel / Profile / Staff / Customer"
 Cohesion: 0.40
@@ -2284,10 +2252,6 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 03 — Unified Sign in page + 
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 01 — Hero + Affluent Pain home stack, What to build
 
-### Community 392 - "Slice 02 — Neck Pains + Cervical Tech Neck section"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 02 — Neck Pains + Cervical Tech Neck section, What to build
-
 ### Community 393 - "Slice 03 — Mbolster Families weave"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 03 — Mbolster Families weave, What to build
@@ -2295,10 +2259,6 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 03 — Mbolster Families weave
 ### Community 394 - "Slice 04 — Premium/Basic slide-in + mp-config polish"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Premium/Basic slide-in + mp-config polish, What to build
-
-### Community 395 - "Top and Bottom Spacing Strategy (Prevent Native UI Clashes)"
-Cohesion: 0.40
-Nodes (5): 1) Standardize CSS variables in `app/globals.css`, 2) Top anchored elements, 3) Bottom anchored elements, 4) Browser mode differences, Top and Bottom Spacing Strategy (Prevent Native UI Clashes)
 
 ### Community 396 - "Slice 06 — Page FAQ + Partners Local Ambassador copy"
 Cohesion: 0.40
@@ -2323,10 +2283,6 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 03 — Asset registry: table +
 ### Community 401 - "Slice 04 — Direct image upload → optimize → storage → Asset"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Direct image upload → optimize → storage → Asset, What to build
-
-### Community 402 - "Slice 05 — Drive connector: resolve URL + browse Shared Drives/folders"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 05 — Drive connector: resolve URL + browse Shared Drives/folders, What to build
 
 ### Community 403 - "Slice 06 — Paste Drive link → preview → import image Asset"
 Cohesion: 0.40
@@ -2395,10 +2351,6 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 06 — Fix discount leak + ado
 ### Community 419 - "Slice 07 — Money ledger + partial/idempotent refunds + disputes"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 07 — Money ledger + partial/idempotent refunds + disputes, What to build
-
-### Community 420 - "Slice 08 — Admin refund/cancel + manual restock linked to refund"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 08 — Admin refund/cancel + manual restock linked to refund, What to build
 
 ### Community 421 - "Slice 09 — Cost-to-sale traceability (realized margin)"
 Cohesion: 0.40
@@ -2508,10 +2460,6 @@ Nodes (14): Acceptance criteria, Blocked by, Slice 01 — Template foundation + 
 Cohesion: 0.83
 Nodes (3): idx_mp_config_responses_updated_at, mp_config_responses, trg_mp_config_responses_updated_at
 
-### Community 450 - "Slice 03 — Premium Mpillow learn-more refactor"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 03 — Premium Mpillow learn-more refactor, What to build
-
 ### Community 452 - "Slice 05 — Mbolster learn-more refactor"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 05 — Mbolster learn-more refactor, What to build
@@ -2527,18 +2475,6 @@ Nodes (4): Dependency graph, How to work a slice, Prospect journey analytics —
 ### Community 456 - "Slice 02 — RMA schema + eligibility & transition core"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 02 — RMA schema + eligibility & transition core, What to build
-
-### Community 458 - "Blog: A Word From The Founder"
-Cohesion: 0.67
-Nodes (3): Blog: A Word From The Founder, Extracted Text Content, Key Images and Descriptions
-
-### Community 459 - "Page: Frequently Asked Questions Mpillow"
-Cohesion: 0.67
-Nodes (3): Extracted Text Content, Key Images and Descriptions, Page: Frequently Asked Questions Mpillow
-
-### Community 460 - "Page: Measurement Guide"
-Cohesion: 0.67
-Nodes (3): Extracted Text Content, Key Images and Descriptions, Page: Measurement Guide
 
 ### Community 461 - "Slice 07 — X-ray read-only upgrade of the preview mix visual"
 Cohesion: 0.40
@@ -2563,10 +2499,6 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 09 — /guides/ editorial hub 
 ### Community 471 - "Slice 10 — Shop index metadata + accessory card ratings"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 10 — Shop index metadata + accessory card ratings, What to build
-
-### Community 472 - "Slice 11 — GSC verification + analytics migration"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Blocked by, Slice 11 — GSC verification + analytics migration, What to build
 
 ### Community 473 - "Slice 01 — Spatial placements: schema + core lib + template API round-trip"
 Cohesion: 0.40
@@ -2624,9 +2556,9 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 13 — Mbolster: own spatial s
 Cohesion: 0.22
 Nodes (14): Acceptance criteria, Proof (2026-07-13), Slice 02 — Mbolster FAQ close below accordion, What to build, FaqAnswer(), FaqContent(), FaqContentProps, PageFaqAccordion() (+6 more)
 
-### Community 488 - "Slice 04 — Mbolster case-only preference + auto-select"
-Cohesion: 0.50
-Nodes (3): Acceptance criteria, Slice 04 — Mbolster case-only preference + auto-select, What to build
+### Community 488 - "soleCaseId"
+Cohesion: 0.33
+Nodes (5): Acceptance criteria, Proof (2026-07-13), Slice 04 — Mbolster case-only preference + auto-select, What to build, soleCaseId()
 
 ### Community 489 - "Slice 05 — Pre-order trigger + live CTA + waiting-time i18n"
 Cohesion: 0.40
@@ -2757,8 +2689,8 @@ Cohesion: 0.30
 Nodes (13): bodyParamCount(), Check, checks, fail(), get(), getNode(), main(), pass() (+5 more)
 
 ### Community 548 - "package.json"
-Cohesion: 0.05
-Nodes (40): Aurora(), eslintConfig, name, packageManager, private, version, clsx, eslint (+32 more)
+Cohesion: 0.04
+Nodes (46): Aurora(), eslintConfig, name, packageManager, private, version, clsx, eslint (+38 more)
 
 ### Community 552 - "Cervical Neck Support (ID 4544437289056) — `cervical-neck-support`"
 Cohesion: 0.67
@@ -2865,16 +2797,16 @@ Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 09 — Editor completeness and accessibility, What to build
 
 ### Community 578 - "xray-layout.ts"
-Cohesion: 0.04
-Nodes (71): 02: True-scale rendering — pouches drawn at their footprint relative to the pillow Size, on every surface, Acceptance criteria, Goal, Revision (2026-09-28): fillings scale with the pillow Size, Scope, The gap, precisely, 03: Fit model — per-Layer width and per-cell loft budgets, compression limits, fit status, Acceptance criteria (+63 more)
+Cohesion: 0.06
+Nodes (38): 03: Fit model — per-Layer width and per-cell loft budgets, compression limits, fit status, Build notes (2026-09-25), Goal, The gap, precisely, The gap, precisely, client, page, renderer (+30 more)
 
 ### Community 579 - "Slice 10 — Sign-off: real device, both locales, production publish"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 10 — Sign-off: real device, both locales, production publish, What to build
 
 ### Community 580 - "pricing-surface.check.ts"
-Cohesion: 0.07
-Nodes (22): layout, overflow, ROOT, callers, goodsRuleFiles, MUST_PRICE_THROUGH, PRICE_TABLE_READERS, quoteCallers (+14 more)
+Cohesion: 0.08
+Nodes (19): callers, goodsRuleFiles, MUST_PRICE_THROUGH, PRICE_TABLE_READERS, quoteCallers, readers, ROOT, SHOP_MONEY_PATHS (+11 more)
 
 ### Community 581 - "rowsToCsv"
 Cohesion: 0.19
@@ -2913,28 +2845,24 @@ Cohesion: 0.21
 Nodes (12): clamp(), FirmnessScale(), FirmnessScaleProps, pct(), FirmnessCompareSection(), FirmnessCompareSectionProps, SectionTitle(), SplitHeroDualMediaSection() (+4 more)
 
 ### Community 607 - "xray-cross-section.tsx"
-Cohesion: 0.06
-Nodes (43): Acceptance criteria, Blocked by, Slice 12 — Mobile overflow / no side-scroll, What to build, BolsterCrossSectionSvg(), COMPACT_LAYOUT, CROSS_SECTION_VIEW, CrossSectionSvg() (+35 more)
+Cohesion: 0.04
+Nodes (76): Acceptance criteria, Blocked by, Slice 12 — Mobile overflow / no side-scroll, What to build, 05: Cross-section view — a live across / along cut of the pillow beside every x-ray, Acceptance criteria, Build notes (2026-09-25), Goal (+68 more)
 
 ### Community 611 - "Scope"
 Cohesion: 0.15
 Nodes (12): 04 — The counter control: one button, and the async truth rendered honestly, Acceptance criteria, Client state machine, Decline copy — the part that gets read out loud, `GET /api/results/[id]/counter-charge`, Goal, Mobile, Notes (+4 more)
 
 ### Community 615 - "price-sync.ts"
-Cohesion: 0.12
-Nodes (22): Acceptance criteria, BomLine, loadCostingsPriceMaps(), PriceRow, PriceSyncResult, resolveVariantCompareAt(), resolveVariantCost(), resolveVariantPrice() (+14 more)
+Cohesion: 0.13
+Nodes (20): BomLine, loadCostingsPriceMaps(), PriceRow, PriceSyncResult, resolveVariantCompareAt(), resolveVariantCost(), resolveVariantPrice(), resolveVariantPriceRow() (+12 more)
 
 ### Community 616 - "20260902000000_rls_hardening_and_hot_path_indexes.sql"
 Cohesion: 0.09
 Nodes (14): idx_bolster_bom_lines_item, idx_bom_lines_item, idx_bom_template_lines_item, idx_customers_created_at, idx_customers_email_trgm, idx_inventory_transactions_item, idx_media_assets_name_trgm, idx_orders_order_number_trgm (+6 more)
 
-### Community 617 - "isValidSurfaceKey"
-Cohesion: 0.23
-Nodes (14): CreateItemSchema, GET(), LocaleContentSchema, POST(), runtime, EnsureSetSchema, GET(), LabelsSchema (+6 more)
-
 ### Community 618 - "held"
 Cohesion: 0.02
-Nodes (117): accept(), held(), Acceptance criteria, Blocked by, Slice 03 — Lock writes to Results that are no longer drafts, What to build, Acceptance criteria, Blocked by (+109 more)
+Nodes (91): create(), held(), Further Notes, Implementation Decisions, Out of Scope, PRD: Guest Result Ownership — the Result id stops being a password, Problem Statement, Solution (+83 more)
 
 ### Community 619 - "build_massing.py"
 Cohesion: 0.10
@@ -2952,10 +2880,6 @@ Nodes (14): Authoring the catalog, Correctness of what the x-ray shows, Domain a
 Cohesion: 0.25
 Nodes (7): 1. Create the property (Google Analytics UI, ~10 min), 2. Property settings (same session), 3. Turn it on in production (Vercel), 4. Verify (~15 min after deploy), 5. Key events (needs the code change in slice 08), 6. Retire the old setup (after 2 weeks of clean data), GA4 setup runbook — custom.mpillow.com
 
-### Community 631 - "rma/page.tsx"
-Cohesion: 0.30
-Nodes (9): formatTimestamp(), QueueRow, RmaQueuePage(), runtime, ADR-0011, ADR-0023, humanizeToken(), parseStatusFilter() (+1 more)
-
 ### Community 632 - "infer.py"
 Cohesion: 0.11
 Nodes (8): detect_rooms(), DiscreteTokenizer, _args(), letterbox(), load(), predict(), preset_of(), build()
@@ -2964,29 +2888,25 @@ Nodes (8): detect_rooms(), DiscreteTokenizer, _args(), letterbox(), load(), pred
 Cohesion: 0.21
 Nodes (14): 01: Ops: set `CRON_SECRET` and `SHOPIFY_SYNC_TOKEN` in prod, then check what the dead crons missed, Acceptance criteria, Goal, Notes, Scope, The gap, precisely, inp(), main() (+6 more)
 
-### Community 636 - "ProductSlideSection"
-Cohesion: 0.13
-Nodes (21): FeatureCarouselCard(), FeatureCarouselCardProps, FeatureCarouselSection(), FeatureCarouselSectionProps, SectionTitle(), FullBleedMediaSection(), FullBleedMediaSectionProps, ProductSlideSection() (+13 more)
-
 ### Community 640 - "channel-sales.ts"
-Cohesion: 0.09
-Nodes (35): Gaps / follow-ups, Signoff notes (2026-07-15 agent walk), ADR-0006, aggregateChannelSales(), buildShopifyTimeline(), ChannelBreakdownRow, ChannelSalesSummary, all (+27 more)
+Cohesion: 0.08
+Nodes (35): Gaps / follow-ups, Signoff notes (2026-07-15 agent walk), ADR-0006, aggregateChannelSales(), AnalyticsChannel, buildShopifyTimeline(), ChannelBreakdownRow, ChannelSalesSummary (+27 more)
 
 ### Community 641 - "Easyship setup"
 Cohesion: 0.20
 Nodes (9): 1. Apply the migration, 2. Create the Easyship account and tokens, 3. Set the environment variables (Vercel → Project → Settings → Environment Variables), 4. Register the webhook, 5. Fill in Settings → Shipping → Couriers, 6. Turn methods live, 7. Buy a label (sandbox first), Easyship setup (+1 more)
 
 ### Community 642 - "replace.ts"
-Cohesion: 0.14
-Nodes (18): Acceptance criteria, Blocked by, Dual-write shape (landing slots), Proof, Slice 15 — Replace-everywhere + dual-write Asset ids on landing slots, What to build, emptyReplaceSummary(), isLandingAssetIdKey() (+10 more)
+Cohesion: 0.13
+Nodes (21): POST(), runtime, Acceptance criteria, Blocked by, Dual-write shape (landing slots), Proof, Slice 15 — Replace-everywhere + dual-write Asset ids on landing slots, What to build (+13 more)
 
 ### Community 645 - "result-stage.ts"
-Cohesion: 0.18
-Nodes (11): ageInDays(), bucketFor(), QUEUE_SOURCES, STAGE_BUCKETS, STAGE_LABELS, StageInput, StageResult, STUCK_REASON_LABELS (+3 more)
+Cohesion: 0.14
+Nodes (14): dynamic, GET(), runtime, ageInDays(), QUEUE_SOURCES, resultStage, STAGE_BUCKETS, STAGE_LABELS (+6 more)
 
 ### Community 648 - "partners/index.ts"
-Cohesion: 0.08
-Nodes (37): OurPartnersPage(), 02 — Additive `locations` columns on `partners` + lib, Acceptance criteria, Blocked by, Parent, What to build, SpotlightCard(), LogoStrip() (+29 more)
+Cohesion: 0.10
+Nodes (27): OurPartnersPage(), SpotlightCard(), LogoStrip(), PartnerLogoMarquee(), PartnerLogoMarqueeProps, ICONS, PartnersBenefitCards(), PartnersBenefitCardsProps (+19 more)
 
 ### Community 649 - "Slice 02 — Rules Engine workbench: React Flow canvas, palette, test panel, versions"
 Cohesion: 0.29
@@ -3001,20 +2921,16 @@ Cohesion: 0.18
 Nodes (10): 05 — Failure honesty: preflight, no double charge, and money with no Order behind it, Acceptance criteria, An amount that moved underneath the charge, Goal, Money taken with no Order (story 17), Notes, Reader preflight (story 10), Retry that cannot double charge (story 6) (+2 more)
 
 ### Community 653 - "plan_check.py"
-Cohesion: 0.08
-Nodes (19): breakdown(), calibration(), check(), draw_poly(), footprint(), load_drawing(), main(), overlay() (+11 more)
+Cohesion: 0.18
+Nodes (13): breakdown(), calibration(), check(), draw_poly(), footprint(), load_drawing(), main(), overlay() (+5 more)
 
 ### Community 750 - "bom_templates"
 Cohesion: 0.10
 Nodes (24): bom_template_lines, bom_templates, idx_bom_template_lines_template, idx_bom_templates_kind_key, trg_bom_templates_updated_at, idx_bom_templates_kind_key_pillow_kind, uq_bom_templates_bolster, uq_bom_templates_pillow (+16 more)
 
-### Community 755 - "slice-10.smoke.ts"
-Cohesion: 0.22
-Nodes (9): cleanup(), db, main(), orderId, visitIds, visitorId, visitPaid, visitPrior (+1 more)
-
-### Community 756 - "getSiteSettings"
-Cohesion: 0.21
-Nodes (12): authorize(), authorizeCron(), dynamic, GET(), POST(), runtime, ContactSweepSummary, DEFAULT_CONTACT_SWEEP_DAYS (+4 more)
+### Community 756 - "secretMatches"
+Cohesion: 0.10
+Nodes (22): authorize(), authorizeCron(), dynamic, GET(), POST(), runtime, authorizeCron(), dynamic (+14 more)
 
 ### Community 757 - "media_assets"
 Cohesion: 0.16
@@ -3068,9 +2984,9 @@ Nodes (5): idx_shopify_sales_queue_status, idx_shopify_sales_queue_unique, shopi
 Cohesion: 0.33
 Nodes (6): idx_partner_users_backup_email, idx_partner_users_email, idx_partner_users_partner, partner_users, trg_partner_users_updated_at, idx_partner_users_backup_email_verified_unique
 
-### Community 840 - "checkout/route.ts"
-Cohesion: 0.06
-Nodes (43): CheckoutItemSchema, CheckoutSchema, CustomizationConfigRow, POST(), runtime, ShippingAddressSchema, ADR-0020, WorkingItem (+35 more)
+### Community 840 - "POST"
+Cohesion: 0.04
+Nodes (80): POST(), itemLabel(), POST(), AddonLine, buildPublicSummary(), dynamic, GET(), itemLabel() (+72 more)
 
 ### Community 847 - "20260902010000_fk_indexes_and_invoker_views.sql"
 Cohesion: 0.06
@@ -3084,9 +3000,9 @@ Nodes (12): Acceptance criteria, Blocked by, Slice 09 — Costings as-of-now on-
 Cohesion: 0.17
 Nodes (11): 0. Check the machine, 1. Intake, 2. Calibrate from the dimension chains, 4. Zones, 5. Check, and fix until clean, 6. Grill the user, 7. Build and report, plan-to-3d (+3 more)
 
-### Community 851 - "messages/index.ts"
-Cohesion: 0.03
-Nodes (64): LangLayout(), PolicyParagraphs(), PolicySection, PolicySectionBlock(), PrivacyPolicyPage(), SECTIONS, DEFAULT_SUPPORT_WHATSAPP, formatWhatsAppDisplay() (+56 more)
+### Community 851 - "marketing-copy-slice-04.check.ts"
+Cohesion: 0.04
+Nodes (43): h1, heroSrc, ROOT, hero, neckSrc, resolved, ROOT, sheetSrc (+35 more)
 
 ### Community 852 - "shell.check.ts"
 Cohesion: 0.17
@@ -3097,12 +3013,12 @@ Cohesion: 0.33
 Nodes (5): 0. Where to run it, 1. Prerequisites, 2. Result table, 3. Sign-off, Slice 07 — Sign-off runbook: a real bank app, a real QR, a real Singapore dollar
 
 ### Community 856 - "shopify/webhook/route.ts"
-Cohesion: 0.14
-Nodes (21): isShopifyOrder(), MappingRow, POST(), runtime, ShopifyOrder, Acceptance criteria, Blocked by, Slice 04 — Webhook writes mirror (paid + refunds) (+13 more)
+Cohesion: 0.07
+Nodes (32): isShopifyOrder(), MappingRow, POST(), runtime, ShopifyOrder, Acceptance criteria, Blocked by, Slice 04 — Webhook writes mirror (paid + refunds) (+24 more)
 
 ### Community 858 - "contacts.ts"
-Cohesion: 0.16
-Nodes (24): buildCreateBody(), buildName(), ContactDiff, diffContact(), findGuestContact(), findMatchingPerson(), GuestContact, normEmail() (+16 more)
+Cohesion: 0.12
+Nodes (28): Acceptance criteria, Blocked by, Slice 05 — Drive connector: resolve URL + browse Shared Drives/folders, What to build, buildCreateBody(), buildName(), ContactDiff, diffContact() (+20 more)
 
 ### Community 859 - "Easyship settings sync — PRD"
 Cohesion: 0.33
@@ -3121,12 +3037,12 @@ Cohesion: 0.17
 Nodes (11): 1. Business Profile API access (Google approval), 2. Enable the APIs (same Cloud project), 3. Refresh token for sg@mpillow.com, 4. Find the location and test a read, 5. Claude, 6. Pub/Sub (real-time), 7. Database, 8. Telegram access (+3 more)
 
 ### Community 864 - "plan_read.py"
-Cohesion: 0.26
-Nodes (13): group(), group(), group(), cmd_grid(), cmd_lines(), cmd_render(), cmd_scan(), cmd_solids() (+5 more)
+Cohesion: 0.10
+Nodes (19): group(), group(), group(), main(), _natural(), pdftoppm(), poppler_install(), require_pdftoppm() (+11 more)
 
-### Community 871 - "shopify/products.ts"
-Cohesion: 0.14
-Nodes (16): bolsterSizeToInternalVariant(), POST(), runtime, h, posts, validApply, GET(), runtime (+8 more)
+### Community 871 - "pricing.ts"
+Cohesion: 0.09
+Nodes (28): bolsterSizeToInternalVariant(), POST(), runtime, ApplyBody, POST(), runtime, variantId, POST() (+20 more)
 
 ### Community 877 - "20260909000000_landing_section_drafts.sql"
 Cohesion: 0.43
@@ -3172,10 +3088,6 @@ Nodes (9): 08 — Sign-off: one real reader, one real card, one real Singapore d
 Cohesion: 0.17
 Nodes (10): Known limits, Layout, Models, mpillow-office, New floor plans, Pipeline, The fast zoned variant, The workflow, in five sections (+2 more)
 
-### Community 900 - "particles/index.tsx"
-Cohesion: 0.48
-Nodes (5): hexToRgb(), MousePosition, Particles(), ParticlesProps, useMousePosition()
-
 ### Community 901 - "10: Move to Vercel Pro and add Firewall rate-limit rules on the endpoints that spend money"
 Cohesion: 0.33
 Nodes (5): 10: Move to Vercel Pro and add Firewall rate-limit rules on the endpoints that spend money, Acceptance criteria, Goal, Scope, The gap, precisely
@@ -3184,9 +3096,9 @@ Nodes (5): 10: Move to Vercel Pro and add Firewall rate-limit rules on the endpo
 Cohesion: 0.18
 Nodes (11): body, half1, half2, length, OUT, pts, ring, segDist() (+3 more)
 
-### Community 909 - "staff"
-Cohesion: 0.09
-Nodes (22): isOwnLogoUrl(), syncShopifyPricesOnly(), 13: Authorization tightening: owner-only role grants, Reference photo permission, cart ownership, partner logo host, Acceptance criteria, Goal, Scope, The gap, precisely, 0. Where to run it — decide this first, it is not a free choice (+14 more)
+### Community 909 - "isOwnLogoUrl"
+Cohesion: 0.38
+Nodes (6): isOwnLogoUrl(), 13: Authorization tightening: owner-only role grants, Reference photo permission, cart ownership, partner logo host, Acceptance criteria, Goal, Scope, The gap, precisely
 
 ### Community 911 - "15: Supabase hygiene: function `search_path`, anon execute, policy initplan, leaked passwords"
 Cohesion: 0.33
@@ -3199,10 +3111,6 @@ Nodes (5): Dependency graph, Migrations, Prod hardening: vertical slices (issues
 ### Community 918 - "20261002090000_easyship_shipping.sql"
 Cohesion: 0.25
 Nodes (8): idx_shipping_rate_quotes_cache_key, idx_shipping_rate_quotes_expires_at, order_shipments, public.restore_landing_snapshot(), shipping_rate_quotes, shipping_settings, trg_order_shipments_updated_at, trg_shipping_settings_updated_at
-
-### Community 921 - "sla-reminders/index.ts"
-Cohesion: 0.09
-Nodes (26): Acceptance criteria, Assisted customisation 07: Reminders for a build nobody has paid for, Blocked by, What to build, Acceptance criteria, Blocked by, Slice 08 — SLA reminders, settings, and auto-expiry, Status (+18 more)
 
 ### Community 923 - "B. GA4 MCP server in Claude Code on your laptop (~15 min)"
 Cohesion: 0.33
@@ -3217,16 +3125,16 @@ Cohesion: 0.40
 Nodes (4): 17: Sign-off: prove every hole is closed in prod, Checklist (run against `https://custom.mpillow.com` unless noted), Done when, Why this can't be AFK
 
 ### Community 933 - "ChannelMixVisx.tsx"
-Cohesion: 0.08
-Nodes (38): AnnotationMarkers(), ChartAnnotation, ChannelMixVisx(), Chart(), int, MIX_COLOR_VARS, MIX_PALETTE_CLASS, Props (+30 more)
+Cohesion: 0.07
+Nodes (44): AnnotationMarkers(), ChartAnnotation, ChannelMixVisx(), Chart(), int, MIX_COLOR_VARS, MIX_PALETTE_CLASS, Props (+36 more)
 
 ### Community 937 - "10: Physical calibration sign-off — real builds against the x-ray, tune compression, device pass"
 Cohesion: 0.29
 Nodes (6): 10: Physical calibration sign-off — real builds against the x-ray, tune compression, device pass, Calibration sheet (built 2-10-2026), Checklist, Done when, Software checks run 2-10-2026 (Chromium phone emulation, not a real device), Why this cannot be AFK
 
-### Community 939 - "draft.ts"
-Cohesion: 0.05
-Nodes (55): AppointmentsPage(), metadata, metadata, PageBuilderPreview(), runtime, generateMetadata(), Home(), LandingSectionsList() (+47 more)
+### Community 939 - "requireAdminContext"
+Cohesion: 0.03
+Nodes (91): GET(), POST(), RestoreSchema, runtime, DELETE(), PATCH(), PatchSchema, runtime (+83 more)
 
 ### Community 940 - "Slice 02 — Search & AI visibility section — KPI row + trend charts"
 Cohesion: 0.40
@@ -3240,10 +3148,6 @@ Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 03 — A
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 04 — AI crawler hit logging, What to build
 
-### Community 944 - "Filling Templates are scoped by size membership, not one size key"
-Cohesion: 0.50
-Nodes (3): Consequences, Considered options, Filling Templates are scoped by size membership, not one size key
-
 ### Community 945 - "Slice 05 — SEO annotations on charts"
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 05 — SEO annotations on charts, What to build
@@ -3252,13 +3156,13 @@ Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 05 — S
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 06 — Target-query watchlist + movers, What to build
 
-### Community 957 - "easyship/webhook/route.ts"
-Cohesion: 0.09
-Nodes (26): DETAIL_KEYS, emailStatus(), POST(), runtime, b64(), h, labelCreated, signature() (+18 more)
+### Community 957 - "easyship.test.ts"
+Cohesion: 0.12
+Nodes (24): DETAIL_KEYS, emailStatus(), POST(), runtime, FulfillSchema, POST(), runtime, FulfilmentResult (+16 more)
 
-### Community 958 - "accept/route.ts"
+### Community 958 - "stripe/webhook/route.ts"
 Cohesion: 0.04
-Nodes (56): BodySchema, dynamic, runtime, ADR-0016, ADR-0017, 03 — Keep PayNow eligible: an SGD guard and a check that protects the two good paths, Acceptance criteria, Already proven — observed 2026-09-12 (+48 more)
+Nodes (68): BodySchema, dynamic, POST(), runtime, ADR-0016, ADR-0017, CriticalWebhookError, POST() (+60 more)
 
 ### Community 962 - "seo_daily_metrics"
 Cohesion: 0.40
@@ -3270,11 +3174,7 @@ Nodes (5): Acceptance criteria, Blocked by, Implementation notes (CSV imports do
 
 ### Community 965 - "components.ts"
 Cohesion: 0.06
-Nodes (90): renderApplicationOutcomeEmail(), renderAdminInviteEmail(), renderBackupEmailOtpEmail(), darkRules(), defaultFooterLinks(), EmailAudience, EmailShellOptions, logoHtml() (+82 more)
-
-### Community 966 - "ga-events.ts"
-Cohesion: 0.17
-Nodes (14): Acceptance criteria, Blocked by, Implementation notes (AFK part done), Slice 08 — GA4 property confirmation + Data API cross-check, What to build, submit(), GaEvent, GaItem (+6 more)
+Nodes (72): renderAdminInviteEmail(), renderBackupEmailOtpEmail(), darkRules(), defaultFooterLinks(), EmailAudience, EmailShellOptions, logoHtml(), renderEmail() (+64 more)
 
 ### Community 967 - "Article: Zoom Session With Kh Poon Physiotherapist"
 Cohesion: 0.67
@@ -3313,28 +3213,24 @@ Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Implementation notes, Slice 12 — Review-backed sections on guides and consolidated posts, What to build
 
 ### Community 981 - "results-sla/route.ts"
-Cohesion: 0.06
-Nodes (50): dynamic, GET(), POST(), runtime, sendCustomerExpiredEmail(), sendOpsReminderEmail(), ADR-0016, bodySchema (+42 more)
+Cohesion: 0.04
+Nodes (88): authorizeCron(), dynamic, GET(), POST(), runtime, sendCustomerExpiredEmail(), sendOpsReminderEmail(), ADR-0016 (+80 more)
 
-### Community 983 - ".size"
-Cohesion: 0.15
-Nodes (11): Acceptance criteria, Blocked by, Implementation notes, OPS, Slice 13 — Merchant Center feed + free listings, What to build, 01: Dimension registry, glossary and ADR 0019 — real pillow, pouch and Neck support measurements in code, Acceptance criteria (+3 more)
+### Community 983 - "Implementation Decisions"
+Cohesion: 0.06
+Nodes (29): Acceptance criteria, Blocked by, Implementation notes, OPS, Slice 13 — Merchant Center feed + free listings, What to build, 01: Dimension registry, glossary and ADR 0019 — real pillow, pouch and Neck support measurements in code, Acceptance criteria (+21 more)
 
 ### Community 984 - "shopify-sales-section.tsx"
-Cohesion: 0.03
-Nodes (200): BuildSummary, JOURNEY_STEPS, journeyIndex(), NEEDS_FINISH_COPY, NO_HOLD_COPY, ResultListRow, ResultPublic, ResultStatusPage() (+192 more)
+Cohesion: 0.02
+Nodes (205): BuildSummary, JOURNEY_STEPS, journeyIndex(), NEEDS_FINISH_COPY, NO_HOLD_COPY, ResultListRow, ResultPublic, ResultStatusPage() (+197 more)
 
 ### Community 986 - "crawler-activity.ts"
-Cohesion: 0.15
-Nodes (16): BY_BOT, Crawler, crawlerByName(), crawlerPathGroup(), CrawlerPurpose, CRAWLERS, recordCrawlerHit(), RpcClient (+8 more)
+Cohesion: 0.14
+Nodes (17): BY_BOT, classifyCrawler(), Crawler, crawlerByName(), crawlerPathGroup(), CrawlerPurpose, CRAWLERS, recordCrawlerHit() (+9 more)
 
 ### Community 988 - "Slice 14 — Google Business Profile + post-visit review requests"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 14 — Google Business Profile + post-visit review requests, What to build
-
-### Community 989 - "vitest"
-Cohesion: 0.09
-Nodes (13): h, CacheHandler, resolveStockAvailable(), StockResolutionInput, StockSources, UNTRACKED_STOCK, bolsterLegacyFillingTemplateName(), pillowLegacyFillingTemplateName() (+5 more)
 
 ### Community 994 - "Slice 16 — Earned mentions playbook"
 Cohesion: 0.40
@@ -3344,29 +3240,21 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 16 — Earned mentions playboo
 Cohesion: 0.33
 Nodes (5): Acceptance criteria, Blocked by, Implementation notes (code half done), Slice 17 — Blog hygiene quick wins, What to build
 
-### Community 997 - "google-reviews/route.ts"
-Cohesion: 0.15
-Nodes (10): h, dynamic, maxDuration, POST(), runtime, h, isReviewNotification(), notificationType() (+2 more)
+### Community 997 - "reviews/__tests__/route.test.ts"
+Cohesion: 0.20
+Nodes (3): h, Row, h
 
 ### Community 1001 - "Article: What Is The Best Pillow For Neck Pain In Singapore"
 Cohesion: 0.67
 Nodes (3): Article: What Is The Best Pillow For Neck Pain In Singapore, Extracted Text Content, Key Images and Descriptions
 
-### Community 1009 - "mp-config-client.tsx"
-Cohesion: 0.07
-Nodes (35): EMPTY_MEASURE_DRAFTS, FAQ_VIEW_ALL, FLOW_UI_LABEL, MeasureKey, MeasurementData, MpConfigClient(), MpConfigInfo, MpConfigSuggestion (+27 more)
-
-### Community 1011 - "stripe/webhook/route.ts"
-Cohesion: 0.05
-Nodes (48): CriticalWebhookError, POST(), recordWebhookFailure(), runtime, 02 — Handle `refund.updated`, so an async refund reaches the money ledger, Acceptance criteria, Goal, Notes (+40 more)
+### Community 1011 - "money-ledger.ts"
+Cohesion: 0.14
+Nodes (18): addEntry(), LedgerEntry, ledgerReconciles(), LedgerType, MoneyState, MoneyStatus, RecordOpts, round2() (+10 more)
 
 ### Community 1016 - "Article: Why Are You Yawning So Much"
 Cohesion: 0.67
 Nodes (3): Article: Why Are You Yawning So Much, Extracted Text Content, Key Images and Descriptions
-
-### Community 1019 - "referral-rows.tsx"
-Cohesion: 0.38
-Nodes (7): dateFmt, money(), ReferralRowsTable(), releaseLabel(), statusText, maskEmail(), maskName()
 
 ### Community 1023 - "Article: Guest Blog How To Improve Your Posture At Home By Porch"
 Cohesion: 0.67
@@ -3380,33 +3268,29 @@ Nodes (3): Article: What Led To The Creation Of The World S Best Pillow, Extract
 Cohesion: 0.67
 Nodes (3): Extracted Text Content, Key Images and Descriptions, Page: Our Partners
 
-### Community 1046 - "composed-price.test.ts"
-Cohesion: 0.22
-Nodes (9): PricedComponent, casesFor(), COVER_MSRP, FIBRECOOL_MSRP, LINEN_MSRP, PREMIUM, PREMIUM_DEFAULT_CASE, premiumInput() (+1 more)
-
 ### Community 1049 - "test/route.ts"
 Cohesion: 0.09
-Nodes (28): GET(), PUT(), respond(), runtime, ShippingSettingsResponse, POST(), runtime, TestSchema (+20 more)
+Nodes (26): GET(), PUT(), respond(), runtime, ShippingSettingsResponse, POST(), runtime, TestSchema (+18 more)
 
 ### Community 1051 - "20260710150000_faq_page.sql"
 Cohesion: 0.46
 Nodes (7): faq_page_items, faq_page_sets, idx_faq_page_items_set_position, idx_faq_page_items_set_slug, idx_faq_page_sets_surface_key, trg_faq_page_items_updated_at, trg_faq_page_sets_updated_at
 
 ### Community 1054 - "templates.ts"
-Cohesion: 0.08
-Nodes (36): 06 — PayNow at the counter, and a receipt for a sale with no shipping email, Acceptance criteria, Goal, Notes, PayNow (story 8), Receipts (story 9), 06 — "Who is STRIPE PAYMENTS SINGAPORE?", and telling PayNow orders apart, Acceptance criteria (+28 more)
+Cohesion: 0.21
+Nodes (20): money(), MONTHS, negativeMoney(), addressBlockHtml(), addressBlockText(), deliveryDays(), formatAddressLines(), itemsTableHtml() (+12 more)
 
 ### Community 1055 - "xray-assets.ts"
 Cohesion: 0.05
-Nodes (62): Build notes (2026-09-25), BOLSTER_SILHOUETTE_PATH, CELL_CLIP_PATHS, CELL_POLYGONS, FILLING_SHAPE_PATHS, M_STAGE, SECTION_HIT_PATHS, SILHOUETTE_PATH (+54 more)
+Nodes (52): BOLSTER_SILHOUETTE_PATH, CELL_CLIP_PATHS, CELL_POLYGONS, FILLING_SHAPE_PATHS, M_STAGE, SECTION_HIT_PATHS, SECTION_POLYGONS, SHELL_SEAM (+44 more)
 
 ### Community 1060 - "02 — No fallback; live is the default"
-Cohesion: 0.16
-Nodes (9): 02 — No fallback; live is the default, Acceptance criteria, Blocked by, Parent, What to build, A live shipping method with no courier quote is hidden, never charged a fallback, Consequences, Context (+1 more)
+Cohesion: 0.33
+Nodes (5): 02 — No fallback; live is the default, Acceptance criteria, Blocked by, Parent, What to build
 
 ### Community 1062 - "parcels.ts"
-Cohesion: 0.13
-Nodes (20): 04 — One box list, Acceptance criteria, Blocked by, Parent, What to build, buildParcels(), itemOf(), kg() (+12 more)
+Cohesion: 0.10
+Nodes (24): 04 — One box list, Acceptance criteria, Blocked by, Parent, What to build, Consequences, Context, Decision (+16 more)
 
 ### Community 1064 - "06 — Prod sign-off"
 Cohesion: 0.33
@@ -3421,24 +3305,24 @@ Cohesion: 0.48
 Nodes (6): google_reviews, idx_google_reviews_card, idx_google_reviews_status, telegram_operators, trg_google_reviews_updated_at, trg_telegram_operators_updated_at
 
 ## Knowledge Gaps
-- **5386 isolated node(s):** `npx`, `supabase`, `vercel`, `supabase`, `AddressActionResult` (+5381 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 6558 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **208 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **5385 isolated node(s):** `npx`, `supabase`, `vercel`, `supabase`, `AddressActionResult` (+5380 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 6557 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **207 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `vitest` to `inventory/actions.ts`, `appointments/settings.ts`, `customize/route.ts`, `drive.ts`, `results.ts`, `showroom-viewer.tsx`, `dimensions.ts`, `costings/page.tsx`, `image-usages.ts`, `seo-actions.ts`, `supabaseAdmin`, `section-editor.tsx`, `quote.ts`, `operators.ts`, `channel-mix.ts`, `easyship/schema.ts`, `blogs/[id]/route.ts`, `composed-price.test.ts`, `assign-prep.ts`, `ecommerce/products.ts`, `xray-assets.ts`, `registry.ts`, `email/index.ts`, `xray-bolster.tsx`, `conform.ts`, `Button`, `parcels.ts`, `package.json`, `google-sync.ts`, `carry-over.test.ts`, `fit.ts`, `places-reviews.ts`, `stripe/sync.ts`, `seed-rule-graphs.ts`, `addons.ts`, `usage-fixtures.ts`, `rules-engine/types.ts`, `section-config.ts`, `slice-05.check.ts`, `referrals/index.ts`, `ingest-gsc.ts`, `telegram-handler.test.ts`, `customization-llm.ts`, `react`, `xray-layout.ts`, `delivery-estimator.tsx`, `pricing-surface.check.ts`, `config-upload/index.ts`, `rowsToCsv`, `order-shipment.ts`, `server.ts`, `transition.ts`, `easyship/sync.ts`, `rules-engine/recommend.ts`, `migrate-public-apply.ts`, `appointment-reminders/route.ts`, `slots.ts`, `permissions.ts`, `SearchVisibilityCard.tsx`, `merchant-feed/route.ts`, `google-status.ts`, `secretMatches`, `shop-listings.ts`, `xray-cross-section.tsx`, `import-drive.ts`, `hold/route.ts`, `rma/actions.ts`, `getLocaleFromPathname`, `price-sync.ts`, `discount-editor-client.tsx`, `media-assets/index.ts`, `members-routes.test.ts`, `csv-import.ts`, `settings-breadcrumbs.ts`, `journey/ingest.ts`, `draft-reply.ts`, `rma/page.tsx`, `milestones/ledger.ts`, `replace.ts`, `exactly-once.test.ts`, `auth/admin.ts`, `next`, `item-image-sync.ts`, `result-stage.ts`, `store.ts`, `locations/index.ts`, `customisation-binding.test.ts`, `role-policy.ts`, `from-inventory.ts`, `customization.ts`, `result-detail-client.tsx`, `xray-pillow.tsx`, `inventory-deduction.ts`, `appointments-calendar.tsx`, `getAuthUser`, `cards.ts`, `faq/index.ts`, `ref_node_assert`, `carry-over.ts`, `commissions/ledger.ts`, `ics.ts`, `completed`, `responses/route.ts`, `[topic]/page.tsx`, `rma/route.ts`, `rules-engine/layout.ts`, `auth/partner.ts`, `dock-chrome.ts`, `routes-guarded.test.ts`, `getSiteOrigin`, `discounts.ts`, `audit-diff.ts`, `order-shipment.test.ts`, `checkout/route.ts`, `contacts.ts`, `input-zoom-safe.test.ts`, `shopify/products.ts`, `users-render.test.tsx`, `sla-reminders/index.ts`, `draft.ts`, `easyship/webhook/route.ts`, `authErrorMessage`, `accept/route.ts`, `components.ts`, `ga-events.ts`, `results-sla/route.ts`, `crawler-activity.ts`, `google-reviews/route.ts`, `stripe/webhook/route.ts`, `referral-rows.tsx`?**
-  _High betweenness centrality (0.135) - this node is a cross-community bridge._
-- **Why does `next` connect `next` to `inventory/actions.ts`, `AnalyticsClient.tsx`, `appointments/settings.ts`, `mbolster-config-client.tsx`, `customize/route.ts`, `cn`, `drive.ts`, `results.ts`, `dimensions.ts`, `types/landing-sections.ts`, `costings/page.tsx`, `journey-tracker.tsx`, `image-usages.ts`, `supabaseAdmin`, `operators.ts`, `blogs/[id]/route.ts`, `test/route.ts`, `assign-prep.ts`, `whatsapp/route.ts`, `orders-dashboard.ts`, `ecommerce/products.ts`, `registry.ts`, `package.json`, `Button`, `google-sync.ts`, `places-reviews.ts`, `stripe/sync.ts`, `suggest/route.ts`, `rules-engine/index.ts`, `addons.ts`, `referrals/index.ts`, `react`, `staff-assist-panel.tsx`, `delivery-estimator.tsx`, `[card]/page.tsx`, `config-upload/index.ts`, `order-shipment.ts`, `server.ts`, `easyship/sync.ts`, `Badge`, `appointment-reminders/route.ts`, `AddressesClient`, `slots.ts`, `permissions.ts`, `order-mirror-catchup.ts`, `buildPageMetadata`, `SearchVisibilityCard.tsx`, `page-faq/index.ts`, `google-status.ts`, `secretMatches`, `shop-listings.ts`, `firmness-compare-section.tsx`, `import-drive.ts`, `hold/route.ts`, `rma/actions.ts`, `getLocaleFromPathname`, `isValidSurfaceKey`, `exchange-rates.ts`, `locales.ts`, `pre-order-restock.ts`, `configure/save/route.ts`, `discount-editor-client.tsx`, `media-assets/index.ts`, `product-slide-sections/types.ts`, `ecommerce.ts`, `journey/ingest.ts`, `rma/page.tsx`, `shopify/sync.ts`, `ProductSlideSection`, `workbench.tsx`, `auth/admin.ts`, `partners/index.ts`, `apple-cards-carousel.tsx`, `members.ts`, `store.ts`, `locations/index.ts`, `partner-upload/index.ts`, `discovery-source/index.ts`, `result-detail-client.tsx`, `api-request-tracker.tsx`, `staff/admin.ts`, `getAuthUser`, `mp-config-link/route.ts`, `responses/route.ts`, `[topic]/page.tsx`, `rma/route.ts`, `auth/partner.ts`, `syncVariantPricesFromCostings`, `configure/page.tsx`, `getSiteSettings`, `quote/route.ts`, `proxy.ts`, `support-contact-page.tsx`, `getSiteOrigin`, `customise-tier-picker.tsx`, `checkout/route.ts`, `messages/index.ts`, `shopify/webhook/route.ts`, `shopify/products.ts`, `draft.ts`, `easyship/webhook/route.ts`, `accept/route.ts`, `measurement-grid-section.tsx`, `results-sla/route.ts`, `shopify-sales-section.tsx`, `vitest`, `google-reviews/route.ts`, `faq-content.tsx`, `mp-config-client.tsx`, `stripe/webhook/route.ts`?**
-  _High betweenness centrality (0.104) - this node is a cross-community bridge._
-- **Why does `supabaseAdmin()` connect `supabaseAdmin` to `inventory/actions.ts`, `AnalyticsClient.tsx`, `customize/route.ts`, `results.ts`, `dimensions.ts`, `types/landing-sections.ts`, `seo-actions.ts`, `operators.ts`, `channel-mix.ts`, `blogs/[id]/route.ts`, `test/route.ts`, `assign-prep.ts`, `whatsapp/route.ts`, `orders-dashboard.ts`, `ecommerce/products.ts`, `email/index.ts`, `order-mirror-ingest.ts`, `google-sync.ts`, `stripe/sync.ts`, `seed-rule-graphs.ts`, `telegram-handler.ts`, `rules-engine/index.ts`, `addons.ts`, `usage-fixtures.ts`, `referrals/index.ts`, `customization-llm.ts`, `config-upload/index.ts`, `order-shipment.ts`, `server.ts`, `transition.ts`, `rules-engine/recommend.ts`, `migrate-public-apply.ts`, `appointment-reminders/route.ts`, `slots.ts`, `order-mirror-catchup.ts`, `SearchVisibilityCard.tsx`, `page-faq/index.ts`, `secretMatches`, `shop-listings.ts`, `ProspectJourneyCard.tsx`, `import-drive.ts`, `hold/route.ts`, `rma/actions.ts`, `price-sync.ts`, `isValidSurfaceKey`, `mp-config/page.tsx`, `exchange-rates.ts`, `locales.ts`, `pre-order-restock.ts`, `configure/save/route.ts`, `media-assets/index.ts`, `csv-import.ts`, `ecommerce.ts`, `rma/page.tsx`, `journey/ingest.ts`, `shopify/sync.ts`, `channel-sales.ts`, `auth/admin.ts`, `next`, `partners/index.ts`, `members.ts`, `store.ts`, `locations/index.ts`, `partner-upload/index.ts`, `from-inventory.ts`, `discovery-source/index.ts`, `result-detail-client.tsx`, `inventory-deduction.ts`, `staff/admin.ts`, `getAuthUser`, `faq/index.ts`, `mp-config-link/route.ts`, `commissions/ledger.ts`, `responses/route.ts`, `[topic]/page.tsx`, `rma/route.ts`, `answer-lede-coverage.check.ts`, `auth/partner.ts`, `syncVariantPricesFromCostings`, `getSiteSettings`, `detail-prep.ts`, `quote/route.ts`, `proxy.ts`, `discounts.ts`, `partner-commissions/page.tsx`, `checkout/route.ts`, `shopify/webhook/route.ts`, `draft.ts`, `easyship/webhook/route.ts`, `accept/route.ts`, `results-sla/route.ts`, `shopify-sales-section.tsx`, `stripe/webhook/route.ts`?**
-  _High betweenness centrality (0.098) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `inventory/actions.ts`, `AnalyticsClient.tsx`, `appointments/settings.ts`, `mp-config-client.tsx`, `hold/route.ts`, `settings-sidebar-nav.tsx`, `drive.ts`, `dimensions.ts`, `types/landing-sections.ts`, `costings/page.tsx`, `journey-tracker.tsx`, `image-usages.ts`, `supabaseAdmin`, `operators.ts`, `blogs/[id]/route.ts`, `test/route.ts`, `templates/route.ts`, `whatsapp/route.ts`, `server.ts`, `product-editor-client.tsx`, `dropdown-menu.tsx`, `package.json`, `cn`, `contact-sheet.ts`, `places-reviews.ts`, `stripe/sync.ts`, `suggest/route.ts`, `rules-engine/index.ts`, `addons.ts`, `referrals/index.ts`, `customize/route.ts`, `Button`, `Locale`, `[card]/page.tsx`, `config-upload/index.ts`, `order-shipment.ts`, `backup-email/route.ts`, `Badge`, `err`, `mappings/route.ts`, `slots.ts`, `permissions.ts`, `order-mirror-catchup.ts`, `messages/index.ts`, `SearchVisibilityCard.tsx`, `ecommerce/products.ts`, `page-faq/index.ts`, `google-status.ts`, `access.ts`, `shop-listings.ts`, `firmness-compare-section.tsx`, `import-drive.ts`, `requireAdmin`, `rma/actions.ts`, `app/layout.tsx`, `exchange-rates.ts`, `google-sync.ts`, `auth/admin.ts`, `configure/save/route.ts`, `product-detail-client.tsx`, `media-assets/index.ts`, `product-slide-sections/types.ts`, `Card`, `journey/ingest.ts`, `shopify/sync.ts`, `workbench.tsx`, `recordAdminAction`, `replace.ts`, `result-stage.ts`, `costings/save/route.ts`, `coupons/[id]/route.ts`, `partners/index.ts`, `members.ts`, `store.ts`, `apple-cards-carousel.tsx`, `locations/index.ts`, `partner-upload/index.ts`, `[id]/refund-request/route.ts`, `discovery-source/index.ts`, `customers/[id]/route.ts`, `vitest`, `result-detail-client.tsx`, `api-request-tracker.tsx`, `inventory-deduction.ts`, `staff/admin.ts`, `page-dock-actions.ts`, `[id]/reorder/route.ts`, `MagicBento.jsx`, `refund/route.ts`, `responses/route.ts`, `topic-reviews-loader.ts`, `book/route.ts`, `pick-mpillow-section.tsx`, `syncVariantPricesFromCostings`, `telegram/webhook/route.ts`, `secretMatches`, `@supabase/supabase-js`, `withLocale`, `app-dock.tsx`, `partners-page/route.ts`, `getSiteOrigin`, `discounts.ts`, `sets/[id]/route.ts`, `marquee-section.tsx`, `POST`, `shopify/webhook/route.ts`, `commitment-cards-section.tsx`, `pricing.ts`, `requireAdminContext`, `easyship.test.ts`, `stripe/webhook/route.ts`, `measurement-grid-section.tsx`, `results-sla/route.ts`, `shopify-sales-section.tsx`, `faq-content.tsx`?**
+  _High betweenness centrality (0.119) - this node is a cross-community bridge._
+- **Why does `vitest` connect `vitest` to `inventory/actions.ts`, `mp-config-client.tsx`, `hold/route.ts`, `settings-sidebar-nav.tsx`, `drive.ts`, `showroom-viewer.tsx`, `dimensions.ts`, `image-usages.ts`, `assertAdmin`, `supabaseAdmin`, `copy-fit.check.ts`, `quote.ts`, `operators.ts`, `channel-mix.ts`, `easyship/schema.ts`, `blogs/[id]/route.ts`, `templates/route.ts`, `server.ts`, `mp-config/page.tsx`, `xray-assets.ts`, `staff-assist.ts`, `registry.ts`, `product-editor-client.tsx`, `templates.ts`, `email/index.ts`, `cn`, `calendar.ts`, `parcels.ts`, `contact-sheet.ts`, `business-profile.ts`, `carry-over.test.ts`, `fit.ts`, `places-reviews.ts`, `conform.ts`, `rules-engine/recommend.ts`, `stripe/sync.ts`, `addons.ts`, `usage-fixtures.ts`, `rules-engine/types.ts`, `detail-prep.ts`, `referrals/index.ts`, `section-surfaces.check.ts`, `ingest-gsc.ts`, `telegram-handler.test.ts`, `customize/route.ts`, `Button`, `booking-flow.tsx`, `Locale`, `pricing-surface.check.ts`, `config-upload/index.ts`, `build-assembly/index.ts`, `rowsToCsv`, `xray-layout.ts`, `transition.ts`, `err`, `migrate-public-apply.ts`, `rma.ts`, `slots.ts`, `permissions.ts`, `messages/index.ts`, `SearchVisibilityCard.tsx`, `ecommerce/products.ts`, `google-status.ts`, `page-faq/index.ts`, `access.ts`, `shop-listings.ts`, `xray-cross-section.tsx`, `import-drive.ts`, `product-slide-section-renderer.tsx`, `requireAdmin`, `rma/actions.ts`, `price-sync.ts`, `product-detail-client.tsx`, `media-assets/index.ts`, `fake-admin.ts`, `csv-import.ts`, `Card`, `settings-breadcrumbs.ts`, `draft-reply.ts`, `milestones/ledger.ts`, `replace.ts`, `exactly-once.test.ts`, `reply-rules.ts`, `result-stage.ts`, `item-image-sync.ts`, `recordAdminAction`, `members.ts`, `store.ts`, `locations/index.ts`, `customisation-binding.test.ts`, `[id]/refund-request/route.ts`, `from-inventory.ts`, `result-detail-client.tsx`, `xray-pillow.tsx`, `inventory-deduction.ts`, `appointments-calendar.tsx`, `next`, `cards.ts`, `locale.ts`, `page-dock-actions.ts`, `[id]/reorder/route.ts`, `package.json`, `ref_node_assert`, `refund/route.ts`, `commissions/ledger.ts`, `ics.ts`, `refundPayment`, `responses/route.ts`, `topic-reviews-loader.ts`, `create.ts`, `rules-engine/layout.ts`, `book/route.ts`, `telegram/webhook/route.ts`, `staff-edit.ts`, `secretMatches`, `cells.test.ts`, `@supabase/supabase-js`, `withLocale`, `app-dock.tsx`, `cost-column-grants.test.ts`, `getSiteOrigin`, `discounts.ts`, `webhook/__tests__/route.test.ts`, `checkout.test.ts`, `tabs-mobile.test.ts`, `POST`, `contacts.ts`, `input-zoom-safe.test.ts`, `pricing.ts`, `requireAdminContext`, `easyship.test.ts`, `stripe/webhook/route.ts`, `components.ts`, `results-sla/route.ts`, `crawler-activity.ts`, `reviews/__tests__/route.test.ts`, `money-ledger.ts`?**
+  _High betweenness centrality (0.119) - this node is a cross-community bridge._
+- **Why does `supabaseAdmin()` connect `supabaseAdmin` to `inventory/actions.ts`, `AnalyticsClient.tsx`, `appointments/settings.ts`, `hold/route.ts`, `settings-sidebar-nav.tsx`, `dimensions.ts`, `costings/page.tsx`, `image-usages.ts`, `assertAdmin`, `operators.ts`, `channel-mix.ts`, `blogs/[id]/route.ts`, `test/route.ts`, `templates/route.ts`, `whatsapp/route.ts`, `server.ts`, `mp-config/page.tsx`, `email/index.ts`, `business-profile.ts`, `stripe/sync.ts`, `rules-engine/recommend.ts`, `telegram-handler.ts`, `rules-engine/index.ts`, `addons.ts`, `usage-fixtures.ts`, `detail-prep.ts`, `referrals/index.ts`, `customize/route.ts`, `config-upload/index.ts`, `order-shipment.ts`, `backup-email/route.ts`, `transition.ts`, `err`, `migrate-public-apply.ts`, `mappings/route.ts`, `rma.ts`, `slots.ts`, `permissions.ts`, `order-mirror-catchup.ts`, `messages/index.ts`, `ecommerce/products.ts`, `page-faq/index.ts`, `access.ts`, `shop-listings.ts`, `ProspectJourneyCard.tsx`, `import-drive.ts`, `requireAdmin`, `rma/actions.ts`, `price-sync.ts`, `exchange-rates.ts`, `held`, `google-sync.ts`, `auth/admin.ts`, `configure/save/route.ts`, `media-assets/index.ts`, `csv-import.ts`, `Card`, `journey/ingest.ts`, `shopify/sync.ts`, `channel-sales.ts`, `recordAdminAction`, `reply-rules.ts`, `result-stage.ts`, `costings/save/route.ts`, `coupons/[id]/route.ts`, `partners/index.ts`, `members.ts`, `store.ts`, `locations/index.ts`, `partner-upload/index.ts`, `[id]/refund-request/route.ts`, `from-inventory.ts`, `discovery-source/index.ts`, `customers/[id]/route.ts`, `vitest`, `result-detail-client.tsx`, `inventory-deduction.ts`, `order-mirror-ingest.ts`, `staff/admin.ts`, `next`, `[id]/reorder/route.ts`, `refund/route.ts`, `commissions/ledger.ts`, `responses/route.ts`, `topic-reviews-loader.ts`, `answer-lede-coverage.check.ts`, `book/route.ts`, `google-actions.ts`, `pick-mpillow-section.tsx`, `syncVariantPricesFromCostings`, `telegram/webhook/route.ts`, `staff-edit.ts`, `secretMatches`, `@supabase/supabase-js`, `withLocale`, `partners-page/route.ts`, `getSiteOrigin`, `discounts.ts`, `sets/[id]/route.ts`, `POST`, `shopify/webhook/route.ts`, `pricing.ts`, `requireAdminContext`, `easyship.test.ts`, `stripe/webhook/route.ts`, `results-sla/route.ts`, `shopify-sales-section.tsx`?**
+  _High betweenness centrality (0.110) - this node is a cross-community bridge._
 - **Are the 6 inferred relationships involving `Button()` (e.g. with `Further Notes` and `Implementation Decisions`) actually correct?**
   _`Button()` has 6 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 7 inferred relationships involving `requireAdmin()` (e.g. with `PRD: Guest Result Ownership — the Result id stops being a password` and `Problem Statement`) actually correct?**
   _`requireAdmin()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `npx`, `supabase`, `vercel` to the rest of the system?**
-  _5386 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _5385 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `inventory/actions.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.03193403298350825 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.053005464480874315 - nodes in this community are weakly interconnected._

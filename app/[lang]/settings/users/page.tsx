@@ -3,7 +3,8 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { listMembers, listRoles } from "@/lib/auth/members";
 import { listStaffProfiles } from "@/lib/staff/admin";
 import { listTelegramLinks } from "@/lib/telegram/operators";
-import { UsersClient, parseUsersTab } from "./users-client";
+import { UsersClient } from "./users-client";
+import { parseUsersTab } from "./tabs";
 
 export const runtime = "nodejs";
 
