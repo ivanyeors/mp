@@ -4,7 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { COURIER_PIN_ERROR, courierPinned, LIVE_PRICE_ERROR, LiveRateFields, livePriced } from "@/lib/shipping/method-schema";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   const includeInactive = searchParams.get("include_inactive") === "1";
   const adminCtx = includeInactive ? await getAdminContext() : null;
   const canIncludeInactive =
-    adminCtx != null && roleHasPermission(adminCtx.role, "shipping");
+    adminCtx != null && hasPermission(adminCtx, "shipping");
 
   try {
     const rows = await readShippingMethods(canIncludeInactive, country);

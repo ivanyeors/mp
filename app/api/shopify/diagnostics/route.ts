@@ -10,7 +10,7 @@ type BuildableRow = { kind: string; size: string; buildable: number | string }
 
 export async function GET() {
   try {
-    const denied = await requireAdmin('inventory')
+    const denied = await requireAdmin('shopify-link')
     if (denied) return denied
     const env = getShopifyEnv()
     const admin = supabaseAdmin()

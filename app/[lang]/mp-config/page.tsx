@@ -5,7 +5,7 @@ import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
 import { getAdminContext } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
 import { loadResumeFinish } from "@/lib/results/resume-finish";
@@ -110,8 +110,8 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         // Assist edits a live Result — size, tier, filling mix — so it needs the
         // `results` permission, not mere back-office membership. `viewer` is the
         // read-only role and must not reach the editor.
-        staffAssist={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
-        canViewResults={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
+        staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
+        canViewResults={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         // Assist link (PRD staff-assisted-customisation). Deliberately NOT merged
         // into `staffAssist` above: that gate governs the x-ray editor and turns
         // on a Staff SESSION, while a customer holding a link has no admin_users

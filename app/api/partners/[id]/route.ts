@@ -25,7 +25,7 @@ const UpdateSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, { params }: RouteParams) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   const { id } = await params;
@@ -71,7 +71,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   const { id } = await params;

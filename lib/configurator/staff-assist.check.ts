@@ -218,17 +218,17 @@ const page = readFileSync("app/[lang]/mp-config/page.tsx", "utf8");
 assert.match(page, /getAdminContext/, "server page resolves the Staff check");
 assert.match(
   page,
-  /roleHasPermission\(staffCtx\.role, "results"\)/,
+  /hasPermission\(staffCtx, "results"\)/,
   "assist mode needs the results permission, not mere back-office membership",
 );
 assert.match(
   page,
-  /staffAssist=\{Boolean\(staffCtx && roleHasPermission\(staffCtx\.role, "results"\)\)\}/,
+  /staffAssist=\{Boolean\(staffCtx && hasPermission\(staffCtx, "results"\)\)\}/,
   "page passes the gate as a boolean prop",
 );
 assert.match(
   readFileSync("app/[lang]/mbolster-config/page.tsx", "utf8"),
-  /staffAssist=\{Boolean\(staffCtx && roleHasPermission\(staffCtx\.role, "results"\)\)\}/,
+  /staffAssist=\{Boolean\(staffCtx && hasPermission\(staffCtx, "results"\)\)\}/,
   "bolster surface gates assist the same way",
 );
 

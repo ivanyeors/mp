@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { secretMatches } from "@/lib/auth/secret";
 import { getAdminContext } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   APPOINTMENT_SETTING_KEYS,
@@ -28,7 +28,7 @@ function authorizeCron(req: Request): boolean {
 async function authorize(req: Request): Promise<boolean> {
   if (authorizeCron(req)) return true;
   const ctx = await getAdminContext();
-  return ctx != null && roleHasPermission(ctx.role, "results");
+  return ctx != null && hasPermission(ctx, "results");
 }
 
 /**

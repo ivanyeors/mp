@@ -82,7 +82,7 @@ async function assertFillingLines(
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const { searchParams } = new URL(req.url)
@@ -203,7 +203,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)
@@ -360,7 +360,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)

@@ -11,7 +11,7 @@ type Ctx = { params: Promise<{ flow: string }> };
 export async function POST(_req: Request, ctx: Ctx) {
   let authorId: string | null = null;
   try {
-    const admin = await requireAdminContext("page-builder");
+    const admin = await requireAdminContext("rules-engine");
     authorId = admin.userId;
   } catch (res) {
     return res as NextResponse;

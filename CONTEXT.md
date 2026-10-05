@@ -237,8 +237,36 @@ The signed-in **Customer** account entry from the storefront Menu pill (opens `/
 _Avoid_: adding a second Profile control on the landing dock
 
 **Staff**:
-An authorized back-office actor: active row in `admin_users`, or bootstrap allowlist. Shares the same Supabase session as a possible **Customer** record; when both apply, **Staff** wins for Menu chrome.
+An authorized back-office actor: a signed-in, active **Member** (or bootstrap allowlist). Shares the same Supabase session as a possible **Customer** record; when both apply, **Staff** wins for Menu chrome.
 _Avoid_: treating every signed-in user as staff; calling the back office “Settings” in UI copy; saying “admin” in product language when you mean **Staff**
+
+**Users & permissions**:
+The **Admin Panel** page at `/settings/users` that manages **Members**, **Roles**, **Staff profiles** and **Telegram links** in one place, built like GitHub's organisation settings (ADR 0023). Tabs: Members, Staff profiles, Roles (the permission matrix) and Telegram. Guarded by the `users` **Permission**.
+_Avoid_: "Admin Users" and "Staff Management" (retired page names — their URLs redirect to the matching tab)
+
+**Member**:
+One **Admin Panel** login: an `admin_users` row, bound to an auth user on first sign-in with the invited email. Holds exactly one **Role**. States: **Invited** (no auth user bound yet), **Active**, **Deactivated**. A signed-in active Member is **Staff**. A Member can hold several **Staff profiles** (a shared studio account) or one (a personal login).
+_Avoid_: "admin user" (collides with the **Admin** role); "user" in code (collides with **Customer** and `by_user`); a Member as a person — the person is the **Staff profile**
+
+**Role**:
+A named set of **Permissions** (`admin_roles`). **Owner** and **Admin** are built in, locked, and grant every permission, including pages added later. Every other role is a **custom role**: editable on **Users & permissions** → Roles, and granted a new page only when someone ticks it. Nobody who is not Owner or Admin can create, edit or assign a role that holds a permission they lack.
+_Avoid_: treating the role name as the authority — code checks **Permissions**, never role names; per-member exceptions (a one-off access pattern is a new custom role)
+
+**Permission**:
+One entry in the code catalog (`lib/auth/permissions.ts`): an **Admin Panel** page (one sidebar entry, its URL and every API behind it) or a **Telegram action**. A **Role** either has it or does not; there is no per-member override and, in v1, no view-only level. Some pages require another (Page Builder, Blogs, Partners and Products pick images, so they require Media); ticking one ticks its requirements.
+_Avoid_: "scope"; a key that gates several pages (the catalog is one key per page); hiding a page in the sidebar as the only protection — its URL and APIs refuse too
+
+**Owner**:
+The built-in **Role** that can grant or remove Owner. There is always at least one active Owner; the last one cannot be demoted or deactivated. A bootstrap-allowlisted email that signs in with no **Member** row is provisioned as Owner.
+_Avoid_: using Owner for day-to-day access — **Admin** has every page too
+
+**Staff profile**:
+A named person who works under a **Member** (`mp_staff`). A **Result** is "measured by" a Staff profile, and a **Telegram link** belongs to one. A profile cannot sign in and never has more access than its Member. Archived, never deleted, so historical attribution survives; archived profiles drop out of pickers but keep their name on old **Results**. On a shared login, the person at the device can pick who they are "working as", which defaults new Results' measured-by and names them in the Audit Log — attribution, never authorisation.
+_Avoid_: "staff member" (ambiguous with **Staff**); treating a profile as a login
+
+**Telegram link**:
+A **Staff profile**'s bound Telegram user id (redeemed with a one-time `/link` code) plus the **Telegram actions** granted to it (reply to Google reviews, moderate **Shop reviews**). Effective access = the Member's **Role** permissions ∩ the link's granted actions, and only while the profile and the **Member** are both active — deactivating a login silences every Telegram account under it.
+_Avoid_: a list of Telegram people separate from logins (the retired **Telegram operator** list); granting a link an action its login's role does not hold
 
 **Staff assist mode**:
 Extra configuration controls on the customisation preview (**Your Custom Mpillow** / parallel bolster preview) that appear only when **Staff** is signed in. Used on a shared in-store device — the shopper uses Staff’s device; no separate customer session or multi-device sync. Guests (no **Staff** session) see the normal preview with no filling editors — cover/case/**Add-on** flow unchanged. Layout: **left** = pillow silhouette (cover/case overlays + selected **Add-on** preview images under it) and, when Staff, the **x-ray filling editor**; **right** = shopper controls including **Add-on** selection, cover, case, contact, discovery, shipping, hold CTA.
@@ -358,8 +386,8 @@ Which kind of reply a **Google review** gets, chosen from its star rating in cod
 _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
 
 **Telegram operator**:
-A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
-_Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login
+Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards** only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action can act. The old **Review manager** maps to both Telegram actions, **Shop moderator** to moderating **Shop reviews** only.
+_Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
 
 ## Shipping (ADR 0020, ADR 0022)
 

@@ -22,7 +22,7 @@ import { sendPayoutMadeEmail } from "@/lib/email/partner";
  * AND a proof image (AC2).
  */
 export async function recordPayoutAction(formData: FormData): Promise<void> {
-  const actor = await assertAdmin("page-builder");
+  const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();
 
   const partnerId = String(formData.get("partner_id") ?? "");

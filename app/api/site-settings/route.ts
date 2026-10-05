@@ -11,6 +11,15 @@ export const runtime = "nodejs";
 type SiteSettingRow = { key: string; value: string; updated_at: string | null };
 
 /**
+ * This route answers to `media`, so it only serves the Media page's landing
+ * image slots (`landing_*` and their `landing_*_asset_id`). Every other key
+ * (return address, ops email, booking URLs, …) has its own route gated by its
+ * own page; letting `media` reach them would let any role with Blogs or
+ * Products (which tick Media) rewrite them.
+ */
+const isLandingKey = (key: string) => key.startsWith("landing_");
+
+/**
  * Site settings change rarely and are read on nearly every admin screen, so the
  * DB read is cached and invalidated by every writer via the `site-settings` tag.
  * Uses the service-role client only — no cookies/headers inside the cached fn.
@@ -31,12 +40,11 @@ const readSiteSettings = unstable_cache(
 
 /**
  * GET /api/site-settings
- * Optionally accepts ?keys=key1,key2 to filter.
- * Staff only: rows include ops emails and appointment settings. Public pages read
- * lib/site-settings on the server.
+ * Optionally accepts ?keys=key1,key2 to filter. Landing slot keys only.
+ * Public pages read lib/site-settings on the server.
  */
 export async function GET(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("media");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
@@ -52,7 +60,11 @@ export async function GET(req: Request) {
     if (keys && keys.length > 50) {
       return NextResponse.json({ error: "Too many keys (max 50)" }, { status: 400 });
     }
-    const settings = await readSiteSettings(keys && keys.length > 0 ? keys : null);
+    if (keys?.some((k) => !isLandingKey(k))) {
+      return NextResponse.json({ error: "Only landing_* keys are served here" }, { status: 403 });
+    }
+    const rows = await readSiteSettings(keys && keys.length > 0 ? keys : null);
+    const settings = rows.filter((r) => isLandingKey(r.key));
     return NextResponse.json({ ok: true, settings });
   } catch (err) {
     return NextResponse.json(
@@ -70,7 +82,7 @@ export async function GET(req: Request) {
  * dual-writes companion key `landing_*_asset_id` (slice 15).
  */
 export async function PUT(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("media");
   if (denied) return denied;
 
   try {
@@ -86,6 +98,9 @@ export async function PUT(req: Request) {
     }
     if (value === undefined || value === null || typeof value !== "string") {
       return NextResponse.json({ error: "Missing or invalid 'value'" }, { status: 400 });
+    }
+    if (!isLandingKey(key)) {
+      return NextResponse.json({ error: "Only landing_* keys are written here" }, { status: 403 });
     }
 
     const admin = supabaseAdmin();
@@ -140,7 +155,7 @@ export async function PUT(req: Request) {
  * Also clears companion landing_*_asset_id when resetting a landing slot.
  */
 export async function DELETE(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("media");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
@@ -148,6 +163,9 @@ export async function DELETE(req: Request) {
 
   if (!key) {
     return NextResponse.json({ error: "Missing 'key' query param" }, { status: 400 });
+  }
+  if (!isLandingKey(key)) {
+    return NextResponse.json({ error: "Only landing_* keys are removed here" }, { status: 403 });
   }
 
   const admin = supabaseAdmin();

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { OverlayFitSchema, overlayFrame } from "./overlays";
+import { permissionForHref } from "../auth/permissions";
 
 /** Bounds the workbench slider must not exceed (mirrors OverlayFitSchema). */
 const SCALE_BOUNDS = { min: 0.2, max: 3 };
@@ -37,8 +38,8 @@ assert.match(productsClient, /<TabsTrigger value="visualize">Product Visualize</
 assert.match(productsClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
 assert.match(
   readFileSync("app/[lang]/settings/products/page.tsx", "utf8"),
-  /roleHasPermission\(ctx\.role, "page-builder"\)/,
-  "tab keeps the page-builder perm gating",
+  /requireAdminPage\("products"/,
+  "the tab shares the Products page's permission (ADR 0023)",
 );
 assert.match(
   readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8"),
@@ -48,11 +49,8 @@ assert.match(
 const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
 const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing Site"'));
 assert.doesNotMatch(nav, /\/settings\/product-builder"/, "no standalone Product Builder nav entry");
-assert.match(
-  storeGroup,
-  /\/settings\/product-builder\/rules-engine"[^}]*perm: "page-builder"/,
-  "Rules Engine stays under Store > Products, page-builder gated",
-);
+assert.match(storeGroup, /\/settings\/product-builder\/rules-engine"/, "Rules Engine stays under Store > Products");
+assert.equal(permissionForHref("/settings/product-builder/rules-engine"), "rules-engine", "Rules Engine has its own key");
 
 // --- Visual workbench: the stage renders what the configurator renders ---
 const bench = readFileSync("components/product-builder/overlay-workbench.tsx", "utf8");

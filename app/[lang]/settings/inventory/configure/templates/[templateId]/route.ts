@@ -50,7 +50,7 @@ async function assertFillingLines(
 }
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId: string }> }) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const { templateId } = await ctx.params
@@ -153,7 +153,7 @@ const UpdateSchema = z.object({
 })
 
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId: string }> }) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const { templateId } = await ctx.params

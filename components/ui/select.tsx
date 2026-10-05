@@ -289,4 +289,15 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
 SelectItem.displayName = "SelectItem";
 (SelectItem as unknown as { [SELECT_ITEM_MARK]: true })[SELECT_ITEM_MARK] = true;
 
-export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
+/** A non-selectable heading between groups of items. */
+function SelectGroupLabel({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      role="presentation"
+      className={cn("px-2 pb-1 pt-2 text-xs font-medium text-muted-foreground first:pt-1", className)}
+      {...props}
+    />
+  );
+}
+
+export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroupLabel };

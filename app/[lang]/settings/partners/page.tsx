@@ -17,7 +17,7 @@ export default async function PartnersSettingsRoute({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("partners", locale);
 
   const [row, partners] = await Promise.all([
     getPartnersPageRow(),

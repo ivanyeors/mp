@@ -5,7 +5,7 @@ import { upsertMilestoneRung } from "./milestone-rungs-actions";
  * Admin editor for the milestone rung ladder (#79). Self-contained async server
  * component — reads the rungs and renders a table + a plain server-action form (no
  * client JS). Mounted on the Partner Commissions settings page (which already gates
- * with requireAdminPage('page-builder')); the action re-asserts assertAdmin. Values
+ * with requireAdminPage('partner-commissions')); the action re-asserts assertAdmin. Values
  * here feed both the hub progress bar and the per-unit rate bump (AC5).
  */
 type RungRow = {

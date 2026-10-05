@@ -1,45 +1,37 @@
 /**
- * Telegram RBAC: who may act on review cards in the measurements group.
+ * Telegram actions: what a linked person can do on review cards in the
+ * measurements group (ADR 0023).
  *
- * Same shape as lib/auth/permissions.ts — the role → action matrix lives in
- * code so it is deterministic and unit-testable; the people, their role and
- * whether they are active live in `telegram_operators`, managed from
- * Staff Management → Telegram access.
+ * Each action is a permission catalog key (`telegram.*` in
+ * lib/auth/permissions.ts), so a role grants it on Users & permissions →
+ * Roles like any page. A Telegram link (a Staff profile's bound Telegram
+ * account) lists the actions turned on for that person; a tap needs both.
  *
- * Everyone in the group can SEE the cards. Only a linked, active operator
- * whose role grants the action can press a button that changes something.
+ * Everyone in the group can SEE the cards. Only a linked person whose link and
+ * whose login's role both grant the action can press a button that changes
+ * something.
  */
+import { catalogForSurface, isPermission, permissionEntry, type Permission } from "@/lib/auth/permissions";
 
-export const TELEGRAM_ACTIONS = ["google_review.reply", "shop_review.moderate"] as const;
-export type TelegramAction = (typeof TELEGRAM_ACTIONS)[number];
+export type TelegramAction = Extract<Permission, `telegram.${string}`>;
 
-export const TELEGRAM_ROLES = ["review_manager", "shop_moderator"] as const;
-export type TelegramRole = (typeof TELEGRAM_ROLES)[number];
+export const TELEGRAM_ACTIONS = catalogForSurface("telegram").map((e) => e.key) as TelegramAction[];
 
-/**
- * Review managers speak for the business on Google Maps, so they can also
- * moderate the website's own reviews. Shop moderators only approve or reject
- * website reviews — nothing they do is visible outside mpillow.com.
- */
-export const TELEGRAM_ROLE_ACTIONS: Record<TelegramRole, TelegramAction[]> = {
-  review_manager: ["google_review.reply", "shop_review.moderate"],
-  shop_moderator: ["shop_review.moderate"],
-};
-
-export const TELEGRAM_ROLE_LABELS: Record<TelegramRole, string> = {
-  review_manager: "Review manager",
-  shop_moderator: "Shop moderator",
-};
-
-export const TELEGRAM_ROLE_DESCRIPTIONS: Record<TelegramRole, string> = {
-  review_manager: "Posts replies to Google reviews and approves or rejects shop reviews.",
-  shop_moderator: "Approves or rejects shop reviews only.",
-};
-
-export function isTelegramRole(value: unknown): value is TelegramRole {
-  return typeof value === "string" && (TELEGRAM_ROLES as readonly string[]).includes(value);
+export function isTelegramAction(value: unknown): value is TelegramAction {
+  return isPermission(value) && value.startsWith("telegram.");
 }
 
-export function telegramRoleCan(role: TelegramRole, action: TelegramAction): boolean {
-  return TELEGRAM_ROLE_ACTIONS[role]?.includes(action) ?? false;
+export function telegramActionLabel(action: TelegramAction): string {
+  return permissionEntry(action).label;
+}
+
+export const TELEGRAM_ACTION_DESCRIPTIONS: Record<TelegramAction, string> = {
+  "telegram.google-review-reply":
+    "Post replies to Google reviews (and edit a draft by replying to its card). Speaks for the business on Google Maps.",
+  "telegram.shop-review-moderate": "Approve or reject reviews left on the website. Nothing outside mpillow.com.",
+};
+
+/** "Reply to Google reviews, Moderate shop reviews", or "no actions". */
+export function describeActions(actions: readonly TelegramAction[]): string {
+  return actions.length ? actions.map(telegramActionLabel).join(", ") : "no actions";
 }

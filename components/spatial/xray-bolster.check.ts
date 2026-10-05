@@ -56,7 +56,7 @@ assert.doesNotMatch(renderer, /MAX_PIECES_PER_CELL|Cell full/, "no pillow cap on
 // --- Wiring: staff-gated mount on /mbolster-config ----------------------------
 const page = readFileSync(join(process.cwd(), "app", "[lang]", "mbolster-config", "page.tsx"), "utf8");
 assert.match(page, /getAdminContext\(\)/, "page runs the Staff check");
-assert.match(page, /staffAssist=\{Boolean\(staffCtx && roleHasPermission\(staffCtx\.role, "results"\)\)\}/, "gate passed as a boolean prop, on the results permission");
+assert.match(page, /staffAssist=\{Boolean\(staffCtx && hasPermission\(staffCtx, "results"\)\)\}/, "gate passed as a boolean prop, on the results permission");
 
 const client = readFileSync(
   join(process.cwd(), "app", "[lang]", "mbolster-config", "mbolster-config-client.tsx"),

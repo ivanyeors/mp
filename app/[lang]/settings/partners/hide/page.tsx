@@ -27,7 +27,7 @@ export default async function HidePartnerListingPage({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("partners", locale);
 
   const { partner: partnerId } = await searchParams;
   if (!partnerId || !UUID_RE.test(partnerId)) {
@@ -54,7 +54,7 @@ export default async function HidePartnerListingPage({
 
   async function hide() {
     "use server";
-    await assertAdmin("page-builder");
+    await assertAdmin("partners");
     if (!partnerId || !UUID_RE.test(partnerId)) return;
     await supabaseAdmin().from("partners").update({ visible: false }).eq("id", partnerId);
     invalidateTag("locations");

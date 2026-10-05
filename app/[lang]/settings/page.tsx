@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { Sun, Moon, Monitor, LogOut, Loader2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { AccessDeniedNotice } from "@/components/settings/access-denied-notice";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -26,6 +27,9 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <Suspense fallback={null}>
+        <AccessDeniedNotice />
+      </Suspense>
       <div>
         <h1>General</h1>
         <p className="text-muted-foreground mt-2">Basic preferences for your account.</p>

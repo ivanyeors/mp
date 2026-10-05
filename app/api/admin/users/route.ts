@@ -1,73 +1,59 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
-import { recordAdminAction } from "@/lib/auth/audit";
-import { ADMIN_ROLES } from "@/lib/auth/permissions";
+import { requireAdminContext } from "@/lib/auth/admin";
+import { inviteMember, listMembers, listRoles } from "@/lib/auth/members";
 
 export const runtime = "nodejs";
 
 const InviteSchema = z.object({
   email: z.string().trim().email().max(320),
-  role: z.enum(ADMIN_ROLES).default("staff"),
+  role_id: z.string().uuid(),
+  profile_name: z.string().trim().max(120).nullish(),
 });
 
-/** List all staff members and their roles. */
+/** Every Member and every role, for Users & permissions. */
 export async function GET() {
-  const denied = await requireAdmin("staff");
-  if (denied) return denied;
-
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("admin_users")
-    .select("id, email, role, is_active, auth_user_id, created_at, updated_at")
-    .order("created_at", { ascending: true });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, rows: data ?? [] });
+  try {
+    await requireAdminContext("users");
+  } catch (denied) {
+    return denied as NextResponse;
+  }
+  try {
+    const [members, roles] = await Promise.all([listMembers(), listRoles()]);
+    return NextResponse.json({ ok: true, members, roles });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to load" }, { status: 500 });
+  }
 }
 
 /**
- * Invite a staff member by email. We create the `admin_users` row up front; the
- * person gains access the next time they sign in at the staff login, when
- * `getAdminContext` links their auth id to this row by matching email.
+ * Invite a Member by email with a role the inviter may assign, plus their
+ * first Staff profile, and email them a Sign in link. The row is Invited
+ * until they sign in with that address. A duplicate email is a 409 naming the
+ * existing Member's state; a failed email still returns 201 with
+ * `emailSent: false` so the page can offer Resend.
  */
 export async function POST(req: Request) {
-  const denied = await requireAdmin("staff");
-  if (denied) return denied;
+  let ctx;
+  try {
+    ctx = await requireAdminContext("users");
+  } catch (denied) {
+    return denied as NextResponse;
+  }
 
-  const body = await req.json().catch(() => null);
-  const parsed = InviteSchema.safeParse(body);
+  const parsed = InviteSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
-
-  const email = parsed.data.email.toLowerCase();
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("admin_users")
-    .insert({ email, role: parsed.data.role, is_active: true })
-    .select("id, email, role, is_active, auth_user_id, created_at, updated_at")
-    .single();
-
-  if (error) {
-    const isDup = /duplicate key|unique/i.test(error.message);
-    return NextResponse.json(
-      { error: isDup ? "A staff member with this email already exists" : error.message },
-      { status: isDup ? 409 : 500 },
-    );
+  try {
+    const result = await inviteMember(ctx, {
+      email: parsed.data.email,
+      roleId: parsed.data.role_id,
+      profileName: parsed.data.profile_name,
+    });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true, member: result.member, emailSent: result.emailSent }, { status: 201 });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to invite" }, { status: 500 });
   }
-
-  await recordAdminAction({
-    actor: await getAdminContext(),
-    action: "admin_user.invite",
-    entityType: "admin_user",
-    entityId: data.id,
-    after: data,
-  });
-
-  return NextResponse.json({ ok: true, row: data }, { status: 201 });
 }

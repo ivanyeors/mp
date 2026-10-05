@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
  */
 
 export async function GET() {
-  const denied = await requireAdmin('page-builder')
+  const denied = await requireAdmin('products')
   if (denied) return denied
 
   const admin = supabaseAdmin()
@@ -38,7 +38,7 @@ const UpsertSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin('page-builder')
+  const denied = await requireAdmin('products')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 const DeleteSchema = z.object({ subtype: z.string().min(1) })
 
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin('page-builder')
+  const denied = await requireAdmin('products')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)
