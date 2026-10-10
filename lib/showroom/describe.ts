@@ -17,9 +17,22 @@ export function legendSwatches(unit: ShowroomUnit): { label: string; rgb: [numbe
   });
 }
 
-/** What a part is, in words: a wall piece's own name, else its item's, else the raw item. */
+/**
+ * What a part is, in words: a wall piece's own name, else its item's, else the
+ * raw item. Furniture blocks (role `block`) are edited on the ComfyUI canvas and
+ * come and go with the layout, so their own name is spelled out instead.
+ */
 export function partLabel(unit: ShowroomUnit, part: Pick<ViewerPart, "item" | "role">): string {
-  return unit.pieceNames[`${part.item}:${part.role}`] ?? unit.partNames[part.item] ?? part.item;
+  const named = unit.pieceNames[`${part.item}:${part.role}`] ?? unit.partNames[part.item];
+  if (named) return named;
+  if (part.role === "block") return blockLabel(part.item);
+  return part.item;
+}
+
+/** `waiting_sofa` -> `Waiting sofa`, `bed_2` -> `Bed 2`. */
+function blockLabel(name: string): string {
+  const words = name.replace(/[_-]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** Axis-aligned bounds of a flat xyz list. */

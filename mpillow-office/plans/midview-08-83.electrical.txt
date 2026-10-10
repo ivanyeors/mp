@@ -1,0 +1,109 @@
+# midview-08-83 -- electrical points, from the ID's light plan
+# (../source/lighting Plan - 01 .pdf, LP-02, re-issue 4-10-26), measured off the
+# PDF linework. Heights, switching and the red dashed lines (not in the ID's
+# legend) answered on 2026-10-10 -- see the spec's electrical assumptions.
+#   name  kind  x= z= [y=] [circuit=] [controls=L1,L2] [n=] [w=]  | note
+# GLB frame (X east, Z south, metres), y = height to the accessory centre
+# (default per kind; pendants: the bottom of the shade). Circuit prefix:
+# L lighting, P power, AC aircon.
+
+# ---- L1  entry + lounge ----
+L1-1     pendant    x=1.46 z=1.12 y=2.40 circuit=L1  | warm pendant by the entry
+L1-2     pendant    x=1.46 z=1.78 y=2.40 circuit=L1  | warm pendant by the entry
+L1-3     pendant    x=1.46 z=2.51 y=2.40 circuit=L1  | warm pendant by the entry
+L1-4     pendant    x=1.94 z=4.61 y=2.40 circuit=L1  | warm pendant over the lounge
+L1-5     pendant    x=1.94 z=5.02 y=2.40 circuit=L1  | warm pendant over the lounge
+L1-6     pendant    x=1.94 z=5.46 y=2.40 circuit=L1  | warm pendant over the lounge
+L1-7     spot       x=0.72 z=4.04 circuit=L1  | adjustable spot washing the wall behind the sofas
+L1-8     spot       x=0.72 z=5.03 circuit=L1  | adjustable spot washing the wall behind the sofas
+L1-9     spot       x=0.72 z=6.01 circuit=L1  | adjustable spot washing the wall behind the sofas
+L1-10    spot       x=0.72 z=7.00 circuit=L1  | adjustable spot washing the wall behind the sofas
+
+# ---- L2  centre row + display track ----
+L2-1     pendant    x=3.85 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row
+L2-2     pendant    x=5.09 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row
+L2-3     pendant    x=6.25 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row
+L2-4     pendant    x=7.26 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row
+L2-5     spot       x=3.37 z=2.36 circuit=L2  | track spot head on the 4.4 m display track (x 3.06-7.47)
+L2-6     spot       x=4.16 z=2.36 circuit=L2  | track spot head on the 4.4 m display track
+L2-7     spot       x=4.95 z=2.36 circuit=L2  | track spot head on the 4.4 m display track
+L2-8     spot       x=5.73 z=2.36 circuit=L2  | track spot head on the 4.4 m display track
+L2-9     spot       x=6.52 z=2.36 circuit=L2  | track spot head on the 4.4 m display track
+L2-10    spot       x=7.31 z=2.36 circuit=L2  | track spot head on the 4.4 m display track
+
+# ---- L3  display linear + wall lights ----
+L3-1     linear     x=3.60 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving
+L3-2     linear     x=4.70 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving
+L3-3     linear     x=5.80 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving
+L3-4     linear     x=6.91 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving
+L3-5     wall_light x=2.48 z=1.64 circuit=L3  | warm wall light on the store wall, facing the entry
+L3-6     wall_light x=2.27 z=0.13 circuit=L3  | warm wall light on the north wall by the store door
+L3-7     wall_light x=8.44 z=0.73 circuit=L3  | warm wall light in the column niche by the pantry
+
+# ---- L4  store ----
+L4-1     linear     x=3.60 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle
+L4-2     linear     x=4.70 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle
+L4-3     linear     x=5.80 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle
+L4-4     linear     x=6.91 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle
+
+# ---- L5  work table (own switch) ----
+L5-1     pendant    x=9.94 z=3.57 y=1.90 circuit=L5  | warm pendant low over the work table
+L5-2     pendant    x=9.94 z=4.30 y=1.90 circuit=L5  | warm pendant low over the work table
+L5-3     pendant    x=9.94 z=5.04 y=1.90 circuit=L5  | warm pendant low over the work table
+L5-4     pendant    x=9.94 z=5.77 y=1.90 circuit=L5  | warm pendant low over the work table
+
+# ---- L6  pantry + tables ----
+L6-1     pendant    x=8.79 z=1.58 y=2.40 circuit=L6  | warm pendant in the pantry passage
+L6-2     pendant    x=8.79 z=1.91 y=2.40 circuit=L6  | warm pendant in the pantry passage
+L6-3     pendant    x=9.74 z=7.59 y=2.10 circuit=L6  | warm pendant over the tables
+L6-4     pendant    x=10.12 z=7.59 y=2.10 circuit=L6  | warm pendant over the tables
+
+# ---- L7  concealed LED strip (the ID's red dashed lines) ----
+L7-1     cove       x=4.41 z=0.13 w=75 circuit=L7  | concealed warm LED strip at the ceiling line, north wall x 0.78-8.03
+L7-2     cove       x=4.40 z=7.96 w=90 circuit=L7  | concealed warm LED strip at the ceiling line, south wall x 0.20-8.03 round the column
+L7-3     cove       x=10.00 z=7.96 w=40 circuit=L7  | concealed warm LED strip at the ceiling line, south wall x 8.03-11.97
+L7-4     cove       x=3.10 z=6.76 w=25 circuit=L7  | concealed warm LED strip along the bay panel edge z 5.63-7.85
+L7-5     cove       x=5.48 z=6.76 w=25 circuit=L7  | concealed warm LED strip along the bay panel edge z 5.63-7.90
+L7-6     cove       x=7.86 z=6.76 w=25 circuit=L7  | concealed warm LED strip along the bay panel edge z 5.63-7.89
+
+# ---- L8  WC (own switch) ----
+L8-1     downlight  x=10.71 z=0.67 circuit=L8  | small warm downlight, IP44
+L8-2     downlight  x=11.44 z=0.67 circuit=L8  | small warm downlight, IP44
+L8-3     downlight  x=11.44 z=1.46 circuit=L8  | small warm downlight, IP44
+L8-4     wall_light x=11.38 z=0.13 circuit=L8  | warm mirror light over the basin, IP44
+
+# ---- L9  patio (not on the ID plan; kept) ----
+L9-1     wall_light x=12.40 z=2.60 y=2.40 circuit=L9  | warm outdoor wall light, IP65
+L9-2     wall_light x=12.40 z=4.60 y=2.40 circuit=L9  | warm outdoor wall light, IP65
+L9-3     wall_light x=12.40 z=7.36 y=2.40 circuit=L9  | warm outdoor wall light, IP65
+
+# ---- switches: one main location, WC and work table apart (confirm on site) ----
+S1       switch     x=0.80 z=3.07 controls=L1,L2,L3,L4,L6,L7,L9  | main bank inside FD2, south jamb
+S2       switch     x=11.10 z=2.03 controls=L8  | outside the WC door
+S3       switch     x=12.24 z=7.36 controls=L5  | on the GD2 pier by the work table
+
+# ---- P1  entry, store, display ----
+P1-1     socket13a  x=0.99 z=0.13 n=2 circuit=P1  | DSO, north wall by the entry
+P1-2     socket13a  x=1.44 z=0.21 y=3.30 circuit=P1  | SSO on the ceiling (CL)
+P1-3     socket13a  x=2.68 z=1.09 y=3.30 circuit=P1  | SSO on the ceiling (CL), store
+P1-4     socket13a  x=6.78 z=1.88 y=1.05 n=2 circuit=P1  | DSO in the store, by the stock shelving
+P1-5     socket13a  x=4.31 z=2.13 y=1.05 n=2 circuit=P1  | DSO in the display shelving
+P1-6     socket13a  x=6.42 z=2.13 y=1.05 n=2 circuit=P1  | DSO in the display shelving
+P1-7     socket13a  x=5.45 z=3.39 y=3.30 circuit=P1  | SSO on the ceiling (CL), mid-room
+
+# ---- P2  bays, tables, GD2 ----
+P2-1     socket13a  x=2.82 z=7.96 n=2 circuit=P2  | DSO, south wall by the bays
+P2-2     socket13a  x=1.67 z=7.68 y=3.30 circuit=P2  | SSO on the ceiling (CL), by the sofas
+P2-3     socket13a  x=9.15 z=7.96 y=1.05 n=2 circuit=P2  | DSO over the tables
+P2-4     socket13a  x=12.09 z=2.33 y=3.30 circuit=P2  | SSO on the ceiling (CL), by the GD2 glazing
+P2-5     socket13a  x=12.09 z=6.92 y=3.30 circuit=P2  | SSO on the ceiling (CL), by the GD2 door
+
+# ---- P3  pantry ----
+P3-1     socket13a  x=9.02 z=0.13 y=1.05 n=2 circuit=P3  | DSO over the pantry counter
+P3-2     socket13a  x=9.95 z=0.36 y=1.05 n=2 circuit=P3  | DSO over the pantry counter
+
+# ---- P4  patio (not on the ID plan; kept) ----
+P4-1     socket13a  x=15.48 z=3.95 n=2 circuit=P4  | weatherproof IP66 twin
+
+# ---- aircon ----
+AC1      isolator   x=12.40 z=0.50 y=1.50 circuit=AC1  | 20 A DP isolator at the condenser on the A/C ledge; indoor units fed from it by the aircon installer

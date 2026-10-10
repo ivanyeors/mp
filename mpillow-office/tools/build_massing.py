@@ -71,6 +71,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import spec as S  # noqa: E402
 
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "comfy_nodes", "mp_blocking"))
+import blocks as BL  # noqa: E402
+
 COMFY_3D = r"D:\AI\ComfyUI\input\3d"
 DEFAULT_SPEC = os.path.join(os.path.dirname(HERE), "plans", "showroom.yaml")
 
@@ -237,6 +240,14 @@ def build(spec):
         for env in S.expand(item, env0):
             emit(item, env)
 
+    for b, mesh in spec_blocks(spec):
+        n = "blk_" + b.name
+        if n in parts:
+            raise S.SpecError("duplicate part name: " + n)
+        parts[n] = _paint(mesh, BLOCK_RGB)
+        kinds[n] = "none"
+        origin[n] = (b.name, "block", "block", "block")
+
     for n, m in parts.items():                     # default classification for plan_check:
         if kinds[n] is None:                       # a wall stands on the floor, is full
             lo, hi = m.bounds                      # height and is not a thin post or fin
@@ -255,6 +266,36 @@ def build(spec):
                 piece = trimesh.util.concatenate([id_parts[key], piece])
             id_parts[key] = _paint(piece, ZONE_RGB[zone])
     return parts, id_parts, {"kinds": kinds, "palette": palette, "origin": origin, "openings": openings}
+
+
+BLOCK_RGB = (205, 200, 190)
+
+
+def spec_blocks(spec):
+    """[(Block, mesh in authoring coordinates)] from the spec's `blocks:` file.
+    Blocks are written in the GLB frame, so with mirror_z each mesh is mirrored
+    here and comes back into place when export() mirrors the model."""
+    if not spec.get("blocks"):
+        return []
+    path = S.resolve_path(spec, spec["blocks"])
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        try:
+            layout = BL.parse(f.read())
+        except BL.LayoutError as e:
+            raise S.SpecError("%s: %s" % (path, e))
+    out_dir = S.resolve_path(spec, (spec.get("output") or {}).get("dir", "../model"))
+    asset_dir = os.path.join(out_dir, "assets", spec["name"])
+    out = []
+    for b in layout:
+        mesh, _ = BL.block_mesh(b, os.path.dirname(path), asset_dir)
+        if spec.get("mirror_z") is not None:
+            mirror = np.diag([1.0, 1.0, -1.0, 1.0])
+            mirror[2, 3] = S.ev(spec["mirror_z"], spec["_env"])
+            mesh.apply_transform(mirror)
+        out.append((b, mesh))
+    return out
 
 
 def zone_regions(spec):

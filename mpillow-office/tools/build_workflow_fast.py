@@ -37,15 +37,13 @@ Licence: Qwen-Image-2.1 and the Viggle turbo are under the Qwen RESEARCH
 LICENSE (non-commercial). Fine for evaluation; clear it before client use.
 """
 
-import json
-import math
 import os
-import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import build_workflow as B  # noqa: E402  (prompts, areas, zones, node helpers)
+import wf  # noqa: E402  (the graph and the turbo-stack building blocks)
 
 ROOT = B.ROOT
 OUT = os.path.join(ROOT, "workflows", "showroom_zoned_fast_16x9.json")
@@ -74,20 +72,8 @@ MODELS = {
 # keeps the composition and re-draws detail. Drop the 0.5 to sharpen only.
 RAW_FULL = [1.0, 0.9375, 0.875, 0.75, 0.5, 0.25]
 RAW_REFINE = [0.5, 0.25]
-CN_STRENGTH = 0.85            # Fun ControlNet on the depth pass: 1.0 traces, 0.6 loose
-MASK_THRESHOLD = 120          # Color To Mask: RGB distance; zone colours are >= 255 apart
-ENC_RES = 1024                # Text Encode Qwen Image 2.1: pixel budget for reference images
 SEEDS = {"mood": 20261004, "sheet": B.SHEET_SEED, "derive": B.DERIVE_SEED,
          "section": B.CN_SEED + B.SECTION_SEED_OFFSET, "free": B.CN_SEED + B.FREE_SEED_OFFSET}
-
-
-def turbo_sigmas(raw, w, h):
-    """The Viggle Turbo Sigmas node, evaluated at build time: diffusers'
-    dynamic exponential shift, mu from the token count of a w x h latent."""
-    tokens = (w // 16) * (h // 16)
-    mu = 0.5 + (0.9 - 0.5) * (tokens - 256) / (8192 - 256)
-    s = [math.exp(mu) / (math.exp(mu) + (1 / t - 1)) for t in raw] + [0.0]
-    return ", ".join("%.6f" % x for x in s)
 
 
 README = (
@@ -130,177 +116,10 @@ MODEL_NOTE = (
 
 
 def main():
-    nodes, links, groups = [], [], []
-    lid = [0]
-    nid = [3000]
-
-    def new(n=1):
-        v = nid[0]
-        nid[0] += n
-        return v
-
-    def add(n):
-        nodes.append(n)
-        return n["id"]
-
-    def link(src, sslot, dst, dslot, typ):
-        lid[0] += 1
-        links.append([lid[0], src, sslot, dst, dslot, typ])
-
-    def group(title, x, y, w, h, color, font=24):
-        groups.append({"id": len(groups) + 1, "title": title, "bounding": [x, y, w, h],
-                       "color": color, "font_size": font, "flags": {}})
-
-    img_id = [20000]                       # path loaders: id and id+400 (its preview)
-
-    def add_image(pos, rel, title, size):
-        i = img_id[0]
-        img_id[0] += 1
-        ns, lk = B.load_image(i, pos, os.path.join(REF_ABS, *rel.split("/")), title, size)
-        nodes.extend(ns)
-        link(*lk)
-        return i
-
-    # ---------------- shared building blocks -------------------------------
-    def encode(pos, title, prompt_src, images=(), size=(420, 160)):
-        """Text Encode Qwen Image 2.1. images = reference image sources, in order."""
-        ins = [inp("clip", "CLIP"), inp("vae", "VAE", optional=True), inp("prompt", "STRING", widget=True)]
-        for k in range(len(images) + 1):          # autogrow: one spare slot
-            d = inp("images.image_%d" % (k + 1), "IMAGE", optional=True)
-            d["localized_name"] = "image_%d" % (k + 1)
-            ins.append(d)
-        e = add(node(new(), "TextEncodeQwenImage21", pos, size, ["", "", ENC_RES], inputs=ins,
-                     outputs=[out("positive", "CONDITIONING"), out("negative", "CONDITIONING"),
-                              out("latent", "LATENT")], title=title))
-        link(CLIP, 0, e, 0, "CLIP")
-        link(VAE, 0, e, 1, "VAE")
-        link(prompt_src, 0, e, 2, "STRING")
-        for k, src in enumerate(images):
-            link(src, 0, e, 3 + k, "IMAGE")
-        return e
-
-    def sample(pos, model, cond, latent, sigmas, seed, title):
-        """RandomNoise + BasicGuider + SamplerCustomAdvanced + VAE Decode.
-        Returns the decode node."""
-        x, y = pos
-        nz = add(node(new(), "RandomNoise", (x, y), (320, 90), [seed, "fixed"],
-                      outputs=[out("NOISE", "NOISE")], title="seed"))
-        gd = add(node(new(), "BasicGuider", (x, y + 120), (320, 50), None,
-                      inputs=[inp("model", "MODEL"), inp("conditioning", "CONDITIONING")],
-                      outputs=[out("GUIDER", "GUIDER")], title="guider (no CFG)"))
-        sm = add(node(new(), "SamplerCustomAdvanced", (x, y + 200), (320, 110), None,
-                      inputs=[inp("noise", "NOISE"), inp("guider", "GUIDER"), inp("sampler", "SAMPLER"),
-                              inp("sigmas", "SIGMAS"), inp("latent_image", "LATENT")],
-                      outputs=[out("output", "LATENT"), out("denoised_output", "LATENT")], title=title))
-        dc = add(node(new(), "VAEDecode", (x, y + 340), (320, 50), [],
-                      inputs=[inp("samples", "LATENT"), inp("vae", "VAE")],
-                      outputs=[out("IMAGE", "IMAGE")], title="VAE Decode"))
-        link(model, 0, gd, 0, "MODEL")
-        link(cond, 0, gd, 1, "CONDITIONING")
-        link(nz, 0, sm, 0, "NOISE")
-        link(gd, 0, sm, 1, "GUIDER")
-        link(SAMPLER, 0, sm, 2, "SAMPLER")
-        link(sigmas, 0, sm, 3, "SIGMAS")
-        link(latent, 0, sm, 4, "LATENT")
-        link(sm, 0, dc, 0, "LATENT")
-        link(VAE, 0, dc, 1, "VAE")
-        return dc
-
-    def empty_latent(pos, w, h, title):
-        return add(node(new(), "EmptyLatentImage", pos, (320, 110), [w, h, 1],
-                        outputs=[out("LATENT", "LATENT")], title=title))
-
-    def sigmas_node(pos, raw, w, h, title):
-        return add(node(new(), "ManualSigmas", pos, (420, 80), [turbo_sigmas(raw, w, h)],
-                        outputs=[out("SIGMAS", "SIGMAS")], title=title))
-
-    def depth_lock(pos, depth_src, title):
-        """Apply Fun ControlNet (depth) as a model patch. Returns the patched model."""
-        c = add(node(new(), "ZImageFunControlnet", pos, (340, 190), [CN_STRENGTH, 0.0, 1.0],
-                     inputs=[inp("model", "MODEL"), inp("model_patch", "MODEL_PATCH"), inp("vae", "VAE"),
-                             inp("image", "IMAGE", optional=True), inp("inpaint_image", "IMAGE", optional=True),
-                             inp("mask", "MASK", optional=True)],
-                     outputs=[out("MODEL", "MODEL")], title=title))
-        link(UNET, 0, c, 0, "MODEL")
-        link(PATCH, 0, c, 1, "MODEL_PATCH")
-        link(VAE, 0, c, 2, "VAE")
-        link(depth_src, 0, c, 3, "IMAGE")
-        return c
-
-    def vae_encode(pos, src, title="-> latent"):
-        e = add(node(new(), "VAEEncode", pos, (320, 50), [],
-                     inputs=[inp("pixels", "IMAGE"), inp("vae", "VAE")],
-                     outputs=[out("LATENT", "LATENT")], title=title))
-        link(src, 0, e, 0, "IMAGE")
-        link(VAE, 0, e, 1, "VAE")
-        return e
-
-    def scale(pos, src, w, h, method, title, crop="disabled"):
-        s = add(node(new(), "ImageScale", pos, (320, 110), [method, w, h, crop],
-                     inputs=[inp("image", "IMAGE")], outputs=[out("IMAGE", "IMAGE")], title=title))
-        link(src, 0, s, 0, "IMAGE")
-        return s
-
-    def crop(pos, src, w, h, x, y, title):
-        c = add(node(new(), "ImageCrop", pos, (320, 130), [w, h, x, y],
-                     inputs=[inp("image", "IMAGE")], outputs=[out("IMAGE", "IMAGE")], title=title))
-        link(src, 0, c, 0, "IMAGE")
-        return c
-
-    def tile(pos, srcs, cols, title):
-        """Batch srcs in order and tile them `cols` wide."""
-        x, y = pos
-        prev = None
-        for k in range(len(srcs) - 1):
-            b = add(image_batch(new(), (x, y + k * 70)))
-            link(srcs[0] if k == 0 else prev, 0, b, 0, "IMAGE")
-            link(srcs[k + 1], 0, b, 1, "IMAGE")
-            prev = b
-        g = add(node(new(), "ImageConcatFromBatch", (x, y + 70 * (len(srcs) - 1) + 10), (320, 110),
-                     [cols, False, 4096], inputs=[inp("images", "IMAGE")],
-                     outputs=[out("IMAGE", "IMAGE")], title=title))
-        link(prev, 0, g, 0, "IMAGE")
-        return g
-
-    def zoned(pos, base_cond, id_src, title):
-        """Six area prompts, each confined to its colour in the ID image, on top
-        of `base_cond` masked to the whole frame; then the ZONING switch picks
-        this or the plain whole-scene prompt. Returns the switch node."""
-        x, y = pos
-        full = add(node(new(), "ConditioningSetMask", (x, y), (300, 110), [B.GLOBAL_STRENGTH, "default"],
-                        inputs=[inp("conditioning", "CONDITIONING"), inp("mask", "MASK")],
-                        outputs=[out("CONDITIONING", "CONDITIONING")], title="whole scene underneath (strength)"))
-        link(base_cond, 0, full, 0, "CONDITIONING")
-        link(FULL_MASK, 0, full, 1, "MASK")
-        prev = full
-        for k, (cname, rgb) in enumerate(B.ZONES):
-            ry = y + 140 + k * 150
-            m = add(node(new(), "ColorToMask", (x, ry), (300, 130),
-                         [False, (rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, MASK_THRESHOLD, 16],
-                         inputs=[inp("images", "IMAGE")], outputs=[out("MASK", "MASK")],
-                         title="%s = area %d" % (cname, k + 1)))
-            sm = add(node(new(), "ConditioningSetMask", (x + 330, ry), (300, 110), [B.ZONE_STRENGTH, "default"],
-                          inputs=[inp("conditioning", "CONDITIONING"), inp("mask", "MASK")],
-                          outputs=[out("CONDITIONING", "CONDITIONING")],
-                          title="area %d prompt, only in its zone" % (k + 1)))
-            cb = add(node(new(), "ConditioningCombine", (x + 660, ry), (220, 60), [],
-                          inputs=[inp("conditioning_1", "CONDITIONING"), inp("conditioning_2", "CONDITIONING")],
-                          outputs=[out("CONDITIONING", "CONDITIONING")], title="+"))
-            link(id_src, 0, m, 0, "IMAGE")
-            link(AREA_COND[k], 0, sm, 0, "CONDITIONING")
-            link(m, 0, sm, 1, "MASK")
-            link(prev, 0, cb, 0, "CONDITIONING")
-            link(sm, 0, cb, 1, "CONDITIONING")
-            prev = cb
-        sw = add(node(new(), "ComfySwitchNode", (x + 660, y), (220, 100), [True],
-                      inputs=[inp("on_false", "CONDITIONING", optional=True),
-                              inp("on_true", "CONDITIONING", optional=True),
-                              inp("switch", "BOOLEAN", widget=True)],
-                      outputs=[out("output", "CONDITIONING")], title=title))
-        link(base_cond, 0, sw, 0, "CONDITIONING")
-        link(prev, 0, sw, 1, "CONDITIONING")
-        link(ZONING, 0, sw, 2, "BOOLEAN")
-        return sw
+    g = wf.Graph()
+    new, add, link, group, add_image = g.new, g.add, g.link, g.group, g.add_image
+    encode, sample, empty_latent, sigmas_node = g.encode, g.sample, g.empty_latent, g.sigmas_node
+    depth_lock, vae_encode, scale, crop, tile, zoned = g.depth_lock, g.vae_encode, g.scale, g.crop, g.tile, g.zoned
 
     # ======================= SHARED LOADERS (section 5.1) ===================
     # Created first so every section can wire to them; drawn at the top of 5.
@@ -329,6 +148,7 @@ def main():
     LAT_W = empty_latent((LX, S5Y + 1230), W, H, "empty latent %d x %d" % (W, H))
     FULL_MASK = add(node(new(), "SolidMask", (LX, S5Y + 1370), (460, 110), [1.0, W, H],
                          outputs=[out("MASK", "MASK")], title="whole frame (any size: masks scale to the latent)"))
+    g.UNET, g.CLIP, g.VAE, g.PATCH, g.SAMPLER, g.ZONING, g.FULL_MASK = UNET, CLIP, VAE, PATCH, SAMPLER, ZONING, FULL_MASK
     add(node(new(), "MarkdownNote", (LX, S5Y + 1510), (460, 620), [MODEL_NOTE], title="5.1  Models and schedule"))
 
     add(node(1, "MarkdownNote", (-3040, -1700), (2100, 520), [README], title="READ ME  --  FAST ZONED VARIANT"))
@@ -427,7 +247,7 @@ def main():
     # ======================= SECTION 5 ======================================
     # 5.9 shared prompt encodes: one per area (<- section 1) + sheet + derive
     EX = S5X + 520
-    AREA_COND = []
+    AREA_COND = g.area_cond
     for k, (slug, _, _) in enumerate(B.AREAS):
         AREA_COND.append(encode((EX, S5Y + 60 + k * 190), "5.9  AREA %d (%s)  <- section 1 prompt" % (k + 1, B.ZONES[k][0]),
                                 AREA_TEXT[k]))
@@ -643,37 +463,7 @@ def main():
     group("SECTION 5  --  RENDERS  (Qwen-Image-2.1 turbo + Fun ControlNet depth + zones:  SHEET, ZONE SECTION, FREE CAMERA)",
           S5X - 20, S5Y - 20, RX + 1300 - S5X, y3 + 1300 - S5Y, B.SECTION_COLORS["s5"])
 
-    # ---------------- resolve links onto slots ------------------------------
-    by_id = {}
-    for n in nodes:
-        if n["id"] in by_id:
-            raise SystemExit("duplicate node id %d" % n["id"])
-        by_id[n["id"]] = n
-    for lk, src, sslot, dst, dslot, typ in links:
-        try:
-            o = by_id[src]["outputs"][sslot]
-            by_id[dst]["inputs"][dslot]
-        except (KeyError, IndexError):
-            raise SystemExit("bad link %d: %s[%d] -> %s[%d]" % (lk, src, sslot, dst, dslot))
-        o.setdefault("links", []).append(lk)
-        by_id[dst]["inputs"][dslot]["link"] = lk
-    for i, n in enumerate(nodes):
-        n["order"] = i
-
-    graph = {"id": "mpillow-showroom-zoned-fast", "revision": 0,
-             "last_node_id": max(by_id), "last_link_id": lid[0],
-             "nodes": nodes, "links": links, "groups": groups,
-             "config": {}, "extra": {}, "version": 0.4}
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w", encoding="utf-8") as f:
-        json.dump(graph, f, indent=2)
-    if os.path.isdir(os.path.dirname(SIDEBAR)):
-        os.makedirs(SIDEBAR, exist_ok=True)
-        shutil.copy(OUT, os.path.join(SIDEBAR, os.path.basename(OUT)))
-    print("nodes:  %d" % len(nodes))
-    print("links:  %d" % len(links))
-    print("wrote:  %s (%s bytes)" % (OUT, format(os.path.getsize(OUT), ",")))
-    print("copied: %s" % SIDEBAR)
+    g.write("mpillow-showroom-zoned-fast", OUT, SIDEBAR)
 
 
 if __name__ == "__main__":

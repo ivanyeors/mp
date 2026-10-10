@@ -1,0 +1,86 @@
+# HDB flat preset for the plan-to-3d skill.
+#
+# When the user says a drawing is an HDB flat, the new spec starts from this
+# file: copy `vars`, `palette`, `zones` and `assumptions` into it, then read
+# the walls off the drawing as usual. Every entry in `assumptions` is put to
+# the user as ONE question ("use the HDB defaults?") instead of one question
+# each. When they accept, each copied entry gets `status: confirmed` and
+# `answer: HDB defaults, accepted`; a value they change is changed in the new
+# spec only, with their answer recorded there.
+#
+# Source: the answers the user gave for the first HDB plan, hdb-4rm-1bh
+# (4-room Type 1B(H), Ulu Pandan C2), on 2026-10-04, which the user expects to
+# hold for HDB flats generally. When a later HDB plan settles something new for
+# good, add it here.
+
+kind: HDB flat
+
+vars:
+  H: 2.60          # floor to ceiling
+  door_h: 2.10     # door head (wall openings of kind door)
+  window_head: 2.10
+  sill_h: 1.00     # bedroom and living windows
+  bath_sill: 1.60  # high-level bath / WC windows
+  parapet_h: 1.00  # A/C ledge and service yard parapets
+  slab: 0.15
+
+palette:
+  shell: [196, 193, 188]
+  structure: [178, 174, 168]
+  floor: [176, 173, 168]
+  glass: [150, 190, 205]
+  ledge: [140, 142, 145]
+
+# Six render colours, grouped by room label. This is the 4-room list; a 3-room
+# flat has no bedroom 3, so leave that zone out (colours follow list order).
+# A 5-room or executive flat has more groups than colours: ask which to merge.
+zones:
+  - {slug: 01-living-dining, label: red}       # living + dining + foyer / corridor
+  - {slug: 02-main-bedroom, label: green}
+  - {slug: 03-bedroom-2, label: blue}
+  - {slug: 04-bedroom-3, label: yellow}
+  - {slug: 05-kitchen-yard, label: magenta}    # kitchen + service yard + A/C ledges
+  - {slug: 06-baths-shelter, label: cyan}      # baths / WCs + household shelter + store
+
+# The HDB defaults question covers all of these at once.
+assumptions:
+  - about: floor-to-ceiling height (H)
+    drawing: not given
+    used: 2.60 m
+  - about: door head height (door_h)
+    drawing: not given
+    used: 2.10 m
+  - about: window sill / head -- bedrooms and living
+    drawing: not given; windows are triple lines in the wall
+    used: sill 1.00 m, head 2.10 m
+  - about: bath / WC windows (dashed in the outer wall)
+    drawing: dashed = high-level ventilation window
+    used: sill 1.60 m, head 2.10 m
+  - about: A/C ledge parapet
+    drawing: not given
+    used: 1.00 m on the ledge's open sides
+  - about: service yard outer side, where the drawing shows no glazing
+    drawing: double line beside the laundry rack
+    used: parapet 1.00 m (parapet_h), open above
+  - about: colour zones
+    used: living + dining + corridor; main bedroom; one zone per other bedroom;
+      kitchen + service yard + A/C ledges; baths + household shelter
+
+# Asked on every HDB plan anyway -- the flat type does not settle them.
+still_ask:
+  - "walls the drawing leaves out or draws dashed, and their doors (hdb-4rm-1bh: no wall drawn on the main bedroom's corridor side -> a wall with a centred 0.9 m door)"
+  - "partitions drawn as glass panels or with folding doors -- build as drawn, or leave open? (hdb-4rm-1bh: kitchen / service yard divider -> fully open)"
+  - "zones, when the flat has more groups than the six colours"
+  - "anything plan_check flags where the drawing disagrees with itself"
+
+# How HDB sales plans draw things (true of hdb-4rm-1bh; confirm on each new one).
+reading:
+  - "solid dark fill = reinforced concrete (structural walls, columns, the household shelter) -> prisms from `plan_read.py solids`"
+  - "double line = non-structural wall, about 0.08-0.13 m -> a `wall` centred between the lines"
+  - "triple line inside a wall = window; a dashed line in a bath's outer wall = high-level window (sill bath_sill)"
+  - "swing arcs = doors; bath doors are often bi-folds drawn as a V"
+  - "household shelter = a closed concrete box with one door gap; hdb-4rm-1bh modelled the gap up to door_h with structure above it"
+  - "service yard: laundry rack outside it, parapet, open above"
+  - "A/C ledge: slab outside a room, parapet on its open sides"
+  - "dimension chains are in mm and the PDF was to scale (118 px/m at 300 dpi); calibrate and compare the tick steps as usual"
+  - "the PDF may have no text layer (hdb-4rm-1bh's labels are outlines): read the room names off the picture; `pdfinfo` may still name HDB in the title"
