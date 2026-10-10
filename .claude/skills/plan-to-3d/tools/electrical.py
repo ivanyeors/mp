@@ -59,6 +59,8 @@ KINDS = {
     "pendant":    ("light", "ceil", 40, "pendant on a ceiling rose"),
     "cove":       ("light", "ceil", 30, "LED cove / strip driver"),
     "track":      ("light", "ceil", 60, "track light feed"),
+    "spot":       ("light", "ceil", 8, "adjustable LED spot"),
+    "linear":     ("light", "ceil", 20, "LED linear light"),
     "wall_light": ("light", 2.10, 15, "wall light"),
     "fan":        ("light", "ceil", 25, "exhaust fan"),
     "emergency":  ("light", "ceil", 5, "emergency luminaire, maintained, 3 h"),
@@ -776,7 +778,7 @@ def _symbol(ax, p, col, ceiling):
     from matplotlib.patches import Circle, Rectangle, Polygon as MP
     x, z = p.x, p.z
     k = p.kind
-    if k in ("downlight", "pendant", "cove", "track", "wall_light", "fan", "emergency"):
+    if k in ("downlight", "pendant", "cove", "track", "spot", "linear", "wall_light", "fan", "emergency"):
         r = 0.13
         ax.add_patch(Circle((x, z), r, fill=k == "emergency", fc="#ffffff", ec=col, lw=1.0, zorder=5))
         ax.plot([x - r * .7, x + r * .7], [z - r * .7, z + r * .7], color=col, lw=0.8, zorder=6)
@@ -787,6 +789,9 @@ def _symbol(ax, p, col, ceiling):
             ax.text(x, z - 0.22, "EF", ha="center", va="center", fontsize=4.5, color=col, zorder=7)
         if k == "wall_light":
             ax.plot([x - r, x + r], [z, z], color=col, lw=2.0, zorder=6)
+        if k in ("spot", "linear", "cove"):
+            ax.text(x, z - 0.22, {"spot": "SP", "linear": "LN", "cove": "LED"}[k], ha="center", va="center",
+                    fontsize=4.5, color=col, zorder=7)
     elif k == "exit":
         ax.add_patch(Rectangle((x - 0.18, z - 0.08), 0.36, 0.16, fc="#ffffff", ec=col, lw=1.0, zorder=5))
         ax.text(x, z, "EXIT", ha="center", va="center", fontsize=4, color=col, zorder=6)

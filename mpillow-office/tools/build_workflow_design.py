@@ -66,13 +66,13 @@ STAGE = {1: "#2d4a3e", 2: "#2f4858", 3: "#2f4f58", 4: "#5a4a2f", 5: "#6a3f4a", 6
          8: "#4a2f5a", 9: "#4a2f5a"}
 
 # Cameras by numbers, GLB frame (X east, Y up, Z south), metres. look_at:
-# eye -> target, vertical fov. Defaults are for midview-08-83 (13.2 x 7.9 m
-# shop floor, entry doors on the west wall, glazing GD2 on the east).
+# eye -> target, vertical fov. Defaults are for midview-08-83 (12.3 x 8.0 m
+# shop floor per the ID plan, entry doors on the west wall, glazing GD2 on the east).
 CAMERA_DEFAULTS = {
     "midview-08-83": {
-        "A": ((0.9, 1.6, 2.1), (9.0, 0.9, 5.2), 65.0),       # from the entry, looking east
-        "B": ((12.6, 1.6, 6.9), (3.0, 0.9, 3.0), 65.0),      # from the glazing, looking west
-        "C": ((11.4, 3.1, 2.4), (3.0, 0.0, 6.0), 70.0),      # high corner by the WC, looking south-west
+        "A": ((1.2, 1.6, 2.0), (9.0, 0.9, 5.0), 65.0),       # from the entry, looking east
+        "B": ((11.8, 1.6, 6.9), (3.0, 0.9, 4.0), 65.0),      # from the glazing, looking west
+        "C": ((11.2, 3.1, 2.6), (3.0, 0.0, 6.0), 70.0),      # high corner by the WC, looking south-west
     },
 }
 TOP_FOV = 30.0

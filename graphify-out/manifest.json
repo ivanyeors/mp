@@ -11945,322 +11945,10 @@
     "ast_hash": "f69524e5f8ea3d560207307fed0acb5c",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/furniture/02-fitting-bays/low-bed-navy-linen.png": {
-    "mtime": 1790053014.6505053,
-    "seen": 1791108912.1241183,
-    "ast_hash": "aea91436e541bf6c3cc109b1d5f6769b",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/02-fitting-bays/sheer-canopy-bed.png": {
-    "mtime": 1790053014.6515968,
-    "seen": 1791108912.1241183,
-    "ast_hash": "f046b2af02bacf2387e4a9b050561a7f",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/furniture/03-inventory-wall/ash-shelving-on-posts.png": {
     "mtime": 1790053014.6551735,
     "seen": 1791108912.1241183,
     "ast_hash": "c14248ae6fd114dcfa0aaa7392f561b3",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/05-service-pantry-wc/wall-hung-wc-basin.png": {
-    "mtime": 1790053014.6656737,
-    "seen": 1791108912.1241183,
-    "ast_hash": "5630c76433caf7b79b8cb8a5e4619d6b",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/lockable-cabinet.png": {
-    "mtime": 1790053014.6780221,
-    "seen": 1791108912.1241183,
-    "ast_hash": "787085ae5193231b1201592d7949b7e4",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_high.png": {
-    "mtime": 1790053014.6790414,
-    "seen": 1791108912.1241183,
-    "ast_hash": "9a84b12decee603560570f89cc936591",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_high_depth.png": {
-    "mtime": 1790053014.6790414,
-    "seen": 1791108912.1241183,
-    "ast_hash": "546c6745a49e0df165e8d8df32b9fdef",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_high_ids.png": {
-    "mtime": 1790053014.6790414,
-    "seen": 1791108912.1241183,
-    "ast_hash": "63f8f92494a4f86cd8b1fe3ebe54b9e9",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_high_zoned.png": {
-    "mtime": 1790053014.680042,
-    "seen": 1791108912.1241183,
-    "ast_hash": "9e607d035e72790866f0a1d0435b130b",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_low.png": {
-    "mtime": 1790053014.680042,
-    "seen": 1791108912.1241183,
-    "ast_hash": "7a8693ceadfa62d189247a954c5ee840",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_low_depth.png": {
-    "mtime": 1790053014.680042,
-    "seen": 1791108912.1241183,
-    "ast_hash": "c96bce6a087cba2d080c6a060d2716a3",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_low_ids.png": {
-    "mtime": 1790053014.6810412,
-    "seen": 1791108912.1241183,
-    "ast_hash": "53196aa1d91f5d4552f4599a03a24961",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_low_zoned.png": {
-    "mtime": 1790053014.6810412,
-    "seen": 1791108912.1241183,
-    "ast_hash": "14e6aac6f3ab4a96fcf3ae1f90e13d62",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_ne.png": {
-    "mtime": 1790053014.6810412,
-    "seen": 1791108912.1241183,
-    "ast_hash": "f5417f04ce0dea95cad5d41d2daf2c03",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_ne_depth.png": {
-    "mtime": 1790053014.6810412,
-    "seen": 1791108912.1241183,
-    "ast_hash": "b6e88d0883b04b7766848b70cfd9314e",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_ne_ids.png": {
-    "mtime": 1790053014.6810412,
-    "seen": 1791108912.1241183,
-    "ast_hash": "922219b9dafbccedd7cd4b71df27a61b",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_ne_zoned.png": {
-    "mtime": 1790053014.6825466,
-    "seen": 1791108912.1241183,
-    "ast_hash": "4a3fe01e30d1b117ed7efc124c7060ce",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_nw.png": {
-    "mtime": 1790053014.6825466,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d8c3d12a614d7a1c118c20139038802f",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_nw_depth.png": {
-    "mtime": 1790053014.6825466,
-    "seen": 1791108912.1241183,
-    "ast_hash": "18f39c14311bbc6333d6930be34ad5ac",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_nw_ids.png": {
-    "mtime": 1790053014.6825466,
-    "seen": 1791108912.1241183,
-    "ast_hash": "5deeb9e02de9221818defe9f8e212fe9",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_iso_nw_zoned.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "8d8738e07820ed81b653f445c8a057bf",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_long_sec.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "b8236cf19d559c503a2ce69d108220d6",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_long_sec_depth.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "589bf4dd513cf4d236479ea31b48057d",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_long_sec_ids.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "800597e00e9817ca2be03b6a7c793605",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_long_sec_zoned.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "46f093a12cba3e5584c2c37f7d76f091",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_plan.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d36a2e6cb3d7231ff55e0f0bd11eaa4d",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_plan_depth.png": {
-    "mtime": 1790053014.6840851,
-    "seen": 1791108912.1241183,
-    "ast_hash": "e6955131d39b6c75dc599a7c5f53a903",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_plan_ids.png": {
-    "mtime": 1790053014.6856694,
-    "seen": 1791108912.1241183,
-    "ast_hash": "71f9504f1ea39f175770f44c27e197df",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_plan_zoned.png": {
-    "mtime": 1790053014.6856694,
-    "seen": 1791108912.1241183,
-    "ast_hash": "7e76e543488d22ced5322320593682cd",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_01-entry-waiting.png": {
-    "mtime": 1790053014.6856694,
-    "seen": 1791108912.1241183,
-    "ast_hash": "4a80094a6ccd474dfb6a760d5e0c2edc",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_01-entry-waiting_depth.png": {
-    "mtime": 1790053014.6856694,
-    "seen": 1791108912.1241183,
-    "ast_hash": "4115f718f5914be3c77ca9758c907c34",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_01-entry-waiting_ids.png": {
-    "mtime": 1790053014.686675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "ed5201fdff4d8e256c7f54da94044bbe",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_01-entry-waiting_zoned.png": {
-    "mtime": 1790053014.686675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d56882cf42221118463290ae549e7738",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_02-fitting-bays.png": {
-    "mtime": 1790053014.686675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "c8c43dfee516555fd976280268109d64",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_02-fitting-bays_depth.png": {
-    "mtime": 1790053014.686675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "c57ef2ed3cd291c05bd4610b0ce03f7a",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_02-fitting-bays_ids.png": {
-    "mtime": 1790053014.686675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d3415108c72498032b10aa02a4fc1094",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_02-fitting-bays_zoned.png": {
-    "mtime": 1790053014.6876762,
-    "seen": 1791108912.1241183,
-    "ast_hash": "3633b261a2838c43b41c82cfa01e57c5",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_03-inventory-wall.png": {
-    "mtime": 1790053014.6876762,
-    "seen": 1791108912.1241183,
-    "ast_hash": "12d6da145fa603ced69df276dea7d2a4",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_03-inventory-wall_depth.png": {
-    "mtime": 1790053014.6876762,
-    "seen": 1791108912.1241183,
-    "ast_hash": "4cd722b780bc708fddb9137d2d67fa60",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_03-inventory-wall_ids.png": {
-    "mtime": 1790053014.6876762,
-    "seen": 1791108912.1241183,
-    "ast_hash": "6e56665852e4fe6941ae409e5226e413",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_03-inventory-wall_zoned.png": {
-    "mtime": 1790053014.688675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "1e49d2cb9b7d8801f616b27082d14343",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_04-workshop.png": {
-    "mtime": 1790053014.688675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "60dcd6f13aaea6161177932df11728fa",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_04-workshop_depth.png": {
-    "mtime": 1790053014.688675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "2e536688f4cd22ee6084626fe8102004",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_04-workshop_ids.png": {
-    "mtime": 1790053014.688675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "4eabad80cdccd9ac6e97d294c2387f43",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_04-workshop_zoned.png": {
-    "mtime": 1790053014.688675,
-    "seen": 1791108912.1241183,
-    "ast_hash": "bb7197731bcfb3cac28e3e739a03b862",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_05-service-pantry-wc.png": {
-    "mtime": 1790053014.6896744,
-    "seen": 1791108912.1241183,
-    "ast_hash": "fd8cc7cb4bca5307cd3cbbf5ed8c9cf2",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_05-service-pantry-wc_depth.png": {
-    "mtime": 1790053014.6896744,
-    "seen": 1791108912.1241183,
-    "ast_hash": "910730157fc34736ff0696318d2c3ac1",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_05-service-pantry-wc_ids.png": {
-    "mtime": 1790053014.6896744,
-    "seen": 1791108912.1241183,
-    "ast_hash": "55378305293b704fdbda58ba649f2eab",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_05-service-pantry-wc_zoned.png": {
-    "mtime": 1790053014.6896744,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d461a283a8bdab1acc7f1e881d559e9f",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_06-patio-wash-dry.png": {
-    "mtime": 1790053014.6906743,
-    "seen": 1791108912.1241183,
-    "ast_hash": "73f134c35a525b03ec18b23afef78897",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_06-patio-wash-dry_depth.png": {
-    "mtime": 1790053014.6906743,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d2c96857a9263371f66fe82f9f008ea5",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_06-patio-wash-dry_ids.png": {
-    "mtime": 1790053014.6911738,
-    "seen": 1791108912.1241183,
-    "ast_hash": "0e1bb6c8c32b9c6e938593df71bc4d06",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/massing/massing_sec_06-patio-wash-dry_zoned.png": {
-    "mtime": 1790053014.6911738,
-    "seen": 1791108912.1241183,
-    "ast_hash": "b1179e48fc53693e36e1ba8b612720cb",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/moodboard/01-entry-waiting/entry-moment.png": {
@@ -12353,12 +12041,6 @@
     "ast_hash": "8009ec5ece1f7ea0b4e74cbbacbb17bf",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/moodboard/05-service-pantry-wc/wc.png": {
-    "mtime": 1790053014.7207694,
-    "seen": 1791108912.1241183,
-    "ast_hash": "5630c76433caf7b79b8cb8a5e4619d6b",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/moodboard/06-patio-wash-dry/patio-site.png": {
     "mtime": 1790053014.7309697,
     "seen": 1791108912.1241183,
@@ -12381,84 +12063,6 @@
     "mtime": 1790053014.7497802,
     "seen": 1791108912.1241183,
     "ast_hash": "1d341d6ba2a66eb7da0367160bea1009",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/showroom-iso-v1_seed20260920001_1664x928.png": {
-    "mtime": 1790053014.7539282,
-    "seen": 1791108912.1241183,
-    "ast_hash": "ae7f585f7f56b8743f20db416b44663a",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v2_backlit-fabric-vault.png": {
-    "mtime": 1790053014.7568529,
-    "seen": 1791108912.1241183,
-    "ast_hash": "c9f8ef7eb69cd659a83aab1376df10b7",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v2_birch-ply-utility.png": {
-    "mtime": 1790053014.7589226,
-    "seen": 1791108912.1241183,
-    "ast_hash": "8cc0a9212cacc8c01d5a3013884333a0",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v2_daylight-neutral.png": {
-    "mtime": 1790053014.761923,
-    "seen": 1791108912.1241183,
-    "ast_hash": "6bdb2d233e93b533f2504b4130cf579f",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v2_night-2700k.png": {
-    "mtime": 1790053014.7629228,
-    "seen": 1791108912.1241183,
-    "ast_hash": "25c706cea4a860acb878e9fedaba61a0",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v2_pale-ash-joinery.png": {
-    "mtime": 1790053014.7650077,
-    "seen": 1791108912.1241183,
-    "ast_hash": "2cffc846bfce5fc2a1f09fcd69def4fb",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v2_warm-plaster-brass.png": {
-    "mtime": 1790053014.7685664,
-    "seen": 1791108912.1241183,
-    "ast_hash": "d7d0cb62cd817d33b4d8d71083d8d228",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v3_backlit-fabric-vault.png": {
-    "mtime": 1790053014.770147,
-    "seen": 1791108912.1241183,
-    "ast_hash": "29c422228d7a3c3d2bdab456d421ec89",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v3_birch-ply-utility.png": {
-    "mtime": 1790053014.7721488,
-    "seen": 1791108912.1241183,
-    "ast_hash": "bb84772ea497dd5b6dfb5f6b18a180d2",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v3_daylight-neutral.png": {
-    "mtime": 1790053014.774146,
-    "seen": 1791108912.1241183,
-    "ast_hash": "7347fd328d64d7a7b7f8a5436610cf46",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v3_night-2700k.png": {
-    "mtime": 1790053014.776092,
-    "seen": 1791108912.1241183,
-    "ast_hash": "96d3cc9483ab8ebc5845e81c4c3619c5",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v3_pale-ash-joinery.png": {
-    "mtime": 1790053014.7781487,
-    "seen": 1791108912.1241183,
-    "ast_hash": "1cf922d0e00d8cf137f4a9b916c75ea4",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/renders/v3_warm-plaster-brass.png": {
-    "mtime": 1790053014.7801487,
-    "seen": 1791108912.1241183,
-    "ast_hash": "9e1f6333c42e824595a96927f1276846",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/site/asbuilt-lighting-plan-scopo.png": {
@@ -14297,42 +13901,6 @@
     "ast_hash": "bc25081c9613451ae66cef3c5f3f7586",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/furniture/01-entry-waiting/entry-deco-2.jpg": {
-    "mtime": 1790065137.9225647,
-    "seen": 1791108912.1241183,
-    "ast_hash": "97d813694590b9f8fc0b230d26955250",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/01-entry-waiting/entry-deco.png": {
-    "mtime": 1790065045.331205,
-    "seen": 1791108912.1241183,
-    "ast_hash": "3dd08bc9d62e18de6880881a2dd4f219",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/01-entry-waiting/waiting-area-couch-2.jpg": {
-    "mtime": 1790065327.198503,
-    "seen": 1791108912.1241183,
-    "ast_hash": "b83a40d380625c51665cfd469eee192b",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/01-entry-waiting/waiting-area-couch.jpg": {
-    "mtime": 1790065230.5688717,
-    "seen": 1791108912.1241183,
-    "ast_hash": "2a50f311782b1140e36f7625387bcdd4",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/02-fitting-bays/fitting-bay-room-aspiration-2.jpg": {
-    "mtime": 1790065536.9540222,
-    "seen": 1791108912.1241183,
-    "ast_hash": "a7ab749a6b5076b5ad4c22a16a668e9f",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/02-fitting-bays/fitting-bay-room-aspiration.jpg": {
-    "mtime": 1790065509.9189315,
-    "seen": 1791108912.1241183,
-    "ast_hash": "6c068de68fea3cae0428536c17ea001d",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/furniture/03-inventory-wall/display-shelves-2.jpg": {
     "mtime": 1790065868.2817626,
     "seen": 1791108912.1241183,
@@ -14405,72 +13973,6 @@
     "ast_hash": "9f0422f03a3b76d88d7926b80d4588a4",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/furniture/05-service-pantry-wc/coffee-pantry-area-2.jpg": {
-    "mtime": 1790065305.408293,
-    "seen": 1791108912.1241183,
-    "ast_hash": "0a4e12dbda89ab84367165a7ebbd7bdf",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/05-service-pantry-wc/coffee-pantry-area.jpg": {
-    "mtime": 1790065257.2195113,
-    "seen": 1791108912.1241183,
-    "ast_hash": "2027e746c0dbf4c8e265d43487ce0c3e",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/05-service-pantry-wc/toilet-interior-design-wc-2.jpg": {
-    "mtime": 1790065402.0050695,
-    "seen": 1791108912.1241183,
-    "ast_hash": "79541278c99993fee2eab911bfbc83cd",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/05-service-pantry-wc/toilet-interior-design-wc-3.jpg": {
-    "mtime": 1790065429.6058722,
-    "seen": 1791108912.1241183,
-    "ast_hash": "ffda7c52fc6276385245c8314058e8f4",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/05-service-pantry-wc/toilet-interior-design-wc.jpg": {
-    "mtime": 1790065390.1095448,
-    "seen": 1791108912.1241183,
-    "ast_hash": "b6fecb232a582b30b78cca45507e18ab",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/patio-flooring-seats-2.jpg": {
-    "mtime": 1790066566.6514623,
-    "seen": 1791108912.1241183,
-    "ast_hash": "6dc8af1aae43918a0a38b7785cc5ee2f",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/patio-flooring-seats.jpg": {
-    "mtime": 1790066301.870461,
-    "seen": 1791108912.1241183,
-    "ast_hash": "df6571c9188323a56a3c7ff8b10217a6",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/patio-seating-cover-design.jpg": {
-    "mtime": 1790066554.475367,
-    "seen": 1791108912.1241183,
-    "ast_hash": "2e8a76ccbc99b512f3e8a6ceb8ae97ee",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/patio-storage-2.jpg": {
-    "mtime": 1790066596.1915236,
-    "seen": 1791108912.1241183,
-    "ast_hash": "ee03e207f9da80883c48ffd135b19253",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/patio-storage.jpg": {
-    "mtime": 1790066285.3070257,
-    "seen": 1791108912.1241183,
-    "ast_hash": "bafe5a77ae7540a0bcb6444631745b82",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/furniture/06-patio-wash-dry/patio-washing-machine-storage.jpg": {
-    "mtime": 1790066617.5015879,
-    "seen": 1791108912.1241183,
-    "ast_hash": "34b698cbe50f34c85571aeb191f2e08d",
-    "semantic_hash": ""
-  },
   "app/[lang]/settings/showroom/page.tsx": {
     "mtime": 1791109215.1875992,
     "seen": 1791607654.3624918,
@@ -14502,9 +14004,9 @@
     "semantic_hash": ""
   },
   "lib/showroom/midview-08-83.ts": {
-    "mtime": 1791109215.2815287,
-    "seen": 1791607654.3624918,
-    "ast_hash": "9910c7a81d0690620e46437b265c5e96",
+    "mtime": 1791622731.4404838,
+    "seen": 1791623178.4292598,
+    "ast_hash": "234b40e836ee21943ef76e402fbeded3",
     "semantic_hash": ""
   },
   "lib/showroom/types.ts": {
@@ -14514,15 +14016,15 @@
     "semantic_hash": ""
   },
   "mpillow-office/model/midview_08_83_viewer.json": {
-    "mtime": 1791113927.7681432,
-    "seen": 1791607654.3624918,
-    "ast_hash": "812b64a916680643ec33434bd802bcbe",
+    "mtime": 1791626212.6980517,
+    "seen": 1791629001.291184,
+    "ast_hash": "94fbd5b2ddf467f244d81ae7d601eada",
     "semantic_hash": ""
   },
   "mpillow-office/plans/midview-08-83.yaml": {
-    "mtime": 1791613723.8579328,
-    "seen": 1791613815.8176198,
-    "ast_hash": "589758295e1185c9f1d585b79ad46b23",
+    "mtime": 1791622540.1425264,
+    "seen": 1791623178.4292598,
+    "ast_hash": "173bf2db62614007758eb3c742793592",
     "semantic_hash": ""
   },
   ".claude/settings.local.json": {
@@ -14538,9 +14040,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/plan-to-3d/tools/electrical.py": {
-    "mtime": 1791613778.8859055,
-    "seen": 1791613815.774507,
-    "ast_hash": "e6b19c5ee6796df2c06057117da64238",
+    "mtime": 1791622757.558635,
+    "seen": 1791623178.425361,
+    "ast_hash": "738dc46cb23bafcb81006475637b820f",
     "semantic_hash": ""
   },
   ".claude/skills/plan-to-3d/tools/plan_check.py": {
@@ -14580,21 +14082,21 @@
     "semantic_hash": ""
   },
   "mpillow-office/tools/build_workflow_design.py": {
-    "mtime": 1791606788.7521417,
-    "seen": 1791607654.3624918,
-    "ast_hash": "7741dc82ae98ebd7cebdb995919b75db",
+    "mtime": 1791622667.4829795,
+    "seen": 1791623178.4292598,
+    "ast_hash": "54c50c8e7572a3d00eac2733ecd44bfd",
     "semantic_hash": ""
   },
   "mpillow-office/tools/electrical.py": {
-    "mtime": 1791613778.830453,
-    "seen": 1791613815.8166213,
-    "ast_hash": "e6b19c5ee6796df2c06057117da64238",
+    "mtime": 1791622494.4714894,
+    "seen": 1791623178.4292598,
+    "ast_hash": "738dc46cb23bafcb81006475637b820f",
     "semantic_hash": ""
   },
   "mpillow-office/tools/test_blocks.py": {
-    "mtime": 1791113535.8078418,
-    "seen": 1791607654.3624918,
-    "ast_hash": "0f181a479d727fb1d163140b8293ee8f",
+    "mtime": 1791622647.948002,
+    "seen": 1791623178.4292598,
+    "ast_hash": "c8bdf4f61eae1e609737726e62d575e8",
     "semantic_hash": ""
   },
   "mpillow-office/tools/test_electrical.py": {
@@ -14604,21 +14106,15 @@
     "semantic_hash": ""
   },
   "mpillow-office/tools/wf.py": {
-    "mtime": 1791605901.484937,
-    "seen": 1791607654.3624918,
-    "ast_hash": "e3e3f5ea3bf931bbec727db832e69d4a",
+    "mtime": 1791623300.6593256,
+    "seen": 1791629001.291184,
+    "ast_hash": "41bc37c5d84046b2eac94db50c77d8f3",
     "semantic_hash": ""
   },
   "mpillow-office/workflows/design_midview-08-83_16x9.json": {
-    "mtime": 1791613783.3248115,
-    "seen": 1791613815.8166213,
-    "ast_hash": "a4c592311cb3046c47b6a3374dc4619c",
-    "semantic_hash": ""
-  },
-  "mpillow-office/workflows/design_midview-08-83_16x9.json.api.json": {
-    "mtime": 1791606999.3066914,
-    "seen": 1791607654.3624918,
-    "ast_hash": "12188c446d373b1edbaa8f5bee652202",
+    "mtime": 1791626211.7961595,
+    "seen": 1791629001.291184,
+    "ast_hash": "7d406ac1db74748fc6fc9784f32b1a8f",
     "semantic_hash": ""
   },
   ".claude/skills/plan-to-3d/plans/hdb-4rm-1bh.yaml": {
@@ -14652,15 +14148,15 @@
     "semantic_hash": ""
   },
   "mpillow-office/plans/midview-08-83.blocks.txt": {
-    "mtime": 1791113303.7473474,
-    "seen": 1791607654.3624918,
-    "ast_hash": "bf158da41c8968f6359b810ab059bdcb",
+    "mtime": 1791626189.7153678,
+    "seen": 1791629001.2921834,
+    "ast_hash": "2cf4ee9a74e2cab0e94f9ab29821dd54",
     "semantic_hash": ""
   },
   "mpillow-office/plans/midview-08-83.electrical.txt": {
-    "mtime": 1791613778.862259,
-    "seen": 1791613815.8176198,
-    "ast_hash": "32b1a5802a7e5660d04049c496ec8d11",
+    "mtime": 1791622524.1259818,
+    "seen": 1791623178.4292598,
+    "ast_hash": "ae12f5c9f89d87abcf24be71973e603c",
     "semantic_hash": ""
   },
   ".claude/skills/plan-to-3d/plans/sources/hdb-4rm-1bh-ulu-pandan-c2.pdf": {
@@ -14682,9 +14178,9 @@
     "semantic_hash": ""
   },
   "mpillow-office/model/midview_08_83_electrical_plan.png": {
-    "mtime": 1791613779.7772298,
-    "seen": 1791613815.8176198,
-    "ast_hash": "c3ff0ed2cd651422f185e1149c1c9c5a",
+    "mtime": 1791622548.6756005,
+    "seen": 1791623178.4292598,
+    "ast_hash": "3049ac786be48b9ce5164ea78cceda7c",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/design/midview-08-83/lighting/backlit-ceiling.png": {
@@ -14699,94 +14195,220 @@
     "ast_hash": "f046b2af02bacf2387e4a9b050561a7f",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/ash-shelving-on-posts.png": {
-    "mtime": 1791111201.7831392,
-    "seen": 1791607654.3624918,
-    "ast_hash": "c14248ae6fd114dcfa0aaa7392f561b3",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/bed-sheets-navy.png": {
-    "mtime": 1791111201.7415295,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8532066,
+    "seen": 1791629001.2921834,
     "ast_hash": "aea91436e541bf6c3cc109b1d5f6769b",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/entry-moment.png": {
-    "mtime": 1791111201.7036166,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8664737,
+    "seen": 1791629001.2921834,
     "ast_hash": "d87f288eabbea7ca1fbed6e5b88efdeb",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/inventory-wall-ash.png": {
-    "mtime": 1791111201.7344892,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8664737,
+    "seen": 1791629001.2921834,
     "ast_hash": "c14248ae6fd114dcfa0aaa7392f561b3",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/low-bed-navy-linen.png": {
-    "mtime": 1791111201.7796364,
-    "seen": 1791607654.3624918,
-    "ast_hash": "aea91436e541bf6c3cc109b1d5f6769b",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/mpillow_moodboard_a.png": {
-    "mtime": 1791111201.7149334,
-    "seen": 1791607654.3624918,
-    "ast_hash": "1488e92563f557339d7075fa1213c67b",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/plaster-brass.png": {
-    "mtime": 1791111201.7314768,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8664737,
+    "seen": 1791629001.2921834,
     "ast_hash": "1f57d9474f352aa752a960e5c97a3c77",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/rounded-joinery.png": {
-    "mtime": 1791111201.7117836,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8664737,
+    "seen": 1791629001.2921834,
     "ast_hash": "70603f0e8b48416d51355e9d1be15acb",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/soft-forms.png": {
-    "mtime": 1791111201.7077794,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8664737,
+    "seen": 1791629001.2921834,
     "ast_hash": "181ee326f398998180c044bb2d2306f3",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/waiting-area-couch.jpg": {
-    "mtime": 1791111201.7756343,
-    "seen": 1791607654.3624918,
-    "ast_hash": "2a50f311782b1140e36f7625387bcdd4",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/waiting-seat-boucle-jute.png": {
-    "mtime": 1791111201.737495,
-    "seen": 1791607654.3624918,
+    "mtime": 1791623676.8664737,
+    "seen": 1791629001.2921834,
     "ast_hash": "124383b85fb4beed2381a4f0b9cfa1c9",
     "semantic_hash": ""
   },
-  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/workbench-1.jpg": {
-    "mtime": 1791111201.7855701,
-    "seen": 1791607654.3624918,
-    "ast_hash": "22eeddc77daea39202d7d2916276d26a",
-    "semantic_hash": ""
-  },
-  "mpillow-office/ref-img/design/midview-08-83/zones/02-wc/plaster-brass.png": {
-    "mtime": 1791606113.3881826,
-    "seen": 1791607654.3624918,
-    "ast_hash": "1f57d9474f352aa752a960e5c97a3c77",
-    "semantic_hash": ""
-  },
   "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/lockable-cabinet.png": {
-    "mtime": 1791111201.789707,
-    "seen": 1791607654.3624918,
+    "mtime": 1790053014.6780221,
+    "seen": 1791629001.2921834,
     "ast_hash": "787085ae5193231b1201592d7949b7e4",
     "semantic_hash": ""
   },
   "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/patio-flooring-seats.jpg": {
-    "mtime": 1791111201.7932127,
-    "seen": 1791607654.3624918,
+    "mtime": 1790066301.870461,
+    "seen": 1791629001.2921834,
     "ast_hash": "df6571c9188323a56a3c7ff8b10217a6",
+    "semantic_hash": ""
+  },
+  "mpillow-office/source/furniture plan - 01.pdf": {
+    "mtime": 1791616386.8218493,
+    "seen": 1791623178.4292598,
+    "ast_hash": "73a04b170087aaab7929ec7b0b15c95f",
+    "semantic_hash": ""
+  },
+  "mpillow-office/source/lighting Plan - 01 .pdf": {
+    "mtime": 1791616386.8508074,
+    "seen": 1791623178.4292598,
+    "ast_hash": "b8388b0dbc5d5f4f86df10b7dca93922",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/lighting/light-01.jpg": {
+    "mtime": 1791624194.601031,
+    "seen": 1791629001.2921834,
+    "ast_hash": "0793198779be978c2f3fd572c9fc219f",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/lighting/light-02.jpg": {
+    "mtime": 1791624203.210439,
+    "seen": 1791629001.2921834,
+    "ast_hash": "1271e0d5adcc1ccaf09c9a64b4a01705",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/lighting/light-03.jpg": {
+    "mtime": 1791624210.1524167,
+    "seen": 1791629001.2921834,
+    "ast_hash": "5fca15951fc0acfbac74495f515b5b72",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/lighting/light-04.jpg": {
+    "mtime": 1791624217.316258,
+    "seen": 1791629001.2921834,
+    "ast_hash": "a7ab749a6b5076b5ad4c22a16a668e9f",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/coffee-pantry-area-2.jpg": {
+    "mtime": 1790065305.408293,
+    "seen": 1791629001.2921834,
+    "ast_hash": "0a4e12dbda89ab84367165a7ebbd7bdf",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/coffee-pantry-area.jpg": {
+    "mtime": 1790065257.2195113,
+    "seen": 1791629001.2921834,
+    "ast_hash": "2027e746c0dbf4c8e265d43487ce0c3e",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/entry-deco-2.jpg": {
+    "mtime": 1790065137.9225647,
+    "seen": 1791629001.2921834,
+    "ast_hash": "97d813694590b9f8fc0b230d26955250",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/entry-deco.png": {
+    "mtime": 1790065045.331205,
+    "seen": 1791629001.2921834,
+    "ast_hash": "3dd08bc9d62e18de6880881a2dd4f219",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/fitting-bay-room-aspiration-2.jpg": {
+    "mtime": 1790065536.9540222,
+    "seen": 1791629001.2921834,
+    "ast_hash": "a7ab749a6b5076b5ad4c22a16a668e9f",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/fitting-bay-room-aspiration.jpg": {
+    "mtime": 1790065509.9189315,
+    "seen": 1791629001.2921834,
+    "ast_hash": "6c068de68fea3cae0428536c17ea001d",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/sheer-canopy-bed.png": {
+    "mtime": 1790053014.6515968,
+    "seen": 1791629001.2921834,
+    "ast_hash": "f046b2af02bacf2387e4a9b050561a7f",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/toilet-interior-design-wc-2.jpg": {
+    "mtime": 1790065402.0050695,
+    "seen": 1791629001.2921834,
+    "ast_hash": "79541278c99993fee2eab911bfbc83cd",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/toilet-interior-design-wc-3.jpg": {
+    "mtime": 1790065429.6058722,
+    "seen": 1791629001.2921834,
+    "ast_hash": "ffda7c52fc6276385245c8314058e8f4",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/toilet-interior-design-wc.jpg": {
+    "mtime": 1790065390.1095448,
+    "seen": 1791629001.2921834,
+    "ast_hash": "b6fecb232a582b30b78cca45507e18ab",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/waiting-area-couch-2.jpg": {
+    "mtime": 1790065327.198503,
+    "seen": 1791629001.2921834,
+    "ast_hash": "b83a40d380625c51665cfd469eee192b",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/01-shop-floor/wall-hung-wc-basin.png": {
+    "mtime": 1790053014.6656737,
+    "seen": 1791629001.2921834,
+    "ast_hash": "5630c76433caf7b79b8cb8a5e4619d6b",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/02-wc/toilet-tile-01.jpg": {
+    "mtime": 1791624378.2081814,
+    "seen": 1791629001.2921834,
+    "ast_hash": "5418fefd76702776797563c0c4d0de26",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/02-wc/toilet-tile-02.jpg": {
+    "mtime": 1791624388.0902014,
+    "seen": 1791629001.2921834,
+    "ast_hash": "6622408ed112052e19298d810244badc",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/02-wc/toilet-wall-sink.jpg": {
+    "mtime": 1791624366.0658362,
+    "seen": 1791629001.2921834,
+    "ast_hash": "3724015cd0aa4eda08e4e6ed623fb649",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/02-wc/wc.png": {
+    "mtime": 1790053014.7207694,
+    "seen": 1791629001.2921834,
+    "ast_hash": "5630c76433caf7b79b8cb8a5e4619d6b",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/patio-flooring-seats-2.jpg": {
+    "mtime": 1790066566.6514623,
+    "seen": 1791629001.2921834,
+    "ast_hash": "6dc8af1aae43918a0a38b7785cc5ee2f",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/patio-seating-cover-design.jpg": {
+    "mtime": 1790066554.475367,
+    "seen": 1791629001.2921834,
+    "ast_hash": "2e8a76ccbc99b512f3e8a6ceb8ae97ee",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/patio-storage-2.jpg": {
+    "mtime": 1790066596.1915236,
+    "seen": 1791629001.2921834,
+    "ast_hash": "ee03e207f9da80883c48ffd135b19253",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/patio-storage.jpg": {
+    "mtime": 1790066285.3070257,
+    "seen": 1791629001.2921834,
+    "ast_hash": "bafe5a77ae7540a0bcb6444631745b82",
+    "semantic_hash": ""
+  },
+  "mpillow-office/ref-img/design/midview-08-83/zones/03-patio/patio-washing-machine-storage.jpg": {
+    "mtime": 1790066617.5015879,
+    "seen": 1791629001.2921834,
+    "ast_hash": "34b698cbe50f34c85571aeb191f2e08d",
     "semantic_hash": ""
   }
 }

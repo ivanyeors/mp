@@ -1,5 +1,6 @@
-# midview-08-83 -- the furniture layer (BLOCKS). A STARTING layout from the brief's
-# programme, not a decision: move, resize, delete and add freely.
+# midview-08-83 -- the furniture layer (BLOCKS), from the ID's furniture plan
+# (../source/furniture plan - 01.pdf, A-01, re-issue 4-10-26), measured off the
+# PDF linework. Heights the plan does not give were answered on 2026-10-10.
 #
 # One block per line, GLB frame (X east, Z south, metres; origin = outer faces of
 # the west and north walls). x z = centre of the footprint, w along X, d along Z,
@@ -9,25 +10,45 @@
 # After | : the block's prompt -- what the renders draw in its place.
 # Edited on the ComfyUI canvas (Block Layout writes it back here on Run).
 
-# entry / waiting -- by the FD2 doors, west end
-bench_entry   x=0.48 z=4.60 w=0.55 d=1.80 h=0.45              | upholstered boucle bench along the west wall, oak plinth
-waiting_sofa  x=2.30 z=7.15 w=2.20 d=0.90 h=0.80              | low boucle three-seat sofa against the south wall, oak base
-side_table    x=3.70 z=7.20 w=0.50 d=0.50 h=0.50              | round travertine side table
-rug_waiting   x=2.30 z=5.85 w=2.40 d=1.50 h=0.02              | natural jute rug
+# store room -- behind the display, full-height walls
+store_cabinet_1 x=3.54 z=0.40 w=1.80 d=0.60 h=2.40 rot=180      | tall white storage cabinet, flat doors (180x60x240)
+store_cabinet_2 x=5.34 z=0.40 w=1.80 d=0.60 h=2.40 rot=180      | tall white storage cabinet, flat doors (180x60x240)
+store_cabinet_3 x=7.13 z=0.40 w=1.80 d=0.60 h=2.40 rot=180      | tall white storage cabinet, flat doors (180x60x240)
+store_shelf     x=4.56 z=1.65 w=3.45 d=0.50 h=2.30              | metal stock shelving full of boxed pillows (3450x500x2300)
 
-# fitting bays -- beds to try pillows on
-bed_1         x=5.20 z=4.70 w=1.60 d=2.10 h=0.45              | low platform bed, navy linen bedding, pillows stacked against a fabric headboard
-bed_2         x=7.40 z=4.70 w=1.60 d=2.10 h=0.45              | low platform bed under a sheer canopy, white linen
+# display -- the shop face of the store wall
+display_shelf   x=5.34 z=2.40 w=5.40 d=0.60 h=2.40 rot=180      | pale oak open display shelving in five 1.1 m bays, pillows on show, lit from a ceiling track
 
-# inventory wall -- along the north wall
-shelf_north   x=4.60 z=0.40 w=6.00 d=0.45 h=2.40 rot=180      | pale ash open shelving full of rolled and boxed pillows, backlit
+# lounge -- by the entry
+sofa_1          x=0.67 z=4.29 w=1.66 d=0.92 h=0.80 rot=270      | low boucle two-seat sofa against the west wall, scatter pillows
+sofa_2          x=0.67 z=6.07 w=1.66 d=0.92 h=0.80 rot=270      | low boucle two-seat sofa against the west wall, scatter pillows
+coffee_table    x=1.66 z=4.44 w=0.50 d=0.65 h=0.45              | small travertine coffee table with a table lamp
+lounge_chair_1  x=2.53 z=4.02 w=0.78 d=0.78 h=0.75 rot=115 shape=chair | round upholstered lounge chair with a bolster cushion
+lounge_chair_2  x=2.36 z=5.24 w=0.78 d=0.78 h=0.75 rot=45 shape=chair  | round upholstered lounge chair with a bolster cushion
+
+# fitting bays -- beds to try pillows on, screened by curtains on ceiling tracks
+# (no panels or shelving: the bands on A-01 are curtain lines, track on the 3.40 soffit)
+curtain_rail_w   x=3.38 z=6.79 w=0.05 d=2.30 h=0.05 y=3.35  | slim ceiling-mounted curtain track, sheer linen curtain drawn back to the wall
+curtain_rail_mid x=5.48 z=6.79 w=0.05 d=2.30 h=0.05 y=3.35  | slim ceiling-mounted curtain track, sheer linen curtain drawn back to the wall
+curtain_rail_e   x=7.60 z=6.79 w=0.05 d=2.30 h=0.05 y=3.35  | slim ceiling-mounted curtain track, sheer linen curtain drawn back to the wall
+bed_1           x=4.25 z=7.02 w=1.10 d=1.85 h=0.45              | single platform bed, head to the wall, linen bedding and stacked pillows
+bed_2           x=6.69 z=7.02 w=1.10 d=1.85 h=0.45              | single platform bed, head to the wall, linen bedding and stacked pillows
 
 # workshop
-workbench     x=10.00 z=4.40 w=1.80 d=0.80 h=0.90             | solid ash workbench with a sewing machine and fabric rolls
+work_table      x=9.95 z=4.55 w=1.10 d=3.15 h=0.90 shape=table  | long solid ash work table with fabric rolls and a sewing machine
 
-# pantry
-pantry_counter x=11.90 z=7.43 w=1.60 d=0.60 h=0.90            | pantry counter with a coffee machine, white oak fronts
+# pantry -- L counter round the passage by the WC
+pantry_counter  x=9.68 z=1.05 w=1.90 d=0.60 h=0.90 rot=90 shape=cabinet | pantry counter with a sink, white oak fronts
+pantry_return   x=9.11 z=0.40 w=0.55 d=0.60 h=0.90 rot=180 shape=cabinet | pantry counter return, white oak fronts
 
-# patio
-patio_bench   x=15.50 z=7.30 w=2.00 d=0.50 h=0.45              | teak outdoor bench
-patio_store   x=16.50 z=2.60 w=0.70 d=0.60 h=1.80              | lockable powder-coated outdoor storage cabinet
+# tables by the GD2 door (110x68), double sockets above
+table_1         x=9.38 z=7.65 w=1.10 d=0.68 h=0.75              | simple oak table for packing and the till
+table_2         x=10.48 z=7.65 w=1.10 d=0.68 h=0.75             | simple oak table for packing and the till
+
+# plants
+plant_entry     x=1.23 z=0.61 w=0.80 d=0.80 h=1.40              | large leafy potted plant in a stone planter
+plant_bays      x=8.36 z=7.14 w=0.75 d=0.75 h=1.40              | potted olive tree in a stone planter
+plant_tables    x=11.52 z=7.56 w=0.75 d=0.75 h=1.40             | potted olive tree in a stone planter
+plant_patio_1   x=12.90 z=3.33 w=0.85 d=0.85 h=0.90             | leafy outdoor planter against the glazing
+plant_patio_2   x=12.90 z=4.27 w=0.85 d=0.85 h=0.90             | leafy outdoor planter against the glazing
+plant_patio_3   x=12.90 z=5.21 w=0.85 d=0.85 h=0.90             | leafy outdoor planter against the glazing

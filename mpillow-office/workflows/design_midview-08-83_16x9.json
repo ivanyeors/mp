@@ -440,7 +440,7 @@
         "Node name for S&R": "PrimitiveStringMultiline"
       },
       "widgets_values": [
-        "# one part name per line, * ? wildcards -- e.g. a cutaway:\n# north_wall*\n# col_n_mid\n# col_nw\n# col_ne\n# meter_cab\n"
+        "# one part name per line, * ? wildcards -- e.g. a cutaway:\n# north_wall*\n# col_n_mid\n# col_nw\n# meter_cab\n"
       ],
       "title": "2.2  HIDE PARTS  (all three models)"
     },
@@ -462,7 +462,10 @@
         {
           "name": "parts",
           "type": "STRING",
-          "link": 173
+          "link": 173,
+          "widget": {
+            "name": "parts"
+          }
         },
         {
           "name": "model_3d",
@@ -527,7 +530,9 @@
       "properties": {
         "proxyWidgets": []
       },
-      "widgets_values": [],
+      "widgets_values": [
+        ""
+      ],
       "title": "2.3  model, parts hidden"
     },
     {
@@ -632,7 +637,7 @@
         "Node name for S&R": "PrimitiveStringMultiline"
       },
       "widgets_values": [
-        "# midview-08-83 -- electrical points. A STARTING layout proposed from the plan by\n# tools/electrical.py --propose: move, add, delete. One point per line:\n#   name  kind  x= z= [y=] [circuit=] [controls=L1,L2] [n=] [w=]  | note\n# GLB frame (X east, Z south, metres), y = height to the accessory centre\n# (default per kind). Circuit prefix: L lighting, P power, AC aircon,\n# WH water heater, E emergency, D data.\n\n# ---- zone 1  01-shop-floor ----\nL1-1     downlight  x=0.75 z=4.94 circuit=L1  | warm 2700K surface downlight\nL1-2     downlight  x=0.75 z=6.91 circuit=L1  | warm 2700K surface downlight\nL1-3     downlight  x=2.66 z=0.99 circuit=L1  | warm 2700K surface downlight\nL1-4     downlight  x=2.66 z=2.96 circuit=L1  | warm 2700K surface downlight\nL1-5     downlight  x=2.66 z=4.94 circuit=L1  | warm 2700K surface downlight\nL1-6     downlight  x=2.66 z=6.91 circuit=L1  | warm 2700K surface downlight\nL1-7     downlight  x=4.58 z=0.99 circuit=L1  | warm 2700K surface downlight\nL1-8     downlight  x=4.58 z=2.96 circuit=L1  | warm 2700K surface downlight\nL1-9     downlight  x=4.58 z=4.94 circuit=L1  | warm 2700K surface downlight\nL1-10    downlight  x=4.58 z=6.91 circuit=L1  | warm 2700K surface downlight\nL2-1     downlight  x=6.49 z=0.99 circuit=L2  | warm 2700K surface downlight\nL2-2     downlight  x=6.49 z=2.96 circuit=L2  | warm 2700K surface downlight\nL2-3     downlight  x=6.49 z=4.94 circuit=L2  | warm 2700K surface downlight\nL2-4     downlight  x=6.49 z=6.91 circuit=L2  | warm 2700K surface downlight\nL2-5     downlight  x=8.41 z=0.99 circuit=L2  | warm 2700K surface downlight\nL2-6     downlight  x=8.41 z=2.96 circuit=L2  | warm 2700K surface downlight\nL2-7     downlight  x=8.41 z=4.94 circuit=L2  | warm 2700K surface downlight\nL2-8     downlight  x=8.41 z=6.91 circuit=L2  | warm 2700K surface downlight\nL2-9     downlight  x=10.33 z=0.99 circuit=L2  | warm 2700K surface downlight\nL2-10    downlight  x=10.33 z=2.96 circuit=L2  | warm 2700K surface downlight\nL3-1     downlight  x=10.33 z=4.94 circuit=L3  | warm 2700K surface downlight\nL3-2     downlight  x=10.33 z=6.91 circuit=L3  | warm 2700K surface downlight\nL3-3     downlight  x=12.24 z=2.96 circuit=L3  | warm 2700K surface downlight\nL3-4     downlight  x=12.24 z=4.94 circuit=L3  | warm 2700K surface downlight\nL3-5     downlight  x=12.24 z=6.91 circuit=L3  | warm 2700K surface downlight\nEM1      emergency  x=5.95 z=4.09 circuit=E1  | maintained emergency luminaire\nP1-1     socket13a  x=0.09 z=3.06 n=2 circuit=P1  | twin\nP1-2     socket13a  x=0.17 z=4.55 n=2 circuit=P1  | twin\nP1-3     socket13a  x=0.24 z=7.42 n=2 circuit=P1  | twin\nP1-4     socket13a  x=2.95 z=7.71 n=2 circuit=P1  | twin\nP1-5     socket13a  x=5.95 z=7.71 n=2 circuit=P1  | twin\nP1-6     socket13a  x=8.56 z=7.38 n=2 circuit=P1  | twin\nP2-1     socket13a  x=11.23 z=7.71 n=2 circuit=P2  | twin\nP2-2     socket13a  x=12.81 z=7.39 n=2 circuit=P2  | twin\nP2-3     socket13a  x=12.93 z=2.05 n=2 circuit=P2  | twin\nP2-4     socket13a  x=10.63 z=1.39 n=2 circuit=P2  | twin\nP2-5     socket13a  x=9.22 z=0.52 n=2 circuit=P2  | twin\nP2-6     socket13a  x=6.55 z=0.19 n=2 circuit=P2  | twin\nP3-1     socket13a  x=3.55 z=0.19 n=2 circuit=P3  | twin\nP3-2     socket13a  x=0.85 z=0.36 n=2 circuit=P3  | twin\n\n# ---- zone 2  02-wc ----\nL4-1     downlight  x=12.00 z=1.06 circuit=L4  | warm 2700K surface downlight\nL4-2     fan        x=12.34 z=1.41 circuit=L4  | exhaust fan, ducted out\nEM2      emergency  x=11.54 z=1.06 circuit=E1  | maintained emergency luminaire\n\n# ---- zone 3  03-patio ----\nL5-1     wall_light x=13.25 z=1.32 y=2.40 circuit=L5  | warm outdoor wall light, IP65\nL5-2     wall_light x=13.25 z=3.95 y=2.40 circuit=L5  | warm outdoor wall light, IP65\nL5-3     wall_light x=13.25 z=6.58 y=2.40 circuit=L5  | warm outdoor wall light, IP65\nP4-1     socket13a  x=16.91 z=3.97 n=2 circuit=P4  | weatherproof IP66 twin\n\n# ---- switches ----\nS1       switch     x=13.01 z=2.05 controls=L4  | by the wc_south door, 01-shop-floor side\nS2       switch     x=13.13 z=6.92 controls=L5  | by the gd2 door, 01-shop-floor side\nS3       switch     x=0.84 z=1.17 controls=L1,L2,L3  | switch bank by the DB / entry\n\n# ---- by the DB ----\nX1       exit       x=0.89 z=2.01 circuit=E1  | exit sign over the entry\nD1-1     data       x=0.87 z=0.56 circuit=D1  | data, router by the DB\nP5-1     floor_box  x=10.00 z=4.40 circuit=P5  | floor box under workbench\nP5-2     socket13a  x=11.90 z=7.71 y=1.05 n=2 circuit=P5  | for pantry_counter\nAC1      isolator   x=13.25 z=0.55 y=1.50 circuit=AC1  | 20 A DP isolator at the condenser on the A/C ledge; indoor units fed from it by the aircon installer\n"
+        "# midview-08-83 -- electrical points, from the ID's light plan\n# (../source/lighting Plan - 01 .pdf, LP-02, re-issue 4-10-26), measured off the\n# PDF linework. Heights, switching and the red dashed lines (not in the ID's\n# legend) answered on 2026-10-10 -- see the spec's electrical assumptions.\n#   name  kind  x= z= [y=] [circuit=] [controls=L1,L2] [n=] [w=]  | note\n# GLB frame (X east, Z south, metres), y = height to the accessory centre\n# (default per kind; pendants: the bottom of the shade). Circuit prefix:\n# L lighting, P power, AC aircon.\n\n# ---- L1  entry + lounge ----\nL1-1     pendant    x=1.46 z=1.12 y=2.40 circuit=L1  | warm pendant by the entry\nL1-2     pendant    x=1.46 z=1.78 y=2.40 circuit=L1  | warm pendant by the entry\nL1-3     pendant    x=1.46 z=2.51 y=2.40 circuit=L1  | warm pendant by the entry\nL1-4     pendant    x=1.94 z=4.61 y=2.40 circuit=L1  | warm pendant over the lounge\nL1-5     pendant    x=1.94 z=5.02 y=2.40 circuit=L1  | warm pendant over the lounge\nL1-6     pendant    x=1.94 z=5.46 y=2.40 circuit=L1  | warm pendant over the lounge\nL1-7     spot       x=0.72 z=4.04 circuit=L1  | adjustable spot washing the wall behind the sofas\nL1-8     spot       x=0.72 z=5.03 circuit=L1  | adjustable spot washing the wall behind the sofas\nL1-9     spot       x=0.72 z=6.01 circuit=L1  | adjustable spot washing the wall behind the sofas\nL1-10    spot       x=0.72 z=7.00 circuit=L1  | adjustable spot washing the wall behind the sofas\n\n# ---- L2  centre row + display track ----\nL2-1     pendant    x=3.85 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row\nL2-2     pendant    x=5.09 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row\nL2-3     pendant    x=6.25 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row\nL2-4     pendant    x=7.26 z=4.11 y=2.40 circuit=L2  | warm pendant, centre row\nL2-5     spot       x=3.37 z=2.36 circuit=L2  | track spot head on the 4.4 m display track (x 3.06-7.47)\nL2-6     spot       x=4.16 z=2.36 circuit=L2  | track spot head on the 4.4 m display track\nL2-7     spot       x=4.95 z=2.36 circuit=L2  | track spot head on the 4.4 m display track\nL2-8     spot       x=5.73 z=2.36 circuit=L2  | track spot head on the 4.4 m display track\nL2-9     spot       x=6.52 z=2.36 circuit=L2  | track spot head on the 4.4 m display track\nL2-10    spot       x=7.31 z=2.36 circuit=L2  | track spot head on the 4.4 m display track\n\n# ---- L3  display linear + wall lights ----\nL3-1     linear     x=3.60 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving\nL3-2     linear     x=4.70 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving\nL3-3     linear     x=5.80 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving\nL3-4     linear     x=6.91 z=2.57 circuit=L3  | 1.1 m LED linear light over the display shelving\nL3-5     wall_light x=2.48 z=1.64 circuit=L3  | warm wall light on the store wall, facing the entry\nL3-6     wall_light x=2.27 z=0.13 circuit=L3  | warm wall light on the north wall by the store door\nL3-7     wall_light x=8.44 z=0.73 circuit=L3  | warm wall light in the column niche by the pantry\n\n# ---- L4  store ----\nL4-1     linear     x=3.60 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle\nL4-2     linear     x=4.70 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle\nL4-3     linear     x=5.80 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle\nL4-4     linear     x=6.91 z=1.13 circuit=L4  | 1.1 m LED linear light in the store aisle\n\n# ---- L5  work table (own switch) ----\nL5-1     pendant    x=9.94 z=3.57 y=1.90 circuit=L5  | warm pendant low over the work table\nL5-2     pendant    x=9.94 z=4.30 y=1.90 circuit=L5  | warm pendant low over the work table\nL5-3     pendant    x=9.94 z=5.04 y=1.90 circuit=L5  | warm pendant low over the work table\nL5-4     pendant    x=9.94 z=5.77 y=1.90 circuit=L5  | warm pendant low over the work table\n\n# ---- L6  pantry + tables ----\nL6-1     pendant    x=8.79 z=1.58 y=2.40 circuit=L6  | warm pendant in the pantry passage\nL6-2     pendant    x=8.79 z=1.91 y=2.40 circuit=L6  | warm pendant in the pantry passage\nL6-3     pendant    x=9.74 z=7.59 y=2.10 circuit=L6  | warm pendant over the tables\nL6-4     pendant    x=10.12 z=7.59 y=2.10 circuit=L6  | warm pendant over the tables\n\n# ---- L7  concealed LED strip (the ID's red dashed lines) ----\nL7-1     cove       x=4.41 z=0.13 w=75 circuit=L7  | concealed warm LED strip at the ceiling line, north wall x 0.78-8.03\nL7-2     cove       x=4.40 z=7.96 w=90 circuit=L7  | concealed warm LED strip at the ceiling line, south wall x 0.20-8.03 round the column\nL7-3     cove       x=10.00 z=7.96 w=40 circuit=L7  | concealed warm LED strip at the ceiling line, south wall x 8.03-11.97\nL7-4     cove       x=3.10 z=6.76 w=25 circuit=L7  | concealed warm LED strip along the bay panel edge z 5.63-7.85\nL7-5     cove       x=5.48 z=6.76 w=25 circuit=L7  | concealed warm LED strip along the bay panel edge z 5.63-7.90\nL7-6     cove       x=7.86 z=6.76 w=25 circuit=L7  | concealed warm LED strip along the bay panel edge z 5.63-7.89\n\n# ---- L8  WC (own switch) ----\nL8-1     downlight  x=10.71 z=0.67 circuit=L8  | small warm downlight, IP44\nL8-2     downlight  x=11.44 z=0.67 circuit=L8  | small warm downlight, IP44\nL8-3     downlight  x=11.44 z=1.46 circuit=L8  | small warm downlight, IP44\nL8-4     wall_light x=11.38 z=0.13 circuit=L8  | warm mirror light over the basin, IP44\n\n# ---- L9  patio (not on the ID plan; kept) ----\nL9-1     wall_light x=12.40 z=2.60 y=2.40 circuit=L9  | warm outdoor wall light, IP65\nL9-2     wall_light x=12.40 z=4.60 y=2.40 circuit=L9  | warm outdoor wall light, IP65\nL9-3     wall_light x=12.40 z=7.36 y=2.40 circuit=L9  | warm outdoor wall light, IP65\n\n# ---- switches: one main location, WC and work table apart (confirm on site) ----\nS1       switch     x=0.80 z=3.07 controls=L1,L2,L3,L4,L6,L7,L9  | main bank inside FD2, south jamb\nS2       switch     x=11.10 z=2.03 controls=L8  | outside the WC door\nS3       switch     x=12.24 z=7.36 controls=L5  | on the GD2 pier by the work table\n\n# ---- P1  entry, store, display ----\nP1-1     socket13a  x=0.99 z=0.13 n=2 circuit=P1  | DSO, north wall by the entry\nP1-2     socket13a  x=1.44 z=0.21 y=3.30 circuit=P1  | SSO on the ceiling (CL)\nP1-3     socket13a  x=2.68 z=1.09 y=3.30 circuit=P1  | SSO on the ceiling (CL), store\nP1-4     socket13a  x=6.78 z=1.88 y=1.05 n=2 circuit=P1  | DSO in the store, by the stock shelving\nP1-5     socket13a  x=4.31 z=2.13 y=1.05 n=2 circuit=P1  | DSO in the display shelving\nP1-6     socket13a  x=6.42 z=2.13 y=1.05 n=2 circuit=P1  | DSO in the display shelving\nP1-7     socket13a  x=5.45 z=3.39 y=3.30 circuit=P1  | SSO on the ceiling (CL), mid-room\n\n# ---- P2  bays, tables, GD2 ----\nP2-1     socket13a  x=2.82 z=7.96 n=2 circuit=P2  | DSO, south wall by the bays\nP2-2     socket13a  x=1.67 z=7.68 y=3.30 circuit=P2  | SSO on the ceiling (CL), by the sofas\nP2-3     socket13a  x=9.15 z=7.96 y=1.05 n=2 circuit=P2  | DSO over the tables\nP2-4     socket13a  x=12.09 z=2.33 y=3.30 circuit=P2  | SSO on the ceiling (CL), by the GD2 glazing\nP2-5     socket13a  x=12.09 z=6.92 y=3.30 circuit=P2  | SSO on the ceiling (CL), by the GD2 door\n\n# ---- P3  pantry ----\nP3-1     socket13a  x=9.02 z=0.13 y=1.05 n=2 circuit=P3  | DSO over the pantry counter\nP3-2     socket13a  x=9.95 z=0.36 y=1.05 n=2 circuit=P3  | DSO over the pantry counter\n\n# ---- P4  patio (not on the ID plan; kept) ----\nP4-1     socket13a  x=15.48 z=3.95 n=2 circuit=P4  | weatherproof IP66 twin\n\n# ---- aircon ----\nAC1      isolator   x=12.40 z=0.50 y=1.50 circuit=AC1  | 20 A DP isolator at the condenser on the A/C ledge; indoor units fed from it by the aircon installer\n"
       ],
       "title": "2.5  ELECTRICAL POINTS  --  name kind x= z= [y=] [circuit=] [controls=] [n=] | note"
     },
@@ -1003,7 +1008,7 @@
         "Node name for S&R": "PrimitiveStringMultiline"
       },
       "widgets_values": [
-        "# midview-08-83 -- the furniture layer (BLOCKS). A STARTING layout from the brief's\n# programme, not a decision: move, resize, delete and add freely.\n#\n# One block per line, GLB frame (X east, Z south, metres; origin = outer faces of\n# the west and north walls). x z = centre of the footprint, w along X, d along Z,\n# h up, y = base height (default 0), rot = degrees counter-clockwise from above.\n# The silhouette comes from the name (sofa, chair, bed, table, bench, shelf, cabinet,\n# rug, plant; else a box) or shape=; a piece faces north (-Z) at rot=0, back south.\n# After | : the block's prompt -- what the renders draw in its place.\n# Edited on the ComfyUI canvas (Block Layout writes it back here on Run).\n\n# entry / waiting -- by the FD2 doors, west end\nbench_entry   x=0.48 z=4.60 w=0.55 d=1.80 h=0.45              | upholstered boucle bench along the west wall, oak plinth\nwaiting_sofa  x=2.30 z=7.15 w=2.20 d=0.90 h=0.80              | low boucle three-seat sofa against the south wall, oak base\nside_table    x=3.70 z=7.20 w=0.50 d=0.50 h=0.50              | round travertine side table\nrug_waiting   x=2.30 z=5.85 w=2.40 d=1.50 h=0.02              | natural jute rug\n\n# fitting bays -- beds to try pillows on\nbed_1         x=5.20 z=4.70 w=1.60 d=2.10 h=0.45              | low platform bed, navy linen bedding, pillows stacked against a fabric headboard\nbed_2         x=7.40 z=4.70 w=1.60 d=2.10 h=0.45              | low platform bed under a sheer canopy, white linen\n\n# inventory wall -- along the north wall\nshelf_north   x=4.60 z=0.40 w=6.00 d=0.45 h=2.40 rot=180      | pale ash open shelving full of rolled and boxed pillows, backlit\n\n# workshop\nworkbench     x=10.00 z=4.40 w=1.80 d=0.80 h=0.90             | solid ash workbench with a sewing machine and fabric rolls\n\n# pantry\npantry_counter x=11.90 z=7.43 w=1.60 d=0.60 h=0.90            | pantry counter with a coffee machine, white oak fronts\n\n# patio\npatio_bench   x=15.50 z=7.30 w=2.00 d=0.50 h=0.45              | teak outdoor bench\npatio_store   x=16.50 z=2.60 w=0.70 d=0.60 h=1.80              | lockable powder-coated outdoor storage cabinet\n"
+        "# midview-08-83 -- the furniture layer (BLOCKS), from the ID's furniture plan\n# (../source/furniture plan - 01.pdf, A-01, re-issue 4-10-26), measured off the\n# PDF linework. Heights the plan does not give were answered on 2026-10-10.\n#\n# One block per line, GLB frame (X east, Z south, metres; origin = outer faces of\n# the west and north walls). x z = centre of the footprint, w along X, d along Z,\n# h up, y = base height (default 0), rot = degrees counter-clockwise from above.\n# The silhouette comes from the name (sofa, chair, bed, table, bench, shelf, cabinet,\n# rug, plant; else a box) or shape=; a piece faces north (-Z) at rot=0, back south.\n# After | : the block's prompt -- what the renders draw in its place.\n# Edited on the ComfyUI canvas (Block Layout writes it back here on Run).\n\n# store room -- behind the display, full-height walls\nstore_cabinet_1 x=3.54 z=0.40 w=1.80 d=0.60 h=2.40 rot=180      | tall white storage cabinet, flat doors (180x60x240)\nstore_cabinet_2 x=5.34 z=0.40 w=1.80 d=0.60 h=2.40 rot=180      | tall white storage cabinet, flat doors (180x60x240)\nstore_cabinet_3 x=7.13 z=0.40 w=1.80 d=0.60 h=2.40 rot=180      | tall white storage cabinet, flat doors (180x60x240)\nstore_shelf     x=4.56 z=1.65 w=3.45 d=0.50 h=2.30              | metal stock shelving full of boxed pillows (3450x500x2300)\n\n# display -- the shop face of the store wall\ndisplay_shelf   x=5.34 z=2.40 w=5.40 d=0.60 h=2.40 rot=180      | pale oak open display shelving in five 1.1 m bays, pillows on show, lit from a ceiling track\n\n# lounge -- by the entry\nsofa_1          x=0.67 z=4.29 w=1.66 d=0.92 h=0.80 rot=270      | low boucle two-seat sofa against the west wall, scatter pillows\nsofa_2          x=0.67 z=6.07 w=1.66 d=0.92 h=0.80 rot=270      | low boucle two-seat sofa against the west wall, scatter pillows\ncoffee_table    x=1.66 z=4.44 w=0.50 d=0.65 h=0.45              | small travertine coffee table with a table lamp\nlounge_chair_1  x=2.53 z=4.02 w=0.78 d=0.78 h=0.75 rot=115 shape=chair | round upholstered lounge chair with a bolster cushion\nlounge_chair_2  x=2.36 z=5.24 w=0.78 d=0.78 h=0.75 rot=45 shape=chair  | round upholstered lounge chair with a bolster cushion\n\n# fitting bays -- beds to try pillows on, screened by curtains on ceiling tracks\n# (no panels or shelving: the bands on A-01 are curtain lines, track on the 3.40 soffit)\ncurtain_rail_w   x=3.38 z=6.79 w=0.05 d=2.30 h=0.05 y=3.35  | slim ceiling-mounted curtain track, sheer linen curtain drawn back to the wall\ncurtain_rail_mid x=5.48 z=6.79 w=0.05 d=2.30 h=0.05 y=3.35  | slim ceiling-mounted curtain track, sheer linen curtain drawn back to the wall\ncurtain_rail_e   x=7.60 z=6.79 w=0.05 d=2.30 h=0.05 y=3.35  | slim ceiling-mounted curtain track, sheer linen curtain drawn back to the wall\nbed_1           x=4.25 z=7.02 w=1.10 d=1.85 h=0.45              | single platform bed, head to the wall, linen bedding and stacked pillows\nbed_2           x=6.69 z=7.02 w=1.10 d=1.85 h=0.45              | single platform bed, head to the wall, linen bedding and stacked pillows\n\n# workshop\nwork_table      x=9.95 z=4.55 w=1.10 d=3.15 h=0.90 shape=table  | long solid ash work table with fabric rolls and a sewing machine\n\n# pantry -- L counter round the passage by the WC\npantry_counter  x=9.68 z=1.05 w=1.90 d=0.60 h=0.90 rot=90 shape=cabinet | pantry counter with a sink, white oak fronts\npantry_return   x=9.11 z=0.40 w=0.55 d=0.60 h=0.90 rot=180 shape=cabinet | pantry counter return, white oak fronts\n\n# tables by the GD2 door (110x68), double sockets above\ntable_1         x=9.38 z=7.65 w=1.10 d=0.68 h=0.75              | simple oak table for packing and the till\ntable_2         x=10.48 z=7.65 w=1.10 d=0.68 h=0.75             | simple oak table for packing and the till\n\n# plants\nplant_entry     x=1.23 z=0.61 w=0.80 d=0.80 h=1.40              | large leafy potted plant in a stone planter\nplant_bays      x=8.36 z=7.14 w=0.75 d=0.75 h=1.40              | potted olive tree in a stone planter\nplant_tables    x=11.52 z=7.56 w=0.75 d=0.75 h=1.40             | potted olive tree in a stone planter\nplant_patio_1   x=12.90 z=3.33 w=0.85 d=0.85 h=0.90             | leafy outdoor planter against the glazing\nplant_patio_2   x=12.90 z=4.27 w=0.85 d=0.85 h=0.90             | leafy outdoor planter against the glazing\nplant_patio_3   x=12.90 z=5.21 w=0.85 d=0.85 h=0.90             | leafy outdoor planter against the glazing\n"
       ],
       "title": "3.1  BLOCKS  --  one per line: name x= z= w= d= h= [y=] [rot=] | prompt"
     },
@@ -1146,12 +1151,12 @@
       },
       "widgets_values": [
         "look_at",
-        0.9,
+        1.2,
         1.6,
-        2.1,
+        2.0,
         9.0,
         0.9,
-        5.2,
+        5.0,
         0.0,
         65.0,
         1.0,
@@ -1423,12 +1428,12 @@
       },
       "widgets_values": [
         "look_at",
-        12.6,
+        11.8,
         1.6,
         6.9,
         3.0,
         0.9,
-        3.0,
+        4.0,
         0.0,
         65.0,
         1.0,
@@ -1700,9 +1705,9 @@
       },
       "widgets_values": [
         "look_at",
-        11.4,
+        11.2,
         3.1,
-        2.4,
+        2.6,
         3.0,
         0.0,
         6.0,
@@ -1977,12 +1982,12 @@
       },
       "widgets_values": [
         "look_at",
-        8.558,
-        19.162,
-        3.96,
-        8.558,
+        7.746,
+        17.188,
+        4.041,
+        7.746,
         0.0,
-        3.95,
+        4.031,
         0.0,
         30.0,
         1.0,
@@ -4215,7 +4220,10 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 448
+          "link": 448,
+          "widget": {
+            "name": "prompt"
+          }
         },
         {
           "name": "enabled",
@@ -4285,6 +4293,7 @@
         "proxyWidgets": []
       },
       "widgets_values": [
+        "",
         true,
         0.5,
         20261010,
@@ -4418,7 +4427,10 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 564
+          "link": 564,
+          "widget": {
+            "name": "prompt"
+          }
         },
         {
           "name": "enabled",
@@ -4488,6 +4500,7 @@
         "proxyWidgets": []
       },
       "widgets_values": [
+        "",
         true,
         0.5,
         20261011,
@@ -4621,7 +4634,10 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 680
+          "link": 680,
+          "widget": {
+            "name": "prompt"
+          }
         },
         {
           "name": "enabled",
@@ -4691,6 +4707,7 @@
         "proxyWidgets": []
       },
       "widgets_values": [
+        "",
         true,
         0.5,
         20261012,
@@ -4856,12 +4873,18 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 799
+          "link": 799,
+          "widget": {
+            "name": "prompt"
+          }
         },
         {
           "name": "blocks",
           "type": "STRING",
-          "link": 798
+          "link": 798,
+          "widget": {
+            "name": "blocks"
+          }
         },
         {
           "name": "enabled",
@@ -4935,6 +4958,8 @@
         "proxyWidgets": []
       },
       "widgets_values": [
+        "",
+        "",
         false,
         0.65,
         20261020,

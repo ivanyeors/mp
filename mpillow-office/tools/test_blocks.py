@@ -101,9 +101,12 @@ def test_propose(spec_path):
     centre = (lo + hi) / 2
     rng = np.random.default_rng(7)
 
-    cams = [{"position": {"x": 1.0, "y": 2.9, "z": 1.0}, "target": {"x": 8.0, "y": 0.0, "z": 5.5}, "fov": 60},
-            {"position": {"x": 12.4, "y": 2.9, "z": 6.9}, "target": {"x": 4.0, "y": 0.0, "z": 2.5}, "fov": 60},
-            {"position": {"x": 6.0, "y": 3.2, "z": 7.4}, "target": {"x": 6.0, "y": 0.0, "z": 1.0}, "fov": 70}]
+    cams = [{"position": {"x": 1.2, "y": 2.9, "z": 2.0}, "target": {"x": 8.0, "y": 0.0, "z": 5.5}, "fov": 60},
+            {"position": {"x": 11.9, "y": 2.9, "z": 6.9}, "target": {"x": 4.0, "y": 0.0, "z": 2.5}, "fov": 60},
+            {"position": {"x": 11.5, "y": 3.2, "z": 2.6}, "target": {"x": 3.0, "y": 0.0, "z": 6.5}, "fov": 70},
+            # straight down, like the design workflow's top view: full-height joinery hides
+            # whole blocks from every eye-level camera, never from above
+            {"position": {"x": 6.0, "y": 14.0, "z": 4.01}, "target": {"x": 6.0, "y": 0.0, "z": 4.0}, "fov": 40}]
     block_idx = {"blk_" + b.name: k for k, b in enumerate(blocks)}
     cands, px = [], {}
     for ci, ci_info in enumerate(cams):
@@ -133,6 +136,10 @@ def test_propose(spec_path):
             pts = BL.points_from_mask(m, est, t, cam, valid_bg=~any_mask)
             cands.append((n, 1.0, pts))
             whole = not (m[0].any() or m[-1].any() or m[:, 0].any() or m[:, -1].any())
+            if whole:                    # in frame; now also not hidden behind other parts
+                pm = parts[n]
+                _, alone = BL.render_depth(np.asarray(pm.vertices, float), np.asarray(pm.faces, np.int64), cam, W, H)
+                whole = m.sum() >= 0.98 * (alone >= 0).sum()
             if whole:                    # judged only where some camera sees all of it
                 px[n] = max(px.get(n, 0), int(m.sum()))
         print("  camera %d: %d blocks visible" % (ci + 1, len(masks)))

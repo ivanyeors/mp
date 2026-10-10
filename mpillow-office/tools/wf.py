@@ -36,6 +36,7 @@ def turbo_sigmas(raw, w, h):
 
 WIDGET_TYPES = ("INT", "FLOAT", "STRING", "BOOLEAN")
 SG_IN, SG_OUT = -10, -20                  # a subgraph's input and output nodes
+BLANK = {"INT": 0, "FLOAT": 0.0, "STRING": "", "BOOLEAN": False}
 
 
 class Port(tuple):
@@ -279,11 +280,15 @@ class Graph:
         unknown = set(values) - {nm for nm, _, d in sg.inputs if d is not None}
         if unknown:
             raise SystemExit("subgraph %s: no widget input %s" % (sg.name, ", ".join(sorted(unknown))))
+        # The frontend gives an instance a widget for every input that feeds an
+        # inner widget -- linked or not -- and fills them from widgets_values in
+        # order, so a linked one (a prompt from a text box) needs a placeholder.
+        shown = sg.widget_inputs()
         ins, wv = [], []
         for nm, typ, default in sg.inputs:
-            ins.append(inp(nm, typ, widget=default is not None))
-            if default is not None:
-                wv.append(values.get(nm, default))
+            ins.append(inp(nm, typ, widget=nm in shown))
+            if nm in shown:
+                wv.append(values.get(nm, default if default is not None else BLANK[typ]))
         n = node(self.new(), sg.id, pos, size, wv, inputs=ins,
                  outputs=[out(nm, typ) for nm, typ in sg.outputs],
                  props={"proxyWidgets": [[str(i), w] for i, w in sg.promoted]},
@@ -381,6 +386,17 @@ class Subgraph(Graph):
     def ret(self, name, src, slot=0):
         k = self.index_out(name)
         self.link(src, slot, SG_OUT, k, self.outputs[k][1])
+
+    def widget_inputs(self):
+        """Names of the inputs that end on an inner node's widget, plus every
+        input with a default (a widget by declaration)."""
+        by_id = {n["id"]: n for n in self.nodes}
+        names = {nm for nm, _, d in self.inputs if d is not None}
+        for _, src, sslot, dst, dslot, typ in self.links:
+            if src == SG_IN and typ in WIDGET_TYPES and dst in by_id:
+                if by_id[dst]["inputs"][dslot].get("widget"):
+                    names.add(self.inputs[sslot][0])
+        return names
 
     def promote(self, node_id, widget):
         """Show an inner widget on every instance (one value, shared)."""
