@@ -21,6 +21,8 @@ Everything lives in `mpillow-office/`. Run commands from there.
 | `tools/plan_read.py` | measuring instruments (render, lines, ticks, solids, scan, grid) |
 | `tools/plan_check.py` | the gate: dims add up, walls on drawn lines, no structure missed, no open assumptions |
 | `tools/build_massing.py` | spec -> `model/<base>.glb`, `_cut`, `_ids`, `_cut_ids` |
+| `tools/electrical.py` | the electrical layer: DB + points file -> check, routes, DB schedule, plan overlay, E-01..E-04 sheets |
+| `plans/<slug>.electrical.txt` | the electrical points, one per line (written by `--propose`, then edited) |
 
 Read the docstring at the top of `tools/build_massing.py` for the spec format
 before writing one. `plans/hdb-4rm-1bh.yaml` is a worked example from a PDF;
@@ -164,6 +166,48 @@ Then **look at** `model/<base>_check.png`:
 
 Also check `model/<base>_zones.png`, which shows the zone regions over the plan.
 
+### 5b. Electrical: the DB first, then the points
+
+Do this once the walls pass, before the grill, so its questions go in the
+same session. It follows the order an electrician reads a job: where the
+supply comes in, how each point is fed, then the drawings. The docstring of
+`tools/electrical.py` has the format.
+
+1. **Find the DB on the drawing.** Look for `DB`, `M` (meter), `MSB`, a
+   distribution-board symbol or a meter cabinet, usually by the entrance or
+   in a store / service yard. Write `electrical:` in the spec with
+   `db: {x, z, y, face, on: <part>}`, `points: <slug>.electrical.txt` and
+   `standard: SS 638`.
+   **If the drawing doesn't show the DB, stop and ask** (AskUserQuestion)
+   before anything else, because every run starts there. Offer the likely
+   spots as options, each with its coordinates and the reason: by the main
+   entrance, in the store or service yard, beside the meter cabinet. Don't
+   propose points until the DB is settled.
+2. **Record what the drawing can't say** as `electrical.assumptions`
+   (`status: open`): the DB mounting height; the ceiling and cable route
+   (false ceiling and its height, or exposed trunking / conduit; take the
+   brief's "services above ..." when it gives one); the incoming supply
+   (single or three phase, rating); the aircon indoor units (positions, or
+   none); a water heater (HDB bathrooms: yes, by default).
+3. **Propose a starting layout**, then overlay it on the floor plan:
+   ```bash
+   python tools/electrical.py plans/<slug>.yaml --propose
+   ```
+   This writes the points file and prints the DB schedule. It also writes
+   `model/<base>_electrical_plan.png` (the points and runs over the source
+   drawing) and the sheets in `renders/electrical/`. **Look at the
+   overlay**: switches by the doors, sockets on walls (not glazing or
+   doorways), lights clear of columns. Edit the points file, re-run without
+   `--propose`, and look again. Show the overlay to the user when you grill.
+4. **The gate.** `tools/electrical.py` prints `RESULT: PASS` only with no
+   errors (a point on no circuit, a switch with nothing to switch, a point
+   outside the plan) and no open electrical assumptions. Warnings (a busy
+   radial, an overloaded MCB) go to the user as questions, not silent fixes.
+
+Every sheet says the drawings are design intent, to be verified and endorsed
+by a Licensed Electrical Worker (LEW). Say the same when you report: they are
+for coordination with the electrician, not a certified design.
+
 ### 6. Grill the user
 
 Every `status: open` assumption becomes a question, asked with
@@ -180,7 +224,8 @@ Every `status: open` assumption becomes a question, asked with
   With the preset, the first HDB plan's nine questions come down to three:
   the defaults, the undrawn main bedroom wall and the kitchen divider.
 - Up to 4 questions per call, grouped by topic (heights; walls the drawing
-  leaves ambiguous; zones).
+  leaves ambiguous; zones; electrical: the DB, the route, the supply, the
+  aircon and heater points).
 - Each question names the place (room, wall, coordinates), says what the
   drawing shows, and offers the value you used as the first option
   "(Recommended)" plus the realistic alternatives, each with a one-line
@@ -212,11 +257,13 @@ answer turns out to hold for HDB flats generally, offer to add it to
 
 ```bash
 python tools/plan_check.py plans/<slug>.yaml     # must print RESULT: PASS
+python tools/electrical.py plans/<slug>.yaml     # must print RESULT: PASS (with an electrical block)
 python tools/build_massing.py plans/<slug>.yaml
 ```
 
 Report: the check numbers (walls on line, dims), the overlay picture, the
-answers that changed the model, and the GLB paths. `render_views.py` and the
+answers that changed the model, and the GLB paths. With an electrical layer,
+also report the DB position, the circuits, and the sheets PDF path. `render_views.py` and the
 workflow builders are still wired to the showroom. Say so if the user wants
 renders of the new plan.
 

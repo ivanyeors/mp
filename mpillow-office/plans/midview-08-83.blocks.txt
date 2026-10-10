@@ -1,0 +1,33 @@
+# midview-08-83 -- the furniture layer (BLOCKS). A STARTING layout from the brief's
+# programme, not a decision: move, resize, delete and add freely.
+#
+# One block per line, GLB frame (X east, Z south, metres; origin = outer faces of
+# the west and north walls). x z = centre of the footprint, w along X, d along Z,
+# h up, y = base height (default 0), rot = degrees counter-clockwise from above.
+# The silhouette comes from the name (sofa, chair, bed, table, bench, shelf, cabinet,
+# rug, plant; else a box) or shape=; a piece faces north (-Z) at rot=0, back south.
+# After | : the block's prompt -- what the renders draw in its place.
+# Edited on the ComfyUI canvas (Block Layout writes it back here on Run).
+
+# entry / waiting -- by the FD2 doors, west end
+bench_entry   x=0.48 z=4.60 w=0.55 d=1.80 h=0.45              | upholstered boucle bench along the west wall, oak plinth
+waiting_sofa  x=2.30 z=7.15 w=2.20 d=0.90 h=0.80              | low boucle three-seat sofa against the south wall, oak base
+side_table    x=3.70 z=7.20 w=0.50 d=0.50 h=0.50              | round travertine side table
+rug_waiting   x=2.30 z=5.85 w=2.40 d=1.50 h=0.02              | natural jute rug
+
+# fitting bays -- beds to try pillows on
+bed_1         x=5.20 z=4.70 w=1.60 d=2.10 h=0.45              | low platform bed, navy linen bedding, pillows stacked against a fabric headboard
+bed_2         x=7.40 z=4.70 w=1.60 d=2.10 h=0.45              | low platform bed under a sheer canopy, white linen
+
+# inventory wall -- along the north wall
+shelf_north   x=4.60 z=0.40 w=6.00 d=0.45 h=2.40 rot=180      | pale ash open shelving full of rolled and boxed pillows, backlit
+
+# workshop
+workbench     x=10.00 z=4.40 w=1.80 d=0.80 h=0.90             | solid ash workbench with a sewing machine and fabric rolls
+
+# pantry
+pantry_counter x=11.90 z=7.43 w=1.60 d=0.60 h=0.90            | pantry counter with a coffee machine, white oak fronts
+
+# patio
+patio_bench   x=15.50 z=7.30 w=2.00 d=0.50 h=0.45              | teak outdoor bench
+patio_store   x=16.50 z=2.60 w=0.70 d=0.60 h=1.80              | lockable powder-coated outdoor storage cabinet

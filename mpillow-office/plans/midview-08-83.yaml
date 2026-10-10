@@ -16,6 +16,7 @@
 
 name: midview-08-83
 output: {dir: ../model, base: midview_08_83}
+blocks: midview-08-83.blocks.txt     # the furniture layer (Block Layout on the canvas)
 
 source:
   image: sources/IMG_7242.PNG
@@ -128,6 +129,43 @@ zone_regions:
 
 # the north party wall faces a camera looking from the north
 cutaway: [north_wall*, col_n_mid, col_nw, col_ne, meter_cab]
+
+# The electrical layer (tools/electrical.py): the DB first, then the points file.
+# GLB frame like BLOCKS. Checked by `python tools/electrical.py plans/midview-08-83.yaml`.
+electrical:
+  standard: SS 638
+  points: midview-08-83.electrical.txt
+  db: {x: 0.838, z: 0.81, y: 1.60, face: east, on: meter_cab}
+  ceiling: 3.30       # no false ceiling: surface fittings, face 0.10 below the 3.40 soffit
+  route: {height: 3.35, kind: exposed}    # 50 x 50 trunking fixed to the soffit
+  supply: {phases: single, rating: 63}
+  aircon: [{x: 13.25, z: 0.55, y: 1.50, note: "20 A DP isolator at the condenser on the A/C ledge; indoor units fed from it by the aircon installer"}]
+  assumptions:
+    - about: DB position
+      drawing: M (meter / DB) on the meter cabinet nib, north jamb of FD2
+      used: wall-mounted on the east face of meter_cab (x 0.838), centred z 0.81
+      status: confirmed
+      answer: from the drawing
+    - about: DB mounting height
+      drawing: not given
+      used: 1.60 m to the centre (top ~1.95 m)
+      status: confirmed
+      answer: "1.6 m"
+    - about: ceiling and cable route
+      drawing: not given; brief says 3.40 m to soffit, services above 3.10 m
+      used: no false ceiling; exposed 50 x 50 trunking on the soffit (centre 3.35 m), surface conduit drops; surface fittings at 3.30 m
+      status: confirmed
+      answer: "Exposed trunking"
+    - about: incoming supply
+      drawing: not given
+      used: single phase, 63 A -- the LEW confirms against the SP Group supply on site
+      status: confirmed
+      answer: "Not sure -- go with the assumption"
+    - about: aircon
+      drawing: an A/C ledge outside the WC (condensers), indoor units not shown
+      used: we install it ourselves from our supply -- one dedicated AC1 radial from the DB to a 20 A DP isolator at the condenser (ledge, x 13.25 z 0.55, 1.50 m); indoor units fed from the condenser, positions with the aircon installer
+      status: confirmed
+      answer: "From the power supply, we will need to install ourselves"
 
 items:
   # ---- floor: outer faces, out to the FD2 door line and the patio parapet ----
