@@ -10,7 +10,7 @@
 // Every `render` must be PURE — no network, no DB.
 
 import { renderApplicationOutcomeEmail } from "./application";
-import { renderBackupEmailOtpEmail } from "./auth";
+import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderContactEmail } from "./contact";
 import { renderHeldResultReminderEmail, renderPartnerListingUpdatedEmail } from "./ops";
 import {
@@ -29,6 +29,7 @@ import {
   renderResultUpdatedEmail,
 } from "./results";
 import { money } from "./format";
+import { getSiteOrigin } from "@/lib/site-url";
 import { RMA_EMAIL_TEMPLATES } from "./rma";
 import { ORDER_EMAIL_TEMPLATES } from "./templates";
 import {
@@ -329,6 +330,19 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "auth",
     audience: "partner",
     render: (f) => renderBackupEmailOtpEmail({ code: f === "hostile" ? HOSTILE : "418320" }),
+  },
+  {
+    id: "auth.admin_invite",
+    label: "Admin Panel invite",
+    group: "auth",
+    audience: "staff",
+    render: (f) =>
+      renderAdminInviteEmail({
+        inviterEmail: f === "hostile" ? HOSTILE : "sg@mpillow.com",
+        invitedEmail: f === "hostile" ? HOSTILE : "jess@example.com",
+        roleName: f === "hostile" ? HOSTILE : "Fulfilment",
+        signInUrl: `${getSiteOrigin()}/en-US/account/login?next=%2Fen-US%2Fsettings`,
+      }),
   },
 
   // --- Support / staff ---

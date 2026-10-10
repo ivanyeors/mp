@@ -16,7 +16,7 @@ const NAV: BreadcrumbNavGroup[] = [
         label: "General",
         items: [
           { href: "/settings/general", label: "API Configs" },
-          { href: "/settings/admins", label: "Admin Users" },
+          { href: "/settings/users", label: "Users & permissions" },
         ],
       },
     ],
@@ -69,7 +69,7 @@ assertEqual(
 );
 
 assertEqual(labels("/settings/general"), ["Admin Panel", "API Configs"], "nav label for general");
-assertEqual(labels("/settings/admins"), ["Admin Panel", "Admin Users"], "nav label for admins");
+assertEqual(labels("/settings/users"), ["Admin Panel", "Users & permissions"], "nav label for users");
 assertEqual(
   labels("/settings/integrations/shopify"),
   ["Admin Panel", "Shopify Link"],

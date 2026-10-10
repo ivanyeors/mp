@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { syncAllProducts } from "@/lib/ecommerce/inventory-sync";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireAnyAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
+/** Products › "Sync from Inventory": rebuilds storefront products from inventory. */
 export async function POST() {
-  const denied = await requireAdmin("inventory");
+  const denied = await requireAnyAdmin(["products", "inventory"]);
   if (denied) return denied;
 
   try {

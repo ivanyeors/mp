@@ -27,7 +27,7 @@ assert.match(sql, /uq_rule_graphs_draft/);
 assert.match(sql, /uq_rule_graphs_published_version/);
 assert.match(sql, /premium-mpillow/);
 
-// --- API routes + page-builder gate ---
+// --- API routes + rules-engine gate ---
 const routes = [
   "app/api/settings/rules-engine/[flow]/route.ts",
   "app/api/settings/rules-engine/[flow]/publish/route.ts",
@@ -37,10 +37,10 @@ const routes = [
 ];
 for (const r of routes) {
   assert.ok(existsSync(join(ROOT, r)), `${r} exists`);
-  assert.match(read(r), /requireAdminContext\("page-builder"\)/);
+  assert.match(read(r), /requireAdminContext\("rules-engine"\)/);
 }
-assert.equal(roleHasPermission("owner", "page-builder"), true);
-assert.equal(roleHasPermission("viewer", "page-builder"), false);
+assert.equal(roleHasPermission("owner", "rules-engine"), true);
+assert.equal(roleHasPermission("viewer", "rules-engine"), false);
 
 // --- Hand-written Premium graph: validate + evaluate ---
 const graph = premiumHandGraph(DEFAULT_TEMPLATE_IDS);

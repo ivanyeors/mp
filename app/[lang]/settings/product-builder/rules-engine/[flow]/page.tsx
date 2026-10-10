@@ -11,7 +11,7 @@ export default async function RulesEngineFlowPage({
 }) {
   const { lang, flow } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("rules-engine", locale);
   if (!isRuleFlow(flow)) notFound();
   return <RulesEngineWorkbenchLazy flow={flow} />;
 }

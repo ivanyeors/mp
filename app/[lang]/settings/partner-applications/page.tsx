@@ -49,7 +49,7 @@ export default async function PartnerApplicationsPage({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("partner-applications", locale);
 
   const { data } = await supabaseAdmin()
     .from("partner_users")

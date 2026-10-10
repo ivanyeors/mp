@@ -23,7 +23,7 @@ const CreateCategorySchema = z.object({
 });
 
 export async function GET() {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("faq");
   if (denied) return denied;
 
   const rows = await getAllFaqCategoriesAdmin();
@@ -31,7 +31,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("faq");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

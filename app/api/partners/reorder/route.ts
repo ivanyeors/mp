@@ -11,7 +11,7 @@ const ReorderSchema = z.object({
 });
 
 export async function PUT(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   try {

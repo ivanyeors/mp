@@ -5,7 +5,7 @@ import { ReferralRowsTable } from "@/components/partner/referral-rows";
 /**
  * Admin view of every partner's per-referral rows (#80, AC5) — the SAME rows the
  * partner hub shows, but UNMASKED (adminView) and with a Partner column. Staff
- * only: the parent page already gates with requireAdminPage("page-builder"); this
+ * only: the parent page already gates with requireAdminPage("partner-commissions"); this
  * is a read-only server component, so there is no route/action to re-assert.
  */
 export async function AdminReferralRows() {

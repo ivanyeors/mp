@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
-  Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
+  Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
   GitBranch, ClipboardCheck, Percent, Box,
@@ -47,11 +47,12 @@ import { cn } from "@/lib/utils";
 import { subscribeAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
-import type { Permission } from "@/lib/auth/permissions";
+import { permissionForHref, type Permission } from "@/lib/auth/permissions";
 import {
   SettingsBreadcrumbProvider,
   useSettingsBreadcrumbDetailLabel,
 } from "@/components/settings/settings-breadcrumb-context";
+import { WorkingAsPicker, type WorkingAsState } from "@/components/settings/working-as-picker";
 import {
   buildSettingsBreadcrumbs,
   findActiveHref,
@@ -62,8 +63,6 @@ type NavItem = {
   label: string;
   tooltip: string;
   Icon: LucideIcon;
-  /** Permission required to see this entry; omitted = visible to any staff. */
-  perm?: Permission;
   items?: NavItem[];
 };
 
@@ -82,10 +81,9 @@ const NAV_GROUPS: NavGroup[] = [
         tooltip: "General Settings",
         Icon: Settings2,
         items: [
-          { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound, perm: "api-configs" },
-          { href: "/settings/appointments", label: "Appointments", tooltip: "Appointment reminders", Icon: CalendarDays, perm: "results" },
-          { href: "/settings/admins", label: "Admin Users", tooltip: "Admin users & roles", Icon: ShieldCheck, perm: "staff" },
-          { href: "/settings/staff-management", label: "Staff Management", tooltip: "Manufacturing staff", Icon: Users, perm: "results" },
+          { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound },
+          { href: "/settings/appointments", label: "Appointments", tooltip: "Appointment reminders", Icon: CalendarDays },
+          { href: "/settings/users", label: "Users & permissions", tooltip: "Members, roles, staff profiles and Telegram", Icon: ShieldCheck },
         ],
       },
     ],
@@ -93,8 +91,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Inventory",
     items: [
-      { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes, perm: "inventory" },
-      { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign, perm: "costings" },
+      { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes },
+      { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
     ],
   },
   {
@@ -105,66 +103,69 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Products",
         tooltip: "Product Management",
         Icon: ShoppingBag,
-        perm: "products",
         items: [
-          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
-          { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch, perm: "page-builder" },
+          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
+          { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch },
         ],
       },
-      { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle, perm: "customers" },
-      { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList, perm: "results" },
-      { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart, perm: "orders" },
-      { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw, perm: "orders" },
-      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag, perm: "discounts" },
-      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck, perm: "shipping" },
+      { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle },
+      { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
+      { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart },
+      { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw },
+      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag },
+      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck },
     ],
   },
   {
     label: "Landing Site",
     items: [
-      { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard, perm: "page-builder" },
+      { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard },
       {
         href: "/settings/partners",
         label: "Partners",
         tooltip: "Studios & partner clinics",
         Icon: Handshake,
-        perm: "page-builder",
         items: [
-          { href: "/settings/partner-applications", label: "Partner applications", tooltip: "Review partner applications", Icon: ClipboardCheck, perm: "page-builder" },
-          { href: "/settings/partner-commissions", label: "Partner Commissions", tooltip: "Commission schemes", Icon: Percent, perm: "page-builder" },
+          { href: "/settings/partner-applications", label: "Partner applications", tooltip: "Review partner applications", Icon: ClipboardCheck },
+          { href: "/settings/partner-commissions", label: "Partner Commissions", tooltip: "Commission schemes", Icon: Percent },
         ],
       },
-      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper, perm: "blogs" },
-      { href: "/settings/faq", label: "FAQ", tooltip: "FAQ Management", Icon: HelpCircle, perm: "page-builder" },
-      { href: "/settings/forms", label: "Forms", tooltip: "Discovery source and form option lists", Icon: FormInput, perm: "page-builder" },
-      { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image, perm: "media" },
+      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
+      { href: "/settings/faq", label: "FAQ", tooltip: "FAQ Management", Icon: HelpCircle },
+      { href: "/settings/forms", label: "Forms", tooltip: "Discovery source and form option lists", Icon: FormInput },
+      { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
     ],
   },
   {
     label: "Insights",
     items: [
-      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp, perm: "analytics" },
-      { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText, perm: "audit-log" },
+      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
+      { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText },
     ],
   },
   {
     label: "Showroom",
     items: [
-      { href: "/settings/showroom", label: "Showroom Model", tooltip: "3D model of the showroom unit", Icon: Box, perm: "showroom" },
+      { href: "/settings/showroom", label: "Showroom Model", tooltip: "3D model of the showroom unit", Icon: Box },
     ],
   },
   {
     label: "Integration",
     items: [
-      { href: "/settings/integrations/shopify", label: "Shopify Link", tooltip: "Shopify Link", Icon: Store, perm: "inventory" },
+      { href: "/settings/integrations/shopify", label: "Shopify Link", tooltip: "Shopify Link", Icon: Store },
     ],
   },
 ];
 
-/** An item is visible when its permission is granted (or it requires none). */
+/**
+ * An item is visible when the permission its page is guarded by is granted.
+ * The key comes from the permission catalog by href, so the sidebar and the
+ * page guard cannot disagree; a page with no catalog entry is open to any Staff.
+ */
 function canSee(item: NavItem, permissions: Permission[]): boolean {
-  if (!item.perm) return true;
-  return permissions.includes(item.perm);
+  const perm = permissionForHref(item.href);
+  if (!perm) return true;
+  return permissions.includes(perm);
 }
 
 /** A parent is visible when it or any of its children is visible. */
@@ -179,7 +180,7 @@ function flattenNavItems(items: NavItem[], permissions: Permission[]): NavItem[]
   for (const item of items) {
     if (!itemVisible(item, permissions)) continue;
     if (canSee(item, permissions)) {
-      out.push({ href: item.href, label: item.label, tooltip: item.tooltip, Icon: item.Icon, perm: item.perm });
+      out.push({ href: item.href, label: item.label, tooltip: item.tooltip, Icon: item.Icon });
     }
     for (const sub of item.items ?? []) {
       if (canSee(sub, permissions)) out.push(sub);
@@ -198,6 +199,8 @@ type AdminStatus = "checking" | "authed" | "unauth";
 export type SettingsInitialAuth = {
   signedIn: boolean;
   permissions: Permission[];
+  /** The login's Staff profiles and who is at this device (slice 10). */
+  workingAs?: WorkingAsState;
 };
 
 export function SettingsSidebarNav({
@@ -285,6 +288,48 @@ export function SettingsSidebarNav({
     };
   }, [isLoginRoute, initialAuth]);
 
+  // Re-read the Member's pages on each navigation after the first, so a role
+  // changed mid-session drops its pages from the sidebar on the next click
+  // instead of on the next full reload (the server layout is not re-run on a
+  // client navigation). The page guards are the real boundary; this is chrome.
+  const firstPath = useRef(basePathname);
+  // The path the permissions above were read for: the first page (from the
+  // server layout) or the last refetch. A redirect is only decided on
+  // permissions that are current for this path, never on stale ones.
+  const [permissionsPath, setPermissionsPath] = useState(basePathname);
+  useEffect(() => {
+    if (isLoginRoute || status !== "authed" || basePathname === firstPath.current) return;
+    firstPath.current = "";
+    const path = basePathname;
+    let cancelled = false;
+    fetch("/api/admin/context")
+      .then((res) => res.json())
+      .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
+        if (cancelled) return;
+        if (!data?.signedIn) return setStatus("unauth");
+        setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+        setPermissionsPath(path);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basePathname]);
+
+  // The current page is no longer in the Member's role: send them to the
+  // Admin Panel home with the same notice a page guard gives.
+  const currentKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
+  const lostCurrentPage =
+    status === "authed" &&
+    permissionsPath === basePathname &&
+    !!currentKey &&
+    !permissions.includes(currentKey);
+  useEffect(() => {
+    if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lostCurrentPage, currentKey]);
+
   // Redirect unauthorized visitors to unified Sign in (preserve deep link).
   useEffect(() => {
     if (status === "unauth" && !isLoginRoute) {
@@ -326,6 +371,7 @@ export function SettingsSidebarNav({
       <div className="min-w-0 flex-1">
         <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
       </div>
+      {initialAuth?.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
     </header>
   );
 

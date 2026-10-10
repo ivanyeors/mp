@@ -27,7 +27,7 @@ const { getAdminContext } = await import("@/lib/auth/admin");
 const staffRow = (over: Record<string, unknown> = {}) => ({
   id: "staff-1",
   email: "b@x.com",
-  role: "owner",
+  role_id: "r-owner",
   is_active: true,
   auth_user_id: null as string | null,
   ...over,
@@ -35,7 +35,10 @@ const staffRow = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   delete process.env.ADMIN_BOOTSTRAP_EMAILS;
-  h.db = { admin_users: [] };
+  h.db = {
+    admin_users: [],
+    admin_roles: [{ id: "r-owner", key: "owner", name: "Owner", grants_all: true, permissions: [] }],
+  };
   h.identity = null;
 });
 
@@ -52,7 +55,7 @@ describe("getAdminContext email fallback", () => {
     h.db.admin_users = [staffRow()];
     h.identity = { id: "auth-B", email: "b@x.com" };
 
-    expect(await getAdminContext()).toMatchObject({ userId: "auth-B", role: "owner", isBootstrap: false });
+    expect(await getAdminContext()).toMatchObject({ userId: "auth-B", roleKey: "owner", isBootstrap: false });
     expect(h.db.admin_users[0].auth_user_id).toBe("auth-B");
   });
 
@@ -60,7 +63,7 @@ describe("getAdminContext email fallback", () => {
     h.db.admin_users = [staffRow({ auth_user_id: "auth-A" })];
     h.identity = { id: "auth-A", email: "b@x.com" };
 
-    expect(await getAdminContext()).toMatchObject({ userId: "auth-A", role: "owner" });
+    expect(await getAdminContext()).toMatchObject({ userId: "auth-A", roleKey: "owner" });
   });
 
   it("does not let `_` in the signed-in email adopt another unbound row", async () => {
@@ -82,7 +85,10 @@ describe("getAdminContext email fallback", () => {
   it("leaves the bootstrap allowlist path unchanged", async () => {
     h.identity = { id: "auth-sg", email: "sg@mpillow.com" };
 
-    expect(await getAdminContext()).toMatchObject({ role: "owner", isBootstrap: true });
+    expect(await getAdminContext()).toMatchObject({ roleKey: "owner", isBootstrap: true });
     expect(h.db.admin_users).toHaveLength(1);
+    expect(h.db.admin_users[0]).toMatchObject({ email: "sg@mpillow.com", role_id: "r-owner" });
+    // …with a first Staff profile named from the email.
+    expect(h.db.mp_staff).toEqual([expect.objectContaining({ name: "Sg", admin_user_id: h.db.admin_users[0].id })]);
   });
 });

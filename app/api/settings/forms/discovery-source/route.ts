@@ -28,7 +28,7 @@ const PutSchema = z.object({
 
 /** Admin: full catalog including archived. */
 export async function GET() {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("forms");
   if (denied) return denied;
 
   const catalog = await readDiscoverySourceCatalog();
@@ -37,7 +37,7 @@ export async function GET() {
 
 /** Admin: replace catalog (Other lock enforced in lib). */
 export async function PUT(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("forms");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
-import { roleHasPermission, type AdminRole } from "@/lib/auth/permissions";
+import { roleHasPermission, type AdminRole, type Permission } from "@/lib/auth/permissions";
 
 /**
  * Admin Panel reads that answered anonymously (#173). Only settings/** calls
@@ -11,6 +11,8 @@ import { roleHasPermission, type AdminRole } from "@/lib/auth/permissions";
 
 const h = vi.hoisted(() => ({
   role: null as AdminRole | null,
+  /** A role that holds exactly these keys — what a custom role will be (ADR 0023). */
+  grants: null as Set<string> | null,
   from: vi.fn(),
   faqItems: vi.fn(),
   faqCategories: vi.fn(),
@@ -19,6 +21,9 @@ const h = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth/admin", () => ({
   requireAdmin: vi.fn(async (permission: Parameters<typeof roleHasPermission>[1]) => {
+    if (h.grants) {
+      return h.grants.has(permission) ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     if (!h.role) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return roleHasPermission(h.role, permission)
       ? null
@@ -51,6 +56,7 @@ const partners = await import("@/app/api/partners/route");
 beforeEach(() => {
   vi.clearAllMocks();
   h.role = null;
+  h.grants = null;
   h.faqItems.mockResolvedValue([]);
   h.faqCategories.mockResolvedValue([]);
   h.partners.mockResolvedValue([]);
@@ -82,7 +88,7 @@ describe("anonymous callers are refused before any read", () => {
   });
 });
 
-describe("staff holding page-builder still load the Admin Panel", () => {
+describe("a manager still loads the Admin Panel", () => {
   it.each([
     ["site-settings", () => siteSettings.GET(new Request("http://x/api/site-settings?keys=landing_hero"))],
     ["faq items", () => faqItems.GET(new Request("http://x/api/faq/items"))],
@@ -91,6 +97,25 @@ describe("staff holding page-builder still load the Admin Panel", () => {
   ])("%s → 200", async (_name, run) => {
     h.role = "manager";
     expect((await run()).status).toBe(200);
+  });
+});
+
+describe("each read answers to its own page's key, not page-builder", () => {
+  const reads: [Permission, string, () => Promise<Response>][] = [
+    ["media", "site-settings", () => siteSettings.GET(new Request("http://x/api/site-settings?keys=landing_hero"))],
+    ["faq", "faq items", () => faqItems.GET(new Request("http://x/api/faq/items"))],
+    ["faq", "faq categories", () => faqCategories.GET()],
+    ["partners", "partners", () => partners.GET()],
+  ];
+
+  it.each(reads)("%s → %s 200", async (key, _name, run) => {
+    h.grants = new Set([key]);
+    expect((await run()).status).toBe(200);
+  });
+
+  it.each(reads)("%s → %s refused with only page-builder", async (_key, _name, run) => {
+    h.grants = new Set(["page-builder"]);
+    expect((await run()).status).toBe(403);
   });
 });
 

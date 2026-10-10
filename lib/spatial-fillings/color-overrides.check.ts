@@ -36,7 +36,7 @@ assert.doesNotMatch(page, /onChange[^\n]*shape/i, "no control writes shape");
 const route = readFileSync("app/[lang]/settings/product-builder/filling-visuals/route.ts", "utf8");
 assert.doesNotMatch(route, /shape\s*:/i, "API accepts no shape field — color only");
 assert.equal(
-  route.match(/const denied = await requireAdmin\('page-builder'\)/g)?.length,
+  route.match(/const denied = await requireAdmin\('products'\)/g)?.length,
   3,
   "GET, POST, and DELETE are admin-gated (settings-route policy)",
 );

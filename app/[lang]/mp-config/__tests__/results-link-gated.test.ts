@@ -31,7 +31,7 @@ describe("mp-config completion dialog results link", () => {
   it("derives canViewResults from the results permission server-side", () => {
     const src = readFileSync(join(DIR, "page.tsx"), "utf8");
     expect(src).toMatch(
-      /canViewResults=\{Boolean\(staffCtx && roleHasPermission\(staffCtx\.role, "results"\)\)\}/,
+      /canViewResults=\{Boolean\(staffCtx && hasPermission\(staffCtx, "results"\)\)\}/,
     );
   });
 

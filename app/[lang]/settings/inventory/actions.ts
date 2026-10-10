@@ -3,7 +3,7 @@
 import { after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
-import { assertAdmin } from '@/lib/auth/admin'
+import { assertAdmin, assertAnyAdmin } from '@/lib/auth/admin'
 import { loadTemplateKeys, templateIdsForKey } from '@/lib/filling-templates/membership'
 import { syncShopifyInventoryFromBuildable, syncShopifyInventoryForDepletedItems } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
@@ -618,7 +618,7 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
 }
 
 export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium', pillowVariant?: 'linen' | 'fibrecool') {
-  await assertAdmin('inventory')
+  await assertAnyAdmin(['inventory', 'shopify-link'])
   const admin = supabaseAdmin()
   const effectivePillowKind = kind === 'pillow' ? (pillowKind ?? 'basic') : null
   const effectivePillowVariant = kind === 'pillow' && effectivePillowKind === 'premium' ? (pillowVariant ?? null) : null
@@ -1112,7 +1112,7 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
 }
 
 export async function fullShopifySync() {
-  await assertAdmin('inventory')
+  await assertAdmin('shopify-link')
   const [inventory, prices] = await Promise.all([
     syncShopifyInventoryFromBuildable(),
     syncShopifyPricingFromSupabase(),
@@ -1121,7 +1121,7 @@ export async function fullShopifySync() {
 }
 
 export async function syncShopifyPricesOnly() {
-  await assertAdmin('inventory')
+  await assertAnyAdmin(['costings', 'shopify-link'])
   const prices = await syncShopifyPricingFromSupabase()
   return { ok: true, prices }
 }
@@ -1406,7 +1406,7 @@ export async function listShopifyAdminState() {
  * return, so the rendered result once this lands is identical to before.
  */
 export async function listShopifyRemoteProducts() {
-  await assertAdmin('inventory')
+  await assertAdmin('shopify-link')
   // If env vars are missing in a local shell, fall back to the DB-only view.
   const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
     () => [],
@@ -1424,7 +1424,7 @@ export async function listShopifyRemoteProducts() {
  * Standalone unmapped-variant list, kept for callers that need only this half.
  */
 export async function listShopifyUnmappedVariants() {
-  await assertAdmin('inventory')
+  await assertAdmin('shopify-link')
   const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
     () => [],
   )) as ShopifyActiveProduct[]
@@ -1432,7 +1432,7 @@ export async function listShopifyUnmappedVariants() {
 }
 
 export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertShopifyOverrideSchema>) {
-  await assertAdmin('inventory')
+  await assertAnyAdmin(['inventory', 'shopify-link'])
   const parsed = UpsertShopifyOverrideSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1456,7 +1456,7 @@ export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertS
 }
 
 export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
-  await assertAdmin('inventory')
+  await assertAnyAdmin(['inventory', 'shopify-link'])
   const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
   const admin = supabaseAdmin()
   const { error } = await admin.from('shopify_variant_overrides').delete().eq('shopify_variant_id', id)
@@ -1465,7 +1465,7 @@ export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
 }
 
 export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMappingSchema>) {
-  await assertAdmin('inventory')
+  await assertAnyAdmin(['inventory', 'shopify-link'])
   const parsed = LinkPartMappingSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1498,7 +1498,7 @@ export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMap
 }
 
 export async function linkPillowToShopifyVariant(input: z.infer<typeof LinkPillowMappingSchema>) {
-  await assertAdmin('inventory')
+  await assertAdmin('shopify-link')
   const parsed = LinkPillowMappingSchema.parse(input)
   const admin = supabaseAdmin()
   const payload = {
@@ -1517,7 +1517,7 @@ export async function linkPillowToShopifyVariant(input: z.infer<typeof LinkPillo
 }
 
 export async function linkBolsterToShopifyVariant(input: z.infer<typeof LinkBolsterMappingSchema>) {
-  await assertAdmin('inventory')
+  await assertAdmin('shopify-link')
   const parsed = LinkBolsterMappingSchema.parse(input)
   const admin = supabaseAdmin()
   const payload = {
@@ -1536,7 +1536,7 @@ export async function linkBolsterToShopifyVariant(input: z.infer<typeof LinkBols
 }
 
 export async function deleteShopifyMapping(shopifyVariantId: number) {
-  await assertAdmin('inventory')
+  await assertAnyAdmin(['inventory', 'shopify-link'])
   const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
   const admin = supabaseAdmin()
   const { error } = await admin.from('shopify_variant_mappings').delete().eq('shopify_variant_id', id)

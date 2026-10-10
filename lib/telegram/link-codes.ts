@@ -2,7 +2,7 @@ import { createHash, randomInt } from "node:crypto";
 
 /**
  * One-time codes that bind a Telegram account to a `telegram_operators` row.
- * An admin creates the code in Staff Management → Telegram access; the person
+ * An admin creates the code in Users & permissions → Telegram; the person
  * sends `/link CODE` to the bot. Server-only (node:crypto) — the settings UI
  * imports lib/telegram/roles.ts, never this file.
  */

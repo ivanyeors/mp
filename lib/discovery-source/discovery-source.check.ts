@@ -178,7 +178,7 @@ assert.match(migration, /discovery_source_other/);
 assert.match(migration, /mp_config_responses/);
 
 const adminApi = read("app/api/settings/forms/discovery-source/route.ts");
-assert.match(adminApi, /requireAdmin\("page-builder"\)/);
+assert.match(adminApi, /requireAdmin\("forms"\)/);
 assert.match(adminApi, /export async function GET/);
 assert.match(adminApi, /export async function PUT/);
 
@@ -186,8 +186,8 @@ const publicApi = read("app/api/discovery-source/route.ts");
 assert.match(publicApi, /activeDiscoverySourceOptions/);
 assert.doesNotMatch(publicApi, /requireAdmin/);
 
-assert.equal(roleHasPermission("owner", "page-builder"), true);
-assert.equal(roleHasPermission("viewer", "page-builder"), false);
+assert.equal(roleHasPermission("owner", "forms"), true);
+assert.equal(roleHasPermission("viewer", "forms"), false);
 
 // --- Glossary (slice 01 co-check so agents see the term) ---
 const context = read("CONTEXT.md");

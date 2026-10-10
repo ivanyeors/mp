@@ -1,33 +1,32 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminContext } from "@/lib/auth/admin";
-import { recordAdminAction } from "@/lib/auth/audit";
-import { createTelegramOperator, listTelegramOperators } from "@/lib/telegram/operators";
-import { TELEGRAM_ROLES } from "@/lib/telegram/roles";
+import { linkProfile } from "@/lib/telegram/link-admin";
+import { listTelegramLinks } from "@/lib/telegram/operators";
+import { TELEGRAM_ACTIONS, type TelegramAction } from "@/lib/telegram/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Staff Management → Telegram access. Who may act on review cards in the
- * measurements Telegram group. Owners and admins only (the `staff`
- * permission, same as Admin Users): a review manager speaks for the business
- * on Google Maps.
+ * Users & permissions → Telegram: Telegram links, one per Staff profile, each
+ * with the review-card actions granted to it. The `users` permission, like the
+ * rest of the page: a review manager speaks for the business on Google Maps.
  */
 
 const CreateSchema = z.object({
-  display_name: z.string().trim().min(1, "Name is required").max(80, "Name is too long"),
-  role: z.enum(TELEGRAM_ROLES),
+  staff_profile_id: z.string().uuid(),
+  actions: z.array(z.enum(TELEGRAM_ACTIONS as [TelegramAction, ...TelegramAction[]])).max(10),
 });
 
 export async function GET() {
   try {
-    await requireAdminContext("staff");
+    await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }
   try {
-    return NextResponse.json({ ok: true, rows: await listTelegramOperators() });
+    return NextResponse.json({ ok: true, rows: await listTelegramLinks() });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load Telegram access" },
@@ -36,36 +35,27 @@ export async function GET() {
   }
 }
 
+/** Link a Staff profile to Telegram and issue its first one-time code. */
 export async function POST(req: Request) {
   let ctx;
   try {
-    ctx = await requireAdminContext("staff");
+    ctx = await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }
 
   const parsed = CreateSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
   try {
-    const { row, linkCode } = await createTelegramOperator({
-      displayName: parsed.data.display_name,
-      role: parsed.data.role,
-      createdBy: ctx.email,
-    });
-    await recordAdminAction({
-      actor: ctx,
-      action: "telegram_operator.create",
-      entityType: "telegram_operator",
-      entityId: row.id,
-      after: row,
-    });
-    return NextResponse.json({ ok: true, row, linkCode }, { status: 201 });
+    const result = await linkProfile(ctx, parsed.data.staff_profile_id, [...new Set(parsed.data.actions)]);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true, row: result.row, linkCode: result.linkCode }, { status: 201 });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to add person" },
+      { error: err instanceof Error ? err.message : "Failed to link profile" },
       { status: 500 },
     );
   }

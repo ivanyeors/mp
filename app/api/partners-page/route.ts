@@ -41,7 +41,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   try {

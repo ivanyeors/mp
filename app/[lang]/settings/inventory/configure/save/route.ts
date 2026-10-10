@@ -38,7 +38,7 @@ const BolsterBodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin('inventory')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)

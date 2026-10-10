@@ -17,7 +17,7 @@ export default async function FormsSettingsRoute({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("page-builder", locale);
+  await requireAdminPage("forms", locale);
 
   const catalog = await readDiscoverySourceCatalog();
   return <FormsSettingsPage initialData={{ ok: true, catalog }} />;
