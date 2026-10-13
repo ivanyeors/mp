@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
+import { upsertPendingReminder } from "@/lib/appointments/reminders-db";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import { toStripeAmountCents } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
@@ -164,13 +165,25 @@ export async function finalizeReadjustmentBooking(
   if (error) throw new Error(error.message);
   const booking = data as BookingRow | null;
   if (!booking) return "not_found";
-  if (booking.calendar_event_id || booking.status !== "awaiting_payment") return "already_done";
+  if (booking.status !== "awaiting_payment") return "already_done";
 
   const { data: feeOrder } = booking.fee_order_id
     ? await admin.from("orders").select("order_number").eq("id", booking.fee_order_id).maybeSingle()
     : { data: null };
   const feeOrderNumber = (feeOrder?.order_number as string | undefined) ?? null;
-  const now = new Date().toISOString();
+
+  if (booking.calendar_event_id) {
+    // An earlier attempt put the visit on the calendar (the invite went out) and
+    // failed after. Finish that booking — never treat its own event as a clash.
+    await upsertPendingReminder({
+      calendarEventId: booking.calendar_event_id,
+      phone: booking.phone,
+      guestName: booking.guest_name,
+      appointmentType: "readjustment",
+      startsAt: new Date(Date.parse(booking.start_at)).toISOString(),
+    });
+    return markBooked(admin, booking.id);
+  }
 
   const location = booking.location_id ? await getLocation(booking.location_id) : null;
   const address = location?.address ?? null;
@@ -178,11 +191,15 @@ export async function finalizeReadjustmentBooking(
   const free =
     !!address && (await isSlotFree(booking.start_at, booking.end_at, { excludeBookingId: booking.id }));
   if (!free) {
-    await admin
+    const { data: moved, error: moveErr } = await admin
       .from("readjustment_bookings")
-      .update({ status: "needs_reschedule", hold_expires_at: null, updated_at: now })
+      .update({ status: "needs_reschedule", hold_expires_at: null, updated_at: new Date().toISOString() })
       .eq("id", booking.id)
-      .eq("status", "awaiting_payment");
+      .eq("status", "awaiting_payment")
+      .select("id");
+    if (moveErr) throw new Error(moveErr.message);
+    // A concurrent delivery already moved it and told everyone; say nothing twice.
+    if (!moved?.length) return "already_done";
     await sendTelegram(
       [
         "⚠️ Paid re-adjustment needs a new time",
@@ -212,7 +229,7 @@ export async function finalizeReadjustmentBooking(
     return "needs_reschedule";
   }
 
-  const { eventId } = await bookCalendarSlot({
+  await bookCalendarSlot({
     startIso: booking.start_at,
     endIso: booking.end_at,
     location: { id: booking.location_id!, address: address! },
@@ -223,12 +240,29 @@ export async function finalizeReadjustmentBooking(
     settings: await getAppointmentSettings(),
     notes: paidNotes(booking, feeOrderNumber),
     readjustmentBookingId: booking.id,
+    // Recorded before anything else can fail, so a webhook retry finishes this
+    // booking rather than finding its own event in the way.
+    onEventCreated: async (eventId) => {
+      const { error: idErr } = await admin
+        .from("readjustment_bookings")
+        .update({ calendar_event_id: eventId, updated_at: new Date().toISOString() })
+        .eq("id", booking.id);
+      if (idErr) throw new Error(idErr.message);
+    },
   });
-  await admin
+  return markBooked(admin, booking.id);
+}
+
+/** awaiting_payment → booked, guarded; an error must reach the webhook so Stripe retries. */
+async function markBooked(admin: SupabaseClient, bookingId: string): Promise<FinalizeOutcome> {
+  const { data, error } = await admin
     .from("readjustment_bookings")
-    .update({ status: "booked", calendar_event_id: eventId, hold_expires_at: null, updated_at: now })
-    .eq("id", booking.id);
-  return "booked";
+    .update({ status: "booked", hold_expires_at: null, updated_at: new Date().toISOString() })
+    .eq("id", bookingId)
+    .eq("status", "awaiting_payment")
+    .select("id");
+  if (error) throw new Error(error.message);
+  return data?.length ? "booked" : "already_done";
 }
 
 /** Checkout expired unpaid: release the slot. The existing branch cancels the Order. */

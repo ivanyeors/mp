@@ -30,7 +30,9 @@ booked by a signed-in **Customer** against one purchase and charged unless it is
   so the money ledger, receipts, refunds, disputes and Analytics need no new path.
 - **Complimentary re-adjustment is a server-side rule.** Premium Mpillow only, one visit per unit
   within 60 days of `orders.paid_at` (both numbers in `site_settings`, edited beside the fees),
-  claimed race-safely by a partial unique index on the booking table.
+  claimed race-safely by a partial unique index on the booking table. A re-adjustment fee of $0
+  makes every visit free and books with no Order; Costings refuses a fee under $0.50, which Stripe
+  cannot charge.
 - **No Shopify.** Shopify is ad hoc and off the roadmap: no linking Shopify orders to Customers, no
   price sync to Shopify, no mapping of its retired services product. Purchases with no platform
   **Order** are booked as "not listed", at the fee, for **Staff** to verify.

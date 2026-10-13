@@ -134,6 +134,14 @@ describe("POST /api/readjustments/checkout", () => {
     expect(h.createSession).not.toHaveBeenCalled();
   });
 
+  it("refuses a $0 fee, which Stripe can't charge — that visit books without payment", async () => {
+    h.target = { ...basic, quote: { complimentary: false, fee: 0, reason: "not_premium" } };
+    const res = await post();
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("complimentary");
+    expect(h.createSession).not.toHaveBeenCalled();
+  });
+
   it("holds the slot, writes a pending Order with one Service fee line, and opens Checkout", async () => {
     const res = await post();
     expect(res.status).toBe(200);

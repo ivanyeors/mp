@@ -20,6 +20,7 @@ import {
   READJUSTMENT_POLICY_LIMITS,
   SERVICE_KEYS,
   SERVICE_LABELS,
+  isValidReadjustmentFeeCents,
   type ReadjustmentPolicy,
   type ServiceKey,
   type ServicePrices,
@@ -96,7 +97,11 @@ export default function ServiceFeesClient({
     const out: Record<string, string> = {};
     if (!draft) return out;
     for (const key of SERVICE_KEYS) {
-      if (toCents(draft.services[key].msrp) == null) out[`${key}.msrp`] = "Enter a price, e.g. 50.00";
+      const msrp = toCents(draft.services[key].msrp);
+      if (msrp == null) out[`${key}.msrp`] = "Enter a price, e.g. 50.00";
+      else if (key === "readjustment" && !isValidReadjustmentFeeCents(msrp)) {
+        out[`${key}.msrp`] = "$0 or at least $0.50 — card payments can't be smaller";
+      }
       const cost = draft.services[key].cost.trim();
       if (cost !== "" && toCents(cost) == null) out[`${key}.cost`] = "Enter a cost or leave it empty";
     }

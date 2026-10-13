@@ -1071,11 +1071,12 @@ export default function ResultDetailPage({
                       ? `${row.currency ?? "SGD"} ${Number(row.final_amount).toFixed(2)}`
                       : "—"}
                   </div>
-                  {row.measured_by_type === "staff" ? (
-                    // The fee follows who measured (ADR 0024); change "Measured by"
-                    // in the Results list before assigning to correct it.
+                  {row.measured_by_type === "staff" && row.product_type !== "bolster" ? (
+                    // The fee follows who measured (ADR 0024); Mbolster carries none.
+                    // "Measured by" locks once the Result is held, so a wrong value
+                    // can't be corrected from the Results list after that.
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Includes the Measurement service — Staff measured this customer.
+                      Measured by Staff, so the Measurement service fee applies.
                     </div>
                   ) : null}
                 </div>

@@ -107,6 +107,11 @@ describe("Costings → Service fees save", () => {
     ]);
   });
 
+  it("accepts a $0 re-adjustment fee — every visit free, nothing sent to Stripe", async () => {
+    const res = await post({ rows: [], services: [{ key: "readjustment", msrpCents: 0, costCents: null }] });
+    expect(res.status).toBe(200);
+  });
+
   it("writes the complimentary rule to site_settings and expires the cache", async () => {
     const res = await post({ rows: [], readjustmentPolicy: { freeVisits: 2, freeWindowDays: 90 } });
     expect(res.status).toBe(200);
@@ -137,6 +142,8 @@ describe("Costings → Service fees save", () => {
     [{ services: [{ key: "measurement_basic", msrpCents: -1, costCents: null }] }, "services.0.msrpCents"],
     [{ services: [{ key: "doorstep", msrpCents: 25000, costCents: null }] }, "services.0.key"],
     [{ services: [{ key: "readjustment", msrpCents: null, costCents: null }] }, "services.0.msrpCents"],
+    // Stripe's floor: a standalone re-adjustment charge under $0.50 can't be taken.
+    [{ services: [{ key: "readjustment", msrpCents: 30, costCents: null }] }, "services.0.msrpCents"],
     [{ readjustmentPolicy: { freeVisits: 11, freeWindowDays: 60 } }, "readjustmentPolicy.freeVisits"],
     [{ readjustmentPolicy: { freeVisits: 1, freeWindowDays: 366 } }, "readjustmentPolicy.freeWindowDays"],
   ])("refuses %j with a 400 naming the field", async (extra, field) => {

@@ -74,6 +74,17 @@ export const DEFAULT_READJUSTMENT_POLICY: ReadjustmentPolicy = { freeVisits: 1, 
 
 export const READJUSTMENT_POLICY_LIMITS = { freeVisits: 10, freeWindowDays: 365 } as const;
 
+/**
+ * A re-adjustment is charged on its own through Stripe Checkout, which refuses
+ * anything under SGD 0.50. Its fee is therefore $0 (every visit free) or at
+ * least this; the measurement fees ride on a Result's total and need no floor.
+ */
+export const READJUSTMENT_MIN_FEE_CENTS = 50;
+
+export function isValidReadjustmentFeeCents(cents: number): boolean {
+  return cents === 0 || cents >= READJUSTMENT_MIN_FEE_CENTS;
+}
+
 function parseCount(raw: string | undefined, fallback: number, max: number): number {
   if (raw == null || raw.trim() === "") return fallback;
   const n = Number(raw);

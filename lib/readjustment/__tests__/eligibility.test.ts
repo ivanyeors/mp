@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   evaluateReadjustment,
+  isFreeVisit,
   sgtDate,
   type ReadjustablePurchase,
 } from "@/lib/readjustment/eligibility";
@@ -116,5 +117,13 @@ describe("evaluateReadjustment — always charged", () => {
         "2026-09-03",
       ),
     ).toEqual({ complimentary: false, fee: 30, reason: "unlisted" });
+  });
+});
+
+describe("isFreeVisit — booked without a payment", () => {
+  it("is a complimentary visit, or any visit while the fee is $0", () => {
+    expect(isFreeVisit({ complimentary: true, fee: 0 })).toBe(true);
+    expect(isFreeVisit({ complimentary: false, fee: 0 })).toBe(true);
+    expect(isFreeVisit({ complimentary: false, fee: 30 })).toBe(false);
   });
 });

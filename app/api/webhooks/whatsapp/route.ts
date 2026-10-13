@@ -6,6 +6,7 @@ import {
   parseAppointmentSettings,
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
+import { liveSlotHolds } from "@/lib/appointments/book-slot";
 import {
   deleteEvent,
   freeBusy,
@@ -142,8 +143,13 @@ async function handleAction(
       sgtLocalToUtcMs(endDay.y, endDay.m, endDay.d, 0, 0),
     ).toISOString();
 
-    const busy = await freeBusy(timeMin, timeMax);
-    const slots = offerSlots(busy, settings, now);
+    // A slot someone is paying for (re-adjustment Checkout open) is not on the
+    // calendar yet but is taken all the same (ADR 0024).
+    const [calendarBusy, holds] = await Promise.all([
+      freeBusy(timeMin, timeMax),
+      liveSlotHolds(timeMin, timeMax),
+    ]);
+    const slots = offerSlots([...calendarBusy, ...holds], settings, now);
 
     if (slots.length === 0) {
       await sendText(

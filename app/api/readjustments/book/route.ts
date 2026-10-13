@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
+import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import {
   ReadjustmentBookingSchema,
   bookingNotes,
@@ -16,7 +17,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/readjustments/book — a Complimentary re-adjustment (ADR 0024).
+ * POST /api/readjustments/book — a re-adjustment booked without payment
+ * (ADR 0024): a Complimentary re-adjustment, or any visit while the fee is $0.
  *
  * Signed-in only. The purchase is re-derived from the customer's own Orders and
  * re-quoted here; a visit the server says is charged is refused with the quote so
@@ -42,13 +44,14 @@ export async function POST(req: Request) {
   const resolved = await resolveBookingTarget(admin, customer.id, body);
   if (!resolved) return NextResponse.json({ error: "Purchase not found" }, { status: 404 });
   const { target } = resolved;
-  if (target.kind !== "platform" || !target.quote.complimentary) {
+  const { quote } = target;
+  if (!isFreeVisit(quote)) {
     return NextResponse.json(
-      { error: "This visit isn't complimentary", code: "not_complimentary", quote: target.quote },
+      { error: "This visit isn't complimentary", code: "not_complimentary", quote },
       { status: 409 },
     );
   }
-  const seq = target.quote.seq;
+  const seq = quote.complimentary ? quote.seq : null;
 
   try {
     if (!(await isSlotFree(slot.startIso, slot.endIso))) {
@@ -65,7 +68,7 @@ export async function POST(req: Request) {
       .insert({
         customer_id: customer.id,
         ...purchaseColumns(target),
-        complimentary: true,
+        complimentary: quote.complimentary,
         complimentary_seq: seq,
         fee_amount: 0,
         location_id: slot.location.id,
@@ -89,9 +92,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insErr?.message ?? "Booking failed" }, { status: 500 });
     }
 
-    let eventId: string;
+    // Recorded the moment the event exists: once Google has sent the invite, the
+    // visit is real, and a later failure (reminder, confirmation) must not give
+    // the free visit back while the customer holds an invite for it.
+    let eventId = null as string | null;
     try {
-      ({ eventId } = await bookCalendarSlot({
+      await bookCalendarSlot({
         startIso: slot.startIso,
         endIso: slot.endIso,
         location: slot.location,
@@ -100,10 +106,26 @@ export async function POST(req: Request) {
         email: customer.email,
         appointmentType: "readjustment",
         settings,
-        notes: bookingNotes(target, { kind: "complimentary" }),
+        notes: bookingNotes(target, quote.complimentary ? { kind: "complimentary" } : { kind: "no_fee" }),
         readjustmentBookingId: booking.id,
-      }));
+        onEventCreated: async (id) => {
+          eventId = id;
+          const { error } = await admin
+            .from("readjustment_bookings")
+            .update({ calendar_event_id: id, updated_at: new Date().toISOString() })
+            .eq("id", booking.id);
+          if (error) throw new Error(error.message);
+        },
+      });
     } catch (e) {
+      if (eventId) {
+        // On the calendar and invited: the booking stands. Log what didn't happen.
+        console.error(
+          `[readjustments/book] ${booking.id} booked as ${eventId}, but a follow-up step failed:`,
+          e instanceof Error ? e.message : e,
+        );
+        return NextResponse.json({ ok: true, bookingId: booking.id, eventId });
+      }
       // Nothing is on the calendar: give the free visit back.
       await admin
         .from("readjustment_bookings")
@@ -111,11 +133,6 @@ export async function POST(req: Request) {
         .eq("id", booking.id);
       throw e;
     }
-
-    await admin
-      .from("readjustment_bookings")
-      .update({ calendar_event_id: eventId, updated_at: new Date().toISOString() })
-      .eq("id", booking.id);
 
     return NextResponse.json({ ok: true, bookingId: booking.id, eventId });
   } catch (e) {

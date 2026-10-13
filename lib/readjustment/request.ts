@@ -99,7 +99,10 @@ const dateLabel = (iso: string) =>
 /** What Staff read on the calendar event: the pillow, its order, and the fee status. */
 export function bookingNotes(
   target: BookingTarget,
-  payment: { kind: "complimentary" } | { kind: "paid"; amount: number; orderNumber: string | null },
+  payment:
+    | { kind: "complimentary" }
+    | { kind: "no_fee" }
+    | { kind: "paid"; amount: number; orderNumber: string | null },
 ): string[] {
   const lines =
     target.kind === "platform"
@@ -117,7 +120,9 @@ export function bookingNotes(
   lines.push(
     payment.kind === "complimentary"
       ? "Complimentary visit"
-      : `Paid SGD ${payment.amount.toFixed(2)}${payment.orderNumber ? ` · Order #${payment.orderNumber}` : ""}`,
+      : payment.kind === "no_fee"
+        ? "No fee (re-adjustment fee is $0)"
+        : `Paid SGD ${payment.amount.toFixed(2)}${payment.orderNumber ? ` · Order #${payment.orderNumber}` : ""}`,
   );
   return lines;
 }

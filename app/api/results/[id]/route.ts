@@ -4,7 +4,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { attachHoldPaymentIntent } from "@/lib/authorization-hold";
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
-import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
+import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -217,15 +217,31 @@ async function buildPublicSummary(row: {
               ).taxAmount;
             }
           }
-          const priced = priceResult({
+          const repriced = priceResult({
             goods: goods.subtotal,
             services,
             shipping: shippingAmount,
             tax: taxAmount,
           });
+          // A total stored before Service fees existed did not quote one; show
+          // the build the customer is actually paying for (ADR 0024).
+          const quoted = quotedServiceLines(
+            row.final_amount != null ? Number(row.final_amount) : null,
+            repriced,
+            serviceLines,
+          );
+          const priced =
+            quoted.length === serviceLines.length
+              ? repriced
+              : priceResult({
+                  goods: goods.subtotal,
+                  services: sumServiceLines(quoted),
+                  shipping: shippingAmount,
+                  tax: taxAmount,
+                });
           pricing = {
             subtotal: priced.subtotal,
-            services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
+            services: quoted.map((l) => ({ label: l.label, amount: l.msrp })),
             shipping: priced.shipping,
             tax: priced.tax,
             total: priced.total,

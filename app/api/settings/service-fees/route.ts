@@ -21,7 +21,12 @@ export async function GET() {
       loadServicePrices(admin),
       loadReadjustmentPolicy(admin),
     ]);
-    return NextResponse.json({ ok: true, services, readjustmentPolicy });
+    // Prices only: this route serves the Appointments role too, which has no
+    // business seeing what a service costs us.
+    const prices = Object.fromEntries(
+      Object.entries(services).map(([k, v]) => [k, { msrp: v.msrp, currency: v.currency }]),
+    );
+    return NextResponse.json({ ok: true, services: prices, readjustmentPolicy });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not load service fees" },

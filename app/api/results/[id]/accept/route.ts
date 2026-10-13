@@ -13,6 +13,7 @@ import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigne
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { SERVICE_SKUS } from "@/lib/pricing/service-prices";
+import { quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { settleResult } from "@/lib/results/settlement";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
@@ -115,6 +116,15 @@ export async function POST(
   // top_up plan with nothing to capture from a hold, so both kinds of Result take
   // one settlement path from here down.
   const plan = planCapture(finalAmount, authorized ?? 0);
+  // The fees this sale actually charges: a Result priced before Service fees
+  // existed keeps its stored total, so its Order must not list a fee line nobody
+  // paid for (ADR 0024).
+  const chargedServiceLines = quotedServiceLines(
+    row.final_amount != null ? Number(row.final_amount) : null,
+    build.pricing,
+    build.serviceLines,
+  );
+  const orderSubtotal = build.pricing.goods + sumServiceLines(chargedServiceLines);
   let topUpPaid = 0;
   /** Second PaymentIntent when the final total outgrew the hold. Ledgered separately. */
   let topUpPaymentIntentId: string | null = null;
@@ -313,7 +323,7 @@ export async function POST(
       customer_id: row.customer_id,
       status: inStoreHandover ? "delivered" : "confirmed",
       currency: row.currency ?? "SGD",
-      subtotal: build.pricing.subtotal,
+      subtotal: orderSubtotal,
       shipping_amount: build.pricing.shipping,
       tax_amount: build.pricing.tax,
       discount_amount: 0,
@@ -364,8 +374,13 @@ export async function POST(
     buildLines: build.lines,
     nameByItem: build.nameByItem,
     cogs: build.cogs,
-    pricing: build.pricing,
-    serviceLines: build.serviceLines,
+    pricing: {
+      ...build.pricing,
+      services: orderSubtotal - build.pricing.goods,
+      subtotal: orderSubtotal,
+    },
+    // The snapshot is customer-readable: price and name only, never cost.
+    serviceLines: chargedServiceLines.map((l) => ({ ...l, costPrice: null })),
   });
 
   const { data: orderItem, error: itemErr } = await admin
@@ -395,10 +410,10 @@ export async function POST(
   // shipped, never stock-deducted, never returnable. Written before the ledger so
   // a failure here still rolls the whole Order back below.
   const serviceErr =
-    !itemErr && orderItem && build.serviceLines.length > 0
+    !itemErr && orderItem && chargedServiceLines.length > 0
       ? (
           await admin.from("order_items").insert(
-            build.serviceLines.map((l) => ({
+            chargedServiceLines.map((l) => ({
               order_id: order.id,
               variant_id: null,
               kind: "service",

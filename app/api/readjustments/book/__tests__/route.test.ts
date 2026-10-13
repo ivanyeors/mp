@@ -120,7 +120,10 @@ beforeEach(() => {
   h.target = free;
   h.insertError = null;
   h.isSlotFree.mockResolvedValue(true);
-  h.bookCalendarSlot.mockResolvedValue({ eventId: "evt-1", contact: "created" });
+  h.bookCalendarSlot.mockImplementation(async (input: { onEventCreated?: (id: string) => Promise<void> }) => {
+    await input.onEventCreated?.("evt-1");
+    return { eventId: "evt-1", contact: "created" };
+  });
 });
 
 describe("POST /api/readjustments/book", () => {
@@ -182,6 +185,35 @@ describe("POST /api/readjustments/book", () => {
     const res = await post();
     expect(res.status).toBe(502);
     expect(h.bookings[0].status).toBe("cancelled");
+  });
+
+  it("keeps the booking once the invite exists, even if a later step fails", async () => {
+    h.bookCalendarSlot.mockImplementation(async (input: { onEventCreated?: (id: string) => Promise<void> }) => {
+      await input.onEventCreated?.("evt-1");
+      throw new Error("reminder insert failed");
+    });
+    const res = await post();
+    expect(res.status).toBe(200);
+    expect(h.bookings[0]).toMatchObject({ status: "booked", calendar_event_id: "evt-1" });
+  });
+
+  it("books without payment while the fee is $0 — Stripe can't take it — claiming no free visit", async () => {
+    h.target = {
+      kind: "unlisted",
+      where: "in_store",
+      reference: null,
+      quote: { complimentary: false, fee: 0, reason: "unlisted" },
+    };
+    const res = await post({ order_item_id: undefined, unlisted: { where: "in_store" } });
+    expect(res.status).toBe(200);
+    expect(h.bookings[0]).toMatchObject({
+      purchase_source: "unlisted",
+      complimentary: false,
+      complimentary_seq: null,
+      fee_amount: 0,
+      status: "booked",
+    });
+    expect(h.bookCalendarSlot.mock.calls[0][0].notes.at(-1)).toBe("No fee (re-adjustment fee is $0)");
   });
 
   it("refuses a slot that has gone, before claiming anything", async () => {

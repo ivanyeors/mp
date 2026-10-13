@@ -38,6 +38,15 @@ export type ReadjustmentQuote =
       windowEndedOn?: string;
     };
 
+/**
+ * Booked without a payment: a complimentary visit, or any visit while the
+ * re-adjustment fee is set to $0 in Costings. A charged visit goes through
+ * Stripe Checkout, which cannot take a $0 payment.
+ */
+export function isFreeVisit(quote: Pick<ReadjustmentQuote, "complimentary" | "fee">): boolean {
+  return quote.complimentary || quote.fee <= 0;
+}
+
 const SGT = "Asia/Singapore";
 
 /** A moment as its Singapore calendar day, YYYY-MM-DD. */

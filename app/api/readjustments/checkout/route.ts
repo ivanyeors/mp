@@ -6,6 +6,7 @@ import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { SERVICE_LABELS, SERVICE_SKUS } from "@/lib/pricing/service-prices";
+import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import {
   CHECKOUT_LIFETIME_MS,
   HOLD_LIFETIME_MS,
@@ -61,7 +62,9 @@ export async function POST(req: Request) {
   const resolved = await resolveBookingTarget(admin, customer.id, body);
   if (!resolved) return NextResponse.json({ error: "Purchase not found" }, { status: 404 });
   const { target } = resolved;
-  if (target.quote.complimentary) {
+  // Free visits (complimentary, or a $0 fee Stripe could not take) book through
+  // /api/readjustments/book.
+  if (isFreeVisit(target.quote)) {
     return NextResponse.json(
       { error: "This visit is complimentary", code: "complimentary", quote: target.quote },
       { status: 409 },

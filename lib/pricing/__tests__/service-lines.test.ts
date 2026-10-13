@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   measurementServiceKey,
+  quotedServiceLines,
   resultServiceLines,
   sumServiceLines,
 } from "@/lib/pricing/service-lines";
@@ -70,5 +71,23 @@ describe("resultServiceLines", () => {
   it("sums lines", () => {
     expect(sumServiceLines([{ msrp: 50 }, { msrp: 30 }])).toBe(80);
     expect(sumServiceLines([])).toBe(0);
+  });
+});
+
+describe("quotedServiceLines — a total stored before the fee existed", () => {
+  const fee = [{ key: "measurement_premium" as const, label: "Measurement service (Premium)", msrp: 50, costPrice: null }];
+  const pricing = { total: 418, services: 50 };
+
+  it("keeps the fee when the stored total includes it, or when nothing is stored", () => {
+    expect(quotedServiceLines(418, pricing, fee)).toEqual(fee);
+    expect(quotedServiceLines(null, pricing, fee)).toEqual(fee);
+  });
+
+  it("drops the fee when the stored total is exactly today's total without it", () => {
+    expect(quotedServiceLines(368, pricing, fee)).toEqual([]);
+  });
+
+  it("keeps the fee on any other drift, which is not a fee question", () => {
+    expect(quotedServiceLines(400, pricing, fee)).toEqual(fee);
   });
 });

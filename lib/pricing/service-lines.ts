@@ -71,3 +71,24 @@ export async function loadResultServiceLines(
 export function sumServiceLines(lines: ReadonlyArray<Pick<ServiceLine, "msrp">>): number {
   return lines.reduce((s, l) => s + l.msrp, 0);
 }
+
+/**
+ * The Service fee lines a stored total actually quoted.
+ *
+ * A Result priced before Service fees existed (assigned before ADR 0024 shipped)
+ * carries a `final_amount` without the fee, and that is what the customer is
+ * charged. Repricing it today adds the fee, so an Order written from the reprice
+ * would list a line nobody paid for. When the stored total equals today's total
+ * less the fees, the fees were not quoted and no fee line is written or shown.
+ */
+export function quotedServiceLines(
+  storedTotal: number | null,
+  pricing: { total: number; services: number },
+  lines: ServiceLine[],
+): ServiceLine[] {
+  if (storedTotal == null || lines.length === 0 || pricing.services <= 0) return lines;
+  const withoutFees = pricing.total - pricing.services;
+  return Math.abs(storedTotal - withoutFees) < 0.005 && Math.abs(storedTotal - pricing.total) >= 0.005
+    ? []
+    : lines;
+}

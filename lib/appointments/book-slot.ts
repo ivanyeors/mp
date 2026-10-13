@@ -66,6 +66,13 @@ export type BookSlotInput = {
   /** Extra description lines Staff read at the visit. */
   notes?: string[];
   readjustmentBookingId?: string;
+  /**
+   * Called the moment the event exists, before the reminder and confirmation. A
+   * caller that must not lose track of a live event (an invite already went to
+   * the customer) records its id here, so a failure later in this function
+   * never leaves an event nobody knows about.
+   */
+  onEventCreated?: (eventId: string) => Promise<void>;
 };
 
 export type BookSlotResult = { eventId: string; contact: ContactSyncResult | "failed" };
@@ -94,6 +101,7 @@ export async function bookCalendarSlot(input: BookSlotInput): Promise<BookSlotRe
     notes: input.notes,
     readjustmentBookingId: input.readjustmentBookingId,
   });
+  await input.onEventCreated?.(eventId);
 
   await upsertPendingReminder({
     calendarEventId: eventId,

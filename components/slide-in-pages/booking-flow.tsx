@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { type ApptType } from "@/lib/appointments/appt-type";
+import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import { formatSgd } from "@/lib/readjustment/format";
 import {
   ReadjustmentPurchasePicker,
@@ -207,7 +208,7 @@ export function BookingFlow({
       selection === UNLISTED
         ? { unlisted: { where: unlistedWhere, reference: unlistedReference.trim() || undefined } }
         : { order_item_id: selection };
-    const res = await fetch(quote.complimentary ? "/api/readjustments/book" : "/api/readjustments/checkout", {
+    const res = await fetch(isFreeVisit(quote) ? "/api/readjustments/book" : "/api/readjustments/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -541,7 +542,7 @@ export function BookingFlow({
           ? rt.redirecting
           : submitting
             ? t.submitting
-            : readjustment && quote && !quote.complimentary
+            : readjustment && quote && !isFreeVisit(quote)
               ? rt.payAndBook.replace("{fee}", formatSgd(quote.fee))
               : t.submit}
       </Button>

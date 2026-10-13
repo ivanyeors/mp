@@ -9,6 +9,7 @@ import { reResolveShopifyLineCosts } from "@/lib/shopify/order-mirror-ingest";
 import {
   READJUSTMENT_POLICY_LIMITS,
   SERVICE_KEYS,
+  isValidReadjustmentFeeCents,
   loadReadjustmentPolicy,
   loadServicePrices,
 } from "@/lib/pricing/service-prices";
@@ -106,6 +107,19 @@ const PayloadSchema = z.object({
         costCents: z.number().int().min(0).nullable(),
       }),
     )
+    // A re-adjustment is charged on its own through Stripe, which can't take
+    // under $0.50; $0 means every visit is free and never reaches Stripe.
+    .superRefine((rows, ctx) => {
+      rows.forEach((r, i) => {
+        if (r.key === "readjustment" && !isValidReadjustmentFeeCents(r.msrpCents)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [i, "msrpCents"],
+            message: "must be $0 or at least $0.50 — card payments can't be smaller",
+          });
+        }
+      });
+    })
     .optional(),
   // The Complimentary re-adjustment rule, saved beside the fees it qualifies.
   readjustmentPolicy: z

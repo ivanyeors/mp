@@ -279,6 +279,48 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
     expect(count("inventory_transactions")).toBe(2);
   });
 
+  it("writes no fee line for a Result whose stored total was priced before the fee existed", async () => {
+    // Assigned before Service fees shipped: final_amount 110 = today's 160 less the 50 fee.
+    h.db.mp_config_responses = [assignedRow({ authorized_amount: 170, final_amount: 110 })];
+    h.loadAssignedBuild.mockResolvedValue({
+      ok: true,
+      lines: [{ item_id: 1, quantity: 1, role: "composed" }],
+      cogs: 30,
+      pricing: { goods: 100, services: 50, subtotal: 150, shipping: 10, tax: 0, total: 160 },
+      serviceLines: [
+        { key: "measurement_premium", label: "Measurement service (Premium)", msrp: 50, costPrice: 8 },
+      ],
+      basePrice: 90,
+      shortages: [],
+      nameByItem: new Map(),
+      fillingPlacements: [],
+    });
+
+    expect((await accept()).status).toBe(200);
+    expect(h.db.order_items).toHaveLength(1);
+    expect(h.db.orders[0]).toMatchObject({ subtotal: 100, total: 110 });
+  });
+
+  it("never writes a service's cost into the customer-readable snapshot", async () => {
+    h.db.mp_config_responses = [assignedRow({ authorized_amount: 170 })];
+    h.loadAssignedBuild.mockResolvedValue({
+      ok: true,
+      lines: [{ item_id: 1, quantity: 1, role: "composed" }],
+      cogs: 30,
+      pricing: { goods: 100, services: 50, subtotal: 150, shipping: 10, tax: 0, total: 160 },
+      serviceLines: [
+        { key: "measurement_premium", label: "Measurement service (Premium)", msrp: 50, costPrice: 8 },
+      ],
+      basePrice: 90,
+      shortages: [],
+      nameByItem: new Map(),
+      fillingPlacements: [],
+    });
+    await accept();
+    const snap = h.db.order_items[0].customization_snapshot as { service_lines: Array<{ costPrice: unknown }> };
+    expect(snap.service_lines[0].costPrice).toBeNull();
+  });
+
   it("writes exactly one line for a self-measured build, as before", async () => {
     await accept();
     expect(h.db.order_items).toHaveLength(1);

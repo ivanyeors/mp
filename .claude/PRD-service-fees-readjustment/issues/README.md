@@ -71,6 +71,30 @@ promises:
     the count in Costings → Service fees therefore also needs a copy edit.
   - "Doorstep surcharge" stays literal (out of scope).
 
+Review fixes after the build (2026-10-13):
+
+- **Results priced before the fee.** A Result whose `final_amount` was set
+  before deploy is accepted at that amount, with no fee line
+  (`quotedServiceLines`). The status page and accept agree on it.
+- **Exactly-once calendar writes.** Both booking paths record the event id the
+  moment Google creates it (`bookCalendarSlot`'s `onEventCreated`). A paid
+  booking retried after a partial failure finishes instead of reading its own
+  event as a clash. A free booking whose invite went out is kept, never
+  cancelled.
+- **Holds everywhere a slot is offered.** The WhatsApp reschedule list
+  subtracts live Checkout holds, like the booking page does.
+- **A $0 re-adjustment fee means every visit is free.** It books through
+  `/api/readjustments/book` with no Order (`isFreeVisit`); Stripe never sees
+  it. Costings refuses a re-adjustment fee between $0.01 and $0.49, which
+  Stripe cannot charge.
+- **Costs stay with Costings.** The Appointments-facing fee route and the Order
+  snapshot carry prices only.
+- **Known gaps, not fixed here:**
+  - "Measured by" locks once a Result is held, so a wrong value cannot be
+    corrected afterwards.
+  - Tax on services assumes exclusive tax; tax is off today.
+  - Costings can drift between assign and accept, which predates this work.
+
 ## Dependency graph
 
 ```mermaid

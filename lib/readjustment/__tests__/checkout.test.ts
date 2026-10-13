@@ -16,6 +16,9 @@ const h = vi.hoisted(() => ({
   bookCalendarSlot: vi.fn(),
   telegram: vi.fn(),
   email: vi.fn(),
+  upsertReminder: vi.fn(),
+  /** Rows a guarded update reports as moved; [] simulates a concurrent delivery. */
+  moved: [{ id: "bk-1" }] as Array<{ id: string }>,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
@@ -23,6 +26,7 @@ vi.mock("@/lib/appointments/book-slot", () => ({
   isSlotFree: h.isSlotFree,
   bookCalendarSlot: h.bookCalendarSlot,
 }));
+vi.mock("@/lib/appointments/reminders-db", () => ({ upsertPendingReminder: h.upsertReminder }));
 vi.mock("@/lib/appointments/settings-store", () => ({
   getAppointmentSettings: vi.fn(async () => ({})),
 }));
@@ -50,11 +54,15 @@ const admin = {
         error: null,
       }),
       then: (resolve: (v: unknown) => unknown) => {
+        let data: unknown = null;
         if (op === "update" && table === "readjustment_bookings") {
-          h.updates.push(payload);
-          if (h.booking) Object.assign(h.booking, payload);
+          data = h.moved;
+          if (h.moved.length) {
+            h.updates.push(payload);
+            if (h.booking) Object.assign(h.booking, payload);
+          }
         }
-        return Promise.resolve({ data: null, error: null }).then(resolve);
+        return Promise.resolve({ data, error: null }).then(resolve);
       },
     };
     return b;
@@ -86,9 +94,13 @@ const paidBooking = (extra: Row = {}): Row => ({
 beforeEach(() => {
   vi.clearAllMocks();
   h.updates = [];
+  h.moved = [{ id: "bk-1" }];
   h.booking = paidBooking();
   h.isSlotFree.mockResolvedValue(true);
-  h.bookCalendarSlot.mockResolvedValue({ eventId: "evt-9", contact: "created" });
+  h.bookCalendarSlot.mockImplementation(async (input: { onEventCreated?: (id: string) => Promise<void> }) => {
+    await input.onEventCreated?.("evt-9");
+    return { eventId: "evt-9", contact: "created" };
+  });
 });
 
 describe("finalizeReadjustmentBooking", () => {
@@ -104,6 +116,33 @@ describe("finalizeReadjustmentBooking", () => {
       { excludeBookingId: "bk-1" },
     );
     expect(h.booking).toMatchObject({ status: "booked", calendar_event_id: "evt-9", hold_expires_at: null });
+  });
+
+  it("records the event id the moment it exists, before reminders can fail", async () => {
+    h.bookCalendarSlot.mockImplementation(async (input: { onEventCreated?: (id: string) => Promise<void> }) => {
+      await input.onEventCreated?.("evt-9");
+      throw new Error("reminder insert failed");
+    });
+    await expect(finalizeReadjustmentBooking(admin, "bk-1")).rejects.toThrow();
+    expect(h.booking).toMatchObject({ status: "awaiting_payment", calendar_event_id: "evt-9" });
+  });
+
+  it("finishes a half-written booking on retry instead of calling its own event a clash", async () => {
+    h.booking = paidBooking({ calendar_event_id: "evt-9" });
+    expect(await finalizeReadjustmentBooking(admin, "bk-1")).toBe("booked");
+    expect(h.bookCalendarSlot).not.toHaveBeenCalled();
+    expect(h.isSlotFree).not.toHaveBeenCalled();
+    expect(h.upsertReminder).toHaveBeenCalledWith(expect.objectContaining({ calendarEventId: "evt-9" }));
+    expect(h.telegram).not.toHaveBeenCalled();
+    expect(h.booking?.status).toBe("booked");
+  });
+
+  it("stays quiet when a concurrent delivery already flagged the clash", async () => {
+    h.isSlotFree.mockResolvedValue(false);
+    h.moved = [];
+    expect(await finalizeReadjustmentBooking(admin, "bk-1")).toBe("already_done");
+    expect(h.telegram).not.toHaveBeenCalled();
+    expect(h.email).not.toHaveBeenCalled();
   });
 
   it("does nothing on a replayed webhook", async () => {
