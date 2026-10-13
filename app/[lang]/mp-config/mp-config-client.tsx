@@ -368,6 +368,21 @@ export function MpConfigClient({
   const tokenStorageKey = tokenKeyFor(variant);
   const configPath = configPathFor(variant);
   const to = (href: string) => withLocale(href, locale);
+  // "Have us measure you" (ADR 0024): a studio measurement instead of measuring at
+  // home. The fee is not charged here — it is charged when Staff measure, with the
+  // pillow. Hidden wherever someone is already measuring or the session is not the
+  // shopper's own (Staff device, Assist link, partner run, a live Result).
+  const studioMeasureFee =
+    servicePrices &&
+    !staffAssist &&
+    !measuredByStaff &&
+    !assistCode &&
+    !partnerAssisted &&
+    !resumeFinish &&
+    !staffEdit
+      ? servicePrices[isBasic ? "measurement_basic" : "measurement_premium"].msrp
+      : null;
+  const studioMeasureHref = to("/appointments?type=customisation");
 
   const isMobile = useIsMobile();
   // Both reopened modes start on the preview: there is already a build to look
@@ -3090,6 +3105,15 @@ export function MpConfigClient({
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
+              {studioMeasureFee != null && (
+                <p className="text-sm text-muted-foreground">
+                  Prefer our team to measure you?{" "}
+                  <Link href={studioMeasureHref} className="font-medium text-foreground underline underline-offset-4">
+                    Book a studio measurement
+                  </Link>{" "}
+                  — SGD {studioMeasureFee.toFixed(2)}, paid with your pillow.
+                </p>
+              )}
             </div>
           )}
 
@@ -3170,6 +3194,15 @@ export function MpConfigClient({
                         ? "We'll guide you through 1 simple measurement"
                         : "We'll guide you through 4 simple measurements"}
                     </p>
+                    {studioMeasureFee != null && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Prefer our team to measure you?{" "}
+                        <Link href={studioMeasureHref} className="font-medium text-foreground underline underline-offset-4">
+                          Book a studio measurement
+                        </Link>{" "}
+                        — SGD {studioMeasureFee.toFixed(2)}, paid with your pillow, not today.
+                      </p>
+                    )}
                   </div>
                 </div>
 

@@ -464,6 +464,8 @@ export const enUS: Messages = {
         bookAnother: "Book another",
         errorSlotTaken: "That time was just taken. Please pick another.",
         errorGeneric: "Something went wrong. Please try again.",
+        measurementFeeNote:
+          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow and Mbolster — paid with your pillow, not today.",
       },
     },
   },

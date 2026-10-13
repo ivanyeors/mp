@@ -289,6 +289,8 @@ export type Messages = {
         bookAnother: string;
         errorSlotTaken: string;
         errorGeneric: string;
+        /** Customisation booking: the Measurement service fees, `{premium}` / `{basic}` (ADR 0024). */
+        measurementFeeNote: string;
       };
     };
   };

@@ -1678,6 +1678,20 @@ export function MbolsterConfigClient({
                 }
               />
             </div>
+            {/* "Have us measure you" (ADR 0024): Mbolster borrows the Basic fee. Not
+                charged here — it rides the bolster's payment when Staff measure. */}
+            {servicePrices && !staffAssist && !measuredByStaff && !partnerAssisted ? (
+              <p className="text-sm text-muted-foreground">
+                Prefer our team to measure you?{" "}
+                <Link
+                  href={to("/appointments?type=customisation")}
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Book a studio measurement
+                </Link>{" "}
+                — SGD {servicePrices.measurement_basic.msrp.toFixed(2)}, paid with your bolster.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
