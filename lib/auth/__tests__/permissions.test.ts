@@ -168,6 +168,16 @@ describe("permission catalog", () => {
     }
   });
 
+  it("a page's own sub-route inherits that page's key; an exact entry beats its parent", () => {
+    expect(permissionForHref("/settings/costings/services")).toBe("costings");
+    expect(permissionForHref("/settings/inventory/configure")).toBe("configure");
+    expect(permissionForHref("/settings/inventory/configure/premium-m")).toBe("configure");
+    expect(permissionForHref("/settings/inventory/other")).toBe("inventory");
+    // Whole segments only, and General stays open.
+    expect(permissionForHref("/settings/costingsx")).toBeUndefined();
+    expect(permissionForHref("/settings")).toBeUndefined();
+  });
+
   it("every Admin Panel page key is in the sidebar", () => {
     for (const entry of catalogForSurface("admin-panel")) {
       if (entry.href) expect(navHrefs, entry.key).toContain(entry.href);

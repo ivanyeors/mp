@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
+  Boxes, Wrench, Settings2, CircleDollarSign, HandCoins, TrendingUp, Store, ClipboardList,
   Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
@@ -92,7 +92,15 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Inventory",
     items: [
       { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes },
-      { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
+      {
+        href: "/settings/costings",
+        label: "Costings",
+        tooltip: "Costings",
+        Icon: CircleDollarSign,
+        items: [
+          { href: "/settings/costings/services", label: "Service fees", tooltip: "Measurement and re-adjustment fees", Icon: HandCoins },
+        ],
+      },
     ],
   },
   {

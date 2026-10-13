@@ -225,6 +225,32 @@ export function AppointmentsSettingsSheet({
     if (open) setDraft(settings);
   }, [open, settings]);
 
+  // Re-adjustment fee and complimentary rule, read-only here — edited in
+  // Costings → Service fees (ADR 0024). A miss just hides the line.
+  const [serviceFees, setServiceFees] = useState<{
+    readjustment: number;
+    freeVisits: number;
+    freeWindowDays: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    fetch("/api/settings/service-fees")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive || !d?.ok) return;
+        setServiceFees({
+          readjustment: d.services.readjustment.msrp,
+          freeVisits: d.readjustmentPolicy.freeVisits,
+          freeWindowDays: d.readjustmentPolicy.freeWindowDays,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
   const save = async () => {
     if (availabilityError) {
       setTab("availability");
@@ -469,6 +495,24 @@ export function AppointmentsSettingsSheet({
                   }
                 />
               </div>
+              {serviceFees ? (
+                <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                  Re-adjustment fee{" "}
+                  <span className="font-medium text-foreground tabular-nums">
+                    ${serviceFees.readjustment.toFixed(2)}
+                  </span>
+                  {serviceFees.freeVisits > 0
+                    ? ` · ${serviceFees.freeVisits} free visit${serviceFees.freeVisits === 1 ? "" : "s"} within ${serviceFees.freeWindowDays} days of purchase for Premium Mpillow`
+                    : " · no complimentary visits"}
+                  .{" "}
+                  <Link
+                    href={withLocale("/settings/costings/services", locale)}
+                    className="underline underline-offset-4"
+                  >
+                    Edit in Costings → Service fees
+                  </Link>
+                </p>
+              ) : null}
             </TabsContent>
 
             <TabsContent value="whatsapp" className="space-y-4">

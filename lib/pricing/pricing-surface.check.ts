@@ -82,6 +82,31 @@ assert.deepEqual(
   `PRICE_TABLE_READERS lists files that no longer read product_prices: ${vanished.join(", ")}. Remove them.`,
 );
 
+// --- 1b. who may touch service_prices (ADR 0024) ----------------------------
+
+/** One loader reads it; the Costings save route writes it. A third is a second price source. */
+const SERVICE_TABLE_READERS: Record<string, string> = {
+  "lib/pricing/service-prices.ts": "THE loader — every service fee is read through it",
+  "app/[lang]/settings/costings/save/route.ts": "writes Costings → Service fees",
+  "app/[lang]/settings/costings/save/__tests__/service-fees.test.ts": "tests the writer",
+};
+const serviceReaders = grepFiles(`["']service_prices["']`);
+const unexpectedServiceReaders = serviceReaders.filter((f) => !(f in SERVICE_TABLE_READERS));
+assert.deepEqual(
+  unexpectedServiceReaders,
+  [],
+  `New reader(s) of service_prices: ${unexpectedServiceReaders.join(", ")}.\n` +
+    "Read service fees through loadServicePrices() in lib/pricing/service-prices.ts.",
+);
+const vanishedServiceReaders = Object.keys(SERVICE_TABLE_READERS).filter(
+  (f) => !serviceReaders.includes(f),
+);
+assert.deepEqual(
+  vanishedServiceReaders,
+  [],
+  `SERVICE_TABLE_READERS lists files that no longer touch service_prices: ${vanishedServiceReaders.join(", ")}.`,
+);
+
 // --- 2. the goods rule lives in exactly one module --------------------------
 
 const PRICING_MODULE = "lib/pricing/composed-price.ts";
