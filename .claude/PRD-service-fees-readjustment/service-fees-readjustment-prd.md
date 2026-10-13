@@ -3,7 +3,7 @@
 Status: Draft (needs-triage)
 Source: Planning session 2026-10-13. The owner asked for three operator-set fees: **Measurement fee (Premium) $50**, **Measurement fee (Basic) $30** and **Re-adjustment service $30**. They should be easy to find in the **Admin Panel**, added to the total automatically when the service happens, and re-adjustment should need **Sign in** plus a choice of which purchased pillow or bolster it is for. A codebase audit during drafting found that none of the three services exists on the platform. They exist only as a retired Shopify product ("Measurement and Readjustment Services", `info/GET-from-shopify.md:928-968`), and no code references it.
 ADRs: `docs/adr/0024-services-priced-in-costings.md` (new, slice 01 — a service is a price without a part); `docs/adr/0001-costings-single-price-source.md` (amended by 0024: Costings now prices services as well as Items and Composed sellables); `docs/adr/0002-authorize-then-capture-customised-goods.md` and `docs/adr/0016-deferred-payment-for-assisted-builds.md` (the money paths the measurement fee rides on, unchanged); `docs/adr/0011-returns-rma-lifecycle.md` (the eligibility-function pattern the re-adjustment rule copies); `docs/adr/0013-custom-multi-location-booking.md` (the first-party booking flow re-adjustment extends)
-Glossary: `CONTEXT.md` — **Costings**, **MSRP**, **Item**, **Add-on**, **Result**, **Order**, **Staff**, **Staff assist mode**, **Assisted customisation**, **Partner-assisted customisation**, **Authorization hold**, **Balance payment**, **Appointment**, **Re-adjustment appointment**, **Customisation appointment**, **Sign in**, **Customer**, **Location**, **Shopify order mirror**. New terms: **Service**, **Service fee**, **Measurement service**, **Re-adjustment**, **Complimentary re-adjustment**, **Re-adjustment booking**.
+Glossary: `CONTEXT.md` — **Costings**, **MSRP**, **Item**, **Add-on**, **Result**, **Order**, **Staff**, **Staff assist mode**, **Assisted customisation**, **Partner-assisted customisation**, **Authorization hold**, **Balance payment**, **Appointment**, **Re-adjustment appointment**, **Customisation appointment**, **Sign in**, **Customer**, **Location**. New terms: **Service**, **Service fee**, **Measurement service**, **Re-adjustment**, **Complimentary re-adjustment**, **Re-adjustment booking**.
 
 ## Decisions taken before drafting
 
@@ -14,6 +14,7 @@ Owner decisions (2026-10-13), not to be re-litigated in build:
 - **(c) A bolster measured by Staff pays the Basic rate.** **Mbolster** has no **Tier**, so it borrows Basic's price rather than getting a fourth fee.
 - **(d) Re-adjustment requires Sign in.** A customer with several pillow or bolster purchases chooses which one the visit is for.
 - **(e) One complimentary re-adjustment per Premium Mpillow, within 60 days of the purchase date.** It is a one-time visit. After the window, or once the free visit is used, the re-adjustment fee applies. Basic Mpillow and Mbolster always pay. This matches the warranty page (`components/marketing/returns-warranty-page.tsx:61, 355-366`). It overrules the `pricingNotes` line, which says the opposite (see *Problem Statement*).
+- **(k) Nothing here links to or syncs with Shopify.** Shopify is ad hoc and not on the roadmap. Shopify orders are not matched to **Customers**, and service prices are not pushed to Shopify. Shopify's retired "services" product is neither mapped nor read. A pillow bought on Shopify is booked through *"My pillow isn't listed"*.
 
 Drafting decisions. Each is reasoned below and each can be reversed in one place:
 
@@ -80,10 +81,9 @@ Nothing in code computes the rule: no window setting, no free-visit counter, no 
    - `loadOrderShippableLines` classifies a line with no variant and no snapshot as `"pillow"` (`lib/shipping/lines.ts:79-82`).
    - `order_items` has no line-kind column (`0028_ecommerce.sql:456-468`).
    - Inventory deduction already skips variant-less lines (`lib/ecommerce/inventory-deduction.ts:139, 260`). The courier path does not.
-6. **Shopify purchases cannot be tied to a Customer.**
-   - `shopify_orders` and `shopify_order_lines` store no email (`20260715013000_shopify_order_mirror_schema.sql:8-44`).
-   - Ingest receives full payloads and throws the email away (`lib/shopify/order-mirror-ingest.ts:309-344`).
-   - A customer who bought on Shopify cannot see that pillow in any picker until it can.
+6. **Only platform Orders can be listed, and that is the intended scope.** The picker reads the signed-in **Customer**'s `orders` (RLS through `current_customer_id()`).
+   - Purchases made before customer accounts existed, in store, or on Shopify have no platform **Order**.
+   - Per decision (k), they are not imported or linked. They are booked as *not listed*, at the re-adjustment fee, and **Staff** refund on proof of purchase.
 
 ## Solution
 
@@ -156,8 +156,7 @@ flowchart TD
 8. Paid re-adjustment: the service **Order**, Stripe Checkout, the slot hold, settlement by webhook, and the expiry path.
 9. **Staff** at the visit, and the customer's way in: event detail, attended/no-show, *"Book a re-adjustment"* on the account order page, and the not-listed flag.
 10. Policy copy that reads its numbers from Costings and stops contradicting itself (en-US, zh-CN, the warranty page).
-11. Shopify purchases in the picker (email on the mirror, backfill, match by email). Deferrable.
-12. Staging sign-off with real Stripe test cards, both locales and a handset.
+11. Staging sign-off with real Stripe test cards, both locales and a handset.
 
 ## User Stories
 
@@ -186,7 +185,7 @@ flowchart TD
 15. As a customer with a Premium Mpillow bought within the last 60 days, I want to see that my visit is free and until when, so that I book before the window closes.
 16. As a customer whose visit is charged, I want to pay when I book and have my slot held while I pay, so that I do not lose the time I chose.
 17. As a customer, I want my name, phone and email prefilled from my account, so that I do not type them again.
-18. As a customer whose pillow is not listed (bought on Shopify, in store before accounts existed, or as a gift), I want to book anyway, so that the system's gap does not become my problem.
+18. As a customer whose pillow is not listed (bought online or in store before accounts existed, or received as a gift), I want to book anyway, so that the system's gap does not become my problem.
 19. As a customer who cancels a complimentary booking, I want my free visit back, so that a reschedule does not cost me $30.
 20. As a customer, I want to start a re-adjustment from my order page next to the pillow, so that I do not have to find the booking page.
 
@@ -287,7 +286,7 @@ The fee is `service_prices[measurement_<tier>]` when `measured_by_type = 'staff'
 | 0 | `/appointments` → **Readjust** pill (or *Book a re-adjustment* on an order line) | The Customise path is unchanged and stays guest-friendly |
 | 1 | **Sign in to book a re-adjustment** — *"We need to know which pillow is coming in and when you bought it. It's how we know whether your visit is free."* | `/account/login?next=<withLocale('/appointments?type=readjustment')>`. Gated in the server component, not just the client |
 | 2 | **Which pillow are we re-adjusting?** Cards with photo, name (*Premium Mpillow · Size M*), *Order #1042 · bought 3 Sep 2026*, and a badge | One purchase means it is preselected. `?item=` preselects from the order page. *My pillow isn't listed →* is always last |
-| 2b | Not listed: *"Where did you buy it?"* (Shopify · in store · gift · other) plus an optional order or receipt number | Always charged; flagged for Staff to check proof |
+| 2b | Not listed: *"Where did you buy it?"* (online, before accounts · in store · gift · other) plus an optional order or receipt number | Always charged; flagged for Staff to check proof |
 | 3 | Studio → date → slot | The existing `BookingFlow` controls. Slots exclude live payment holds |
 | 4 | **Your details**, prefilled from `customers`; email locked to the account | The invite and the purchase identity must match |
 | 5 | Summary: *Re-adjustment · Premium Mpillow · Size M · Order #1042 · Studio, Fri 14 Nov, 2:30 PM* — **Complimentary** → *Confirm booking*; or **$30.00** → *Pay $30 and book* | The price shown is the server's eligibility answer, re-checked at submit |
@@ -327,7 +326,7 @@ The fee is `service_prices[measurement_<tier>]` when `measured_by_type = 'staff'
 
 ## Non-goals
 
-Each of these is a plausible next request, and none is in these twelve slices.
+Each of these is a plausible next request, and none is in these eleven slices.
 
 - **Charging the measurement fee on its own** when a measured customer walks away without buying. The fee rides the build's payment. A measurement-only charge is a **Counter payment** or a standalone **Order**, and the owner has not asked for it. Raised as an open question.
 - **A per-Result fee waiver.** The fee follows who measured. A discretionary waiver needs an audited override, and nobody has asked for one.
@@ -335,7 +334,13 @@ Each of these is a plausible next request, and none is in these twelve slices.
 - **Refunds on cancellation.** A paid booking cancelled by the customer is refunded, if at all, through the existing **Order** refund. There is no automatic refund rule.
 - **Several pillows in one booking.** Book twice (decision (j)).
 - **Doorstep visits** (*"Doorstep surcharge: $250"*). They appear only in copy, are not one of the three fees, and stay as copy.
-- **Shopify channel prices.** The Shopify "services" product keeps its own prices; ADR 0001 already scopes Shopify pricing out. Its "updated" block lists $20 / $40 / $20 (`info/GET-from-shopify.md:954-964`), which disagrees with the owner's $30 / $50 / $30. It is recorded here, not resolved.
+- **Anything Shopify** (decision (k)). Shopify is ad hoc and not on the roadmap:
+  - Shopify orders are not linked to **Customers** by email or any other key.
+  - Service prices are not synced to Shopify.
+  - Shopify's retired "services" product and its variants are not mapped.
+  - `service_prices` gets no `shopify_*` columns.
+
+  Customers who bought there use *not listed*.
 - **The measurement fee on the shop-cart customiser** (`/mp-maker`). Nobody measures anyone there.
 
 ## Constraints and risks
@@ -352,7 +357,7 @@ Each of these is a plausible next request, and none is in these twelve slices.
 | A Premium pillow built and shipped after payment spends part of its 60 days in production | Accepted per the owner's *purchase date*. If it proves unfair, the anchor is one field in `evaluateReadjustment` (`paid_at` → `delivered_at`) |
 | Copy hard-codes `$30` / `$50` and contradicts itself | Slice 10 interpolates every fee from `service_prices` and states one rule. Owner approves wording (HITL) |
 | A customer signed in with a different email from the one they bought with | The empty state offers *Switch account*. `linkCustomerToAuthUser` already backfills guest orders by email on sign-in (`lib/auth/customer-identity.ts:67, 140`) |
-| Shopify-era buyers see nothing to pick | *Not listed* always works. Slice 11 links the mirror by email once Shopify's protected-customer-data scope is confirmed |
+| Customers who bought before accounts existed (online, in store, or on Shopify) see nothing to pick | *Not listed* always works: booked at the fee, flagged for **Staff** to check proof, refunded through the **Order** if it should have been free. No Shopify linking, per decision (k) |
 | Migrations applied with the Supabase MCP `apply_migration` tool desync the ledger | Apply with `supabase db push` only (as in `PRD-in-store-counter-payments`) |
 
 ## Success criteria

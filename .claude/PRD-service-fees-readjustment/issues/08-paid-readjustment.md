@@ -87,4 +87,4 @@ The shop order confirmation and receipt (step 8 of the order branch) must read c
 
 ## Notes
 
-Confirm on the live Stripe endpoint that `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.expired` are all subscribed. The handlers exist, so they almost certainly are, but slice 12 checks against the Dashboard rather than the code.
+Confirm on the live Stripe endpoint that `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.expired` are all subscribed. The handlers exist, so they almost certainly are, but slice 11 checks against the Dashboard rather than the code.

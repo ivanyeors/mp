@@ -17,10 +17,10 @@ Answer one question for a signed-in **Customer**, with no UI: *which pillows and
 create table if not exists readjustment_bookings (
   id uuid primary key default gen_random_uuid(),
   customer_id uuid not null references customers(id),
-  purchase_source text not null check (purchase_source in ('platform', 'shopify', 'unlisted')),
+  purchase_source text not null check (purchase_source in ('platform', 'unlisted')),
   order_item_id uuid null references order_items(id),
-  shopify_order_line_id bigint null,           -- slice 11
-  unlisted_where text null,                    -- 'shopify' | 'in_store' | 'gift' | 'other'
+  unlisted_where text null
+    check (unlisted_where in ('online_before_accounts', 'in_store', 'gift', 'other')),
   unlisted_reference text null,                -- customer-typed order or receipt number
   product_label text not null,                 -- snapshot: "Premium Mpillow · Size M"
   product_type text not null check (product_type in ('pillow', 'bolster')),

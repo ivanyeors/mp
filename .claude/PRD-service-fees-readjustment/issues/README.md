@@ -19,8 +19,7 @@ This is a tracer-bullet breakdown of the PRD (`../service-fees-readjustment-prd.
 | [08](08-paid-readjustment.md) | Paid re-adjustment: service Order, Stripe Checkout, slot hold, webhook settlement, expiry | AFK | **not started** | 04, 07 | 16, 18 |
 | [09](09-staff-at-the-visit.md) | Staff at the visit, and the customer's way in from their order | AFK | **not started** | 08 | 20–23 |
 | [10](10-policy-copy-one-source.md) | Policy copy that reads its numbers from Costings and stops contradicting itself | HITL | **not started** | 02 | 4 |
-| [11](11-shopify-purchases-in-picker.md) | Shopify purchases in the picker (email on the mirror, backfill, match by email) | AFK + HITL scope check | **not started** (deferrable) | 07 | 18 |
-| [12](12-signoff.md) | Sign-off: staging, real test cards, both locales, a handset | HITL | **not started** | 04, 05, 09, 10 | all |
+| [11](11-signoff.md) | Sign-off: staging, real test cards, both locales, a handset | HITL | **not started** | 04, 05, 09, 10 | all |
 
 ## Dependency graph
 
@@ -36,8 +35,7 @@ graph TD
   s08[08 Paid re-adjustment]
   s09[09 Staff at the visit]
   s10[10 Policy copy]
-  s11[11 Shopify purchases]
-  s12[12 Sign-off]
+  s11[11 Sign-off]
 
   s01 --> s02
   s02 --> s03 --> s04
@@ -45,11 +43,10 @@ graph TD
   s02 --> s06 --> s07 --> s08 --> s09
   s04 --> s08
   s02 --> s10
-  s07 --> s11
-  s04 --> s12
-  s05 --> s12
-  s09 --> s12
-  s10 --> s12
+  s04 --> s11
+  s05 --> s11
+  s09 --> s11
+  s10 --> s11
 ```
 
 After 02 there are two parallel tracks: **measurement** (03 → 04 → 05) and **re-adjustment** (06 → 07 → 08 → 09). They meet at 08, which needs 04's `order_items.kind`.
@@ -69,8 +66,7 @@ After 02 there are two parallel tracks: **measurement** (03 → 04 → 05) and *
    - 08 is the only re-adjustment slice that takes money.
    - 09 is the **Staff** side and the order-page entry point.
 6. **10** at any point after 02. It needs owner sign-off on wording, so start it early.
-7. **11** is deferrable. *Not listed* (07/08) is the working fallback. Do it when Shopify-era re-adjustments become a support burden, or before if the scope check is quick.
-8. **12** closes it.
+7. **11** closes it.
 
 **Ordering hazard, stated once because it decides a deploy rather than a build:** 03 alone makes every **Result** total include the fee, while accept still writes a single `order_items` row at the goods subtotal (`app/api/results/[id]/accept/route.ts:369-388`). The **Order**'s lines would then not sum to its subtotal, and the receipt would not explain the difference. If only one can ship, ship neither, or ship 03 with all three `service_prices.msrp` at 0.
 
@@ -85,11 +81,17 @@ After 02 there are two parallel tracks: **measurement** (03 → 04 → 05) and *
 - **A stored "fee applies" flag on the Result.** The fact is already recorded as `measured_by_type`. A second column would be a second source of truth that could disagree with the first.
 - **Creating the calendar event before payment.** `sendUpdates: "all"` would send every abandoned checkout a Google invite and then a cancellation. The slot is held in our database instead.
 - **A re-adjustment payment that is not an Order.** Analytics, the money ledger, refunds, disputes and receipts all key on `orders`. A payment recorded only on the booking would be invisible to all of them.
+- **Anything Shopify** (owner, 2026-10-13). Shopify is ad hoc and not on the roadmap. None of these slices adds any of the following:
+  - email on the Shopify order mirror;
+  - a Shopify purchase in the picker;
+  - a mapping for Shopify's retired "services" product;
+  - a price push to Shopify.
+
+  Shopify-era customers book through *not listed*. A slice that reaches for `lib/shopify/` is off-plan.
 
 ## HITL notes
 
 - **Slice 10 needs the owner** to approve the reconciled policy wording in en-US and zh-CN. In particular it replaces *"Customisation charge for every hour: $50"* with a flat measurement fee.
-- **Slice 11 carries a scope check.** Confirm that the Shopify app's token can read customer email on orders (protected customer data) and orders older than 60 days (`read_all_orders`) before building.
-- **Migrations (02, 04, 06, 11)** are applied with `supabase db push`, never the MCP `apply_migration` tool, which stamps its own version and desyncs the ledger from `supabase/migrations/`.
+- **Migrations (02, 04, 06)** are applied with `supabase db push`, never the MCP `apply_migration` tool, which stamps its own version and desyncs the ledger from `supabase/migrations/`.
 - **No Stripe Dashboard change is expected.** Slice 08 rides `checkout.session.completed` and `checkout.session.expired`, which the shop already handles. Slice 08's notes must still confirm that both are subscribed on the live endpoint.
 - **Every slice refreshes the knowledge graph** (`rm -rf graphify-out/cache && ./scripts/graphify update .`) in the same commit, or `graphify-freshness` fails the PR.

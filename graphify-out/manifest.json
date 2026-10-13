@@ -14754,15 +14754,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/01-glossary-and-adr.md": {
-    "mtime": 1791897066.5329685,
-    "seen": 1791897293.3905177,
-    "ast_hash": "e97430ae721fadfbcd5dc58adc4c8de3",
+    "mtime": 1791897404.2529886,
+    "seen": 1791897472.61107,
+    "ast_hash": "85686ebecba1256a4ad2eb24f8b9b53a",
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/02-service-fees-in-costings.md": {
-    "mtime": 1791897066.5609684,
-    "seen": 1791897293.3905194,
-    "ast_hash": "c25de561ab289aa8b1a4400175ba3bad",
+    "mtime": 1791897410.2009888,
+    "seen": 1791897472.6110735,
+    "ast_hash": "f498483c1a6ca60b2686ccc18a676a61",
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/03-measurement-fee-priced-once.md": {
@@ -14784,9 +14784,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/06-readjustment-core.md": {
-    "mtime": 1791897121.2009716,
-    "seen": 1791897293.3905256,
-    "ast_hash": "b1441818fc89e67f436833c865de2cde",
+    "mtime": 1791897404.2249885,
+    "seen": 1791897472.6110826,
+    "ast_hash": "df7fc9a374e3b16f79b2f597768779c7",
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/07-signed-in-booking-and-picker.md": {
@@ -14796,9 +14796,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/08-paid-readjustment.md": {
-    "mtime": 1791897172.1249747,
-    "seen": 1791897293.390528,
-    "ast_hash": "9e8bf8a99d0e1c625ddfbb44568779f5",
+    "mtime": 1791897415.7649891,
+    "seen": 1791897472.6110864,
+    "ast_hash": "7bd175fa50a40b55798dc61923aa08a2",
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/issues/09-staff-at-the-visit.md": {
@@ -14813,28 +14813,16 @@
     "ast_hash": "b75835aed6172b587a83c9070f241f80",
     "semantic_hash": ""
   },
-  ".claude/PRD-service-fees-readjustment/issues/11-shopify-purchases-in-picker.md": {
-    "mtime": 1791897225.5489779,
-    "seen": 1791897293.3905315,
-    "ast_hash": "461d1cb5c8a5c1f99f03df63fdbd6579",
-    "semantic_hash": ""
-  },
-  ".claude/PRD-service-fees-readjustment/issues/12-signoff.md": {
-    "mtime": 1791897225.564978,
-    "seen": 1791897293.390533,
-    "ast_hash": "ac268c9d99c4a0a68d38c30106e00ae1",
-    "semantic_hash": ""
-  },
   ".claude/PRD-service-fees-readjustment/issues/README.md": {
-    "mtime": 1791897000.45918,
-    "seen": 1791897293.3905342,
-    "ast_hash": "d8307013abc833a295693b51abfaa151",
+    "mtime": 1791897404.1969886,
+    "seen": 1791897472.6110969,
+    "ast_hash": "e1935b0f89782339c0983a9799ea70b4",
     "semantic_hash": ""
   },
   ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md": {
-    "mtime": 1791896967.4101996,
-    "seen": 1791897293.3906736,
-    "ast_hash": "43764e7783fc0d8f3755e40302d7b9b5",
+    "mtime": 1791897386.1769874,
+    "seen": 1791897472.6110988,
+    "ast_hash": "de2e5ce14079d8f104a51201a23a3ca9",
     "semantic_hash": ""
   },
   "mpillow-office/renders/final/iso_low_00001_.png": {
@@ -15225,6 +15213,12 @@
     "mtime": 1791895456.932977,
     "seen": 1791897293.3914466,
     "ast_hash": "39a1c8350110f121cc139468fc453487",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-service-fees-readjustment/issues/11-signoff.md": {
+    "mtime": 1791897366.295951,
+    "seen": 1791897472.6110938,
+    "ast_hash": "8f037c3e89e9776f41833ecf43642d72",
     "semantic_hash": ""
   }
 }

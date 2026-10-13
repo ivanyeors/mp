@@ -1,4 +1,4 @@
-# 12 — Sign-off: staging, real test cards, both locales, a handset
+# 11 — Sign-off: staging, real test cards, both locales, a handset
 
 **Type:** HITL
 **Blocked by:** 04, 05, 09, 10

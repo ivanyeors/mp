@@ -56,6 +56,7 @@ Add them next to **Costings** / **Add-on** and **Re-adjustment appointment**, in
 - **Costings:** add "…and **Service** prices (`service_prices`)".
 - **Appointment:** amend *"appointments are not linked to Orders in v1"* to say that a **Re-adjustment appointment** is linked through its **Re-adjustment booking**, and a **Customisation appointment** still is not.
 - **Relationships:** add *"A **Result** measured by **Staff** carries a **Measurement service** fee"* and *"A paid **Re-adjustment** is an **Order** with one **Service fee** line"*.
+- **Shopify order mirror:** add to its `_Avoid_` line: *"building new features on Shopify. It is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input."* This is the durable record of decision (k), so a later PRD does not rediscover the email gap and propose closing it.
 
 ### `docs/adr/0024-services-priced-in-costings.md`
 
