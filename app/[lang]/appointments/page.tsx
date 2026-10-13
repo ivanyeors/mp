@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { BookingFlow } from "@/components/slide-in-pages/booking-flow";
+import { BookingFlow, type ReadjustmentBooking } from "@/components/slide-in-pages/booking-flow";
 import { BookingPills } from "@/components/slide-in-pages/booking-pills";
+import { buttonVariants } from "@/components/ui/button";
 import { parseApptType } from "@/lib/appointments/appt-type";
+import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { getAuthUser } from "@/lib/auth/user";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
+import { withLocale } from "@/lib/i18n/routing";
 import { loadServicePrices } from "@/lib/pricing/service-prices";
+import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const sgd = (n: number) => `SGD ${n.toFixed(2)}`;
@@ -15,15 +21,17 @@ export const metadata: Metadata = {
   description: "Book a customisation or readjustment appointment with Mpillow.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AppointmentsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; item?: string }>;
 }) {
   const { lang } = await params;
-  const { type } = await searchParams;
+  const { type, item } = await searchParams;
   const appt = parseApptType(type);
 
   const locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
@@ -32,6 +40,42 @@ export default async function AppointmentsPage({
   // paid at booking — the fee rides the pillow's payment when Staff measure.
   const prices =
     appt === "customisation" ? await loadServicePrices(supabaseAdmin()).catch(() => null) : null;
+
+  // Re-adjustment needs a signed-in Customer: the visit is for one purchase, and
+  // whether it is free depends on when that purchase was made (ADR 0024). The gate
+  // is here, on the server — the API refuses an anonymous booking as well.
+  let readjustment: ReadjustmentBooking | null = null;
+  let signInHref: string | null = null;
+  if (appt === "readjustment") {
+    const user = await getAuthUser();
+    if (!user) {
+      const back = withLocale(
+        `/appointments?type=readjustment${item ? `&item=${encodeURIComponent(item)}` : ""}`,
+        locale,
+      );
+      signInHref = withLocale(`/account/login?next=${encodeURIComponent(back)}`, locale);
+    } else {
+      const customer = await linkCustomerToAuthUser(user);
+      const ctx = await loadReadjustmentContext(supabaseAdmin(), customer.id);
+      readjustment = {
+        purchases: ctx.purchases.map((p) => ({
+          orderItemId: p.orderItemId,
+          orderNumber: p.orderNumber,
+          label: p.label,
+          imageUrl: p.imageUrl,
+          paidAt: p.paidAt,
+          quote: p.quote,
+        })),
+        fee: ctx.fee,
+        preselect: item ?? null,
+        prefill: {
+          name: [customer.first_name, customer.last_name].filter(Boolean).join(" "),
+          phone: customer.phone ?? "",
+          email: customer.email,
+        },
+      };
+    }
+  }
 
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-4 py-10">
@@ -43,8 +87,16 @@ export default async function AppointmentsPage({
             .replace("{basic}", sgd(prices.measurement_basic.msrp))}
         </p>
       ) : null}
-      {appt ? (
-        <BookingFlow type={appt} />
+      {signInHref ? (
+        <div className="flex flex-1 flex-col gap-4 rounded-lg border p-5">
+          <h2 className="text-lg font-medium">{t.readjust.signInTitle}</h2>
+          <p className="text-sm text-muted-foreground">{t.readjust.signInBody}</p>
+          <Link href={signInHref} className={buttonVariants({ size: "lg" })}>
+            {t.readjust.signInCta}
+          </Link>
+        </div>
+      ) : appt ? (
+        <BookingFlow type={appt} readjustment={readjustment ?? undefined} />
       ) : (
         <div className="flex flex-1 flex-col gap-6">
           <p className="text-muted-foreground">{t.flow.typeLabel}</p>

@@ -5,6 +5,7 @@ import type { AppointmentSettings, AppointmentType } from "./settings";
 import type { BusyInterval, EventGuest } from "./slots";
 import {
   LOCATION_ID_PROP,
+  READJUSTMENT_BOOKING_PROP,
   addSgtDays,
   buildEventInsertBody,
   sgtLocalToUtcMs,
@@ -60,6 +61,8 @@ export type CalendarRangeEvent = {
    * admin opts in (`settings.showCancelled`); drawn struck-through in the grid.
    */
   cancelled: boolean;
+  /** The Re-adjustment booking behind this event (ADR 0024), from its private property. */
+  readjustmentBookingId: string | null;
 };
 
 type GCalEvent = {
@@ -204,6 +207,9 @@ export function mapGCalItemToRangeEvent(
     // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → none.
     rsvp: busy ? null : guestRsvp(ev),
     cancelled,
+    readjustmentBookingId: busy
+      ? null
+      : (ev.extendedProperties?.private?.[READJUSTMENT_BOOKING_PROP] ?? null),
   };
 }
 

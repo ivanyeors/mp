@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ExternalLink, Package, Truck } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -30,6 +31,10 @@ import {
   type RmaIneligibleItem,
 } from "./rma-actions";
 import { OrderRefundActions } from "./refund-actions";
+import { getMessages } from "@/lib/i18n/messages";
+import type { ReadjustmentQuote } from "@/lib/readjustment/eligibility";
+import { quoteBadge } from "@/lib/readjustment/format";
+import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
 
 export default async function AccountOrderDetailPage({
   params,
@@ -42,11 +47,48 @@ export default async function AccountOrderDetailPage({
   const user = await getAuthUser();
   if (!user) redirect(withLocale("/account/login", locale));
 
-  await linkCustomerToAuthUser(user);
+  const customer = await linkCustomerToAuthUser(user);
   const order = await getCustomerOrderByNumber(decodeURIComponent(orderNumber));
   if (!order) notFound();
 
   const items = order.items ?? [];
+
+  // Re-adjustment (ADR 0024): each pillow or bolster line can start a booking,
+  // with the same server quote the booking page shows; a line with one coming up
+  // shows it instead. Best-effort — the order page never fails on this.
+  const readjustT = getMessages(locale).slides.bookAppointment.readjust;
+  const [readjustCtx, upcoming] = await Promise.all([
+    loadReadjustmentContext(supabaseAdmin(), customer.id).catch(() => null),
+    (async () => {
+      const { data } = await supabaseAdmin()
+        .from("readjustment_bookings")
+        .select("order_item_id, start_at, location_name")
+        .eq("customer_id", customer.id)
+        .eq("status", "booked")
+        .gt("start_at", new Date().toISOString())
+        .in("order_item_id", items.map((i) => i.id))
+        .order("start_at", { ascending: true });
+      return data ?? [];
+    })().catch(() => []),
+  ]);
+  const quoteByItem = new Map<string, ReadjustmentQuote>(
+    (readjustCtx?.purchases ?? []).map((p) => [p.orderItemId, p.quote] as const),
+  );
+  const upcomingByItem = new Map<string, { start_at: string; location_name: string }>();
+  for (const b of upcoming) {
+    if (b.order_item_id && !upcomingByItem.has(b.order_item_id as string)) {
+      upcomingByItem.set(b.order_item_id as string, { start_at: b.start_at as string, location_name: b.location_name as string });
+    }
+  }
+  const visitLabel = (iso: string) =>
+    new Intl.DateTimeFormat(locale === "zh-CN" ? "zh-CN" : "en-SG", {
+      timeZone: "Asia/Singapore",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iso));
   const address = order.shipping_address;
   const isResultOrder = isResultCustomisedOrder(items);
   const canRequestRefund =
@@ -181,6 +223,25 @@ export default async function AccountOrderDetailPage({
                   <p className="mt-1 text-xs text-muted-foreground">
                     Qty {item.quantity}
                   </p>
+                  {upcomingByItem.has(item.id) ? (
+                    <p className="mt-2 text-xs font-medium text-primary">
+                      Re-adjustment booked · {visitLabel(upcomingByItem.get(item.id)!.start_at)} ·{" "}
+                      {upcomingByItem.get(item.id)!.location_name}
+                    </p>
+                  ) : quoteByItem.has(item.id) ? (
+                    <Link
+                      href={withLocale(
+                        `/appointments?type=readjustment&item=${encodeURIComponent(item.id)}`,
+                        locale,
+                      )}
+                      className="mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      Book a re-adjustment
+                      <span className="rounded-full border px-2 py-0.5 font-normal text-muted-foreground">
+                        {quoteBadge(quoteByItem.get(item.id)!, readjustT, locale)}
+                      </span>
+                    </Link>
+                  ) : null}
                 </div>
                 <p className="shrink-0 text-sm font-medium">
                   {formatOrderPrice(item.total_price, order.currency)}

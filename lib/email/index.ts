@@ -90,12 +90,14 @@ interface OrderRow {
     variant_title?: string | null;
     quantity: number;
     total_price: number;
+    kind?: string | null;
   }> | null;
   order_items?: Array<{
     product_title: string;
     variant_title?: string | null;
     quantity: number;
     total_price: number;
+    kind?: string | null;
   }> | null;
 }
 
@@ -221,6 +223,14 @@ export function planOrderConfirmedEmails(
   order: OrderRow
 ): Array<{ template: EmailTemplateName; to: string; data: OrderEmailData }> {
   const data = buildOrderEmailData(order);
+  // A paid re-adjustment is an Order with only a Service fee line (ADR 0024):
+  // nothing ships, so the order confirmation's delivery promises would be wrong.
+  // The booking itself is confirmed by the calendar invite and WhatsApp; the
+  // receipt is all the Order adds.
+  const lines = order.items ?? order.order_items ?? [];
+  if (lines.length > 0 && lines.every((l) => l.kind === "service")) {
+    return [{ template: "payment_receipt", to: order.email, data }];
+  }
   return [
     { template: "order_confirmation", to: order.email, data },
     { template: "payment_receipt", to: order.email, data },

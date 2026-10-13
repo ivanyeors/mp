@@ -30,6 +30,7 @@ import {
 } from "./results";
 import { money } from "./format";
 import { getSiteOrigin } from "@/lib/site-url";
+import { renderReadjustmentRescheduleEmail } from "./readjustment";
 import { RMA_EMAIL_TEMPLATES } from "./rma";
 import { ORDER_EMAIL_TEMPLATES } from "./templates";
 import {
@@ -43,6 +44,7 @@ import {
   samplePartnerListing,
   sampleBalanceDue,
   sampleBalanceDueFinish,
+  sampleReadjustmentReschedule,
   sampleRestock,
   sampleResultAssigned,
   sampleResultAssignedBalance,
@@ -254,6 +256,13 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderRestockEmail(sampleRestock(f)),
+  },
+  {
+    id: "readjustment.reschedule",
+    label: "Re-adjustment paid — new time needed",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f)),
   },
 
   // --- Partner programme ---
