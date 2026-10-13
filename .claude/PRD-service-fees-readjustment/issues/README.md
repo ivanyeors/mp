@@ -37,6 +37,12 @@ slice 11 can start:
 Where the build differs from the issue text, so the issues are not read as
 promises:
 
+- **Owner change, 2026-10-13: Mbolster has no measurement fee.** This replaces
+  decision (c)'s Basic rate. `measurementServiceKey` returns nothing for a
+  bolster, the Mbolster configurator offers the studio visit with no fee, and
+  the copy reads "none for Mbolster". Mbolster re-adjustments are unchanged
+  (always charged).
+
 - **03:**
   - The shared rule is `resultServiceLines` / `loadResultServiceLines`, called
     beside `priceComposedBuild` rather than folded into one charge-line list.

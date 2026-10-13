@@ -11,7 +11,7 @@ Owner decisions (2026-10-13), not to be re-litigated in build:
 
 - **(a) Three fees, set in the Admin Panel.** Measurement (Premium) $50, Measurement (Basic) $30, Re-adjustment $30.
 - **(b) The measurement fee is charged when Staff measure the customer.** Measuring yourself online stays free. The configurator also offers *"Have us measure you"* for customers who would rather come in.
-- **(c) A bolster measured by Staff pays the Basic rate.** **Mbolster** has no **Tier**, so it borrows Basic's price rather than getting a fourth fee.
+- **(c) Mbolster carries no measurement fee.** Revised by the owner on 2026-10-13: it originally borrowed the Basic rate. A Staff-measured bolster is charged nothing for measuring. Mbolster re-adjustments are still charged; see (e).
 - **(d) Re-adjustment requires Sign in.** A customer with several pillow or bolster purchases chooses which one the visit is for.
 - **(e) One complimentary re-adjustment per Premium Mpillow, within 60 days of the purchase date.** It is a one-time visit. After the window, or once the free visit is used, the re-adjustment fee applies. Basic Mpillow and Mbolster always pay. This matches the warranty page (`components/marketing/returns-warranty-page.tsx:61, 355-366`). It overrules the `pricingNotes` line, which says the opposite (see *Problem Statement*).
 - **(k) Nothing here links to or syncs with Shopify.** Shopify is ad hoc and not on the roadmap. Shopify orders are not matched to **Customers**, and service prices are not pushed to Shopify. Shopify's retired "services" product is neither mapped nor read. A pillow bought on Shopify is booked through *"My pillow isn't listed"*.
@@ -175,7 +175,7 @@ flowchart TD
 8. As a customer, I want the measurement fee on my receipt and **Order** as a separate line from the pillow, so that the two are not confused.
 9. As **Staff**, I want the fee added automatically when I am recorded as measuring, so that I never have to remember to charge it.
 10. As **Staff**, I want correcting "Measured by" before assignment to correct the fee, so that a mis-tapped profile does not overcharge a self-measured customer.
-11. As **Staff**, I want a bolster I measured to carry the Basic rate, so that bolster customers are charged consistently.
+11. As **Staff**, I want a bolster I measured to carry no measurement fee, so that bolster customers are never charged for it.
 
 ### Re-adjusting
 
@@ -207,7 +207,7 @@ Services are priced here like everything else: this is what the customer pays.
   Service                          MSRP (SGD)   Cost (SGD)   Charged when
   ───────────────────────────────  ──────────   ──────────   ─────────────────────────────────────────
   Measurement service (Premium)      50.00         —         Staff measure a Premium Mpillow customer
-  Measurement service (Basic)        30.00         —         Staff measure a Basic Mpillow or Mbolster customer
+  Measurement service (Basic)        30.00         —         Staff measure a Basic Mpillow customer (never Mbolster)
   Re-adjustment service              30.00         —         A re-adjustment is booked and isn't complimentary
 
   Complimentary re-adjustment — Premium Mpillow only
@@ -227,7 +227,7 @@ Services are priced here like everything else: this is what the customer pays.
 The fee is `service_prices[measurement_<tier>]` when `measured_by_type = 'staff'`. Otherwise it is zero.
 
 - **Tier:** `assigned_tier ?? suggested_tier`. A Basic flow upsold to Premium pays the Premium fee.
-- **Bolster:** `product_type = 'bolster'` maps to `measurement_basic` (decision (c)).
+- **Bolster:** `product_type = 'bolster'` carries no measurement fee (decision (c)).
 
 | Path | `measured_by_type` | Fee |
 |---|---|---|

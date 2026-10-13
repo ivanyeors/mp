@@ -207,7 +207,7 @@ describe("POST /api/results/hold — who measured, and the fee it decides", () =
     expect(row.authorized_amount).toBe(250);
   });
 
-  it("charges the Basic fee on a Basic build and on a bolster", async () => {
+  it("charges the Basic fee on a Basic build", async () => {
     h.rows.set(ID, { ...staffDraft });
     await post({ suggestedTier: "basic" });
     expect(h.rows.get(ID)!.authorized_amount).toBe(230);

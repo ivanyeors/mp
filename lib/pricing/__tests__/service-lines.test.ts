@@ -23,8 +23,8 @@ describe("measurementServiceKey — the fee follows who measured (ADR 0024)", ()
     // Staff changed the tier at assign, or the shopper accepted an upsell.
     ["staff", "pillow", "premium", "basic", "measurement_premium"],
     ["staff", "pillow", "basic", "premium", "measurement_basic"],
-    // Mbolster has no tier and borrows Basic's price.
-    ["staff", "bolster", null, null, "measurement_basic"],
+    // Mbolster carries no measurement fee, whoever measured.
+    ["staff", "bolster", null, null, null],
     ["by_user", "bolster", null, null, null],
   ])("%s / %s / assigned %s / suggested %s → %s", (who, product, assigned, suggested, expected) => {
     expect(
@@ -46,8 +46,16 @@ describe("resultServiceLines", () => {
   });
 
   it("carries the service's cost for margin", () => {
-    const [line] = resultServiceLines({ measured_by_type: "staff", product_type: "bolster" }, prices);
+    const [line] = resultServiceLines(
+      { measured_by_type: "staff", product_type: "pillow", suggested_tier: "basic" },
+      prices,
+    );
     expect(line).toMatchObject({ key: "measurement_basic", msrp: 30, costPrice: 4 });
+  });
+
+  it("charges a Staff-measured bolster nothing, even with no prices loaded", () => {
+    expect(resultServiceLines({ measured_by_type: "staff", product_type: "bolster" }, prices)).toEqual([]);
+    expect(resultServiceLines({ measured_by_type: "staff", product_type: "bolster" }, null)).toEqual([]);
   });
 
   it("owes nothing for a self-measured Result, with or without prices", () => {

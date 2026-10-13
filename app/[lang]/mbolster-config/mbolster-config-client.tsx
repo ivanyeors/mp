@@ -423,8 +423,10 @@ export function MbolsterConfigClient({
     return sum;
   }, [addons, selectedAddons]);
 
-  // Measurement service (ADR 0024): Mbolster has no tier and pays Basic's fee.
-  // Null when owed but unpriced — the amount is withheld rather than understated.
+  // Measurement service (ADR 0024): the shared rule, which charges Mbolster
+  // nothing today. Kept on the rule rather than skipped here, so the preview
+  // cannot drift from the hold if bolsters are ever priced. Null when owed but
+  // unpriced — the amount is withheld rather than understated.
   const serviceLines = React.useMemo<ServiceLine[] | null>(() => {
     try {
       return resultServiceLines(
@@ -1678,18 +1680,18 @@ export function MbolsterConfigClient({
                 }
               />
             </div>
-            {/* "Have us measure you" (ADR 0024): Mbolster borrows the Basic fee. Not
-                charged here — it rides the bolster's payment when Staff measure. */}
-            {servicePrices && !staffAssist && !measuredByStaff && !partnerAssisted ? (
+            {/* "Have us measure you" (ADR 0024). Mbolster carries no measurement
+                fee, so the visit is simply offered. */}
+            {!staffAssist && !measuredByStaff && !partnerAssisted ? (
               <p className="text-sm text-muted-foreground">
                 Prefer our team to measure you?{" "}
                 <Link
                   href={to("/appointments?type=customisation")}
                   className="font-medium text-foreground underline underline-offset-4"
                 >
-                  Book a studio measurement
+                  Book a studio visit
                 </Link>{" "}
-                — SGD {servicePrices.measurement_basic.msrp.toFixed(2)}, paid with your bolster.
+                — no measurement fee for Mbolster.
               </p>
             ) : null}
           </div>

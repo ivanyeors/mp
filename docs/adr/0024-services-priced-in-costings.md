@@ -17,7 +17,7 @@ booked by a signed-in **Customer** against one purchase and charged unless it is
   `lib/pricing/service-prices.ts` is the only reader. `msrp` is NOT NULL — a missing service price
   is a broken deploy, not a free service.
 - **The measurement fee is derived from who measured.** It applies when the **Result**'s
-  `measured_by_type = 'staff'`, at the rate for its **Tier** (**Mbolster** borrows Basic). It is
+  `measured_by_type = 'staff'`, at the rate for its **Tier**; **Mbolster** carries none. It is
   computed on every repricing by `lib/pricing/service-lines.ts` and enters every total through
   `resultChargeLines` beside add-ons and **Neck support**, so the surfaces that price a Result
   cannot disagree. No column on the Result stores it.

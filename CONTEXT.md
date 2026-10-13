@@ -197,7 +197,7 @@ The amount charged for a **Service** on a **Result** or an **Order**: the **Serv
 _Avoid_: "fee" alone in money-ledger context (`order_payments.type = 'fee'` is Stripe's dispute fee — a cost to us, not a charge to the customer); "surcharge"
 
 **Measurement service**:
-**Staff** measuring a customer for a customisation. Charged automatically when the **Result**'s `measured_by_type = 'staff'`, at the rate for its **Tier** (`assigned_tier ?? suggested_tier`): Premium → Measurement (Premium), Basic → Measurement (Basic), **Mbolster** → Measurement (Basic). Self-measurement online is free. Derived on every repricing from who measured — never stored as its own flag.
+**Staff** measuring a customer for a customisation. Charged automatically when the **Result**'s `measured_by_type = 'staff'`, at the rate for its **Tier** (`assigned_tier ?? suggested_tier`): Premium → Measurement (Premium), Basic → Measurement (Basic). **Mbolster** carries no measurement fee, whoever measured (owner, 2026-10-13). Self-measurement online is free. Derived on every repricing from who measured — never stored as its own flag.
 _Avoid_: a customer-ticked option in the configurator; treating the "Have us measure you" link as the charge (the link books the visit; the charge follows who measured); "customisation charge"
 
 **Authorization hold**:

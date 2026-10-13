@@ -37,11 +37,12 @@ export type ServiceFeeRow = {
  * The measurement Service a Result owes, or null.
  *
  * Tier is `assigned_tier ?? suggested_tier`, so an upsell or a Staff tier change at
- * assign moves the fee with it. Mbolster has no Tier and borrows Basic's price.
+ * assign moves the fee with it. Mbolster carries no measurement fee, whoever
+ * measured (owner, 2026-10-13).
  */
 export function measurementServiceKey(row: ServiceFeeRow): ServiceKey | null {
   if (row.measured_by_type !== "staff") return null;
-  if (row.product_type === "bolster") return "measurement_basic";
+  if (row.product_type === "bolster") return null;
   const tier = row.assigned_tier ?? row.suggested_tier;
   return tier === "premium" ? "measurement_premium" : "measurement_basic";
 }

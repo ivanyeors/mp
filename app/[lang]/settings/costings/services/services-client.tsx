@@ -31,7 +31,7 @@ type Initial = { services: ServicePrices; readjustmentPolicy: ReadjustmentPolicy
 /** When each fee is charged — the operator's reminder of what the number does. */
 const CHARGED_WHEN: Record<ServiceKey, string> = {
   measurement_premium: "Staff measure a Premium Mpillow customer.",
-  measurement_basic: "Staff measure a Basic Mpillow or Mbolster customer.",
+  measurement_basic: "Staff measure a Basic Mpillow customer. Mbolster has no measurement fee.",
   readjustment: "a re-adjustment is booked and isn't complimentary.",
 };
 

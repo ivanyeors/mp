@@ -255,7 +255,7 @@ export const zhCN: Messages = {
       pricingTitle: "价格区间与收费",
       pricingTable: { sizeHeader: "尺寸", priceHeader: "价格区间（SGD）" },
       pricingNotes: [
-        "测量服务费：高级款 {measurementPremium} · 基础款与 Mbolster {measurementBasic}——仅在由我们的团队为您测量时收取",
+        "测量服务费：高级款 {measurementPremium} · 基础款 {measurementBasic}——仅在由我们的团队为您测量时收取；Mbolster 不收取",
         "复调：高级款 Mpillow 购买后 {freeWindowDays} 天内免费一次，之后每次 {readjustmentFee}",
         "上门服务附加费：$250（含交通与 1 小时定制）",
       ],
@@ -430,7 +430,7 @@ export const zhCN: Messages = {
         errorSlotTaken: "该时间刚刚被预订，请选择其他时间。",
         errorGeneric: "出错了，请重试。",
         measurementFeeNote:
-          "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow 与 Mbolster {basic}——随枕头一并支付，今天无需付款。",
+          "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——随枕头一并支付，今天无需付款。",
       },
       readjust: {
         signInTitle: "登录以预约复调",

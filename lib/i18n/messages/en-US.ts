@@ -268,7 +268,7 @@ export const enUS: Messages = {
       pricingTitle: "Price range & charges",
       pricingTable: { sizeHeader: "Size", priceHeader: "Price range (SGD)" },
       pricingNotes: [
-        "Measurement service: {measurementPremium} (Premium) · {measurementBasic} (Basic and Mbolster) — only when our team measures you",
+        "Measurement service: {measurementPremium} (Premium) · {measurementBasic} (Basic) — only when our team measures you; none for Mbolster",
         "Re-adjustment: one free visit within {freeWindowDays} days of purchase for Premium Mpillow, then {readjustmentFee} per visit",
         "Doorstep surcharge: $250 (includes transportation and one hour customisation)",
       ],
@@ -465,7 +465,7 @@ export const enUS: Messages = {
         errorSlotTaken: "That time was just taken. Please pick another.",
         errorGeneric: "Something went wrong. Please try again.",
         measurementFeeNote:
-          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow and Mbolster — paid with your pillow, not today.",
+          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — paid with your pillow, not today.",
       },
       readjust: {
         signInTitle: "Sign in to book a re-adjustment",
