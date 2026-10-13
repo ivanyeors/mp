@@ -235,7 +235,7 @@ export const zhCN: Messages = {
         { label: "可水洗" },
         { label: "10 年保固" },
         { label: "到店定制" },
-        { label: "60 天内复调" },
+        { label: "{freeWindowDays} 天内复调" },
       ],
       overseasTitle: "海外顾客",
       overseasDescription: "在线提交测量数据。我们的流程会逐步引导你在家完成测量。",
@@ -255,8 +255,8 @@ export const zhCN: Messages = {
       pricingTitle: "价格区间与收费",
       pricingTable: { sizeHeader: "尺寸", priceHeader: "价格区间（SGD）" },
       pricingNotes: [
-        "每小时定制服务费：$50",
-        "购买后 60 天内复调服务费：$30",
+        "测量服务费：高级款 {measurementPremium} · 基础款与 Mbolster {measurementBasic}——仅在由我们的团队为您测量时收取",
+        "复调：高级款 Mpillow 购买后 {freeWindowDays} 天内免费一次，之后每次 {readjustmentFee}",
         "上门服务附加费：$250（含交通与 1 小时定制）",
       ],
       featuresTitle: "Premium 颈肩枕的特点",
@@ -295,9 +295,9 @@ export const zhCN: Messages = {
       aftercareTitle: "Mpillow 保养视频",
       aftercareDescription: "Premium Mpillow 的清洗与保养方式。",
       commitmentTitle: "我们的承诺",
-      commitmentReadjustmentTitle: "60 天内免费复调一次",
+      commitmentReadjustmentTitle: "{freeWindowDays} 天内免费复调一次",
       commitmentReadjustmentDescription:
-        "购买后 60 天内提供一次免费到店调整。超过 60 天或需要额外调整，将收取 $30 复调费用。复调时填充物免费提供（不含其他配件/组件）。",
+        "购买后 {freeWindowDays} 天内提供一次免费到店调整。超过 {freeWindowDays} 天或需要额外调整，将收取 {readjustmentFee} 复调费用。复调时填充物免费提供（不含其他配件/组件）。预约时请登录并选择您的枕头——您的订单即为购买凭证。",
       commitmentWarrantyTitle: "10 年保固说明",
       commitmentWarrantyDescription:
         "所有产品填充物均享有 10 年保固。若需保固服务，请预约并将枕头带到服务点进行复调与填充更换（复调费用另计）。",

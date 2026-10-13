@@ -247,7 +247,7 @@ export const enUS: Messages = {
         { label: "Fully washable" },
         { label: "10-year warranty" },
         { label: "In-store customisation" },
-        { label: "60-day readjustment" },
+        { label: "{freeWindowDays}-day readjustment" },
       ],
       overseasTitle: "For overseas customers",
       overseasDescription: "Submit your measurements online. Our step-by-step flow will guide you with each measurement — in the comfort of your own home.",
@@ -268,8 +268,8 @@ export const enUS: Messages = {
       pricingTitle: "Price range & charges",
       pricingTable: { sizeHeader: "Size", priceHeader: "Price range (SGD)" },
       pricingNotes: [
-        "Customisation charge for every hour: $50",
-        "Readjustment charge: $30 within 60 days of purchase",
+        "Measurement service: {measurementPremium} (Premium) · {measurementBasic} (Basic and Mbolster) — only when our team measures you",
+        "Re-adjustment: one free visit within {freeWindowDays} days of purchase for Premium Mpillow, then {readjustmentFee} per visit",
         "Doorstep surcharge: $250 (includes transportation and one hour customisation)",
       ],
       featuresTitle: "Features of our Premium neck & shoulder pain pillow",
@@ -310,9 +310,9 @@ export const enUS: Messages = {
       aftercareTitle: "Mpillow aftercare video",
       aftercareDescription: "How to wash and clean your Premium Mpillow.",
       commitmentTitle: "Our commitment",
-      commitmentReadjustmentTitle: "Complimentary 60-day re-adjustment",
+      commitmentReadjustmentTitle: "Complimentary {freeWindowDays}-day re-adjustment",
       commitmentReadjustmentDescription:
-        "We offer a one-time complimentary visit within the initial 60 days post-purchase. Beyond this period or for additional adjustments, a re-adjustment fee of $30 applies. Stuffing is provided for free during re-adjustments (excluding other accessories/components).",
+        "We offer a one-time complimentary visit within the initial {freeWindowDays} days post-purchase. Beyond this period or for additional adjustments, a re-adjustment fee of {readjustmentFee} applies. Stuffing is provided for free during re-adjustments (excluding other accessories/components). Sign in and pick your pillow when you book — your order is your proof of purchase.",
       commitmentWarrantyTitle: "10-year warranty inclusion",
       commitmentWarrantyDescription:
         "All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment fees apply).",
