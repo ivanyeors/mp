@@ -9,17 +9,61 @@ This is a tracer-bullet breakdown of the PRD (`../service-fees-readjustment-prd.
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR 0024: a service is a price without a part | AFK | **not started** | none | underpins all |
-| [02](02-service-fees-in-costings.md) | Service fees in Costings: table, reader, *Costings → Service fees* page, complimentary rule | AFK | **not started** | 01 | 1–3 |
-| [03](03-measurement-fee-priced-once.md) | Measurement fee priced through one helper on every Result surface, plus the hold attribution fix | AFK | **not started** | 02 | 5, 6, 9–11 |
-| [04](04-fee-on-the-order.md) | The fee on the Order as its own line, kept out of shipping, RMA and commission, and shown wherever money is shown | AFK | **not started** | 03 | 5, 8 |
-| [05](05-have-us-measure-you.md) | *"Have us measure you"*: configurator entry and the fee on the customisation booking page | AFK | **not started** | 02 | 7 |
-| [06](06-readjustment-core.md) | Re-adjustment core: `readjustment_bookings`, `evaluateReadjustment()`, the purchase loader | AFK | **not started** | 02 | 13, 15, 19 |
-| [07](07-signed-in-booking-and-picker.md) | Signed-in re-adjustment booking: sign-in gate, purchase picker, complimentary visit end to end | AFK | **not started** | 06 | 12–15, 17, 19 |
-| [08](08-paid-readjustment.md) | Paid re-adjustment: service Order, Stripe Checkout, slot hold, webhook settlement, expiry | AFK | **not started** | 04, 07 | 16, 18 |
-| [09](09-staff-at-the-visit.md) | Staff at the visit, and the customer's way in from their order | AFK | **not started** | 08 | 20–23 |
-| [10](10-policy-copy-one-source.md) | Policy copy that reads its numbers from Costings and stops contradicting itself | HITL | **not started** | 02 | 4 |
+| [01](01-glossary-and-adr.md) | Glossary and ADR 0024: a service is a price without a part | AFK | **done** | none | underpins all |
+| [02](02-service-fees-in-costings.md) | Service fees in Costings: table, reader, *Costings → Service fees* page, complimentary rule | AFK | **done** (migration to apply) | 01 | 1–3 |
+| [03](03-measurement-fee-priced-once.md) | Measurement fee priced through one helper on every Result surface, plus the hold attribution fix | AFK | **done** | 02 | 5, 6, 9–11 |
+| [04](04-fee-on-the-order.md) | The fee on the Order as its own line, kept out of shipping, RMA and commission, and shown wherever money is shown | AFK | **done** (migration to apply) | 03 | 5, 8 |
+| [05](05-have-us-measure-you.md) | *"Have us measure you"*: configurator entry and the fee on the customisation booking page | AFK | **done** | 02 | 7 |
+| [06](06-readjustment-core.md) | Re-adjustment core: `readjustment_bookings`, `evaluateReadjustment()`, the purchase loader | AFK | **done** (migration to apply) | 02 | 13, 15, 19 |
+| [07](07-signed-in-booking-and-picker.md) | Signed-in re-adjustment booking: sign-in gate, purchase picker, complimentary visit end to end | AFK | **done** | 06 | 12–15, 17, 19 |
+| [08](08-paid-readjustment.md) | Paid re-adjustment: service Order, Stripe Checkout, slot hold, webhook settlement, expiry | AFK | **done** | 04, 07 | 16, 18 |
+| [09](09-staff-at-the-visit.md) | Staff at the visit, and the customer's way in from their order | AFK | **done** (see deferred) | 08 | 20–23 |
+| [10](10-policy-copy-one-source.md) | Policy copy that reads its numbers from Costings and stops contradicting itself | HITL | **built — owner to approve wording** | 02 | 4 |
 | [11](11-signoff.md) | Sign-off: staging, real test cards, both locales, a handset | HITL | **not started** | 04, 05, 09, 10 | all |
+
+## Build notes (2026-10-13)
+
+Slices 01–10 are built on `claude/service-fees-readjustment-di9g2w`. Before
+slice 11 can start:
+
+- **Apply three migrations with `supabase db push`:**
+  - `20261013100000_service_prices.sql`
+  - `20261013110000_order_items_kind.sql`
+  - `20261013120000_readjustment_bookings.sql`
+
+  Code that reads the new columns fails until they exist.
+- **Owner sign-off on slice 10's wording**, en-US and zh-CN.
+
+Where the build differs from the issue text, so the issues are not read as
+promises:
+
+- **03:**
+  - The shared rule is `resultServiceLines` / `loadResultServiceLines`, called
+    beside `priceComposedBuild` rather than folded into one charge-line list.
+    `pricing-surface.check.ts` asserts every surface calls it.
+  - Assign keeps its own pricing copy; moving it onto `loadAssignedBuild` was
+    left out to keep this change's risk down.
+  - The Mbolster preview still shows the shelf price, plus the fee row.
+  - The hold route now stamps a **fresh** row with the Staff profile working
+    the device, which the issue did not spell out. Mbolster mints its Result
+    id at hold, so without this a Staff-measured bolster was never charged.
+- **04:** platform Analytics reads `order_margins` per Order, not per line, so
+  service revenue is counted there with no new "Services" series. Commission
+  needed no change: it already skips lines without a pillow or bolster
+  snapshot.
+- **07:** the guest booking route now refuses `appointment_type =
+  readjustment`, so the sign-in requirement cannot be bypassed through the API.
+- **09, deferred:**
+  - the calendar chip's fee marker;
+  - the `needs_reschedule` banner (the Telegram alert and the customer email
+    cover it for now);
+  - the Profile "Upcoming re-adjustment" card.
+
+  The event sheet's Re-adjustment panel and the order-page entry point are built.
+- **10:**
+  - `{freeVisits}` is not interpolated; the copy says "one free visit". Raising
+    the count in Costings → Service fees therefore also needs a copy edit.
+  - "Doorstep surcharge" stays literal (out of scope).
 
 ## Dependency graph
 
