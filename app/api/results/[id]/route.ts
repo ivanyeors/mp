@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { attachHoldPaymentIntent } from "@/lib/authorization-hold";
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -42,6 +43,7 @@ async function buildPublicSummary(row: {
   final_amount: number | null;
   currency: string | null;
   payment_intent_id: string | null;
+  measured_by_type?: string | null;
 }) {
   if (row.status !== "assigned" && row.status !== "accepted" && row.status !== "captured") {
     return null;
@@ -115,6 +117,8 @@ async function buildPublicSummary(row: {
 
     let pricing: {
       subtotal: number;
+      /** Service fees inside the subtotal (ADR 0024), one row each. */
+      services: Array<{ label: string; amount: number }>;
       shipping: number;
       tax: number;
       total: number;
@@ -180,7 +184,18 @@ async function buildPublicSummary(row: {
             ),
           ],
         });
-        if (goods.ok) {
+        const serviceLines = goods.ok
+          ? await loadResultServiceLines(admin, {
+              measured_by_type: row.measured_by_type ?? null,
+              product_type: productType,
+              assigned_tier: row.assigned_tier,
+            }).catch((e) => {
+              console.error("[results/status] service fees not usable", e);
+              return null;
+            })
+          : null;
+        if (goods.ok && serviceLines) {
+          const services = sumServiceLines(serviceLines);
           let shippingAmount = 0;
           let taxAmount = 0;
           const address = row.shipping_address as { country?: string } | null;
@@ -197,16 +212,24 @@ async function buildPublicSummary(row: {
               );
               const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
               taxAmount = computeTax(
-                { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
+                { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
                 taxRule,
               ).taxAmount;
             }
           }
-          pricing = priceResult({
-            subtotal: goods.subtotal,
+          const priced = priceResult({
+            goods: goods.subtotal,
+            services,
             shipping: shippingAmount,
             tax: taxAmount,
           });
+          pricing = {
+            subtotal: priced.subtotal,
+            services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
+            shipping: priced.shipping,
+            tax: priced.tax,
+            total: priced.total,
+          };
         }
       }
     }
@@ -245,7 +268,7 @@ export async function GET(
   const admin = supabaseAdmin();
   const { data: row, error } = await admin
     .from("mp_config_responses")
-    .select(`${PUBLIC_FIELDS}, access_token, customer_id, source`)
+    .select(`${PUBLIC_FIELDS}, access_token, customer_id, source, measured_by_type`)
     .eq("id", id)
     .maybeSingle();
 
@@ -281,6 +304,7 @@ export async function GET(
   delete (publicRow as { customer_id?: string }).customer_id;
   delete (publicRow as { shipping_address?: unknown }).shipping_address;
   delete (publicRow as { source?: string | null }).source;
+  delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
   return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages } });
 }

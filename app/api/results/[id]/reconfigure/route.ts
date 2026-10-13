@@ -114,7 +114,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, order_id, filling_template_id, shipping_method, shipping_address, currency",
+      "id, status, product_type, order_id, filling_template_id, shipping_method, shipping_address, currency, measured_by_type",
     )
     .eq("id", id)
     .maybeSingle();
@@ -243,6 +243,7 @@ export async function POST(
       product_type: "pillow",
       assigned_length: null,
       currency: row.currency as string | null,
+      measured_by_type: row.measured_by_type as string | null,
       ...rewritten,
       shipping_method: shippingPatch?.shipping_method ?? (row.shipping_method as string | null),
       shipping_address: shippingPatch?.shipping_address ?? row.shipping_address,

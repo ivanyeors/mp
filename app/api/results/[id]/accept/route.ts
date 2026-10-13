@@ -12,6 +12,7 @@ import { authorizeResultAccess } from "@/lib/results/access";
 import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
+import { SERVICE_SKUS } from "@/lib/pricing/service-prices";
 import { settleResult } from "@/lib/results/settlement";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
@@ -364,6 +365,7 @@ export async function POST(
     nameByItem: build.nameByItem,
     cogs: build.cogs,
     pricing: build.pricing,
+    serviceLines: build.serviceLines,
   });
 
   const { data: orderItem, error: itemErr } = await admin
@@ -378,8 +380,10 @@ export async function POST(
           ? `${row.assigned_size} · ${row.assigned_tier} tier`
           : row.assigned_length,
       quantity: 1,
-      unit_price: build.pricing.subtotal,
-      total_price: build.pricing.subtotal,
+      // Goods only. Service fees are their own lines below (ADR 0024), so the
+      // Order's lines still sum to its subtotal and nothing ships a service.
+      unit_price: build.pricing.goods,
+      total_price: build.pricing.goods,
       unit_cost: build.cogs,
       total_cost: build.cogs,
       customization_snapshot: snapshot,
@@ -387,12 +391,41 @@ export async function POST(
     .select("id")
     .single();
 
-  if (itemErr || !orderItem) {
+  // The Measurement service, when Staff measured (ADR 0024): its own line, never
+  // shipped, never stock-deducted, never returnable. Written before the ledger so
+  // a failure here still rolls the whole Order back below.
+  const serviceErr =
+    !itemErr && orderItem && build.serviceLines.length > 0
+      ? (
+          await admin.from("order_items").insert(
+            build.serviceLines.map((l) => ({
+              order_id: order.id,
+              variant_id: null,
+              kind: "service",
+              service_key: l.key,
+              sku: SERVICE_SKUS[l.key],
+              product_title: l.label,
+              variant_title: null,
+              quantity: 1,
+              unit_price: l.msrp,
+              total_price: l.msrp,
+              unit_cost: l.costPrice,
+              total_cost: l.costPrice,
+            })),
+          )
+        ).error
+      : null;
+
+  if (itemErr || !orderItem || serviceErr) {
+    // order_items cascade with the Order, so one delete undoes both inserts.
     const { error: rollbackErr } = await admin.from("orders").delete().eq("id", order.id);
     // An Order we could not delete must not be joined by a second one on retry:
     // keep the claim so the Result shows as accept_interrupted for a human.
     if (!rollbackErr) await releaseClaim();
-    return NextResponse.json({ error: itemErr?.message ?? "Failed to create order item" }, { status: 500 });
+    return NextResponse.json(
+      { error: itemErr?.message ?? serviceErr?.message ?? "Failed to create order item" },
+      { status: 500 },
+    );
   }
 
   // Record what we actually charged as ledger rows. Without these the order has no

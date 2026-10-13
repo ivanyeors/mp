@@ -23,6 +23,7 @@ import {
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -128,7 +129,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token",
+      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type",
     )
     .eq("id", id)
     .maybeSingle();
@@ -384,6 +385,24 @@ export async function POST(
     );
   }
 
+  // The Measurement service fee follows who measured and the tier being assigned
+  // now — a Staff tier change at assign moves the fee with it (ADR 0024).
+  let serviceLines;
+  try {
+    serviceLines = await loadResultServiceLines(admin, {
+      measured_by_type: row.measured_by_type as string | null,
+      product_type: productType,
+      assigned_tier: assignedTier,
+    });
+  } catch (e) {
+    console.error(`[results/assign] service fees not usable: ${e instanceof Error ? e.message : e}`);
+    return NextResponse.json(
+      { error: "This build cannot be priced yet. Check Costings → Service fees." },
+      { status: 409 },
+    );
+  }
+  const services = sumServiceLines(serviceLines);
+
   let shippingAmount = 0;
   let taxAmount = 0;
   const address = row.shipping_address as { country?: string } | null;
@@ -394,23 +413,26 @@ export async function POST(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
+      // Free shipping is earned by goods; tax is due on goods and services alike.
       shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
-        { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
+        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
         taxRule,
       ).taxAmount;
     }
   }
 
   const priced = priceResult({
-    subtotal: goods.subtotal,
+    goods: goods.subtotal,
+    services,
     shipping: shippingAmount,
     tax: taxAmount,
   });
   const finalAmount = priced.total;
   const pricingBreakdown: ResultPricing = {
     subtotal: priced.subtotal,
+    services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
     shipping: priced.shipping,
     tax: priced.tax,
     total: priced.total,

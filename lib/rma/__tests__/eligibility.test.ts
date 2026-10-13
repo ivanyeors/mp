@@ -69,6 +69,17 @@ describe("evaluateEligibility", () => {
     expect(r.reason).toMatch(/only 1/i);
   });
 
+  it("refuses a Service fee line however recent the delivery (ADR 0024)", () => {
+    const r = evaluateEligibility(base({ item: { quantity: 1, kind: "service" } }));
+    expect(r.eligible).toBe(false);
+    expect(r.availableQty).toBe(0);
+    expect(r.reason).toMatch(/Services can't be returned/);
+  });
+
+  it("treats a goods line exactly as before", () => {
+    expect(evaluateEligibility(base({ item: { quantity: 2, kind: "goods" } })).eligible).toBe(true);
+  });
+
   it("defaults requestedQty to 1 for the UI eligibility check", () => {
     const r = evaluateEligibility(base({ requestedQty: undefined }));
     expect(r.eligible).toBe(true);

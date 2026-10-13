@@ -113,6 +113,8 @@ type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
   is_final: boolean;
+  /** Who measured — `staff` means the Measurement service fee applies (ADR 0024). */
+  measured_by_type?: string | null;
   source?: string | null;
   order_id?: string | null;
   order_item_id?: string | null;
@@ -1069,6 +1071,13 @@ export default function ResultDetailPage({
                       ? `${row.currency ?? "SGD"} ${Number(row.final_amount).toFixed(2)}`
                       : "—"}
                   </div>
+                  {row.measured_by_type === "staff" ? (
+                    // The fee follows who measured (ADR 0024); change "Measured by"
+                    // in the Results list before assigning to correct it.
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Includes the Measurement service — Staff measured this customer.
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

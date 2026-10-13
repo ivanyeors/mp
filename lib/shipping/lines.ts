@@ -52,6 +52,7 @@ export async function loadShippableLines(
 }
 
 type OrderItemRow = {
+  kind?: string | null;
   variant_id: string | null;
   quantity: number;
   unit_price: number;
@@ -62,7 +63,11 @@ type OrderItemRow = {
   product_variants?: { weight_grams: number | null; products?: { product_type: string } | null } | null;
 };
 
-/** An order's lines for its label. A customised build without a variant ships as its product type. */
+/**
+ * An order's lines for its label. A customised build without a variant ships as its
+ * product type. A Service fee line (ADR 0024) is not a parcel and is left out —
+ * without that, a variant-less service line would be boxed as a "pillow".
+ */
 export async function loadOrderShippableLines(
   admin: SupabaseClient,
   orderId: string,
@@ -71,9 +76,10 @@ export async function loadOrderShippableLines(
   const { data, error } = await admin
     .from("order_items")
     .select(
-      "variant_id, quantity, unit_price, sku, product_title, variant_title, customization_snapshot, product_variants(weight_grams, products(product_type))",
+      "kind, variant_id, quantity, unit_price, sku, product_title, variant_title, customization_snapshot, product_variants(weight_grams, products(product_type))",
     )
-    .eq("order_id", orderId);
+    .eq("order_id", orderId)
+    .neq("kind", "service");
   if (error) throw new Error(error.message);
   return ((data ?? []) as unknown as OrderItemRow[]).map((row) => {
     const type =

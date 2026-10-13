@@ -16,6 +16,8 @@ export interface EligibilityOrder {
 export interface EligibilityItem {
   /** Quantity originally ordered for this line. */
   quantity: number;
+  /** `service` for a Service fee line (ADR 0024) — a service cannot be sent back. */
+  kind?: string | null;
 }
 
 export interface EligibilityInput {
@@ -43,6 +45,13 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
   const requestedQty = input.requestedQty ?? 1;
   const availableQty = Math.max(0, item.quantity - alreadyReturnedQty);
 
+  if (item.kind === "service") {
+    return {
+      eligible: false,
+      reason: "Services can't be returned. Contact us if something went wrong.",
+      availableQty: 0,
+    };
+  }
   if (order.status === "refunded") {
     return { eligible: false, reason: "This order has already been fully refunded.", availableQty };
   }

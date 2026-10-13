@@ -1,5 +1,6 @@
-/** Sell totals for a Result. Goods are priced by `priceComposedBuild`; this adds
- *  shipping and tax. Fillings never affect sell price. */
+/** Sell totals for a Result. Goods are priced by `priceComposedBuild`; Service fees by
+ *  `resultServiceLines` (ADR 0024); this adds them, then shipping and tax. Fillings
+ *  never affect sell price. */
 
 export type PricedLine = {
   msrp: number;
@@ -8,12 +9,19 @@ export type PricedLine = {
 
 export type PriceResultInput = {
   /** Goods subtotal from `priceComposedBuild` — Costings row + component deltas + add-ons. */
-  subtotal: number;
+  goods: number;
+  /** Service fees (`resultServiceLines`) — Mpillow's labour, never goods. */
+  services?: number;
   shipping?: number;
   tax?: number;
 };
 
 export type PriceResultOutput = {
+  /** What ships. The free-shipping threshold and the commission base see only this. */
+  goods: number;
+  /** Service fees. Never shipped, never stock-deducted — but taxed like goods. */
+  services: number;
+  /** goods + services: what an Order's lines sum to. */
   subtotal: number;
   shipping: number;
   tax: number;
@@ -26,10 +34,12 @@ export type PriceResultOutput = {
  * The subtotal is NOT "composed MSRP + every preference MSRP" any more. A Costings
  * row is the price of a whole configuration, so adding the chosen cover and case on
  * top double-charged for components the row already included — 473 for a 360 pillow.
- * `priceComposedBuild` owns that rule; this owns only shipping and tax.
+ * `priceComposedBuild` owns that rule; this owns only the sums.
  */
 export function priceResult(input: PriceResultInput): PriceResultOutput {
+  const services = input.services ?? 0;
   const shipping = input.shipping ?? 0;
   const tax = input.tax ?? 0;
-  return { subtotal: input.subtotal, shipping, tax, total: input.subtotal + shipping + tax };
+  const subtotal = input.goods + services;
+  return { goods: input.goods, services, subtotal, shipping, tax, total: subtotal + shipping + tax };
 }

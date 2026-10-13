@@ -1,6 +1,8 @@
 "use client";
 
 import { placedChargeLines, priceComposedBuild } from "@/lib/pricing/composed-price";
+import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
+import type { ServicePrices } from "@/lib/pricing/service-prices";
 
 import {
   useEffect,
@@ -303,8 +305,14 @@ export function MpConfigClient({
   assistCode = null,
   resumeFinish = null,
   staffEdit = null,
+  servicePrices = null,
+  measuredByStaff = false,
 }: {
   info: MpConfigInfo;
+  /** Costings → Service fees (ADR 0024), for the Measurement service row. */
+  servicePrices?: ServicePrices | null;
+  /** Staff measured this customer — the server charges the Measurement service. */
+  measuredByStaff?: boolean;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
   staffAssist?: boolean;
   /** Admin Panel `results` permission. Gates the completion dialog's link into
@@ -2299,7 +2307,26 @@ export function MpConfigClient({
     // came to show 170 while the server authorised 245: the fallback looked like a
     // price, so nothing stopped the shopper submitting. If this build cannot be
     // priced the CTA is blocked and the amount is withheld.
-    const quoteBlocked = pricingInputs != null && quote?.ok !== true;
+    // Measurement service (ADR 0024): the rule the hold route applies, on the tier
+    // the hold will submit. Shown as its own row, never folded into the pillow.
+    const feeTier = soldAsPremium ? "premium" : isBasic ? "basic" : (tier ?? null);
+    let serviceLines: ServiceLine[] = [];
+    let servicesBlocked = false;
+    try {
+      serviceLines = resultServiceLines(
+        {
+          measured_by_type: measuredByStaff ? "staff" : "by_user",
+          product_type: "pillow",
+          suggested_tier: feeTier,
+        },
+        servicePrices,
+      );
+    } catch {
+      // Owed but unpriced: withhold the amount, exactly like a refused goods quote.
+      servicesBlocked = true;
+    }
+    const serviceTotal = sumServiceLines(serviceLines);
+    const quoteBlocked = (pricingInputs != null && quote?.ok !== true) || servicesBlocked;
     const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
     const coverStock = preferenceStockFor(
       selectedCover,
@@ -2919,12 +2946,19 @@ export function MpConfigClient({
                   configuratorMobileCloseClearanceClassName,
                 )}
               >
+                {!quoteBlocked &&
+                  serviceLines.map((l) => (
+                    <div key={l.key} className="mb-1 flex justify-between text-sm">
+                      <span className="text-muted-foreground">{l.label}</span>
+                      <span className="tabular-nums">{`${currency} ${l.msrp.toFixed(2)}`}</span>
+                    </div>
+                  ))}
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
                   <span className="font-medium tabular-nums">
                     {quoteBlocked
                       ? "Not available"
-                      : `${currency} ${(basePrice + addonTotal).toFixed(2)}`}
+                      : `${currency} ${(basePrice + addonTotal + serviceTotal).toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex gap-3">

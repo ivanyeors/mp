@@ -180,6 +180,16 @@ export interface ResultPricing {
    * amount, a null amount cannot.
    */
   authorized: number | null;
+  /**
+   * Service fees inside `subtotal` (ADR 0024) — the Measurement service when Staff
+   * measured. Listed on their own rows so the customer sees what they pay for.
+   */
+  services?: Array<{ label: string; amount: number }>;
+}
+
+/** One row per Service fee, before the Subtotal they are part of. */
+function serviceRows(pricing: ResultPricing): Array<{ label: string; value: string }> {
+  return (pricing.services ?? []).map((s) => ({ label: s.label, value: money(s.amount, pricing.currency) }));
 }
 
 /** What the build IS — size and tier, or a bolster's length. */
@@ -276,6 +286,7 @@ export function renderResultAssignedEmail(p: {
       : []
     : p.pricing
     ? [
+        ...serviceRows(p.pricing).map((r) => `${r.label}: ${r.value}`),
         `Subtotal: ${money(p.pricing.subtotal, p.pricing.currency)}`,
         `Shipping: ${money(p.pricing.shipping, p.pricing.currency)}`,
         `Tax: ${money(p.pricing.tax, p.pricing.currency)}`,
@@ -312,6 +323,7 @@ export function renderResultAssignedEmail(p: {
       : []
     : p.pricing
     ? [
+        ...serviceRows(p.pricing),
         { label: "Subtotal", value: money(p.pricing.subtotal, p.pricing.currency) },
         { label: "Shipping", value: money(p.pricing.shipping, p.pricing.currency) },
         { label: "Tax", value: money(p.pricing.tax, p.pricing.currency) },
@@ -424,6 +436,7 @@ export function renderResultUpdatedEmail(p: {
           };
 
   const pricingRows = [
+    ...serviceRows(p.pricing),
     { label: "Subtotal", value: money(p.pricing.subtotal, currency) },
     { label: "Shipping", value: money(p.pricing.shipping, currency) },
     { label: "Tax", value: money(p.pricing.tax, currency) },
@@ -450,6 +463,7 @@ export function renderResultUpdatedEmail(p: {
     `Preferences: ${p.preferences.join(", ") || "—"}`,
     `Add-ons: ${p.addons.join(", ") || "—"}`,
     "",
+    ...serviceRows(p.pricing).map((r) => `${r.label}: ${r.value}`),
     `Subtotal: ${money(p.pricing.subtotal, currency)}`,
     `Shipping: ${money(p.pricing.shipping, currency)}`,
     `Tax: ${money(p.pricing.tax, currency)}`,

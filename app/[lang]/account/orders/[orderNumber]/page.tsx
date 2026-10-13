@@ -69,7 +69,7 @@ export default async function AccountOrderDetailPage({
   for (const item of items) {
     const r = evaluateEligibility({
       order: { delivered_at: order.delivered_at, status: order.status },
-      item: { quantity: item.quantity },
+      item: { quantity: item.quantity, kind: item.kind },
       alreadyReturnedQty: alreadyReturned[item.id] ?? 0,
       returnWindowDays,
       now,
