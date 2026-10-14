@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { BookingFlow, type ReadjustmentBooking } from "@/components/slide-in-pages/booking-flow";
 import { BookingPills } from "@/components/slide-in-pages/booking-pills";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { parseApptType } from "@/lib/appointments/appt-type";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { getAuthUser } from "@/lib/auth/user";
@@ -88,12 +88,12 @@ export default async function AppointmentsPage({
         </p>
       ) : null}
       {signInHref ? (
-        <div className="flex flex-1 flex-col gap-4 rounded-lg border p-5">
+        <div className="flex flex-col gap-4 rounded-lg border p-5">
           <h2 className="text-lg font-medium">{t.readjust.signInTitle}</h2>
           <p className="text-sm text-muted-foreground">{t.readjust.signInBody}</p>
-          <Link href={signInHref} className={buttonVariants({ size: "lg" })}>
-            {t.readjust.signInCta}
-          </Link>
+          <Button asChild size="lg">
+            <Link href={signInHref}>{t.readjust.signInCta}</Link>
+          </Button>
         </div>
       ) : appt ? (
         <BookingFlow type={appt} readjustment={readjustment ?? undefined} />

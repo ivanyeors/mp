@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { CalendarClock, Check, MapPin } from "lucide-react";
 
 import { ConfirmingRefresh } from "@/components/slide-in-pages/confirming-refresh";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { getAuthUser } from "@/lib/auth/user";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
@@ -68,9 +68,9 @@ export default async function ReadjustmentConfirmedPage({
       {!booking ? (
         <>
           <p className="text-lg font-medium">{rt.expiredTitle}</p>
-          <Link href={bookAgainHref} className={buttonVariants({ variant: "outline" })}>
-            {rt.bookAgain}
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={bookAgainHref}>{rt.bookAgain}</Link>
+          </Button>
         </>
       ) : booking.status === "awaiting_payment" ? (
         <>
@@ -88,9 +88,9 @@ export default async function ReadjustmentConfirmedPage({
         <>
           <p className="text-lg font-medium">{rt.expiredTitle}</p>
           <p className="text-sm text-muted-foreground">{rt.expiredBody}</p>
-          <Link href={bookAgainHref} className={buttonVariants({ variant: "outline" })}>
-            {rt.bookAgain}
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={bookAgainHref}>{rt.bookAgain}</Link>
+          </Button>
         </>
       ) : (
         <>
@@ -108,20 +108,21 @@ export default async function ReadjustmentConfirmedPage({
               .replace("{fee}", `SGD ${Number(booking.fee_amount).toFixed(2)}`)
               .replace("{email}", booking.email as string)}
           </p>
-          <a
-            href={`/api/appointments/ics?${new URLSearchParams({
-              summary: `Mpillow ${t.flow.readjustment}`,
-              start: booking.start_at as string,
-              end: booking.end_at as string,
-              location: booking.location_name as string,
-              description: booking.product_label as string,
-              uid: (booking.calendar_event_id as string | null) ?? `${booking.id}@mpillow`,
-            }).toString()}`}
-            download="appointment.ics"
-            className={buttonVariants({ variant: "default" }) + " mt-2"}
-          >
-            {t.flow.saveToCalendar}
-          </a>
+          <Button asChild className="mt-2">
+            <a
+              href={`/api/appointments/ics?${new URLSearchParams({
+                summary: `Mpillow ${t.flow.readjustment}`,
+                start: booking.start_at as string,
+                end: booking.end_at as string,
+                location: booking.location_name as string,
+                description: booking.product_label as string,
+                uid: (booking.calendar_event_id as string | null) ?? `${booking.id}@mpillow`,
+              }).toString()}`}
+              download="appointment.ics"
+            >
+              {t.flow.saveToCalendar}
+            </a>
+          </Button>
         </>
       )}
     </main>

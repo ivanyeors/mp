@@ -489,8 +489,8 @@ function ResultStatusPage() {
             <div className="space-y-1 border-t pt-2">
               {(build.pricing.services ?? []).map((s) => (
                 <div key={s.label} className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">{s.label}</span>
-                  <span className="tabular-nums">
+                  <span className="min-w-0 text-muted-foreground">{s.label}</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
                     {currency} {s.amount.toFixed(2)}
                   </span>
                 </div>

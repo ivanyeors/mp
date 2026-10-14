@@ -1532,9 +1532,9 @@ export function MbolsterConfigClient({
               )}
             >
               {(serviceLines ?? []).map((l) => (
-                <div key={l.key} className="mb-1 flex justify-between text-sm">
-                  <span className="text-muted-foreground">{l.label}</span>
-                  <span className="tabular-nums">
+                <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
+                  <span className="min-w-0 text-muted-foreground">{l.label}</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
                     {shopCurrency} {l.msrp.toFixed(2)}
                   </span>
                 </div>

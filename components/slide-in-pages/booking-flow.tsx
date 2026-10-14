@@ -521,12 +521,12 @@ export function BookingFlow({
       </div>
 
       {readjustment ? (
-        <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
-          <span className="text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+          <span className="min-w-0 text-muted-foreground">
             {rt.priceLabel}
             {selectedPurchase ? ` · ${selectedPurchase.label}` : ""}
           </span>
-          <span className="font-medium tabular-nums">
+          <span className="shrink-0 whitespace-nowrap font-medium tabular-nums">
             {quote ? (quote.complimentary ? rt.complimentary : formatSgd(quote.fee)) : "—"}
           </span>
         </div>
