@@ -203,6 +203,18 @@ export function sampleBalanceDue(fixture: EmailFixture = "happy") {
   };
 }
 
+export function sampleReadjustmentReschedule(fixture: EmailFixture = "happy") {
+  return {
+    guestName: pick(fixture, "Ada Tan"),
+    productLabel: pick(fixture, "Premium Mpillow · Size M"),
+    wanted: "Fri, 14 Nov, 2:30 pm",
+    locationName: pick(fixture, "Mpillow Studio"),
+    amount: 30,
+    currency: "SGD",
+    orderNumber: "1077",
+  };
+}
+
 export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
   return { ...sampleBalanceDue(fixture), needsFinish: true };
 }

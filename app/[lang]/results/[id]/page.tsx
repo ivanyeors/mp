@@ -37,6 +37,8 @@ type BuildSummary = {
   addons: string[];
   pricing: {
     subtotal: number;
+    /** Service fees inside the subtotal (ADR 0024). Absent from older responses. */
+    services?: Array<{ label: string; amount: number }>;
     shipping: number;
     tax: number;
     total: number;
@@ -485,6 +487,14 @@ function ResultStatusPage() {
           )}
           {build.pricing && !needsFinish && (
             <div className="space-y-1 border-t pt-2">
+              {(build.pricing.services ?? []).map((s) => (
+                <div key={s.label} className="flex justify-between gap-4">
+                  <span className="min-w-0 text-muted-foreground">{s.label}</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
+                    {currency} {s.amount.toFixed(2)}
+                  </span>
+                </div>
+              ))}
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="tabular-nums">

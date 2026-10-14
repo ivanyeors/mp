@@ -33,7 +33,7 @@ A priced, stocked unit of a **Storefront product**, linked to inventory via `ite
 _Avoid_: option (UI option values are not the variant itself)
 
 **Costings**:
-The single write surface for item and product prices: cost, MSRP, and compare-at (`item_prices`, `product_prices`).
+The single write surface for item and product prices: cost, MSRP, and compare-at (`item_prices`, `product_prices`), and for **Service** prices (`service_prices`, edited at Costings → Service fees).
 _Avoid_: pricing page, product editor (those only display mirrors)
 
 **MSRP**:
@@ -188,6 +188,18 @@ _Avoid_: showing a Cover Style picker on mbolster-config; treating bolster prote
 **Add-on**:
 An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Visualize** overlays).
 
+**Service**:
+A priced act of labour Mpillow performs that consumes no inventory. Exactly three: Measurement (Premium), Measurement (Basic) and Re-adjustment, keyed `measurement_premium` / `measurement_basic` / `readjustment`. Priced in **Costings** (`service_prices`) and never an **Item**; a fourth is a migration plus a rule in code, never a row an operator invents (ADR 0024).
+_Avoid_: an **Item** with a "service" category; an **Add-on**; "product"
+
+**Service fee**:
+The amount charged for a **Service** on a **Result** or an **Order**: the **Service**'s MSRP in **Costings**, never typed by **Staff** and never taken from a client. On an **Order** it is its own line (`order_items.kind = 'service'`) — never shipped, never stock-deducted, never returnable through RMA, outside the commission base and the free-shipping threshold, inside the taxable base.
+_Avoid_: "fee" alone in money-ledger context (`order_payments.type = 'fee'` is Stripe's dispute fee — a cost to us, not a charge to the customer); "surcharge"
+
+**Measurement service**:
+**Staff** measuring a customer for a customisation. Charged automatically when the **Result**'s `measured_by_type = 'staff'`, at the rate for its **Tier** (`assigned_tier ?? suggested_tier`): Premium → Measurement (Premium), Basic → Measurement (Basic). **Mbolster** carries no measurement fee, whoever measured (owner, 2026-10-13). Self-measurement online is free. Derived on every repricing from who measured — never stored as its own flag.
+_Avoid_: a customer-ticked option in the configurator; treating the "Have us measure you" link as the charge (the link books the visit; the charge follows who measured); "customisation charge"
+
 **Authorization hold**:
 An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
 
@@ -206,8 +218,8 @@ Same money path: hold → **Result** → assign → Accept → capture → **Ord
 _Avoid_: conflating soft “low stock” badges with Pre-order; calling the held **Result** an **Order** before Accept + capture; “Purchase” as the hold CTA (payment is still an **Authorization hold**); UI-only Pre-order that vanishes after Stripe; bolster-only rules; CMS editing of waiting-time copy in v1; manual restock notice as the v1 path; inventing a per-SKU ETA field in v1
 
 **Appointment**:
-A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013).
-_Avoid_: Order, Result, Customer journey (appointments are not linked to Orders in v1); the retired Google Appointment-Scheduling iframe (booking is now first-party)
+A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013). A **Re-adjustment appointment** is linked to a **Customer**, a purchase and (when paid) an **Order** through its **Re-adjustment booking**; a **Customisation appointment** is still linked to nothing.
+_Avoid_: Order, Result, Customer journey (a Customisation appointment is not linked to an Order); the retired Google Appointment-Scheduling iframe (booking is now first-party)
 
 **Appointment reminder**:
 A WhatsApp utility message for an **Appointment** — day-before Confirm/Reschedule, optional morning-of nudge, or cancel + rebook link.
@@ -219,6 +231,18 @@ _Avoid_: mp-config **Result** (digital submission flow)
 
 **Re-adjustment appointment**:
 An **Appointment** for post-purchase fitting/adjustment; type inferred from calendar event summary match strings.
+
+**Re-adjustment**:
+A post-purchase visit to re-tune one purchased pillow or bolster — booked as a **Re-adjustment appointment** by a signed-in **Customer** against one purchase, recorded as a **Re-adjustment booking**. Costs the Re-adjustment **Service fee** unless it is a **Complimentary re-adjustment**. One booking re-adjusts one pillow.
+_Avoid_: an anonymous **Appointment** (the pre-ADR-0024 state); "readjust" in UI copy
+
+**Complimentary re-adjustment**:
+A **Re-adjustment** charged nothing. **Premium Mpillow only**; `readjustment_free_visits` (default 1) per unit, while the booking date is within `readjustment_free_window_days` (default 60) of the purchase's `orders.paid_at`, counted in Singapore calendar days with the purchase day as day 0. A booking that is booked, attended or a no-show uses one; one that is cancelled or expired gives it back. Decided server-side by `evaluateReadjustment` (`lib/readjustment/eligibility.ts`).
+_Avoid_: "warranty" (the 10-year fillings warranty is separate and still charges the fee); computing it on the client; Basic Mpillow or **Mbolster** (always charged)
+
+**Re-adjustment booking**:
+The `readjustment_bookings` row linking a **Customer**, one purchase (an `order_item`, or "not listed"), a slot, a **Location**, and either *complimentary* or a paid service **Order**. What **Staff** read at the visit; its id rides on the calendar event as a private extended property.
+_Avoid_: conflating with `appointment_reminders` (WhatsApp reminder state keyed by calendar event — unchanged); a payment recorded on the booking instead of an **Order**
 
 **Appointment RSVP status**:
 The customer's Google Calendar invite response on an **Appointment** event — `accepted | declined | tentative | needsAction` (mirrors Google's `responseStatus`). Read live from the guest attendee on the central-calendar event (no local store) and shown in the **Admin Panel** calendar as a status **icon** + left-border accent (`accepted`→**Confirmed** tick green, `declined`→**Declined** cross red, `tentative`→**Tentative** question amber, `needsAction`→**Invited** envelope gray; a Google-cancelled event, listed only when the admin opts in, shows **Cancelled** ban struck-through), alongside the event **type** icon (Customise sparkle / Readjust refresh) — two visual channels: fill + icon = type, icon + accent = RSVP. The chip is one line (type icon · guest name · status icon; no time, no type text). Icon + label are spelled out in the legend and the event click-detail sheet. Requires **email** to be required (so the guest is always an attendee) and `sendUpdates: "all"` on `events.insert`/reschedule (so Google actually sends the invite the customer responds to). Applies to the customer even when Staff books on their behalf — the invite still lands on the customer's email.
@@ -298,7 +322,7 @@ _Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-sto
 
 **Shopify order mirror**:
 Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Distinct from `shopify_sales_queue` (ops inventory commit). Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only.
-_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth
+_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input.
 
 **Others**:
 Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
@@ -442,6 +466,8 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 - Fillings live only in **Filling Templates** — never in composed sellable BOM or warehouse presets. Legacy filling rows are migrated into Filling Templates (seed defaults per product card), then removed from live BOMs
 - Fillings affect COGS/fulfillment only; sell price is **Costings** **MSRP** for the composed sellable plus preference/add-on item **MSRP**s, plus shipping and tax
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
+- A **Result** measured by **Staff** carries a **Measurement service** **Service fee**; on its **Order** that fee is a second line beside the build
+- A paid **Re-adjustment** is an **Order** with one **Service fee** line; a **Complimentary re-adjustment** has a **Re-adjustment booking** and no **Order**
 - An **Assisted customisation** takes **no Authorization hold**; its **Result** reaches **Order** through a **Balance payment** for the full price after **Staff** assign the build in the **Admin Panel** — same Accept, same **Order**, no **Referral** and no **Commission** (ADR 0016)
 - A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Visualize** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
 - **Product Visualize** (tab on Store → Products) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Visualize when needed).

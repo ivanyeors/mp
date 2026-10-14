@@ -289,6 +289,54 @@ export type Messages = {
         bookAnother: string;
         errorSlotTaken: string;
         errorGeneric: string;
+        /** Customisation booking: the Measurement service fees, `{premium}` / `{basic}` (ADR 0024). */
+        measurementFeeNote: string;
+      };
+      /** Signed-in re-adjustment booking (ADR 0024). */
+      readjust: {
+        signInTitle: string;
+        signInBody: string;
+        signInCta: string;
+        pickTitle: string;
+        /** `{order}` order number, `{date}` purchase date. */
+        orderLine: string;
+        /** `{date}` last day of the complimentary window. */
+        badgeFree: string;
+        /** `{fee}`. */
+        badgeFee: string;
+        badgeFreeUsed: string;
+        /** `{fee}`, `{date}` the day the window closed. */
+        badgeWindowEnded: string;
+        notListed: string;
+        notListedHint: string;
+        whereLabel: string;
+        where: {
+          online_before_accounts: string;
+          in_store: string;
+          gift: string;
+          other: string;
+        };
+        referenceLabel: string;
+        emptyTitle: string;
+        switchAccount: string;
+        priceLabel: string;
+        complimentary: string;
+        /** `{fee}`. */
+        payAndBook: string;
+        redirecting: string;
+        emailLocked: string;
+        errorRequote: string;
+        pickFirst: string;
+        confirmedFree: string;
+        confirmingTitle: string;
+        confirmingSlow: string;
+        /** `{fee}`, `{email}`. */
+        confirmedPaid: string;
+        rescheduleTitle: string;
+        rescheduleBody: string;
+        expiredTitle: string;
+        expiredBody: string;
+        bookAgain: string;
       };
     };
   };

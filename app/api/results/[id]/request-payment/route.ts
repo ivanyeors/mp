@@ -117,6 +117,7 @@ export async function POST(
     addons,
     pricing: {
       subtotal: build.pricing.subtotal,
+      services: build.serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
       shipping: build.pricing.shipping,
       tax: build.pricing.tax,
       total: build.pricing.total,

@@ -82,6 +82,32 @@ assert.deepEqual(
   `PRICE_TABLE_READERS lists files that no longer read product_prices: ${vanished.join(", ")}. Remove them.`,
 );
 
+// --- 1b. who may touch service_prices (ADR 0024) ----------------------------
+
+/** One loader reads it; the Costings save route writes it. A third is a second price source. */
+const SERVICE_TABLE_READERS: Record<string, string> = {
+  "lib/pricing/service-prices.ts": "THE loader — every service fee is read through it",
+  "app/[lang]/settings/costings/save/route.ts": "writes Costings → Service fees",
+  "app/[lang]/settings/costings/save/__tests__/service-fees.test.ts": "tests the writer",
+  "app/api/results/hold/__tests__/measured-by.test.ts": "fixture rows for the hold route's fee",
+};
+const serviceReaders = grepFiles(`["']service_prices["']`);
+const unexpectedServiceReaders = serviceReaders.filter((f) => !(f in SERVICE_TABLE_READERS));
+assert.deepEqual(
+  unexpectedServiceReaders,
+  [],
+  `New reader(s) of service_prices: ${unexpectedServiceReaders.join(", ")}.\n` +
+    "Read service fees through loadServicePrices() in lib/pricing/service-prices.ts.",
+);
+const vanishedServiceReaders = Object.keys(SERVICE_TABLE_READERS).filter(
+  (f) => !serviceReaders.includes(f),
+);
+assert.deepEqual(
+  vanishedServiceReaders,
+  [],
+  `SERVICE_TABLE_READERS lists files that no longer touch service_prices: ${vanishedServiceReaders.join(", ")}.`,
+);
+
 // --- 2. the goods rule lives in exactly one module --------------------------
 
 const PRICING_MODULE = "lib/pricing/composed-price.ts";
@@ -118,6 +144,27 @@ for (const f of MUST_PRICE_THROUGH) {
   assert.ok(
     callers.includes(f),
     `${f} must price through priceComposedBuild() — it shows or charges a build total.`,
+  );
+}
+
+// --- 3b. every Result surface gets its Service fees from one rule (ADR 0024) ---
+//
+// The Measurement service follows who measured. Five surfaces each building the
+// fee themselves would drift exactly as the goods rule did — the preview saying
+// $50 while the hold charged nothing.
+const MUST_PRICE_SERVICES_THROUGH = [
+  "app/api/results/hold/route.ts",
+  "app/api/results/[id]/assign/route.ts",
+  "app/api/results/[id]/route.ts",
+  "lib/results/assigned-build.ts",
+  "app/[lang]/mp-config/mp-config-client.tsx",
+  "app/[lang]/mbolster-config/mbolster-config-client.tsx",
+];
+const serviceCallers = grepFiles("(loadResultServiceLines|resultServiceLines)\\(");
+for (const f of MUST_PRICE_SERVICES_THROUGH) {
+  assert.ok(
+    serviceCallers.includes(f),
+    `${f} must take its Service fees from resultServiceLines() — it shows or charges a Result total.`,
   );
 }
 

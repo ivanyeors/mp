@@ -25,6 +25,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
+import { interpolateServiceCopyDeep, loadServiceCopyValues } from "@/lib/pricing/service-copy";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 const LAST_UPDATED = "5 July 2026";
 
@@ -45,7 +47,7 @@ const PRODUCT_WARRANTIES: ProductWarranty[] = [
     tagline: "Ergonomic support with modular care",
     fillingsWarranty: "No long-term fillings warranty",
     refundPolicy: "No refunds",
-    adjustmentPolicy: "$30 per adjustment at our service centre",
+    adjustmentPolicy: "{readjustmentFee} per adjustment at our service centre",
     highlights: [
       "30-day fit support window for size exchanges (see Exchange policy)",
       "Upgrade to Premium Mpillow available via in-person verification",
@@ -58,11 +60,11 @@ const PRODUCT_WARRANTIES: ProductWarranty[] = [
     tagline: "Fully customised to your measurements",
     fillingsWarranty: "10-year fillings warranty",
     refundPolicy: "No refunds",
-    adjustmentPolicy: "1 free adjustment within 60 days, then $30 per visit",
+    adjustmentPolicy: "1 free adjustment within {freeWindowDays} days, then {readjustmentFee} per visit",
     highlights: [
       "Complimentary stuffing during re-adjustments (accessories excluded)",
-      "Proof of purchase required for adjustments and warranty claims",
-      "Within the 10-year warranty: $30 per adjustment, including filling changes",
+      "Sign in when you book — your order is your proof of purchase",
+      "Within the 10-year warranty: {readjustmentFee} per adjustment, including filling changes",
     ],
   },
   {
@@ -71,7 +73,7 @@ const PRODUCT_WARRANTIES: ProductWarranty[] = [
     tagline: "Modular, washable bolster for side sleepers",
     fillingsWarranty: "10-year fillings warranty",
     refundPolicy: "No refunds",
-    adjustmentPolicy: "Book an appointment for firmness adjustments",
+    adjustmentPolicy: "{readjustmentFee} per re-adjustment at our service centre",
     highlights: [
       "Same modular fillings technology as Mpillow",
       "100% washable components for long-term hygiene",
@@ -101,6 +103,11 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
   const homeHref = withLocale("/", locale);
   const supportHref = withLocale("/support", locale);
   const mpCareHref = withLocale("/mp-care", locale);
+  const readjustHref = withLocale("/appointments?type=readjustment", locale);
+  // Fees and the free window come from Costings → Service fees (ADR 0024), so
+  // this page never quotes a price an operator has since changed.
+  const copy = await loadServiceCopyValues(supabaseAdmin());
+  const products = PRODUCT_WARRANTIES.map((p) => interpolateServiceCopyDeep(p, copy));
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">
@@ -138,7 +145,7 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
         </div>
 
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {PRODUCT_WARRANTIES.map((product) => (
+          {products.map((product) => (
             <Card key={product.id} id={product.id} className="flex h-full w-full scroll-mt-24 flex-col gap-4 py-5">
               <CardHeader className="gap-3 px-5">
                 <div className="flex items-start justify-between gap-2">
@@ -354,14 +361,23 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
               <h3 className="text-base font-semibold">Premium Mpillow</h3>
               <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
                 <li>
-                  <strong className="text-foreground">One free adjustment</strong> within 60 days of
-                  purchase.
+                  <strong className="text-foreground">One free adjustment</strong> within{" "}
+                  {copy.freeWindowDays} days of purchase.
                 </li>
-                <li>Proof of purchase must be presented.</li>
-                <li>After the complimentary visit, or for additional adjustments: $30 per adjustment.</li>
                 <li>
-                  Within the 10-year Premium Mpillow warranty, adjustments cost $30 per visit,
-                  including filling changes. Stuffing is provided at no extra charge during
+                  <Link href={readjustHref} className="underline underline-offset-4">
+                    Sign in and pick your pillow when you book
+                  </Link>{" "}
+                  — your order is your proof of purchase. Bought before accounts existed, in store or
+                  as a gift? Book anyway and bring proof of purchase to the visit.
+                </li>
+                <li>
+                  After the complimentary visit, or for additional adjustments: {copy.readjustmentFee}{" "}
+                  per adjustment.
+                </li>
+                <li>
+                  Within the 10-year Premium Mpillow warranty, adjustments cost {copy.readjustmentFee}{" "}
+                  per visit, including filling changes. Stuffing is provided at no extra charge during
                   re-adjustments (accessories and other components excluded).
                 </li>
               </ul>
@@ -371,9 +387,13 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
               <h3 className="text-base font-semibold">Basic Mpillow</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Basic Mpillow adjustments are available at our service centre for{" "}
-                <strong className="text-foreground">$30 per session</strong>. Book an appointment via{" "}
+                <strong className="text-foreground">{copy.readjustmentFee} per session</strong>.{" "}
+                <Link href={readjustHref} className="underline underline-offset-4">
+                  Book a re-adjustment
+                </Link>{" "}
+                or{" "}
                 <Link href={supportHref} className="underline underline-offset-4">
-                  Contact Us
+                  contact us
                 </Link>{" "}
                 if you need help with fit or maintenance.
               </p>
@@ -382,8 +402,12 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
             <div className="space-y-3">
               <h3 className="text-base font-semibold">Mbolster</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Mbolster firmness can be adjusted using the same modular fillings as Mpillow. Book an
-                appointment and we will help you tune firmness for your side-sleeping preference.
+                Mbolster firmness can be adjusted using the same modular fillings as Mpillow, for{" "}
+                <strong className="text-foreground">{copy.readjustmentFee} per re-adjustment</strong>.{" "}
+                <Link href={readjustHref} className="underline underline-offset-4">
+                  Book a re-adjustment
+                </Link>{" "}
+                and we will help you tune firmness for your side-sleeping preference.
               </p>
             </div>
           </div>

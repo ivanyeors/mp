@@ -128,6 +128,8 @@ import { soleCaseId } from "@/lib/configurator/preference-policy";
 import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
 import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
+import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
+import type { ServicePrices } from "@/lib/pricing/service-prices";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
@@ -222,8 +224,14 @@ export function MbolsterConfigClient({
   info,
   staffAssist = false,
   partner = null,
+  servicePrices = null,
+  measuredByStaff = false,
 }: {
   info: MbolsterConfigInfo;
+  /** Costings → Service fees (ADR 0024), for the Measurement service row. */
+  servicePrices?: ServicePrices | null;
+  /** Staff are measuring this customer — the hold charges the Measurement service. */
+  measuredByStaff?: boolean;
   /** Staff-only x-ray filling editor on the bolster preview (slice 13). */
   staffAssist?: boolean;
   /**
@@ -414,6 +422,21 @@ export function MbolsterConfigClient({
     }
     return sum;
   }, [addons, selectedAddons]);
+
+  // Measurement service (ADR 0024): the shared rule, which charges Mbolster
+  // nothing today. Kept on the rule rather than skipped here, so the preview
+  // cannot drift from the hold if bolsters are ever priced. Null when owed but
+  // unpriced — the amount is withheld rather than understated.
+  const serviceLines = React.useMemo<ServiceLine[] | null>(() => {
+    try {
+      return resultServiceLines(
+        { measured_by_type: measuredByStaff ? "staff" : "by_user", product_type: "bolster" },
+        servicePrices,
+      );
+    } catch {
+      return null;
+    }
+  }, [measuredByStaff, servicePrices]);
 
   React.useEffect(() => {
     let hydratedStep: Step | null = null;
@@ -1508,10 +1531,20 @@ export function MbolsterConfigClient({
                 configuratorMobileCloseClearanceClassName,
               )}
             >
+              {(serviceLines ?? []).map((l) => (
+                <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
+                  <span className="min-w-0 text-muted-foreground">{l.label}</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
+                    {shopCurrency} {l.msrp.toFixed(2)}
+                  </span>
+                </div>
+              ))}
               <div className="mb-3 flex justify-between text-sm">
                 <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
                 <span className="font-medium tabular-nums">
-                  {shopCurrency} {(shopBasePrice + addonTotal).toFixed(2)}
+                  {serviceLines
+                    ? `${shopCurrency} ${(shopBasePrice + addonTotal + sumServiceLines(serviceLines)).toFixed(2)}`
+                    : "Not available"}
                 </span>
               </div>
               <div className="flex gap-3">
@@ -1647,6 +1680,20 @@ export function MbolsterConfigClient({
                 }
               />
             </div>
+            {/* "Have us measure you" (ADR 0024). Mbolster carries no measurement
+                fee, so the visit is simply offered. */}
+            {!staffAssist && !measuredByStaff && !partnerAssisted ? (
+              <p className="text-sm text-muted-foreground">
+                Prefer our team to measure you?{" "}
+                <Link
+                  href={to("/appointments?type=customisation")}
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Book a studio visit
+                </Link>{" "}
+                — no measurement fee for Mbolster.
+              </p>
+            ) : null}
           </div>
         ) : null}
 

@@ -337,6 +337,10 @@ export interface OrderItem {
   total_cost?: number | null;
   customization_id?: string | null;
   customization_snapshot?: OrderItemCustomizationSnapshot | null;
+  /** `service` for a Service fee line (ADR 0024): never shipped, stocked or returned. */
+  kind?: "goods" | "service";
+  /** Which Service a `service` line charges (`service_prices.key`). */
+  service_key?: string | null;
   created_at: string;
 }
 

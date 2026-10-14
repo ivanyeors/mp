@@ -30,6 +30,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ReadjustmentPanel } from "@/components/settings/readjustment-panel";
 import {
   Collapsible,
   CollapsibleContent,
@@ -1178,6 +1179,9 @@ export function AppointmentsCalendar({
                   </div>
                 ) : null}
               </dl>
+            ) : null}
+            {detail?.kind !== "blocked" && detailEvent?.readjustmentBookingId ? (
+              <ReadjustmentPanel key={detailEvent.readjustmentBookingId} bookingId={detailEvent.readjustmentBookingId} />
             ) : null}
           </div>
 

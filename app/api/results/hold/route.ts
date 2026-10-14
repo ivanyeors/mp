@@ -8,6 +8,8 @@ import { requireResultAccess } from "@/lib/results/access";
 import { priceResult } from "@/lib/result-pricing";
 import { round2 } from "@/lib/commissions";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
+import { getWorkingAs } from "@/lib/staff/working-as";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -254,7 +256,9 @@ export async function POST(req: Request) {
   const { data: assisted, error: assistedErr } = input.responseId
     ? await admin
         .from("mp_config_responses")
-        .select("source, status, access_token, customer_id, customer_email, order_id, payment_intent_id")
+        .select(
+          "source, status, access_token, customer_id, customer_email, order_id, payment_intent_id, measured_by_type, measured_by_staff_id",
+        )
         .eq("id", input.responseId)
         .maybeSingle()
     : { data: null, error: null };
@@ -509,18 +513,55 @@ export async function POST(req: Request) {
     );
   }
 
+  // Who measured decides the Measurement service fee (ADR 0024), so it is settled
+  // before pricing. An existing Draft keeps what it says — the responses route
+  // stamped it on create (a Staff device's working-as profile) and the Results list
+  // may have corrected it since. A brand-new row (Mbolster mints its id at hold)
+  // gets the same create rule the responses route applies: a Staff session working
+  // as a profile measured this customer. Writing `by_user` over a staff-stamped
+  // Draft used to break the 0025 consistency check; now it would also drop the fee.
+  let measuredBy: { type: "by_user" | "staff"; staffId: string | null };
+  if (assisted) {
+    measuredBy =
+      assisted.measured_by_type === "staff"
+        ? { type: "staff", staffId: assisted.measured_by_staff_id ?? null }
+        : { type: "by_user", staffId: null };
+  } else {
+    const staff = await getAdminContext();
+    const workingAs = staff ? await getWorkingAs(staff.memberId) : null;
+    measuredBy = workingAs ? { type: "staff", staffId: workingAs.id } : { type: "by_user", staffId: null };
+  }
+
+  let serviceLines;
+  try {
+    serviceLines = await loadResultServiceLines(admin, {
+      measured_by_type: measuredBy.type,
+      product_type: productType,
+      suggested_tier: productType === "pillow" ? input.suggestedTier! : null,
+    });
+  } catch (e) {
+    console.error(`[results/hold] service fees not usable: ${e instanceof Error ? e.message : e}`);
+    return NextResponse.json(
+      { error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" },
+      { status: 409 },
+    );
+  }
+  const services = sumServiceLines(serviceLines);
+
   // No shipping yet on an Assisted submit sent from the questionnaire. The quote
   // is goods-only, the same as assign prices it until the customer finishes.
+  // Free shipping is earned by goods alone; tax is due on goods and services.
   const shippingMethod = shippingRow as ShippingMethod | null;
   const shippingAmount = shippingMethod ? calculateShippingRate(shippingMethod, goods.subtotal) : 0;
   const taxRule = await resolveTaxRuleForRegion(input.shippingAddress?.country ?? "SG");
   const tax = computeTax(
-    { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
+    { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
     taxRule,
   );
 
   const priced = priceResult({
-    subtotal: goods.subtotal,
+    goods: goods.subtotal,
+    services,
     shipping: shippingAmount,
     tax: tax.taxAmount,
   });
@@ -673,7 +714,11 @@ export async function POST(req: Request) {
     id: resultId,
     data: input.measurements ?? {},
     is_final: true,
-    measured_by_type: "by_user" as const,
+    // Only a fresh row is stamped. An update leaves the Draft's own values — see
+    // `measuredBy` above.
+    ...(assisted
+      ? {}
+      : { measured_by_type: measuredBy.type, measured_by_staff_id: measuredBy.staffId }),
     product_type: productType,
     suggested_size: productType === "pillow" ? input.suggestedSize! : null,
     suggested_tier: productType === "pillow" ? input.suggestedTier! : null,
@@ -821,6 +866,7 @@ export async function POST(req: Request) {
       "💤 Held Result (online purchase) — review needed",
       suggestLabel,
       `Email: ${input.email}`,
+      ...serviceLines.map((l) => `${l.label}: ${currency} ${l.msrp.toFixed(2)}`),
       takeCard
         ? `Authorized: ${currency} ${priced.total.toFixed(2)}`
         : `No card taken — quoted ${currency} ${priced.total.toFixed(2)}`,

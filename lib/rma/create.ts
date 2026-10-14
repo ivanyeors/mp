@@ -20,6 +20,8 @@ export interface PlanOrderItem {
   id: string;
   quantity: number;
   product_title: string;
+  /** `service` lines (ADR 0024) are never returnable. */
+  kind?: string | null;
 }
 
 export interface PlanRmaInput {
@@ -75,7 +77,7 @@ export function planRmaCreate(input: PlanRmaInput): PlanRmaResult {
 
     const result = evaluateEligibility({
       order,
-      item: { quantity: item.quantity },
+      item: { quantity: item.quantity, kind: item.kind },
       alreadyReturnedQty: alreadyReturnedByItem[item.id] ?? 0,
       requestedQty: req.quantity,
       returnWindowDays,

@@ -13,6 +13,11 @@ import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { round2 } from "@/lib/commissions";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
+import {
+  READJUSTMENT_PURPOSE,
+  expireReadjustmentBooking,
+  finalizeReadjustmentBooking,
+} from "@/lib/readjustment/checkout";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -415,6 +420,23 @@ export async function POST(req: Request) {
           }
         }
 
+        // Step 9: a paid Re-adjustment (ADR 0024) — the money is in, so put the
+        // visit on the calendar. Idempotent on the booking's calendar event, so a
+        // replay writes nothing. Critical: money with no booked visit must retry.
+        const readjustmentBookingId = session.metadata?.readjustment_booking_id;
+        if (session.metadata?.purpose === READJUSTMENT_PURPOSE && readjustmentBookingId) {
+          try {
+            await finalizeReadjustmentBooking(admin, readjustmentBookingId);
+          } catch (err) {
+            throw new CriticalWebhookError(
+              `Paid re-adjustment ${readjustmentBookingId} could not be booked: ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+              err,
+            );
+          }
+        }
+
         break;
       }
 
@@ -451,6 +473,15 @@ export async function POST(req: Request) {
 
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // A Re-adjustment Checkout that lapsed unpaid releases its slot hold
+        // (ADR 0024); the Order below is cancelled exactly like a shop order's.
+        if (
+          session.metadata?.purpose === READJUSTMENT_PURPOSE &&
+          session.metadata?.readjustment_booking_id
+        ) {
+          await expireReadjustmentBooking(admin, session.metadata.readjustment_booking_id);
+        }
 
         const { data: order } = await admin
           .from("orders")

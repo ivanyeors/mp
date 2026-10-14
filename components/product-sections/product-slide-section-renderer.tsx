@@ -2,6 +2,9 @@
 
 import * as React from "react";
 
+import { useServiceCopy } from "@/hooks/use-service-copy";
+import { interpolateServiceCopyDeep } from "@/lib/pricing/service-copy";
+
 import { openCervicalNeckSupportSheet } from "@/components/slide-in-pages/cervical-neck-support";
 import { buildFeatureCarouselItems } from "@/lib/product-slide-sections/feature-carousel-items";
 import {
@@ -90,11 +93,18 @@ function resolveButtonLabel(messages: Record<string, unknown>, labelKey: string)
 
 export function ProductSlideSectionRenderer({
   sections,
-  messages,
+  messages: rawMessages,
   commonMessages,
   auxMessages,
   resolveHref,
 }: ProductSlideSectionRendererProps) {
+  // Policy copy carries {readjustmentFee}-style placeholders; fill them with
+  // today's Costings → Service fees so the slide never quotes a stale price.
+  const serviceCopy = useServiceCopy();
+  const messages = React.useMemo(
+    () => interpolateServiceCopyDeep(rawMessages, serviceCopy),
+    [rawMessages, serviceCopy],
+  );
   return (
     <>
       {sections.map((section, index) => {

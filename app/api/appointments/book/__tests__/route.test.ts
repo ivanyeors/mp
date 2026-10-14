@@ -61,3 +61,11 @@ describe("POST /api/appointments/book — bookable guard", () => {
     expect((await post({ ...valid, location_id: "nope" })).status).toBe(404);
   });
 });
+
+describe("POST /api/appointments/book — re-adjustments need Sign in (ADR 0024)", () => {
+  it("refuses an anonymous re-adjustment before touching the calendar", async () => {
+    const res = await post({ ...valid, appointment_type: "readjustment" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("readjustment_requires_sign_in");
+  });
+});

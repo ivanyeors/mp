@@ -103,9 +103,24 @@ const KEY_BY_HREF = new Map<string, Permission>(
   ),
 );
 
-/** The permission a sidebar page needs, or undefined for a page open to any Staff (General). */
+/**
+ * The permission a sidebar page needs, or undefined for a page open to any Staff (General).
+ *
+ * A page's own sub-route with no catalog entry of its own (Costings → Service fees at
+ * `/settings/costings/services`) is guarded by that page: the longest catalog href that
+ * is a whole-segment prefix wins, so an exact entry (`/settings/inventory/configure` →
+ * `configure`) always beats its parent (`/settings/inventory` → `inventory`).
+ */
 export function permissionForHref(href: string): Permission | undefined {
-  return KEY_BY_HREF.get(href);
+  const exact = KEY_BY_HREF.get(href);
+  if (exact) return exact;
+  let best: { href: string; key: Permission } | null = null;
+  for (const [pageHref, key] of KEY_BY_HREF) {
+    if (href.startsWith(`${pageHref}/`) && pageHref.length > (best?.href.length ?? 0)) {
+      best = { href: pageHref, key };
+    }
+  }
+  return best?.key;
 }
 
 /**

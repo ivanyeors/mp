@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSiteSettings } from "@/lib/site-settings";
+import { markReadjustmentCancelledByEvent, moveReadjustmentByEvent } from "@/lib/readjustment/lifecycle";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
+import { liveSlotHolds } from "@/lib/appointments/book-slot";
 import {
   deleteEvent,
   freeBusy,
@@ -141,8 +143,13 @@ async function handleAction(
       sgtLocalToUtcMs(endDay.y, endDay.m, endDay.d, 0, 0),
     ).toISOString();
 
-    const busy = await freeBusy(timeMin, timeMax);
-    const slots = offerSlots(busy, settings, now);
+    // A slot someone is paying for (re-adjustment Checkout open) is not on the
+    // calendar yet but is taken all the same (ADR 0024).
+    const [calendarBusy, holds] = await Promise.all([
+      freeBusy(timeMin, timeMax),
+      liveSlotHolds(timeMin, timeMax),
+    ]);
+    const slots = offerSlots([...calendarBusy, ...holds], settings, now);
 
     if (slots.length === 0) {
       await sendText(
@@ -186,6 +193,8 @@ async function handleAction(
     }
 
     await patchEventTimes(row.calendar_event_id, picked.startIso, picked.endIso);
+    // A Re-adjustment booking's times follow its event (ADR 0024).
+    await moveReadjustmentByEvent(row.calendar_event_id, picked.startIso, picked.endIso);
 
     const ok = await updateReminder(
       row.calendar_event_id,
@@ -210,6 +219,8 @@ async function handleAction(
     if (!t.ok) return;
 
     await deleteEvent(row.calendar_event_id);
+    // The visit is gone: a complimentary Re-adjustment gives its free visit back.
+    await markReadjustmentCancelledByEvent(row.calendar_event_id);
 
     const resolved = resolveAppointmentType(
       row.appointment_type === "readjustment"

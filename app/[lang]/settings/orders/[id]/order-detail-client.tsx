@@ -710,6 +710,11 @@ export default function OrderDetailPage({
                                             <TableCell className="px-4 py-3">
                                                 <p className="font-medium text-sm">
                                                     {item.product_title}
+                                                    {item.kind === "service" && (
+                                                        <Badge variant="outline" className="ml-2 text-[10px] align-middle">
+                                                            Service
+                                                        </Badge>
+                                                    )}
                                                 </p>
                                                 {item.variant_title && (
                                                     <p className="text-xs text-muted-foreground mt-0.5">

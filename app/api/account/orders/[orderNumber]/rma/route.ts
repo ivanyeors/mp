@@ -54,7 +54,7 @@ export async function POST(
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, status, delivered_at, email, order_items(id, quantity, product_title)",
+      "id, status, delivered_at, email, order_items(id, quantity, product_title, kind)",
     )
     .eq("order_number", decodeURIComponent(orderNumber))
     .eq("customer_id", customer.id)
@@ -71,6 +71,7 @@ export async function POST(
     id: string;
     quantity: number;
     product_title: string;
+    kind?: string | null;
   }>;
 
   // How much of each line is already tied up in a non-terminal RMA for this order.
