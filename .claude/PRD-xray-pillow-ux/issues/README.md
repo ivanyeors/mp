@@ -22,6 +22,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | [10](https://github.com/ivanyeors/mp/issues/210) | Physical calibration sign-off | HITL | P1 | ready for sign-off; needs Ivan's measurements (01) | 01–09, 11 | 48 |
 | [11](https://github.com/ivanyeors/mp/issues/212) | Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic | AFK | P1 | built (PR #213) | 02, 03 | 50–62 |
 | [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213) | 01 | 63–66 |
+| [13](13-cross-section-editing.md) | Edit on the cross-section — drag between columns, Layers and Sections; puffy pouches; heights audited | AFK | P1 | built; awaiting Ivan on a deployed build | 05, 07, 11 | — |
 
 ## Dependency graph
 

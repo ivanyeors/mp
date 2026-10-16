@@ -71,3 +71,63 @@ describe("CrossSectionSvg along pieces", () => {
     expect(pushed.sections.right.pieces[0].startMm).toBeGreaterThan(home.sections.right.pieces[0].startMm);
   });
 });
+
+describe("CrossSectionSvg pouches", () => {
+  const two = fitPillow(
+    [
+      { section: "center", subSection: "front", slot: 1, itemId: 1, row: 0 },
+      { section: "center", subSection: "front", slot: 2, itemId: 1, row: 1 },
+    ],
+    { size: "M", dims },
+  );
+
+  it("draws each pouch as a cushion of curves, shaded, with its name when it fits", () => {
+    const m = renderToStaticMarkup(
+      <CrossSectionSvg fit={two} cut={DEFAULT_CUT} itemSubtypes={new Map([[1, "6D"]])} itemSizes={new Map([[1, "S"]])} />,
+    );
+    const bodies = [...m.matchAll(/data-slab-status="[a-z]+"[^>]*><path d="([^"]+)"/g)].map((x) => x[1]);
+    expect(bodies).toHaveLength(2);
+    for (const d of bodies) expect(d.match(/C/g)).toHaveLength(8);
+    expect(m).toContain("<linearGradient");
+    expect(m.match(/>6D S</g)).toHaveLength(2);
+    // One loft label for the Section, not one per column.
+    expect(m.match(/>max \d+ mm</g)).toHaveLength(1);
+    expect(m.match(/data-xray-column-divider/g)).toHaveLength(2);
+  });
+
+  it("an editor makes every pouch a focusable handle and draws a held pouch where it will land", () => {
+    const editor = {
+      svgRef: { current: null },
+      ghostRef: { current: null },
+      svgHandlers: {},
+      slabHit: (slab: { key: string }) => ({ tabIndex: 0, role: "button", "data-slab-key": slab.key }),
+      selectedKey: "center/front/1",
+      hoveredKey: null,
+    };
+    const idle = renderToStaticMarkup(<CrossSectionSvg fit={two} cut={DEFAULT_CUT} itemSubtypes={new Map()} editor={{ ...editor, drag: null }} />);
+    expect(idle.match(/tabindex="0"/g)).toHaveLength(2);
+    expect(idle).toContain("data-slab-selected");
+    const held = renderToStaticMarkup(
+      <CrossSectionSvg
+        fit={two}
+        cut={DEFAULT_CUT}
+        itemSubtypes={new Map()}
+        editor={{
+          ...editor,
+          drag: {
+            sourceKey: "center/front/1",
+            landingKey: "center/front/1",
+            column: "front",
+            tone: "ok",
+            ghost: { w: 120, h: 30, roll: false, puff: 1, subtype: null, label: "6D S", at: { x: 100, y: 50 } },
+            overTab: false,
+          },
+        }}
+      />,
+    );
+    expect(held).toContain('data-slab-mode="landing"');
+    expect(held).toContain("data-xray-slab-ghost");
+    expect(held).toContain('data-xray-drop-column="ok"');
+    expect(held).not.toContain("data-slab-selected");
+  });
+});

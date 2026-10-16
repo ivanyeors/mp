@@ -7,7 +7,7 @@
 
 import { SUB_SECTIONS, type Section, type SubSection } from "./core";
 import type { ColumnFit, FitStatus, PillowFit } from "./fit";
-import { SEAM_MM } from "./dimensions";
+import { REFERENCE_SIZE, SEAM_MM, type PillowSize, type ResolvedDims } from "./dimensions";
 
 export type Cut = { section: Section };
 
@@ -78,6 +78,10 @@ export type AlongSlab = {
   /** mm above the back panel. */
   bottomMm: number;
   heightMm: number;
+  /** Its thickness at this Size before it settled or was squeezed, mm (the Settings value × the Size's factor). */
+  relaxedMm: number;
+  /** Its thickness once settled (spread into an empty neighbour thins it), before any squeeze, mm. */
+  settledMm: number;
   status: FitStatus;
   hatched: boolean;
 };
@@ -88,6 +92,7 @@ export type AlongSlab = {
  * slab it overlaps, else on the back panel.
  */
 export function alongSlabs(fit: PillowFit, section: Section): AlongSlab[] {
+  const settled = new Map(fit.settle.pieces.map((s) => [s.key, s] as const));
   const placed: AlongSlab[] = [];
   for (const p of [...fit.sections[section].pieces].sort((a, b) => b.depth - a.depth)) {
     const bottomMm = Math.max(
@@ -104,6 +109,8 @@ export function alongSlabs(fit: PillowFit, section: Section): AlongSlab[] {
       endMm: p.endMm,
       bottomMm,
       heightMm: p.thicknessMm,
+      relaxedMm: settled.get(p.key)?.thicknessMm ?? p.thicknessMm,
+      settledMm: settled.get(p.key)?.settledThicknessMm ?? p.thicknessMm,
       status: p.status,
       hatched: p.status !== "ok",
     });
@@ -114,4 +121,31 @@ export function alongSlabs(fit: PillowFit, section: Section): AlongSlab[] {
 /** Where the cut is taken, for a caption: "along · center". */
 export function cutLabel(cut: Cut): string {
   return `along · ${cut.section}`;
+}
+
+const mm = (n: number) => `${Math.round(n)} mm`;
+
+/**
+ * Why a slab is as thick as it draws, from the Settings value to the cut:
+ * `"30 mm drawn: 45 mm for Size M (not in Settings — family default) → 30 mm at Size XS"`,
+ * then `→ … spread along the Section` and `→ … squeezed to close` where those
+ * apply. Pouch thicknesses are entered for the reference Size and scale by
+ * the gusset (`sizeFactors`); the settle thins a pouch that spreads; the fit
+ * squeezes a stack taller than its budget.
+ */
+export function slabThicknessNote(slab: AlongSlab, size: PillowSize, resolved?: ResolvedDims): string {
+  const steps: string[] = [];
+  if (resolved) {
+    const from =
+      resolved.source === "configured"
+        ? "Settings"
+        : resolved.source === "measured"
+          ? `measured ${resolved.measuredOn}`
+          : "not in Settings — family default";
+    steps.push(`${mm(resolved.dims.thicknessMm)} for Size ${REFERENCE_SIZE} (${from})`);
+  }
+  if (!resolved || size !== REFERENCE_SIZE) steps.push(`${mm(slab.relaxedMm)} at Size ${size}`);
+  if (slab.settledMm < slab.relaxedMm - 0.5) steps.push(`${mm(slab.settledMm)} spread along the Section`);
+  if (slab.heightMm < slab.settledMm - 0.5) steps.push(`${mm(slab.heightMm)} squeezed to close`);
+  return `${mm(slab.heightMm)} drawn: ${steps.join(" → ")}`;
 }
