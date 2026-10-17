@@ -1,11 +1,26 @@
 import { getSiteOrigin } from "@/lib/site-url";
 import { localeUrl } from "@/lib/seo/locale-url";
 
+// Mpillow's own profiles, as in the site footer. The footer's LinkedIn is the
+// parent company's page, so it is not the same entity and stays out.
+const SAME_AS = [
+  "https://www.facebook.com/thempillow",
+  "https://www.instagram.com/thempillow/",
+  "https://www.youtube.com/channel/UCgwq2h5BygQmCAXHRzLJHrQ",
+  "https://www.tiktok.com/@thempillow",
+];
+
+/** Stable node id, so Article publishers and the homepage Organization are one entity. */
+export function organizationId(): string {
+  return `${getSiteOrigin()}/#organization`;
+}
+
 export function buildOrganizationJsonLd(lang = "en-US"): Record<string, unknown> {
   const origin = getSiteOrigin();
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": organizationId(),
     name: "Mpillow",
     url: origin,
     logo: `${origin}/mpillow_logo_2026.png`,
@@ -15,6 +30,8 @@ export function buildOrganizationJsonLd(lang = "en-US"): Record<string, unknown>
       "@type": "PostalAddress",
       addressCountry: "SG",
     },
+    award: "Singapore Good Design 2022",
+    sameAs: SAME_AS,
   };
 }
 
