@@ -2352,6 +2352,7 @@ export function MpConfigClient({
       shopRecommendation?.components.cases ?? [],
     );
     // Product Builder overlay (slice 10): case wins over cover; unmapped → plain silhouette.
+    // An overlay is an image (url + fit) or a solid color.
     const selectedOverlay =
       (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)
         ?.overlay ??
@@ -2495,7 +2496,11 @@ export function MpConfigClient({
                     preserveAspectRatio="xMidYMid meet"
                   >
                     <path d={pillowPath(size)} fill="white" />
-                    {selectedOverlay && (
+                    {/* Color overlay: the silhouette itself is the fabric. */}
+                    {selectedOverlay?.color && (
+                      <path d={pillowPath(size)} fill={selectedOverlay.color} />
+                    )}
+                    {selectedOverlay?.url && (
                       <>
                         <defs>
                           <clipPath id="mp-config-overlay-clip">
