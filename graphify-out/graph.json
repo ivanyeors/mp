@@ -63340,7 +63340,7 @@
       "file_type": "code",
       "norm_label": "getguidecontent()",
       "source_file": "lib/seo/guides-content.ts",
-      "source_location": "L168"
+      "source_location": "L170"
     },
     {
       "id": "lib_seo_guides_content_isguidetopic",
@@ -63352,7 +63352,7 @@
       "file_type": "code",
       "norm_label": "isguidetopic()",
       "source_file": "lib/seo/guides-content.ts",
-      "source_location": "L174"
+      "source_location": "L176"
     },
     {
       "id": "lib_seo_topic_reviews_loader_gettopicreviews",
@@ -624417,17 +624417,6 @@
     },
     {
       "source": "lib_seo_guides_content",
-      "target": "lib_seo_guides_content_getguidecontent",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/seo/guides-content.ts",
-      "source_location": "L168",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_seo_guides_content",
       "target": "lib_seo_guides_content_guides",
       "relation": "contains",
       "_origin": "ast",
@@ -624439,13 +624428,24 @@
     },
     {
       "source": "lib_seo_guides_content",
+      "target": "lib_seo_guides_content_getguidecontent",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/seo/guides-content.ts",
+      "source_location": "L170",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_seo_guides_content",
       "target": "lib_seo_guides_content_isguidetopic",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/seo/guides-content.ts",
-      "source_location": "L174",
+      "source_location": "L176",
       "weight": 1.0
     },
     {
@@ -675568,5 +675568,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "6ea6edda964c8429c5483f65e873a1d3dce25511"
+  "built_at_commit": "5bbabc1a45c6ea9bf5ace4a9ce462916c65790ff"
 }

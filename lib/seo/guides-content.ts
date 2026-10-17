@@ -27,7 +27,8 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       links: [
         { href: "/blog/what-is-the-best-pillow-for-neck-pain-in-singapore", label: "What is the best pillow for neck pain in Singapore?" },
         { href: "/blog/what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore", label: "What is tech neck, and can a pillow help?" },
-        { href: "/mp-config", label: "Customise Mpillow (Basic & Premium)" },
+        { href: "/mp-config", label: "Customise Premium Mpillow" },
+        { href: "/mp-basic", label: "Customise Basic Mpillow" },
       ],
       faqs: [
         {
@@ -43,7 +44,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
         {
           question: "Do I need to visit the store?",
           answer:
-            "Premium Mpillow includes in-store measurement and readjustment. Basic can start online via mp-config with an optional store visit.",
+            "Premium Mpillow includes in-store measurement and readjustment. Basic starts online in the Basic configurator, with an optional store visit.",
         },
       ],
       ctaHref: "/mp-config",
@@ -129,7 +130,8 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       links: [
         { href: "/blog/tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep", label: "How a custom pillow is made and fitted" },
         { href: "/blog/how-to-choose-the-best-pillow-in-singapore", label: "How to choose the best pillow in Singapore" },
-        { href: "/mp-config", label: "Customise Mpillow (Basic & Premium)" },
+        { href: "/mp-config", label: "Customise Premium Mpillow" },
+        { href: "/mp-basic", label: "Customise Basic Mpillow" },
         { href: "/faq", label: "Customisation FAQs" },
       ],
       faqs: [
