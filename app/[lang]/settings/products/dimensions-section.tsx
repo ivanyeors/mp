@@ -282,7 +282,8 @@ function PouchTable({
       <p className="text-xs text-muted-foreground">
         Width runs across the section (left ↔ right), length along it (front ↔ back); thickness
         relaxed and fully compressed; minimum width when squeezed. Flat length / width are optional: the
-        fabric’s own limit when it stops a spread before the fill is fully compressed.
+        longest the pouch lies when pressed flat. Left blank, it is worked out from the thickness — the
+        fabric does not stretch, so a pouch gets only about 0.57 mm longer per mm it is pressed thinner.
       </p>
       <Table>
         <TableHeader>

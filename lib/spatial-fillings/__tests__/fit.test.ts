@@ -254,13 +254,14 @@ describe("feedback helpers (slice 04)", () => {
 
   it("fitAtSizes judges the same recipe per Size — and reads alike, as the pouches scale with the pillow", () => {
     // 3 × 80 mm (min 40, at M) in a side cell: each Size scales the pouches'
-    // thickness by its gusset, as its loft budget scales, so the stack that
-    // fits at M fits at XS and XL too (28-9-2026: fillings are cut to the pillow).
+    // thickness by its gusset, as its loft budget scales, so the stack reads
+    // the same at XS, M and XL (28-9-2026: fillings are cut to the pillow).
+    // Settling cannot spread the excess away — fabric does not stretch — so it is compressed at all three.
     const stack = [0, 1, 2].map((row) => at("left", "middle", row + 1, 1, row));
     const by = fitAtSizes(stack, ["XS", "M", "xl"], { dims });
-    expect(by.XS).toBe("ok");
-    expect(by.M).toBe("ok");
-    expect(by.xl).toBe("ok");
+    expect(by.XS).toBe("compressed");
+    expect(by.M).toBe("compressed");
+    expect(by.xl).toBe("compressed");
     const xs = fitPillow(stack, { size: "XS", dims }).cells[0];
     const m = fitPillow(stack, { size: "M", dims }).cells[0];
     expect(xs.loftMm / xs.maxLoftMm).toBeCloseTo(m.loftMm / m.maxLoftMm, 1);

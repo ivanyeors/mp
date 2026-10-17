@@ -3,12 +3,14 @@
 /**
  * Cross-section view (X-ray pillow UX slice 05, ADR 0019): a live cut of the
  * pillow beside every x-ray: front, middle, back of one Section inside the
- * designer's side profile. Pure SVG from the fit the host already computed —
- * one pouch per piece at its compressed thickness, clipped to the shell,
- * coloured by family through the same CSS variables the pouches use, hatched
- * when compressed, red when the stack cannot close; a Neck support is a round
- * roll. A pouch draws as a stuffed cushion (`slab-shape.ts`) that flattens as
- * it is spread or squeezed, and glides to its new place when the mix changes.
+ * designer's side profile, drawn at its own proportions on every screen. Pure
+ * SVG from the fit the host already computed — one pouch per piece at its
+ * compressed thickness, coloured by family through the same CSS variables the
+ * pouches use, hatched when compressed; a stack that cannot close pokes out of
+ * the case in red; a Neck support is a round roll. A pouch draws as a stuffed
+ * cushion (`slab-shape.ts`): its free top domes, a pressed face flattens, it
+ * sags where nothing holds it up, it is pressed into the case where it meets
+ * the outline, and it glides to its new place when the mix changes.
  *
  * On a Staff surface the cut is also an editor: drag a pouch to another
  * column (sub-section), between Layers (a new one), onto a Layer (side by
@@ -44,7 +46,7 @@ import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fi
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
-import { puffOf, puffyGloss, puffyPath, rollGloss, rollPath, type SlabBox } from "./slab-shape";
+import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
 export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
@@ -54,11 +56,16 @@ export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
  * so at a phone's ~330 px the 664-unit view halves every label — the 9-unit
  * "max … mm" drew at 4–5 px (slice 10's 360 px check). Phones draw a narrower
  * view with larger type instead, ~10–13 px on screen, and put the status on a
- * line of its own so it fits a narrow column.
+ * line of its own so it fits a narrow column. The pillow itself is never
+ * squashed to fit either one: its outline keeps the designer's proportions
+ * (`cutFrame`), so a phone shows the same shape smaller.
  */
 type CutLayout = {
   width: number;
+  /** The Mbolster's end-on view height; the pillow cut's height follows its outline. */
   height: number;
+  /** The tallest the outline draws, view units: a tall profile draws narrower instead of taller. */
+  maxShellH: number;
   padTop: number;
   padBottom: number;
   maxFont: number;
@@ -72,10 +79,14 @@ type CutLayout = {
   pieceFont: number;
   minPieceFont: number;
 };
-const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, padTop: 22, padBottom: 30, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
-const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, padTop: 26, padBottom: 54, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 12 };
+const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, maxShellH: 200, padTop: 22, padBottom: 30, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
+const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, maxShellH: 170, padTop: 26, padBottom: 54, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 9 };
 
 const PAD_X = 8;
+/** How far inside the outline every pouch stays, view units: the case's own cloth, so a pouch reads as inside it. */
+const SHELL_MARGIN = 3;
+/** The inside floor, view units above the outline's bottom edge: the margin plus a hair, so a resting pouch is not pressed up. */
+const FLOOR = SHELL_MARGIN + 1;
 /** The inset at each end of a piece, so two pouches that meet still read as two. */
 const SLAB_GAP = 2;
 const OVER = "#ef4444";
@@ -147,37 +158,87 @@ function profileFor(size: PillowFit["size"], section: Section): Profile {
   return size === "XS" ? PROFILES.centerXs : PROFILES.center;
 }
 
-/** Fits a profile to x0…x1 on the baseline, its peak `h` tall, flat edge down. */
-function profileTransform(p: Profile, x0: number, x1: number, baseline: number, h: number): string {
-  const sx = (x1 - x0) / (p.maxX - p.minX);
+/** The designer's width ÷ height: the cut always draws a profile at it. */
+const aspectOf = (p: Profile) => (p.maxX - p.minX) / Math.abs(p.flatY - p.peakY);
+
+/** Fits a profile to x0…x0 + w on the baseline, flat edge down, at its own proportions. */
+function profileTransform(p: Profile, x0: number, w: number, baseline: number): ShellTransform {
+  const k = w / (p.maxX - p.minX);
   const dir = p.peakY < p.flatY ? 1 : -1;
-  const sy = h / Math.abs(p.flatY - p.peakY);
-  return `translate(${r1(x0 - p.minX * sx)} ${r1(baseline - dir * p.flatY * sy)}) scale(${sx.toFixed(4)} ${(dir * sy).toFixed(4)})`;
+  return { tx: x0 - p.minX * k, ty: baseline - dir * p.flatY * k, sx: k, sy: dir * k };
+}
+
+const transformAttr = (t: ShellTransform) => `translate(${r1(t.tx)} ${r1(t.ty)}) scale(${t.sx.toFixed(4)} ${t.sy.toFixed(4)})`;
+
+/** The case every pouch is pressed into, in view units: once per outline and frame, not per pouch or per frame of a tween. */
+const casePolygons = new Map<string, ShellPolygon>();
+function casePolygon(p: Profile, t: ShellTransform): ShellPolygon {
+  const key = `${p.key}|${t.tx}|${t.ty}|${t.sx}|${t.sy}`;
+  let poly = casePolygons.get(key);
+  if (!poly) {
+    if (casePolygons.size > 32) casePolygons.clear();
+    poly = shellPolygon(p.d, t);
+    casePolygons.set(key, poly);
+  }
+  return poly;
 }
 
 // --- Frame: mm ↔ view units ---------------------------------------------------
 
-/** The tallest thing the cut must show, mm: the side profile (the shell peaks at the sides' max loft) or an over stack. */
-function tallestMm(fit: PillowFit, columns: readonly CrossSectionColumn[]): number {
-  return Math.max(1, fit.sections.left.maxLoftMm, ...columns.map((c) => Math.max(c.maxLoftMm, c.loftMm)));
+/** The tallest stack the cut must make room for, mm: the loft line, or an over stack through it. */
+function tallestMm(columns: readonly CrossSectionColumn[]): number {
+  return Math.max(1, ...columns.map((c) => Math.max(c.maxLoftMm, c.loftMm)));
 }
 
-type Frame = { L: CutLayout; baseline: number; ky: number; kx: number; colW: number };
+type Frame = {
+  L: CutLayout;
+  profile: Profile;
+  /** Where the outline starts and how wide it draws, view units. */
+  x0: number;
+  drawW: number;
+  shellH: number;
+  /** The outline's flat edge, and the inside floor the pouches rest on. */
+  baseline: number;
+  floor: number;
+  ky: number;
+  kx: number;
+  colW: number;
+  /** The view's height: the outline, or an over stack taller than it. */
+  height: number;
+};
 
-function cutFrame(compact: boolean, tallest: number, cellLengthMm: number): Frame {
+/**
+ * mm ↔ view units for one cut. The outline is drawn at the designer's own
+ * proportions on every screen — never squashed to fit a phone — as wide as
+ * the view allows (narrower when that would make it taller than
+ * `maxShellH`). Across, the Section's length fills it; up, its peak inside
+ * the case is the side Sections' max loft, as the profile was drawn.
+ */
+function cutFrame(compact: boolean, profile: Profile, profileMm: number, tallest: number, cellLengthMm: number): Frame {
   const L = compact ? COMPACT_LAYOUT : LAYOUT;
-  const baseline = L.height - L.padBottom;
-  const ky = (baseline - L.padTop) / (tallest * 1.12);
-  const kx = (L.width - 2 * PAD_X) / (cellLengthMm * SUB_SECTIONS.length || 1);
-  return { L, baseline, ky, kx, colW: cellLengthMm * kx };
+  const aspect = aspectOf(profile);
+  const drawW = Math.min(L.width - 2 * PAD_X, L.maxShellH * aspect);
+  const shellH = drawW / aspect;
+  const x0 = (L.width - drawW) / 2;
+  const ky = Math.max(shellH - FLOOR - SHELL_MARGIN, 1) / Math.max(profileMm, 1);
+  const kx = drawW / (cellLengthMm * SUB_SECTIONS.length || 1);
+  const content = Math.max(shellH, FLOOR + tallest * ky + 4);
+  const baseline = L.padTop + content;
+  return { L, profile, x0, drawW, shellH, baseline, floor: baseline - FLOOR, ky, kx, colW: cellLengthMm * kx, height: baseline + L.padBottom };
+}
+
+/** The frame a cut of this fit draws in; `tallest` pins the view's height (a drag holds the committed one). */
+function frameFor(fit: PillowFit, cut: Cut, compact: boolean, tallest: number): Frame {
+  // The profile peaks at full gusset height inside the case: the side Sections' max loft.
+  return cutFrame(compact, profileFor(fit.size, cut.section), fit.sections.left.maxLoftMm, tallest, fit.settle.cellLengthMm);
 }
 
 /** A piece's box in the cut: its settled span across, its thickness up, resting on what lies under it. */
 function slabBox(slab: AlongSlab, f: Frame): SlabBox {
   const h = Math.max(slab.heightMm * f.ky - 2, 1);
   return {
-    x: PAD_X + slab.startMm * f.kx + SLAB_GAP,
-    y: f.baseline - slab.bottomMm * f.ky - h - 1,
+    x: f.x0 + slab.startMm * f.kx + SLAB_GAP,
+    y: f.floor - slab.bottomMm * f.ky - h - 1,
     w: Math.max((slab.endMm - slab.startMm) * f.kx - 2 * SLAB_GAP, 1),
     h,
   };
@@ -186,7 +247,7 @@ function slabBox(slab: AlongSlab, f: Frame): SlabBox {
 /** The label's size inside a box, or 0 when it would not fit at a readable size. */
 function pieceFontFor(label: string, box: SlabBox, L: CutLayout): number {
   if (!label) return 0;
-  const size = Math.min(L.pieceFont, (box.w - 10) / (label.length * 0.62), box.h * 0.62);
+  const size = Math.min(L.pieceFont, (box.w - 10) / (label.length * 0.62), box.h * 0.75);
   return size >= L.minPieceFont ? r1(size) : 0;
 }
 
@@ -200,21 +261,24 @@ type SlabMode = "solid" | "lifted" | "landing";
 
 type SvgIds = { hatch: string; shade: string; rollShade: string; shadow: string; ghostShadow: string };
 
-function slabGeometry(box: SlabBox, roll: boolean, puff: number) {
-  return roll ? { body: rollPath(box), gloss: rollGloss(box) } : { body: puffyPath(box, puff), gloss: puffyGloss(box, puff) };
+function slabOutline(box: SlabBox, roll: boolean, puff: number, shaping?: PouchShaping): string {
+  return roll ? rollPath(box) : pouchPath(box, puff, shaping);
 }
 
 /**
- * One filling, side-on: a cushion in its family colour with a soft sheen and
- * shadow, hatched when compressed, red when it cannot close. When its box
- * changes it eases there (attribute writes in rAF, interruptible) instead of
- * jumping, unless the viewer asked for reduced motion.
+ * One filling, side-on: a cushion in its family colour, shaded for volume,
+ * with a soft shadow, hatched when compressed, red when it cannot close;
+ * pressed into the case and sagging where nothing holds it up (`shaping`).
+ * When its box changes it eases there (attribute writes in rAF,
+ * interruptible) instead of jumping, unless the viewer asked for reduced
+ * motion.
  */
 function PuffySlab({
   box,
   roll,
   puff,
   subtype,
+  shaping,
   status,
   hatched,
   mode,
@@ -229,6 +293,8 @@ function PuffySlab({
   box: SlabBox;
   roll: boolean;
   puff: number;
+  /** What presses on it, its sag and the case it is pressed into. */
+  shaping?: PouchShaping;
   subtype: string | null;
   status: FitStatus;
   hatched: boolean;
@@ -244,8 +310,11 @@ function PuffySlab({
   hit?: SlabHitProps;
 }) {
   const visual = fillingVisual(subtype);
-  const geo = slabGeometry(box, roll, puff);
-  // The tween writes the outline to every body-shaped path, the sheen and the label, so they move together.
+  const body = slabOutline(box, roll, puff, shaping);
+  // The label rides the sag at the pouch's middle, so it stays on the fill.
+  const mid = (a?: readonly number[]) => (a && a.length ? a[Math.floor(a.length / 2)] : 0);
+  const labelDy = roll ? 0 : (mid(shaping?.sag) + mid(shaping?.sagTop ?? shaping?.sag)) / 2;
+  // The tween writes the outline to every body-shaped path and the label, so they move together.
   const groupEl = useRef<SVGGElement | null>(null);
   const shown = useRef(box);
 
@@ -259,12 +328,11 @@ function PuffySlab({
     }
     const paint = (b: SlabBox) => {
       shown.current = b;
-      const g = slabGeometry(b, roll, puff);
-      group.querySelectorAll("[data-slab-body]").forEach((el) => el.setAttribute("d", g.body));
-      group.querySelector("[data-slab-gloss]")?.setAttribute("d", g.gloss);
+      const d = slabOutline(b, roll, puff, shaping);
+      group.querySelectorAll("[data-slab-body]").forEach((el) => el.setAttribute("d", d));
       const text = group.querySelector("text");
       text?.setAttribute("x", String(r1(b.x + b.w / 2)));
-      text?.setAttribute("y", String(r1(b.y + b.h / 2)));
+      text?.setAttribute("y", String(r1(b.y + b.h / 2 + labelDy)));
     };
     paint(from);
     const t0 = performance.now();
@@ -276,7 +344,7 @@ function PuffySlab({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [box, roll, puff]);
+  }, [box, roll, puff, shaping, labelDy]);
 
   const fill = `var(${visual.cssVar}, ${visual.defaultColor})`;
   return (
@@ -291,7 +359,7 @@ function PuffySlab({
       ref={groupEl}
     >
       <path
-        d={geo.body}
+        d={body}
         data-slab-body=""
         fill={fill}
         fillOpacity={mode === "landing" ? 0.5 : hovered ? 1 : 0.92}
@@ -300,23 +368,12 @@ function PuffySlab({
         strokeDasharray={mode === "landing" ? "5 3" : undefined}
         vectorEffect="non-scaling-stroke"
       />
-      <path d={geo.body} data-slab-body="" fill={`url(#${roll ? ids.rollShade : ids.shade})`} pointerEvents="none" />
-      <path
-        d={geo.gloss}
-        data-slab-gloss=""
-        fill="none"
-        stroke="white"
-        strokeOpacity={0.55}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-        pointerEvents="none"
-      />
-      {hatched && <path d={geo.body} data-slab-body="" fill={`url(#${ids.hatch})`} pointerEvents="none" />}
-      {status === "over" && <path d={geo.body} data-slab-body="" fill={OVER} fillOpacity={0.35} pointerEvents="none" />}
+      <path d={body} data-slab-body="" fill={`url(#${roll ? ids.rollShade : ids.shade})`} pointerEvents="none" />
+      {hatched && <path d={body} data-slab-body="" fill={`url(#${ids.hatch})`} pointerEvents="none" />}
+      {status === "over" && <path d={body} data-slab-body="" fill={OVER} fillOpacity={0.35} pointerEvents="none" />}
       {selected && (
         <path
-          d={geo.body}
+          d={body}
           data-slab-body=""
           fill="none"
           stroke="white"
@@ -329,7 +386,7 @@ function PuffySlab({
       {font > 0 && (
         <text
           x={r1(box.x + box.w / 2)}
-          y={r1(box.y + box.h / 2)}
+          y={r1(box.y + box.h / 2 + labelDy)}
           textAnchor="middle"
           dominantBaseline="central"
           fontSize={font}
@@ -388,36 +445,76 @@ export function CrossSectionSvg({
   itemSizes?: ReadonlyMap<number, string | null>;
   /** Phones: the narrower view with larger type (`COMPACT_LAYOUT`). */
   compact?: boolean;
-  /** Pins the vertical scale (mm): a drag holds the committed scale so a preview never rescales under the pointer. */
+  /** Pins the view's height (the tallest stack it makes room for, mm): a drag holds the committed one so a preview never resizes the cut under the pointer. */
   scaleMm?: number;
   editor?: CutEditorView;
 }) {
   const uid = useId();
   const columns = crossSectionSlabs(fit, cut);
-  const f = cutFrame(compact, scaleMm ?? tallestMm(fit, columns), fit.settle.cellLengthMm);
-  const { L, baseline, ky } = f;
-  const { width, height } = L;
-  const profile = profileFor(fit.size, cut.section);
-  // The side profile peaks at full gusset height (the side Sections' max loft).
-  const profileMm = fit.sections.left.maxLoftMm;
+  const f = frameFor(fit, cut, compact, scaleMm ?? tallestMm(columns));
+  const { L, ky, profile } = f;
+  const { width } = L;
+  const height = f.height;
   const ids: SvgIds = { hatch: `${uid}-hatch`, shade: `${uid}-shade`, rollShade: `${uid}-roll`, shadow: `${uid}-shadow`, ghostShadow: `${uid}-ghost` };
   const shellId = `${uid}-shell`;
-  const shell = profileTransform(profile, PAD_X, width - PAD_X, baseline, profileMm * ky);
+  const transform = profileTransform(profile, f.x0, f.drawW, f.baseline);
+  const shell = transformAttr(transform);
+  const polygon = casePolygon(profile, transform);
   const drag = editor?.drag ?? null;
   const labelOf = (itemId: number) => pieceLabelLines(itemSubtypes.get(itemId) ?? null, itemSizes?.get(itemId) ?? null).join(" ");
   const maxLoft = columns[0]?.maxLoftMm ?? 0;
-  const dropX0 = drag?.column ? PAD_X + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
+  const dropX0 = drag?.column ? f.x0 + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
   const toneColor = drag?.tone === "over" || drag?.tone === "refused" ? OVER : DROP;
+  const top = f.baseline - f.shellH;
+  const slabs = alongSlabs(fit, cut.section).map((slab) => {
+    const box = slabBox(slab, f);
+    const subtype = itemSubtypes.get(slab.itemId) ?? null;
+    const label = labelOf(slab.itemId);
+    const landing = drag !== null && slab.key === drag.landingKey;
+    const mode: SlabMode = landing ? "landing" : drag && !drag.landingKey && slab.key === drag.sourceKey ? "lifted" : "solid";
+    // A stack that cannot close is not pressed into the case: it pokes out of it, red.
+    const over = slab.status === "over";
+    const shaping: PouchShaping = {
+      contacts: slab.pressed,
+      sag: slab.sagMm.map((mm) => mm * ky),
+      sagTop: slab.sagTopMm.map((mm) => mm * ky),
+      shell: over ? undefined : { polygon, margin: SHELL_MARGIN },
+    };
+    // A held pouch keeps its identity while it previews elsewhere, so it glides there.
+    const key = landing ? drag!.sourceKey : slab.key;
+    const el = (
+      <PuffySlab
+        key={key}
+        box={box}
+        roll={fillingVisual(subtype).shape === "pill"}
+        puff={puffOf(slab.heightMm, slab.relaxedMm)}
+        shaping={shaping}
+        subtype={subtype}
+        status={slab.status}
+        hatched={slab.hatched}
+        mode={mode}
+        selected={!drag && editor?.selectedKey === slab.key}
+        hovered={!drag && editor?.hoveredKey === slab.key}
+        label={label}
+        font={pieceFontFor(label, box, L)}
+        ids={ids}
+        pieceKey={slab.key}
+        hit={editor?.slabHit(slab, label)}
+      />
+    );
+    return { over, el };
+  });
   return (
     <svg
       ref={editor?.svgRef}
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 0 ${width} ${r1(height)}`}
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="xMidYMid meet"
       className="h-auto w-full"
       style={drag ? { overflow: "visible", touchAction: "none" } : undefined}
       aria-label={`Cross-section ${cutLabel(cut)}`}
       data-xray-cross-section="along"
+      data-xray-cut-aspect={aspectOf(profile).toFixed(3)}
       {...editor?.svgHandlers}
     >
       <defs>
@@ -426,13 +523,13 @@ export function CrossSectionSvg({
         </pattern>
         {/* The cushion's volume: lit from above, a shade underneath. */}
         <linearGradient id={ids.shade} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="white" stopOpacity={0.4} />
-          <stop offset="0.32" stopColor="white" stopOpacity={0.08} />
-          <stop offset="0.6" stopColor="white" stopOpacity={0} />
+          <stop offset="0" stopColor="white" stopOpacity={0.3} />
+          <stop offset="0.35" stopColor="white" stopOpacity={0.06} />
+          <stop offset="0.62" stopColor="white" stopOpacity={0} />
           <stop offset="1" stopColor="black" stopOpacity={0.3} />
         </linearGradient>
         <radialGradient id={ids.rollShade} cx="0.36" cy="0.32" r="0.75">
-          <stop offset="0" stopColor="white" stopOpacity={0.42} />
+          <stop offset="0" stopColor="white" stopOpacity={0.32} />
           <stop offset="0.45" stopColor="white" stopOpacity={0.04} />
           <stop offset="1" stopColor="black" stopOpacity={0.32} />
         </radialGradient>
@@ -452,7 +549,7 @@ export function CrossSectionSvg({
         {[1, 2].map((i) => (
           <path
             key={i}
-            d={`M${r1(PAD_X + i * f.colW)} ${r1(L.padTop)} L${r1(PAD_X + i * f.colW)} ${r1(baseline)}`}
+            d={`M${r1(f.x0 + i * f.colW)} ${r1(top)} L${r1(f.x0 + i * f.colW)} ${r1(f.baseline)}`}
             stroke={XRAY_SHELL_VAR}
             strokeOpacity={0.22}
             strokeDasharray="3 4"
@@ -462,47 +559,22 @@ export function CrossSectionSvg({
         ))}
         {dropX0 !== null && (
           <path
-            d={`M${r1(dropX0)} 0 H${r1(dropX0 + f.colW)} V${r1(baseline)} H${r1(dropX0)} Z`}
+            d={`M${r1(dropX0)} 0 H${r1(dropX0 + f.colW)} V${r1(f.baseline)} H${r1(dropX0)} Z`}
             fill={toneColor}
             fillOpacity={0.14}
             data-xray-drop-column={drag?.tone}
           />
         )}
-        {/* Each piece once, over the length it settles to, resting on what lies under it, inside the shell. */}
-        {alongSlabs(fit, cut.section).map((slab) => {
-          const box = slabBox(slab, f);
-          const subtype = itemSubtypes.get(slab.itemId) ?? null;
-          const label = labelOf(slab.itemId);
-          const landing = drag !== null && slab.key === drag.landingKey;
-          const mode: SlabMode = landing ? "landing" : drag && !drag.landingKey && slab.key === drag.sourceKey ? "lifted" : "solid";
-          // A held pouch keeps its identity while it previews elsewhere, so it glides there.
-          const key = landing ? drag!.sourceKey : slab.key;
-          return (
-            <PuffySlab
-              key={key}
-              box={box}
-              roll={fillingVisual(subtype).shape === "pill"}
-              puff={puffOf(slab.heightMm, slab.relaxedMm)}
-              subtype={subtype}
-              status={slab.status}
-              hatched={slab.hatched}
-              mode={mode}
-              selected={!drag && editor?.selectedKey === slab.key}
-              hovered={!drag && editor?.hoveredKey === slab.key}
-              label={label}
-              font={pieceFontFor(label, box, L)}
-              ids={ids}
-              pieceKey={slab.key}
-              hit={editor?.slabHit(slab, label)}
-            />
-          );
-        })}
+        {/* Each piece once, over the length it settles to, resting on what lies under it, inside the case. */}
+        {slabs.filter((s) => !s.over).map((s) => s.el)}
       </g>
       <path d={profile.d} transform={shell} fill="none" stroke={XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      {/* A stack that cannot close, through the case. */}
+      {slabs.filter((s) => s.over).map((s) => s.el)}
       {/* The loft line per column, its mm once (one budget per Section). */}
       {columns.map((col, i) => {
-        const x0 = PAD_X + i * f.colW;
-        const loftY = baseline - col.maxLoftMm * ky;
+        const x0 = f.x0 + i * f.colW;
+        const loftY = f.floor - col.maxLoftMm * ky;
         return (
           <path
             key={col.key}
@@ -515,25 +587,25 @@ export function CrossSectionSvg({
           />
         );
       })}
-      <text x={r1(width - PAD_X - 2)} y={r1(baseline - maxLoft * ky - 3)} textAnchor="end" fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
+      <text x={r1(f.x0 + f.drawW - 2)} y={r1(f.floor - maxLoft * ky - 3)} textAnchor="end" fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
         max {Math.round(maxLoft)} mm
       </text>
       {columns.map((col, i) => {
-        const x0 = PAD_X + i * f.colW;
+        const x0 = f.x0 + i * f.colW;
         const cx = x0 + f.colW / 2;
         const tone = col.status === "over" ? OVER : col.status === "compressed" ? COMPRESSED : XRAY_SHELL_VAR;
         return (
           <g key={col.key} data-column={col.key} data-status={col.status}>
-            <text x={r1(cx)} y={baseline + L.labelDy} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={drag?.column === col.key ? toneColor : XRAY_SHELL_VAR} className="select-none capitalize">
+            <text x={r1(cx)} y={r1(f.baseline + L.labelDy)} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={drag?.column === col.key ? toneColor : XRAY_SHELL_VAR} className="select-none capitalize">
               {col.label}
             </text>
-            <text x={r1(cx)} y={baseline + L.valueDy} textAnchor="middle" fontSize={L.valueFont} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
+            <text x={r1(cx)} y={r1(f.baseline + L.valueDy)} textAnchor="middle" fontSize={L.valueFont} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
               {col.slabs.length === 0
                 ? "empty"
                 : `${Math.round(col.loftMm)} mm${L.statusDy === null ? statusSuffix(col.status, " · ") : ""}`}
             </text>
             {L.statusDy !== null && col.slabs.length > 0 && col.status !== "ok" && (
-              <text x={r1(cx)} y={baseline + L.statusDy} textAnchor="middle" fontSize={L.valueFont} fill={tone} className="select-none">
+              <text x={r1(cx)} y={r1(f.baseline + L.statusDy)} textAnchor="middle" fontSize={L.valueFont} fill={tone} className="select-none">
                 {statusSuffix(col.status, "")}
               </text>
             )}
@@ -547,14 +619,13 @@ export function CrossSectionSvg({
             {(() => {
               const g = drag.ghost;
               const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
-              const geo = slabGeometry(box, g.roll, g.puff);
+              const d = slabOutline(box, g.roll, g.puff);
               const visual = fillingVisual(g.subtype);
               const font = pieceFontFor(g.label, box, L);
               return (
                 <>
-                  <path d={geo.body} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={0.82} stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-                  <path d={geo.body} fill={`url(#${g.roll ? ids.rollShade : ids.shade})`} />
-                  <path d={geo.gloss} fill="none" stroke="white" strokeOpacity={0.6} strokeWidth={1.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                  <path d={d} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={0.82} stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                  <path d={d} fill={`url(#${g.roll ? ids.rollShade : ids.shade})`} />
                   {font > 0 && (
                     <text x={0} y={0} textAnchor="middle" dominantBaseline="central" fontSize={font} fontWeight={600} fill="white" stroke="rgba(2,6,23,0.75)" strokeWidth={font * 0.22} strokeLinejoin="round" paintOrder="stroke" className="select-none">
                       {g.label}
@@ -705,8 +776,8 @@ export function XrayCrossSection({
   // The committed cut: what hit-testing reads, so the zones never move while a preview reflows.
   const columns = useMemo(() => crossSectionSlabs(fit, cut), [fit, cut]);
   const slabs = useMemo(() => alongSlabs(fit, cut.section), [fit, cut.section]);
-  const tallest = tallestMm(fit, columns);
-  const frame = cutFrame(isMobile, tallest, fit.settle.cellLengthMm);
+  const tallest = tallestMm(columns);
+  const frame = frameFor(fit, cut, isMobile, tallest);
 
   const labelOf = useCallback(
     (itemId: number) => {
@@ -816,9 +887,9 @@ export function XrayCrossSection({
     const box = svgRef.current?.getBoundingClientRect();
     if (!box || clientX < box.left || clientX > box.right || clientY < box.top || clientY > box.bottom) return null;
     const v = toView(clientX, clientY);
-    const col = Math.min(Math.max(Math.floor((v.x - PAD_X) / frame.colW), 0), SUB_SECTIONS.length - 1);
+    const col = Math.min(Math.max(Math.floor((v.x - frame.x0) / frame.colW), 0), SUB_SECTIONS.length - 1);
     const cell = { section: cut.section, subSection: SUB_SECTIONS[col] };
-    return slabTargetAt(cell, cellBands(slabs, cell), (frame.baseline - v.y) / frame.ky);
+    return slabTargetAt(cell, cellBands(slabs, cell), (frame.floor - v.y) / frame.ky);
   };
 
   /**
@@ -1163,7 +1234,6 @@ export function BolsterCrossSectionSvg({
             vectorEffect="non-scaling-stroke"
           />
           <path d={body} fill={`url(#${shadeId})`} />
-          <path d={puffyGloss(slabBoxEndOn, puff)} fill="none" stroke="white" strokeOpacity={0.55} strokeWidth={1.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           {status !== "ok" && <path d={body} fill={`url(#${hatchId})`} />}
           {status === "over" && <path d={body} fill={OVER} fillOpacity={0.35} />}
         </g>

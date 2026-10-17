@@ -12282,21 +12282,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
-    "mtime": 1792167398.2866108,
-    "seen": 1792169844.6544178,
-    "ast_hash": "f1a2ed5503c8397af4f3a3667dcce176",
+    "mtime": 1792213978.045039,
+    "seen": 1792214214.9953315,
+    "ast_hash": "f3cbf0399a9d3c52631f3e2de565d894",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1792169616.7057571,
-    "seen": 1792169844.654425,
-    "ast_hash": "e726e5fd4c024dd1f15a18efec827b73",
+    "mtime": 1792214012.4211533,
+    "seen": 1792214214.995339,
+    "ast_hash": "0d5f7879e1535afc669c601f951b0bc1",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1792167398.2896252,
-    "seen": 1792169844.6544273,
-    "ast_hash": "e722369d3e8357de1039f96d0cfee9ff",
+    "mtime": 1792213978.044561,
+    "seen": 1792214214.9953413,
+    "ast_hash": "3706c0393eb2d6af18d6ddfa8e522602",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/reference/case-outline-l.svg": {
@@ -12426,9 +12426,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0019-physical-fit-model.md": {
-    "mtime": 1792167398.3543174,
-    "seen": 1792169844.654777,
-    "ast_hash": "2803703817cc8795fec907ef1c7c678f",
+    "mtime": 1792213978.043665,
+    "seen": 1792214214.9957373,
+    "ast_hash": "9323fd04772ace879958f2f0d82c87c4",
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/dimensions/route.ts": {
@@ -12438,9 +12438,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/dimensions-section.tsx": {
-    "mtime": 1792167398.3200638,
-    "seen": 1792169844.650218,
-    "ast_hash": "a27d2df60e774b3133c62c0ed4e8cdb3",
+    "mtime": 1792213978.0429924,
+    "seen": 1792214214.9894419,
+    "ast_hash": "f7202fcc2419a7a8a2ea1d1705e6dad1",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/dimension-overrides.test.ts": {
@@ -12480,9 +12480,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/fit.test.ts": {
-    "mtime": 1792167398.4668443,
-    "seen": 1792169844.6528814,
-    "ast_hash": "da5d51fe116b8fcf198a6aeaccdf9aaf",
+    "mtime": 1792213831.2792022,
+    "seen": 1792214214.9931147,
+    "ast_hash": "cc144341fd3e3a2087d13b611bb4d0ef",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/fit.ts": {
@@ -12492,15 +12492,15 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/settle.test.ts": {
-    "mtime": 1792167398.4668443,
-    "seen": 1792169844.6528895,
-    "ast_hash": "e6d3c7a71d216f5167c9be43cbc6c5a4",
+    "mtime": 1792213831.280173,
+    "seen": 1792214214.9931278,
+    "ast_hash": "fb0356eefb404dd8570e76803e39c0ae",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/settle.ts": {
-    "mtime": 1792167398.4668443,
-    "seen": 1792169844.652926,
-    "ast_hash": "a3482b5da6f2f3098c1664c62a84ce64",
+    "mtime": 1792213831.280391,
+    "seen": 1792214214.9931915,
+    "ast_hash": "b2edf96a5fec65242b67e7f7c998735a",
     "semantic_hash": ""
   },
   "components/spatial/use-pillow-fit.ts": {
@@ -12510,9 +12510,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-cross-section.tsx": {
-    "mtime": 1792169385.083086,
-    "seen": 1792169844.6511757,
-    "ast_hash": "808aa716af8a982cc0415f40466a4225",
+    "mtime": 1792213978.041888,
+    "seen": 1792214214.9909263,
+    "ast_hash": "1d5463aea8457bc8b98caa9271a0ed11",
     "semantic_hash": ""
   },
   "components/spatial/xray-fit-banner.tsx": {
@@ -12540,9 +12540,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/cross-section.ts": {
-    "mtime": 1792168976.9306316,
-    "seen": 1792169844.652908,
-    "ast_hash": "29ab810528219c432af302591985cfb5",
+    "mtime": 1792213831.280391,
+    "seen": 1792214214.993159,
+    "ast_hash": "bf7d384c87d230e3ddfa2f8a0c9c3cdc",
     "semantic_hash": ""
   },
   "lib/configurator/__tests__/move-keys.test.ts": {
@@ -12570,9 +12570,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/bolster-fit.test.ts": {
-    "mtime": 1792167398.4668443,
-    "seen": 1792169844.6528635,
-    "ast_hash": "8cea153f06b36ddb5d4a7e6898c1a2ca",
+    "mtime": 1792213831.2792022,
+    "seen": 1792214214.9930909,
+    "ast_hash": "5d91ac301d0e430726275ca975b0d693",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/opening.ts": {
@@ -13002,9 +13002,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-cross-section.test.tsx": {
-    "mtime": 1792169385.0835075,
-    "seen": 1792169844.651174,
-    "ast_hash": "1057309a790413eed95a398ad5d69e97",
+    "mtime": 1792213831.278955,
+    "seen": 1792214214.990923,
+    "ast_hash": "a0bbb3b57a6b473b3c4df1147be15df1",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/calibration.test.ts": {
@@ -15456,15 +15456,15 @@
     "semantic_hash": ""
   },
   "components/spatial/slab-shape.test.ts": {
-    "mtime": 1792168809.9537091,
-    "seen": 1792169844.6511629,
-    "ast_hash": "2a9da9b5fd60abe3404b007863fa959c",
+    "mtime": 1792213831.2780082,
+    "seen": 1792214214.9909053,
+    "ast_hash": "a7e64f64e70c3fd7291b9edb4af15a54",
     "semantic_hash": ""
   },
   "components/spatial/slab-shape.ts": {
-    "mtime": 1792168320.59768,
-    "seen": 1792169844.6511655,
-    "ast_hash": "32dc62b49d1306bf8e5989547a2682c2",
+    "mtime": 1792213831.2780082,
+    "seen": 1792214214.990909,
+    "ast_hash": "c2258c745adf7f18bdda4173b3854d40",
     "semantic_hash": ""
   },
   "lib/dnd/__tests__/slab-drag.test.ts": {
@@ -15480,9 +15480,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/13-cross-section-editing.md": {
-    "mtime": 1792169635.9225452,
-    "seen": 1792169844.654422,
-    "ast_hash": "d39f5c280088afe9dc43416edbfa2302",
+    "mtime": 1792214000.6148057,
+    "seen": 1792214214.9953368,
+    "ast_hash": "a2f6cf6a649ffca547fd008bd808183f",
     "semantic_hash": ""
   }
 }

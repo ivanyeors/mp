@@ -49,6 +49,10 @@ Fill the center middle and leave the back empty, save, and the x-ray shows what 
 - [x] `xray-pillow.check.ts` extended: settled pieces conform against the Section region; the ghost is a dashed stroke of the same path; the transition goes through `prepareMorph`. Still no `<rect`.
 - [x] `./scripts/graphify update .` run and committed.
 
+## Amended 17-10-2026: no rubber band
+
+Ivan, on the cross-section: a pouch "cannot expand like a rubber band". The spread capacity was the volume limit, `V / (w × minT) − L`, which let a 6D reach most of a neighbouring cell and thin from 30 to 17 mm doing it. A pouch is cloth around fill: side-on its outline is about a stadium of fixed perimeter, so pressed thinner it gets only `(π/2 − 1)` ≈ 0.57 mm longer per mm of thickness. `spreadCapacityMm` is now that give (or the measured flat length, as before), and the volume limit stays as a ceiling that never binds for a stuffed pouch. A pouch longer than its cell — every family default is — also gets back the length the cell cut off. So a 6D beside an empty cell reaches about a third of the way in and stays nearly its full thickness. The void mostly stays a void, and the pouch above it sags into it (slice 13). Tests re-derived from the rule in `settle.test.ts`, `bolster-fit.test.ts` and `fit.test.ts`.
+
 ## Build notes (2026-09-25)
 
 - **Pipeline as built:** `fitPillow` calls `settlePillow` first and carries the result (`fit.settle`); the layout reads the fit for the squeeze ratios *and* the settle for each piece's settled rect and settled thickness. One memo in `XrayPillow`, as the PRD asked; the renderer never recomputes settle.
