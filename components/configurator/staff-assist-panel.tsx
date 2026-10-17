@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { StaffToolbox, type ToolSpec } from "@/components/configurator/staff-toolbox";
 import { SaveFillingTemplate } from "@/components/configurator/save-filling-template";
-import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   confirmGate,
@@ -53,7 +52,8 @@ type TemplateRow = { id: number; name: string };
 /**
  * Staff assist mode panel (slice 04, Staff-only): size×tier control with a
  * confirm gate and a size-scoped Filling Template picker. Per-piece filling
- * edits live on the x-ray itself (slices 07/08); the pack list under the rail removes a filling outright.
+ * edits live on the x-ray itself (slices 07/08); the stage's Derived pack list
+ * card removes a filling outright, reading the same lifted mix.
  *
  * An edited mix can be published back to the catalog — overwriting the loaded
  * template or forking a new one — which the Admin Panel then curates. That
@@ -71,6 +71,7 @@ export function StaffAssistPanel({
   onItemsChange,
   onColorOverridesChange,
   onDimensionOverridesChange,
+  className,
 }: {
   current: SizeTier;
   /** Live session mix, edited on the x-ray — the thing a save publishes. */
@@ -87,11 +88,12 @@ export function StaffAssistPanel({
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
   /** Settings dimension overrides, surfaced for the true-scale x-ray (slice 02). */
   onDimensionOverridesChange?: (overrides: DimensionOverridesPayload | null) => void;
+  /** Passed to the toolbox rail (the stage spans it across its column). */
+  className?: string;
 }) {
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
-  const [items, setItems] = useState<FillingItem[]>([]);
   // Bumped after a save so the picker refetches and lists the saved template.
   const [catalogVersion, setCatalogVersion] = useState(0);
 
@@ -112,7 +114,6 @@ export function StaffAssistPanel({
             (i) => current.tier === "premium" || !isNeckSupportItem({ category: i.category, name: i.name }),
           );
           setTemplates(d.templates ?? []);
-          setItems(offered);
           onItemsChange?.(offered);
           onColorOverridesChange?.(d.colorOverrides ?? []);
           onDimensionOverridesChange?.(d.dimensionOverrides ?? null);
@@ -121,7 +122,6 @@ export function StaffAssistPanel({
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
-          setItems([]);
           onItemsChange?.([]);
           onColorOverridesChange?.([]);
           onDimensionOverridesChange?.(null);
@@ -201,6 +201,7 @@ export function StaffAssistPanel({
   return (
     <StaffToolbox
       tools={tools}
+      className={className}
       action={
         affordance.dirty ? (
           <SaveFillingTemplate
@@ -228,11 +229,6 @@ export function StaffAssistPanel({
           : null
       }
     >
-      {placements.length > 0 && (
-        <div className="mt-1.5 rounded-2xl border border-border/60 bg-background/70 px-2 shadow-xl backdrop-blur-xl">
-          <XrayPackList placements={placements} onPlacementsChange={onPlacementsChange} items={items} />
-        </div>
-      )}
       {/* Confirm gate: without confirm, placements stay untouched */}
       <Dialog open={gate.pending !== null} onOpenChange={(open) => !open && void resolveGate("cancel")}>
         <DialogContent>
