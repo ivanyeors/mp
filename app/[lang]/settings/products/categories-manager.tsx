@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, GripVertical, ChevronRight, ChevronDown, Pencil, Trash2, FolderTree, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -421,14 +422,14 @@ export function CategoriesManager() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <div className="flex items-center gap-1.5">
                     <h2 className="flex items-center gap-2 text-lg font-semibold">
                         <FolderTree className="h-5 w-5 text-muted-foreground" />
                         Categories
                     </h2>
-                    <p className="text-muted-foreground mt-1 text-sm">
+                    <InfoTip label="About Categories">
                         Organise your products into a hierarchy of categories.
-                    </p>
+                    </InfoTip>
                 </div>
                 <Button size="sm" className="w-full sm:w-auto" onClick={openCreate}>
                     <Plus className="mr-2 h-4 w-4" /> Add Category
@@ -614,13 +615,13 @@ export function CategoriesManager() {
 
                         {/* Active toggle */}
                         <div className="flex items-center justify-between rounded-lg border p-4">
-                            <div>
+                            <div className="flex items-center gap-1.5">
                                 <Label htmlFor="is-active" className="text-sm font-medium">
                                     Active
                                 </Label>
-                                <p className="text-xs text-muted-foreground mt-0.5">
+                                <InfoTip label="About Active">
                                     Inactive categories are hidden from the storefront.
-                                </p>
+                                </InfoTip>
                             </div>
                             <Switch
                                 id="is-active"

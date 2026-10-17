@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { withLocale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils";
 import { ACCESS_ENTITY_TYPES, entityTypesFor, permissionDiff } from "@/lib/auth/audit-diff";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export const runtime = "nodejs";
 
@@ -81,11 +82,11 @@ export default async function AuditLogPage({
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
-        <p className="text-sm text-muted-foreground">
+        <InfoTip label="About Audit log">
           A read-only record of mutating admin actions, newest first.
-        </p>
+        </InfoTip>
       </div>
 
       <nav aria-label="Filter by kind" className="mt-6 flex flex-wrap gap-2">

@@ -38,6 +38,7 @@ import {
 } from "@/lib/discovery-source";
 import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { getApiErrorMessage } from "@/lib/utils";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const LOCALES = ["en-US", "zh-CN"] as const;
 
@@ -192,20 +193,23 @@ export default function FormsSettingsPage({
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8" data-settings-forms="">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Forms</h1>
-        <p className="mt-1 text-muted-foreground">
-          Edit Discovery source options for configurator preview. Option lists only — not a
-          customization-steps builder.
-        </p>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight">Forms</h1>
+          <InfoTip label="About Forms">
+            <p>Edit Discovery source options for configurator preview. Option lists only — not a customization-steps builder.</p>
+          </InfoTip>
+        </div>
       </div>
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-medium">Discovery source</h2>
-            <p className="text-sm text-muted-foreground">
-              Answers to “How did you hear about us?”
-            </p>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-lg font-medium">Discovery source</h2>
+              <InfoTip label="About Discovery source">
+                <p>Answers to “How did you hear about us?”</p>
+              </InfoTip>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Dialog open={addOpen} onOpenChange={setAddOpen}>

@@ -25,6 +25,7 @@ import {
 import type { SyncAction, SyncReport } from "@/lib/easyship/sync-report";
 import { ShippingRulesEditor } from "./shipping-rules-editor";
 import { apiErrorMessage, EasyshipPanel } from "./easyship-panel";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export type SyncView = {
   last_at: string | null;
@@ -137,11 +138,15 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Couriers</h1>
-          <p className="text-sm text-muted-foreground">
-            Saved here, pushed to the courier account on every save. This page is the source of truth.
-            {sync.easyship_company_id ? ` Account ${sync.easyship_company_id}.` : ""}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">Couriers</h1>
+            <InfoTip label="About Couriers">
+              Saved here, pushed to the courier account on every save. This page is the source of truth.
+            </InfoTip>
+          </div>
+          {sync.easyship_company_id && (
+            <p className="text-sm text-muted-foreground">Account {sync.easyship_company_id}.</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={importLive} disabled={!!busy}>
@@ -289,15 +294,19 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardContent className="space-y-4 py-5">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h2 className="font-medium">Status emails</h2>
-            <p className="text-xs text-muted-foreground">
-              We email the customer at these statuses, in the same template as every other email. The courier
-              account&apos;s own emails are switched off on sync while the Webhook tab sends tracking status changes;
-              otherwise the courier keeps sending them. Emails show the courier and, when shipped, its delivery
-              estimate; with tracking checkpoints on the Webhook tab, missed-attempt and problem emails also say
-              what the courier last reported.
-            </p>
+            <InfoTip label="About Status emails">
+              <p>We email the customer at these statuses, in the same template as every other email.</p>
+              <p>
+                The courier account&apos;s own emails are switched off on sync while the Webhook tab sends tracking
+                status changes; otherwise the courier keeps sending them.
+              </p>
+              <p>
+                Emails show the courier and, when shipped, its delivery estimate; with tracking checkpoints on the
+                Webhook tab, missed-attempt and problem emails also say what the courier last reported.
+              </p>
+            </InfoTip>
           </div>
           <div className="space-y-2">
             {TRACKING_STATUSES.map((s) => (
@@ -321,11 +330,11 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
 
       <Card>
         <CardContent className="space-y-4 py-5">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h2 className="font-medium">Tracking page</h2>
-            <p className="text-xs text-muted-foreground">
+            <InfoTip label="About Tracking page">
               The courier&apos;s public page our emails&apos; “Track your package” button opens.
-            </p>
+            </InfoTip>
           </div>
           <div className="space-y-2">
             {PAGE_OPTIONS.map(({ key, label }) => (

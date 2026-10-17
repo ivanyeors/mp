@@ -46,6 +46,7 @@ import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move
 import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { usePathname } from "next/navigation";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor").then((mod) => mod.default),
@@ -394,12 +395,12 @@ export default function PartnersSettingsPage({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold">Partners</h1>
-          <p className="text-sm text-muted-foreground">
+          <InfoTip label="About Partners">
             Manage own studios and partner clinics, edit the Work With Us page, and the
             Partner Agreement.
-          </p>
+          </InfoTip>
         </div>
         <Button asChild variant="outline" size="sm">
           <Link href={to("/our-partners")} target="_blank">

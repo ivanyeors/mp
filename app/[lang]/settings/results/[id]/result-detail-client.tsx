@@ -77,6 +77,7 @@ import {
   resolveAssignHintTemplateId,
   selectAssignHintSource,
 } from "@/lib/rules-engine";
+import { InfoTip } from "@/components/ui/info-tip";
 
 function formatOrderMoney(amount: number | null, currency: string | null): string {
   if (amount == null) return "—";
@@ -1666,8 +1667,12 @@ export default function ResultDetailPage({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2>Suggestion</h2>
-            <p className="text-sm text-muted-foreground">Computed using the current inventory/BOM configuration.</p>
+            <div className="flex items-center gap-1.5">
+              <h2>Suggestion</h2>
+              <InfoTip label="About Suggestion">
+                <p>Computed using the current inventory/BOM configuration.</p>
+              </InfoTip>
+            </div>
           </div>
         </div>
 

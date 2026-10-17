@@ -12,6 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { InfoTip } from "@/components/ui/info-tip";
 
 // ponytail: moved verbatim off the Results page (slice 06) so the table leads.
 // The SLA settings API (/api/results/sla-settings) and the reminder cron are unchanged.
@@ -138,21 +139,23 @@ export function ReviewSlaSection() {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border p-4">
-      <CollapsibleTrigger className="flex w-full items-start justify-between gap-4 text-left">
-        <div>
+      <div className="flex items-center gap-1.5">
+        <CollapsibleTrigger className="text-left">
           <h2 className="text-sm font-medium">Review SLA</h2>
-          <p className="text-xs text-muted-foreground">
-            Unassigned held Results expire after the working-day SLA (always before the card
-            authorization dies); those reminders go to Telegram and/or ops email. Customer
-            payment reminders are set separately, at the bottom.
-          </p>
-        </div>
-        <ChevronDown
-          className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </CollapsibleTrigger>
+        </CollapsibleTrigger>
+        <InfoTip label="About Review SLA">
+          Unassigned held Results expire after the working-day SLA (always before the card
+          authorization dies); those reminders go to Telegram and/or ops email. Customer
+          payment reminders are set separately, at the bottom.
+        </InfoTip>
+        <CollapsibleTrigger aria-label="Toggle Review SLA" className="flex flex-1 justify-end self-stretch">
+          <ChevronDown
+            className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </CollapsibleTrigger>
+      </div>
       <CollapsibleContent className="pt-4">
         {slaLoading ? (
           <p className="text-xs text-muted-foreground">Loading SLA settings…</p>

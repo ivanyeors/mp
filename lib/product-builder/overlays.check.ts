@@ -32,18 +32,18 @@ assert.deepEqual(
 assert.ok(OverlayFitSchema.safeParse({ scale: 1.2, x: 30, y: -15 }).success);
 assert.ok(!OverlayFitSchema.safeParse({ scale: 9 }).success, "scale out of bounds rejected");
 
-// --- Product Visualize is a tab on Products; Rules Engine stays in the nav ---
-const productsClient = readFileSync("app/[lang]/settings/products/products-client.tsx", "utf8");
-assert.match(productsClient, /<TabsTrigger value="visualize">Product Visualize</, "Product Visualize tab");
-assert.match(productsClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
+// --- Product Visualize is a tab on Configure; Rules Engine stays in the nav ---
+const configureClient = readFileSync("app/[lang]/settings/inventory/configure/configure-client.tsx", "utf8");
+assert.match(configureClient, /<TabsTrigger value="visualize">Product Visualize</, "Product Visualize tab");
+assert.match(configureClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
 assert.match(
-  readFileSync("app/[lang]/settings/products/page.tsx", "utf8"),
-  /requireAdminPage\("products"/,
-  "the tab shares the Products page's permission (ADR 0023)",
+  readFileSync("app/[lang]/settings/inventory/configure/page.tsx", "utf8"),
+  /requireAdminPage\("configure"/,
+  "the tab shares the Configure page's permission (ADR 0023)",
 );
 assert.match(
   readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8"),
-  /redirect\([^)]*\/settings\/products\?tab=visualize/,
+  /redirect\([^)]*\/settings\/inventory\/configure\?tab=visualize/,
   "old Product Builder URL redirects to the tab",
 );
 const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
@@ -109,7 +109,7 @@ assert.ok(
 );
 
 const pageSrc = readFileSync(
-  "app/[lang]/settings/products/product-visualize.tsx",
+  "app/[lang]/settings/inventory/configure/product-visualize.tsx",
   "utf8",
 );
 assert.match(pageSrc, /<OverlayWorkbench/, "page mounts the workbench");

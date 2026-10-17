@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -484,15 +485,15 @@ export function DiscountEditorClient({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
+                <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">
                         {isNew ? "New Discount" : form.code || "Edit Discount"}
                     </h1>
-                    <p className="text-muted-foreground mt-1 text-sm">
+                    <InfoTip label="About this discount">
                         {isNew
                             ? "Create a new discount code for your store."
                             : "Edit discount code settings."}
-                    </p>
+                    </InfoTip>
                 </div>
             </div>
 
@@ -617,9 +618,12 @@ export function DiscountEditorClient({
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
-                                <Label htmlFor="min_order_amount">
-                                    Minimum order amount (optional)
-                                </Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Label htmlFor="min_order_amount">
+                                        Minimum order amount (optional)
+                                    </Label>
+                                    <InfoTip label="About Minimum order amount">Leave empty for no minimum order requirement.</InfoTip>
+                                </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                                         {CURRENCY_SYMBOL}
@@ -637,16 +641,16 @@ export function DiscountEditorClient({
                                         placeholder="e.g. 100.00"
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Leave empty for no minimum order requirement.
-                                </p>
                             </div>
 
                             {form.discount_type === "percentage" && (
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="max_discount">
-                                        Maximum discount amount (optional)
-                                    </Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <Label htmlFor="max_discount">
+                                            Maximum discount amount (optional)
+                                        </Label>
+                                        <InfoTip label="About Maximum discount">Cap the maximum discount this code can give.</InfoTip>
+                                    </div>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                                             {CURRENCY_SYMBOL}
@@ -664,9 +668,6 @@ export function DiscountEditorClient({
                                             placeholder="e.g. 50.00"
                                         />
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Cap the maximum discount this code can give.
-                                    </p>
                                 </div>
                             )}
                         </CardContent>
@@ -675,14 +676,14 @@ export function DiscountEditorClient({
                     {/* Applies to section */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Applies to</CardTitle>
+                            <div className="flex items-center gap-1.5">
+                                <CardTitle className="text-base">Applies to</CardTitle>
+                                <InfoTip label="About Applies to">
+                                    Leave all unchecked to apply this discount to the entire cart. Select products and/or categories to restrict where it applies.
+                                </InfoTip>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <p className="text-xs text-muted-foreground">
-                                Leave all unchecked to apply this discount to the entire cart.
-                                Select products and/or categories to restrict where it applies.
-                            </p>
-
                             <div className="space-y-2">
                                 <Label htmlFor="product_scope_search">Products</Label>
                                 <Input
@@ -787,7 +788,10 @@ export function DiscountEditorClient({
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
-                                <Label htmlFor="usage_limit">Total usage limit (optional)</Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Label htmlFor="usage_limit">Total usage limit (optional)</Label>
+                                    <InfoTip label="About Total usage limit">Leave empty or set 0 for unlimited total uses.</InfoTip>
+                                </div>
                                 <Input
                                     id="usage_limit"
                                     type="number"
@@ -797,13 +801,13 @@ export function DiscountEditorClient({
                                     onChange={(e) => set("usage_limit", e.target.value)}
                                     placeholder="e.g. 100"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Leave empty or set 0 for unlimited total uses.
-                                </p>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="per_customer_limit">Per customer limit</Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Label htmlFor="per_customer_limit">Per customer limit</Label>
+                                    <InfoTip label="About Per customer limit">How many times a single customer can use this code.</InfoTip>
+                                </div>
                                 <Input
                                     id="per_customer_limit"
                                     type="number"
@@ -815,9 +819,6 @@ export function DiscountEditorClient({
                                     }
                                     placeholder="1"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    How many times a single customer can use this code.
-                                </p>
                             </div>
                         </CardContent>
                     </Card>
@@ -825,7 +826,12 @@ export function DiscountEditorClient({
                     {/* Schedule section */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Schedule</CardTitle>
+                            <div className="flex items-center gap-1.5">
+                                <CardTitle className="text-base">Schedule</CardTitle>
+                                <InfoTip label="About Schedule">
+                                    Leave empty for no date restriction.
+                                </InfoTip>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -849,9 +855,6 @@ export function DiscountEditorClient({
                                     />
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Leave empty for no date restriction.
-                            </p>
                         </CardContent>
                     </Card>
                 </div>
@@ -867,12 +870,12 @@ export function DiscountEditorClient({
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
-                                    <Label htmlFor="is_active" className="font-medium">
-                                        Active
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Customers can use this code when active.
-                                    </p>
+                                    <div className="flex items-center gap-1.5">
+                                        <Label htmlFor="is_active" className="font-medium">
+                                            Active
+                                        </Label>
+                                        <InfoTip label="About Active">Customers can use this code when active.</InfoTip>
+                                    </div>
                                 </div>
                                 <Switch
                                     id="is_active"

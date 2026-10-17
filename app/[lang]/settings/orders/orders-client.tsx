@@ -45,6 +45,7 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatAdminDateTimeMY } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderMargin, OrderStatus } from "@/lib/types/ecommerce";
+import { InfoTip } from "@/components/ui/info-tip";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -353,10 +354,12 @@ export default function SettingsOrdersPage({
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    View and manage all customer orders.
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
+                  <InfoTip label="About Orders">
+                    <p>View and manage all customer orders.</p>
+                  </InfoTip>
+                </div>
             </div>
 
             {/* Summary Cards */}

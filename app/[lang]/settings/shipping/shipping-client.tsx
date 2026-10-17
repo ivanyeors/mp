@@ -42,6 +42,7 @@ import {
 import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
 import type { EasyshipStrategy, ShippingRateSource } from "@/lib/types/ecommerce";
 import { apiErrorMessage } from "./couriers/easyship-panel";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
@@ -379,13 +380,13 @@ export default function SettingsShippingPage({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Shipping
                     </h1>
-                    <p className="text-muted-foreground mt-1 text-sm">
+                    <InfoTip label="About Shipping">
                         Shipping methods and delivery areas, with live courier rates and labels.
-                    </p>
+                    </InfoTip>
                 </div>
                 <Button size="sm" onClick={openCreate}>
                     <Plus className="mr-2 h-4 w-4" />

@@ -14,6 +14,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -816,11 +817,11 @@ export default function ConfigureCardPage() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h1>Configure {productLabel} — {sizeLabel}</h1>
-        <p className="text-sm text-muted-foreground">
+        <InfoTip label="About Configure">
           Product tab: non-filling BOM and warehouse presets. Filling Config: filling mixes for this {open ? "size" : "length"}.
-        </p>
+        </InfoTip>
       </div>
       <Separator />
       {selectedSize && selectedPillowKind && (
