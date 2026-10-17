@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "lib/blogs.ts": {
-    "mtime": 1792243950.0080492,
-    "seen": 1792244219.950302,
-    "ast_hash": "77d95d5bdee4191d89c18686c16dd933",
+    "mtime": 1792247065.7057111,
+    "seen": 1792247527.135508,
+    "ast_hash": "075def25c4a9446eab1be4c7ef60b731",
     "semantic_hash": ""
   },
   "lib/bom-sanitizer/__tests__/bom-sanitizer.test.ts": {
@@ -1218,9 +1218,9 @@
     "semantic_hash": ""
   },
   "lib/seo/guides-content.ts": {
-    "mtime": 1792167398.0958085,
-    "seen": 1792238787.887911,
-    "ast_hash": "6e90fe58761b3f07dacaedf6179d4b3d",
+    "mtime": 1792247121.4290843,
+    "seen": 1792247527.1367464,
+    "ast_hash": "3f6d02fb6688558995e3b3e6ec35424d",
     "semantic_hash": ""
   },
   "lib/seo/index.ts": {
@@ -1716,9 +1716,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/blog/[slug]/page.tsx": {
-    "mtime": 1792243872.0093393,
-    "seen": 1792244219.9466848,
-    "ast_hash": "31948e5976598aa4dd2d32d8940fff53",
+    "mtime": 1792247065.7065947,
+    "seen": 1792247527.133134,
+    "ast_hash": "fa022223732564188b8deaa16d7052c9",
     "semantic_hash": ""
   },
   "app/[lang]/blog/layout.tsx": {
@@ -6114,9 +6114,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792167398.6011024,
-    "seen": 1792238787.888693,
-    "ast_hash": "42b6adcb7ee87086f0af5b40d3cbf717",
+    "mtime": 1792247007.8467734,
+    "seen": 1792247527.1374743,
+    "ast_hash": "b82a37fb7080b61ba4e373536406e3f7",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -6126,9 +6126,9 @@
     "semantic_hash": ""
   },
   "proxy.ts": {
-    "mtime": 1792167398.6051023,
-    "seen": 1792238787.8887005,
-    "ast_hash": "0cd26e1a47a2cc11d25d36181553114a",
+    "mtime": 1792246941.108034,
+    "seen": 1792247527.137481,
+    "ast_hash": "aa9a34556e803a09aeb5cd3db7441126",
     "semantic_hash": ""
   },
   "public/sw.js": {
@@ -6324,9 +6324,9 @@
     "semantic_hash": ""
   },
   "scripts/sync-blog-mdx-bodies.mjs": {
-    "mtime": 1792167399.0451024,
-    "seen": 1792238787.8888874,
-    "ast_hash": "5e0ac65fc0b96f05b0a0ade6353a3c53",
+    "mtime": 1792247379.5960238,
+    "seen": 1792247527.1376119,
+    "ast_hash": "558274efe387f188374736f75e77e0f3",
     "semantic_hash": ""
   },
   "scripts/verify-money-flow-e2e.mjs": {
@@ -8183,88 +8183,10 @@
     "ast_hash": "b6cd11054d0abaa3868f109ec3da5caf",
     "semantic_hash": ""
   },
-  "data/blogs/2024-pillow-revolution-embracing-customization-for-blissful-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912036,
-    "ast_hash": "f1030fe866cfcc4ad9849c4d33766348",
-    "semantic_hash": ""
-  },
-  "data/blogs/are-you-struggling-with-neck-and-shoulder-pain-disrupting-your-sleep-and-daily-life.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912067,
-    "ast_hash": "504c0a767895a730e5df2ff1844a6105",
-    "semantic_hash": ""
-  },
-  "data/blogs/bolster-pillow-vs-regular-pillow-which-offers-better-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912094,
-    "ast_hash": "a4008d23b8a0f7b0cd7b65503554499b",
-    "semantic_hash": ""
-  },
-  "data/blogs/bolster-with-adjustable-firmness-for-side-sleepers-enhancing-comfort-and-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912125,
-    "ast_hash": "6de8001ff910af5e33d26fb711e0d5a5",
-    "semantic_hash": ""
-  },
   "data/blogs/bolsters-vs-pillows-do-you-really-need-both.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8912158,
     "ast_hash": "61571afda067547882ca162423fc5f8c",
-    "semantic_hash": ""
-  },
-  "data/blogs/celebrating-world-sleep-day-how-the-right-pillow-can-help-you-get-a-better-nights-rest.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912194,
-    "ast_hash": "50eb4c5f888df05e6774f4bde7605b63",
-    "semantic_hash": ""
-  },
-  "data/blogs/cervical-pillow-for-neck-pain-a-comprehensive-guide.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891222,
-    "ast_hash": "fd8b252633438e6251b72d48a1dc673c",
-    "semantic_hash": ""
-  },
-  "data/blogs/choosing-the-right-cervical-pillow-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912253,
-    "ast_hash": "bedd55fbc7b657bab4f45fb782df5a25",
-    "semantic_hash": ""
-  },
-  "data/blogs/crafting-comfort-the-unparalleled-advantages-of-customised-mbolster-for-side-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912282,
-    "ast_hash": "aba4e691aabdee0a7d8f93f2dbbf0d79",
-    "semantic_hash": ""
-  },
-  "data/blogs/custom-made-pillow-the-ultimate-solution-for-back-and-neck-pain.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912313,
-    "ast_hash": "429c7c8613436193d9f725838f839c42",
-    "semantic_hash": ""
-  },
-  "data/blogs/discover-the-benefits-of-a-custom-made-pillow-for-a-good-nights-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912342,
-    "ast_hash": "57573169dc6cbced21ccbfc0c010fadb",
-    "semantic_hash": ""
-  },
-  "data/blogs/discover-the-mbolster-the-revolutionary-bolster-for-personalized-comfort-and-hygiene.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891237,
-    "ast_hash": "cec533319c549ddc4651f34e39fe8176",
-    "semantic_hash": ""
-  },
-  "data/blogs/elevate-your-sleep-experience-with-customized-pillows.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912396,
-    "ast_hash": "09fe59d70e974eaca4ceafdec3e55097",
-    "semantic_hash": ""
-  },
-  "data/blogs/embracing-the-year-of-the-dragon-a-guide-to-auspicious-lunar-new-year-house-cleaning.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912423,
-    "ast_hash": "b100b565769432cff67807fe0fe47ad7",
     "semantic_hash": ""
   },
   "data/blogs/ergonomic-pillow-vs-regular-pillow-is-it-worth-the-investment.mdx": {
@@ -8273,64 +8195,10 @@
     "ast_hash": "140f4c41cf279e2df9ed18371e2f56c7",
     "semantic_hash": ""
   },
-  "data/blogs/finding-the-perfect-neck-support-pillow-in-singapore.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912473,
-    "ast_hash": "09b7d5d4780046e0b73e02a3e5e77775",
-    "semantic_hash": ""
-  },
-  "data/blogs/flat-neck-syndrome-in-children.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912501,
-    "ast_hash": "c2b1a76ead2e932963df37920f4feb19",
-    "semantic_hash": ""
-  },
-  "data/blogs/guest-blog-how-to-improve-your-posture-at-home-by-porch.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912528,
-    "ast_hash": "107e09653123e4142a0b21a634557b0b",
-    "semantic_hash": ""
-  },
-  "data/blogs/half-of-singapore-s-population-is-sleep-deprived-are-you-one-of-them.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912556,
-    "ast_hash": "0f4162ad89d31567780d6077e83a3388",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-bolster-can-help-with-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891258,
-    "ast_hash": "52a004b57d60a4427e85cf3e7c9fc476",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-cervical-neck-support-pillow-and-bolster-can-provide-effective-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891261,
-    "ast_hash": "c7694c7beed065de976a2ddf11e77cae",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-customised-pillow-can-help-relieve-neck-pain.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912644,
-    "ast_hash": "95258deed809af94dc365716991a6f95",
-    "semantic_hash": ""
-  },
   "data/blogs/how-a-customised-pillow-can-help-with-sleep-apnea-for-cpap-users.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8912673,
     "ast_hash": "2e690c9dfdeaef5abc0da4187ebb2dbd",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-customised-pillow-with-adjustable-firmness-can-help-children-sleep-better.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912706,
-    "ast_hash": "3c166331a1c9ed8d6fb37f3ae128474c",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-neck-shoulder-pain-pillow-can-transform-your-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891273,
-    "ast_hash": "cebb4d3bbbb4be1a0f22c11d22d2e545",
     "semantic_hash": ""
   },
   "data/blogs/how-adjustable-pillow-firmness-can-help-kids-sleep-better-the-key-to-restful-nights.mdx": {
@@ -8345,28 +8213,10 @@
     "ast_hash": "1a404bf1c8f6793a496094fff13bb840",
     "semantic_hash": ""
   },
-  "data/blogs/how-often-should-you-replace-your-pillow-for-better-sleep-hygiene.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891281,
-    "ast_hash": "d5cb2f5fde5f36739a83b179330ea4e2",
-    "semantic_hash": ""
-  },
   "data/blogs/how-to-choose-the-best-pillow-in-singapore.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8912833,
     "ast_hash": "bf4cbf55e1ff3a5f0501fc952fc1e3fe",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-to-gauge-the-right-posture-by-breathing.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912857,
-    "ast_hash": "b50795efc6b3a6e70f65d88bbaa8aaa2",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-to-sleep-correctly-with-a-body-pillow-for-back-and-neck-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912883,
-    "ast_hash": "5368c5a0a8229415c33c5e0470d8b7bf",
     "semantic_hash": ""
   },
   "data/blogs/how-to-use-a-bolster-pillow-for-better-side-sleeping-in-singapore-homes.mdx": {
@@ -8375,28 +8225,10 @@
     "ast_hash": "6caff06ec433f7cb707ce3e6b4f83eec",
     "semantic_hash": ""
   },
-  "data/blogs/hygiene-and-sleep-how-to-keep-your-sleep-environment-clean.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912935,
-    "ast_hash": "f4629e803c7ccf17b415780a56dbd18f",
-    "semantic_hash": ""
-  },
   "data/blogs/improve-good-posture-habits-with-exercises-and-home-remedies.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8912957,
     "ast_hash": "153a721d3a4f8688a93447a969618d35",
-    "semantic_hash": ""
-  },
-  "data/blogs/improve-sleep-with-a-bolster-and-a-neck-support-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912983,
-    "ast_hash": "d6bcc3ff20aeef8c699a211c7c9e95a4",
-    "semantic_hash": ""
-  },
-  "data/blogs/is-a-memory-foam-pillow-ideal.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891301,
-    "ast_hash": "f89bacac494d3dfc077c2cace73319dd",
     "semantic_hash": ""
   },
   "data/blogs/macquarie-chiropractic-x-mpillow-collaboration.mdx": {
@@ -8405,88 +8237,10 @@
     "ast_hash": "707906675a448911867fc699a273bdac",
     "semantic_hash": ""
   },
-  "data/blogs/mbolster-the-best-bolster-for-side-sleeping.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913057,
-    "ast_hash": "c53a69f731ca0b4a016747b6a1d8a5c4",
-    "semantic_hash": ""
-  },
-  "data/blogs/neck-pain-relief-how-a-cervical-pillow-for-neck-pain-can-help.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913083,
-    "ast_hash": "c9d751adf5b04e1596f91f5f3ffe1e6f",
-    "semantic_hash": ""
-  },
-  "data/blogs/neck-pain-relief-how-to-sleep-better-and-wake-up-pain-free.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913112,
-    "ast_hash": "910df0ea4397fccedaae04dcc8ce351d",
-    "semantic_hash": ""
-  },
-  "data/blogs/neck-support-pillows-in-singapore-your-key-to-comfortable-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913133,
-    "ast_hash": "277bbf5493f7185c3b9d43189e92a47f",
-    "semantic_hash": ""
-  },
-  "data/blogs/p-how-a-tailored-pillow-can-improve-sleep-quality-and-give-you-the-restful-night-you-deserve-p-p-p.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913162,
-    "ast_hash": "3703137ec57588da004cedeba4d01c8b",
-    "semantic_hash": ""
-  },
-  "data/blogs/pillow-neck-pain-spinal-degeneration.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891319,
-    "ast_hash": "995180eb129004b8cb17d594973c6748",
-    "semantic_hash": ""
-  },
   "data/blogs/side-sleeper-pillow-your-ultimate-guide-for-alignment-pain-relief.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8913221,
     "ast_hash": "16e7ff1e3fe9e381e4257bdaa649a14d",
-    "semantic_hash": ""
-  },
-  "data/blogs/side-sleeping-bliss-how-bolsters-enhance-comfort-and-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913252,
-    "ast_hash": "676cc58bf9d4317b5d1d863838c916b7",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleep-and-mental-health-the-vital-connection-between-rest-and-emotional-well-being.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891328,
-    "ast_hash": "cc4f8f9f8cd5a2a340b6ff6d30ae9c85",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleep-better-feel-better-the-importance-of-investing-in-the-right-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913305,
-    "ast_hash": "a8f8b9b92b470cc136f667f6e362d98b",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleep-disorders-unveiled-shedding-light-on-common-sleep-issues-for-world-sleep-day.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913338,
-    "ast_hash": "77bd84dd958ba84c3520622c54455582",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleeping-on-your-stomach-with-2-mbolsters-neck-pain-relief-for-stomach-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891337,
-    "ast_hash": "9b8a60ab21a414c9bcc25dd1a7733f5a",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleeping-positions-and-their-impact-on-health-finding-your-ideal-sleep-pose.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913398,
-    "ast_hash": "425f83c14c5c266db66a1abfc972794d",
-    "semantic_hash": ""
-  },
-  "data/blogs/stay-cool-and-comfy-finding-the-perfect-pillow-for-warm-weather.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913422,
-    "ast_hash": "04dce4d5a5b79e90637a74f1b0820b3e",
     "semantic_hash": ""
   },
   "data/blogs/tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep.mdx": {
@@ -8495,142 +8249,16 @@
     "ast_hash": "747ce1ec25733aa57a34f377ec1388db",
     "semantic_hash": ""
   },
-  "data/blogs/the-adjustable-bolster-why-a-customisable-bolster-beats-the-traditional-body-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913484,
-    "ast_hash": "3f0992cafce06720491c0834d8259b88",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-benefits-of-customized-pillows-for-a-good-nights-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913515,
-    "ast_hash": "87c2bd6376c198d0f0dc05d2470041cf",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-benefits-of-using-a-neck-support-pillow-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891354,
-    "ast_hash": "fc223146af00486e6e6b3498e3f0e41c",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-benefits-of-using-the-right-pillow-for-a-good-nights-sleep-on-world-sleep-day.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913577,
-    "ast_hash": "7c360f02973a0c8242293d5d0e842237",
-    "semantic_hash": ""
-  },
   "data/blogs/the-complete-guide-to-choosing-the-right-bolster-in-singapore.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8913605,
     "ast_hash": "404ac14d13188b274142a12b6b955be2",
     "semantic_hash": ""
   },
-  "data/blogs/the-effects-on-sleep-deprivation-and-how-to-overcome-it.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913639,
-    "ast_hash": "8092d9688ed5ff170e32d3aaf0b86a10",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-gift-of-a-good-nights-sleep-customised-pillows-and-their-impact-on-well-being.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891367,
-    "ast_hash": "11c6e61647ac52c039ad6575c21ca118",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-impact-of-sleep-on-mental-health-understanding-the-connection.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.89137,
-    "ast_hash": "4e867050ec2eace82a6d86ec6f8e78e5",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-importance-of-cervical-neck-support-for-a-pain-free-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891373,
-    "ast_hash": "15bcf6bf682c571721b418e4b83d4199",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-perfect-gift-customised-pillows-for-a-restful-festive-season.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891376,
-    "ast_hash": "fde27204b3eac8ad23fd18d59be46585",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-perfect-sidekick-for-side-sleepers-how-a-customised-bolster-can-transform-your-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913794,
-    "ast_hash": "e6155d77e1568b66ffdffbddf8f719d8",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-role-of-a-bolster-in-enhancing-neck-pain-relief-why-you-need-one.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913827,
-    "ast_hash": "1bcc37f8c0a41afac094b8f907ac97b2",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-science-of-comfort-custom-made-pillows-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913853,
-    "ast_hash": "8076266031e382eb80ec0d9e5e541b9d",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-silent-agony-how-lifestyle-choices-impact-neck-pain-and-the-role-of-customised-pillows.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913884,
-    "ast_hash": "fe990a3770cf994d93082a129a8c01e9",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-ultimate-guide-to-bolsters-why-mbolster-by-mpillow-is-a-game-changer-for-side-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913913,
-    "ast_hash": "990044e9a4e2df7586f429bfc9b03579",
-    "semantic_hash": ""
-  },
   "data/blogs/the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.891395,
     "ast_hash": "15d89ae583f6e148230b4e82132fbbac",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-ultimate-guide-to-custom-made-pillows-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913982,
-    "ast_hash": "965a2b59c511f2c82b1ae1aec3394042",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-ultimate-guide-to-thoughtful-gifts-for-mothers-and-fathers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914013,
-    "ast_hash": "191cfcb9cb43c3c86b6f3aa3143aedff",
-    "semantic_hash": ""
-  },
-  "data/blogs/tips-to-prevent-shoulder-pains-during-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891404,
-    "ast_hash": "55ade0ae40ebb8d39af18162b211f892",
-    "semantic_hash": ""
-  },
-  "data/blogs/top-5-pillows-for-neck-pain-relief-what-to-look-for-and-why-it-matters.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914082,
-    "ast_hash": "2b578ba0101bb5987803473f68af3d9f",
-    "semantic_hash": ""
-  },
-  "data/blogs/understanding-insomnia-causes-symptoms-and-effective-treatments.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914106,
-    "ast_hash": "9f7993b4eabdf95ebf13ec94423f6434",
-    "semantic_hash": ""
-  },
-  "data/blogs/unlocking-better-sleep-the-benefits-of-a-frequency-bed.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891414,
-    "ast_hash": "63357c0a87d66975a2d2e823486360f7",
-    "semantic_hash": ""
-  },
-  "data/blogs/what-are-the-different-types-of-pillow-fillings-amp-which-is-best-for-you.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914165,
-    "ast_hash": "33dbd9681078e9e66994c62f795f62bd",
     "semantic_hash": ""
   },
   "data/blogs/what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore.mdx": {
@@ -8657,64 +8285,10 @@
     "ast_hash": "6987df115dd68f307a9b9a9991085711",
     "semantic_hash": ""
   },
-  "data/blogs/which-thief-steals-more-than-just-your-wealth.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914309,
-    "ast_hash": "72445c6d473749eef6ab777113576927",
-    "semantic_hash": ""
-  },
-  "data/blogs/which-type-of-pillow-is-best-for-sleep-amp-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914335,
-    "ast_hash": "bae2b18ca685a7695ab128610bb67d3f",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-a-modular-pillow-like-mpillow-is-the-game-changer-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891437,
-    "ast_hash": "5fb26e5d59b837e51341a9a04ddbee2b",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-a-modular-pillow-might-be-the-last-pillow-you-ever-buy.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914402,
-    "ast_hash": "a4026e71669336929a89228ef000c9d6",
-    "semantic_hash": ""
-  },
   "data/blogs/why-a-pregnancy-bolster-pillow-is-essential-for-back-and-hip-pain-relief.mdx": {
     "mtime": 1792167397.9896138,
     "seen": 1792238787.8914437,
     "ast_hash": "4f6ffdf9531f5614de980245c4e2c48c",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-are-you-yawning-so-much.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914466,
-    "ast_hash": "69234580cb1d25d65243c652818c161b",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-one-size-doesnt-fit-all-the-importance-of-customized-pillows.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.89145,
-    "ast_hash": "530927bba4fa4d691f81e231d1ef2077",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-side-sleepers-love-the-mbolster-a-game-changer-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891453,
-    "ast_hash": "c47b54aafdbf58cfb43b7b39b33378d7",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-the-mbolster-is-the-ultimate-bolster-for-side-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914566,
-    "ast_hash": "bb1a5bf93f4bf5555c01b1b698fbcb9c",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-your-pillow-might-be-causing-neck-pain-and-how-to-find-one-that-offers-real-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891459,
-    "ast_hash": "b387ad6b26647656b2b8f0d69ce78d83",
     "semantic_hash": ""
   },
   "data/blogs/zoom-session-with-kh-poon-physiotherapist.mdx": {
@@ -15555,6 +15129,48 @@
     "mtime": 1792244125.434696,
     "seen": 1792244219.952112,
     "ast_hash": "535e58d714d74b35b985a1077f31eeb3",
+    "semantic_hash": ""
+  },
+  "components/blog/__tests__/post-body.test.tsx": {
+    "mtime": 1792247203.0376596,
+    "seen": 1792247527.1343803,
+    "ast_hash": "559a7df2ff090d81367515331fb674b3",
+    "semantic_hash": ""
+  },
+  "components/blog/post-body.tsx": {
+    "mtime": 1792247203.0308275,
+    "seen": 1792247527.134387,
+    "ast_hash": "da50e975296ff4ab0bc4920942f66715",
+    "semantic_hash": ""
+  },
+  "lib/__tests__/blog-redirects.test.ts": {
+    "mtime": 1792247100.2577064,
+    "seen": 1792247527.1351302,
+    "ast_hash": "b6f4ac34b3400159b43ffa9e4504a56d",
+    "semantic_hash": ""
+  },
+  "lib/__tests__/blog-structure.test.ts": {
+    "mtime": 1792247100.2597256,
+    "seen": 1792247527.1351352,
+    "ast_hash": "ca2b286353fd35111ff2d12c351fec5a",
+    "semantic_hash": ""
+  },
+  "lib/blog-redirects.ts": {
+    "mtime": 1792246924.9680343,
+    "seen": 1792247527.1354985,
+    "ast_hash": "beb8372cba042d643362884b11b7ced5",
+    "semantic_hash": ""
+  },
+  "lib/blog-structure.ts": {
+    "mtime": 1792247023.604032,
+    "seen": 1792247527.135505,
+    "ast_hash": "3bbd426a3928bff1a7bd1e86b9f7c77f",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-search-visibility/content-standard.md": {
+    "mtime": 1792247274.9120262,
+    "seen": 1792247527.1390696,
+    "ast_hash": "ccc41d5edb15c731f2aa117c65ea14c8",
     "semantic_hash": ""
   }
 }
