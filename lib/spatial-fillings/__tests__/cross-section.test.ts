@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PillowPlacement } from "../core";
-import { crossSectionSlabs, cutLabel, DEFAULT_CUT, type Cut } from "../cross-section";
+import { alongSlabs, crossSectionSlabs, cutLabel, DEFAULT_CUT, slabThicknessNote, type Cut } from "../cross-section";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, type PouchDimensions, type ResolvedDims } from "../dimensions";
 import { fitPillow } from "../fit";
 
@@ -86,5 +86,39 @@ describe("crossSectionSlabs", () => {
   it("is deterministic for a given fit", () => {
     const fit = fitPillow(sideSleep, { size: "L", dims });
     expect(JSON.stringify(crossSectionSlabs(fit, DEFAULT_CUT))).toBe(JSON.stringify(crossSectionSlabs(fit, DEFAULT_CUT)));
+  });
+});
+
+describe("the along cut's thickness, from Settings to the drawing", () => {
+  const configured = new Map<number, ResolvedDims>([
+    [1, { key: "6d/s", kind: "pouch", source: "configured", measuredOn: "2026-10-10", dims: { ...GENERIC_POUCH, thicknessMm: 45, minThicknessMm: 25 } }],
+  ]);
+
+  it("carries each pouch's thickness at the Size, then settled, then as drawn", () => {
+    // XS: thickness scales by the side gusset, 101 / 153.
+    const fit = fitPillow([at("center", "middle", 1, 1)], { size: "XS", dims: configured });
+    const [slab] = alongSlabs(fit, "center");
+    expect(slab.relaxedMm).toBeCloseTo(45 * (101 / 153), 0);
+    expect(slab.settledMm).toBeLessThan(slab.relaxedMm); // alone in the Section: it spreads front and back
+    expect(slab.heightMm).toBe(slab.settledMm);
+  });
+
+  it("explains a drawn height in the order it is derived", () => {
+    const fit = fitPillow([at("center", "middle", 1, 1)], { size: "XS", dims: configured });
+    const [slab] = alongSlabs(fit, "center");
+    const note = slabThicknessNote(slab, fit.size, configured.get(1));
+    expect(note).toMatch(/^\d+ mm drawn: 45 mm for Size M \(Settings\) → 30 mm at Size XS → \d+ mm spread along the Section$/);
+    const fallback = { key: "6d/s", kind: "pouch" as const, source: "fallback" as const, measuredOn: null, dims: { ...GENERIC_POUCH } };
+    expect(slabThicknessNote(slab, fit.size, fallback)).toContain("(not in Settings — family default)");
+    const atM = fitPillow([at("left", "front", 1, 1)], { size: "M", dims: configured, pillow: WALLED });
+    const [relaxed] = alongSlabs(atM, "left");
+    expect(slabThicknessNote(relaxed, atM.size, configured.get(1))).toBe("45 mm drawn: 45 mm for Size M (Settings)");
+  });
+
+  it("says when a stack is squeezed to close", () => {
+    const stackOf = [0, 1, 2].map((row) => at("center", "middle", row + 1, 2, row));
+    const fit = fitPillow(stackOf, { size: "M", dims, pillow: WALLED });
+    const [deepest] = alongSlabs(fit, "center");
+    expect(slabThicknessNote(deepest, fit.size)).toMatch(/→ \d+ mm squeezed to close$/);
   });
 });

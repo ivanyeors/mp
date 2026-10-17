@@ -1832,7 +1832,7 @@ function FillingConfigPanel({
     },
     [onCutDive],
   );
-  const { itemSubtypes: gridItemSubtypes } = useItemMaps(gridItems, dimensionOverrides);
+  const { itemSubtypes: gridItemSubtypes, itemSizes: gridItemSizes, itemDims: gridItemDims } = useItemMaps(gridItems, dimensionOverrides);
   // Slice 09: the Mbolster's fit at this card's length (a pillow card's empty mix costs nothing).
   const bolsterLength = BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength, gridItems, dimensionOverrides);
@@ -2133,6 +2133,11 @@ function FillingConfigPanel({
                 cut={cut}
                 onCutChange={setCut}
                 itemSubtypes={gridItemSubtypes}
+                itemSizes={gridItemSizes}
+                itemDims={gridItemDims}
+                placements={placements}
+                onPlacementsChange={setPlacements}
+                items={gridItems}
                 colorOverrides={colorOverrides}
               />
             </Section>

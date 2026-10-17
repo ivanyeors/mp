@@ -4,7 +4,7 @@ import { addPiece, removePiece } from "@/lib/configurator/staff-assist";
 import { placementsExactMatch, type PillowPlacement } from "../core";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, SEAM_MM, type PouchDimensions, type ResolvedDims } from "../dimensions";
 import { fitPillow } from "../fit";
-import { alongMm, anchorAlong, offerBothWays, settlePillow, settledThicknessMm, spreadCapacityMm, type PieceSettle } from "../settle";
+import { alongMm, anchorAlong, FABRIC_GIVE, offerBothWays, settlePillow, settledThicknessMm, spreadCapacityMm, type PieceSettle } from "../settle";
 import { cellFrame, layoutPlacements } from "../xray-layout";
 import { stageGeometry } from "../xray-stage";
 
@@ -25,18 +25,27 @@ const M = PILLOW_DIMENSIONS.M;
 const CELL = M.lengthMm / 3; // 110 mm
 const WALLED = { ...M, subSectionDividers: true };
 
-// 140 mm along, 45 → 25 mm thick: V/(w × minT) − L = 140 × (45/25 − 1) = 112 mm of spread.
+// 140 mm along, 45 → 25 mm thick. Pressed flat its fabric gives (π/2 − 1) × 20 ≈ 11.4 mm of length
+// (by volume alone it could reach 112 mm — a rubber band). In a 110 mm cell it is cut 30 mm short,
+// so beside an empty cell it reaches 30 + 11.4 mm into it, no further.
 const SPREADER = { widthMm: 180, lengthMm: 140, thicknessMm: 45, minThicknessMm: 25 };
+const GIVE = FABRIC_GIVE * 20;
+const REACH = 140 - CELL + GIVE; // 41.4 mm
+// 30 → 25 mm: 30 mm of its length back plus (π/2 − 1) × 5 of give.
+const SMALL_REACH = 140 - CELL + FABRIC_GIVE * 5; // 32.9 mm
 const dims = new Map([resolved(1, SPREADER), resolved(2, { ...SPREADER, thicknessMm: 30, minThicknessMm: 25 })]);
 const find = (pieces: PieceSettle[], key: string) => pieces.find((s) => s.key === key)!;
 
 describe("spread capacity", () => {
-  it("is the compression variable read the other way, along the length (front ↔ back)", () => {
+  it("is what the fabric gives as the pouch is pressed flat — a stadium of fixed perimeter — not what the volume would allow", () => {
     expect(alongMm(pouch(SPREADER))).toBe(140);
-    expect(spreadCapacityMm(pouch(SPREADER))).toBeCloseTo(112, 6);
+    expect(FABRIC_GIVE).toBeCloseTo(0.5708, 4);
+    expect(spreadCapacityMm(pouch(SPREADER))).toBeCloseTo(GIVE, 6);
+    // A pouch short enough that its fill compresses fully first: the volume is the limit.
+    expect(spreadCapacityMm(pouch({ ...SPREADER, lengthMm: 10 }))).toBeCloseTo(10 * (45 / 25 - 1), 6);
   });
 
-  it("is capped by the fabric's flat length when the registry has it, and never negative", () => {
+  it("is the measured flat length instead when the registry has it, and never negative", () => {
     expect(spreadCapacityMm(pouch({ ...SPREADER, flatLengthMm: 200 }))).toBe(60);
     expect(spreadCapacityMm(pouch({ ...SPREADER, flatLengthMm: 100 }))).toBe(0);
     expect(spreadCapacityMm(pouch({ ...SPREADER, minThicknessMm: 50 }))).toBe(0); // min ≥ relaxed: nothing to give
@@ -51,57 +60,60 @@ describe("spread capacity", () => {
 });
 
 describe("settlePillow", () => {
-  it("spreads one pouch in center/middle both ways to its capacity and thins to V / (w × l′), inside the Section", () => {
+  it("lets one pouch in center/middle reach both ways by its own length and the fabric's give — never across the voids", () => {
     const settle = settlePillow([at("center", "middle", 1, 1)], { size: "M", dims });
     expect(settle.active).toBe(true);
     expect(settle.cellLengthMm).toBeCloseTo(CELL, 1);
     const s = find(settle.pieces, "center/middle/1");
-    expect(s.spreadFrontMm).toBeCloseTo(56, 1);
-    expect(s.spreadBackMm).toBeCloseTo(56, 1);
-    expect(s.settledLengthMm).toBeCloseTo(252, 1);
-    expect(s.settledThicknessMm).toBeCloseTo(25, 1);
-    expect(s.settledThicknessMm).toBeGreaterThanOrEqual(s.minThicknessMm);
-    expect([s.spanFrom, s.spanTo]).toEqual(["front", "back"]);
-    // Never beyond the Section's ends: the spread each way is at most the void.
-    expect(s.spreadFrontMm).toBeLessThanOrEqual(CELL);
-    expect(s.spreadBackMm).toBeLessThanOrEqual(CELL);
+    expect(s.spreadFrontMm).toBeCloseTo(REACH / 2, 1);
+    expect(s.spreadBackMm).toBeCloseTo(REACH / 2, 1);
+    // Its footprint is its own length plus the give, and it thins only by that give.
+    expect(s.settledLengthMm).toBeCloseTo(140 + GIVE, 1);
+    expect(s.settledThicknessMm).toBeCloseTo((45 * 140) / (140 + GIVE), 1);
+    expect(s.settledThicknessMm).toBeGreaterThan(40);
+    expect([s.spanFrom, s.spanTo]).toEqual(["front", "back"]); // it stands a little into each neighbour
+    // Not a rubber band: most of each void stays empty.
+    expect(s.spreadFrontMm).toBeLessThan(CELL / 4);
+    expect(s.spreadBackMm).toBeLessThan(CELL / 4);
   });
 
-  it("gives the whole capacity to the one open side, capped at the void, and stays anchored when it cannot fill it", () => {
+  it("gives its whole reach to the one open side and stays anchored at its own end", () => {
     // Front occupied: the middle pouch spreads back only.
     const [front, middle] = settlePillow([at("center", "front", 1, 1), at("center", "middle", 1, 1)], { size: "M", dims }).pieces;
     expect(middle.spreadFrontMm).toBe(0);
-    expect(middle.spreadBackMm).toBeCloseTo(CELL, 1); // capacity 112 > the 110 void
+    expect(middle.spreadBackMm).toBeCloseTo(REACH, 1);
     expect(middle.spanTo).toBe("back");
     expect(front.spreadFrontMm).toBe(0);
     expect(front.spreadBackMm).toBe(0); // the middle is occupied on its plane
-    // A small capacity leaves the remainder at the far end: anchored at its own cell.
-    const small = new Map([resolved(1, { ...SPREADER, thicknessMm: 30, minThicknessMm: 25 })]); // 140 × 0.2 = 28 mm
+    // A pouch with little to give leaves the rest of the void at the far end: anchored at its own cell.
+    const small = new Map([resolved(1, { ...SPREADER, thicknessMm: 30, minThicknessMm: 25 })]);
     const s = settlePillow([at("center", "front", 1, 1)], { size: "M", dims: small }).pieces[0];
-    expect(s.spreadBackMm).toBeCloseTo(28, 1);
+    expect(s.spreadBackMm).toBeCloseTo(SMALL_REACH, 1);
     expect(s.spanTo).toBe("middle"); // partly into the middle, not into the back
-    expect(s.settledThicknessMm).toBeCloseTo((30 * 140) / 168, 1);
+    expect(s.settledThicknessMm).toBeCloseTo((30 * 140) / (CELL + SMALL_REACH), 1);
   });
 
-  it("splits a void claimed from both ends pro rata by capacity, a seam between, and keeps two pieces", () => {
-    // Front (112 mm of capacity, so it offers the whole 110 mm void) and back (28 mm) both claim the empty middle.
-    const both = new Map([resolved(1, SPREADER), resolved(2, { ...SPREADER, thicknessMm: 30, minThicknessMm: 25 })]);
+  it("splits a void claimed from both ends pro rata by reach, a seam between, and keeps two pieces", () => {
+    // Pouches whose measured flat length lets them reach far: front offers the whole 110 mm void
+    // (30 + its 112 mm volume limit), back 30 + 28 = 58 mm. They meet.
+    const loose = { ...SPREADER, flatLengthMm: 260 };
+    const both = new Map([resolved(1, loose), resolved(2, { ...loose, thicknessMm: 30, minThicknessMm: 25 })]);
     const settle = settlePillow([at("center", "front", 1, 1), at("center", "back", 1, 2)], { size: "M", dims: both });
     const front = find(settle.pieces, "center/front/1");
     const back = find(settle.pieces, "center/back/1");
     const usable = CELL - SEAM_MM;
-    const offers = Math.min(112, CELL) + 28;
-    expect(front.spreadBackMm).toBeCloseTo((usable * Math.min(112, CELL)) / offers, 1);
-    expect(back.spreadFrontMm).toBeCloseTo((usable * 28) / offers, 1);
+    const offers = CELL + 58;
+    expect(front.spreadBackMm).toBeCloseTo((usable * CELL) / offers, 1);
+    expect(back.spreadFrontMm).toBeCloseTo((usable * 58) / offers, 1);
     expect(front.spreadBackMm + back.spreadFrontMm).toBeCloseTo(usable, 1);
     expect(settle.pieces).toHaveLength(2);
     expect([front.spanFrom, front.spanTo]).toEqual(["front", "middle"]);
     expect([back.spanFrom, back.spanTo]).toEqual(["middle", "back"]);
-    // Two small pouches that cannot meet leave the gap between them, no seam deducted.
+    // Two stuffed pouches with no flat length measured cannot meet: the gap between them stays, no seam deducted.
     const tiny = new Map([resolved(1, { ...SPREADER, thicknessMm: 30, minThicknessMm: 25 })]);
     const apart = settlePillow([at("center", "front", 1, 1), at("center", "back", 1, 1)], { size: "M", dims: tiny }).pieces;
-    expect(apart[0].spreadBackMm).toBeCloseTo(28, 1);
-    expect(apart[1].spreadFrontMm).toBeCloseTo(28, 1);
+    expect(apart[0].spreadBackMm).toBeCloseTo(SMALL_REACH, 1);
+    expect(apart[1].spreadFrontMm).toBeCloseTo(SMALL_REACH, 1);
   });
 
   it("never crosses a Section wall or a Layer, and only spreads into a column empty on its own plane", () => {
@@ -163,10 +175,10 @@ describe("settlePillow", () => {
 });
 
 describe("the nudge anchors the gap (slice 08)", () => {
-  // 60 mm along in a 110 mm cell: 50 mm to move in. Capacity 60 × (45/25 − 1) = 48 mm, less than the 220 mm of void.
+  // 60 mm along in a 110 mm cell: 50 mm to move in. It reaches its 11.4 mm of give, far less than the 220 mm of void.
   const short = new Map([resolved(1, { ...SPREADER, lengthMm: 60 })]);
-  // Capacity 60 × (90/15 − 1) = 300 mm: fills both voids.
-  const filler = new Map([resolved(1, { ...SPREADER, lengthMm: 60, thicknessMm: 90, minThicknessMm: 15 })]);
+  // A measured flat length of 400 mm and 60 × (90/15 − 1) = 300 mm of volume: it fills both voids.
+  const filler = new Map([resolved(1, { ...SPREADER, lengthMm: 60, thicknessMm: 90, minThicknessMm: 15, flatLengthMm: 400 })]);
   const alone = (offsetYMm: number | undefined, d: typeof short) =>
     settlePillow([{ ...at("center", "middle", 1, 1), ...(offsetYMm === undefined ? {} : { offsetYMm }) }], { size: "M", dims: d }).pieces[0];
 
@@ -185,20 +197,20 @@ describe("the nudge anchors the gap (slice 08)", () => {
     expect(offerBothWays(48, 0, 110, 0)).toEqual([0, 48]);
   });
 
-  it("with a void larger than the spread capacity: a back nudge leaves the gap at the front, a front nudge at the back", () => {
+  it("with a void larger than its reach: a back nudge leaves the gap at the front, a front nudge at the back", () => {
     const home = alone(undefined, short);
-    expect(home.spreadFrontMm).toBeCloseTo(24, 1);
-    expect(home.spreadBackMm).toBeCloseTo(24, 1);
+    expect(home.spreadFrontMm).toBeCloseTo(GIVE / 2, 1);
+    expect(home.spreadBackMm).toBeCloseTo(GIVE / 2, 1);
     const back = alone(25, short);
     expect(back.spreadFrontMm).toBe(0);
-    expect(back.spreadBackMm).toBeCloseTo(48, 1);
+    expect(back.spreadBackMm).toBeCloseTo(GIVE, 1);
     const front = alone(-25, short);
-    expect(front.spreadFrontMm).toBeCloseTo(48, 1);
+    expect(front.spreadFrontMm).toBeCloseTo(GIVE, 1);
     expect(front.spreadBackMm).toBe(0);
     // Part way: favours the side it leans to, the same total either way.
     const lean = alone(10, short);
     expect(lean.spreadBackMm).toBeGreaterThan(lean.spreadFrontMm);
-    expect(lean.spreadFrontMm + lean.spreadBackMm).toBeCloseTo(48, 1);
+    expect(lean.spreadFrontMm + lean.spreadBackMm).toBeCloseTo(GIVE, 1);
   });
 
   it("with a void it can fill, the settled spread is the same for every nudge", () => {
@@ -214,7 +226,7 @@ describe("the nudge anchors the gap (slice 08)", () => {
     const placements = [{ ...at("center", "middle", 1, 1), offsetYMm: 25 }];
     const [p] = layoutPlacements(placements, { stage, dims: short, fit: fitPillow(placements, { size: "M", dims: short }) });
     expect(p.settled.y).toBeCloseTo(p.y, 1); // nothing spread forward: the gap is in front
-    expect(p.settled.y + p.settled.h).toBeCloseTo(p.y + p.h + 48 * stage.k, 0);
+    expect(p.settled.y + p.settled.h).toBeCloseTo(p.y + p.h + GIVE * stage.k, 0);
   });
 });
 
@@ -231,18 +243,22 @@ describe("fitPillow reads the settle", () => {
     expect(settled.cells[0].loftLayers).toBe(2);
   });
 
-  it("a stack compressed on authored rects with an empty back behind it is ok once settled", () => {
-    // 3 × 60 mm relaxed = 180 > the M side budget (168.3); each can spread 70 mm into the back void.
+  it("settling relieves a stack only by what the fabric gives — a real excess stays compressed", () => {
+    // 3 × 60 mm relaxed = 180 > the M side budget (168.3). Front and back empty: each pouch gets its
+    // 30 mm back and (π/2 − 1) × 20 = 11.4 mm of give, so stands at 60 × 140 / 151.4 = 55.5 mm — 166.4 in all.
     const thick = new Map([resolved(1, { ...SPREADER, thicknessMm: 60, minThicknessMm: 40 })]);
     const stack = [0, 1, 2].map((row) => at("left", "middle", row + 1, 1, row));
     expect(fitPillow(stack, { size: "M", dims: thick, pillow: WALLED }).status).toBe("compressed");
     const settled = fitPillow(stack, { size: "M", dims: thick });
     expect(settled.status).toBe("ok");
-    expect(settled.sections.left.loftBySubSection.middle).toBeCloseTo(3 * ((60 * 140) / 210), 0);
+    expect(settled.sections.left.loftBySubSection.middle).toBeCloseTo(3 * ((60 * 140) / (140 + GIVE)), 0);
     expect(settled.sections.left.loftBySubSection.back).toBe(settled.sections.left.loftBySubSection.middle);
+    // 3 × 70 = 210: the give takes it to 3 × 62.4 = 187, still over the budget. No rubber band spreads it away.
+    const thicker = new Map([resolved(1, { ...SPREADER, thicknessMm: 70, minThicknessMm: 40 })]);
+    expect(fitPillow(stack, { size: "M", dims: thicker }).status).toBe("compressed");
     // ponytail: `over` cannot flip by settling — the fully compressed floor is
     // volume-invariant (Σ minThickness is the same however far the fill spreads).
-    // 3 × 58 = 174 > 168.3 even fully compressed; the 4.8 mm each can spread changes nothing.
+    // 3 × 58 = 174 > 168.3 even fully compressed; the 1.1 mm of give each changes nothing.
     const over = new Map([resolved(1, { ...SPREADER, thicknessMm: 60, minThicknessMm: 58 })]);
     expect(fitPillow(stack, { size: "M", dims: over, pillow: WALLED }).status).toBe("over");
     expect(fitPillow(stack, { size: "M", dims: over }).status).toBe("over");
@@ -250,7 +266,7 @@ describe("fitPillow reads the settle", () => {
 
   it("counts a neighbour's settled fill in the column it stands in, at its own plane", () => {
     // Plane 0 is full front to back (nothing spreads there); the front's plane-1
-    // pouch (28 mm of capacity) settles 28 mm under the middle's pouch and no further.
+    // pouch (32.9 mm of reach) settles that far under the middle's pouch and no further.
     const placements = [
       at("center", "front", 1, 1, 0),
       at("center", "front", 2, 2, 1),
@@ -262,8 +278,8 @@ describe("fitPillow reads the settle", () => {
     expect(middle.layers).toHaveLength(1);
     expect(middle.loftLayers).toBe(2);
     expect(fit.sections.center.loftBySubSection.back).toBe(45);
-    expect(fit.sections.center.loftBySubSection.middle).toBeCloseTo(45 + (30 * 140) / 168, 1);
-    expect(fit.sections.center.loftBySubSection.front).toBeCloseTo(45 + (30 * 140) / 168, 1);
+    expect(fit.sections.center.loftBySubSection.middle).toBeCloseTo(45 + (30 * 140) / (CELL + SMALL_REACH), 1);
+    expect(fit.sections.center.loftBySubSection.front).toBeCloseTo(45 + (30 * 140) / (CELL + SMALL_REACH), 1);
   });
 });
 
@@ -279,7 +295,7 @@ describe("layout draws the settled rect", () => {
     expect(p.settled.x).toBe(p.x);
     expect(p.settled.w).toBe(p.w);
     expect(p.settled.y).toBe(p.y); // anchored at the front end
-    expect(p.settled.h).toBeCloseTo(p.h + 112 * stage.k, 0); // its whole capacity into the two-cell void behind it
+    expect(p.settled.h).toBeCloseTo(p.h + REACH * stage.k, 0); // its whole reach into the two-cell void behind it — no more
     expect(p.settled.y + p.settled.h).toBeLessThanOrEqual(stage.rowY[3]);
   });
 

@@ -751,7 +751,7 @@ export default function ResultDetailPage({
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange } = useCut();
-  const { itemSubtypes: pickerItemSubtypes } = useItemMaps(pickerItems, dimensionOverrides);
+  const { itemSubtypes: pickerItemSubtypes, itemSizes: pickerItemSizes, itemDims: pickerItemDims } = useItemMaps(pickerItems, dimensionOverrides);
   // Slice 09: the Mbolster's fit at the assigned length, for the confirm and the end-on cut.
   const bolsterLength = (["short", "medium", "long"] as const).find((l) => l === assignLength) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength as BolsterLength, pickerItems, dimensionOverrides);
@@ -1337,6 +1337,11 @@ export default function ResultDetailPage({
                             cut={cut}
                             onCutChange={setCut}
                             itemSubtypes={pickerItemSubtypes}
+                            itemSizes={pickerItemSizes}
+                            itemDims={pickerItemDims}
+                            placements={placements}
+                            onPlacementsChange={setPlacements}
+                            items={pickerItems}
                             colorOverrides={colorOverrides}
                           />
                         </>

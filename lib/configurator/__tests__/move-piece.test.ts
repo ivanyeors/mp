@@ -143,6 +143,16 @@ describe("shiftPieceLayer", () => {
     expect(alone.ok && alone.placements).toBe(base);
   });
 
+  it("a lone top piece goes down into the next Layer, and a move deeper in its own cell lands where asked", () => {
+    const three = [at("right", "back", 1, 1, { row: 0 }), at("right", "back", 2, 2, { row: 1 }), at("right", "back", 3, 3, { row: 2 })];
+    const cell = { section: "right", subSection: "back" } as const;
+    const layersOf = (r: ReturnType<typeof movePiece>) => (r.ok ? cellLayers(r.placements, cell).map((l) => l.map((p) => p.itemId)) : r.error);
+    expect(layersOf(shiftPieceLayer(three, ref("right", "back", 1), 1))).toEqual([[1, 2], [3]]);
+    // Index 1 of the Layers left behind is the third one's.
+    expect(layersOf(movePiece(three, ref("right", "back", 1), { cell, layer: 1 }))).toEqual([[2], [1, 3]]);
+    expect(layersOf(movePiece(three, ref("right", "back", 1), { cell, layer: 2 }))).toEqual([[2], [3], [1]]);
+  });
+
   it("moving the only piece out of a middle Layer closes it and the deeper one moves up", () => {
     const three = [at("right", "back", 1, 1, { row: 0 }), at("right", "back", 2, 2, { row: 1 }), at("right", "back", 3, 3, { row: 2 })];
     const r = shiftPieceLayer(three, ref("right", "back", 2), -1);

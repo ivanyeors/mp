@@ -126,7 +126,20 @@ assert.ok(
 assert.ok(configurator.includes("fit={staffAssist ? assistFit : guestFit}"), "the preview's cross-section and x-ray read the same guest fit");
 const crossSection = readFileSync("components/spatial/xray-cross-section.tsx", "utf8");
 assert.ok(crossSection.includes("crossSectionSlabs(fit, cut)"), "the cross-section draws from the pure slab model — nothing recomputed");
-assert.ok(!crossSection.includes("fitPillow("), "the cross-section never recomputes the fit");
+// A drag previews through the pure slab-drag model (the same move the commit makes); the committed cut draws the host's fit.
+assert.ok(!crossSection.includes("fitPillow("), "the cross-section never recomputes the fit itself");
+assert.ok(crossSection.includes("previewSlabDrop(") && crossSection.includes("applySlabDrop("), "a drop previews and commits through the one pure move");
+// The cut is an editor wherever the x-ray is: Staff drag pouches between columns, Layers and Sections on it too.
+for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
+  const src = readFileSync(path, "utf8");
+  const mount = src.slice(src.indexOf("<XrayCrossSection"), src.indexOf("/>", src.indexOf("<XrayCrossSection")));
+  assert.ok(/onPlacementsChange=\{/.test(mount) && /placements=\{/.test(mount), `${surface} lets Staff edit on the cross-section`);
+  assert.ok(/itemDims=\{/.test(mount), `${surface} hands the cross-section the Settings dimensions its preview and readout read`);
+}
+assert.ok(
+  configurator.includes("onPlacementsChange={staffAssist ? setAssistPlacements : undefined}"),
+  "a guest's cross-section stays read-only",
+);
 assert.ok(!/<rect/.test(crossSection), "slabs are rounded paths, not rects");
 assert.ok(crossSection.includes("<pattern"), "compressed slabs are hatched with an SVG pattern");
 assert.ok(crossSection.includes("var(${visual.cssVar}, ${visual.defaultColor})"), "slabs take the pouches' family colour variables");
