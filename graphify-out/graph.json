@@ -138442,7 +138442,7 @@
       "label": "content-audit.md",
       "_origin": "ast",
       "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
+      "community_name": "Blog content audit \u2014 consolidation map",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "content-audit.md",
@@ -138454,72 +138454,72 @@
       "label": "All 91 posts",
       "_origin": "ast",
       "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
+      "community_name": "Blog content audit \u2014 consolidation map",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "all 91 posts",
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L43"
+      "source_location": "L44"
     },
     {
-      "id": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
-      "label": "Blog content audit \u2014 draft consolidation map",
+      "id": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
+      "label": "Blog content audit \u2014 consolidation map",
       "_origin": "ast",
       "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
+      "community_name": "Blog content audit \u2014 consolidation map",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "blog content audit \u2014 draft consolidation map",
+      "norm_label": "blog content audit \u2014 consolidation map",
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_search_visibility_content_audit_how_to_apply_it",
-      "label": "How to apply it",
+      "id": "claude_prd_search_visibility_content_audit_decisions",
+      "label": "Decisions",
       "_origin": "ast",
       "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
+      "community_name": "Blog content audit \u2014 consolidation map",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "how to apply it",
+      "norm_label": "decisions",
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L141"
+      "source_location": "L7"
+    },
+    {
+      "id": "claude_prd_search_visibility_content_audit_evidence",
+      "label": "Evidence",
+      "_origin": "ast",
+      "community": 381,
+      "community_name": "Blog content audit \u2014 consolidation map",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "evidence",
+      "source_file": ".claude/PRD-search-visibility/content-audit.md",
+      "source_location": "L13"
+    },
+    {
+      "id": "claude_prd_search_visibility_content_audit_how_it_is_applied",
+      "label": "How it is applied",
+      "_origin": "ast",
+      "community": 381,
+      "community_name": "Blog content audit \u2014 consolidation map",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how it is applied",
+      "source_file": ".claude/PRD-search-visibility/content-audit.md",
+      "source_location": "L142"
     },
     {
       "id": "claude_prd_search_visibility_content_audit_the_20_pages_to_keep",
       "label": "The 20 pages to keep",
       "_origin": "ast",
       "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
+      "community_name": "Blog content audit \u2014 consolidation map",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "the 20 pages to keep",
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L18"
-    },
-    {
-      "id": "claude_prd_search_visibility_content_audit_what_this_draft_is_missing",
-      "label": "What this draft is missing",
-      "_origin": "ast",
-      "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what this draft is missing",
-      "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L7"
-    },
-    {
-      "id": "claude_prd_search_visibility_content_audit_where_it_departs_from_slice_10",
-      "label": "Where it departs from slice 10",
-      "_origin": "ast",
-      "community": 381,
-      "community_name": "Blog content audit \u2014 draft consolidation map",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "where it departs from slice 10",
-      "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L13"
+      "source_location": "L19"
     },
     {
       "id": "info_mpillow_final_report_extracted_text_content_810",
@@ -548553,7 +548553,7 @@
     },
     {
       "source": "claude_prd_search_visibility_content_audit",
-      "target": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
+      "target": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -548563,8 +548563,8 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
-      "target": "claude_prd_search_visibility_content_audit_where_it_departs_from_slice_10",
+      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
+      "target": "claude_prd_search_visibility_content_audit_evidence",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -548574,41 +548574,41 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
-      "target": "claude_prd_search_visibility_content_audit_how_to_apply_it",
+      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
+      "target": "claude_prd_search_visibility_content_audit_how_it_is_applied",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L141",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
-      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
+      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
       "target": "claude_prd_search_visibility_content_audit_the_20_pages_to_keep",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L18",
+      "source_location": "L19",
       "weight": 1.0
     },
     {
-      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
+      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
       "target": "claude_prd_search_visibility_content_audit_all_91_posts",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-search-visibility/content-audit.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
-      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_draft_consolidation_map",
-      "target": "claude_prd_search_visibility_content_audit_what_this_draft_is_missing",
+      "source": "claude_prd_search_visibility_content_audit_blog_content_audit_consolidation_map",
+      "target": "claude_prd_search_visibility_content_audit_decisions",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -668993,5 +668993,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "589dcbf3202f9ab29e4eb6a388526a818abda146"
+  "built_at_commit": "47b31999607cb251f94e592e6067e3438f42ae10"
 }

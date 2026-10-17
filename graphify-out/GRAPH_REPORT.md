@@ -1,7 +1,7 @@
 # Graph Report - mp  (2026-10-17)
 
 ## Corpus Check
-- 2334 files · ~6,323,302 words
+- 2334 files · ~6,323,316 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 34 file(s) not represented in the graph (top: .glb 12, .css 10, (none) 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `589dcbf3`
+- Built from commit: `47b31999`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -390,7 +390,7 @@
 - Slice 05 — Pill overlay on entries + retire Sheet (kills the "dupe")
 - Slice 06 — Redesign visual + real-device sign-off
 - Slice 01 — Glossary + ADR 0023 accepted
-- Blog content audit — draft consolidation map
+- Blog content audit — consolidation map
 - Page: Configuration Guide
 - Slice 02 — Non-filling-only warehouse + composed BOM enforcement
 - Slice 03 — Migrate legacy BOM fillings to Filling Templates
@@ -2225,9 +2225,9 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 06 — Redesign visual + real-
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 01 — Glossary + ADR 0023 accepted, What to build
 
-### Community 381 - "Blog content audit — draft consolidation map"
+### Community 381 - "Blog content audit — consolidation map"
 Cohesion: 0.29
-Nodes (6): All 91 posts, Blog content audit — draft consolidation map, How to apply it, The 20 pages to keep, What this draft is missing, Where it departs from slice 10
+Nodes (6): All 91 posts, Blog content audit — consolidation map, Decisions, Evidence, How it is applied, The 20 pages to keep
 
 ### Community 382 - "Page: Configuration Guide"
 Cohesion: 0.67
@@ -3366,7 +3366,7 @@ Nodes (6): google_reviews, idx_google_reviews_card, idx_google_reviews_status, t
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `supabaseAdmin()` connect `supabaseAdmin` to `Select`, `hold/route.ts`, `cn`, `role-policy.ts`, `results.ts`, `dimensions.ts`, `secretMatches`, `stripe/webhook/route.ts`, `seo-actions.ts`, `detail-prep.ts`, `aggregates.ts`, `test/route.ts`, `operators.ts`, `seo/index.ts`, `orders/route.ts`, `partner-applications/actions.ts`, `drive.ts`, `authorizeResultAccess`, `requireAdmin`, `stripe/sync.ts`, `seed-rule-graphs.ts`, `types/landing-sections.ts`, `rules-engine/index.ts`, `addons.ts`, `usage-fixtures.ts`, `discounts/[id]/page.tsx`, `referrals/index.ts`, `auth/admin.ts`, `shopify/sync.ts`, `google-sync.ts`, `config-upload/index.ts`, `assign/route.ts`, `unpromoted/route.ts`, `engine.ts`, `create.ts`, `customize/route.ts`, `migrate-public-apply.ts`, `shop/checkout/route.ts`, `easyship/webhook/route.ts`, `order-mirror-catchup.ts`, `payout-upload/index.ts`, `SearchVisibilityCard.tsx`, `inventory/actions.ts`, `ProspectJourneyCard.tsx`, `media-assets/index.ts`, `page-faq/index.ts`, `preview.ts`, `service-prices.ts`, `shop-listings.ts`, `exchange-rates.ts`, `button.tsx`, `next`, `getDefaultFromAddress`, `err`, `normalizePhone`, `getSiteOrigin`, `csv-import.ts`, `withLocale`, `journey/ingest.ts`, `calendar.ts`, `channel-sales.ts`, `order-shipment.ts`, `email/index.ts`, `assist/route.ts`, `partners/index.ts`, `store.ts`, `whatsapp/route.ts`, `costings/save/route.ts`, `discovery-source/index.ts`, `customization-llm.ts`, `inventory-deduction.ts`, `order-mirror-ingest.ts`, `tax.ts`, `telegram-handler.ts`, `rma.ts`, `commissions/index.ts`, `rma/actions.ts`, `proxy.ts`, `allowance.ts`, `assist-link/index.ts`, `telegram/webhook/route.ts`, `validateCoupon`, `audit-log/page.tsx`, `from-inventory.ts`, `access.ts`, `price-sync.ts`, `discounts.ts`, `quote/route.ts`, `results-sla/route.ts`, `source`, `answer-lede-coverage.check.ts`, `shopify/webhook/route.ts`, `accept/route.ts`, `appointments/settings.ts`, `readjustments/checkout/route.ts`, `import-drive.ts`, `[topic]/page.tsx`?**
-  _High betweenness centrality (0.117) - this node is a cross-community bridge._
+  _High betweenness centrality (0.118) - this node is a cross-community bridge._
 - **Why does `next` connect `next` to `costings/page.tsx`, `Select`, `mp-config-client.tsx`, `hold/route.ts`, `cn`, `role-policy.ts`, `results.ts`, `dimensions.ts`, `secretMatches`, `post-body.tsx`, `stripe/webhook/route.ts`, `journey-tracker.tsx`, `image-usages.ts`, `aggregates.ts`, `test/route.ts`, `operators.ts`, `seo/index.ts`, `orders/route.ts`, `partner-applications/actions.ts`, `ProductSlideSection`, `drive.ts`, `registry.ts`, `app-dock.tsx`, `package.json`, `Button`, `requireAdmin`, `places-reviews.ts`, `stripe/sync.ts`, `types/landing-sections.ts`, `rules-engine/index.ts`, `addons.ts`, `discounts/[id]/page.tsx`, `referrals/index.ts`, `auth/admin.ts`, `telegram-handler.test.ts`, `shopify/sync.ts`, `[card]/page.tsx`, `config-upload/index.ts`, `assign/route.ts`, `unpromoted/route.ts`, `app/layout.tsx`, `utils.ts`, `customize/route.ts`, `vitest`, `shop/checkout/route.ts`, `easyship/webhook/route.ts`, `permissions.ts`, `order-mirror-catchup.ts`, `payout-upload/index.ts`, `SearchVisibilityCard.tsx`, `easyship/page.tsx`, `inventory/actions.ts`, `inventory/shopify/page.tsx`, `next.config.ts`, `media-assets/index.ts`, `page-faq/index.ts`, `service-prices.ts`, `shop-listings.ts`, `exchange-rates.ts`, `button.tsx`, `getDefaultFromAddress`, `err`, `normalizePhone`, `getSiteOrigin`, `withLocale`, `journey/ingest.ts`, `firmness-compare-section.tsx`, `calendar.ts`, `workbench.tsx`, `order-shipment.ts`, `support-contact-page.tsx`, `partners/index.ts`, `assist/route.ts`, `apple-cards-carousel.tsx`, `store.ts`, `whatsapp/route.ts`, `costings/save/route.ts`, `AspectRatio`, `suggest/route.ts`, `measurement-grid-section.tsx`, `google-status.ts`, `PRD: Prospect journey analytics`, `rma/actions.ts`, `proxy.ts`, `customise-tier-picker.tsx`, `assist-link/index.ts`, `telegram/webhook/route.ts`, `supabaseAdmin`, `validateCoupon`, `audit-log/page.tsx`, `access.ts`, `price-sync.ts`, `quote/route.ts`, `react`, `results-sla/route.ts`, `shopify/webhook/route.ts`, `shopify-sales-section.tsx`, `MagicBento.jsx`, `accept/route.ts`, `appointments/settings.ts`, `product-slide-sections/types.ts`, `createSupabaseServerClient`, `readjustments/checkout/route.ts`, `import-drive.ts`, `[topic]/page.tsx`?**
   _High betweenness centrality (0.106) - this node is a cross-community bridge._
 - **Why does `vitest` connect `vitest` to `costings/page.tsx`, `core.ts`, `mp-config-client.tsx`, `hold/route.ts`, `role-policy.ts`, `showroom-viewer.tsx`, `dimensions.ts`, `secretMatches`, `post-body.tsx`, `stripe/webhook/route.ts`, `image-usages.ts`, `seo-actions.ts`, `detail-prep.ts`, `copy-fit.check.ts`, `rules-engine/recommend.ts`, `operators.ts`, `easyship/schema.ts`, `seo/index.ts`, `partner-applications/actions.ts`, `drive.ts`, `registry.ts`, `carry-over.test.ts`, `result-stage.ts`, `app-dock.tsx`, `conform.ts`, `Button`, `quote.ts`, `requireAdmin`, `build-assembly/index.ts`, `ecommerce.ts`, `rules-engine/types.ts`, `xray-bolster.tsx`, `places-reviews.ts`, `stripe/sync.ts`, `seed-rule-graphs.ts`, `addons.ts`, `cards.ts`, `country.check.ts`, `xray-layout.ts`, `slice-05.check.ts`, `referrals/index.ts`, `auth/admin.ts`, `ingest-gsc.ts`, `telegram-handler.test.ts`, `shopify/sync.ts`, `fulfilment-gate.check.ts`, `lines.ts`, `google-sync.ts`, `[card]/page.tsx`, `config-upload/index.ts`, `assign/route.ts`, `unpromoted/route.ts`, `pricing-surface.check.ts`, `rowsToCsv`, `create.ts`, `engine.ts`, `expanded-node.check.ts`, `customize/route.ts`, `migrate-public-apply.ts`, `shop/checkout/route.ts`, `easyship/webhook/route.ts`, `permissions.ts`, `customisation-binding.test.ts`, `SearchVisibilityCard.tsx`, `inventory/actions.ts`, `replace.ts`, `xray-cross-section.tsx`, `media-assets/index.ts`, `page-faq/index.ts`, `preview.ts`, `readjustment/checkout.ts`, `integrity.check.ts`, `shop-listings.ts`, `button.tsx`, `service-prices.ts`, `next`, `parcels.ts`, `err`, `normalizePhone`, `fake-admin.ts`, `csv-import.ts`, `withLocale`, `settings-breadcrumbs.ts`, `getSiteOrigin`, `milestones/ledger.ts`, `calendar.ts`, `product-slide-section-renderer.tsx`, `email/index.ts`, `order-shipment.ts`, `assist/route.ts`, `partners/index.ts`, `members-routes.test.ts`, `store.ts`, `rma/eligibility.ts`, `customization-llm.ts`, `completed`, `xray-pillow.tsx`, `inventory-deduction.ts`, `tax.ts`, `morphs.ts`, `appointments-calendar.tsx`, `google-status.ts`, `package.json`, `ref_node_assert`, `commissions/index.ts`, `ics.ts`, `rma/actions.ts`, `proxy.ts`, `layout.test.ts`, `allowance.ts`, `variant-labels.ts`, `assist-link/index.ts`, `telegram/webhook/route.ts`, `supabaseAdmin`, `validateCoupon`, `audit-log/page.tsx`, `from-inventory.ts`, `contact-sheet.ts`, `access.ts`, `reviews/__tests__/route.test.ts`, `price-sync.ts`, `fit.ts`, `discounts.ts`, `templates.ts`, `quote/route.ts`, `ai-referrers.ts`, `results-sla/route.ts`, `composed-price.test.ts`, `order-margins.ts`, `admin-guard.test.ts`, `app-dock-actions.ts`, `contacts.ts`, `roles-routes.test.ts`, `accept/route.ts`, `cost-column-grants.test.ts`, `createSupabaseServerClient`, `readjustments/checkout/route.ts`, `import-drive.ts`, `components.ts`, `[topic]/page.tsx`?**

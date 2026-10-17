@@ -15096,9 +15096,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/content-audit.md": {
-    "mtime": 1792243349.7002177,
-    "seen": 1792243448.9256015,
-    "ast_hash": "ddf83276b53991f7c24e5c1ff22380be",
+    "mtime": 1792248146.9779198,
+    "seen": 1792248315.5225382,
+    "ast_hash": "a6b9df07c22d6ca43f219c38809eda33",
     "semantic_hash": ""
   },
   "lib/__tests__/blog-related.test.ts": {
