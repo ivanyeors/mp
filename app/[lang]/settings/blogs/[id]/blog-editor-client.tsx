@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MAX_META_DESCRIPTION_CHARS } from "@/lib/seo/meta-description";
 import {
     bold,
     italic,
@@ -333,6 +334,16 @@ export default function BlogEditorPage({
                         rows={2}
                         className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
+                    <p
+                        className={`text-xs ${activeContent.description.length > MAX_META_DESCRIPTION_CHARS ? "text-destructive" : "text-muted-foreground"}`}
+                    >
+                        {activeContent.description.length}/{MAX_META_DESCRIPTION_CHARS}
+                        {activeContent.description.trim()
+                            ? activeContent.description.length > MAX_META_DESCRIPTION_CHARS
+                                ? " · search results cut it off"
+                                : ""
+                            : " · empty, so search results show the opening of the post"}
+                    </p>
                 </div>
 
                 {/* SEO Keywords */}

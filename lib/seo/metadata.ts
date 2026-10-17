@@ -10,6 +10,8 @@ export type PageMetadataInput = {
   keywords?: string[];
   type?: "website" | "article";
   noindex?: boolean;
+  /** Locales the page really exists in; defaults to every supported locale. */
+  alternateLocales?: readonly string[];
 };
 
 export function buildPageMetadata(input: PageMetadataInput): Metadata {
@@ -37,7 +39,7 @@ export function buildPageMetadata(input: PageMetadataInput): Metadata {
     },
     alternates: {
       canonical: url,
-      languages: localeAlternates(input.path),
+      languages: localeAlternates(input.path, input.alternateLocales),
     },
   };
 }
