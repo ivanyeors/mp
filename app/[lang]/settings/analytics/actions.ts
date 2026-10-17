@@ -582,11 +582,10 @@ export async function getProspectJourneyTransitions(input: {
 > {
   await assertAdmin("analytics");
   try {
-    const {
-      listCountriesFromDb,
-      listEntrySourcesFromDb,
-      loadPageTransitionsFromDb,
-    } = await import("@/lib/analytics/journey/aggregates");
+    const [{ loadPageTransitionsFromDb }, { readJourneyFacets }] = await Promise.all([
+      import("@/lib/analytics/journey/aggregates"),
+      import("@/lib/analytics/journey/cached"),
+    ]);
     const db = supabaseAdmin();
     const entrySource = input.entrySource?.trim() || null;
     const visitorCohort =
@@ -599,8 +598,7 @@ export async function getProspectJourneyTransitions(input: {
     const expandPath = input.expandPath?.trim() || null;
     const [
       { nodes, edges, sections, expandablePaths, countryLegend },
-      entrySources,
-      countryOptions,
+      { entrySources, countries: countryOptions },
     ] = await Promise.all([
       loadPageTransitionsFromDb(db, {
         from: input.from,
@@ -617,8 +615,7 @@ export async function getProspectJourneyTransitions(input: {
             ? input.entryTopN
             : undefined,
       }),
-      listEntrySourcesFromDb(db),
-      listCountriesFromDb(db),
+      readJourneyFacets(),
     ]);
     return {
       ok: true,
@@ -635,9 +632,12 @@ export async function getProspectJourneyTransitions(input: {
   }
 }
 
-/** Expanded-node dig-in only — does not return graph nodes/edges. */
-export async function getProspectJourneyNodeDetail(input: {
-  path: string;
+/**
+ * Expanded-node dig-in only — does not return graph nodes/edges. Every
+ * selected node in one call, so one database read serves them all.
+ */
+export async function getProspectJourneyNodeDetails(input: {
+  paths: string[];
   from: string;
   to: string;
   entrySource?: string | null;
@@ -651,19 +651,24 @@ export async function getProspectJourneyNodeDetail(input: {
 }): Promise<
   | {
       ok: true;
-      detail: JourneyNodeDetail | null;
-      groupDetail: JourneyGroupDetail | null;
-      convertedDetail: JourneyConvertedDetail | null;
+      details: {
+        path: string;
+        detail: JourneyNodeDetail | null;
+        groupDetail: JourneyGroupDetail | null;
+        convertedDetail: JourneyConvertedDetail | null;
+      }[];
     }
   | { ok: false; error: string }
 > {
   await assertAdmin("analytics");
   try {
-    const { loadNodeDetailFromDb } = await import(
+    const { loadNodeDetailsFromDb } = await import(
       "@/lib/analytics/journey/aggregates"
     );
-    const path = input.path?.trim();
-    if (!path) return { ok: false, error: "path required" };
+    const paths = [
+      ...new Set((input.paths ?? []).map((p) => p?.trim()).filter(Boolean)),
+    ];
+    if (paths.length === 0) return { ok: false, error: "paths required" };
     const entrySource = input.entrySource?.trim() || null;
     const visitorCohort =
       input.visitorCohort === "new" || input.visitorCohort === "returning"
@@ -672,25 +677,23 @@ export async function getProspectJourneyNodeDetail(input: {
     const countries = (input.countries ?? [])
       .map((c) => c.trim())
       .filter(Boolean);
-    const { detail, groupDetail, convertedDetail } = await loadNodeDetailFromDb(
-      supabaseAdmin(),
-      {
-        path,
-        from: input.from,
-        to: input.to,
-        entrySource,
-        visitorCohort,
-        countries: countries.length > 0 ? countries : null,
-        includeConverted: input.includeConverted === true,
-        groupPaths: input.groupPaths !== false,
-        entryTopN:
-          typeof input.entryTopN === "number" && input.entryTopN >= 0
-            ? input.entryTopN
-            : undefined,
-      },
-    );
-    return { ok: true, detail, groupDetail, convertedDetail };
+    const details = await loadNodeDetailsFromDb(supabaseAdmin(), {
+      paths,
+      from: input.from,
+      to: input.to,
+      entrySource,
+      visitorCohort,
+      countries: countries.length > 0 ? countries : null,
+      includeConverted: input.includeConverted === true,
+      groupPaths: input.groupPaths !== false,
+      entryTopN:
+        typeof input.entryTopN === "number" && input.entryTopN >= 0
+          ? input.entryTopN
+          : undefined,
+    });
+    return { ok: true, details };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to load detail" };
   }
 }
+
