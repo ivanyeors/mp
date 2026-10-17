@@ -82,10 +82,14 @@ assert.match(bench, /max-h-\[28rem\] overflow-y-auto/, "rail scrolls instead of 
 assert.match(bench, /onKeyDown=\{url \? onKeyDown : undefined\}/, "fit is keyboard-reachable, not drag-only");
 // A mapping row whose asset lost its hosted_url is dropped by fetchOverlayMap,
 // so the shop renders nothing — the workbench must not call that "unmapped".
-assert.match(bench, /const assetMissing = item\.mapping != null && url == null;/, "missing asset is a distinct state");
 assert.match(
   bench,
-  /items\.filter\(\(i\) => i\.mapping\?\.hosted_url\)\.length/,
+  /const assetMissing = overlayState\(item\.mapping\) === "missing";/,
+  "missing asset is a distinct state",
+);
+assert.match(
+  bench,
+  /items\.filter\(overlayShips\)\.length/,
   "the mapped counter counts overlays that actually ship, not mapping rows",
 );
 assert.match(bench, /preserveAspectRatio="xMidYMid slice"/, "same cover behaviour as the configurator");
@@ -121,6 +125,8 @@ assert.match(api, /export async function GET/);
 assert.match(api, /export async function POST/);
 assert.match(api, /export async function DELETE/);
 assert.match(api, /OverlayFitSchema/, "fit validated with OverlayFitSchema");
+assert.match(api, /OverlayColorSchema/, "color validated with OverlayColorSchema");
+assert.match(api, /itemIds: ItemIdsSchema/, "one save can target every size of a family");
 assert.match(api, /item_overlay_mappings/, "route reads item_overlay_mappings");
 
 // --- Configurator preview renders clipped overlays ---
@@ -132,6 +138,12 @@ for (const [name, path] of [
   assert.match(src, /<clipPath id="[^"]*overlay-clip"/, `${name} clips overlay to silhouette`);
   assert.match(src, /overlayFrame\(/, `${name} uses overlayFrame for placement`);
   assert.match(src, /preserveAspectRatio="xMidYMid slice"/, `${name} covers the shape`);
+  assert.match(src, /fill=\{selectedOverlay\.color\}/, `${name} renders a color overlay`);
 }
+
+// --- Families and color overlays ---
+assert.match(bench, /overlayFamilies\(items\)/, "rail groups sizes of the same item");
+assert.match(bench, /onSave\(familyIds, draft\)/, "one size can be applied to every size");
+assert.match(bench, /type="color"/, "color overlay has a picker");
 
 console.log("product-builder overlays self-check ok");

@@ -11,15 +11,17 @@ export async function fetchOverlayMap(
   if (itemIds.length === 0) return map;
   const { data } = await admin
     .from("item_overlay_mappings")
-    .select("item_id, fit, media_assets ( hosted_url )")
+    .select("item_id, fit, color, media_assets ( hosted_url )")
     .in("item_id", itemIds);
   for (const row of (data ?? []) as Array<{
     item_id: number;
     fit: OverlayFit | null;
+    color: string | null;
     media_assets: { hosted_url: string | null } | { hosted_url: string | null }[] | null;
   }>) {
     const asset = Array.isArray(row.media_assets) ? row.media_assets[0] : row.media_assets;
-    if (asset?.hosted_url) map.set(row.item_id, { url: asset.hosted_url, fit: row.fit ?? null });
+    if (row.color) map.set(row.item_id, { color: row.color });
+    else if (asset?.hosted_url) map.set(row.item_id, { url: asset.hosted_url, fit: row.fit ?? null });
   }
   return map;
 }

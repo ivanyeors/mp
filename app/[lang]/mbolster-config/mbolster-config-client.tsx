@@ -1155,7 +1155,11 @@ export function MbolsterConfigClient({
                       preserveAspectRatio="xMidYMid meet"
                     >
                       <path d={bolsterPath} fill="white" />
-                      {selectedOverlay && (
+                      {/* Color overlay: the silhouette itself is the fabric. */}
+                      {selectedOverlay?.color && (
+                        <path d={bolsterPath} fill={selectedOverlay.color} />
+                      )}
+                      {selectedOverlay?.url && (
                         <>
                           <defs>
                             <clipPath id="mbolster-config-overlay-clip">

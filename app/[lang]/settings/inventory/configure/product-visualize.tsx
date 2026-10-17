@@ -2,9 +2,9 @@
 
 /**
  * Product Visualize tab on Products (formerly the Product Builder page, slice 10):
- * map cover/case Items to overlay Media Assets (+ optional fit) so the
- * configurator silhouette shows the real product. The data routes still live
- * under /settings/product-builder/.
+ * map cover/case Items to an overlay — a Media Asset (+ optional fit) or a solid
+ * color — so the configurator silhouette shows the real product. Sizes of the
+ * same item map together. The data routes still live under /settings/product-builder/.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -24,14 +24,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { OverlayWorkbench } from "@/components/product-builder/overlay-workbench";
+import {
+  OverlayWorkbench,
+  type OverlayDraft,
+} from "@/components/product-builder/overlay-workbench";
 import { FILLING_SHAPE_PATHS } from "@/components/spatial/xray-assets";
 import {
   effectiveFillingColors,
   type ColorOverrideRow,
   type EffectiveFillingColor,
 } from "@/lib/spatial-fillings/color-overrides";
-import type { OverlayFit, OverlayMappingItem } from "@/lib/product-builder/overlays";
+import type { OverlayMappingItem } from "@/lib/product-builder/overlays";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { getApiErrorMessage } from "@/lib/utils";
@@ -49,10 +52,12 @@ export function ProductVisualize() {
   );
 
   const [items, setItems] = useState<OverlayItem[]>([]);
+  // Only the first load shows the spinner: a refresh after a save keeps the
+  // workbench mounted, so the selected family/size stays selected.
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await fetch(settingsPath("/settings/product-builder/mappings"));
       const data = await res.json();
@@ -72,38 +77,56 @@ export function ProductVisualize() {
     void load();
   }, [load]);
 
-  const upsert = useCallback(
-    async (itemId: number, assetId: string, fit: OverlayFit | null) => {
-      const res = await fetch(settingsPath("/settings/product-builder/mappings"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId, assetId, fit }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to save mapping"));
-        return;
+  const save = useCallback(
+    async (itemIds: number[], overlay: OverlayDraft) => {
+      setSaving(true);
+      try {
+        const res = await fetch(settingsPath("/settings/product-builder/mappings"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemIds, ...overlay }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          toast.error(getApiErrorMessage(data.error, "Failed to save mapping"));
+          return;
+        }
+        toast.success(itemIds.length > 1 ? `Overlay saved to ${itemIds.length} sizes` : "Overlay saved");
+        await load();
+      } catch {
+        toast.error("Failed to save mapping");
+      } finally {
+        setSaving(false);
       }
-      toast.success("Overlay saved");
-      await load();
     },
     [settingsPath, load],
   );
 
   const remove = useCallback(
-    async (itemId: number) => {
-      const res = await fetch(settingsPath("/settings/product-builder/mappings"), {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to remove mapping"));
-        return;
+    async (itemIds: number[]) => {
+      setSaving(true);
+      try {
+        const res = await fetch(settingsPath("/settings/product-builder/mappings"), {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemIds }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          toast.error(getApiErrorMessage(data.error, "Failed to remove mapping"));
+          return;
+        }
+        toast.success(
+          itemIds.length > 1
+            ? `Overlay removed from ${itemIds.length} sizes — silhouette back to default`
+            : "Overlay removed — silhouette back to default",
+        );
+        await load();
+      } catch {
+        toast.error("Failed to remove mapping");
+      } finally {
+        setSaving(false);
       }
-      toast.success("Overlay removed — silhouette back to default");
-      await load();
     },
     [settingsPath, load],
   );
@@ -114,9 +137,9 @@ export function ProductVisualize() {
         <div className="flex items-center gap-1.5">
           <h2 className="text-lg font-semibold tracking-tight">Product Visualize</h2>
           <InfoTip label="About Product Visualize">
-            Map cover and case items to overlay images from the Media Asset Library.
-            The configurator preview swaps the overlay when the item is selected;
-            unmapped items keep the plain silhouette.
+            Map cover and case items to an overlay — an image from the Media Asset
+            Library or a solid color. The configurator preview swaps the overlay when
+            the item is selected; unmapped items keep the plain silhouette.
           </InfoTip>
         </div>
         <Button type="button" variant="outline" asChild>
@@ -127,7 +150,14 @@ export function ProductVisualize() {
         </Button>
       </div>
 
-      <h3 className="text-base font-semibold tracking-tight">Overlay mapping</h3>
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-base font-semibold tracking-tight">Overlay mapping</h3>
+        <InfoTip label="About Overlay mapping">
+          Sizes of the same item are grouped. Select the item name to give every size
+          the same overlay in one save, or a size chip to set just that size. Switch
+          between Image and Color to choose what fills the silhouette.
+        </InfoTip>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -136,9 +166,9 @@ export function ProductVisualize() {
       ) : (
         <OverlayWorkbench
           items={items}
-          onPick={(itemId, sel, fit) => void upsert(itemId, sel.assetId, fit)}
-          onSaveFit={(itemId, assetId, fit) => void upsert(itemId, assetId, fit)}
-          onRemove={(itemId) => void remove(itemId)}
+          busy={saving}
+          onSave={(itemIds, overlay) => void save(itemIds, overlay)}
+          onRemove={(itemIds) => void remove(itemIds)}
         />
       )}
 
