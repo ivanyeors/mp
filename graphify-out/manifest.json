@@ -8178,9 +8178,9 @@
     "semantic_hash": ""
   },
   "data/blogs/10-unique-gifts-for-tired-parents.mdx": {
-    "mtime": 1792249163.819983,
-    "seen": 1792249365.216595,
-    "ast_hash": "9bf0ce43d96bf9b39d2c6dfbc28d7239",
+    "mtime": 1792249777.3962448,
+    "seen": 1792249877.357572,
+    "ast_hash": "0f7d0c7e8d1390e4e6a6cfb705d9bec5",
     "semantic_hash": ""
   },
   "data/blogs/bolsters-vs-pillows-do-you-really-need-both.mdx": {
@@ -8190,27 +8190,27 @@
     "semantic_hash": ""
   },
   "data/blogs/ergonomic-pillow-vs-regular-pillow-is-it-worth-the-investment.mdx": {
-    "mtime": 1792249271.3599806,
-    "seen": 1792249365.2166014,
-    "ast_hash": "e030fa2cf7aa42a2f2effa4977be4021",
+    "mtime": 1792249777.396912,
+    "seen": 1792249877.3575768,
+    "ast_hash": "061258531156b005dec05a27d1408192",
     "semantic_hash": ""
   },
   "data/blogs/how-a-customised-pillow-can-help-with-sleep-apnea-for-cpap-users.mdx": {
-    "mtime": 1792249118.6631987,
-    "seen": 1792249365.2166047,
-    "ast_hash": "3af9c783c27d760a2220ea8cb14e1e90",
+    "mtime": 1792249777.3973427,
+    "seen": 1792249877.357579,
+    "ast_hash": "6e618e7b85d0df50284deee7150028a4",
     "semantic_hash": ""
   },
   "data/blogs/how-adjustable-pillow-firmness-can-help-kids-sleep-better-the-key-to-restful-nights.mdx": {
-    "mtime": 1792249118.6623328,
-    "seen": 1792249365.2166076,
-    "ast_hash": "1b9f9a3a154dc593560e70aecad223c6",
+    "mtime": 1792249777.3981197,
+    "seen": 1792249877.3575807,
+    "ast_hash": "e8196d020a17f4ec28aab239f064377a",
     "semantic_hash": ""
   },
   "data/blogs/how-often-should-you-replace-your-pillow-and-why-it-matters-for-neck-pain-amp-sleep-quality.mdx": {
-    "mtime": 1792249118.6616502,
-    "seen": 1792249365.2166107,
-    "ast_hash": "3292f762530daacf4853eade2c4154dc",
+    "mtime": 1792249777.398821,
+    "seen": 1792249877.357582,
+    "ast_hash": "2d47aa7ff4e9e27bfcdb85e1135a4f08",
     "semantic_hash": ""
   },
   "data/blogs/how-to-choose-the-best-pillow-in-singapore.mdx": {
@@ -8238,9 +8238,9 @@
     "semantic_hash": ""
   },
   "data/blogs/side-sleeper-pillow-your-ultimate-guide-for-alignment-pain-relief.mdx": {
-    "mtime": 1792249295.1623569,
-    "seen": 1792249365.2166252,
-    "ast_hash": "8690ba2a6ce9ca738040642b3a617f62",
+    "mtime": 1792249777.3998199,
+    "seen": 1792249877.3575897,
+    "ast_hash": "c4f9f3a8314a4271c878f45bd3a221df",
     "semantic_hash": ""
   },
   "data/blogs/tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep.mdx": {
@@ -15144,9 +15144,9 @@
     "semantic_hash": ""
   },
   "lib/__tests__/blog-redirects.test.ts": {
-    "mtime": 1792247100.2577064,
-    "seen": 1792247527.1351302,
-    "ast_hash": "b6f4ac34b3400159b43ffa9e4504a56d",
+    "mtime": 1792249792.8799686,
+    "seen": 1792249877.3547592,
+    "ast_hash": "c1f26dda0837799a635dfc46dec84c3e",
     "semantic_hash": ""
   },
   "lib/__tests__/blog-structure.test.ts": {

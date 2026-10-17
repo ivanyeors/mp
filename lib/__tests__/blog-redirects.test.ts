@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest, type NextFetchEvent } from "next/server";
 import { blogSlugFate, MERGED_BLOG_SLUGS, RETIRED_BLOG_SLUGS } from "@/lib/blog-redirects";
+import { headingId } from "@/lib/blog-structure";
+import { markdownToPlainText } from "@/lib/seo/meta-description";
 
 vi.mock("@/lib/supabase/middleware", () => ({ refreshSupabaseSession: vi.fn(async () => undefined) }));
 
@@ -37,6 +39,22 @@ describe("internal links", () => {
     for (const file of sources) {
       for (const [, slug] of readFileSync(file, "utf8").matchAll(/\/blog\/([a-z0-9-]+)/g)) {
         if (!live.has(slug) || blogSlugFate(slug)) bad.push(`${file} → ${slug}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("section links land on a heading that exists in the target post", () => {
+    const ids = (slug: string) =>
+      new Set(
+        [...readFileSync(`data/blogs/${slug}.mdx`, "utf8").matchAll(/^#{2,3}\s+(.+?)\s*#*\s*$/gm)].map((m) =>
+          headingId(markdownToPlainText(m[1])),
+        ),
+      );
+    const bad: string[] = [];
+    for (const file of sources) {
+      for (const [, slug, id] of readFileSync(file, "utf8").matchAll(/\/blog\/([a-z0-9-]+)#([^)\s"]+)/g)) {
+        if (live.has(slug) && !ids(slug).has(decodeURIComponent(id))) bad.push(`${file} → ${slug}#${id}`);
       }
     }
     expect(bad).toEqual([]);
