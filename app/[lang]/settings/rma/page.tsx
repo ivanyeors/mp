@@ -4,6 +4,7 @@ import { withLocale } from "@/lib/i18n/routing";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { parseStatusFilter, humanizeToken, RMA_STATUSES } from "@/lib/rma/admin-view";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export const runtime = "nodejs";
 
@@ -60,12 +61,12 @@ export default async function RmaQueuePage({
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Returns / RMA</h1>
-        <p className="text-sm text-muted-foreground">
+        <InfoTip label="About Returns / RMA">
           Customer return requests, newest first. Read-only queue — open a request to
           review details.
-        </p>
+        </InfoTip>
       </div>
 
       {/* Status filter — a plain GET form, no client JS needed. */}

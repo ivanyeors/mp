@@ -60,7 +60,7 @@ async function loadPayload(): Promise<DimensionsPayload> {
 }
 
 export async function GET() {
-  const denied = await requireAdmin('products')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
   try {
     return NextResponse.json({ ok: true, ...(await loadPayload()) })
@@ -114,7 +114,7 @@ const AllowanceSchema = z.object({
 const UpsertSchema = z.union([PouchSchema, NeckSchema, AllowanceSchema])
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin('products')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)
@@ -164,7 +164,7 @@ const DeleteSchema = z.union([
 
 /** Reset one entry to its code default by deleting its row. */
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin('products')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)

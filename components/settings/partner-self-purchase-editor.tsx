@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { upsertSelfPurchaseRate } from "@/app/[lang]/settings/partner-commissions/self-purchase-actions";
+import { InfoTip } from "@/components/ui/info-tip";
 
 /**
  * Admin editor for per-partner self-purchase pricing (#82). Rate (percent of MSRP
@@ -37,13 +38,18 @@ export async function PartnerSelfPurchaseEditor() {
 
   return (
     <div className="mt-12 border-t pt-8">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h2 className="text-lg font-semibold tracking-tight">Partner self-purchase pricing</h2>
-        <p className="text-sm text-muted-foreground">
-          A signed-in partner buying pillows &amp; bolsters in their OWN account gets this rate off
-          MSRP, up to the unit cap. Self-purchases earn NO commission and never count toward the
-          Milestone track — the better price is the reward. Over-cap units price normally. Staff only.
-        </p>
+        <InfoTip label="About Partner self-purchase pricing">
+          <p>
+            A signed-in partner buying pillows &amp; bolsters in their OWN account gets this rate off
+            MSRP, up to the unit cap.
+          </p>
+          <p>
+            Self-purchases earn NO commission and never count toward the Milestone track — the better
+            price is the reward. Over-cap units price normally. Staff only.
+          </p>
+        </InfoTip>
       </div>
 
       <div className="mt-6 min-w-0 overflow-x-auto rounded-lg border">

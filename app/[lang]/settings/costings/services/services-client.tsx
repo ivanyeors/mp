@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -154,15 +155,15 @@ export default function ServiceFeesClient({
   return (
     <div className={isDirty ? `space-y-6 ${mobileStickyActionBarSpacerClassName}` : "space-y-6"}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h1>Service fees</h1>
-          <p className="text-sm text-muted-foreground">
+          <InfoTip label="About Service fees">
             Measurement and re-adjustment are priced here like everything else in{" "}
             <Link href={withLocale("/settings/costings", locale)} className="underline underline-offset-4">
               Costings
             </Link>
             : this is what the customer pays. Changes apply on the next quote — no deploy.
-          </p>
+          </InfoTip>
         </div>
         <PageActions>
           <Button
@@ -190,11 +191,13 @@ export default function ServiceFeesClient({
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Services</CardTitle>
-              <CardDescription>
-                Fees are added to a total automatically — Staff never type them, and customers never choose them in
-                a cart.
-              </CardDescription>
+              <div className="flex items-center gap-1.5">
+                <CardTitle className="text-base">Services</CardTitle>
+                <InfoTip label="About Services">
+                  Fees are added to a total automatically — Staff never type them, and customers never choose them in
+                  a cart.
+                </InfoTip>
+              </div>
             </CardHeader>
             <CardContent className="space-y-5">
               {SERVICE_KEYS.map((key) => (
@@ -202,9 +205,9 @@ export default function ServiceFeesClient({
                   key={key}
                   className="grid gap-3 border-b pb-5 last:border-b-0 last:pb-0 md:grid-cols-[1fr_9rem_9rem] md:items-start"
                 >
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <div className="font-medium">{SERVICE_LABELS[key]}</div>
-                    <p className="text-sm text-muted-foreground">Charged when {CHARGED_WHEN[key]}</p>
+                    <InfoTip label={`About ${SERVICE_LABELS[key]}`}>Charged when {CHARGED_WHEN[key]}</InfoTip>
                   </div>
                   <div className="grid grid-cols-2 gap-3 md:contents">
                     <div className="space-y-1.5">
@@ -244,11 +247,13 @@ export default function ServiceFeesClient({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Complimentary re-adjustment</CardTitle>
-              <CardDescription>
-                Premium Mpillow only. Basic Mpillow and Mbolster always pay the re-adjustment fee. Counted per pillow,
-                from the purchase date, in Singapore calendar days.
-              </CardDescription>
+              <div className="flex items-center gap-1.5">
+                <CardTitle className="text-base">Complimentary re-adjustment</CardTitle>
+                <InfoTip label="About Complimentary re-adjustment">
+                  Premium Mpillow only. Basic Mpillow and Mbolster always pay the re-adjustment fee. Counted per pillow,
+                  from the purchase date, in Singapore calendar days.
+                </InfoTip>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">

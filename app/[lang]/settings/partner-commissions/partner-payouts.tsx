@@ -3,6 +3,7 @@ import { settleDueCommissions } from "@/lib/commissions/ledger";
 import { signedImageUrl } from "@/lib/payout-upload";
 import { PAYOUT_IMAGE_ALLOWED_MIME } from "@/lib/payout-upload/limits";
 import { recordPayoutAction } from "./payout-actions";
+import { InfoTip } from "@/components/ui/info-tip";
 
 type PartnerRow = { id: string; name: string | null };
 type DetailsRow = {
@@ -110,14 +111,19 @@ export async function PartnerPayouts() {
 
   return (
     <section className="mt-12 space-y-4">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h2 className="text-xl font-semibold tracking-tight">Payouts</h2>
-        <p className="text-sm text-muted-foreground">
-          Manual payouts (ADR 0015). Released balance = commissions past the return
-          window, not yet paid. Recording a payout marks the covered commissions{" "}
-          <span className="font-mono">paid</span> and is immutable — a mistake is
-          corrected with a new negative entry, never an edit. No minimum threshold.
-        </p>
+        <InfoTip label="About Payouts">
+          <p>
+            Manual payouts (ADR 0015). Released balance = commissions past the return
+            window, not yet paid.
+          </p>
+          <p>
+            Recording a payout marks the covered commissions{" "}
+            <span className="font-mono">paid</span> and is immutable — a mistake is
+            corrected with a new negative entry, never an edit. No minimum threshold.
+          </p>
+        </InfoTip>
       </div>
 
       {rows.length === 0 ? (

@@ -42,6 +42,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { CalendarIcon, RefreshCw } from "lucide-react";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { InfoTip } from "@/components/ui/info-tip";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
 
@@ -700,12 +701,14 @@ export default function AnalyticsClient() {
   const timelineCard = (
     <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-        <CardTitle>Product sales timeline</CardTitle>
-        <CardDescription>
-          {timelineView === "products"
-            ? "Timeline view of different products being sold over time."
-            : "Timeline view of parts sold by category over time."}
-        </CardDescription>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>Product sales timeline</CardTitle>
+          <InfoTip label="About Product sales timeline">
+            {timelineView === "products"
+              ? "Timeline view of different products being sold over time."
+              : "Timeline view of parts sold by category over time."}
+          </InfoTip>
+        </div>
         <CardAction>
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <Tabs value={timelineView} onValueChange={(v) => setTimelineView(v as "parts" | "products")} className="w-full sm:w-auto">
@@ -757,8 +760,10 @@ export default function AnalyticsClient() {
   const mpMetricsCard = (
     <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-        <CardTitle>Results</CardTitle>
-        <CardDescription>Mp-config answer breakdown from released results (final responses) in the selected date range.</CardDescription>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>Results</CardTitle>
+          <InfoTip label="About Results">Mp-config answer breakdown from released results (final responses) in the selected date range.</InfoTip>
+        </div>
         <CardAction>
           <Button
             variant="ghost"
@@ -789,11 +794,11 @@ export default function AnalyticsClient() {
     return (
       <div className="space-y-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h1>Analytics</h1>
-            <p className="text-sm text-muted-foreground">
+            <InfoTip label="About Analytics">
               Retrospective channel P&L from paid Orders and the Shopify order mirror.
-            </p>
+            </InfoTip>
           </div>
           <Button disabled>Loading…</Button>
         </div>
@@ -819,11 +824,11 @@ export default function AnalyticsClient() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h1>Analytics</h1>
-          <p className="text-sm text-muted-foreground">
+          <InfoTip label="About Analytics">
             Retrospective channel P&L from paid Orders and the Shopify order mirror.
-          </p>
+          </InfoTip>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <Tabs
@@ -926,12 +931,14 @@ export default function AnalyticsClient() {
       <div className="grid gap-6">
         <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
           <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-            <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
-            <CardDescription>
-              {marginView === "products"
-                ? "Shows cost vs margin value by pillow product over the selected date range (units sold)."
-                : "Shows cost vs margin value by part category over the selected date range (units sold), with drill-down into items."}
-            </CardDescription>
+            <div className="flex items-center gap-1.5">
+              <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
+              <InfoTip label="About margin">
+                {marginView === "products"
+                  ? "Shows cost vs margin value by pillow product over the selected date range (units sold)."
+                  : "Shows cost vs margin value by part category over the selected date range (units sold), with drill-down into items."}
+              </InfoTip>
+            </div>
             <CardAction>
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                 <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")} className="w-full sm:w-auto">
@@ -1028,10 +1035,12 @@ export default function AnalyticsClient() {
       <div className="grid gap-6">
         <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
           <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-            <CardTitle>Inventory movement</CardTitle>
-            <CardDescription>
-              Waterfall comparison between start vs end quantities. Click a part to drill into size, then type.
-            </CardDescription>
+            <div className="flex items-center gap-1.5">
+              <CardTitle>Inventory movement</CardTitle>
+              <InfoTip label="About Inventory movement">
+                Waterfall comparison between start vs end quantities. Click a part to drill into size, then type.
+              </InfoTip>
+            </div>
             <CardAction>
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                 {(inventoryGroup === "size" || inventoryGroup === "type") && (

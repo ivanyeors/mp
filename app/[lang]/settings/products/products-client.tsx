@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
@@ -9,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
 import { useMobileDockActions } from "@/components/ui/page-dock-actions";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,21 +43,6 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
-
-// Loaded on first open: the overlay workbench would otherwise push the Products
-// list over its first-load JS budget (scripts/bundle-budget.json).
-const ProductVisualize = dynamic(
-    () => import("./product-visualize").then((m) => m.ProductVisualize),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="flex justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-        ),
-    },
-);
-const DimensionsSection = dynamic(() => import("./dimensions-section").then((m) => m.DimensionsSection), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -724,19 +709,17 @@ export function ProductsClient({
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
+            <div className="flex items-center gap-1.5">
                 <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-                <p className="text-muted-foreground mt-1 text-sm">
+                <InfoTip label="About Products">
                     Manage your store products, variants, and inventory.
-                </p>
+                </InfoTip>
             </div>
 
             <Tabs defaultValue={initialTab}>
                 <TabsList>
                     <TabsTrigger value="products">Products</TabsTrigger>
                     <TabsTrigger value="categories">Categories</TabsTrigger>
-                    <TabsTrigger value="visualize">Product Visualize</TabsTrigger>
-                    <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="products" className="mt-6 space-y-6">
@@ -814,12 +797,6 @@ export function ProductsClient({
                     <CategoriesManager />
                 </TabsContent>
 
-                <TabsContent value="visualize" className="mt-6">
-                    <ProductVisualize />
-                </TabsContent>
-                <TabsContent value="dimensions" className="mt-6">
-                    <DimensionsSection settingsPath={to} />
-                </TabsContent>
             </Tabs>
 
         </div>

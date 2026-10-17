@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatAdminDate } from "@/lib/format/admin-date";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export type BlogRow = {
     id: string;
@@ -90,8 +91,12 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
         <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1>Blog Management</h1>
-                    <p className="text-muted-foreground mt-1">Create, edit, and publish blog posts.</p>
+                    <div className="flex items-center gap-1.5">
+                      <h1>Blog Management</h1>
+                      <InfoTip label="About Blog Management">
+                        <p>Create, edit, and publish blog posts.</p>
+                      </InfoTip>
+                    </div>
                 </div>
                 <Button asChild size="sm" className="w-full sm:w-auto">
                     <Link href={to("/settings/blogs/new")}>

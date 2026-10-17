@@ -20,6 +20,7 @@ import {
   telegramActionLabel,
   type TelegramAction,
 } from "@/lib/telegram/roles";
+import { InfoTip } from "@/components/ui/info-tip";
 
 type IssuedCode = { name: string; code: string; expiresAt: string | null };
 
@@ -185,12 +186,12 @@ export function TelegramAccessTab({
       </div>
 
       <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1 text-sm">
+        <div className="flex items-center gap-1.5 text-sm">
           <p className="font-medium">Preview in Telegram</p>
-          <p className="text-muted-foreground">
+          <InfoTip label="About Preview in Telegram">
             Sends sample review cards to the measurements group so everyone sees how they will look. Tapping a
             button on them tells each person whether they are set up. Nothing is posted to Google.
-          </p>
+          </InfoTip>
         </div>
         <Button variant="outline" onClick={sendPreview} disabled={previewing} className="shrink-0">
           {previewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}

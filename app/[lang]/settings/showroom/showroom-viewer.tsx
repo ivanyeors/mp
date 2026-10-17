@@ -10,6 +10,7 @@ import { ZONE_TINTS, legendSwatches } from "@/lib/showroom/describe";
 import type { ShowroomUnit } from "@/lib/showroom/types";
 // Types only: three.js itself loads with the scene, after the page is up.
 import type { PickInfo, SceneOptions, ShowroomScene } from "./showroom-scene";
+import { InfoTip } from "@/components/ui/info-tip";
 
 type Toggles = Omit<SceneOptions, "dark" | "mode">;
 
@@ -71,9 +72,14 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1>Showroom Model</h1>
+        <div className="flex items-center gap-1.5">
+          <h1>Showroom Model</h1>
+          <InfoTip label="About Showroom Model">
+            <p>Drag to look around, tap a wall or pane to see its size.</p>
+          </InfoTip>
+        </div>
         <p className="text-muted-foreground mt-2">
-          {unit.title}, {unit.subtitle}. Drag to look around, tap a wall or pane to see its size.
+          {unit.title}, {unit.subtitle}
         </p>
       </div>
 

@@ -48,9 +48,9 @@ assert.match(members, /hidden min-w-0 sm:block/);
 assert.match(staff, /flex flex-col gap-2 px-4 py-2\.5 sm:flex-row sm:items-center/);
 assert.match(staff, /min-w-0 break-all font-medium/);
 
-// appointments: title + settings gear share one row; phone blurb is short
+// appointments: title + settings gear share one row; blurb sits behind the InfoTip
 assert.match(appointments, /flex shrink-0 items-start justify-between gap-3/);
-assert.match(appointments, /text-muted-foreground md:hidden/);
+assert.match(appointments, /<InfoTip label="About Appointments">/);
 
 // appointments calendar: own toolbar (no FullCalendar header), 3-day phone view,
 // tap-to-select, selection bar clears the dock, detail is a Sheet

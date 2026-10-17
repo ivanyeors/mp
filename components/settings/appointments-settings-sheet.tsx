@@ -31,6 +31,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import type { Locale } from "@/lib/i18n/locales";
 import type { ResolvedLocation } from "@/lib/locations";
 import { cn } from "@/lib/utils";
+import { InfoTip } from "@/components/ui/info-tip";
 
 type Props = {
   open: boolean;
@@ -43,10 +44,13 @@ type Props = {
   onToggleLocation: (id: string, bookable: boolean) => Promise<void>;
 };
 
-function SectionHeading({ title, hint }: { title: string; hint?: string }) {
+function SectionHeading({ title, hint, info }: { title: string; hint?: string; info?: string }) {
   return (
     <div className="pt-2">
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {info ? <InfoTip label={`About ${title}`}>{info}</InfoTip> : null}
+      </div>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
@@ -404,7 +408,8 @@ export function AppointmentsSettingsSheet({
             <TabsContent value="availability" className="space-y-3">
               <SectionHeading
                 title="Weekly hours (SGT)"
-                hint="One shared schedule for every location, like Google Calendar's appointment availability. Saved with the button below."
+                info="One shared schedule for every location, like Google Calendar's appointment availability."
+                hint="Saved with the button below."
               />
               <AvailabilityEditor
                 value={draft.availability}
@@ -518,7 +523,7 @@ export function AppointmentsSettingsSheet({
             <TabsContent value="whatsapp" className="space-y-4">
               <SectionHeading
                 title="Notifications"
-                hint="The master switch for every automated WhatsApp message."
+                info="The master switch for every automated WhatsApp message."
               />
               <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
                 <div className="space-y-1">

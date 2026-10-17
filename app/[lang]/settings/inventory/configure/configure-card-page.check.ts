@@ -8,7 +8,7 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 
 const dir = join(process.cwd(), "app", "[lang]", "settings", "inventory", "configure");
-const grid = readFileSync(join(dir, "page.tsx"), "utf8");
+const grid = readFileSync(join(dir, "configure-client.tsx"), "utf8");
 const card = readFileSync(join(dir, "[card]", "page.tsx"), "utf8");
 
 // Grid: cards are links to the deep-linkable [card] route; the drawer is gone.
