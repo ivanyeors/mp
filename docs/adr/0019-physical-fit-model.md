@@ -36,6 +36,11 @@ and **Promote** grouping cannot see it and cannot change.
 - **Natural settle is a display-and-fit pass.** Fill spreads into an empty neighbouring
   **sub-section** of the same **Section** and **Layer**, thinning by volume, on screen and in
   the loft arithmetic. It never rewrites which **cell** a pouch was put in.
+  *Amended 17-10-2026 (Ivan: "it cannot expand like a rubber band"):* a pouch is cloth around
+  fill. Beside an empty sub-section it gets back the length its cell cut off, plus what its
+  fabric gives as it flattens — `(π/2 − 1)` mm per mm of thickness (a stadium of fixed
+  perimeter), or the measured flat length — never the whole gap. Volume still sets how much it
+  thins over that.
 
 ## Considered options
 

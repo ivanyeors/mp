@@ -304,7 +304,10 @@ export function movePiece(
   const moving = placements.find((p) => inCell(p, ref) && p.slot === ref.slot);
   if (!moving) return { ok: false, error: `No piece at ${ref.section} ${ref.subSection} slot ${ref.slot}` };
   const staying = sameCell(ref, to.cell);
-  const without = placements.filter((p) => p !== moving);
+  // Staying, the Layer it leaves may close: renumber first, so `to.layer` (an
+  // index into the Layers left behind) is also the stored row it joins.
+  const lifted = placements.filter((p) => p !== moving);
+  const without = staying ? compactLayers(lifted, to.cell) : lifted;
   const layers = cellLayers(without, to.cell);
   const target = to.layer ?? Math.min(layers.findIndex((l) => l.length < MAX_PIECES_PER_LAYER), layers.length);
   const at = target < 0 ? layers.length : target;

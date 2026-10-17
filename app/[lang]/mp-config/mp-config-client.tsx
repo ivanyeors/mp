@@ -2551,8 +2551,14 @@ export function MpConfigClient({
                   <XrayCrossSection
                     fit={staffAssist ? assistFit : guestFit}
                     itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                    itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                    itemDims={staffAssist ? assistItemDims : guestItemDims}
                     cut={cut}
                     onCutChange={staffAssist ? setCut : undefined}
+                    // Staff drag pouches between columns, Layers and Sections on the cut too — the same session mix.
+                    placements={staffAssist ? assistPlacements : undefined}
+                    onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                    items={staffAssist ? assistItems : undefined}
                     colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
                     themed={false}
                     className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
