@@ -50,6 +50,35 @@ import {
   type SectionNode,
 } from "./transitions";
 
+type Rows<T> = { data: T[] | null; error: { message: string } | null };
+
+function rowsOrThrow<T>({ data, error }: Rows<T>): T[] {
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// `.in()` is serialised into the request URL. Past ~400 Visit ids Supabase still
+// answers 200, but Node's fetch fails reading the response ("TypeError: fetch
+// failed"), so every id list here is looked up in bounded chunks.
+const IN_CHUNK = 200;
+
+async function selectInChunks<T>(
+  ids: string[],
+  query: (chunk: string[]) => PromiseLike<Rows<T>>,
+): Promise<T[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += IN_CHUNK) {
+    chunks.push(ids.slice(i, i + IN_CHUNK));
+  }
+  const results = await Promise.all(chunks.map(query));
+  return results.flatMap((r) => rowsOrThrow(r));
+}
+
+/** Chunks arrive one after another — restore the single query's time order. */
+function byOccurredAt(a: { occurred_at: string }, b: { occurred_at: string }): number {
+  return a.occurred_at.localeCompare(b.occurred_at);
+}
+
 export async function listEntrySourcesFromDb(
   db: SupabaseClient,
 ): Promise<string[]> {
@@ -113,35 +142,37 @@ async function loadSectionGraphFromDb(
     groupPath: (path: string) => string;
   },
 ): Promise<{ nodes: SectionNode[]; edges: SectionEdge[] }> {
-  let q = db
-    .from("analytics_events")
-    .select("visit_id, path, section_id, occurred_at")
-    .eq("type", "section_view")
-    .gte("occurred_at", opts.from)
-    .lte("occurred_at", opts.to)
-    .order("occurred_at", { ascending: true })
-    .limit(5000);
-  if (opts.visitIds) q = q.in("visit_id", opts.visitIds);
+  const sectionViews = () =>
+    db
+      .from("analytics_events")
+      .select("visit_id, path, section_id, occurred_at")
+      .eq("type", "section_view")
+      .gte("occurred_at", opts.from)
+      .lte("occurred_at", opts.to)
+      .order("occurred_at", { ascending: true })
+      .limit(5000);
+  const data = (
+    opts.visitIds
+      ? await selectInChunks(opts.visitIds, (ids) => sectionViews().in("visit_id", ids))
+      : rowsOrThrow(await sectionViews())
+  ).sort(byOccurredAt);
 
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-
-  let dropQ = db
-    .from("analytics_visits")
-    .select("drop_off_path, drop_off_section")
-    .not("drop_off_path", "is", null)
-    .not("drop_off_section", "is", null)
-    .not("ended_at", "is", null)
-    .gte("started_at", opts.from)
-    .lte("started_at", opts.to)
-    .limit(5000);
-  if (opts.visitIds) dropQ = dropQ.in("id", opts.visitIds);
-
-  const { data: dropped, error: dErr } = await dropQ;
-  if (dErr) throw new Error(dErr.message);
+  const droppedVisits = () =>
+    db
+      .from("analytics_visits")
+      .select("drop_off_path, drop_off_section")
+      .not("drop_off_path", "is", null)
+      .not("drop_off_section", "is", null)
+      .not("ended_at", "is", null)
+      .gte("started_at", opts.from)
+      .lte("started_at", opts.to)
+      .limit(5000);
+  const dropped = opts.visitIds
+    ? await selectInChunks(opts.visitIds, (ids) => droppedVisits().in("id", ids))
+    : rowsOrThrow(await droppedVisits());
 
   const dropCounts = new Map<string, number>();
-  for (const row of dropped ?? []) {
+  for (const row of dropped) {
     const path = opts.groupPath(row.drop_off_path as string);
     const sectionId = row.drop_off_section as string;
     if (!path || !sectionId) continue;
@@ -150,7 +181,7 @@ async function loadSectionGraphFromDb(
   }
 
   return buildSectionTransitions(
-    (data ?? [])
+    data
       .filter((row) => row.section_id)
       .map((row) => ({
         visitId: row.visit_id as string,
@@ -216,16 +247,17 @@ async function loadConvertedRecordsFromDb(
   const orderIds = [
     ...new Set(opts.convertedVisits.map((v) => v.converted_order_id)),
   ];
-  const { data: orders, error: oErr } = await db
-    .from("orders")
-    .select("id, paid_at, total")
-    .in("id", orderIds)
-    .not("paid_at", "is", null)
-    .limit(5000);
-  if (oErr) throw new Error(oErr.message);
+  const orders = await selectInChunks(orderIds, (ids) =>
+    db
+      .from("orders")
+      .select("id, paid_at, total")
+      .in("id", ids)
+      .not("paid_at", "is", null)
+      .limit(5000),
+  );
 
   const orderMap = new Map<string, { paid_at: string; total: number }>();
-  for (const row of orders ?? []) {
+  for (const row of orders) {
     if (row.id && row.paid_at != null) {
       orderMap.set(row.id as string, {
         paid_at: row.paid_at as string,
@@ -235,17 +267,18 @@ async function loadConvertedRecordsFromDb(
   }
 
   const convertedIds = opts.convertedVisits.map((v) => v.id);
-  const { data: convEvents, error: eErr } = await db
-    .from("analytics_events")
-    .select("visit_id, path, occurred_at")
-    .eq("type", "page_view")
-    .in("visit_id", convertedIds)
-    .order("occurred_at", { ascending: true })
-    .limit(5000);
-  if (eErr) throw new Error(eErr.message);
+  const convEvents = await selectInChunks(convertedIds, (ids) =>
+    db
+      .from("analytics_events")
+      .select("visit_id, path, occurred_at")
+      .eq("type", "page_view")
+      .in("visit_id", ids)
+      .order("occurred_at", { ascending: true })
+      .limit(5000),
+  );
 
   const eventsByVisit = new Map<string, PageViewEvent[]>();
-  for (const row of convEvents ?? []) {
+  for (const row of convEvents) {
     const visitId = row.visit_id as string;
     const list = eventsByVisit.get(visitId) ?? [];
     list.push({
@@ -384,13 +417,14 @@ export async function loadPageTransitionsFromDb(
   if (rangeVisits.length > 0) {
     const visitorIds = [...new Set(rangeVisits.map((v) => v.visitorId))];
     // Prior Visits may sit outside the date window — needed for Returning + gaps.
-    const { data: histRows, error: histErr } = await db
-      .from("analytics_visits")
-      .select("id, visitor_id, started_at, ended_at, drop_off_path, country")
-      .in("visitor_id", visitorIds)
-      .limit(5000);
-    if (histErr) throw new Error(histErr.message);
-    allVisits = (histRows ?? []).map(rowToVisitMeta);
+    const histRows = await selectInChunks(visitorIds, (ids) =>
+      db
+        .from("analytics_visits")
+        .select("id, visitor_id, started_at, ended_at, drop_off_path, country")
+        .in("visitor_id", ids)
+        .limit(5000),
+    );
+    allVisits = histRows.map(rowToVisitMeta);
 
     const cohortIds = filterVisitIdsByCohort(
       rangeVisits,
@@ -413,18 +447,21 @@ export async function loadPageTransitionsFromDb(
   let events: PageViewEvent[] = [];
   const groupedPaths = new Map<string, Map<string, number>>();
   if (visitIds.length > 0) {
-    const { data, error } = await db
-      .from("analytics_events")
-      .select("visit_id, path, occurred_at")
-      .eq("type", "page_view")
-      .gte("occurred_at", opts.from)
-      .lte("occurred_at", opts.to)
-      .in("visit_id", visitIds)
-      .order("occurred_at", { ascending: true })
-      .limit(5000);
-    if (error) throw new Error(error.message);
+    const data = (
+      await selectInChunks(visitIds, (ids) =>
+        db
+          .from("analytics_events")
+          .select("visit_id, path, occurred_at")
+          .eq("type", "page_view")
+          .gte("occurred_at", opts.from)
+          .lte("occurred_at", opts.to)
+          .in("visit_id", ids)
+          .order("occurred_at", { ascending: true })
+          .limit(5000),
+      )
+    ).sort(byOccurredAt);
 
-    for (const row of data ?? []) {
+    for (const row of data) {
       const raw = row.path as string;
       const grouped = groupPath(raw);
       if (grouped === raw) continue;
@@ -432,7 +469,7 @@ export async function loadPageTransitionsFromDb(
       seen.set(raw, (seen.get(raw) ?? 0) + 1);
       groupedPaths.set(grouped, seen);
     }
-    events = (data ?? []).map((row) => {
+    events = data.map((row) => {
       const visitId = row.visit_id as string;
       return {
         visitId,
@@ -454,15 +491,15 @@ export async function loadPageTransitionsFromDb(
     country?: string | null;
   }[] = [];
   if (visitIds.length > 0) {
-    const { data, error: dErr } = await db
-      .from("analytics_visits")
-      .select("id, drop_off_path, drop_off_section, ended_at, country")
-      .in("id", visitIds)
-      .not("drop_off_path", "is", null)
-      .not("ended_at", "is", null)
-      .limit(5000);
-    if (dErr) throw new Error(dErr.message);
-    dropped = data ?? [];
+    dropped = await selectInChunks(visitIds, (ids) =>
+      db
+        .from("analytics_visits")
+        .select("id, drop_off_path, drop_off_section, ended_at, country")
+        .in("id", ids)
+        .not("drop_off_path", "is", null)
+        .not("ended_at", "is", null)
+        .limit(5000),
+    );
   }
 
   const feedMap = new Map<string, number>();
@@ -491,13 +528,15 @@ export async function loadPageTransitionsFromDb(
     for (const [lastPath, count] of feedMap) feeds.push({ lastPath, count });
   }
   if (visitIds.length > 0) {
-    const { data: endedRows } = await db
-      .from("analytics_visits")
-      .select("id, ended_at")
-      .in("id", visitIds)
-      .not("ended_at", "is", null)
-      .limit(5000);
-    for (const row of endedRows ?? []) {
+    const endedRows = await selectInChunks(visitIds, (ids) =>
+      db
+        .from("analytics_visits")
+        .select("id, ended_at")
+        .in("id", ids)
+        .not("ended_at", "is", null)
+        .limit(5000),
+    );
+    for (const row of endedRows) {
       if (row.id && row.ended_at) {
         visitEndedAt.set(row.id as string, row.ended_at as string);
       }
