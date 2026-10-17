@@ -17668,7 +17668,7 @@
       "file_type": "code",
       "norm_label": "latestfn",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L109"
+      "source_location": "L117"
     },
     {
       "id": "lib_rules_engine_recommend_recommenderr",
@@ -35722,7 +35722,7 @@
       "file_type": "code",
       "norm_label": "legacyonlinemeasurementballpark()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L185"
+      "source_location": "L193"
     },
     {
       "id": "lib_shop_recommendation_rules_derivefirmness",
@@ -36070,7 +36070,7 @@
       "file_type": "code",
       "norm_label": "inputsfrommeasurementprefs()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L69"
+      "source_location": "L77"
     },
     {
       "id": "lib_rules_engine_recommend_lengthtobolsterletter",
@@ -36082,7 +36082,7 @@
       "file_type": "code",
       "norm_label": "lengthtobolsterletter()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L103"
+      "source_location": "L111"
     },
     {
       "id": "lib_rules_engine_recommendation_record_topersistedrecommendationrecord",
@@ -61642,7 +61642,7 @@
       "file_type": "code",
       "norm_label": "legacyshouldersize()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L170"
+      "source_location": "L178"
     },
     {
       "id": "lib_rules_engine_seeds_basicseedgraph",
@@ -62962,7 +62962,7 @@
       "file_type": "code",
       "norm_label": "inputsfrombolsterheight()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L92"
+      "source_location": "L100"
     },
     {
       "id": "lib_shop_customization_inventory_iscaseinventorycategory",
@@ -67474,7 +67474,7 @@
       "file_type": "code",
       "norm_label": "bolstersizetolength()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L97"
+      "source_location": "L105"
     },
     {
       "id": "lib_rules_engine_recommend_inputsfrombasicshoulder",
@@ -67486,7 +67486,7 @@
       "file_type": "code",
       "norm_label": "inputsfrombasicshoulder()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L88"
+      "source_location": "L96"
     },
     {
       "id": "lib_rules_engine_recommend_inputsfrommpconfigdata",
@@ -67510,7 +67510,7 @@
       "file_type": "code",
       "norm_label": "legacybolsterlength()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L175"
+      "source_location": "L183"
     },
     {
       "id": "lib_rules_engine_recommend_legacyrecommend",
@@ -67522,7 +67522,7 @@
       "file_type": "code",
       "norm_label": "legacyrecommend()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L134"
+      "source_location": "L142"
     },
     {
       "id": "lib_rules_engine_recommend_recommendwithengine",
@@ -67534,7 +67534,7 @@
       "file_type": "code",
       "norm_label": "recommendwithengine()",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L115"
+      "source_location": "L123"
     },
     {
       "id": "lib_rules_engine_recommend_tonum",
@@ -282384,7 +282384,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L75",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -282400,6 +282400,18 @@
       "weight": 1.0
     },
     {
+      "source": "lib_rules_engine_recommend_inputsfrommpconfigdata",
+      "target": "lib_shop_recommendation_rules_derivesleepposition",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/rules-engine/recommend.ts",
+      "source_location": "L64",
+      "weight": 1.0
+    },
+    {
       "source": "lib_rules_engine_recommend_legacybolsterlength",
       "target": "lib_rules_engine_recommend_bolstersizetolength",
       "relation": "calls",
@@ -282408,7 +282420,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L176",
+      "source_location": "L184",
       "weight": 1.0
     },
     {
@@ -282420,7 +282432,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L177",
+      "source_location": "L185",
       "weight": 1.0
     },
     {
@@ -282432,48 +282444,12 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L186",
+      "source_location": "L194",
       "weight": 1.0
     },
     {
       "source": "lib_rules_engine_recommend_legacyrecommend",
       "target": "lib_results_instore_ballpark_infersizefrommeasurements",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L146",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_rules_engine_recommend_legacyrecommend",
-      "target": "lib_results_instore_ballpark_infertierfromquestions",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L147",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_rules_engine_recommend_legacyrecommend",
-      "target": "lib_rules_engine_recommendation_record_legacybootstraprecord",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L149",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_rules_engine_recommend_legacyrecommend",
-      "target": "lib_mp_basic_recommend_recommendbasicmpillow",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -282485,7 +282461,31 @@
     },
     {
       "source": "lib_rules_engine_recommend_legacyrecommend",
-      "target": "lib_shop_recommendation_rules_recommendbolster",
+      "target": "lib_results_instore_ballpark_infertierfromquestions",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/rules-engine/recommend.ts",
+      "source_location": "L155",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_rules_engine_recommend_legacyrecommend",
+      "target": "lib_rules_engine_recommendation_record_legacybootstraprecord",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/rules-engine/recommend.ts",
+      "source_location": "L157",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_rules_engine_recommend_legacyrecommend",
+      "target": "lib_mp_basic_recommend_recommendbasicmpillow",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -282497,6 +282497,18 @@
     },
     {
       "source": "lib_rules_engine_recommend_legacyrecommend",
+      "target": "lib_shop_recommendation_rules_recommendbolster",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/rules-engine/recommend.ts",
+      "source_location": "L170",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_rules_engine_recommend_legacyrecommend",
       "target": "lib_rules_engine_recommend_bolstersizetolength",
       "relation": "calls",
       "_origin": "ast",
@@ -282504,7 +282516,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L166",
+      "source_location": "L174",
       "weight": 1.0
     },
     {
@@ -282516,7 +282528,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L171",
+      "source_location": "L179",
       "weight": 1.0
     },
     {
@@ -282528,7 +282540,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L125",
+      "source_location": "L133",
       "weight": 1.0
     },
     {
@@ -282540,7 +282552,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L128",
+      "source_location": "L136",
       "weight": 1.0
     },
     {
@@ -282552,7 +282564,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L131",
+      "source_location": "L139",
       "weight": 1.0
     },
     {
@@ -607962,13 +607974,35 @@
     },
     {
       "source": "lib_rules_engine_recommend",
+      "target": "lib_rules_engine_recommend_inputsfrombolsterheight",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/rules-engine/recommend.ts",
+      "source_location": "L100",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_rules_engine_recommend",
+      "target": "lib_rules_engine_recommend_bolstersizetolength",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/rules-engine/recommend.ts",
+      "source_location": "L105",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_rules_engine_recommend",
       "target": "lib_rules_engine_recommend_lengthtobolsterletter",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L103",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -607979,7 +608013,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L109",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -607990,7 +608024,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L115",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -608001,7 +608035,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L134",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -608012,7 +608046,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L170",
+      "source_location": "L178",
       "weight": 1.0
     },
     {
@@ -608023,7 +608057,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L175",
+      "source_location": "L183",
       "weight": 1.0
     },
     {
@@ -608034,7 +608068,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L185",
+      "source_location": "L193",
       "weight": 1.0
     },
     {
@@ -608100,7 +608134,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L69",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -608111,29 +608145,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L88",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_rules_engine_recommend",
-      "target": "lib_rules_engine_recommend_inputsfrombolsterheight",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L92",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_rules_engine_recommend",
-      "target": "lib_rules_engine_recommend_bolstersizetolength",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/rules-engine/recommend.ts",
-      "source_location": "L97",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -660491,5 +660503,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8ce2c4bc6e5f362384a355f5f765db8e7d8c28d5"
+  "built_at_commit": "d3c49a586276dfa276f20e08193d6b3ebb3469a3"
 }

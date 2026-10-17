@@ -1,7 +1,7 @@
 import type { EngineInputs, InputDef, RuleFlow, RuleGraphJson } from "./types";
 import { inchesToCm, roundCm } from "./units";
 
-/** Shared customize-step answers collected by Premium + Basic. */
+/** Shared customize-step answers collected by Premium + Basic. Values mirror the configurator options. */
 const CUSTOMIZE_INPUTS: readonly InputDef[] = [
   {
     key: "sleep_position",
@@ -11,7 +11,7 @@ const CUSTOMIZE_INPUTS: readonly InputDef[] = [
   {
     key: "bed_firmness",
     valueType: "enum",
-    values: ["soft", "medium-soft", "medium", "medium-firm", "firm"] as const,
+    values: ["soft", "medium-soft", "firm"] as const,
   },
   { key: "acid_reflux", valueType: "boolean", values: ["true", "false"] as const },
   {
@@ -22,23 +22,23 @@ const CUSTOMIZE_INPUTS: readonly InputDef[] = [
   {
     key: "blood_pressure",
     valueType: "enum",
-    values: ["low", "normal", "high"] as const,
+    values: ["normal", "low-blood", "high-blood", "unsure"] as const,
   },
   {
     key: "sleep_pain_areas",
     valueType: "string[]",
-    values: ["none", "neck", "shoulder", "back", "hip", "other"] as const,
+    values: ["none", "neck", "shoulder", "lower-back", "sleep-apnea", "bad-sleep-quality"] as const,
   },
   { key: "uses_bolster", valueType: "boolean", values: ["true", "false"] as const },
   {
     key: "gender",
     valueType: "enum",
-    values: ["female", "male", "other", "prefer-not"] as const,
+    values: ["female", "male"] as const,
   },
   {
     key: "age_group",
     valueType: "enum",
-    values: ["under-25", "25-34", "35-44", "45-54", "55-64", "65-plus"] as const,
+    values: ["under-18", "18-24", "25-34", "35-44", "45-54", "55-64", "65-plus"] as const,
   },
 ];
 
