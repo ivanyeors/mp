@@ -45,16 +45,24 @@ export type BlogPost = {
     seo_keywords: string[];
     seo_answer?: string;
     labels: string[];
+    /** The locale whose text is shown; differs from the requested one when that has no content. */
+    content_locale: string;
+    /** Locales with written content, i.e. the ones that are real translations. */
+    locales: string[];
 };
 
 // ---------- Supabase fetchers ----------
 
-function resolveLocale(row: BlogPostRow, locale: string): BlogPost {
-    const loc = row.content[locale] ?? row.content[DEFAULT_LOCALE] ?? Object.values(row.content)[0];
+export function resolveLocale(row: BlogPostRow, locale: string): BlogPost {
+    const locales = Object.keys(row.content).filter((l) => row.content[l]?.title?.trim() || row.content[l]?.body?.trim());
+    const contentLocale = [locale, DEFAULT_LOCALE].find((l) => locales.includes(l)) ?? locales[0] ?? locale;
+    const loc = row.content[contentLocale] ?? row.content[locale] ?? row.content[DEFAULT_LOCALE] ?? Object.values(row.content)[0];
     return {
         id: row.id,
         slug: row.slug,
         status: row.status,
+        content_locale: contentLocale,
+        locales,
         title: loc?.title ?? '',
         sub_header: loc?.sub_header ?? '',
         description: loc?.description ?? '',

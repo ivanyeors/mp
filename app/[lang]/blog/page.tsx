@@ -5,19 +5,22 @@ import { Metadata } from "next";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { BlogFilters } from "@/components/blog/blog-filters";
-import { localeUrl } from "@/lib/seo";
+import { buildPageMetadata, localeUrl, resolveMetaDescription } from "@/lib/seo";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
 
-export const metadata: Metadata = {
-    title: "Mpillow Blogs | Better Sleep Guidance from the Experts",
-    description:
-        "Read our latest articles on improving sleep posture, neck pain relief, and choosing the perfect pillow in Singapore.",
-    openGraph: {
-        title: "Mpillow Blogs",
-        description: "Expert advice on sleep and ergonomics.",
-        type: "website",
-    },
-};
+const BLOG_DESCRIPTION =
+    "Read our latest articles on improving sleep posture, neck pain relief, and choosing the perfect pillow in Singapore.";
+
+// ?label= and ?q= views share the one canonical /blog URL.
+export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
+    const { lang } = await params;
+    return buildPageMetadata({
+        title: "Mpillow Blogs | Better Sleep Guidance from the Experts",
+        description: BLOG_DESCRIPTION,
+        path: "/blog",
+        lang: isSupportedLocale(lang) ? lang : DEFAULT_LOCALE,
+    });
+}
 
 type Props = {
     params: Promise<{ lang: string }>;
@@ -73,7 +76,7 @@ function PostCard({ post, locale }: { post: BlogPost; locale: Locale }) {
                         {post.title}
                     </h2>
                     <p className="text-muted-foreground line-clamp-3 mb-6 flex-1">
-                        {post.description || post.body.substring(0, 150) + "..."}
+                        {resolveMetaDescription(post)}
                     </p>
                     <div className="mt-auto flex items-center text-sm font-semibold text-primary">
                         Read Article{" "}
@@ -213,7 +216,7 @@ export default async function BlogHubPage(props: Props) {
         "@context": "https://schema.org",
         "@type": "CollectionPage",
         name: "Mpillow Blogs",
-        description: metadata.description,
+        description: BLOG_DESCRIPTION,
         url: localeUrl(locale, "/blog"),
         hasPart: allPosts.slice(0, 10).map((post) => ({
             "@type": "Article",
