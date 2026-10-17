@@ -47,7 +47,7 @@ Length: hubs 1,800–2,800 words, spokes 1,000–1,800 words. Stop when the ques
 ## Linking
 
 - Internal links are root-relative with no locale (`/blog/<slug>`, `/mp-config`). The page adds the reader's locale.
-- A hub links to every one of its spokes. A spoke links up to its hub in the opening and again near the end, and across to 2–3 siblings.
+- A hub links to every one of its spokes. A spoke links up to its hub in the opening (and may name it again near the end without a second link), and across to 2–3 siblings.
 - Each page has one commercial link, two at most: `/mp-config`, `/mbolster-config`, `/shop` or a `/guides/` page.
 - Anchor text is 2–6 descriptive words, never "click here". Each URL is linked once in the body.
 - Link only to live posts and real routes. `lib/__tests__/blog-redirects.test.ts` fails on a link to a merged, retired or missing post.
