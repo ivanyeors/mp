@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ReviewActions } from "./review-actions";
+import { InfoTip } from "@/components/ui/info-tip";
 
 interface PendingApplication {
   id: string;
@@ -61,13 +62,13 @@ export default async function PartnerApplicationsPage({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
+      <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Partner applications</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <InfoTip label="About Partner applications">
           Review pending applications. Verify ACRA / website yourself, then approve or
           reject. Approving creates a hidden partner location — flip visibility later in
           Partners.
-        </p>
+        </InfoTip>
       </div>
 
       {applications.length === 0 ? (

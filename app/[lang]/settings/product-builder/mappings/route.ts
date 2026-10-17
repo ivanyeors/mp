@@ -8,7 +8,7 @@ import { listOverlayMappingItems } from '@/lib/product-builder/overlay-mappings'
 export const runtime = 'nodejs'
 
 export async function GET() {
-  const denied = await requireAdmin('products')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   try {
@@ -28,7 +28,7 @@ const UpsertSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin('products')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 const DeleteSchema = z.object({ itemId: z.number().int().positive() })
 
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin('products')
+  const denied = await requireAdmin('configure')
   if (denied) return denied
 
   const json = await req.json().catch(() => null)

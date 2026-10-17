@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { SelectFromDriveDialog } from "@/components/settings/select-from-drive-dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -857,10 +858,12 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             {/* ===== Landing Page Images Section ===== */}
             <section className="space-y-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Landing Page Images</h1>
-                    <p className="text-muted-foreground text-sm mt-1">
-                        Customise the images shown on the front page. Click an image slot to choose from your media gallery.
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <h1 className="text-2xl font-bold tracking-tight">Landing Page Images</h1>
+                      <InfoTip label="About Landing Page Images">
+                        <p>Customise the images shown on the front page. Click an image slot to choose from your media gallery.</p>
+                      </InfoTip>
+                    </div>
                 </div>
 
                 {overridesLoading ? (
@@ -937,10 +940,12 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             <section className="space-y-6">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Media Library</h2>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Company Media Assets — upload images or import from Google Drive.
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <h2 className="text-2xl font-bold tracking-tight">Media Library</h2>
+                          <InfoTip label="About Media Library">
+                            <p>Company Media Assets — upload images or import from Google Drive.</p>
+                          </InfoTip>
+                        </div>
                     </div>
 
                     <div className="flex gap-2">

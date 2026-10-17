@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   Table,
   TableBody,
@@ -110,13 +111,13 @@ export function ProductVisualize() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h2 className="text-lg font-semibold tracking-tight">Product Visualize</h2>
-          <p className="text-muted-foreground text-sm mt-1">
+          <InfoTip label="About Product Visualize">
             Map cover and case items to overlay images from the Media Asset Library.
             The configurator preview swaps the overlay when the item is selected;
             unmapped items keep the plain silhouette.
-          </p>
+          </InfoTip>
         </div>
         <Button type="button" variant="outline" asChild>
           <Link href={settingsPath("/settings/product-builder/rules-engine")}>
@@ -218,13 +219,13 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
 
   return (
     <div className="space-y-3">
-      <div>
+      <div className="flex items-center gap-1.5">
         <h3 className="text-base font-semibold tracking-tight">Filling visuals</h3>
-        <p className="text-muted-foreground text-sm mt-1">
+        <InfoTip label="About Filling visuals">
           Each filling subtype renders in the x-ray with a designer-owned fluid shape
           (not editable) and a color. Overriding a color applies to all x-ray views on
           next load; clearing restores the code default.
-        </p>
+        </InfoTip>
       </div>
       {loading ? (
         <div className="flex justify-center py-8">

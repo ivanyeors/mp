@@ -19,12 +19,12 @@ const BUILD_SIZES = ["S", "M", "L"];
  * Calibration sheet (X-ray pillow UX slice 10): the x-ray's predictions for
  * every bench check, read fresh from Settings on each load, so it can be
  * printed before the measurements are in and again after. Same permission as
- * the Products › Dimensions tab, which it checks.
+ * the Configure › Dimensions tab, which it checks.
  */
 export default async function CalibrationPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("products", locale);
+  await requireAdminPage("configure", locale);
 
   const admin = supabaseAdmin();
   const [overrides, products] = await Promise.all([

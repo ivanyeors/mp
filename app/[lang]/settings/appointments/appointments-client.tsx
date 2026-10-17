@@ -12,6 +12,7 @@ import {
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
 import type { ResolvedLocation } from "@/lib/locations";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const AppointmentsCalendar = dynamic(
   () =>
@@ -214,18 +215,19 @@ export default function AppointmentSettingsPage({
   return (
     <div className="flex flex-col p-2 sm:p-3 md:p-6">
       <style data-fullcalendar />
-      {/* Title row keeps the gear in thumb reach; the long blurb is desktop-only. */}
+      {/* Title row keeps the gear in thumb reach. */}
       <div className="mb-3 flex shrink-0 items-start justify-between gap-3 md:mb-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold">Appointments</h1>
-          <p className="text-sm text-muted-foreground md:hidden">
-            Bookable hours, blocks and Google Calendar events.
-          </p>
-          <p className="hidden text-sm text-muted-foreground md:block">
-            Manage bookable hours and blocks on the calendar. Events from your
-            connected Google Calendar (including all-day) appear alongside your
-            availability.
-          </p>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xl font-semibold">Appointments</h1>
+            <InfoTip label="About Appointments">
+              <p>
+                Manage bookable hours and blocks on the calendar. Events from your
+                connected Google Calendar (including all-day) appear alongside your
+                availability.
+              </p>
+            </InfoTip>
+          </div>
           <p
             className="text-xs text-muted-foreground"
             aria-live="polite"

@@ -28,7 +28,6 @@ export default async function SettingsProductsPage({
     const [{ lang }, { tab }] = await Promise.all([params, searchParams]);
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-    // Product Visualize and Dimensions are tabs of this page, so they share its permission (ADR 0023).
     await requireAdminPage("products", locale);
 
     // Mirrors the client's default state: no search, "all" status/category/type,
@@ -52,7 +51,7 @@ export default async function SettingsProductsPage({
     return (
         <ProductsClient
             initialData={initialData}
-            initialTab={tab === "categories" || tab === "visualize" || tab === "dimensions" ? tab : "products"}
+            initialTab={tab === "categories" ? tab : "products"}
         />
     );
 }

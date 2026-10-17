@@ -41,6 +41,7 @@ import {
 import { formatAdminDateTime } from "@/lib/format/admin-date";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { InfoTip } from "@/components/ui/info-tip";
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -756,10 +757,12 @@ export default function ResultsPage({
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1>Results</h1>
-          <p className="text-sm text-muted-foreground">
-            Mp-config submissions synced from the database. Click a row to view details and edit.
-          </p>
+          <div className="flex items-center gap-1.5">
+            <h1>Results</h1>
+            <InfoTip label="About Results">
+              <p>Mp-config submissions synced from the database. Click a row to view details and edit.</p>
+            </InfoTip>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => load({ mode: "replace" })} disabled={loading}>

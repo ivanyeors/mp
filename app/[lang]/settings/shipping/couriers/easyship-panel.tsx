@@ -5,7 +5,7 @@ import { CheckCircle2, Copy, Loader2, PackageSearch, Save, XCircle } from "lucid
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,6 +18,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import type { CourierRate, PackageType, ShippingSettings } from "@/lib/shipping/types";
+import { InfoTip } from "@/components/ui/info-tip";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -233,16 +234,16 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 <CardHeader>
                     <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                         Courier connection
+                        <InfoTip label="About Courier connection">
+                            Live courier rates at checkout and one-click labels from each order. The API token and
+                            webhook secret are environment variables; they are never stored in the database.
+                        </InfoTip>
                         {status.environment && (
                             <Badge variant={status.environment === "production" ? "default" : "secondary"}>
                                 {status.environment === "production" ? "Production" : "Sandbox"}
                             </Badge>
                         )}
                     </CardTitle>
-                    <CardDescription>
-                        Live courier rates at checkout and one-click labels from each order. The API token and
-                        webhook secret are environment variables; they are never stored in the database.
-                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -301,8 +302,10 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
             {/* Customs & quotes */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-base">Customs &amp; quotes</CardTitle>
-                    <CardDescription>How cross-border parcels are declared and how quotes are shown.</CardDescription>
+                    <div className="flex items-center gap-1.5">
+                        <CardTitle className="text-base">Customs &amp; quotes</CardTitle>
+                        <InfoTip label="About Customs & quotes">How cross-border parcels are declared and how quotes are shown.</InfoTip>
+                    </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
@@ -405,14 +408,16 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
             {/* Test a quote */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <PackageSearch className="h-4 w-4" />
-                        Test a quote
-                    </CardTitle>
-                    <CardDescription>
-                        Today&apos;s courier rates for a sample parcel, using the settings above (saved or not) and the saved Boxes.
-                        Copy a courier service id to pin it on a method.
-                    </CardDescription>
+                    <div className="flex items-center gap-1.5">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <PackageSearch className="h-4 w-4" />
+                            Test a quote
+                        </CardTitle>
+                        <InfoTip label="About Test a quote">
+                            Today&apos;s courier rates for a sample parcel, using the settings above (saved or not) and the saved Boxes.
+                            Copy a courier service id to pin it on a method.
+                        </InfoTip>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

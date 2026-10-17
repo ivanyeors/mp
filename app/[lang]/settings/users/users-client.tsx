@@ -13,6 +13,7 @@ import { ProfilesTab } from "./profiles-tab";
 import type { StaffProfile } from "@/lib/staff/admin";
 import { TelegramAccessTab } from "./telegram-tab";
 import { parseUsersTab, type UsersTab } from "./tabs";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export type SerializedActor = {
   memberId: string;
@@ -146,12 +147,12 @@ export function UsersClient({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h1>Users &amp; permissions</h1>
-        <p className="text-sm text-muted-foreground">
+        <InfoTip label="About Users & permissions">
           Who can sign in to the Admin Panel, the people who work under each login, and which pages and
           Telegram actions each role can use.
-        </p>
+        </InfoTip>
       </div>
 
       <Tabs value={tab} onValueChange={selectTab}>
