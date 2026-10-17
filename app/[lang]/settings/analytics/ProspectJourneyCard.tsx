@@ -70,7 +70,7 @@ import {
 import type { Locale } from "@/lib/i18n/locales";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import {
-  getProspectJourneyNodeDetail,
+  getProspectJourneyNodeDetails,
   getProspectJourneyTransitions,
   type JourneyConvertedDetail,
   type JourneyGroupDetail,
@@ -2065,26 +2065,22 @@ export function ProspectJourneyCard({ from, to }: Props) {
       return;
     }
     let cancelled = false;
-    void Promise.all(
-      paths.map((path) =>
-        getProspectJourneyNodeDetail({
-          path,
-          from,
-          to,
-          ...filterArgs,
-          entryTopN,
-        }).then((res) => ({ path, res })),
-      ),
-    ).then((results) => {
+    // One call for every selected node, so one database read serves them all.
+    void getProspectJourneyNodeDetails({
+      paths,
+      from,
+      to,
+      ...filterArgs,
+      entryTopN,
+    }).then((res) => {
       if (cancelled) return;
       const nextDetails = new Map<string, JourneyNodeDetail>();
       const nextConverted = new Map<string, JourneyConvertedDetail>();
       const nextGroups = new Map<string, JourneyGroupDetail>();
-      for (const { path, res } of results) {
-        if (!res.ok) continue;
-        if (res.detail) nextDetails.set(path, res.detail);
-        if (res.convertedDetail) nextConverted.set(path, res.convertedDetail);
-        if (res.groupDetail) nextGroups.set(path, res.groupDetail);
+      for (const d of res.ok ? res.details : []) {
+        if (d.detail) nextDetails.set(d.path, d.detail);
+        if (d.convertedDetail) nextConverted.set(d.path, d.convertedDetail);
+        if (d.groupDetail) nextGroups.set(d.path, d.groupDetail);
       }
       setDetailsByPath(nextDetails);
       setConvertedDetailByPath(nextConverted);

@@ -99,7 +99,8 @@ const actions = readFileSync(
 );
 assert.match(actions, /countries/);
 assert.match(actions, /countryLegend/);
-assert.match(actions, /listCountriesFromDb/);
+// Country options come from the cached facet read (Entry sources + countries).
+assert.match(actions, /readJourneyFacets/);
 
 const aggregates = readFileSync(
   join(root, "lib/analytics/journey/aggregates.ts"),
