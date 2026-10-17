@@ -31,4 +31,9 @@ describe("post body", () => {
     const html = await render(body);
     for (const h of extractHeadings(body)) expect(html).toContain(`id="${h.id}"`);
   });
+
+  // Drafts mark unsourced claims as [[cite: …]]; none may ship (content-standard.md).
+  it.each(files)("%s has no unresolved citation markers", (file) => {
+    expect(readFileSync(`data/blogs/${file}`, "utf8").match(/\[\[cite:[^\]]*\]\]/g) ?? []).toEqual([]);
+  });
 });

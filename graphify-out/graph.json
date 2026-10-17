@@ -131645,7 +131645,7 @@
       "node_kind": "heading",
       "norm_label": "before publishing",
       "source_file": ".claude/PRD-search-visibility/content-standard.md",
-      "source_location": "L70"
+      "source_location": "L71"
     },
     {
       "id": "claude_prd_search_visibility_content_standard_blog_content_standard",
@@ -131717,7 +131717,7 @@
       "node_kind": "heading",
       "norm_label": "voice",
       "source_file": ".claude/PRD-search-visibility/content-standard.md",
-      "source_location": "L62"
+      "source_location": "L63"
     },
     {
       "id": "claude_prd_partner_hub_issues_14_whatsapp_opt_in",
@@ -548680,7 +548680,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-search-visibility/content-standard.md",
-      "source_location": "L62",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -548691,7 +548691,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-search-visibility/content-standard.md",
-      "source_location": "L70",
+      "source_location": "L71",
       "weight": 1.0
     },
     {
@@ -668993,5 +668993,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "47b31999607cb251f94e592e6067e3438f42ae10"
+  "built_at_commit": "2eb46240a14a326902434c0a061cfe05d618ff87"
 }

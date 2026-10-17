@@ -56,6 +56,7 @@ Length: hubs 1,800–2,800 words, spokes 1,000–1,800 words. Stop when the ques
 
 - **No treat or cure claims.** Say a pillow "can reduce strain" or "supports alignment", never that it fixes a condition. Persistent pain, numbness, tingling, weakness, or pain after an injury means seeing a doctor or physiotherapist, and the page says so.
 - **Every health or sleep claim cites 1–3 sources** with an inline link. Use primary or authoritative sources (NHS, NIH/PubMed, Mayo Clinic, HealthHub Singapore, HPB, AASM, ACOG, AAP) and open the page you cite. A search snippet is not a source.
+- **A draft may mark a claim it could not source yet** as `[[cite: the claim | candidate URL]]` right after the sentence. The post-body test fails while any marker remains, so a draft cannot ship until each one is replaced by a real link or the claim is cut.
 - **Mpillow facts** come only from the brand fact sheet, the site's own copy or staff. No prices: they live in Costings and change, so link to `/shop` instead.
 - **Children:** no pillow for babies under 12 months, per AAP safe-sleep guidance.
 
