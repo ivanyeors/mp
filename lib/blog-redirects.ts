@@ -1,0 +1,156 @@
+/**
+ * Blog posts that no longer live at their own URL, from the October 2026
+ * consolidation (`.claude/PRD-search-visibility/content-audit.md`).
+ *
+ * The proxy answers retired slugs with 410 Gone and merged slugs with a
+ * permanent redirect to the post that absorbed them, in every locale, and
+ * listings skip both. The code is the source of truth: a stale `published`
+ * row in `blog_posts` cannot bring a slug back.
+ */
+
+/** Off-topic or dated posts, removed outright. */
+export const RETIRED_BLOG_SLUGS: ReadonlySet<string> = new Set([
+  "celebrating-world-sleep-day-how-the-right-pillow-can-help-you-get-a-better-nights-rest",
+  "embracing-the-year-of-the-dragon-a-guide-to-auspicious-lunar-new-year-house-cleaning",
+  "half-of-singapore-s-population-is-sleep-deprived-are-you-one-of-them",
+  "sleep-disorders-unveiled-shedding-light-on-common-sleep-issues-for-world-sleep-day",
+  "sleep-and-mental-health-the-vital-connection-between-rest-and-emotional-well-being",
+  "the-benefits-of-using-the-right-pillow-for-a-good-nights-sleep-on-world-sleep-day",
+  "the-impact-of-sleep-on-mental-health-understanding-the-connection",
+  "the-effects-on-sleep-deprivation-and-how-to-overcome-it",
+  "understanding-insomnia-causes-symptoms-and-effective-treatments",
+  "unlocking-better-sleep-the-benefits-of-a-frequency-bed",
+  "which-thief-steals-more-than-just-your-wealth",
+  "why-are-you-yawning-so-much",
+]);
+
+/** Overlapping posts folded into a kept post: slug → the slug that absorbed it. */
+export const MERGED_BLOG_SLUGS: Readonly<Record<string, string>> = {
+  "bolster-pillow-vs-regular-pillow-which-offers-better-support":
+    "bolsters-vs-pillows-do-you-really-need-both",
+  "bolster-with-adjustable-firmness-for-side-sleepers-enhancing-comfort-and-support":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "crafting-comfort-the-unparalleled-advantages-of-customised-mbolster-for-side-sleepers":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "discover-the-mbolster-the-revolutionary-bolster-for-personalized-comfort-and-hygiene":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "how-a-bolster-can-help-with-neck-pain-relief":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "how-a-cervical-neck-support-pillow-and-bolster-can-provide-effective-neck-pain-relief":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "how-to-sleep-correctly-with-a-body-pillow-for-back-and-neck-support":
+    "bolsters-vs-pillows-do-you-really-need-both",
+  "improve-sleep-with-a-bolster-and-a-neck-support-pillow":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "mbolster-the-best-bolster-for-side-sleeping":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "side-sleeping-bliss-how-bolsters-enhance-comfort-and-support":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "sleeping-on-your-stomach-with-2-mbolsters-neck-pain-relief-for-stomach-sleepers":
+    "how-to-use-a-bolster-pillow-for-better-side-sleeping-in-singapore-homes",
+  "the-adjustable-bolster-why-a-customisable-bolster-beats-the-traditional-body-pillow":
+    "bolsters-vs-pillows-do-you-really-need-both",
+  "the-perfect-sidekick-for-side-sleepers-how-a-customised-bolster-can-transform-your-sleep":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "the-role-of-a-bolster-in-enhancing-neck-pain-relief-why-you-need-one":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "the-ultimate-guide-to-bolsters-why-mbolster-by-mpillow-is-a-game-changer-for-side-sleepers":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "why-side-sleepers-love-the-mbolster-a-game-changer-for-better-sleep":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "why-the-mbolster-is-the-ultimate-bolster-for-side-sleepers":
+    "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
+  "are-you-struggling-with-neck-and-shoulder-pain-disrupting-your-sleep-and-daily-life":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "cervical-pillow-for-neck-pain-a-comprehensive-guide":
+    "the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief",
+  "choosing-the-right-cervical-pillow-for-neck-pain-relief":
+    "the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief",
+  "finding-the-perfect-neck-support-pillow-in-singapore":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "how-a-customised-pillow-can-help-relieve-neck-pain":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "how-a-neck-shoulder-pain-pillow-can-transform-your-sleep":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "neck-pain-relief-how-a-cervical-pillow-for-neck-pain-can-help":
+    "the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief",
+  "neck-pain-relief-how-to-sleep-better-and-wake-up-pain-free":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "neck-support-pillows-in-singapore-your-key-to-comfortable-sleep":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "pillow-neck-pain-spinal-degeneration":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "the-benefits-of-using-a-neck-support-pillow-for-better-sleep":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "the-importance-of-cervical-neck-support-for-a-pain-free-sleep":
+    "the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief",
+  "the-silent-agony-how-lifestyle-choices-impact-neck-pain-and-the-role-of-customised-pillows":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "tips-to-prevent-shoulder-pains-during-sleep":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "top-5-pillows-for-neck-pain-relief-what-to-look-for-and-why-it-matters":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "why-your-pillow-might-be-causing-neck-pain-and-how-to-find-one-that-offers-real-relief":
+    "what-is-the-best-pillow-for-neck-pain-in-singapore",
+  "is-a-memory-foam-pillow-ideal":
+    "how-to-choose-the-best-pillow-in-singapore",
+  "sleep-better-feel-better-the-importance-of-investing-in-the-right-pillow":
+    "how-to-choose-the-best-pillow-in-singapore",
+  "stay-cool-and-comfy-finding-the-perfect-pillow-for-warm-weather":
+    "how-to-choose-the-best-pillow-in-singapore",
+  "what-are-the-different-types-of-pillow-fillings-amp-which-is-best-for-you":
+    "how-to-choose-the-best-pillow-in-singapore",
+  "which-type-of-pillow-is-best-for-sleep-amp-neck-pain-relief":
+    "how-to-choose-the-best-pillow-in-singapore",
+  "2024-pillow-revolution-embracing-customization-for-blissful-sleep":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "custom-made-pillow-the-ultimate-solution-for-back-and-neck-pain":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "discover-the-benefits-of-a-custom-made-pillow-for-a-good-nights-sleep":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "elevate-your-sleep-experience-with-customized-pillows":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "p-how-a-tailored-pillow-can-improve-sleep-quality-and-give-you-the-restful-night-you-deserve-p-p-p":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "the-ultimate-guide-to-custom-made-pillows-for-neck-pain-relief":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "the-benefits-of-customized-pillows-for-a-good-nights-sleep":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "the-science-of-comfort-custom-made-pillows-for-neck-pain-relief":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "why-one-size-doesnt-fit-all-the-importance-of-customized-pillows":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "why-a-modular-pillow-like-mpillow-is-the-game-changer-for-better-sleep":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "why-a-modular-pillow-might-be-the-last-pillow-you-ever-buy":
+    "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
+  "sleeping-positions-and-their-impact-on-health-finding-your-ideal-sleep-pose":
+    "side-sleeper-pillow-your-ultimate-guide-for-alignment-pain-relief",
+  "guest-blog-how-to-improve-your-posture-at-home-by-porch":
+    "improve-good-posture-habits-with-exercises-and-home-remedies",
+  "how-to-gauge-the-right-posture-by-breathing":
+    "improve-good-posture-habits-with-exercises-and-home-remedies",
+  "flat-neck-syndrome-in-children":
+    "what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore",
+  "how-often-should-you-replace-your-pillow-for-better-sleep-hygiene":
+    "how-often-should-you-replace-your-pillow-and-why-it-matters-for-neck-pain-amp-sleep-quality",
+  "hygiene-and-sleep-how-to-keep-your-sleep-environment-clean":
+    "how-often-should-you-replace-your-pillow-and-why-it-matters-for-neck-pain-amp-sleep-quality",
+  "how-a-customised-pillow-with-adjustable-firmness-can-help-children-sleep-better":
+    "how-adjustable-pillow-firmness-can-help-kids-sleep-better-the-key-to-restful-nights",
+  "the-gift-of-a-good-nights-sleep-customised-pillows-and-their-impact-on-well-being":
+    "10-unique-gifts-for-tired-parents",
+  "the-perfect-gift-customised-pillows-for-a-restful-festive-season":
+    "10-unique-gifts-for-tired-parents",
+  "the-ultimate-guide-to-thoughtful-gifts-for-mothers-and-fathers":
+    "10-unique-gifts-for-tired-parents",
+};
+
+export type BlogSlugFate = { kind: "gone" } | { kind: "merged"; into: string };
+
+/** What happened to a slug that is no longer its own post; null for a live slug. */
+export function blogSlugFate(slug: string): BlogSlugFate | null {
+  if (RETIRED_BLOG_SLUGS.has(slug)) return { kind: "gone" };
+  // Own keys only: a slug like "constructor" must not read Object.prototype.
+  return Object.hasOwn(MERGED_BLOG_SLUGS, slug) ? { kind: "merged", into: MERGED_BLOG_SLUGS[slug] } : null;
+}

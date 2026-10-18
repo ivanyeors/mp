@@ -26,8 +26,9 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
         "Neck pain from sleep often comes from a pillow that is the wrong height or firmness for your body. Mpillow makes fully customisable cervical pillows in Singapore — sized and fitted in-store for side, back, and combination sleepers. Choose Basic or Premium tier, then book an in-store session to match pillow height, firmness, and neck support to your posture.",
       links: [
         { href: "/blog/what-is-the-best-pillow-for-neck-pain-in-singapore", label: "What is the best pillow for neck pain in Singapore?" },
-        { href: "/blog/finding-the-perfect-neck-support-pillow-in-singapore", label: "Finding the perfect neck support pillow" },
-        { href: "/mp-config", label: "Customise Mpillow (Basic & Premium)" },
+        { href: "/blog/what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore", label: "What is tech neck, and can a pillow help?" },
+        { href: "/mp-config", label: "Customise Premium Mpillow" },
+        { href: "/mp-basic", label: "Customise Basic Mpillow" },
       ],
       faqs: [
         {
@@ -43,7 +44,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
         {
           question: "Do I need to visit the store?",
           answer:
-            "Premium Mpillow includes in-store measurement and readjustment. Basic can start online via mp-config with an optional store visit.",
+            "Premium Mpillow includes in-store measurement and readjustment. Basic starts online in the Basic configurator, with an optional store visit.",
         },
       ],
       ctaHref: "/mp-config",
@@ -80,8 +81,8 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       answerLede:
         "A cervical pillow supports the natural curve of your neck while keeping the spine aligned. Mpillow Premium includes optional cervical neck support and is measured in-store for height and firmness. For add-on cervical support, browse our cervical accessory in the shop — designed to complement your customised Mpillow.",
       links: [
-        { href: "/blog/cervical-pillow-for-neck-pain-a-comprehensive-guide", label: "Cervical pillow comprehensive guide" },
-        { href: "/blog/the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief", label: "Ultimate cervical support guide" },
+        { href: "/blog/the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief", label: "Cervical support pillows: the complete guide" },
+        { href: "/blog/what-is-the-best-pillow-for-neck-pain-in-singapore", label: "What is the best pillow for neck pain?" },
         { href: "/shop", label: "Shop cervical accessories" },
         { href: "/mp-config", label: "Customise Premium Mpillow" },
       ],
@@ -127,8 +128,10 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       answerLede:
         "Mpillow is Singapore's custom pillow maker — not off-the-shelf memory foam. Pick Basic (online start) or Premium (in-store measurement), select size and fabrics, and get a pillow built for your neck and sleep style. Start customisation online; Premium customers book an in-store fitting to finalise height and filling mix.",
       links: [
+        { href: "/blog/tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep", label: "How a custom pillow is made and fitted" },
         { href: "/blog/how-to-choose-the-best-pillow-in-singapore", label: "How to choose the best pillow in Singapore" },
-        { href: "/mp-config", label: "Customise Mpillow (Basic & Premium)" },
+        { href: "/mp-config", label: "Customise Premium Mpillow" },
+        { href: "/mp-basic", label: "Customise Basic Mpillow" },
         { href: "/faq", label: "Customisation FAQs" },
       ],
       faqs: [

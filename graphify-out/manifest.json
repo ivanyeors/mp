@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "lib/blogs.ts": {
-    "mtime": 1792246684.4269478,
-    "seen": 1792246733.516982,
-    "ast_hash": "77d95d5bdee4191d89c18686c16dd933",
+    "mtime": 1792247065.7057111,
+    "seen": 1792252179.0792696,
+    "ast_hash": "075def25c4a9446eab1be4c7ef60b731",
     "semantic_hash": ""
   },
   "lib/bom-sanitizer/__tests__/bom-sanitizer.test.ts": {
@@ -1218,26 +1218,26 @@
     "semantic_hash": ""
   },
   "lib/seo/guides-content.ts": {
-    "mtime": 1792167398.0958085,
-    "seen": 1792238787.887911,
-    "ast_hash": "6e90fe58761b3f07dacaedf6179d4b3d",
+    "mtime": 1792249627.4276276,
+    "seen": 1792252179.0800796,
+    "ast_hash": "083fd4388e56d2eef518e49350b02b99",
     "semantic_hash": ""
   },
   "lib/seo/index.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.5175526,
+    "mtime": 1792243854.1187022,
+    "seen": 1792252179.0800815,
     "ast_hash": "667b8768de384b7fbeceb5aca02cc691",
     "semantic_hash": ""
   },
   "lib/seo/jsonld-article.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.517555,
+    "mtime": 1792243852.7227023,
+    "seen": 1792252179.0800846,
     "ast_hash": "1ffaad6888df30e5af54c970b15f4ad6",
     "semantic_hash": ""
   },
   "lib/seo/jsonld-organization.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.5175557,
+    "mtime": 1792243849.7787023,
+    "seen": 1792252179.080086,
     "ast_hash": "b99d08902b7ef6c4bf2b1e50c547d72e",
     "semantic_hash": ""
   },
@@ -1254,14 +1254,14 @@
     "semantic_hash": ""
   },
   "lib/seo/locale-url.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.5175593,
+    "mtime": 1792243824.846703,
+    "seen": 1792252179.0800917,
     "ast_hash": "3d34e7b2b8ce2f907df5b398b7da9cde",
     "semantic_hash": ""
   },
   "lib/seo/metadata.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.5175612,
+    "mtime": 1792243827.018703,
+    "seen": 1792252179.0801113,
     "ast_hash": "164a9dc0528d0eb78e6047f98744f348",
     "semantic_hash": ""
   },
@@ -1350,8 +1350,8 @@
     "semantic_hash": ""
   },
   "lib/shop/customization-inventory.ts": {
-    "mtime": 1792245408.4454205,
-    "seen": 1792246733.517602,
+    "mtime": 1792252097.3529072,
+    "seen": 1792252179.0801759,
     "ast_hash": "1c7d8933d1e6361f9139c01b46bedd3d",
     "semantic_hash": ""
   },
@@ -1710,15 +1710,15 @@
     "semantic_hash": ""
   },
   "app/[lang]/articles/page.tsx": {
-    "mtime": 1792246684.3389478,
-    "seen": 1792246733.5154655,
+    "mtime": 1792243906.3627012,
+    "seen": 1792252179.0777812,
     "ast_hash": "8249ddc7319fbea67bcf6cef15eabec4",
     "semantic_hash": ""
   },
   "app/[lang]/blog/[slug]/page.tsx": {
-    "mtime": 1792246684.3389478,
-    "seen": 1792246733.51547,
-    "ast_hash": "31948e5976598aa4dd2d32d8940fff53",
+    "mtime": 1792247065.7065947,
+    "seen": 1792252179.077785,
+    "ast_hash": "fa022223732564188b8deaa16d7052c9",
     "semantic_hash": ""
   },
   "app/[lang]/blog/layout.tsx": {
@@ -1734,8 +1734,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/blog/page.tsx": {
-    "mtime": 1792246684.3458278,
-    "seen": 1792246733.5154784,
+    "mtime": 1792243881.588058,
+    "seen": 1792252179.0777912,
     "ast_hash": "2c44dc29616d211c50ce5313efc6cbb0",
     "semantic_hash": ""
   },
@@ -1770,8 +1770,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/mbolster-config/mbolster-config-client.tsx": {
-    "mtime": 1792245408.438872,
-    "seen": 1792246733.5154958,
+    "mtime": 1792252097.240796,
+    "seen": 1792252179.0778034,
     "ast_hash": "09980c6de02ec0596db84380e4dc5e10",
     "semantic_hash": ""
   },
@@ -1812,8 +1812,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1792245408.4430504,
-    "seen": 1792246733.5155182,
+    "mtime": 1792252097.240796,
+    "seen": 1792252179.077818,
     "ast_hash": "18bc340b45b0b6720b7ac24cbc096c55",
     "semantic_hash": ""
   },
@@ -1968,8 +1968,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/actions.ts": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156229,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.0778897,
     "ast_hash": "8659c00422a16f1ffed2c554b433dc71",
     "semantic_hash": ""
   },
@@ -1986,8 +1986,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/audit-log/page.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156395,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.0779006,
     "ast_hash": "52f59c326b334cecab69778ea6d06ddb",
     "semantic_hash": ""
   },
@@ -2022,8 +2022,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/costings/page.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156658,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.077915,
     "ast_hash": "4898c51ac1c802eca2b30dde3cbea358",
     "semantic_hash": ""
   },
@@ -2106,8 +2106,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5157604,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.07798,
     "ast_hash": "19427acb54968c0b382076305ae8b659",
     "semantic_hash": ""
   },
@@ -2202,8 +2202,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158231,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.078024,
     "ast_hash": "c03b7509a589a8243792a70c57c9dbf8",
     "semantic_hash": ""
   },
@@ -2226,14 +2226,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/categories-manager.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158818,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780654,
     "ast_hash": "532d74d0029a5a805b0a5891f7aef874",
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158956,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780678,
     "ast_hash": "8ec012498265ff2da482529cdb2c853f",
     "semantic_hash": ""
   },
@@ -3102,8 +3102,8 @@
     "semantic_hash": ""
   },
   "app/sitemap.ts": {
-    "mtime": 1792246684.3458278,
-    "seen": 1792246733.5164495,
+    "mtime": 1792243843.7307024,
+    "seen": 1792252179.0785568,
     "ast_hash": "eda1ec930381bc290df9e6a78692c8a6",
     "semantic_hash": ""
   },
@@ -3174,8 +3174,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/AnalyticsClient.tsx": {
-    "mtime": 1792244651.462827,
-    "seen": 1792246733.515586,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.0778644,
     "ast_hash": "259bfe915c6a72e02a1abe14b2a9cc75",
     "semantic_hash": ""
   },
@@ -3186,8 +3186,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/ProspectJourneyCard.tsx": {
-    "mtime": 1792244651.462827,
-    "seen": 1792246733.5156143,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.077884,
     "ast_hash": "6f7e30e4b025a5d17a801a9fb05d82c6",
     "semantic_hash": ""
   },
@@ -3204,14 +3204,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/[card]/page.tsx": {
-    "mtime": 1792244651.470827,
-    "seen": 1792246733.515744,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779676,
     "ast_hash": "4cd417a4f22a43ad197ffaf5727d77be",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/configure-card-page.check.ts": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5157526,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0779738,
     "ast_hash": "ec5cb6e1e02d42aeab86055352470450",
     "semantic_hash": ""
   },
@@ -3228,8 +3228,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/partner-applications/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.515828,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.078027,
     "ast_hash": "0b5d2e95f8ef8775e995ae5692402e47",
     "semantic_hash": ""
   },
@@ -3246,20 +3246,20 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/partner-commissions/admin-referral-rows.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158362,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0780325,
     "ast_hash": "507baa00ea34eeb109e086127e9aae8a",
     "semantic_hash": ""
   },
   "app/[lang]/settings/partner-commissions/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158384,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.078034,
     "ast_hash": "7c10148daf03086b87f4284786486cca",
     "semantic_hash": ""
   },
   "app/[lang]/settings/partner-commissions/partner-payouts.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158417,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.078037,
     "ast_hash": "43570b7af771903b77ec6b9873e73ece",
     "semantic_hash": ""
   },
@@ -3282,20 +3282,20 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/filling-visuals/route.ts": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.515862,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0780523,
     "ast_hash": "9c4f9dd350c13a4e52536e92126c5935",
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/mappings/route.ts": {
-    "mtime": 1792245408.4443922,
-    "seen": 1792246733.5158648,
+    "mtime": 1792252097.240796,
+    "seen": 1792252179.0780542,
     "ast_hash": "fd16a0b30d539c3aa8ff3baa141f0a92",
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158672,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780554,
     "ast_hash": "5afd88efe199cedce4eef7d43d4e2afe",
     "semantic_hash": ""
   },
@@ -3324,8 +3324,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/rma/page.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.5159173,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780814,
     "ast_hash": "7c2f4f5f0450e9041d9d67729734260d",
     "semantic_hash": ""
   },
@@ -4218,8 +4218,8 @@
     "semantic_hash": ""
   },
   "components/settings/appointments-settings-sheet.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5166233,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0787797,
     "ast_hash": "a6af5115313ca6b4b765e64608aeb7ca",
     "semantic_hash": ""
   },
@@ -4236,14 +4236,14 @@
     "semantic_hash": ""
   },
   "components/settings/partner-self-purchase-editor.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.516636,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0787976,
     "ast_hash": "5ad8cdfc453f98b7c3194e3cf6456c00",
     "semantic_hash": ""
   },
   "components/settings/review-sla-section.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5166392,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0788016,
     "ast_hash": "d759e2e798bfdbd9eb115c27a17ff6cc",
     "semantic_hash": ""
   },
@@ -4284,8 +4284,8 @@
     "semantic_hash": ""
   },
   "components/settings/settings-mobile.check.ts": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5166461,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0788112,
     "ast_hash": "6a0bcc50ef06da13f814f66f95b6cfd8",
     "semantic_hash": ""
   },
@@ -5004,8 +5004,8 @@
     "semantic_hash": ""
   },
   "lib/analytics/journey/aggregates.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5168412,
+    "mtime": 1792243016.5787215,
+    "seen": 1792252179.0790904,
     "ast_hash": "48323833cb3b545558a020c86b5bf78f",
     "semantic_hash": ""
   },
@@ -5028,8 +5028,8 @@
     "semantic_hash": ""
   },
   "lib/analytics/journey/country.check.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5168474,
+    "mtime": 1792243016.5787215,
+    "seen": 1792252179.0790994,
     "ast_hash": "7229eabb2ed16b523d00e9dc408c63e1",
     "semantic_hash": ""
   },
@@ -5382,8 +5382,8 @@
     "semantic_hash": ""
   },
   "lib/configurator/staff-assist.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5170243,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0793328,
     "ast_hash": "77ab1d0ee37214ed06ac4c687ed3f84d",
     "semantic_hash": ""
   },
@@ -5532,14 +5532,14 @@
     "semantic_hash": ""
   },
   "lib/product-builder/overlays.check.ts": {
-    "mtime": 1792245408.4450912,
-    "seen": 1792246733.517346,
+    "mtime": 1792252097.348907,
+    "seen": 1792252179.0797894,
     "ast_hash": "153ee5758f6cf76700e24a8279b06b95",
     "semantic_hash": ""
   },
   "lib/product-builder/overlays.ts": {
-    "mtime": 1792245408.4450912,
-    "seen": 1792246733.5173502,
+    "mtime": 1792252097.3529072,
+    "seen": 1792252179.0797927,
     "ast_hash": "57deb8f2bf7541e766a13c3eec662950",
     "semantic_hash": ""
   },
@@ -5772,8 +5772,8 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/catalog.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5174937,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.080002,
     "ast_hash": "c993d7bd0bf44b487772725026d93aca",
     "semantic_hash": ""
   },
@@ -5850,8 +5850,8 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/recommend.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5175078,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0800183,
     "ast_hash": "4527cd25207af30b081637f06b263f78",
     "semantic_hash": ""
   },
@@ -5880,8 +5880,8 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/slice-02.check.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.517513,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0800247,
     "ast_hash": "3286431d39cf90f9bc6c59ea5b350ba0",
     "semantic_hash": ""
   },
@@ -6030,8 +6030,8 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/color-overrides.check.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.5176854,
+    "mtime": 1792243016.5867214,
+    "seen": 1792252179.0803568,
     "ast_hash": "50c8b6eb7c76b158cc46f7b4ff21a3ff",
     "semantic_hash": ""
   },
@@ -6114,9 +6114,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792167398.6011024,
-    "seen": 1792238787.888693,
-    "ast_hash": "42b6adcb7ee87086f0af5b40d3cbf717",
+    "mtime": 1792247007.8467734,
+    "seen": 1792252179.080569,
+    "ast_hash": "b82a37fb7080b61ba4e373536406e3f7",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -6126,9 +6126,9 @@
     "semantic_hash": ""
   },
   "proxy.ts": {
-    "mtime": 1792167398.6051023,
-    "seen": 1792238787.8887005,
-    "ast_hash": "0cd26e1a47a2cc11d25d36181553114a",
+    "mtime": 1792246941.108034,
+    "seen": 1792252179.0805721,
+    "ast_hash": "aa9a34556e803a09aeb5cd3db7441126",
     "semantic_hash": ""
   },
   "public/sw.js": {
@@ -6324,9 +6324,9 @@
     "semantic_hash": ""
   },
   "scripts/sync-blog-mdx-bodies.mjs": {
-    "mtime": 1792167399.0451024,
-    "seen": 1792238787.8888874,
-    "ast_hash": "5e0ac65fc0b96f05b0a0ade6353a3c53",
+    "mtime": 1792247379.5960238,
+    "seen": 1792252179.0806632,
+    "ast_hash": "558274efe387f188374736f75e77e0f3",
     "semantic_hash": ""
   },
   "scripts/verify-money-flow-e2e.mjs": {
@@ -8178,549 +8178,123 @@
     "semantic_hash": ""
   },
   "data/blogs/10-unique-gifts-for-tired-parents.mdx": {
-    "mtime": 1792167397.9895716,
-    "seen": 1792238787.8912005,
-    "ast_hash": "b6cd11054d0abaa3868f109ec3da5caf",
-    "semantic_hash": ""
-  },
-  "data/blogs/2024-pillow-revolution-embracing-customization-for-blissful-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912036,
-    "ast_hash": "f1030fe866cfcc4ad9849c4d33766348",
-    "semantic_hash": ""
-  },
-  "data/blogs/are-you-struggling-with-neck-and-shoulder-pain-disrupting-your-sleep-and-daily-life.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912067,
-    "ast_hash": "504c0a767895a730e5df2ff1844a6105",
-    "semantic_hash": ""
-  },
-  "data/blogs/bolster-pillow-vs-regular-pillow-which-offers-better-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912094,
-    "ast_hash": "a4008d23b8a0f7b0cd7b65503554499b",
-    "semantic_hash": ""
-  },
-  "data/blogs/bolster-with-adjustable-firmness-for-side-sleepers-enhancing-comfort-and-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912125,
-    "ast_hash": "6de8001ff910af5e33d26fb711e0d5a5",
+    "mtime": 1792253915.8910213,
+    "seen": 1792254426.8661215,
+    "ast_hash": "b750ee9b3edf513df180c56bd5b62ef9",
     "semantic_hash": ""
   },
   "data/blogs/bolsters-vs-pillows-do-you-really-need-both.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912158,
-    "ast_hash": "61571afda067547882ca162423fc5f8c",
-    "semantic_hash": ""
-  },
-  "data/blogs/celebrating-world-sleep-day-how-the-right-pillow-can-help-you-get-a-better-nights-rest.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912194,
-    "ast_hash": "50eb4c5f888df05e6774f4bde7605b63",
-    "semantic_hash": ""
-  },
-  "data/blogs/cervical-pillow-for-neck-pain-a-comprehensive-guide.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891222,
-    "ast_hash": "fd8b252633438e6251b72d48a1dc673c",
-    "semantic_hash": ""
-  },
-  "data/blogs/choosing-the-right-cervical-pillow-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912253,
-    "ast_hash": "bedd55fbc7b657bab4f45fb782df5a25",
-    "semantic_hash": ""
-  },
-  "data/blogs/crafting-comfort-the-unparalleled-advantages-of-customised-mbolster-for-side-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912282,
-    "ast_hash": "aba4e691aabdee0a7d8f93f2dbbf0d79",
-    "semantic_hash": ""
-  },
-  "data/blogs/custom-made-pillow-the-ultimate-solution-for-back-and-neck-pain.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912313,
-    "ast_hash": "429c7c8613436193d9f725838f839c42",
-    "semantic_hash": ""
-  },
-  "data/blogs/discover-the-benefits-of-a-custom-made-pillow-for-a-good-nights-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912342,
-    "ast_hash": "57573169dc6cbced21ccbfc0c010fadb",
-    "semantic_hash": ""
-  },
-  "data/blogs/discover-the-mbolster-the-revolutionary-bolster-for-personalized-comfort-and-hygiene.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891237,
-    "ast_hash": "cec533319c549ddc4651f34e39fe8176",
-    "semantic_hash": ""
-  },
-  "data/blogs/elevate-your-sleep-experience-with-customized-pillows.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912396,
-    "ast_hash": "09fe59d70e974eaca4ceafdec3e55097",
-    "semantic_hash": ""
-  },
-  "data/blogs/embracing-the-year-of-the-dragon-a-guide-to-auspicious-lunar-new-year-house-cleaning.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912423,
-    "ast_hash": "b100b565769432cff67807fe0fe47ad7",
+    "mtime": 1792252744.5728922,
+    "seen": 1792254426.866127,
+    "ast_hash": "68220fbeeee5a594564781581072a375",
     "semantic_hash": ""
   },
   "data/blogs/ergonomic-pillow-vs-regular-pillow-is-it-worth-the-investment.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891245,
-    "ast_hash": "140f4c41cf279e2df9ed18371e2f56c7",
-    "semantic_hash": ""
-  },
-  "data/blogs/finding-the-perfect-neck-support-pillow-in-singapore.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912473,
-    "ast_hash": "09b7d5d4780046e0b73e02a3e5e77775",
-    "semantic_hash": ""
-  },
-  "data/blogs/flat-neck-syndrome-in-children.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912501,
-    "ast_hash": "c2b1a76ead2e932963df37920f4feb19",
-    "semantic_hash": ""
-  },
-  "data/blogs/guest-blog-how-to-improve-your-posture-at-home-by-porch.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912528,
-    "ast_hash": "107e09653123e4142a0b21a634557b0b",
-    "semantic_hash": ""
-  },
-  "data/blogs/half-of-singapore-s-population-is-sleep-deprived-are-you-one-of-them.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912556,
-    "ast_hash": "0f4162ad89d31567780d6077e83a3388",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-bolster-can-help-with-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891258,
-    "ast_hash": "52a004b57d60a4427e85cf3e7c9fc476",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-cervical-neck-support-pillow-and-bolster-can-provide-effective-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891261,
-    "ast_hash": "c7694c7beed065de976a2ddf11e77cae",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-customised-pillow-can-help-relieve-neck-pain.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912644,
-    "ast_hash": "95258deed809af94dc365716991a6f95",
+    "mtime": 1792252804.9568908,
+    "seen": 1792254426.8661299,
+    "ast_hash": "d9961d68457839fdc3d94b241cd8ca99",
     "semantic_hash": ""
   },
   "data/blogs/how-a-customised-pillow-can-help-with-sleep-apnea-for-cpap-users.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912673,
-    "ast_hash": "2e690c9dfdeaef5abc0da4187ebb2dbd",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-customised-pillow-with-adjustable-firmness-can-help-children-sleep-better.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912706,
-    "ast_hash": "3c166331a1c9ed8d6fb37f3ae128474c",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-a-neck-shoulder-pain-pillow-can-transform-your-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891273,
-    "ast_hash": "cebb4d3bbbb4be1a0f22c11d22d2e545",
+    "mtime": 1792253542.0322683,
+    "seen": 1792254426.8661327,
+    "ast_hash": "c4d5e4e936a60787fe61e655a8dad49e",
     "semantic_hash": ""
   },
   "data/blogs/how-adjustable-pillow-firmness-can-help-kids-sleep-better-the-key-to-restful-nights.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912754,
-    "ast_hash": "0c898a513de3ad35b30a4d78068f0c97",
+    "mtime": 1792253911.4016294,
+    "seen": 1792254426.866135,
+    "ast_hash": "cefdf76ee00fcefcea0e6ec7774d3dfc",
     "semantic_hash": ""
   },
   "data/blogs/how-often-should-you-replace-your-pillow-and-why-it-matters-for-neck-pain-amp-sleep-quality.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891278,
-    "ast_hash": "1a404bf1c8f6793a496094fff13bb840",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-often-should-you-replace-your-pillow-for-better-sleep-hygiene.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891281,
-    "ast_hash": "d5cb2f5fde5f36739a83b179330ea4e2",
+    "mtime": 1792253915.8831606,
+    "seen": 1792254426.8661368,
+    "ast_hash": "d16cf753af9c42f809c9769c668dd51e",
     "semantic_hash": ""
   },
   "data/blogs/how-to-choose-the-best-pillow-in-singapore.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912833,
-    "ast_hash": "bf4cbf55e1ff3a5f0501fc952fc1e3fe",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-to-gauge-the-right-posture-by-breathing.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912857,
-    "ast_hash": "b50795efc6b3a6e70f65d88bbaa8aaa2",
-    "semantic_hash": ""
-  },
-  "data/blogs/how-to-sleep-correctly-with-a-body-pillow-for-back-and-neck-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912883,
-    "ast_hash": "5368c5a0a8229415c33c5e0470d8b7bf",
+    "mtime": 1792252788.7328913,
+    "seen": 1792254426.8661385,
+    "ast_hash": "a26b0e3673425bfaed8dd57cb941dc1e",
     "semantic_hash": ""
   },
   "data/blogs/how-to-use-a-bolster-pillow-for-better-side-sleeping-in-singapore-homes.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912911,
-    "ast_hash": "6caff06ec433f7cb707ce3e6b4f83eec",
-    "semantic_hash": ""
-  },
-  "data/blogs/hygiene-and-sleep-how-to-keep-your-sleep-environment-clean.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912935,
-    "ast_hash": "f4629e803c7ccf17b415780a56dbd18f",
+    "mtime": 1792252809.2368908,
+    "seen": 1792254426.8661401,
+    "ast_hash": "ad0d25597a5d79fc960b4725e87fb472",
     "semantic_hash": ""
   },
   "data/blogs/improve-good-posture-habits-with-exercises-and-home-remedies.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912957,
-    "ast_hash": "153a721d3a4f8688a93447a969618d35",
-    "semantic_hash": ""
-  },
-  "data/blogs/improve-sleep-with-a-bolster-and-a-neck-support-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8912983,
-    "ast_hash": "d6bcc3ff20aeef8c699a211c7c9e95a4",
-    "semantic_hash": ""
-  },
-  "data/blogs/is-a-memory-foam-pillow-ideal.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891301,
-    "ast_hash": "f89bacac494d3dfc077c2cace73319dd",
+    "mtime": 1792252802.524891,
+    "seen": 1792254426.8661525,
+    "ast_hash": "0155617f0ab8d7df43ceeee704e61ca5",
     "semantic_hash": ""
   },
   "data/blogs/macquarie-chiropractic-x-mpillow-collaboration.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913035,
-    "ast_hash": "707906675a448911867fc699a273bdac",
-    "semantic_hash": ""
-  },
-  "data/blogs/mbolster-the-best-bolster-for-side-sleeping.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913057,
-    "ast_hash": "c53a69f731ca0b4a016747b6a1d8a5c4",
-    "semantic_hash": ""
-  },
-  "data/blogs/neck-pain-relief-how-a-cervical-pillow-for-neck-pain-can-help.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913083,
-    "ast_hash": "c9d751adf5b04e1596f91f5f3ffe1e6f",
-    "semantic_hash": ""
-  },
-  "data/blogs/neck-pain-relief-how-to-sleep-better-and-wake-up-pain-free.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913112,
-    "ast_hash": "910df0ea4397fccedaae04dcc8ce351d",
-    "semantic_hash": ""
-  },
-  "data/blogs/neck-support-pillows-in-singapore-your-key-to-comfortable-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913133,
-    "ast_hash": "277bbf5493f7185c3b9d43189e92a47f",
-    "semantic_hash": ""
-  },
-  "data/blogs/p-how-a-tailored-pillow-can-improve-sleep-quality-and-give-you-the-restful-night-you-deserve-p-p-p.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913162,
-    "ast_hash": "3703137ec57588da004cedeba4d01c8b",
-    "semantic_hash": ""
-  },
-  "data/blogs/pillow-neck-pain-spinal-degeneration.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891319,
-    "ast_hash": "995180eb129004b8cb17d594973c6748",
+    "mtime": 1792250533.1311128,
+    "seen": 1792252179.0819886,
+    "ast_hash": "14b0b3812b03e919c7d3635688cf0ff8",
     "semantic_hash": ""
   },
   "data/blogs/side-sleeper-pillow-your-ultimate-guide-for-alignment-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913221,
-    "ast_hash": "16e7ff1e3fe9e381e4257bdaa649a14d",
-    "semantic_hash": ""
-  },
-  "data/blogs/side-sleeping-bliss-how-bolsters-enhance-comfort-and-support.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913252,
-    "ast_hash": "676cc58bf9d4317b5d1d863838c916b7",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleep-and-mental-health-the-vital-connection-between-rest-and-emotional-well-being.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891328,
-    "ast_hash": "cc4f8f9f8cd5a2a340b6ff6d30ae9c85",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleep-better-feel-better-the-importance-of-investing-in-the-right-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913305,
-    "ast_hash": "a8f8b9b92b470cc136f667f6e362d98b",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleep-disorders-unveiled-shedding-light-on-common-sleep-issues-for-world-sleep-day.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913338,
-    "ast_hash": "77bd84dd958ba84c3520622c54455582",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleeping-on-your-stomach-with-2-mbolsters-neck-pain-relief-for-stomach-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891337,
-    "ast_hash": "9b8a60ab21a414c9bcc25dd1a7733f5a",
-    "semantic_hash": ""
-  },
-  "data/blogs/sleeping-positions-and-their-impact-on-health-finding-your-ideal-sleep-pose.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913398,
-    "ast_hash": "425f83c14c5c266db66a1abfc972794d",
-    "semantic_hash": ""
-  },
-  "data/blogs/stay-cool-and-comfy-finding-the-perfect-pillow-for-warm-weather.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913422,
-    "ast_hash": "04dce4d5a5b79e90637a74f1b0820b3e",
+    "mtime": 1792253768.887369,
+    "seen": 1792254426.8661568,
+    "ast_hash": "57b19a5fa1a10351e35bea6d88e02d20",
     "semantic_hash": ""
   },
   "data/blogs/tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913455,
-    "ast_hash": "747ce1ec25733aa57a34f377ec1388db",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-adjustable-bolster-why-a-customisable-bolster-beats-the-traditional-body-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913484,
-    "ast_hash": "3f0992cafce06720491c0834d8259b88",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-benefits-of-customized-pillows-for-a-good-nights-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913515,
-    "ast_hash": "87c2bd6376c198d0f0dc05d2470041cf",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-benefits-of-using-a-neck-support-pillow-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891354,
-    "ast_hash": "fc223146af00486e6e6b3498e3f0e41c",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-benefits-of-using-the-right-pillow-for-a-good-nights-sleep-on-world-sleep-day.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913577,
-    "ast_hash": "7c360f02973a0c8242293d5d0e842237",
+    "mtime": 1792253868.9473748,
+    "seen": 1792254426.8661592,
+    "ast_hash": "ab1b49687aea22a8db26532315ef9e52",
     "semantic_hash": ""
   },
   "data/blogs/the-complete-guide-to-choosing-the-right-bolster-in-singapore.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913605,
-    "ast_hash": "404ac14d13188b274142a12b6b955be2",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-effects-on-sleep-deprivation-and-how-to-overcome-it.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913639,
-    "ast_hash": "8092d9688ed5ff170e32d3aaf0b86a10",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-gift-of-a-good-nights-sleep-customised-pillows-and-their-impact-on-well-being.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891367,
-    "ast_hash": "11c6e61647ac52c039ad6575c21ca118",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-impact-of-sleep-on-mental-health-understanding-the-connection.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.89137,
-    "ast_hash": "4e867050ec2eace82a6d86ec6f8e78e5",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-importance-of-cervical-neck-support-for-a-pain-free-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891373,
-    "ast_hash": "15bcf6bf682c571721b418e4b83d4199",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-perfect-gift-customised-pillows-for-a-restful-festive-season.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891376,
-    "ast_hash": "fde27204b3eac8ad23fd18d59be46585",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-perfect-sidekick-for-side-sleepers-how-a-customised-bolster-can-transform-your-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913794,
-    "ast_hash": "e6155d77e1568b66ffdffbddf8f719d8",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-role-of-a-bolster-in-enhancing-neck-pain-relief-why-you-need-one.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913827,
-    "ast_hash": "1bcc37f8c0a41afac094b8f907ac97b2",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-science-of-comfort-custom-made-pillows-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913853,
-    "ast_hash": "8076266031e382eb80ec0d9e5e541b9d",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-silent-agony-how-lifestyle-choices-impact-neck-pain-and-the-role-of-customised-pillows.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913884,
-    "ast_hash": "fe990a3770cf994d93082a129a8c01e9",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-ultimate-guide-to-bolsters-why-mbolster-by-mpillow-is-a-game-changer-for-side-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913913,
-    "ast_hash": "990044e9a4e2df7586f429bfc9b03579",
+    "mtime": 1792253861.7313745,
+    "seen": 1792254426.8661613,
+    "ast_hash": "5d77440f527daf612d6387309bfb16dc",
     "semantic_hash": ""
   },
   "data/blogs/the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891395,
-    "ast_hash": "15d89ae583f6e148230b4e82132fbbac",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-ultimate-guide-to-custom-made-pillows-for-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8913982,
-    "ast_hash": "965a2b59c511f2c82b1ae1aec3394042",
-    "semantic_hash": ""
-  },
-  "data/blogs/the-ultimate-guide-to-thoughtful-gifts-for-mothers-and-fathers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914013,
-    "ast_hash": "191cfcb9cb43c3c86b6f3aa3143aedff",
-    "semantic_hash": ""
-  },
-  "data/blogs/tips-to-prevent-shoulder-pains-during-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891404,
-    "ast_hash": "55ade0ae40ebb8d39af18162b211f892",
-    "semantic_hash": ""
-  },
-  "data/blogs/top-5-pillows-for-neck-pain-relief-what-to-look-for-and-why-it-matters.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914082,
-    "ast_hash": "2b578ba0101bb5987803473f68af3d9f",
-    "semantic_hash": ""
-  },
-  "data/blogs/understanding-insomnia-causes-symptoms-and-effective-treatments.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914106,
-    "ast_hash": "9f7993b4eabdf95ebf13ec94423f6434",
-    "semantic_hash": ""
-  },
-  "data/blogs/unlocking-better-sleep-the-benefits-of-a-frequency-bed.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891414,
-    "ast_hash": "63357c0a87d66975a2d2e823486360f7",
-    "semantic_hash": ""
-  },
-  "data/blogs/what-are-the-different-types-of-pillow-fillings-amp-which-is-best-for-you.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914165,
-    "ast_hash": "33dbd9681078e9e66994c62f795f62bd",
+    "mtime": 1792253991.58996,
+    "seen": 1792254426.866163,
+    "ast_hash": "1c9b29c38d95b98061b89d9bdb70d343",
     "semantic_hash": ""
   },
   "data/blogs/what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891419,
-    "ast_hash": "c3734aaaab3bf786510b8d4d3aafba4c",
+    "mtime": 1792253766.7873688,
+    "seen": 1792254426.8661647,
+    "ast_hash": "f1e0288e71e65c55410f7e703e8bf6bf",
     "semantic_hash": ""
   },
   "data/blogs/what-is-the-best-pillow-for-neck-pain-in-singapore.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914218,
-    "ast_hash": "fdbe07223b1d9dcdf0e20c46464d6a67",
+    "mtime": 1792254030.9592996,
+    "seen": 1792254426.8661668,
+    "ast_hash": "b5e8c034c63d8136aa0ae5833b8cebb0",
     "semantic_hash": ""
   },
   "data/blogs/what-led-to-the-creation-of-the-world-s-best-pillow.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914256,
-    "ast_hash": "15ebabe99adbe9b7d2768d3bcde83d79",
+    "mtime": 1792250533.1316183,
+    "seen": 1792252179.0820026,
+    "ast_hash": "dadc6e669af3ee55ed8175b97ce87534",
     "semantic_hash": ""
   },
   "data/blogs/which-mpillow-configuration-is-for-you.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891428,
-    "ast_hash": "6987df115dd68f307a9b9a9991085711",
-    "semantic_hash": ""
-  },
-  "data/blogs/which-thief-steals-more-than-just-your-wealth.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914309,
-    "ast_hash": "72445c6d473749eef6ab777113576927",
-    "semantic_hash": ""
-  },
-  "data/blogs/which-type-of-pillow-is-best-for-sleep-amp-neck-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914335,
-    "ast_hash": "bae2b18ca685a7695ab128610bb67d3f",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-a-modular-pillow-like-mpillow-is-the-game-changer-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891437,
-    "ast_hash": "5fb26e5d59b837e51341a9a04ddbee2b",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-a-modular-pillow-might-be-the-last-pillow-you-ever-buy.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914402,
-    "ast_hash": "a4026e71669336929a89228ef000c9d6",
+    "mtime": 1792250561.4676082,
+    "seen": 1792252179.082005,
+    "ast_hash": "f96009c81da1782329cb188ded98fb91",
     "semantic_hash": ""
   },
   "data/blogs/why-a-pregnancy-bolster-pillow-is-essential-for-back-and-hip-pain-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914437,
-    "ast_hash": "4f6ffdf9531f5614de980245c4e2c48c",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-are-you-yawning-so-much.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914466,
-    "ast_hash": "69234580cb1d25d65243c652818c161b",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-one-size-doesnt-fit-all-the-importance-of-customized-pillows.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.89145,
-    "ast_hash": "530927bba4fa4d691f81e231d1ef2077",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-side-sleepers-love-the-mbolster-a-game-changer-for-better-sleep.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891453,
-    "ast_hash": "c47b54aafdbf58cfb43b7b39b33378d7",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-the-mbolster-is-the-ultimate-bolster-for-side-sleepers.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914566,
-    "ast_hash": "bb1a5bf93f4bf5555c01b1b698fbcb9c",
-    "semantic_hash": ""
-  },
-  "data/blogs/why-your-pillow-might-be-causing-neck-pain-and-how-to-find-one-that-offers-real-relief.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.891459,
-    "ast_hash": "b387ad6b26647656b2b8f0d69ce78d83",
+    "mtime": 1792254330.1288314,
+    "seen": 1792254426.8661735,
+    "ast_hash": "960c79bea2c36282b72eeffcbd0fa05c",
     "semantic_hash": ""
   },
   "data/blogs/zoom-session-with-kh-poon-physiotherapist.mdx": {
-    "mtime": 1792167397.9896138,
-    "seen": 1792238787.8914614,
-    "ast_hash": "d733f6301a6d0b9f27a942a5c5f10bb6",
+    "mtime": 1792250521.1455154,
+    "seen": 1792252179.0820086,
+    "ast_hash": "e7fcaec26a62b06a8b0e01718cf2a768",
     "semantic_hash": ""
   },
   "docs/adr/0001-costings-single-price-source.md": {
@@ -9480,8 +9054,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792245954.3549044,
-    "seen": 1792246733.5189054,
+    "mtime": 1792167397.9393044,
+    "seen": 1792252179.0819607,
     "ast_hash": "b2d9d39cbe2e6d094daa622431397045",
     "semantic_hash": ""
   },
@@ -9528,14 +9102,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx": {
-    "mtime": 1792246684.3458278,
-    "seen": 1792246733.5156431,
+    "mtime": 1792243904.578701,
+    "seen": 1792252179.077903,
     "ast_hash": "69b1d128b0750844df2ce21633c03d06",
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/blogs-client.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156534,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.077909,
     "ast_hash": "8f67f4a606a56c123d1b847eea320f6c",
     "semantic_hash": ""
   },
@@ -9546,20 +9120,20 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156908,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779335,
     "ast_hash": "efaddcc82741e297744014e2a528f2ca",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/[id]/discount-editor-client.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156965,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779371,
     "ast_hash": "e52da23d4207dca08685911599048e8e",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/discounts-client.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5157058,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779426,
     "ast_hash": "bddc32182f6afe19ccc29180ccf80b13",
     "semantic_hash": ""
   },
@@ -9570,14 +9144,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/orders/orders-client.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158134,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.078017,
     "ast_hash": "db37801bef27e29664749ed0342da6ab",
     "semantic_hash": ""
   },
   "app/[lang]/settings/page-builder/page-builder-client.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158184,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0780203,
     "ast_hash": "88478ecc2025453f5393b1aa32b96d19",
     "semantic_hash": ""
   },
@@ -9588,14 +9162,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/products-client.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158982,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780692,
     "ast_hash": "2391faa51cc692907178089b85a44fb2",
     "semantic_hash": ""
   },
   "app/[lang]/settings/results/results-client.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.5159104,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780778,
     "ast_hash": "4ab536722fd2dd91ac2eeabcb912c24c",
     "semantic_hash": ""
   },
@@ -9660,8 +9234,8 @@
     "semantic_hash": ""
   },
   "lib/product-builder/overlay-mappings.ts": {
-    "mtime": 1792245408.444625,
-    "seen": 1792246733.517345,
+    "mtime": 1792252097.348907,
+    "seen": 1792252179.079788,
     "ast_hash": "e5f6463574a13171c7e1eb4338715911",
     "semantic_hash": ""
   },
@@ -9738,8 +9312,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/appointments/appointments-client.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156333,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.0778964,
     "ast_hash": "188a531d9332dcdad68f589d611bde4b",
     "semantic_hash": ""
   },
@@ -9750,20 +9324,20 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/faq/faq-client.tsx": {
-    "mtime": 1792244651.470827,
-    "seen": 1792246733.5157135,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.077948,
     "ast_hash": "ed0a917852f1791be24c8aa0be07695d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/forms/forms-client.tsx": {
-    "mtime": 1792244651.470827,
-    "seen": 1792246733.51572,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.077953,
     "ast_hash": "d2c9616152a391ea973038335e14e954",
     "semantic_hash": ""
   },
   "app/[lang]/settings/general/general-client.tsx": {
-    "mtime": 1792244651.470827,
-    "seen": 1792246733.515725,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779564,
     "ast_hash": "de62d84ecc06f3ed160aea32050bc83f",
     "semantic_hash": ""
   },
@@ -9774,26 +9348,26 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/media/media-client.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.515798,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.078006,
     "ast_hash": "6356d52b36adde3efeeb1fb999adb65e",
     "semantic_hash": ""
   },
   "app/[lang]/settings/partners/partners-client.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158548,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0780468,
     "ast_hash": "29e63c0cdc450758c034f1b62da7dc29",
     "semantic_hash": ""
   },
   "app/[lang]/settings/results/[id]/result-detail-client.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.5159037,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780733,
     "ast_hash": "10c58b62552fe8be6cb86e5cf28fda01",
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/shipping-client.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.5159318,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780962,
     "ast_hash": "20c56c9005bd95809a1667b99ce276fa",
     "semantic_hash": ""
   },
@@ -10350,8 +9924,8 @@
     "semantic_hash": ""
   },
   "components/product-builder/overlay-workbench.tsx": {
-    "mtime": 1792245937.5776412,
-    "seen": 1792246733.5165546,
+    "mtime": 1792252097.240907,
+    "seen": 1792252179.0786598,
     "ast_hash": "8e771b7c21cd074a44be16590e3350d2",
     "semantic_hash": ""
   },
@@ -10620,8 +10194,8 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/surface-parity.check.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.5177062,
+    "mtime": 1792243016.5867214,
+    "seen": 1792252179.0803893,
     "ast_hash": "838eaa43cb4ee3f7f1bc9cb28d63ddb2",
     "semantic_hash": ""
   },
@@ -12276,20 +11850,20 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
-    "mtime": 1792244651.462827,
-    "seen": 1792246733.5188367,
+    "mtime": 1792243015.6507215,
+    "seen": 1792252179.0818946,
     "ast_hash": "f3cbf0399a9d3c52631f3e2de565d894",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1792244651.462827,
-    "seen": 1792246733.5188415,
+    "mtime": 1792243015.6507215,
+    "seen": 1792252179.081901,
     "ast_hash": "0d5f7879e1535afc669c601f951b0bc1",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1792244651.462827,
-    "seen": 1792246733.518843,
+    "mtime": 1792243015.6507215,
+    "seen": 1792252179.0819023,
     "ast_hash": "3706c0393eb2d6af18d6ddfa8e522602",
     "semantic_hash": ""
   },
@@ -12396,8 +11970,8 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimensions.check.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.517694,
+    "mtime": 1792243016.5867214,
+    "seen": 1792252179.08037,
     "ast_hash": "d0df5377c44d56f89dbea8a25f5f1374",
     "semantic_hash": ""
   },
@@ -12420,14 +11994,14 @@
     "semantic_hash": ""
   },
   "docs/adr/0019-physical-fit-model.md": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5190718,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0820403,
     "ast_hash": "9323fd04772ace879958f2f0d82c87c4",
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/dimensions/route.ts": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5158594,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0780501,
     "ast_hash": "753d560a1acd3288dc52cd29ac7c07fc",
     "semantic_hash": ""
   },
@@ -12468,8 +12042,8 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/fit.test.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.517671,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0803332,
     "ast_hash": "cc144341fd3e3a2087d13b611bb4d0ef",
     "semantic_hash": ""
   },
@@ -12480,14 +12054,14 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/settle.test.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.5176768,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.080342,
     "ast_hash": "fb0356eefb404dd8570e76803e39c0ae",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/settle.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.517704,
+    "mtime": 1792243016.5867214,
+    "seen": 1792252179.0803854,
     "ast_hash": "b2edf96a5fec65242b67e7f7c998735a",
     "semantic_hash": ""
   },
@@ -12498,8 +12072,8 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-cross-section.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5167048,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0788958,
     "ast_hash": "1d5463aea8457bc8b98caa9271a0ed11",
     "semantic_hash": ""
   },
@@ -12516,20 +12090,20 @@
     "semantic_hash": ""
   },
   "lib/configurator/__tests__/move-piece.test.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5170035,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0792992,
     "ast_hash": "c9b6c255c4bd71e49d0e568ebc758378",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/cross-section.test.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5176659,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0803256,
     "ast_hash": "41a98cfcf2e2ad1f0d6e5e2b5a9841f1",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/cross-section.ts": {
-    "mtime": 1792244652.122827,
-    "seen": 1792246733.5176904,
+    "mtime": 1792243016.5867214,
+    "seen": 1792252179.0803638,
     "ast_hash": "bf7d384c87d230e3ddfa2f8a0c9c3cdc",
     "semantic_hash": ""
   },
@@ -12558,8 +12132,8 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/bolster-fit.test.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5176592,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0803154,
     "ast_hash": "5d91ac301d0e430726275ca975b0d693",
     "semantic_hash": ""
   },
@@ -12702,8 +12276,8 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/17-blog-hygiene.md": {
-    "mtime": 1792246684.3389478,
-    "seen": 1792246733.5186098,
+    "mtime": 1792244165.2386951,
+    "seen": 1792252179.0816326,
     "ast_hash": "c92d7d7a77dca5f39f962d6b2d222bfa",
     "semantic_hash": ""
   },
@@ -12720,8 +12294,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SearchVisibilityCard.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156171,
+    "mtime": 1792243015.6547215,
+    "seen": 1792252179.0778866,
     "ast_hash": "864a2ac6ef28eadbb3e644a6c6f0b726",
     "semantic_hash": ""
   },
@@ -12978,8 +12552,8 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-cross-section.test.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5167036,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.078893,
     "ast_hash": "a0bbb3b57a6b473b3c4df1147be15df1",
     "semantic_hash": ""
   },
@@ -13542,14 +13116,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/couriers/easyship-client.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.51592,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780845,
     "ast_hash": "961aeefc5d7cbd7ed8fe97329b146553",
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/couriers/easyship-panel.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.515922,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0780861,
     "ast_hash": "4eedfc4d832a4dd79a2017de216cdbda",
     "semantic_hash": ""
   },
@@ -13944,8 +13518,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/showroom/showroom-viewer.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.5159404,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0781038,
     "ast_hash": "e29cfef46c44f77c0a318e9b6435e71f",
     "semantic_hash": ""
   },
@@ -14016,14 +13590,14 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/telegram-tab.tsx": {
-    "mtime": 1792244651.478827,
-    "seen": 1792246733.5159607,
+    "mtime": 1792243015.6667213,
+    "seen": 1792252179.0781236,
     "ast_hash": "8d715fbd45606d9e803646d0bda3f682",
     "semantic_hash": ""
   },
   "app/[lang]/settings/users/users-client.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5159633,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0781257,
     "ast_hash": "9b63e4549c6e0eb4f8d8cd18bf791f80",
     "semantic_hash": ""
   },
@@ -14106,8 +13680,8 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/page-keys-by-route.test.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5169377,
+    "mtime": 1792243016.5787215,
+    "seen": 1792252179.0792103,
     "ast_hash": "674aa4b837f8d1ec003df3a1379dc978",
     "semantic_hash": ""
   },
@@ -15216,8 +14790,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/costings/services/services-client.tsx": {
-    "mtime": 1792244651.466827,
-    "seen": 1792246733.5156786,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779262,
     "ast_hash": "ae964f0d291703532c9d051a92a377ac",
     "semantic_hash": ""
   },
@@ -15432,141 +15006,183 @@
     "semantic_hash": ""
   },
   "components/spatial/slab-shape.test.ts": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5166955,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0788817,
     "ast_hash": "a7e64f64e70c3fd7291b9edb4af15a54",
     "semantic_hash": ""
   },
   "components/spatial/slab-shape.ts": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5166974,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0788841,
     "ast_hash": "c2258c745adf7f18bdda4173b3854d40",
     "semantic_hash": ""
   },
   "lib/dnd/__tests__/slab-drag.test.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.517044,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.079363,
     "ast_hash": "816fdadd086d8846153e279c3d5a1cd7",
     "semantic_hash": ""
   },
   "lib/dnd/slab-drag.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.5170488,
+    "mtime": 1792243016.5827215,
+    "seen": 1792252179.0793703,
     "ast_hash": "0ae5d30930675d6463986c048e55b863",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/13-cross-section-editing.md": {
-    "mtime": 1792244651.462827,
-    "seen": 1792246733.5188398,
+    "mtime": 1792243015.6507215,
+    "seen": 1792252179.0818992,
     "ast_hash": "a2f6cf6a649ffca547fd008bd808183f",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/calibration/calibration-sheet-view.tsx": {
-    "mtime": 1792244651.470827,
-    "seen": 1792246733.5157473,
+    "mtime": 1792243015.6587214,
+    "seen": 1792252179.0779696,
     "ast_hash": "1e1effb9f49ca331257462a619af809d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/calibration/page.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.51575,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.077972,
     "ast_hash": "527f042648d24cb097c4aef51d26eb5c",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/configure-client.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.5157552,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.077977,
     "ast_hash": "891609f92ac2c45550df16b6aee00a39",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/dimensions-section.tsx": {
-    "mtime": 1792244651.4764714,
-    "seen": 1792246733.515758,
+    "mtime": 1792243015.6646278,
+    "seen": 1792252179.0779784,
     "ast_hash": "c28c4d46d74fec0dc31376794b1a589b",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/product-visualize.tsx": {
-    "mtime": 1792245408.4430504,
-    "seen": 1792246733.5157633,
+    "mtime": 1792252097.240796,
+    "seen": 1792252179.0779827,
     "ast_hash": "9bc722cea0350149c0ab07830b32662e",
     "semantic_hash": ""
   },
   "components/ui/__tests__/sheet-grid.test.ts": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5167181,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0789135,
     "ast_hash": "00a6f6569f1028e1bb3219efafe228c1",
     "semantic_hash": ""
   },
   "components/ui/info-tip.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5167468,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0789537,
     "ast_hash": "2f8ced583e678262be0c570d1a8d282f",
     "semantic_hash": ""
   },
   "components/ui/sheet-grid.tsx": {
-    "mtime": 1792244651.482827,
-    "seen": 1792246733.5167851,
+    "mtime": 1792243015.6707215,
+    "seen": 1792252179.0790083,
     "ast_hash": "0bf4a9993679502b2d3abf6254e07df3",
     "semantic_hash": ""
   },
   "lib/analytics/__tests__/journey-aggregates.test.ts": {
-    "mtime": 1792244652.090827,
-    "seen": 1792246733.5168326,
+    "mtime": 1792243016.5787215,
+    "seen": 1792252179.0790758,
     "ast_hash": "ccb8e41f7ad42471090dfdab4d1cfe6b",
     "semantic_hash": ""
   },
   "lib/analytics/journey/cached.ts": {
-    "mtime": 1792244652.118827,
-    "seen": 1792246733.516843,
+    "mtime": 1792243016.5787215,
+    "seen": 1792252179.0790927,
     "ast_hash": "9d62402c18d33ffe049302c9692289cd",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/content-audit.md": {
-    "mtime": 1792246684.3389478,
-    "seen": 1792246733.5185342,
-    "ast_hash": "ddf83276b53991f7c24e5c1ff22380be",
+    "mtime": 1792248146.9779198,
+    "seen": 1792252179.0816004,
+    "ast_hash": "a6b9df07c22d6ca43f219c38809eda33",
     "semantic_hash": ""
   },
   "lib/__tests__/blog-related.test.ts": {
-    "mtime": 1792246684.4269478,
-    "seen": 1792246733.5168195,
+    "mtime": 1792243950.0178747,
+    "seen": 1792252179.079057,
     "ast_hash": "4af33e4ab9d08af91add973b39915989",
     "semantic_hash": ""
   },
   "lib/blog-related.ts": {
-    "mtime": 1792246684.4269478,
-    "seen": 1792246733.516981,
+    "mtime": 1792243809.1547034,
+    "seen": 1792252179.0792663,
     "ast_hash": "dd57eac038946e3d4cdc3f7108135766",
     "semantic_hash": ""
   },
   "lib/seo/__tests__/meta-description.test.ts": {
-    "mtime": 1792246684.4269478,
-    "seen": 1792246733.5175452,
+    "mtime": 1792244127.266696,
+    "seen": 1792252179.0800674,
     "ast_hash": "40bd3dd83a0bbc9409f03629aafeab4d",
     "semantic_hash": ""
   },
   "lib/seo/__tests__/metadata.test.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.5175462,
+    "mtime": 1792243950.015778,
+    "seen": 1792252179.0800705,
     "ast_hash": "f02959c3dcf32e05fd09503c0970a16c",
     "semantic_hash": ""
   },
   "lib/seo/meta-description.ts": {
-    "mtime": 1792246684.4330535,
-    "seen": 1792246733.5175602,
+    "mtime": 1792244125.434696,
+    "seen": 1792252179.0801096,
     "ast_hash": "535e58d714d74b35b985a1077f31eeb3",
     "semantic_hash": ""
   },
   "lib/product-builder/overlays.test.ts": {
-    "mtime": 1792245314.7436442,
-    "seen": 1792246733.5173485,
+    "mtime": 1792252097.3529072,
+    "seen": 1792252179.0797913,
     "ast_hash": "416ba84368e04f17b80f53f5b529f998",
     "semantic_hash": ""
   },
   "supabase/migrations/20261017141604_item_overlay_color.sql": {
-    "mtime": 1792245079.5668523,
-    "seen": 1792246733.518047,
+    "mtime": 1792252097.3529072,
+    "seen": 1792252179.0809693,
     "ast_hash": "93d12dea922e8113d5e885929498a4be",
+    "semantic_hash": ""
+  },
+  "components/blog/__tests__/post-body.test.tsx": {
+    "mtime": 1792248455.7839992,
+    "seen": 1792252179.078577,
+    "ast_hash": "c78a7418af6e0bfbd4fb25b527ee2308",
+    "semantic_hash": ""
+  },
+  "components/blog/post-body.tsx": {
+    "mtime": 1792247203.0308275,
+    "seen": 1792252179.0785804,
+    "ast_hash": "da50e975296ff4ab0bc4920942f66715",
+    "semantic_hash": ""
+  },
+  "lib/__tests__/blog-redirects.test.ts": {
+    "mtime": 1792249792.8799686,
+    "seen": 1792252179.0790539,
+    "ast_hash": "c1f26dda0837799a635dfc46dec84c3e",
+    "semantic_hash": ""
+  },
+  "lib/__tests__/blog-structure.test.ts": {
+    "mtime": 1792247100.2597256,
+    "seen": 1792252179.0790582,
+    "ast_hash": "ca2b286353fd35111ff2d12c351fec5a",
+    "semantic_hash": ""
+  },
+  "lib/blog-redirects.ts": {
+    "mtime": 1792246924.9680343,
+    "seen": 1792252179.0792637,
+    "ast_hash": "beb8372cba042d643362884b11b7ced5",
+    "semantic_hash": ""
+  },
+  "lib/blog-structure.ts": {
+    "mtime": 1792247023.604032,
+    "seen": 1792252179.079268,
+    "ast_hash": "3bbd426a3928bff1a7bd1e86b9f7c77f",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-search-visibility/content-standard.md": {
+    "mtime": 1792249281.2119803,
+    "seen": 1792252179.0816026,
+    "ast_hash": "e3fe4b4586db90192461accf64749385",
     "semantic_hash": ""
   }
 }
