@@ -36,11 +36,12 @@ assert.ok(!OverlayFitSchema.safeParse({ scale: 9 }).success, "scale out of bound
 const configureClient = readFileSync("app/[lang]/settings/inventory/configure/configure-client.tsx", "utf8");
 assert.match(configureClient, /<TabsTrigger value="visualize">Product Visualize</, "Product Visualize tab");
 assert.match(configureClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
-assert.match(
-  readFileSync("app/[lang]/settings/inventory/configure/page.tsx", "utf8"),
-  /requireAdminPage\("configure"/,
-  "the tab shares the Configure page's permission (ADR 0023)",
-);
+const configurePage = readFileSync("app/[lang]/settings/inventory/configure/page.tsx", "utf8");
+assert.match(configurePage, /requireAdminPage\("configure"/, "the tab shares the Configure page's permission (ADR 0023)");
+// ADR 0025: Soft body is a Configure tab too, lazy so the cut renderer stays out of the cards' bundle.
+assert.match(configureClient, /<TabsTrigger value="soft-body">Soft body</, "Soft body tab");
+assert.match(configureClient, /dynamic\(\s*\(\) => import\("\.\/soft-body-section"\)[\s\S]{0,120}ssr: false/, "Soft body loads on first open");
+assert.match(configurePage, /const TABS[^\n]*"soft-body"/, "?tab=soft-body opens the tab");
 assert.match(
   readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8"),
   /redirect\([^)]*\/settings\/inventory\/configure\?tab=visualize/,

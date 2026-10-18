@@ -140,6 +140,18 @@ assert.ok(
   configurator.includes("onPlacementsChange={staffAssist ? setAssistPlacements : undefined}"),
   "a guest's cross-section stays read-only",
 );
+// ADR 0025: every cut draws with the soft cut settings Staff saved, read from
+// the dimension overrides payload the surface already holds — never the defaults alone.
+for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
+  const src = readFileSync(path, "utf8");
+  const mount = src.slice(src.indexOf("<XrayCrossSection"), src.indexOf("/>", src.indexOf("<XrayCrossSection")));
+  assert.ok(/softBody=\{/.test(mount), `${surface} hands the cross-section the stored soft cut settings`);
+  assert.ok(src.includes("softBodyFromPayload("), `${surface} reads them from the dimension overrides payload`);
+}
+assert.ok(
+  configurator.includes("softBody={staffAssist ? assistSoftBody : guestSoftBody}"),
+  "Staff and a guest each read the soft cut from the payload their allowance comes from",
+);
 assert.ok(!/<rect/.test(crossSection), "slabs are rounded paths, not rects");
 assert.ok(crossSection.includes("<pattern"), "compressed slabs are hatched with an SVG pattern");
 assert.ok(crossSection.includes("var(${visual.cssVar}, ${visual.defaultColor})"), "slabs take the pouches' family colour variables");

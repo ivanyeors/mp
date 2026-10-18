@@ -44,9 +44,11 @@ import {
 } from "@/lib/spatial-fillings/cross-section";
 import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
+import { SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
-import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
+import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
+import { useSoftCut, type SoftCutInput } from "./soft-cut";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
 export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
@@ -251,6 +253,30 @@ function pieceFontFor(label: string, box: SlabBox, L: CutLayout): number {
   return size >= L.minPieceFont ? r1(size) : 0;
 }
 
+// --- The soft cut (ADR 0025) ---------------------------------------------------
+
+function softInputOf(fit: PillowFit, cut: Cut, f: Frame, polygon: ShellPolygon, itemSubtypes: ReadonlyMap<number, string | null>, settings: SoftBodySettings): SoftCutInput {
+  return {
+    fit,
+    section: cut.section,
+    // Lengths and speeds scale with the outline: the solver was tuned on the desktop cut.
+    frame: { ...f, width: f.L.width, slabGap: SLAB_GAP, scale: f.drawW / Math.min(LAYOUT.width - 2 * PAD_X, LAYOUT.maxShellH * aspectOf(f.profile)) },
+    casePolygon: polygon as SoftCutInput["casePolygon"],
+    isRoll: (itemId) => fillingVisual(itemSubtypes.get(itemId) ?? null).shape === "pill",
+    settings,
+  };
+}
+
+/** The soft cut's input for a cut of this fit, in the frame and case the drawing uses (tests and tools settle it directly). */
+export function softCutInputFor(
+  fit: PillowFit,
+  cut: Cut,
+  { compact = false, scaleMm, itemSubtypes, settings = SOFT_BODY_DEFAULTS }: { compact?: boolean; scaleMm?: number; itemSubtypes: ReadonlyMap<number, string | null>; settings?: SoftBodySettings },
+): SoftCutInput {
+  const f = frameFor(fit, cut, compact, scaleMm ?? tallestMm(crossSectionSlabs(fit, cut)));
+  return softInputOf(fit, cut, f, casePolygon(f.profile, profileTransform(f.profile, f.x0, f.drawW, f.baseline)), itemSubtypes, settings);
+}
+
 // --- One pouch ----------------------------------------------------------------
 
 /** A pouch's handle props, with the data attributes the hit-test and focus read. */
@@ -289,6 +315,9 @@ function PuffySlab({
   ids,
   pieceKey,
   hit,
+  outline,
+  labelAt,
+  still = false,
 }: {
   box: SlabBox;
   roll: boolean;
@@ -308,9 +337,15 @@ function PuffySlab({
   pieceKey: string;
   /** Editing: what makes the pouch a handle (pointer, keys, focus). */
   hit?: SlabHitProps;
+  /** The soft cut's outline for it (ADR 0025): drawn as is, in place of the slab and its tween. */
+  outline?: string;
+  /** Where its label sits on the soft outline. */
+  labelAt?: { x: number; y: number };
+  /** Never tween: the soft cut animates by settling, and a tween's attribute writes would outlive its outline. */
+  still?: boolean;
 }) {
   const visual = fillingVisual(subtype);
-  const body = slabOutline(box, roll, puff, shaping);
+  const body = outline ?? slabOutline(box, roll, puff, shaping);
   // The label rides the sag at the pouch's middle, so it stays on the fill.
   const mid = (a?: readonly number[]) => (a && a.length ? a[Math.floor(a.length / 2)] : 0);
   const labelDy = roll ? 0 : (mid(shaping?.sag) + mid(shaping?.sagTop ?? shaping?.sag)) / 2;
@@ -322,7 +357,7 @@ function PuffySlab({
     const from = shown.current;
     const to = box;
     const group = groupEl.current;
-    if (!group || sameBox(from, to) || prefersReducedMotion()) {
+    if (!group || still || outline || sameBox(from, to) || prefersReducedMotion()) {
       shown.current = to;
       return;
     }
@@ -344,7 +379,7 @@ function PuffySlab({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [box, roll, puff, shaping, labelDy]);
+  }, [box, roll, puff, shaping, labelDy, outline, still]);
 
   const fill = `var(${visual.cssVar}, ${visual.defaultColor})`;
   return (
@@ -385,8 +420,8 @@ function PuffySlab({
       )}
       {font > 0 && (
         <text
-          x={r1(box.x + box.w / 2)}
-          y={r1(box.y + box.h / 2 + labelDy)}
+          x={r1(labelAt ? labelAt.x : box.x + box.w / 2)}
+          y={r1(labelAt ? labelAt.y : box.y + box.h / 2 + labelDy)}
           textAnchor="middle"
           dominantBaseline="central"
           fontSize={font}
@@ -437,6 +472,8 @@ export function CrossSectionSvg({
   compact = false,
   scaleMm,
   editor,
+  softBody = SOFT_BODY_DEFAULTS,
+  softReplay = 0,
 }: {
   fit: PillowFit;
   cut: Cut;
@@ -448,6 +485,10 @@ export function CrossSectionSvg({
   /** Pins the view's height (the tallest stack it makes room for, mm): a drag holds the committed one so a preview never resizes the cut under the pointer. */
   scaleMm?: number;
   editor?: CutEditorView;
+  /** The soft cut's Settings (ADR 0025); `enabled: false` draws the rounded slabs. */
+  softBody?: SoftBodySettings;
+  /** Bump to settle again from the start, even a recipe already settled (the Settings preview's Replay). */
+  softReplay?: number;
 }) {
   const uid = useId();
   const columns = crossSectionSlabs(fit, cut);
@@ -461,6 +502,10 @@ export function CrossSectionSvg({
   const shell = transformAttr(transform);
   const polygon = casePolygon(profile, transform);
   const drag = editor?.drag ?? null;
+  // The soft cut: every piece settled as a soft body inside the cloth case, from the fit's own spans and Layers.
+  // The hook keys the settle by value, so a fresh input each render settles only when something it reads changed.
+  const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, softBody) : null, softBody.animate && !drag, softReplay);
+  const clothD = soft ? smoothClosedPath(soft.case) : null;
   const labelOf = (itemId: number) => pieceLabelLines(itemSubtypes.get(itemId) ?? null, itemSizes?.get(itemId) ?? null).join(" ");
   const maxLoft = columns[0]?.maxLoftMm ?? 0;
   const dropX0 = drag?.column ? f.x0 + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
@@ -482,6 +527,9 @@ export function CrossSectionSvg({
     };
     // A held pouch keeps its identity while it previews elsewhere, so it glides there.
     const key = landing ? drag!.sourceKey : slab.key;
+    const ring = soft?.rings.get(slab.key);
+    const spot = ring ? soft!.labels.get(slab.key) : undefined;
+    const font = spot ? pieceFontFor(label, { x: 0, y: 0, w: spot.r * 2.6, h: spot.r * 2 }, L) : pieceFontFor(label, box, L);
     const el = (
       <PuffySlab
         key={key}
@@ -496,10 +544,13 @@ export function CrossSectionSvg({
         selected={!drag && editor?.selectedKey === slab.key}
         hovered={!drag && editor?.hoveredKey === slab.key}
         label={label}
-        font={pieceFontFor(label, box, L)}
+        font={font}
         ids={ids}
         pieceKey={slab.key}
         hit={editor?.slabHit(slab, label)}
+        outline={ring ? smoothClosedPath(ring) : undefined}
+        labelAt={spot ? { x: spot.at[0], y: spot.at[1] } : undefined}
+        still={softBody.enabled}
       />
     );
     return { over, el };
@@ -515,6 +566,7 @@ export function CrossSectionSvg({
       aria-label={`Cross-section ${cutLabel(cut)}`}
       data-xray-cross-section="along"
       data-xray-cut-aspect={aspectOf(profile).toFixed(3)}
+      data-xray-soft={soft ? "" : undefined}
       {...editor?.svgHandlers}
     >
       <defs>
@@ -540,10 +592,18 @@ export function CrossSectionSvg({
           <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#020617" floodOpacity={0.5} />
         </filter>
         <clipPath id={shellId}>
-          <path d={profile.d} transform={shell} />
+          {clothD ? <path d={clothD} /> : <path d={profile.d} transform={shell} />}
         </clipPath>
       </defs>
-      <path d={profile.d} transform={shell} fill={XRAY_INTERIOR_VAR} data-xray-profile={profile.key} />
+      {clothD ? (
+        <>
+          {/* The case as sewn, faint: how far the cloth would stand were it full. */}
+          <path d={profile.d} transform={shell} fill="none" stroke={XRAY_SHELL_VAR} strokeOpacity={0.35} strokeWidth={1} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" data-xray-sewn-outline />
+          <path d={clothD} fill={XRAY_INTERIOR_VAR} data-xray-profile={profile.key} data-xray-cloth />
+        </>
+      ) : (
+        <path d={profile.d} transform={shell} fill={XRAY_INTERIOR_VAR} data-xray-profile={profile.key} />
+      )}
       <g clipPath={`url(#${shellId})`}>
         {/* Where one sub-section ends and the next begins — the columns a pouch is dropped into. */}
         {[1, 2].map((i) => (
@@ -568,7 +628,11 @@ export function CrossSectionSvg({
         {/* Each piece once, over the length it settles to, resting on what lies under it, inside the case. */}
         {slabs.filter((s) => !s.over).map((s) => s.el)}
       </g>
-      <path d={profile.d} transform={shell} fill="none" stroke={XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      {clothD ? (
+        <path d={clothD} fill="none" stroke={XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      ) : (
+        <path d={profile.d} transform={shell} fill="none" stroke={XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      )}
       {/* A stack that cannot close, through the case. */}
       {slabs.filter((s) => s.over).map((s) => s.el)}
       {/* The loft line per column, its mm once (one budget per Section). */}
@@ -728,6 +792,7 @@ export function XrayCrossSection({
   onPlacementsChange,
   items,
   colorOverrides = [],
+  softBody = SOFT_BODY_DEFAULTS,
   themed = true,
   collapsible = true,
   className,
@@ -748,6 +813,8 @@ export function XrayCrossSection({
   items?: FillingItem[];
   /** Product Builder colour overrides, applied as the same CSS variables the pouches use. */
   colorOverrides?: ColorOverrideRow[];
+  /** The soft cut's Settings (ADR 0025): pieces settle as soft bodies in a cloth case; off draws rounded slabs. */
+  softBody?: SoftBodySettings;
   /** Admin pages theme the shell for light/dark; the configurator's dark stage keeps the defaults. */
   themed?: boolean;
   /** Phones collapse it under a "Cross-section" disclosure, closed by default. */
@@ -1126,6 +1193,7 @@ export function XrayCrossSection({
         compact={isMobile}
         scaleMm={held ? tallest : undefined}
         editor={editor}
+        softBody={softBody}
       />
       {readout && <CutReadout tone={readout.tone}>{readout.text}</CutReadout>}
     </div>

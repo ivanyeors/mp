@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -49,13 +49,25 @@ const DimensionsSection = dynamic(
     loading: TabLoading,
   },
 );
+// Brings the cross-section renderer with it, so it loads only when opened.
+const SoftBodySection = dynamic(
+  () => import("./soft-body-section").then((m) => m.SoftBodySection),
+  {
+    ssr: false,
+    loading: TabLoading,
+  },
+);
 
-export type ConfigureTab = "products" | "visualize" | "dimensions";
+export type ConfigureTab = "products" | "visualize" | "dimensions" | "soft-body";
 
 export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-  const settingsPath = (path: string) => withLocale(path, locale);
+  // Stable, so a tab that fetches on it does not refetch (and drop its draft) when the cards load.
+  const settingsPath = useCallback(
+    (path: string) => withLocale(path, locale),
+    [locale],
+  );
   const cardPath = (card: string) =>
     settingsPath(`/settings/inventory/configure/${card}`);
 
@@ -105,12 +117,16 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="visualize">Product Visualize</TabsTrigger>
           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+          <TabsTrigger value="soft-body">Soft body</TabsTrigger>
         </TabsList>
         <TabsContent value="visualize" className="mt-6">
           <ProductVisualize />
         </TabsContent>
         <TabsContent value="dimensions" className="mt-6">
           <DimensionsSection settingsPath={settingsPath} />
+        </TabsContent>
+        <TabsContent value="soft-body" className="mt-6">
+          <SoftBodySection settingsPath={settingsPath} />
         </TabsContent>
         <TabsContent value="products" className="mt-6 space-y-6">
           {(["basic", "premium"] as const).map((kind) => (

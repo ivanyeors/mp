@@ -56,7 +56,8 @@ and **Promote** grouping cannot see it and cannot change.
   storing it invites the two to disagree, and nothing needs to query it.
 - **A physics or soft-body model** — rejected (ADR 0009 stands). Rectangles, thicknesses and
   volumes answer the question staff actually ask; the calibration slice decides if that is
-  enough.
+  enough. *Amended 18-10-2026 (ADR 0025):* still rejected for the fit; the cross-section's
+  drawing now settles the fit's pieces as soft bodies, display only, and feeds nothing back.
 
 ## Consequences
 

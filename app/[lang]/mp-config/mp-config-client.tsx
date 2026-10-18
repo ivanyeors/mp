@@ -182,6 +182,7 @@ import {
   resolveItemDims,
   type DimensionOverridesPayload,
 } from "@/lib/spatial-fillings/dimension-overrides";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import {
   flattenToPackList,
   pillowPlacementsToRows,
@@ -507,6 +508,11 @@ export function MpConfigClient({
     [assistDimensionOverrides, shopDimensionOverrides],
   );
   const assistItemDims = useMemo(() => resolveItemDims(assistItems, assistRegistry), [assistItems, assistRegistry]);
+  // ADR 0025: the soft cut's settings ride the same payload, picked the same way as the allowance.
+  const assistSoftBody = useMemo(
+    () => softBodyFromPayload(assistDimensionOverrides ?? shopDimensionOverrides),
+    [assistDimensionOverrides, shopDimensionOverrides],
+  );
   // Slice 04: the physical fit of the session mix at the Size on screen —
   // computed once here and shared by the x-ray, the banner and the hold /
   // save confirm (and the cross-section, slice 05). The same Size expression
@@ -2269,6 +2275,7 @@ export function MpConfigClient({
         registryFromPayload(shopRecommendation?.dimension_overrides ?? null),
       ),
       guestLoftAllowance: registryFromPayload(shopRecommendation?.dimension_overrides ?? null).loftAllowance,
+      guestSoftBody: softBodyFromPayload(shopRecommendation?.dimension_overrides ?? null),
     };
   }, [shopRecommendation, resumeFinish]);
   // The guest's fit of the recommended (or finished) mix: read-only x-ray and cross-section.
@@ -2301,7 +2308,7 @@ export function MpConfigClient({
       requiredInputsComplete: Boolean(shopRecommendation && size),
       flowRouteUnresolved: routePending,
     });
-    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims, guestLoftAllowance } = guestPreview;
+    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims, guestLoftAllowance, guestSoftBody } = guestPreview;
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
     // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
@@ -2649,6 +2656,7 @@ export function MpConfigClient({
                         onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
                         items={staffAssist ? assistItems : undefined}
                         colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
+                        softBody={staffAssist ? assistSoftBody : guestSoftBody}
                         themed={false}
                         className={STAGE_BLOCK_CLASS}
                       />
