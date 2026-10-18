@@ -42,6 +42,7 @@ import {
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { useBolsterFit, useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
@@ -1835,6 +1836,8 @@ function FillingConfigPanel({
     [onCutDive],
   );
   const { itemSubtypes: gridItemSubtypes, itemSizes: gridItemSizes, itemDims: gridItemDims } = useItemMaps(gridItems, dimensionOverrides);
+  // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
+  const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
   // Slice 09: the Mbolster's fit at this card's length (a pillow card's empty mix costs nothing).
   const bolsterLength = BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength, gridItems, dimensionOverrides);
@@ -2137,6 +2140,7 @@ function FillingConfigPanel({
                 onPlacementsChange={setPlacements}
                 items={gridItems}
                 colorOverrides={colorOverrides}
+                softBody={softBody}
               />
             </Section>
           ) : (

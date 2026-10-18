@@ -205,6 +205,12 @@ export type DimensionOverridesPayload = {
   neck: NeckSupportOverrideRow[];
   /** The stored allowance setting, or null for the code default. */
   loftAllowance: string | null;
+  /**
+   * The stored soft cut settings as JSON text (ADR 0025), or null for the
+   * defaults. Not a dimension, but every host that draws the cut already
+   * receives this payload; read it with `softBodyFromPayload`.
+   */
+  softBody: string | null;
 };
 
 /** The registry a host draws with: the payload folded over the code defaults, or the code alone. */

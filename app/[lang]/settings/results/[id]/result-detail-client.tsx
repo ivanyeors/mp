@@ -55,6 +55,7 @@ import {
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
@@ -753,6 +754,8 @@ export default function ResultDetailPage({
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange } = useCut();
   const { itemSubtypes: pickerItemSubtypes, itemSizes: pickerItemSizes, itemDims: pickerItemDims } = useItemMaps(pickerItems, dimensionOverrides);
+  // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
+  const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
   // Slice 09: the Mbolster's fit at the assigned length, for the confirm and the end-on cut.
   const bolsterLength = (["short", "medium", "long"] as const).find((l) => l === assignLength) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength as BolsterLength, pickerItems, dimensionOverrides);
@@ -1344,6 +1347,7 @@ export default function ResultDetailPage({
                             onPlacementsChange={setPlacements}
                             items={pickerItems}
                             colorOverrides={colorOverrides}
+                            softBody={softBody}
                           />
                         </>
                       ) : (

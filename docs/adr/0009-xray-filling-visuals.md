@@ -1,6 +1,6 @@
 # X-ray filling visuals: clipped fluid SVG, legible piece count
 
-The **X-ray filling editor** renders **Placements** as designer-authored fluid SVG paths (one per filling type, recolorable), conformed to the pillow by clipping against designer-exported region paths (silhouette ∩ **cell**). Shape transitions use `flubber` path interpolation. We deliberately rejected rect/bounding-box cropping, gooey-filter merging, procedurally generated blobs, and WebGL for v1.
+The **X-ray filling editor** renders **Placements** as designer-authored fluid SVG paths (one per filling type, recolorable), conformed to the pillow by clipping against designer-exported region paths (silhouette ∩ **cell**). Shape transitions use `flubber` path interpolation. We deliberately rejected rect/bounding-box cropping, gooey-filter merging, procedurally generated blobs, and WebGL for v1. *Amended 18-10-2026:* the cross-section (not the top-down x-ray) now draws a deterministic soft-body settle of each piece (ADR 0025); every guardrail below still holds there — one outline per piece with a gap between, same input → same picture.
 
 ## Guardrails (implementation must-holds)
 

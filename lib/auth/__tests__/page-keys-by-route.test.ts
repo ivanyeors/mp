@@ -46,6 +46,7 @@ const PAGES: [string[], Permission[]][] = [
     [
       `${S}/product-builder/mappings`,
       `${S}/product-builder/dimensions`,
+      `${S}/product-builder/soft-body`,
       `${S}/product-builder/filling-visuals`,
       `${S}/inventory/configure`,
     ],
