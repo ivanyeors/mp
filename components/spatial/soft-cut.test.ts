@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
-import { resolveDims, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { CODE_REGISTRY, resolveDims, type DimensionRegistry, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
-import { createSettle, distanceToPolygon, pointInPolygon, resample, smoothSnapshot, type Pt } from "@/lib/spatial-fillings/soft-body";
+import { createSettle, distanceToPolygon, pointInPolygon, resample, ringLength, signedArea, smoothSnapshot, type Pt } from "@/lib/spatial-fillings/soft-body";
 import { SOFT_BODY_DEFAULTS } from "@/lib/spatial-fillings/soft-body-settings";
-import { morph, seedShapes, settleSoftCut, softCutScene, type SoftCutInput } from "./soft-cut";
+import { morph, rollRing, seedShapes, settleSoftCut, softCutScene, type SoftCutInput } from "./soft-cut";
 import { softCutInputFor } from "./xray-cross-section";
 
 // The testing preview's items and the brand diagrams' recipes (Oct 2026), each cell top → bottom.
@@ -133,6 +133,56 @@ describe("soft cut", () => {
     const aspect = (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys));
     expect(aspect).toBeGreaterThan(1);
     expect(aspect).toBeLessThan(1.2);
+  });
+
+  it("lets a soft Neck support share a crowded cell: it squashes toward fully squashed, and the pouch on it keeps more cushion", () => {
+    // A Neck support as big as Staff measure it, filling the middle cell past what the case holds.
+    const registry: DimensionRegistry = { ...CODE_REGISTRY, neck: { ...CODE_REGISTRY.neck, M: { lengthMm: 300, radiusMm: 70, minRadiusMm: 40, measuredOn: "test" } } };
+    const dims = new Map([...DIMS].map(([id]) => [id, resolveDims({ name: ITEMS[id].name, category: ITEMS[id].category ?? "filling" }, registry)] as const));
+    const fit = fitPillow(placementsOf(RECIPES.mix), { size: "L", dims });
+    const at = (neckFirmness: number) => {
+      const input = softCutInputFor(fit, { section: "center" }, { itemSubtypes: SUBTYPES, settings: { ...SOFT_BODY_DEFAULTS, neckFirmness } });
+      const shapes = settleSoftCut(input);
+      const roll = shapes.rings.get("center/middle/2")!;
+      const xs = roll.map((p) => p[0]);
+      const ys = roll.map((p) => p[1]);
+      return { input, shapes, aspect: (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys)), height: (Math.max(...ys) - Math.min(...ys)) / input.frame.ky, pouch: Math.abs(signedArea(shapes.rings.get("center/middle/1")!)) };
+    };
+    const firm = at(100);
+    const soft = at(0);
+    // Fully firm, it is seeded round and keeps nearly round, as before softness reached the stack.
+    expect(firm.aspect).toBeLessThan(1.15);
+    expect(at(75).aspect).toBeLessThan(1.15);
+    expect(soft.aspect).toBeGreaterThan(1.4);
+    expect(soft.height).toBeLessThan(firm.height * 0.85);
+    // Never below fully squashed: twice the squashed radius at this Size.
+    const squashedMm = fit.settle.pieces.find((p) => p.key === "center/middle/2")!.minThicknessMm;
+    expect(soft.height).toBeGreaterThan(squashedMm - 2);
+    expect(soft.pouch).toBeGreaterThan(firm.pouch * 1.2);
+    // Squashed, it still rests on the floor under the pouch, apart from its neighbours and inside the cloth.
+    const { input, shapes } = soft;
+    const rings = [...new Set(shapes.rings.values())];
+    const roll = shapes.rings.get("center/middle/2")!;
+    expect(input.frame.floor - Math.max(...roll.map((p) => p[1]))).toBeLessThan(input.settings.gap * input.frame.scale + 6);
+    for (const ring of rings) {
+      for (const p of ring) {
+        if (!pointInPolygon(shapes.case, p[0], p[1])) expect(distanceToPolygon(shapes.case, p[0], p[1])).toBeLessThan(1.5);
+      }
+      for (const other of rings) {
+        if (other === ring) continue;
+        expect(ring.filter((p) => pointInPolygon(other, p[0], p[1]) && distanceToPolygon(other, p[0], p[1]) > 1).length).toBe(0);
+      }
+    }
+  });
+
+  it("seeds a squashed roll as a stadium as long round as its relaxed circle", () => {
+    const round = rollRing(0, 0, 100, 100);
+    const squashed = rollRing(0, 0, 100, 60);
+    expect(round).toHaveLength(squashed.length);
+    expect(ringLength(squashed) / ringLength(round)).toBeCloseTo(1, 2);
+    const ys = squashed.map((p) => p[1]);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(60, 0);
+    expect(Math.sign(signedArea(squashed))).toBe(Math.sign(signedArea(round)));
   });
 
   it("keeps pieces apart and inside the cloth, and the cloth inside its sewn outline", () => {

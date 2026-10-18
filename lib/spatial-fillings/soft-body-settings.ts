@@ -19,7 +19,7 @@ export type SoftBodySettings = {
   enabled: boolean;
   /** How firmly a pouch keeps its cushion shape, 0 floppy … 100 stiff. */
   rigidity: number;
-  /** How little a Neck support gives where it rests and is pressed, 0 soft … 100 as firm as foam gets (it stays nearly round). */
+  /** How little a Neck support gives where it rests and is pressed, 0 soft (in a crowded cell it squashes as far as fully squashed) … 100 as firm as foam gets (it stays nearly round). */
   neckFirmness: number;
   /** A pouch's volume as a share of its relaxed size, %. Over 100 lets it fill the space it is given. */
   volumePct: number;
