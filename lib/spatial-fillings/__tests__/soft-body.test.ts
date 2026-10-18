@@ -65,12 +65,24 @@ describe("createSettle", () => {
     expect(snap.case.filter(([, y]) => y === 100).length).toBeGreaterThan(10);
   });
 
-  it("keeps a roll round", () => {
-    const roll = { id: "r", ring: circle(100, 70, 25, 36), kind: "roll" as const };
-    const sim = createSettle([roll], frame);
-    sim.step(sim.steps);
-    const ring = sim.snapshot().bodies[0].ring;
-    expect(Math.abs(signedArea(ring)) / (Math.PI * 625)).toBeGreaterThan(0.95);
+  it("keeps a firm roll nearly round, giving a little under load — less the firmer it is", () => {
+    // A Neck support with a pouch lying on it.
+    const roll = { id: "r", ring: circle(100, 74, 25, 36), kind: "roll" as const };
+    const load = { id: "p", ring: resample(rect(30, 20, 140, 28), 40), kind: "pouch" as const, areaTarget: 140 * 28 * 1.2 };
+    const squash = (rollFirmness: number) => {
+      const sim = createSettle([roll, load], frame, { rollFirmness });
+      sim.step(sim.steps);
+      const ring = sim.snapshot().bodies[0].ring;
+      const xs = ring.map((p) => p[0]);
+      const ys = ring.map((p) => p[1]);
+      return { aspect: (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys)), area: Math.abs(signedArea(ring)) / Math.abs(signedArea(roll.ring)) };
+    };
+    const firm = squash(0.75);
+    const soft = squash(0.25);
+    expect(firm.aspect).toBeGreaterThan(1.005);
+    expect(firm.aspect).toBeLessThan(1.35);
+    expect(firm.area).toBeGreaterThan(0.9);
+    expect(soft.aspect).toBeGreaterThan(firm.aspect);
   });
 });
 

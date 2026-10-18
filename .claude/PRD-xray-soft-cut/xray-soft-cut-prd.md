@@ -49,7 +49,8 @@ over. What worked was "the fit decides where, the sim decides shape":
 | Surface tension | Laplacian skin | — |
 | Shape memory | Area-normalised, rotation-free shape matching (β 0.85) toward the codebase's own cushion (`puffyPath`), rebuilt at the target volume | A rest shape at the seed size made pouches balloon into domes |
 | Rest cushions in an over-full cell | Squeezed per cell | Otherwise pieces escaped through the back tip |
-| Neck support | A stiff roll | — |
+| Rest shape of a pouch stacked over uneven support | The codebase cushion too, paired point-for-point with its drape | Remembering the drape held the 6D in the Neck mix as a tent over the roll, with a gap under it: floating |
+| Neck support | A firm soft body: fixed-length cover, foam that gives under load (area compliance × 6 × (1 − firmness), never below 0.8 + 0.16 × firmness of its area), springing back to round (memory 0.06 + 0.24 × firmness), squashing out of round only as far as firmness allows (shape-match β 0.85 × (1 − firmness)). Default firmness 75 | Ivan, 18-10-2026: "also a soft body, but quite firm" — the side view's radius changes shape slightly. Width/height at 75: alone 1.01, one 6D on it 1.03, under two 6D Layers 1.13; at 40 those become 1.01 / 1.06 / 1.24 |
 
 **The cloth case.** Bottom points pinned. Each element and its tested value:
 
@@ -115,6 +116,7 @@ lines, column labels, Fit status colours, hatching and `over` red.
 |---|---|---|---|
 | Soft cut on/off | — | on | off = rounded slabs |
 | Rigidity | 0–100 | 50 | shape memory 0.01 + 0.06·r, skin 0.08 + 0.24·r |
+| Neck firmness (Neck support) | 0–100 | 75 | the roll's give, spring-back and how far it squashes out of round |
 | Pouch volume | 80–180 % | 130 % | target area = relaxed area × v |
 | Empty case height | 20–70 % | 38 % | `slump` |
 | Smoothing | 0–16 passes | 8 | Taubin passes |

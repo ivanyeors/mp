@@ -8160,9 +8160,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1792308915.3254988,
-    "seen": 1792310610.6758134,
-    "ast_hash": "c88e261716a351e5c01c47a86e30c7ab",
+    "mtime": 1792310996.2832625,
+    "seen": 1792311343.3935778,
+    "ast_hash": "352725805679914d8a6b4b1df0191b6f",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9054,8 +9054,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792310404.2312274,
-    "seen": 1792310610.6758122,
+    "mtime": 1792311190.151274,
+    "seen": 1792311343.3935764,
     "ast_hash": "b2d9d39cbe2e6d094daa622431397045",
     "semantic_hash": ""
   },
@@ -15198,15 +15198,15 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/soft-body-section.tsx": {
-    "mtime": 1792308957.9502182,
-    "seen": 1792310610.6729755,
-    "ast_hash": "16c58281fbd69b3c571231de76174908",
+    "mtime": 1792311164.203284,
+    "seen": 1792311343.3902762,
+    "ast_hash": "6cfadf07e3f03d6111ec83526fe0c680",
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/soft-body/__tests__/route.test.ts": {
-    "mtime": 1792308802.688797,
-    "seen": 1792310610.6730616,
-    "ast_hash": "23a58ad6991989049451c52f7adc22b4",
+    "mtime": 1792310945.1727512,
+    "seen": 1792311343.3903363,
+    "ast_hash": "4f56a9fa79203a53b2f483e7123dc032",
     "semantic_hash": ""
   },
   "app/[lang]/settings/product-builder/soft-body/route.ts": {
@@ -15216,15 +15216,15 @@
     "semantic_hash": ""
   },
   "components/spatial/soft-cut.test.ts": {
-    "mtime": 1792310331.8692415,
-    "seen": 1792310610.6737037,
-    "ast_hash": "b52d79ede9498322b65e73c466442706",
+    "mtime": 1792310964.569771,
+    "seen": 1792311343.3909872,
+    "ast_hash": "871fed6a8a02b5e48beb46b610f2ec9b",
     "semantic_hash": ""
   },
   "components/spatial/soft-cut.ts": {
-    "mtime": 1792310319.0322995,
-    "seen": 1792310610.6737049,
-    "ast_hash": "2162e1df99845b0a8b652afce1e334dc",
+    "mtime": 1792310900.6839967,
+    "seen": 1792311343.3909888,
+    "ast_hash": "8243fc2ea88fa0ee65312746ec5442e6",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/soft-body-preview.test.ts": {
@@ -15234,15 +15234,15 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/soft-body-settings.test.ts": {
-    "mtime": 1792308756.8831294,
-    "seen": 1792310610.6747344,
-    "ast_hash": "3635a965f20c844be7b1103e0d0c79cd",
+    "mtime": 1792310945.173055,
+    "seen": 1792311343.392266,
+    "ast_hash": "ac37c0f00273dd152a19ded33625575c",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/soft-body.test.ts": {
-    "mtime": 1792308856.8311353,
-    "seen": 1792310610.6747355,
-    "ast_hash": "dde2bd88b3d706a2620c22fe754f5a65",
+    "mtime": 1792310978.4840672,
+    "seen": 1792311343.3922677,
+    "ast_hash": "6eb6f74fb58bd96a53d3c561f6b70978",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body-preview.ts": {
@@ -15252,27 +15252,27 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body-settings.ts": {
-    "mtime": 1792308668.943124,
-    "seen": 1792310610.67477,
-    "ast_hash": "2a0e02a048c64d4b65a17d9590e21c2d",
+    "mtime": 1792311112.2186904,
+    "seen": 1792311343.3923113,
+    "ast_hash": "a774cc039ed27bb43f36a9360ca3bdff",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body.ts": {
-    "mtime": 1792310351.7152243,
-    "seen": 1792310610.6747708,
-    "ast_hash": "a98929fddeee6aff34ab510464eefe9c",
+    "mtime": 1792311095.4601014,
+    "seen": 1792311343.392313,
+    "ast_hash": "54049014912875af1026d994375b082f",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-soft-cut/xray-soft-cut-prd.md": {
-    "mtime": 1792310346.7428665,
-    "seen": 1792310610.6757724,
-    "ast_hash": "59808cdae904d48b90489a1307414e4f",
+    "mtime": 1792311164.209205,
+    "seen": 1792311343.393531,
+    "ast_hash": "e66c3fdaae31a0fbd68ea60d305c73ff",
     "semantic_hash": ""
   },
   "docs/adr/0025-soft-cut-display-physics.md": {
-    "mtime": 1792310346.7419302,
-    "seen": 1792310610.6758692,
-    "ast_hash": "c93887cf6cff67dab151241275966af4",
+    "mtime": 1792310996.2818162,
+    "seen": 1792311343.3936427,
+    "ast_hash": "b9455bf340f83ea8a3849767ed833820",
     "semantic_hash": ""
   }
 }

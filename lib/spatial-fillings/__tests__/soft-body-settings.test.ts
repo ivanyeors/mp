@@ -27,6 +27,7 @@ const NUMBER_KEYS = Object.keys(SOFT_BODY_RANGES) as (keyof typeof SOFT_BODY_RAN
 const tuned: SoftBodySettings = {
   enabled: false,
   rigidity: 72,
+  neckFirmness: 60,
   volumePct: 110,
   emptyCasePct: 45,
   smoothing: 3,
@@ -135,6 +136,11 @@ describe("solverOptionsFor", () => {
     const o = solverOptionsFor(SOFT_BODY_DEFAULTS);
     expect(o.shapeMemory).toBeCloseTo(SOLVER_DEFAULTS.shapeMemory, 10);
     expect(o.skin).toBeCloseTo(SOLVER_DEFAULTS.skin, 10);
+  });
+
+  it("hands the Neck support's firmness to the solver as a share, its default the solver's own", () => {
+    expect(solverOptionsFor(tuned).rollFirmness).toBeCloseTo(0.6, 10);
+    expect(solverOptionsFor(SOFT_BODY_DEFAULTS).rollFirmness).toBeCloseTo(SOLVER_DEFAULTS.rollFirmness, 10);
   });
 
   it("carries steps and the empty case height as they are", () => {

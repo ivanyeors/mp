@@ -19,6 +19,8 @@ export type SoftBodySettings = {
   enabled: boolean;
   /** How firmly a pouch keeps its cushion shape, 0 floppy … 100 stiff. */
   rigidity: number;
+  /** How little a Neck support gives where it rests and is pressed, 0 soft … 100 as firm as foam gets (it stays nearly round). */
+  neckFirmness: number;
   /** A pouch's volume as a share of its relaxed size, %. Over 100 lets it fill the space it is given. */
   volumePct: number;
   /** How high the empty case stands, as a share of its sewn height, %. */
@@ -38,6 +40,7 @@ type NumberKey = { [K in keyof SoftBodySettings]: SoftBodySettings[K] extends nu
 /** Each number's range and step, as the Settings sliders offer them. */
 export const SOFT_BODY_RANGES: Record<NumberKey, { min: number; max: number; step: number }> = {
   rigidity: { min: 0, max: 100, step: 1 },
+  neckFirmness: { min: 0, max: 100, step: 1 },
   volumePct: { min: 80, max: 180, step: 1 },
   emptyCasePct: { min: 20, max: 70, step: 1 },
   smoothing: { min: 0, max: 16, step: 1 },
@@ -48,6 +51,7 @@ export const SOFT_BODY_RANGES: Record<NumberKey, { min: number; max: number; ste
 export const SOFT_BODY_DEFAULTS: SoftBodySettings = {
   enabled: true,
   rigidity: 50,
+  neckFirmness: Math.round(SOLVER_DEFAULTS.rollFirmness * 100),
   volumePct: 130,
   emptyCasePct: Math.round(SOLVER_DEFAULTS.slump * 100),
   smoothing: 8,
@@ -78,6 +82,7 @@ export function softBodySettings(value: unknown): SoftBodySettings {
   return {
     enabled: typeof o.enabled === "boolean" ? o.enabled : SOFT_BODY_DEFAULTS.enabled,
     rigidity: clampTo("rigidity", o.rigidity),
+    neckFirmness: clampTo("neckFirmness", o.neckFirmness),
     volumePct: clampTo("volumePct", o.volumePct),
     emptyCasePct: clampTo("emptyCasePct", o.emptyCasePct),
     smoothing: clampTo("smoothing", o.smoothing),
@@ -120,6 +125,8 @@ export const sameSoftBodySettings = (a: SoftBodySettings, b: SoftBodySettings) =
  * The solver's options for these settings in a cut drawn `scale` times the
  * 664-wide desktop cut (lengths, speeds and areas scale with it). Rigidity is
  * shape memory and skin tension together: the preview's 0 … 100 mapping.
+ * Neck firmness is the roll's own: how much its foam gives, and how hard it
+ * springs back to round.
  */
 export function solverOptionsFor(s: SoftBodySettings, scale = 1): Partial<SolverOptions> {
   const rig = s.rigidity / 100;
@@ -133,5 +140,6 @@ export function solverOptionsFor(s: SoftBodySettings, scale = 1): Partial<Solver
     gravity: SOLVER_DEFAULTS.gravity * scale,
     shapeMemory: 0.01 + rig * 0.06,
     skin: 0.08 + rig * 0.24,
+    rollFirmness: s.neckFirmness / 100,
   };
 }

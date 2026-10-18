@@ -78,6 +78,7 @@ const post = (body: unknown) =>
 const tuned: SoftBodySettings = {
   enabled: false,
   rigidity: 72,
+  neckFirmness: 60,
   volumePct: 110,
   emptyCasePct: 45,
   smoothing: 3,

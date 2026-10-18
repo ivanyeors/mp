@@ -26,8 +26,12 @@ that does this. This record admits it, as a display layer only.
   range, the fit's own rule.
 - **A pouch is cloth around fill.** Each pouch is a ring of fixed-length fabric held out by
   pressure (an area constraint, never below its minimum), with surface tension and a weak memory
-  of the codebase's own cushion shape (`puffyPath`). A **Neck support** is a stiff roll. Pieces
-  keep a gap between outlines, so ADR 0009's legible piece count holds — no merging, ever.
+  of the codebase's own cushion shape (`puffyPath`) — a pouch stacked over something uneven
+  remembers the cushion too, not the drape it started in, so it rests on what is under it. A
+  **Neck support** is a firm soft body (Ivan, 18-10-2026): foam in a cover that does not stretch,
+  round when free, flattening a little where it rests and where a pouch presses on it — how
+  little is its own Settings knob. Pieces keep a gap between outlines, so ADR 0009's legible
+  piece count holds — no merging, ever.
 - **The case is cloth.** It may go slack (never longer than sewn), is drawn lightly toward a
   slumped copy of the designer's outline, keeps that outline's curves, bends smoothly, never
   billows more than 1.5 view units past the sewn line, and lies on its flat bottom. Under-filled

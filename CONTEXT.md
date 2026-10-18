@@ -167,7 +167,7 @@ A live cut of the pillow beside every x-ray, on all three surfaces and the shopp
 _Avoid_: a second fit computation for the cut; edit affordances on the shopper's cut
 
 **Soft cut**:
-How the **Cross-section view** draws its pieces (ADR 0025): the fit's pieces, stacked gravity-first one **Layer** at a time from the back panel up, settled as soft bodies — each pouch fixed-length fabric held out by its fill, a **Neck support** a stiff roll — inside a case that behaves as cloth: slack and sagging below its sewn outline when under-filled, standing to it when full. Display only: the spans, **Layers**, thicknesses and **Fit status** are the fit's, and nothing it draws feeds back. Deterministic, one outline per piece with a gap between. Tuned and switched off in Settings → Inventory → Configure → **Soft body**, one stored value for every surface.
+How the **Cross-section view** draws its pieces (ADR 0025): the fit's pieces, stacked gravity-first one **Layer** at a time from the back panel up, settled as soft bodies — each pouch fixed-length fabric held out by its fill, a **Neck support** a firm roll that flattens a little where it rests and is pressed — inside a case that behaves as cloth: slack and sagging below its sewn outline when under-filled, standing to it when full. Display only: the spans, **Layers**, thicknesses and **Fit status** are the fit's, and nothing it draws feeds back. Deterministic, one outline per piece with a gap between. Tuned and switched off in Settings → Inventory → Configure → **Soft body**, one stored value for every surface.
 _Avoid_: reading a loft or fit number off the soft shapes; "physics" for the fit model (the fit is arithmetic; only the drawing is physical); merging pieces into one mass
 
 **Nudge**:

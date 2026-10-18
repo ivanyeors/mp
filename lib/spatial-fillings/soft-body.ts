@@ -10,7 +10,9 @@
  *   never below its minimum) holds the volume, surface tension smooths the
  *   skin, and a weak shape memory (linear, area-normalised, rotation-free
  *   shape matching toward the codebase's own cushion) keeps it a cushion;
- * - a Neck support is a stiff roll;
+ * - a Neck support is a firm roll: foam in a cover that does not stretch, so
+ *   it keeps its round side view but gives a little — flattening where it
+ *   rests and where it is pressed — the less the firmer it is;
  * - the case is cloth: never longer than sewn, drawn lightly toward a slumped
  *   copy of the sewn outline, keeping its curves and bending smoothly, and
  *   never past the sewn outline (a signed-distance limit). Its flat bottom is
@@ -72,6 +74,8 @@ export type SolverOptions = {
   /** Cap on a pressure move per substep, view units. */
   maxStep: number;
   fabricCompliance: number;
+  /** A Neck support's firmness, 0 … 1: how little its foam gives where it is pressed. */
+  rollFirmness: number;
 };
 
 export const SOLVER_DEFAULTS: SolverOptions = {
@@ -93,6 +97,7 @@ export const SOLVER_DEFAULTS: SolverOptions = {
   billow: 1.5,
   maxStep: 1.2,
   fabricCompliance: 2e-6,
+  rollFirmness: 0.75,
 };
 
 export type SettleFrame = {
@@ -247,7 +252,13 @@ type Body = {
 /** Start a settle of `pieces` inside the case. Nothing moves until `step`. */
 export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, options: Partial<SolverOptions> = {}): SoftSettle {
   const o: SolverOptions = { ...SOLVER_DEFAULTS, ...options };
-  const { steps, substeps, gap, margin, gravity, tether, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance } = o;
+  const { steps, substeps, gap, margin, gravity, tether, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance, rollFirmness } = o;
+  // Foam, not air: a roll's volume gives under load (never below its floor) and it springs back to round.
+  const rollGive = areaCompliance * 6 * (1 - rollFirmness);
+  const rollMemory = 0.06 + 0.24 * rollFirmness;
+  const rollFloor = 0.8 + 0.16 * rollFirmness;
+  // How far it may squash out of round, linearly: none at all when fully firm.
+  const rollBeta = 0.85 * (1 - rollFirmness);
   const { baseline } = frame;
   const raw = resample(frame.outline, o.caseN);
   const full = signedArea(raw) < 0 ? raw.slice().reverse() : raw;
@@ -318,6 +329,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       ly[k] = a[1] - (p[1] + b[1]) / 2;
     }
     const a0 = Math.abs(signedArea(r.pts));
+    const target = r.areaTarget ?? Math.abs(signedArea(R));
     bodies.push({
       kind: r.kind,
       id: r.id,
@@ -330,8 +342,8 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       ly,
       cx0: cx,
       seedArea: a0,
-      target: r.areaTarget ?? Math.abs(signedArea(R)),
-      areaMin: r.areaMin,
+      target,
+      areaMin: r.areaMin || (r.kind === "roll" ? target * rollFloor : 0),
       area0: a0,
       over: r.over,
       gx: new Float64Array(n),
@@ -678,12 +690,12 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     }
     for (const b of pcs) {
       const roll = b.kind === "roll";
-      // Cloth around fill: the pouch's fabric neither stretches nor shrinks, so puffing up shortens it and squashing lengthens it.
-      for (let k = 0; k < b.n; k++) dist(I(b, k), I(b, k + 1), b.rest[k], roll ? 0 : fabricCompliance, false);
-      if (!roll) smoothSkin(b, skin);
-      area(b, roll ? b.seedArea : b.area0, roll ? 0 : areaCompliance * (b.target / 10000));
-      if (!roll && b.areaMin && areaOf(b) < b.areaMin) area(b, b.areaMin, 0);
-      shape(b, roll ? 0.3 : shapeMemory, roll ? 0 : 0.85);
+      // Cloth around fill: the fabric (a roll's cover too) neither stretches nor shrinks, so puffing up shortens it and squashing lengthens it.
+      for (let k = 0; k < b.n; k++) dist(I(b, k), I(b, k + 1), b.rest[k], fabricCompliance, false);
+      smoothSkin(b, skin);
+      area(b, b.area0, (roll ? rollGive : areaCompliance) * (b.target / 10000));
+      if (b.areaMin && areaOf(b) < b.areaMin) area(b, b.areaMin, 0);
+      shape(b, roll ? rollMemory : shapeMemory, roll ? rollBeta : 0.85);
     }
     collide();
     // A full stack presses the cloth out; the seam holds it, and the pieces meet it next substep.

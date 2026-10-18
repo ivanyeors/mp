@@ -121,6 +121,20 @@ describe("soft cut", () => {
     }
   });
 
+  it("rests a pouch on the Neck support under it, and the firm roll gives only a little", () => {
+    const input = inputOf(RECIPES.mix);
+    const shapes = settleSoftCut(input);
+    const pouch = shapes.rings.get("center/middle/1")!;
+    const roll = shapes.rings.get("center/middle/2")!;
+    const nearest = Math.min(...pouch.map((p) => distanceToPolygon(roll, p[0], p[1])));
+    expect(nearest).toBeLessThan(input.settings.gap * input.frame.scale + 2);
+    const xs = roll.map((p) => p[0]);
+    const ys = roll.map((p) => p[1]);
+    const aspect = (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys));
+    expect(aspect).toBeGreaterThan(1);
+    expect(aspect).toBeLessThan(1.2);
+  });
+
   it("keeps pieces apart and inside the cloth, and the cloth inside its sewn outline", () => {
     for (const [name, cells] of Object.entries(RECIPES)) {
       const input = inputOf(cells, "M");

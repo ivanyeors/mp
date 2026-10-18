@@ -327,15 +327,15 @@ export function softCutScene(input: SoftCutInput): {
     if (s.kind === "roll") return { id: s.id, ring: s.ring!, kind: "roll", over: s.over };
     const target = s.areaTarget * volume * (squeeze.get(s.col) ?? 1);
     // The relaxed cushion it remembers: its span, as thick as its volume makes it, resting where it was seeded.
-    let rest: Pt[] | undefined;
-    if (s.flat) {
-      const w = s.x1 - s.x0;
-      const bottom = s.bottom!;
-      let h = target / w;
-      const a = Math.abs(signedArea(cushionRing({ x: s.x0, y: bottom - h, w, h })));
-      h *= target / a;
-      rest = cushionRing({ x: s.x0, y: bottom - h, w, h });
-    }
+    // The relaxed cushion it remembers: its span, as thick as its volume makes it. A pouch stacked over
+    // something uneven remembers a cushion too, not the drape it started in, so it settles onto what is
+    // under it instead of holding a tent over it.
+    const w = s.x1 - s.x0;
+    const bottom = s.flat ? s.bottom! : Math.max(...s.ring!.map((p) => p[1]));
+    let h = target / w;
+    h *= target / Math.abs(signedArea(cushionRing({ x: s.x0, y: bottom - h, w, h })));
+    const cushion = cushionRing({ x: s.x0, y: bottom - h, w, h });
+    const rest = s.flat ? cushion : pairedWith(cushion, s.ring!);
     return { id: s.id, ring: s.ring!, rest, kind: "pouch", areaTarget: target, areaMin: s.areaMin, over: s.over };
   });
   return {
@@ -345,6 +345,24 @@ export function softCutScene(input: SoftCutInput): {
     bodyOf,
     scale,
   };
+}
+
+/** `ring` turned (and, if need be, reversed) so its points pair with the nearest of `ref`: the same count, the same way round. */
+function pairedWith(ring: readonly Pt[], ref: readonly Pt[]): Pt[] {
+  const n = ref.length;
+  const A = resample(ring, n);
+  if (Math.sign(signedArea(A)) !== Math.sign(signedArea(ref))) A.reverse();
+  let best = 0;
+  let bestD = Infinity;
+  for (let o = 0; o < n; o++) {
+    let d = 0;
+    for (let i = 0; i < n && d < bestD; i++) d += (A[(i + o) % n][0] - ref[i][0]) ** 2 + (A[(i + o) % n][1] - ref[i][1]) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = o;
+    }
+  }
+  return A.map((_, i) => A[(i + best) % n]);
 }
 
 function groupBy<T, K>(list: readonly T[], key: (t: T) => K): Map<K, T[]> {
@@ -420,24 +438,8 @@ export function seedShapes(input: SoftCutInput): SoftCutShapes {
 
 /** Two closed outlines as `n` points each, the first turned so its points pair with the nearest of the second. */
 function paired(a: readonly Pt[], b: readonly Pt[], n: number): [Pt[], Pt[]] {
-  const A = resample(a, n);
   const B = resample(b, n);
-  if (Math.sign(signedArea(A)) !== Math.sign(signedArea(B))) A.reverse();
-  let best = 0;
-  let bestD = Infinity;
-  for (let o = 0; o < n; o++) {
-    let d = 0;
-    for (let i = 0; i < n && d < bestD; i += 2) {
-      const p = A[(i + o) % n];
-      const q = B[i];
-      d += (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
-    }
-    if (d < bestD) {
-      bestD = d;
-      best = o;
-    }
-  }
-  return [A.map((_, i) => A[(i + best) % n]), B];
+  return [pairedWith(a, B), B];
 }
 
 type Morph = { at: (t: number) => SoftCutShapes };

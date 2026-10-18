@@ -299,6 +299,16 @@ function SoftBodyControls({
           onChange={(v) => set("rigidity", v)}
         />
         <SliderRow
+          label="Neck firmness"
+          tip="How little a Neck support gives where it rests and where a pouch presses on it — firm, but not rigid."
+          rangeKey="neckFirmness"
+          value={draft.neckFirmness}
+          defaultValue={defaults.neckFirmness}
+          display={(v) => `${v < 34 ? "soft" : v < 67 ? "medium" : "firm"} · ${v}`}
+          disabled={off}
+          onChange={(v) => set("neckFirmness", v)}
+        />
+        <SliderRow
           label="Pouch volume"
           tip="How full each pouch is compared with its relaxed size; above 1 it fills the space it is given."
           rangeKey="volumePct"
