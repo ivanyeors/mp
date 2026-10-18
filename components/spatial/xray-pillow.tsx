@@ -1706,9 +1706,10 @@ export function XrayPillow({
 
             {/* Front-layer labels, at the settled centroid unless the Section is
                 dived. A dived Section on a desktop already names its pieces
-                with the chips sitting on them, so it drops these. */}
+                with the chips sitting on them, so it drops these — unless the
+                chips are slotted beside the pillow, when nothing else would. */}
             {pieces.map((p) =>
-              p.depth === 0 && !(editable && !isMobile && p.section === dived) ? (
+              p.depth === 0 && !(editable && !isMobile && !slotted && p.section === dived) ? (
                 <PieceLabel
                   key={`label-${p.key}`}
                   rect={labelRects.get(p.key) ?? (p.section === dived ? p : p.settled)}

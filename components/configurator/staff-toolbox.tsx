@@ -39,6 +39,7 @@ export function StaffToolbox({
   tools,
   status,
   action,
+  className,
   children,
 }: {
   tools: ToolSpec[];
@@ -46,13 +47,15 @@ export function StaffToolbox({
   status?: ToolboxStatus | null;
   /** Trailing action for the rail (e.g. save the edited mix). */
   action?: React.ReactNode;
+  /** Width override for a host that lays the rail out itself (the pillow stage spans its column). */
+  className?: string;
   /** Slot for whatever the panel owns beyond the rail (e.g. its confirm gate). */
   children?: React.ReactNode;
 }) {
   return (
     // Full width on phones so the chips share the row evenly and stay tappable;
-    // fits its content from md up.
-    <div className="w-full max-w-xl md:w-fit">
+    // fits its content from md up unless the host sizes it.
+    <div className={cn("w-full max-w-xl md:w-fit", className)}>
       <div
         className={cn(
           "flex flex-wrap items-stretch gap-1 rounded-2xl p-1.5",
@@ -121,8 +124,10 @@ function ToolChip({ tool }: { tool: ToolSpec }) {
   );
 
   // 44px tap floor on phones (max-md:min-h-11), matching the app's button sizes.
+  // Content-sized basis so a chip grows to its value and wraps to the next row
+  // before it truncates; a fixed basis cut "Premium" and "Filling Template" short.
   const chipClass =
-    "flex min-w-[6.5rem] flex-1 basis-[7.5rem] items-center gap-2 rounded-xl px-2.5 py-1.5 text-left max-md:min-h-11";
+    "flex min-w-[6.5rem] flex-auto items-center gap-2 rounded-xl px-2.5 py-1.5 text-left max-md:min-h-11";
 
   if (tool.readOnly) {
     return <span className={chipClass}>{face}</span>;

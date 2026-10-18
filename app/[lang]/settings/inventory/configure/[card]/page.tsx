@@ -43,6 +43,7 @@ import {
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { useBolsterFit, useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import {
@@ -1955,15 +1956,11 @@ function FillingConfigPanel({
       </p>
       <div className={WORKBENCH_GRID}>
       {kind === "pillow" ? (
-        <aside className="hidden flex-col rounded-xl border lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]">
-          <div className="border-b p-3 text-sm font-medium capitalize">
-            {divedSection ? `Editing ${divedSection} section` : "Section editor"}
-          </div>
-          {!divedSection && (
-            <p className="p-3 text-sm text-muted-foreground">Click a section on the x-ray to edit its fillings.</p>
-          )}
-          <div ref={setControlsSlot} className="min-h-0 flex-1 overflow-y-auto p-2" />
-        </aside>
+        <XraySectionDock
+          dived={divedSection}
+          onSlot={setControlsSlot}
+          className="hidden lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]"
+        />
       ) : (
         templateRail
       )}

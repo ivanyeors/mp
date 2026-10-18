@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   Dialog,
   DialogClose,
@@ -169,6 +170,8 @@ import { StaffAssistPanel, type FillingItem } from "@/components/configurator/st
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
+import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { stageGeometry } from "@/components/spatial/xray-assets";
@@ -184,6 +187,7 @@ import {
   rowsToPillowPlacements,
   type PillowPlacement,
   type PillowPlacementRow,
+  type Section,
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
@@ -219,6 +223,15 @@ const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
 // x-ray share one path, so they cannot misalign.
 const pillowPath = (size: string | null | undefined) =>
   stageGeometry(pillowDimensions(size).dims.size).silhouettePath;
+
+// Every block on the preview stage shares the x-ray's width, so the Staff
+// toolbar, the pillow, the fit banner, the cut and the pack list read as one
+// column. Below lg: the full column, capped at 500px so cells and dive chips
+// are big enough to tap. From lg: sized to the viewport so the pillow and its
+// cut stay in view together, and never wider than the column it sits in.
+const STAGE_BLOCK_CLASS = "w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-full";
+// Panels on the starfield take the Staff toolbox rail's frosted surface.
+const STAGE_PANEL_CLASS = "border-border/60 bg-background/70 shadow-xl backdrop-blur-xl";
 
 type Step =
   | "welcome"
@@ -508,6 +521,20 @@ export function MpConfigClient({
   );
   // Slice 05: where the cross-section is cut; the x-ray draws the line, an along cut follows the dive.
   const { cut, setCut, onDiveChange } = useCut();
+  // Staff: the dived Section's controls dock off the pillow, as on Configure →
+  // Filling Template — in a Section editor column beside the x-ray on wide
+  // screens, in a panel under it on tablets. Phones keep XrayPillow's own dock.
+  const wideStage = useMediaQuery("(min-width: 1280px)");
+  const [sideSlot, setSideSlot] = useState<HTMLElement | null>(null);
+  const [inlineSlot, setInlineSlot] = useState<HTMLElement | null>(null);
+  const [divedSection, setDivedSection] = useState<Section | null>(null);
+  const onStageDive = useCallback(
+    (section: Section | null) => {
+      onDiveChange(section);
+      setDivedSection(section);
+    },
+    [onDiveChange],
+  );
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -2410,7 +2437,12 @@ export function MpConfigClient({
           description="This will clear your saved session and return to the start."
           onConfirmExit={exitToStart}
         />
-        <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
+        {/* An app surface on a public route: the editor copy and the finish form set
+            their own sizes, which the marketing typography would force to 18px. */}
+        <div
+          className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background"
+          data-typography-scope="app"
+        >
           {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
           <div
             key={currentStep}
@@ -2449,12 +2481,16 @@ export function MpConfigClient({
           </header>
 
           <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
-            {/* Left: product visual (mp-maker style) */}
-            {/* Below lg the stage flows at its natural height: a fixed 40vh cap
-                with overflow-hidden clipped the pillow's top and cut the staff
-                toolbox (Size / Tier / Filling Template) clean off on phones, so
-                fillings could not be configured on mobile at all. */}
-            <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:overflow-hidden">
+            {/* Left: the stage. Dark in both themes: the white silhouette, the
+                starfield and the x-ray's shell paint (xray-theme.ts) are drawn for
+                a dark ground, and `dark` flips the tokens and `dark:` variants
+                inside to match, so nothing here goes white-on-white in light mode. */}
+            {/* Desktop: a sticky full-height box whose content scrolls inside it.
+                It used to centre an overflow-hidden column instead, which clipped a
+                Staff stage at both ends — the pillow under the header, the toolbox
+                and pack list off the bottom — with no way to scroll to either.
+                Below lg the stage flows at its natural height above the finish panel. */}
+            <div className="dark relative bg-background text-foreground lg:sticky lg:top-[56px] lg:h-[calc(100dvh-56px)] lg:overflow-hidden">
               {!isMobile && (
                 <>
                   <Particles
@@ -2476,182 +2512,225 @@ export function MpConfigClient({
                   />
                 </>
               )}
-              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 p-4 max-md:px-3 md:gap-6">
+              <div className="relative z-10 flex flex-col p-4 max-md:px-3 lg:absolute lg:inset-0 lg:overflow-y-auto lg:overscroll-contain">
+                {/* `my-auto`: centred while the content fits, top-aligned once it does not. */}
                 <div
-                  // ponytail: below lg the stage takes the full column width (capped at
-                  // 500px) so the x-ray cells and dive chips are big enough to tap;
-                  // +30% stage only from lg up.
-                  className="relative w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
-                  // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
-                  style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
+                  className={cn(
+                    "my-auto w-full",
+                    // Staff on wide screens: Configure → Filling Template's workbench,
+                    // with the Section editor column on the left of the x-ray.
+                    staffAssist && wideStage && "grid grid-cols-[20rem_minmax(0,1fr)] items-start gap-6",
+                  )}
                 >
-                  <svg
-                    className={cn(
-                      "absolute inset-0 pointer-events-none",
-                      // x-ray art direction: shell desaturates so fillings read inside
-                      xrayVisible && "opacity-80 saturate-50",
-                    )}
-                    viewBox="0 0 664 374"
-                    xmlns="http://www.w3.org/2000/svg"
-                    preserveAspectRatio="xMidYMid meet"
-                  >
-                    <path d={pillowPath(size)} fill="white" />
-                    {/* Color overlay: the silhouette itself is the fabric. */}
-                    {selectedOverlay?.color && (
-                      <path d={pillowPath(size)} fill={selectedOverlay.color} />
-                    )}
-                    {selectedOverlay?.url && (
-                      <>
-                        <defs>
-                          <clipPath id="mp-config-overlay-clip">
-                            <path d={pillowPath(size)} />
-                          </clipPath>
-                        </defs>
-                        <image
-                          href={selectedOverlay.url}
-                          clipPath="url(#mp-config-overlay-clip)"
-                          preserveAspectRatio="xMidYMid slice"
-                          {...overlayFrame(selectedOverlay.fit)}
-                        />
-                      </>
-                    )}
-                    <path
-                      d={pillowPath(size)}
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-                  {xrayVisible && (
-                    <XrayPillow
-                      placements={staffAssist ? assistPlacements : guestPlacements}
-                      itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
-                      itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
-                      itemDims={staffAssist ? assistItemDims : guestItemDims}
-                      pillowSize={pillowDimensions(size).dims.size}
-                      loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
-                      fit={staffAssist ? assistFit : guestFit}
-                      onDiveChange={onDiveChange}
-                      // read-only for guests: no items / no change handler → no edit affordances
-                      items={staffAssist ? assistItems : undefined}
-                      onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
-                      className="absolute inset-0"
+                  {staffAssist && wideStage && (
+                    <XraySectionDock
+                      dived={divedSection}
+                      onSlot={setSideSlot}
+                      className={cn("sticky top-0 flex max-h-[calc(100dvh-56px-2rem)]", STAGE_PANEL_CLASS)}
                     />
                   )}
-                  {(shopLoading || suggestionLoading) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    </div>
-                  )}
-                </div>
-                {/* Slice 04: a loaded template or a Size change that no longer
-                    fits is flagged here as well as on the cells. Advisory. */}
-                {staffAssist && xrayVisible && (
-                  <FitBanner fit={assistFit} className="w-full max-w-md text-white [&_p]:text-white/80 [&_li]:text-white/80" />
-                )}
-                {/* Slice 05: the live cut under the pillow — Staff get the
-                    controls, a guest the across cut alone, read-only. */}
-                {xrayVisible && (
-                  <XrayCrossSection
-                    fit={staffAssist ? assistFit : guestFit}
-                    itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
-                    itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
-                    itemDims={staffAssist ? assistItemDims : guestItemDims}
-                    cut={cut}
-                    onCutChange={staffAssist ? setCut : undefined}
-                    // Staff drag pouches between columns, Layers and Sections on the cut too — the same session mix.
-                    placements={staffAssist ? assistPlacements : undefined}
-                    onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
-                    items={staffAssist ? assistItems : undefined}
-                    colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
-                    themed={false}
-                    className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
-                  />
-                )}
-                {(() => {
-                  const sleepPos = measurementData.sleepPositionType[0];
-                  const why = record
-                    ? plainLanguageWhy(record, { sleep_position: sleepPos })
-                    : shopRecommendation?.recommendation?.explanation ?? "";
-                  // x-ray already shows the mix → suppress the text summary here
-                  // (template name + specialists line stay in the reveal).
-                  const mixLines = guestXray
-                    ? []
-                    : (tpl?.lines ?? []).map((l) => {
-                        const filling = shopRecommendation?.available_fillings?.find(
-                          (f) => f.item_id === l.item_id,
-                        );
-                        return {
-                          label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
-                          qty: l.quantity,
-                        };
-                      });
-                  const soldTierLabel = soldAsPremium ? "premium" : tier;
-                  const showTierAdvice =
-                    record?.tierSuggestion &&
-                    record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
-                  return (
-                    <>
-                      {soldTierLabel ? (
-                        <Badge variant="outline" className="text-xs capitalize text-white">
-                          {soldTierLabel} tier
-                        </Badge>
-                      ) : null}
-                      {showTierAdvice && record?.tierSuggestion ? (
-                        <TierSuggestion tier={record.tierSuggestion} />
-                      ) : null}
-                      {routePending && record?.flowRoute && !partnerAssisted ? (
-                        <UpsellCard
-                          reason={record.flowRoute.reason}
-                          fromLabel={FLOW_UI_LABEL[record.flow]}
-                          toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
-                          fromPrice={basePrice}
-                          toPrice={routeAltPrice}
-                          currency={currency}
-                          onUpgrade={() => void handleUpgradeFlowRoute()}
-                          onKeep={handleKeepFlowRoute}
-                          busy={routeBusy}
-                        />
-                      ) : null}
-                      <RecommendationReveal
-                        reveal={revealNow}
-                        sizeLabel={size ? `Size ${size}` : ""}
-                        why={why}
-                        // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
-                        templateName={partnerAssisted ? null : tpl?.name ?? null}
-                        mixLines={partnerAssisted ? [] : mixLines}
+                  <div className="flex min-w-0 flex-col items-center gap-4 md:gap-6">
+                    {/* Staff: Size, Tier and Filling Template first — the pillow below
+                        is drawn in that context, and changing it reloads the mix. */}
+                    {staffAssist && size && tier ? (
+                      <StaffAssistPanel
+                        current={{
+                          size: size as SizeTier["size"],
+                          tier: tier as SizeTier["tier"],
+                        }}
+                        placements={assistPlacements}
+                        onPlacementsChange={setAssistPlacements}
+                        loadedTemplate={assistLoadedTemplate}
+                        onLoadTemplate={setAssistLoadedTemplate}
+                        sessionFillingTemplateId={sessionFillingTemplateId}
+                        onApplySizeTier={applyAssistSizeTier}
+                        onItemsChange={setAssistItems}
+                        onColorOverridesChange={setAssistColorOverrides}
+                        onDimensionOverridesChange={setAssistDimensionOverrides}
+                        // Spans the column at every width (the rail fits its content by default).
+                        className={cn(STAGE_BLOCK_CLASS, "md:w-full")}
                       />
-                    </>
-                  );
-                })()}
-                <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-                {staffAssist && size && tier ? (
-                  <StaffAssistPanel
-                    current={{
-                      size: size as SizeTier["size"],
-                      tier: tier as SizeTier["tier"],
-                    }}
-                    placements={assistPlacements}
-                    onPlacementsChange={setAssistPlacements}
-                    loadedTemplate={assistLoadedTemplate}
-                    onLoadTemplate={setAssistLoadedTemplate}
-                    sessionFillingTemplateId={sessionFillingTemplateId}
-                    onApplySizeTier={applyAssistSizeTier}
-                    onItemsChange={setAssistItems}
-                    onColorOverridesChange={setAssistColorOverrides}
-                    onDimensionOverridesChange={setAssistDimensionOverrides}
-                  />
-                ) : !shopRecommendation ? (
-                  <p className="max-w-xs text-center text-xs text-white/80">
-                    Fillings and protector are chosen by our team after review.
-                  </p>
-                ) : null}
+                    ) : null}
+                    <div
+                      className={cn("relative", STAGE_BLOCK_CLASS)}
+                      // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
+                      style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
+                    >
+                      <svg
+                        className={cn(
+                          "absolute inset-0 pointer-events-none",
+                          // x-ray art direction: shell desaturates so fillings read inside
+                          xrayVisible && "opacity-80 saturate-50",
+                        )}
+                        viewBox="0 0 664 374"
+                        xmlns="http://www.w3.org/2000/svg"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <path d={pillowPath(size)} fill="white" />
+                        {/* Color overlay: the silhouette itself is the fabric. */}
+                        {selectedOverlay?.color && (
+                          <path d={pillowPath(size)} fill={selectedOverlay.color} />
+                        )}
+                        {selectedOverlay?.url && (
+                          <>
+                            <defs>
+                              <clipPath id="mp-config-overlay-clip">
+                                <path d={pillowPath(size)} />
+                              </clipPath>
+                            </defs>
+                            <image
+                              href={selectedOverlay.url}
+                              clipPath="url(#mp-config-overlay-clip)"
+                              preserveAspectRatio="xMidYMid slice"
+                              {...overlayFrame(selectedOverlay.fit)}
+                            />
+                          </>
+                        )}
+                        <path
+                          d={pillowPath(size)}
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="3"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                      {xrayVisible && (
+                        <XrayPillow
+                          placements={staffAssist ? assistPlacements : guestPlacements}
+                          itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                          itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                          itemDims={staffAssist ? assistItemDims : guestItemDims}
+                          pillowSize={pillowDimensions(size).dims.size}
+                          loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
+                          fit={staffAssist ? assistFit : guestFit}
+                          onDiveChange={onStageDive}
+                          // read-only for guests: no items / no change handler → no edit affordances
+                          items={staffAssist ? assistItems : undefined}
+                          onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                          // Staff: the dived Section's controls render in the stage's Section
+                          // editor dock, off the pillow art (phones keep their own dock).
+                          controlsSlot={staffAssist ? (wideStage ? sideSlot : inlineSlot) : undefined}
+                          className="absolute inset-0"
+                        />
+                      )}
+                      {(shopLoading || suggestionLoading) && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Tablets: the dived Section's controls in a panel under the
+                        pillow, shown only while a Section is dived. */}
+                    {staffAssist && !wideStage && (
+                      <XraySectionDock
+                        dived={divedSection}
+                        onSlot={setInlineSlot}
+                        className={cn(STAGE_BLOCK_CLASS, STAGE_PANEL_CLASS, "max-md:hidden", divedSection ? "flex" : "hidden")}
+                      />
+                    )}
+                    {/* Slice 04: a loaded template or a Size change that no longer
+                        fits is flagged here as well as on the cells. Advisory. */}
+                    {staffAssist && xrayVisible && <FitBanner fit={assistFit} className={STAGE_BLOCK_CLASS} />}
+                    {/* Slice 05: the live cut under the pillow — Staff get the
+                        controls, a guest the across cut alone, read-only. */}
+                    {xrayVisible && (
+                      <XrayCrossSection
+                        fit={staffAssist ? assistFit : guestFit}
+                        itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                        itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                        itemDims={staffAssist ? assistItemDims : guestItemDims}
+                        cut={cut}
+                        onCutChange={staffAssist ? setCut : undefined}
+                        // Staff drag pouches between columns, Layers and Sections on the cut too — the same session mix.
+                        placements={staffAssist ? assistPlacements : undefined}
+                        onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                        items={staffAssist ? assistItems : undefined}
+                        colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
+                        themed={false}
+                        className={STAGE_BLOCK_CLASS}
+                      />
+                    )}
+                    {/* The list Staff read is the list they edit, in its own card as
+                        on Configure; removing a filling there removes all its pieces. */}
+                    {staffAssist && (
+                      <section className={cn("space-y-1 rounded-xl border p-3", STAGE_BLOCK_CLASS, STAGE_PANEL_CLASS)}>
+                        <div className="text-sm font-medium">Derived pack list</div>
+                        <XrayPackList
+                          placements={assistPlacements}
+                          onPlacementsChange={setAssistPlacements}
+                          items={assistItems}
+                        />
+                      </section>
+                    )}
+                    {(() => {
+                      const sleepPos = measurementData.sleepPositionType[0];
+                      const why = record
+                        ? plainLanguageWhy(record, { sleep_position: sleepPos })
+                        : shopRecommendation?.recommendation?.explanation ?? "";
+                      // x-ray already shows the mix → suppress the text summary here
+                      // (template name + specialists line stay in the reveal).
+                      const mixLines = guestXray
+                        ? []
+                        : (tpl?.lines ?? []).map((l) => {
+                            const filling = shopRecommendation?.available_fillings?.find(
+                              (f) => f.item_id === l.item_id,
+                            );
+                            return {
+                              label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                              qty: l.quantity,
+                            };
+                          });
+                      const soldTierLabel = soldAsPremium ? "premium" : tier;
+                      const showTierAdvice =
+                        record?.tierSuggestion &&
+                        record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
+                      return (
+                        <>
+                          {soldTierLabel ? (
+                            <Badge variant="outline" className="text-xs capitalize text-white">
+                              {soldTierLabel} tier
+                            </Badge>
+                          ) : null}
+                          {showTierAdvice && record?.tierSuggestion ? (
+                            <TierSuggestion tier={record.tierSuggestion} />
+                          ) : null}
+                          {routePending && record?.flowRoute && !partnerAssisted ? (
+                            <UpsellCard
+                              reason={record.flowRoute.reason}
+                              fromLabel={FLOW_UI_LABEL[record.flow]}
+                              toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                              fromPrice={basePrice}
+                              toPrice={routeAltPrice}
+                              currency={currency}
+                              onUpgrade={() => void handleUpgradeFlowRoute()}
+                              onKeep={handleKeepFlowRoute}
+                              busy={routeBusy}
+                            />
+                          ) : null}
+                          <RecommendationReveal
+                            reveal={revealNow}
+                            sizeLabel={size ? `Size ${size}` : ""}
+                            why={why}
+                            // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
+                            templateName={partnerAssisted ? null : tpl?.name ?? null}
+                            mixLines={partnerAssisted ? [] : mixLines}
+                          />
+                        </>
+                      );
+                    })()}
+                    <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
+                    {!staffAssist && !shopRecommendation ? (
+                      <p className="max-w-xs text-center text-xs text-white/80">
+                        Fillings and protector are chosen by our team after review.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Right: customization panel */}
-            <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100vh-56px)] lg:border-l">
+            <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100dvh-56px)] lg:border-l">
               <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
                 {partner ? <CoBrandBanner partner={partner} /> : null}
                 <div className="space-y-1">
