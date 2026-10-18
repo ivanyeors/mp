@@ -48,6 +48,7 @@ import {
 import {
   ConfiguratorExitDialog,
   ConfiguratorMobileCloseBar,
+  ConfiguratorStepActions,
   configuratorCardPadClassName,
   configuratorMobileCloseClearanceClassName,
   configuratorOuterPadClassName,
@@ -398,6 +399,8 @@ export function MpConfigClient({
   const studioMeasureHref = to("/appointments?type=customisation");
 
   const isMobile = useIsMobile();
+  // Phones: each step's Back / Continue render in the bottom bar's slot.
+  const [mobileActionsSlot, setMobileActionsSlot] = useState<HTMLDivElement | null>(null);
   // Both reopened modes start on the preview: there is already a build to look
   // at, so the questionnaire would only be in the way.
   const [currentStep, setCurrentStep] = useState<Step>(
@@ -3066,8 +3069,12 @@ export function MpConfigClient({
                       : `${currency} ${(basePrice + addonTotal + serviceTotal).toFixed(2)}`}
                   </span>
                 </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={backFromPreview} className="flex-1">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex gap-3"
+                >
+                  <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:flex-none">
                     <ArrowLeft className="size-4" />
                     Back
                   </Button>
@@ -3080,12 +3087,14 @@ export function MpConfigClient({
                     {holdCta}
                     <ArrowRight className="size-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
               </div>
             </div>
           </div>
         </div>
-        {isMobile && <ConfiguratorMobileCloseBar onClose={requestExit} />}
+        {isMobile && (
+          <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
+        )}
       </>
     );
   }
@@ -3143,7 +3152,7 @@ export function MpConfigClient({
       )}
 
       {currentStep !== "welcome" && isMobile && (
-        <ConfiguratorMobileCloseBar onClose={requestExit} />
+        <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
       )}
 
       {/* Content Container */}
@@ -3309,8 +3318,12 @@ export function MpConfigClient({
                 </div>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3319,7 +3332,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3384,8 +3397,12 @@ export function MpConfigClient({
                 </div>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3397,7 +3414,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3463,8 +3480,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3481,7 +3502,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3547,8 +3568,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3565,7 +3590,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3631,8 +3656,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3649,7 +3678,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3715,8 +3744,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3737,7 +3770,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -4155,8 +4188,12 @@ export function MpConfigClient({
                 </div>
               )}
 
-              <div className="pt-4">
-                <div className="flex justify-between gap-3">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between gap-3"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -4184,13 +4221,7 @@ export function MpConfigClient({
                       holdSubmitting
                     }
                     size="lg"
-                    // The assisted label is long: on phones it wraps inside the
-                    // button instead of pushing it off the right edge.
-                    className={cn(
-                      "group",
-                      assisted &&
-                        "max-md:h-auto max-md:min-w-0 max-md:shrink max-md:whitespace-normal max-md:py-2 max-md:text-left",
-                    )}
+                    className="group"
                   >
                     <Sparkles className={cn("mr-2 h-5 w-5", assisted && "max-md:hidden")} />
                     {holdSubmitting
@@ -4200,7 +4231,7 @@ export function MpConfigClient({
                         : isBasic ? "Continue" : "Customise"}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span

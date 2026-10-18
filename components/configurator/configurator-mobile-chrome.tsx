@@ -1,5 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,8 +25,13 @@ export const configuratorCardPadClassName = "p-5 md:p-8";
 /** Preview panel side padding. */
 export const configuratorPreviewPadClassName = "px-3 py-6 md:px-5";
 
-/** Room for fixed mobile Close bar. */
-export const configuratorMobileCloseClearanceClassName = "max-md:pb-24";
+/**
+ * Room for the fixed mobile bar. The bar's own bottom padding carries the
+ * safe-area inset, so the clearance has to as well or the end of a long step
+ * stays under the bar on iPhones with a home indicator.
+ */
+export const configuratorMobileCloseClearanceClassName =
+  "max-md:pb-[calc(6rem+var(--safe-bottom))]";
 
 export function ConfiguratorExitDialog({
   open,
@@ -63,8 +71,29 @@ export function ConfiguratorExitDialog({
   );
 }
 
-/** Fixed bottom Close — mobile only; slide-in safe-bottom language. */
-export function ConfiguratorMobileCloseBar({ onClose }: { onClose: () => void }) {
+/**
+ * The bar's actions slot. Empty, it collapses and Close sits alone on the right.
+ * The last action — the step's Continue — takes the remaining width and wraps
+ * to a second line rather than clip on a narrow phone; Back keeps its own width.
+ */
+const mobileActionsSlotClassName = cn(
+  "flex min-w-0 flex-1 items-center gap-2 border-l pl-2 empty:hidden",
+  "[&>:last-child]:h-auto [&>:last-child]:min-w-0 [&>:last-child]:flex-1 [&>:last-child]:py-1.5 [&>:last-child]:whitespace-normal [&>:last-child]:text-center",
+);
+
+/**
+ * Fixed bottom bar — mobile only; slide-in safe-bottom language. Close on the
+ * left, then the current step's Back / Continue (see ConfiguratorStepActions),
+ * so the step's actions stay in thumb reach however far the step scrolls.
+ */
+export function ConfiguratorMobileCloseBar({
+  onClose,
+  actionsRef,
+}: {
+  onClose: () => void;
+  /** Receives the slot ConfiguratorStepActions portals into. */
+  actionsRef?: (el: HTMLDivElement | null) => void;
+}) {
   return (
     <div
       className={cn(
@@ -72,9 +101,33 @@ export function ConfiguratorMobileCloseBar({ onClose }: { onClose: () => void })
         "fixed inset-x-0 bottom-0 z-20 md:hidden",
       )}
     >
-      <div className="flex items-center justify-end gap-1.5 px-3 py-2.5">
+      <div className="flex items-center justify-end gap-2 px-3 py-2.5">
         <OverlayDismissButton variant="inline" label="Close" onClick={onClose} />
+        <div ref={actionsRef} className={mobileActionsSlotClassName} />
       </div>
     </div>
   );
+}
+
+/**
+ * A step's Back / Continue. Desktop renders them in place under the step; on
+ * mobile they move into ConfiguratorMobileCloseBar's slot. They are portalled
+ * rather than made `fixed`, because the step cards' backdrop blur and the
+ * wizard's scale transition would pin a fixed child to the card, not the screen.
+ */
+export function ConfiguratorStepActions({
+  mobile,
+  slot,
+  className,
+  children,
+}: {
+  mobile: boolean;
+  /** The bar's actions slot; null until the bar has mounted. */
+  slot: HTMLElement | null;
+  /** Desktop layout of the row. */
+  className?: string;
+  children: ReactNode;
+}) {
+  if (!mobile) return <div className={className}>{children}</div>;
+  return slot ? createPortal(children, slot) : null;
 }

@@ -11,6 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   ConfiguratorExitDialog,
   ConfiguratorMobileCloseBar,
+  ConfiguratorStepActions,
   configuratorCardPadClassName,
   configuratorMobileCloseClearanceClassName,
   configuratorOuterPadClassName,
@@ -53,7 +54,7 @@ assert.match(bolster, /state\.step !== "welcome" && isMobile/);
 assert.equal(configuratorOuterPadClassName, "p-4 max-md:px-3");
 assert.equal(configuratorCardPadClassName, "p-5 md:p-8");
 assert.equal(configuratorPreviewPadClassName, "px-3 py-6 md:px-5");
-assert.match(configuratorMobileCloseClearanceClassName, /pb-24/);
+assert.match(configuratorMobileCloseClearanceClassName, /pb-\[calc\(6rem\+var\(--safe-bottom\)\)\]/);
 assert.match(mp, /configuratorCardPadClassName/);
 assert.match(mp, /configuratorOuterPadClassName/);
 assert.match(bolster, /configuratorCardPadClassName/);
@@ -68,6 +69,32 @@ assert.match(
   /border-t bg-background px-5 py-4[\s\S]*?configuratorMobileCloseClearanceClassName[\s\S]*?holdCta/,
 );
 
+// Mobile: every step's Back / Continue live in the bottom bar, beside Close.
+for (const src of [mp, bolster]) {
+  assert.match(src, /actionsRef=\{setMobileActionsSlot\}/);
+  // Both bars (questionnaire + preview) expose the slot.
+  assert.equal(src.match(/<ConfiguratorMobileCloseBar[^>]*actionsRef=/g)?.length, 2);
+  // Every Back button sits inside a ConfiguratorStepActions; the preview
+  // header's icon-only back arrow is the one exception (aria-label="Back").
+  const backButtons = src.match(/^\s*Back$/gm)?.length ?? 0;
+  const opens = src.match(/<ConfiguratorStepActions/g)?.length ?? 0;
+  assert.ok(backButtons > 0 && backButtons === opens, `Back rows ${backButtons} vs actions ${opens}`);
+  assert.match(src, /mobile=\{isMobile\}\s+slot=\{mobileActionsSlot\}/);
+}
+// Desktop renders the row in place; mobile renders nothing in place.
+assert.equal(
+  renderToStaticMarkup(
+    createElement(ConfiguratorStepActions, { mobile: false, slot: null, className: "row" }, "go"),
+  ),
+  '<div class="row">go</div>',
+);
+assert.equal(
+  renderToStaticMarkup(
+    createElement(ConfiguratorStepActions, { mobile: true, slot: null, className: "row" }, "go"),
+  ),
+  "",
+);
+
 // Close bar uses slide-in safe-bottom language
 assert.match(sheetStickyBottomClassName, /--safe-bottom/);
 const barHtml = renderToStaticMarkup(
@@ -77,6 +104,9 @@ assert.match(barHtml, /Close/);
 assert.match(barHtml, /md:hidden|safe-bottom|--safe-bottom/);
 // OverlayDismissButton renders sr-only Close
 assert.match(barHtml, /sr-only/);
+// Actions slot: collapses when empty; the last action (Continue) fills the bar.
+assert.match(barHtml, /empty:hidden/);
+assert.match(barHtml, /\[&amp;&gt;:last-child\]:flex-1/);
 
 const dialogHtml = renderToStaticMarkup(
   createElement(ConfiguratorExitDialog, {

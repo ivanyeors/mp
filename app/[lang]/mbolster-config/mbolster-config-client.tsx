@@ -31,6 +31,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ConfiguratorExitDialog,
   ConfiguratorMobileCloseBar,
+  ConfiguratorStepActions,
   configuratorCardPadClassName,
   configuratorMobileCloseClearanceClassName,
   configuratorPreviewPadClassName,
@@ -254,6 +255,8 @@ export function MbolsterConfigClient({
   const homeHref = withLocale("/", locale);
   const to = (href: string) => withLocale(href, locale);
   const isMobile = useIsMobile();
+  // Phones: each step's Back / Continue render in the bottom bar's slot.
+  const [mobileActionsSlot, setMobileActionsSlot] = React.useState<HTMLDivElement | null>(null);
   const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
   const [restoringHoldCancel, setRestoringHoldCancel] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
@@ -1551,8 +1554,12 @@ export function MbolsterConfigClient({
                     : "Not available"}
                 </span>
               </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={goBack} className="flex-1">
+              <ConfiguratorStepActions
+                mobile={isMobile}
+                slot={mobileActionsSlot}
+                className="flex gap-3"
+              >
+                <Button variant="outline" onClick={goBack} className="flex-1 max-md:flex-none">
                   <ArrowLeft className="size-4" />
                   Back
                 </Button>
@@ -1570,11 +1577,13 @@ export function MbolsterConfigClient({
                   {holdCta}
                   <ArrowRight className="size-4" />
                 </Button>
-              </div>
+              </ConfiguratorStepActions>
             </div>
           </div>
         </div>
-        {isMobile && <ConfiguratorMobileCloseBar onClose={requestExit} />}
+        {isMobile && (
+          <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
+        )}
       </div>
     );
   }
@@ -1597,7 +1606,7 @@ export function MbolsterConfigClient({
         onConfirmExit={exitConfirmed}
       />
       {state.step !== "welcome" && isMobile && (
-        <ConfiguratorMobileCloseBar onClose={requestExit} />
+        <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
       )}
       <div
         className={cn(
@@ -1763,7 +1772,11 @@ export function MbolsterConfigClient({
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <ConfiguratorStepActions
+              mobile={isMobile}
+              slot={mobileActionsSlot}
+              className="flex items-center justify-between pt-2"
+            >
               <Button variant="outline" onClick={goBack}>
                 Back
               </Button>
@@ -1780,7 +1793,7 @@ export function MbolsterConfigClient({
               >
                 Continue
               </Button>
-            </div>
+            </ConfiguratorStepActions>
           </Card>
         ) : null}
 
@@ -1827,7 +1840,11 @@ export function MbolsterConfigClient({
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <ConfiguratorStepActions
+              mobile={isMobile}
+              slot={mobileActionsSlot}
+              className="flex items-center justify-between pt-2"
+            >
               <Button variant="outline" onClick={goBack}>
                 Back
               </Button>
@@ -1839,7 +1856,7 @@ export function MbolsterConfigClient({
               >
                 {shopLoading ? "Loading..." : "Get Recommendation"}
               </Button>
-            </div>
+            </ConfiguratorStepActions>
           </Card>
         ) : null}
 
@@ -1895,12 +1912,16 @@ export function MbolsterConfigClient({
               <p className="text-xs text-muted-foreground">
                 Fillings are chosen by our team after review. You pick a case preference next.
               </p>
-              <div className="flex items-center justify-between pt-2">
+              <ConfiguratorStepActions
+                mobile={isMobile}
+                slot={mobileActionsSlot}
+                className="flex items-center justify-between pt-2"
+              >
                 <Button variant="outline" onClick={goBack}>
                   Back
                 </Button>
                 <Button onClick={goNext}>Continue</Button>
-              </div>
+              </ConfiguratorStepActions>
             </div>
           </Card>
         ) : null}
