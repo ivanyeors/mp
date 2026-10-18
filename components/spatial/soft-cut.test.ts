@@ -5,7 +5,7 @@ import { resolveDims, type PillowSize, type ResolvedDims } from "@/lib/spatial-f
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { createSettle, distanceToPolygon, pointInPolygon, resample, smoothSnapshot, type Pt } from "@/lib/spatial-fillings/soft-body";
 import { SOFT_BODY_DEFAULTS } from "@/lib/spatial-fillings/soft-body-settings";
-import { settleSoftCut, softCutScene, type SoftCutInput } from "./soft-cut";
+import { morph, seedShapes, settleSoftCut, softCutScene, type SoftCutInput } from "./soft-cut";
 import { softCutInputFor } from "./xray-cross-section";
 
 // The testing preview's items and the brand diagrams' recipes (Oct 2026), each cell top → bottom.
@@ -175,6 +175,26 @@ describe("soft cut", () => {
     expect(pouchRough / pieces).toBeLessThan(0.07);
     expect(caseRough / scenes).toBeLessThan(0.04);
     expect(caseFlips / scenes).toBeLessThan(3);
+  });
+
+  it("eases between settles without a wobbly in-between frame", () => {
+    const a = inputOf(RECIPES["9"]);
+    const b = inputOf(RECIPES["11"]);
+    const from = settleSoftCut(a);
+    const to = settleSoftCut(b);
+    for (const plan of [morph(seedShapes(b), to, () => seedShapes(b)), morph(from, to, () => seedShapes(b))]) {
+      // It ends on the settled shape (the hook then draws the settled shape itself).
+      const end = plan.at(1).rings.get("center/back/3")!;
+      for (const p of end) expect(distanceToPolygon(to.rings.get("center/back/3")!, p[0], p[1])).toBeLessThan(0.5);
+      for (const t of [0.25, 0.5, 0.75]) {
+        const frame = plan.at(t);
+        expect(frame.rings.size).toBe(to.rings.size);
+        let rough = 0;
+        for (const ring of new Set(frame.rings.values())) rough = Math.max(rough, wobble(ring).rough);
+        expect(rough).toBeLessThan(0.15);
+        expect(wobble(frame.case, (p) => p[1] > b.frame.baseline - 0.6).rough).toBeLessThan(0.06);
+      }
+    }
   });
 
   it("settles every Section, the phone layout, and a raw (unsmoothed) setting without blowing up", () => {

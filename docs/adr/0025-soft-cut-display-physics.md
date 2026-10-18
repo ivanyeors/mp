@@ -35,8 +35,11 @@ that does this. This record admits it, as a display layer only.
   sewn shape.
 - **Deterministic.** XPBD with a fixed start, a fixed number of steps, no randomness and no trig
   in the loop: the same recipe and Settings give the same picture on every device, and how the
-  steps are split across frames never changes the result. ADR 0009's guardrail 3 holds, and the
-  settle animation is the computation itself.
+  steps are split never changes the result. ADR 0009's guardrail 3 holds.
+- **Shown eased, not solved on screen.** The settle is computed in one go (and cached); a change
+  eases every outline from where it was — a new piece from where it was stacked — to where it
+  settles, over the settle's length. Stepping the solver on screen was tried and dropped: its
+  early steps (cloth falling on pouches not yet inflated) are half-solved, pinched shapes.
 - **Smooth by construction.** The cloth resists kinks its sewn outline does not have, and what is
   drawn is evenly respaced and low-passed (Taubin λ 0.5 / μ −0.53, shrink-free). No wobbly lines.
 - **Tuned in Settings, one value everywhere.** Staff tune a few physical knobs (rigidity, pouch

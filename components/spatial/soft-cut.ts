@@ -412,19 +412,85 @@ export function settleSoftCut(input: SoftCutInput): SoftCutShapes {
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** The pieces as first stacked, before they settle: where a new piece eases in from. */
+export function seedShapes(input: SoftCutInput): SoftCutShapes {
+  const scene = softCutScene(input);
+  return shapesOf(scene, createSettle(scene.pieces, scene.frame, scene.options), input);
+}
+
+/** Two closed outlines as `n` points each, the first turned so its points pair with the nearest of the second. */
+function paired(a: readonly Pt[], b: readonly Pt[], n: number): [Pt[], Pt[]] {
+  const A = resample(a, n);
+  const B = resample(b, n);
+  if (Math.sign(signedArea(A)) !== Math.sign(signedArea(B))) A.reverse();
+  let best = 0;
+  let bestD = Infinity;
+  for (let o = 0; o < n; o++) {
+    let d = 0;
+    for (let i = 0; i < n && d < bestD; i += 2) {
+      const p = A[(i + o) % n];
+      const q = B[i];
+      d += (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+    }
+    if (d < bestD) {
+      bestD = d;
+      best = o;
+    }
+  }
+  return [A.map((_, i) => A[(i + best) % n]), B];
+}
+
+type Morph = { at: (t: number) => SoftCutShapes };
+
+/** Every outline eased from where it is shown (or, new, from where it was stacked) to where it settles. */
+export function morph(from: SoftCutShapes, to: SoftCutShapes, seed: () => SoftCutShapes): Morph {
+  let seeded: SoftCutShapes | null = null;
+  const start = (key: string) => from.rings.get(key) ?? (seeded ??= seed()).rings.get(key);
+  const startLabel = (key: string) => from.labels.get(key) ?? (seeded ??= seed()).labels.get(key);
+  const n = (a: readonly Pt[], b: readonly Pt[]) => Math.max(a.length, b.length);
+  const [caseA, caseB] = paired(from.case, to.case, n(from.case, to.case));
+  // Pieces drawn with one outline (side by side in a Layer) share it here too.
+  const byRing = new Map<Pt[], [Pt[], Pt[]]>();
+  const rings = [...to.rings].map(([key, ring]) => {
+    const a = start(key) ?? ring;
+    if (!byRing.has(ring)) byRing.set(ring, paired(a, ring, n(a, ring)));
+    return [key, byRing.get(ring)!] as const;
+  });
+  const labels = [...to.labels].map(([key, l]) => [key, startLabel(key) ?? l, l] as const);
+  const mix = (p: Pt, q: Pt, t: number): Pt => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+  return {
+    at: (t) => {
+      const frames = new Map<[Pt[], Pt[]], Pt[]>();
+      const ringAt = (pair: [Pt[], Pt[]]) => {
+        if (!frames.has(pair)) frames.set(pair, pair[0].map((p, i) => mix(p, pair[1][i], t)));
+        return frames.get(pair)!;
+      };
+      return {
+        case: caseA.map((p, i) => mix(p, caseB[i], t)),
+        rings: new Map(rings.map(([key, pair]) => [key, ringAt(pair)])),
+        labels: new Map(labels.map(([key, a, b]) => [key, { at: mix(a.at, b.at, t), r: a.r + (b.r - a.r) * t }])),
+      };
+    },
+  };
+}
+
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+
 /**
  * The soft cut's shapes for a drawing, or null until the first client layout
- * (a server or static render draws the rounded slabs). A new recipe settles
- * one step per frame — the settle is the computation, so watching it costs
- * nothing extra — unless `animate` is off or the viewer asked for reduced
- * motion, when it settles before the next paint. Bumping `replay` settles
- * again from the start, even a recipe already settled.
+ * (a server or static render draws the rounded slabs). The settle is computed
+ * in one go (and cached); a change is shown by easing every outline from
+ * where it is to where it settles — a new piece from where it was stacked —
+ * over the settle's length, so no in-between frame is ever a half-solved,
+ * wobbly shape. No easing when `animate` is off or the viewer asked for
+ * reduced motion. Bumping `replay` eases in again from the stack.
  */
 export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay = 0): SoftCutShapes | null {
   const key = input ? softCutKey(input) : null;
   const [state, setState] = useState<{ key: string; shapes: SoftCutShapes } | null>(null);
   const latest = useRef(input);
   const replayed = useRef(replay);
+  const shown = useRef<SoftCutShapes | null>(null);
 
   useLayoutEffect(() => {
     latest.current = input;
@@ -435,22 +501,25 @@ export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay 
     if (!key || !cur) return;
     const fresh = replayed.current !== replay;
     replayed.current = replay;
-    const hit = fresh ? undefined : settledCache.get(key);
-    if (hit || !animate || prefersReducedMotion()) {
-      setState({ key, shapes: hit ?? settleSoftCut(cur) });
+    const target = settleSoftCut(cur);
+    const show = (shapes: SoftCutShapes) => {
+      shown.current = shapes;
+      setState({ key, shapes });
+    };
+    if (!animate || prefersReducedMotion() || (!fresh && shown.current === target)) {
+      show(target);
       return;
     }
-    const scene = softCutScene(cur);
-    const sim = createSettle(scene.pieces, scene.frame, scene.options);
-    setState({ key, shapes: shapesOf(scene, sim, cur) });
+    const plan = morph(fresh || !shown.current ? seedShapes(cur) : shown.current, target, () => seedShapes(cur));
+    const duration = Math.max(200, (cur.settings.steps * 1000) / 60);
+    const t0 = performance.now();
     let raf = 0;
-    const tick = () => {
-      const done = sim.step(1);
-      const shapes = shapesOf(scene, sim, cur);
-      setState({ key, shapes });
-      if (done) remember(key, shapes);
-      else raf = requestAnimationFrame(tick);
+    const tick = (now: number) => {
+      const t = Math.min((now - t0) / duration, 1);
+      show(t < 1 ? plan.at(easeOutCubic(t)) : target);
+      if (t < 1) raf = requestAnimationFrame(tick);
     };
+    show(plan.at(0));
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [key, animate, replay]);

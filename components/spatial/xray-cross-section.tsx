@@ -317,6 +317,7 @@ function PuffySlab({
   hit,
   outline,
   labelAt,
+  still = false,
 }: {
   box: SlabBox;
   roll: boolean;
@@ -340,6 +341,8 @@ function PuffySlab({
   outline?: string;
   /** Where its label sits on the soft outline. */
   labelAt?: { x: number; y: number };
+  /** Never tween: the soft cut animates by settling, and a tween's attribute writes would outlive its outline. */
+  still?: boolean;
 }) {
   const visual = fillingVisual(subtype);
   const body = outline ?? slabOutline(box, roll, puff, shaping);
@@ -354,7 +357,7 @@ function PuffySlab({
     const from = shown.current;
     const to = box;
     const group = groupEl.current;
-    if (!group || outline || sameBox(from, to) || prefersReducedMotion()) {
+    if (!group || still || outline || sameBox(from, to) || prefersReducedMotion()) {
       shown.current = to;
       return;
     }
@@ -376,7 +379,7 @@ function PuffySlab({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [box, roll, puff, shaping, labelDy, outline]);
+  }, [box, roll, puff, shaping, labelDy, outline, still]);
 
   const fill = `var(${visual.cssVar}, ${visual.defaultColor})`;
   return (
@@ -547,6 +550,7 @@ export function CrossSectionSvg({
         hit={editor?.slabHit(slab, label)}
         outline={ring ? smoothClosedPath(ring) : undefined}
         labelAt={spot ? { x: spot.at[0], y: spot.at[1] } : undefined}
+        still={softBody.enabled}
       />
     );
     return { over, el };

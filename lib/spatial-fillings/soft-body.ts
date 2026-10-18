@@ -20,8 +20,7 @@
  *
  * Deterministic: a fixed start, a fixed number of steps, no randomness and no
  * trig inside the loop, so the same recipe always settles to the same
- * picture and the settle animation is the computation itself. How the steps
- * are split across frames never changes the result. Pure + browser-safe.
+ * picture on every device, however the steps are split. Pure + browser-safe.
  */
 
 export type Pt = [number, number];

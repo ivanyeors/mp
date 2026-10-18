@@ -83,8 +83,7 @@ Three approaches were tried and dropped for making outlines rougher: 56-point ri
 
 **Determinism and cost.**
 - A fixed start, 24 steps × 5 substeps, no randomness and no trig in the loop.
-- The result is identical however the steps are split across frames, so the animation is the
-  computation.
+- The result is identical however the steps are split.
 - 15–45 ms per scene in headless Chromium.
 
 **Port parity.** The repo port reproduced the preview to within 0.16 view units on all 30
@@ -106,8 +105,8 @@ lines, column labels, Fit status colours, hatching and `over` red.
 
 | Situation | What the cut does |
 |---|---|
-| A recipe changes | Settles one step per frame, about 0.4 s |
-| Reduced motion, drag previews, or "animate" off | Settles before paint |
+| A recipe changes | Settles in one go, then eases each outline from where it was (a new piece from its stacked start) to where it settles, about 0.4 s. Stepping the solver on screen showed pinched, half-solved shapes and was dropped |
+| Reduced motion, drag previews, or "animate" off | Shows the settled shapes before paint |
 | Static or server render | Draws the slabs |
 | A recipe already seen | Comes from a 24-entry cache |
 
