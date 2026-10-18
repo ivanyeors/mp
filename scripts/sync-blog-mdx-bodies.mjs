@@ -1,25 +1,19 @@
 /**
- * Sync retrofitted data/blogs/*.mdx bodies into blog_posts.content (en-US).
- * Run: node --env-file=.env.local scripts/sync-blog-mdx-bodies.mjs
+ * Sync data/blogs/*.mdx into blog_posts.content["en-US"]: title, description,
+ * body, seo_answer and keywords from each file, plus the author.
+ * Only rows whose text changes are written, and those get content_updated_at,
+ * so dateModified moves on an editorial change and on nothing else (slice 17).
+ * Every file in data/blogs is a live post; merged and retired posts live in
+ * lib/blog-redirects.ts and have no file.
+ *
+ * Run: node --env-file=.env.local scripts/sync-blog-mdx-bodies.mjs [--dry-run]
  */
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { createClient } from "@supabase/supabase-js";
 
-const SLUGS = [
-  "what-is-the-best-pillow-for-neck-pain-in-singapore",
-  "how-to-choose-the-best-pillow-in-singapore",
-  "finding-the-perfect-neck-support-pillow-in-singapore",
-  "neck-support-pillows-in-singapore-your-key-to-comfortable-sleep",
-  "what-is-tech-neck-and-how-can-a-pillow-help-fix-it-in-singapore",
-  "cervical-pillow-for-neck-pain-a-comprehensive-guide",
-  "the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief",
-  "top-5-pillows-for-neck-pain-relief-what-to-look-for-and-why-it-matters",
-  "ergonomic-pillow-vs-regular-pillow-is-it-worth-the-investment",
-  "the-complete-guide-to-choosing-the-right-bolster-in-singapore",
-];
-
+const dryRun = process.argv.includes("--dry-run");
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
@@ -29,22 +23,20 @@ if (!url || !key) {
 
 const admin = createClient(url, key, { auth: { persistSession: false } });
 const dir = path.join(process.cwd(), "data/blogs");
+const files = fs.readdirSync(dir).filter((f) => f.endsWith(".mdx"));
 
-let ok = 0;
-for (const slug of SLUGS) {
-  const file = path.join(dir, `${slug}.mdx`);
-  if (!fs.existsSync(file)) {
-    console.warn(`skip missing file: ${slug}`);
-    continue;
-  }
-  const { data: fm, content: body } = matter(fs.readFileSync(file, "utf8"));
+const text = (v) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+
+let changed = 0;
+for (const file of files) {
+  const slug = file.slice(0, -".mdx".length);
+  const { data: fm, content: body } = matter(fs.readFileSync(path.join(dir, file), "utf8"));
 
   const { data: row, error: fetchErr } = await admin
     .from("blog_posts")
-    .select("id, content")
+    .select("id, content, author")
     .eq("slug", slug)
     .maybeSingle();
-
   if (fetchErr) {
     console.error(slug, fetchErr.message);
     continue;
@@ -54,28 +46,29 @@ for (const slug of SLUGS) {
     continue;
   }
 
-  const content = { ...(row.content ?? {}) };
-  const en = { ...(content["en-US"] ?? {}) };
-  en.body = body.trim() + "\n";
-  if (typeof fm.description === "string" && fm.description.trim()) {
-    en.description = fm.description.trim();
-  }
-  if (typeof fm.title === "string" && fm.title.trim()) {
-    en.title = fm.title.trim();
-  }
-  content["en-US"] = en;
+  const before = row.content?.["en-US"] ?? {};
+  const en = {
+    ...before,
+    body: body.trim() + "\n",
+    ...(text(fm.title) && { title: text(fm.title) }),
+    ...(text(fm.description) && { description: text(fm.description) }),
+    ...(text(fm.seo_answer) && { seo_answer: text(fm.seo_answer) }),
+    ...(Array.isArray(fm.keywords) && { seo_keywords: fm.keywords.map(String) }),
+  };
+  const author = text(fm.author) ?? row.author;
+  if (JSON.stringify(en) === JSON.stringify(before) && author === row.author) continue;
 
-  const { error: updErr } = await admin
-    .from("blog_posts")
-    .update({ content })
-    .eq("id", row.id);
-
-  if (updErr) {
-    console.error(slug, updErr.message);
+  changed++;
+  if (dryRun) {
+    console.log(`would sync ${slug}`);
     continue;
   }
-  ok++;
-  console.log(`synced ${slug} (${(en.body.match(/^## /gm) || []).length} ##)`);
+  const { error: updErr } = await admin
+    .from("blog_posts")
+    .update({ content: { ...row.content, "en-US": en }, author, content_updated_at: new Date().toISOString() })
+    .eq("id", row.id);
+  if (updErr) console.error(slug, updErr.message);
+  else console.log(`synced ${slug} (${(en.body.match(/^## /gm) || []).length} ##)`);
 }
 
-console.log(`done: ${ok}/${SLUGS.length}`);
+console.log(`${dryRun ? "would change" : "changed"}: ${changed}/${files.length}`);

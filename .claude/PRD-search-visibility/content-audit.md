@@ -1,19 +1,20 @@
-# Blog content audit — draft consolidation map
+# Blog content audit — consolidation map
 
-Status: **Draft, not approved.** Slice 09 (`issues/09-content-audit.md`) still needs its evidence pass and marketing sign-off before slice 10 acts on it.
+Status: **Approved by the owner on 17 Oct 2026** and being executed (slice 10). Keep 20 of the 91 posts, merge 59 into them and retire 12. The map is enforced in code by `lib/blog-redirects.ts`; this file is its rationale.
 
-Keep 20 of the 91 posts, merge 59 into them and retire 12. This map was drafted on 17 Oct 2026 in a Cowork session that read the live custom.mpillow.com blog. All 91 slugs match `data/blogs/*.mdx` one-to-one.
+The map was drafted on 17 Oct 2026 in a Cowork session that read the live custom.mpillow.com blog. All 91 slugs matched `data/blogs/*.mdx` one-to-one; that folder now holds only the 20 live posts.
 
-## What this draft is missing
+## Decisions
 
-- **GSC evidence.** Traffic comes from one month (September 2026) of the agency's report, which most likely covers mpillow.com. Slice 09 asks for 16 months of GSC page data per slug, which waits on the slice 01 backfill. Any post outside the agency's top 10 landing pages had 5 organic sessions or fewer, so smaller wins are invisible here.
-- **Query overlap.** Groups are by topic, not by the ≥50% shared-query rule slice 09 specifies.
-- **DB bodies.** Word counts are from the live pages (post body only), which may differ from `blog_posts` where bodies were not synced.
+- **Retired posts return 410 Gone**, per slice 10, not a 301 to the blog index. A redirect to an unrelated page is treated as a soft 404 anyway. The "Goes to" column below keeps the draft's suggestion for reference only.
+- **Merged posts 308 to the post that absorbed them**, in every locale, once that post is rewritten with their best facts.
+- **custom.mpillow.com owns its posts.** They self-canonicalise; nothing points at the mpillow.com copies. The 20 kept posts are rewritten in new words to the standard in `content-standard.md`, so they are no longer copies of the Shopify blog.
 
-## Where it departs from slice 10
+## Evidence
 
-- **Retired posts.** The draft redirects the 12 off-topic posts to the blog index or the pillow buying hub. Slice 10 says pruned posts return 410, or `noindex` where they still serve users. A 301 to an unrelated page is usually treated as a soft 404, so slice 10's rule should stand. The "Goes to" column below keeps the draft's suggestion for reference only.
-- **mpillow.com copies.** The draft assumes custom.mpillow.com will later take over the mpillow.com domain, and that until then each copied post should canonicalise to its Shopify original. Neither PRD covers that; it needs a decision before any canonical changes.
+- **GSC for custom.mpillow.com (Jul–Oct 2026, from `seo_daily_metrics`):** no blog post earned a click. The most-seen pages were sleeping positions (311 impressions), side sleeper (173), shoulder-pain tips (127), pillow replacement and hygiene (122) and body pillow (72). Each merged one goes to the page that covers its topic. The backfill (slice 01) is still partial, so this is a floor, not the full 16 months slice 09 asks for.
+- **Agency report (September 2026, most likely mpillow.com):** the bolster buying guide and the bolster how-to were the only blog posts among the top 10 organic landing pages.
+- **Groups** are by topic, not by slice 09's ≥50% shared-query rule; GSC has too little query data on these pages to apply it.
 
 ## The 20 pages to keep
 
@@ -42,7 +43,7 @@ Keep 20 of the 91 posts, merge 59 into them and retire 12. This map was drafted 
 
 ## All 91 posts
 
-"Goes to" is the merge target for merged posts. For retired posts it is the draft's redirect suggestion, which slice 10's 410 rule overrides.
+"Goes to" is the merge target for merged posts. For retired posts it is the draft's redirect suggestion, which the 410 decision overrides.
 
 | Slug | Group | Words | Decision | Goes to |
 | --- | --- | --- | --- | --- |
@@ -138,12 +139,11 @@ Keep 20 of the 91 posts, merge 59 into them and retire 12. This map was drafted 
 | `which-thief-steals-more-than-just-your-wealth` | Off-topic | 336 | Retire | (blog index) |
 | `why-are-you-yawning-so-much` | Off-topic | 547 | Retire | (blog index) |
 
-## How to apply it
+## How it is applied
 
-1. **Merge first, then redirect.** A merged post is redirected only after its target has been rewritten with the best facts from it. Rebuild one hub at a time, starting with bolsters.
-2. **Redirect every locale.** Each merged slug 301s to its target for `en-US` and `zh-CN`.
-3. **Check GSC before pruning.** Keep any post that earns real clicks over the last 6 months, whatever this draft says.
-4. **The broken `p-how-a-tailored-pillow-…-p-p-p` slug** (slice 17) needs no clean-slug 301 of its own: merging it into the custom pillow hub retires it.
-5. **mpillow.com has ~29 newer posts** (Mar–Oct 2026) that are not on custom.mpillow.com. Audit them before any domain change.
+1. **All 20 rewritten at once, then the redirects go live.** Every merge target is rewritten with the best facts from the posts it absorbs, in the same release as the 308s, so no redirect lands on old text.
+2. **Every locale.** Each merged slug 308s to its target for `en-US` and `zh-CN`; each retired slug answers 410 in both.
+3. **The broken `p-how-a-tailored-pillow-…-p-p-p` slug** (slice 17) needs no clean-slug redirect of its own: it merges into the custom pillow hub.
+4. **mpillow.com has ~29 newer posts** (Mar–Oct 2026) that are not on custom.mpillow.com. Audit them before any domain change.
 
 Source: Cowork session "Mpillow SEO Plan: custom.mpillow.com", Blog audit tab, 17 Oct 2026.

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { DEFAULT_LOCALE } from '@/lib/i18n/locales';
+import { blogSlugFate } from '@/lib/blog-redirects';
 
 // ---------- Types ----------
 
@@ -93,7 +94,8 @@ export async function getBlogPostsFromDb(opts?: { locale?: string; status?: stri
         console.error('getBlogPostsFromDb error:', error.message);
         return [];
     }
-    return (data as BlogPostRow[]).map((row) => resolveLocale(row, locale));
+    // Merged and retired slugs are not posts any more, whatever their row says.
+    return (data as BlogPostRow[]).filter((row) => !blogSlugFate(row.slug)).map((row) => resolveLocale(row, locale));
 }
 
 export async function getBlogPostBySlugFromDb(slug: string, locale?: string): Promise<BlogPost | null> {
