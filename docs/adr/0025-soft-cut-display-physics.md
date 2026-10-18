@@ -30,7 +30,8 @@ that does this. This record admits it, as a display layer only.
   remembers the cushion too, not the drape it started in, so it rests on what is under it. A
   **Neck support** is a firm soft body (Ivan, 18-10-2026): foam in a cover that does not stretch,
   round when free, flattening a little where it rests and where a pouch presses on it — how
-  little is its own Settings knob. Pieces keep a gap between outlines, so ADR 0009's legible
+  little is its own Settings knob. Set soft, it also shares a crowded cell's squeeze with the
+  pouches, as far as its fully squashed radius, and flattens into a stadium (Ivan, 18-10-2026). Pieces keep a gap between outlines, so ADR 0009's legible
   piece count holds — no merging, ever.
 - **The case is cloth.** It may go slack (never longer than sewn), is drawn lightly toward a
   slumped copy of the designer's outline, keeps that outline's curves, bends smoothly, never

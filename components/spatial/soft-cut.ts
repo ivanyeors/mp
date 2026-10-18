@@ -10,9 +10,11 @@
  * share what is under them and never hold each other up; a piece over uneven
  * support drapes over it. A cell holding more than the case has room for is
  * squeezed first, pro rata by each piece's compressible range — the fit's own
- * rule. Pieces that share a Layer in one cell lie side by side across the
- * pillow, behind one another in this view, so they settle as one body and
- * draw with one outline.
+ * rule; a Neck support's range is the share of its foam its firmness gives
+ * (none when fully firm), and squashed it is a stadium, not a circle. Pieces
+ * that share a Layer in one cell lie side by side across the pillow, behind
+ * one another in this view, so they settle as one body and draw with one
+ * outline.
  *
  * Deterministic, like the solver: the same fit and settings always give the
  * same picture. Settled results are kept (a small cache), so flipping back to
@@ -93,6 +95,8 @@ type Seed = {
   /** Relaxed and minimum thickness at this Size, before any squeeze. */
   relaxed: number;
   min: number;
+  /** How much of its thickness a roll gives up to a crowded cell (0 for a pouch, whose whole range gives). */
+  give: number;
   areaTarget: number;
   areaMin: number;
   over: boolean;
@@ -100,6 +104,21 @@ type Seed = {
   flat?: boolean;
   bottom?: number;
 };
+
+/**
+ * A roll of relaxed diameter `d` squashed to thickness `t`: its cover does not
+ * stretch, so it flattens into a stadium as long round as the relaxed circle,
+ * centred on (cx, cy). Unsquashed, it is that circle.
+ */
+export function rollRing(cx: number, cy: number, d: number, t: number, n = ROLL_POINTS): Pt[] {
+  if (t >= d) return Array.from({ length: n }, (_, k): Pt => [cx + (d / 2) * Math.cos((k / n) * 2 * Math.PI), cy + (d / 2) * Math.sin((k / n) * 2 * Math.PI)]);
+  const r = t / 2;
+  const h = (Math.PI * (d - t)) / 4;
+  // Each end a half circle, ends included; the flats join them. The same way round as the circle.
+  const end = (ox: number, a0: number) =>
+    Array.from({ length: 25 }, (_, k): Pt => [cx + ox + r * Math.cos(a0 + (Math.PI * k) / 24), cy + r * Math.sin(a0 + (Math.PI * k) / 24)]);
+  return resample([...end(h, -Math.PI / 2), ...end(-h, Math.PI / 2)], n);
+}
 
 /** The codebase's cushion for a box, as evenly spaced points: the rest shape a pouch remembers. */
 export function cushionRing(box: SlabBox, n = RING_POINTS): Pt[] {
@@ -158,14 +177,16 @@ export function dropStack(seeds: readonly Seed[], floorY: number, x0: number, x1
       const under = base;
       const top = new Float64Array(n);
       if (p.kind === "roll") {
+        // Squashed, it is a stadium: flats `h` either side of the middle, ends of radius `r`.
         const r = p.t / 2;
+        const h = p.t < p.relaxed ? (Math.PI * (p.relaxed - p.t)) / 4 : 0;
         const cx = (p.x0 + p.x1) / 2;
         let rest = 0;
-        for (let k = at(cx - r * 0.6); k <= at(cx + r * 0.6); k++) rest = Math.max(rest, under[k]);
+        for (let k = at(cx - h - r * 0.6); k <= at(cx + h + r * 0.6); k++) rest = Math.max(rest, under[k]);
         const cy = floorY - rest - r;
-        out.push({ ...p, ring: Array.from({ length: ROLL_POINTS }, (_, k): Pt => [cx + r * Math.cos((k / ROLL_POINTS) * 2 * Math.PI), cy + r * Math.sin((k / ROLL_POINTS) * 2 * Math.PI)]) });
-        for (let k = at(cx - r); k <= at(cx + r); k++) {
-          const u = x0 + k * step - cx;
+        out.push({ ...p, ring: rollRing(cx, cy, p.relaxed, p.t) });
+        for (let k = at(cx - h - r); k <= at(cx + h + r); k++) {
+          const u = Math.max(Math.abs(x0 + k * step - cx) - h, 0);
           top[k] = rest + r + Math.sqrt(Math.max(r * r - u * u, 0));
         }
       } else {
@@ -270,6 +291,7 @@ export function softCutScene(input: SoftCutInput): {
   };
 
   const volume = settings.volumePct / 100;
+  const neckSoftness = 1 - settings.neckFirmness / 100;
   const seeds: Seed[] = leaders.map(({ piece, sub }) => {
     const s = settled.get(piece.key);
     const roll = isRoll(piece.itemId);
@@ -296,35 +318,48 @@ export function softCutScene(input: SoftCutInput): {
       t: relaxed,
       relaxed,
       min,
+      // A Neck support yields none of its foam when fully firm and all of it, down to fully squashed, when soft;
+      // squared, so the soft end of the slider does most of it and the firm default barely moves.
+      give: roll ? (relaxed - min) * neckSoftness ** 2 : 0,
       areaTarget: roll ? Math.PI * (relaxed / 2) ** 2 : areaTarget,
       areaMin: (s?.minThicknessMm ?? relaxedMm) * f.ky * lengthMm * f.kx,
       over: piece.status === "over",
     };
   });
 
-  // A cell holding more than the case has room for over it is squeezed first, pro rata by compressible range.
+  // A cell holding more than the case has room for over it is squeezed first, pro rata by compressible range
+  // (a roll's range is what its firmness lets it give).
   const room = new Map<number, number>();
   for (let c = 0; c < SUB_SECTIONS.length; c++) {
     room.set(c, roomAt(casePolygon, f.floor, f.x0 + c * f.colW + f.slabGap, f.x0 + (c + 1) * f.colW - f.slabGap, 6 * scale));
   }
+  const rangeOf = (s: Seed) => (s.kind === "roll" ? s.give : s.relaxed - s.min);
   for (const [c, inCol] of groupBy(seeds, (s) => s.col)) {
     const over = inCol.reduce((a, s) => a + s.relaxed, 0) - room.get(c)!;
-    const range = inCol.reduce((a, s) => a + (s.kind === "roll" ? 0 : s.relaxed - s.min), 0);
+    const range = inCol.reduce((a, s) => a + rangeOf(s), 0);
     const k = over > 0 && range > 0 ? Math.min(over / range, 1) : 0;
-    for (const s of inCol) if (s.kind === "pouch") s.t = s.relaxed - k * (s.relaxed - s.min);
+    for (const s of inCol) s.t = s.relaxed - k * rangeOf(s);
   }
   const stacked = dropStack(seeds, f.floor, f.x0, f.x0 + f.drawW, SUPPORT_STEP * scale);
 
   // A cell cannot remember more cushion than it has room for: there the rest shapes share the room pro rata.
+  // What a roll's firmness will not give is held out of the share.
   const squeeze = new Map<number, number>();
   for (const [c, inCol] of groupBy(stacked, (s) => s.col)) {
-    const want = inCol.reduce((a, s) => a + (s.kind === "roll" ? s.t : (s.areaTarget * volume) / Math.max(s.x1 - s.x0, 1)), 0);
-    const rolls = inCol.filter((s) => s.kind === "roll").reduce((a, s) => a + s.t, 0);
+    const want = inCol.reduce((a, s) => a + (s.kind === "roll" ? s.relaxed : (s.areaTarget * volume) / Math.max(s.x1 - s.x0, 1)), 0);
+    const firm = inCol.filter((s) => s.kind === "roll").reduce((a, s) => a + s.relaxed - s.give, 0);
     const r = room.get(c)!;
-    squeeze.set(c, want > r ? Math.max((r - rolls) / Math.max(want - rolls, 1), 0.3) : 1);
+    squeeze.set(c, want > r ? Math.max((r - firm) / Math.max(want - firm, 1), 0.3) : 1);
   }
   const softPieces: SoftPiece[] = stacked.map((s) => {
-    if (s.kind === "roll") return { id: s.id, ring: s.ring!, kind: "roll", over: s.over };
+    if (s.kind === "roll") {
+      // It remembers round, or, squeezed, the stadium its share of the room leaves it, and that much foam.
+      const t = s.relaxed - s.give * (1 - (squeeze.get(s.col) ?? 1));
+      if (t >= s.relaxed) return { id: s.id, ring: s.ring!, kind: "roll", over: s.over };
+      const at = s.ring!.reduce((a, p) => [a[0] + p[0] / s.ring!.length, a[1] + p[1] / s.ring!.length], [0, 0]);
+      const rest = pairedWith(rollRing(at[0], at[1], s.relaxed, t), s.ring!);
+      return { id: s.id, ring: s.ring!, rest, kind: "roll", areaTarget: Math.abs(signedArea(rest)), over: s.over };
+    }
     const target = s.areaTarget * volume * (squeeze.get(s.col) ?? 1);
     // The relaxed cushion it remembers: its span, as thick as its volume makes it, resting where it was seeded.
     // The relaxed cushion it remembers: its span, as thick as its volume makes it. A pouch stacked over

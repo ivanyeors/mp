@@ -300,7 +300,7 @@ function SoftBodyControls({
         />
         <SliderRow
           label="Neck firmness"
-          tip="How little a Neck support gives where it rests and where a pouch presses on it — firm, but not rigid."
+          tip="How little a Neck support gives where it rests and where a pouch presses on it. Firm, it stays nearly round; soft, it shares a crowded cell with the pouches, squashing toward its fully squashed size."
           rangeKey="neckFirmness"
           value={draft.neckFirmness}
           defaultValue={defaults.neckFirmness}
