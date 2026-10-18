@@ -2406,7 +2406,7 @@ export function MpConfigClient({
       : staffEdit
         ? "Save configuration"
         : resumeFinish
-          ? "Continue to payment"
+          ? "Pay"
           : holdCtaLabel(preOrder, assisted);
     const returnPath = staffEditResultPath ?? resumeStatusPath;
     const backFromPreview = returnPath
