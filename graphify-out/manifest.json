@@ -1812,9 +1812,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1792410358.0594656,
-    "seen": 1792410736.9161582,
-    "ast_hash": "3f8713b05afb63dc430076e3c0113759",
+    "mtime": 1792417959.6460235,
+    "seen": 1792418113.933994,
+    "ast_hash": "33a175be12251270752a8c757b675545",
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/page.tsx": {
@@ -15318,9 +15318,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-paired-build/issues/README.md": {
-    "mtime": 1792415424.9717863,
-    "seen": 1792416179.4570773,
-    "ast_hash": "a876a67e14031433a48e21aeee86a80e",
+    "mtime": 1792418061.5747652,
+    "seen": 1792418113.939378,
+    "ast_hash": "de129c508e9925c77c1f7110875676bd",
     "semantic_hash": ""
   },
   ".claude/PRD-paired-build/paired-build-prd.md": {
@@ -15336,9 +15336,21 @@
     "semantic_hash": ""
   },
   "lib/configurator/paired-mbolster.ts": {
-    "mtime": 1792417536.810354,
-    "seen": 1792417678.7594547,
-    "ast_hash": "c5a037cffd2124881641e117db5125d5",
+    "mtime": 1792417757.352615,
+    "seen": 1792418113.9365861,
+    "ast_hash": "c76c55ea80f9150a91547dccb3b856e1",
+    "semantic_hash": ""
+  },
+  "components/configurator/paired-mbolster-step.tsx": {
+    "mtime": 1792417757.354367,
+    "seen": 1792418113.9353201,
+    "ast_hash": "5d02cadb5698ae34eeb741de5adcb206",
+    "semantic_hash": ""
+  },
+  "lib/configurator/paired-mbolster.check.ts": {
+    "mtime": 1792417912.7863848,
+    "seen": 1792418113.9365823,
+    "ast_hash": "3cfa5c4830e9cf5bb4a2bd97d2da8ea9",
     "semantic_hash": ""
   }
 }
