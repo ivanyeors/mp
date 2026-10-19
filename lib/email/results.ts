@@ -252,6 +252,11 @@ export function renderResultAssignedEmail(p: {
    * "from" and asks the customer to choose rather than to pay.
    */
   needsFinish?: boolean;
+  /**
+   * The other half of a Paired build (ADR 0026), accepted and paid together with
+   * this one: named, priced, and added into a total for both.
+   */
+  paired?: { label: string; total: number } | null;
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
@@ -291,6 +296,8 @@ export function renderResultAssignedEmail(p: {
         `Shipping: ${money(p.pricing.shipping, p.pricing.currency)}`,
         `Tax: ${money(p.pricing.tax, p.pricing.currency)}`,
         `Total: ${money(p.pricing.total, p.pricing.currency)}`,
+        p.paired ? `Also in this order: ${p.paired.label} — ${money(p.paired.total, p.pricing.currency)}` : null,
+        p.paired ? `Total for both: ${money(p.pricing.total + p.paired.total, p.pricing.currency)}` : null,
         p.pricing.authorized != null
           ? `Authorized hold: ${money(p.pricing.authorized, p.pricing.currency)}`
           : null,
@@ -328,6 +335,16 @@ export function renderResultAssignedEmail(p: {
         { label: "Shipping", value: money(p.pricing.shipping, p.pricing.currency) },
         { label: "Tax", value: money(p.pricing.tax, p.pricing.currency) },
         { label: "Total", value: money(p.pricing.total, p.pricing.currency), strong: true },
+        ...(p.paired
+          ? [
+              { label: `Also in this order: ${p.paired.label}`, value: money(p.paired.total, p.pricing.currency) },
+              {
+                label: "Total for both",
+                value: money(p.pricing.total + p.paired.total, p.pricing.currency),
+                strong: true,
+              },
+            ]
+          : []),
         ...(p.pricing.authorized != null
           ? [
               {

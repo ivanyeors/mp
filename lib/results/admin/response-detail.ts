@@ -113,7 +113,7 @@ export async function loadMpConfigResponseDetail(
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,topup_payment_intent_id,topup_paid_at,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order,recommendation_record,filling_fingerprint",
+      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,topup_payment_intent_id,topup_paid_at,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order,recommendation_record,filling_fingerprint,paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -223,12 +223,28 @@ export async function loadMpConfigResponseDetail(
     bomLines = (lines ?? []) as unknown as BomLineRow[];
   }
 
+  // A Paired build (ADR 0026): the other Result on the same hold, so Staff can
+  // move between the Mpillow and the Mbolster it carries.
+  let paired_result_id: string | null = null;
+  if (responseRow.paired_build_id === responseRow.id) {
+    const { data: companion } = await admin
+      .from("mp_config_responses")
+      .select("id")
+      .eq("paired_build_id", responseRow.id)
+      .neq("id", responseRow.id)
+      .maybeSingle();
+    paired_result_id = (companion?.id as string | undefined) ?? null;
+  } else if (responseRow.paired_build_id) {
+    paired_result_id = responseRow.paired_build_id;
+  }
+
   return {
     status: 200,
     body: {
       ok: true,
       response: {
         ...responseRow,
+        paired_result_id,
         discovery_source_label,
         recommendation_record:
           responseRow.recommendation_record ?? toPersistedRecommendationRecord(engineResult),

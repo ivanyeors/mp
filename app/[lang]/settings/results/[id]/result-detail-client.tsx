@@ -146,6 +146,10 @@ type MpConfigResponseRow = {
   is_pre_order?: boolean | null;
   recommendation_record?: Record<string, unknown> | null;
   filling_fingerprint?: string | null;
+  /** Paired build (ADR 0026): the anchor's id on both Results. */
+  paired_build_id?: string | null;
+  /** The other Result on the same hold. */
+  paired_result_id?: string | null;
 };
 
 type BomLine = {
@@ -1399,6 +1403,26 @@ export default function ResultDetailPage({
               </Collapsible>
             </div>
           )}
+
+          {row.paired_build_id ? (
+            <div className="rounded-md border bg-muted/40 p-2.5 text-sm" data-section="paired-build">
+              <span className="font-medium">Paired build.</span>{" "}
+              {row.paired_build_id === row.id
+                ? "This Mpillow carries an Mbolster on the same hold. The customer accepts both together; cancelling this one cancels the Mbolster too."
+                : "This Mbolster rides with an Mpillow on the same hold and ships with it at no shipping charge. Cancelling it leaves the Mpillow."}
+              {row.paired_result_id ? (
+                <>
+                  {" "}
+                  <a
+                    className="font-medium underline underline-offset-2"
+                    href={to(`/settings/results/${row.paired_result_id}`)}
+                  >
+                    Open the {row.paired_build_id === row.id ? "Mbolster" : "Mpillow"}
+                  </a>
+                </>
+              ) : null}
+            </div>
+          ) : null}
 
           {(row.authorized_amount != null ||
             row.customer_email ||

@@ -315,6 +315,31 @@ export async function GET(
   }
 
   const build = await buildPublicSummary(row);
+  // A Paired build (ADR 0026) is decided on one page: the anchor's shows its
+  // Mbolster, and the Mbolster's points back at it. Same access token on both.
+  let paired: {
+    role: "anchor" | "companion";
+    partner: Record<string, unknown> & { build: Awaited<ReturnType<typeof buildPublicSummary>> };
+  } | null = null;
+  if (row.paired_build_id) {
+    const anchorSide = row.paired_build_id === row.id;
+    let partnerQuery = admin
+      .from("mp_config_responses")
+      .select(`${PUBLIC_FIELDS}, measured_by_type`);
+    partnerQuery = anchorSide
+      ? partnerQuery.eq("paired_build_id", row.id).neq("id", row.id)
+      : partnerQuery.eq("id", row.paired_build_id);
+    const { data: partner } = await partnerQuery.maybeSingle();
+    if (partner) {
+      const partnerPublic: Record<string, unknown> = { ...partner };
+      delete partnerPublic.shipping_address;
+      delete partnerPublic.measured_by_type;
+      paired = {
+        role: anchorSide ? "anchor" : "companion",
+        partner: { ...partnerPublic, build: await buildPublicSummary(partner) },
+      };
+    }
+  }
   // Read before the address is stripped: the page needs the answer, not the address.
   const needs_finish = needsCustomerFinish(row);
   const publicRow = { ...row };
@@ -324,5 +349,5 @@ export async function GET(
   delete (publicRow as { source?: string | null }).source;
   delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
-  return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages } });
+  return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages, paired } });
 }
