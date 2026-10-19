@@ -367,7 +367,7 @@ The engine's output persisted on the configurator response and copied to the **R
 _Avoid_: conflating with **Filling configuration** snapshot; treating it as binding on production
 
 **Evaluation trace**:
-The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to shoppers in plain language, to operators at assign, and replayable on the canvas.
+The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to operators at assign, and replayable on the canvas. Shoppers see no why line: band and match detail is lost once answers meet a **Combine node**, so a trace-built line named only the shoulder band and never what chose the template. It returns when a reason covering the whole decision replaces it.
 
 **Upsell card**:
 The consent surface on the completed preview when a **Flow route** fires: reason from the fired path, both prices, Upgrade / Keep. Accept carries shared answers over and collects only the missing target-flow steps; Decline keeps the same-flow fallback result. All routing resolves before the Stripe hold.
