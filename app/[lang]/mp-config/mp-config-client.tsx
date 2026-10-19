@@ -86,7 +86,6 @@ import {
   isFlowRoutePending,
   missingStepsAfterCarryOver,
   parseRecommendationRecord,
-  plainLanguageWhy,
   shouldRevealRecommendation,
   stampAcceptedTargetRecord,
   wizardToEngineInputs,
@@ -162,12 +161,20 @@ import {
   preOrderWaitingCopy,
 } from "@/lib/configurator/pre-order-trigger";
 import {
+  mixAfterTierChange,
   recheckSelectionsForSize,
   sessionTemplateId,
+  startingTemplateId,
+  templateSuggestion,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
-import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
+import {
+  fetchPillowTemplate,
+  StaffAssistPanel,
+  type FillingItem,
+} from "@/components/configurator/staff-assist-panel";
+import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
@@ -559,6 +566,50 @@ export function MpConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
+  // The engine's Filling Template for the size it recommended. Staff start from
+  // it and edit, rather than from an empty pillow.
+  const engineSuggestion = useMemo(
+    () =>
+      templateSuggestion(
+        parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null),
+      ),
+    [shopRecommendation?.recommendation_record],
+  );
+  const suggestedTemplateId = engineSuggestion?.templateId ?? null;
+  const suggestedSize = engineSuggestion?.size ?? null;
+  const productSize = shopRecommendation?.pillow_product?.size ?? null;
+  const seededSuggestionRef = useRef<number | null>(null);
+  useEffect(() => {
+    // A reopened Result keeps its own mix. A fresh session takes the suggestion
+    // once: emptying the pillow afterwards is a choice, not a gap to refill.
+    if (!staffAssist || staffEdit || resumeFinish || suggestedTemplateId == null) return;
+    if (productSize !== suggestedSize) return;
+    if (assistLoadedTemplate || assistPlacements.length > 0) return;
+    if (seededSuggestionRef.current === suggestedTemplateId) return;
+    seededSuggestionRef.current = suggestedTemplateId;
+    let cancelled = false;
+    fetchPillowTemplate(suggestedTemplateId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setAssistLoadedTemplate(loaded);
+        setAssistPlacements(loaded.placements);
+      })
+      .catch(() => {
+        // The picker still lists every template for this size.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    staffAssist,
+    staffEdit,
+    resumeFinish,
+    suggestedTemplateId,
+    suggestedSize,
+    productSize,
+    assistLoadedTemplate,
+    assistPlacements.length,
+  ]);
   const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? staffEdit?.email ?? "");
   const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? staffEdit?.phone ?? "");
   const [discoverySource, setDiscoverySource] = useState(
@@ -1487,12 +1538,13 @@ export function MpConfigClient({
 
   /**
    * Staff assist: confirmed size×tier change. Updates the product context as if
-   * the recommendation had that size×tier, clears the mix and loads the new
-   * size's Default Filling Template, then rechecks cover/case/add-on
+   * the recommendation had that size×tier. A tier-only change keeps the mix; a
+   * size change replaces it with that size's starting template (the engine's
+   * pick on the size it recommended, else the default), then rechecks cover/case/add-on
    * eligibility (wrong size → clear + note; stock 0 → keep, existing
    * OOS/Pre-order signals apply).
    */
-  const applyAssistSizeTier = async (next: SizeTier) => {
+  const applyAssistSizeTier = async (next: SizeTier, from: SizeTier) => {
     const res = await fetch(
       `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
     );
@@ -1524,13 +1576,38 @@ export function MpConfigClient({
       composed_buildable: data.composed_buildable,
     }));
 
-    const tplPlacements = rowsToPillowPlacements(
-      (data.default_template?.placements ?? []) as PillowPlacementRow[],
+    // Templates are scoped by size, so only a size change replaces the mix.
+    const neckSupportIds = new Set(
+      assistItems
+        .filter((i) => isNeckSupportItem({ category: i.category, name: i.name }))
+        .map((i) => i.id),
     );
-    setAssistPlacements(tplPlacements);
-    setAssistLoadedTemplate(
-      data.default_template ? { id: data.default_template.id, placements: tplPlacements } : null,
-    );
+    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => neckSupportIds.has(id));
+    if (kept) {
+      setAssistPlacements(kept.placements);
+      if (kept.removed > 0) {
+        toast.message("Neck support removed", {
+          description: "A neck support is for Premium pillows only.",
+        });
+      }
+    } else {
+      // A new size starts from the engine's pick when it is the size the engine
+      // recommended, else from that size's default.
+      const startId = startingTemplateId(next.size, engineSuggestion, data.default_template?.id ?? null);
+      const loaded =
+        startId == null
+          ? null
+          : startId === data.default_template?.id
+            ? {
+                id: startId,
+                placements: rowsToPillowPlacements(
+                  (data.default_template?.placements ?? []) as PillowPlacementRow[],
+                ),
+              }
+            : await fetchPillowTemplate(startId).catch(() => null);
+      setAssistPlacements(loaded?.placements ?? []);
+      setAssistLoadedTemplate(loaded);
+    }
 
     const newAddons: AddonOption[] = await fetch(
       `/api/results/addons?productType=pillow&size=${encodeURIComponent(next.size)}`,
@@ -2552,6 +2629,7 @@ export function MpConfigClient({
                         onPlacementsChange={setAssistPlacements}
                         loadedTemplate={assistLoadedTemplate}
                         onLoadTemplate={setAssistLoadedTemplate}
+                        suggestedTemplateId={size === suggestedSize ? suggestedTemplateId : null}
                         sessionFillingTemplateId={sessionFillingTemplateId}
                         onApplySizeTier={applyAssistSizeTier}
                         onItemsChange={setAssistItems}
@@ -2674,10 +2752,6 @@ export function MpConfigClient({
                       </section>
                     )}
                     {(() => {
-                      const sleepPos = measurementData.sleepPositionType[0];
-                      const why = record
-                        ? plainLanguageWhy(record, { sleep_position: sleepPos })
-                        : shopRecommendation?.recommendation?.explanation ?? "";
                       // x-ray already shows the mix → suppress the text summary here
                       // (template name + specialists line stay in the reveal).
                       const mixLines = guestXray
@@ -2721,7 +2795,6 @@ export function MpConfigClient({
                           <RecommendationReveal
                             reveal={revealNow}
                             sizeLabel={size ? `Size ${size}` : ""}
-                            why={why}
                             // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
                             templateName={partnerAssisted ? null : tpl?.name ?? null}
                             mixLines={partnerAssisted ? [] : mixLines}

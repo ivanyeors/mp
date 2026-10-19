@@ -15,6 +15,7 @@ import {
   cellLayers,
   cellStack,
   confirmGate,
+  mixAfterTierChange,
   PILLOW_CELLS,
   recheckSelectionsForSize,
   removeBolsterPiece,
@@ -22,6 +23,8 @@ import {
   saveAffordance,
   sessionTemplateId,
   setCellArrangement,
+  startingTemplateId,
+  templateSuggestion,
   moveLayer,
   removeLayer,
   type Cell,
@@ -49,6 +52,36 @@ assert.equal(
   confirmGate({ pending: null }, { type: "confirm" }).apply,
   null,
   "confirm without pending is a no-op",
+);
+
+// --- Starting template: the engine's pick on its size, else the size default ---
+const suggestion = templateSuggestion({ size: "M", templateId: "42" });
+assert.deepEqual(suggestion, { size: "M", templateId: 42 }, "record → numeric suggestion");
+assert.equal(templateSuggestion({ size: "M", templateId: "tpl-m" }), null, "stub string id is no suggestion");
+assert.equal(templateSuggestion({ size: null, templateId: "42" }), null, "no size, no suggestion");
+assert.equal(templateSuggestion(null), null, "no record, no suggestion");
+assert.equal(startingTemplateId("M", suggestion, 7), 42, "recommended size starts from the engine's pick");
+assert.equal(startingTemplateId("L", suggestion, 7), 7, "another size starts from its default");
+assert.equal(startingTemplateId("M", null, 7), 7, "no suggestion → default");
+
+// --- Tier-only change keeps the mix; a size change starts over ---
+const neckId = 99;
+const tierMix: PillowPlacement[] = [
+  { section: "center", subSection: "middle", slot: 1, itemId: 5 },
+  { section: "center", subSection: "front", slot: 1, itemId: neckId },
+];
+const isNeck = (id: number) => id === neckId;
+const basicM: SizeTier = { size: "M", tier: "basic" };
+assert.equal(mixAfterTierChange(m, l, tierMix, isNeck), null, "size change → start over");
+assert.deepEqual(
+  mixAfterTierChange(basicM, m, tierMix, isNeck),
+  { placements: tierMix, removed: 0 },
+  "basic → premium keeps every piece",
+);
+assert.deepEqual(
+  mixAfterTierChange(m, basicM, tierMix, isNeck),
+  { placements: [tierMix[0]], removed: 1 },
+  "premium → basic keeps the mix but drops the premium-only neck support",
 );
 
 // --- Size-change eligibility recheck ---

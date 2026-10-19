@@ -32,6 +32,7 @@ export function StaffAssistBolsterPanel({
   onPlacementsChange,
   loadedTemplate,
   onLoadTemplate,
+  suggestedTemplateId = null,
   sessionFillingTemplateId,
   onItemsChange,
   onColorOverridesChange,
@@ -43,6 +44,8 @@ export function StaffAssistBolsterPanel({
   onPlacementsChange: (next: BolsterPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
+  /** The engine's Filling Template for this length, marked in the picker. */
+  suggestedTemplateId?: number | null;
   /** Kept only while the mix exactly matches the loaded template (snapshot claim). */
   sessionFillingTemplateId: number | null;
   /** Loaded filling items, surfaced for the x-ray renderer. */
@@ -116,7 +119,10 @@ export function StaffAssistBolsterPanel({
       icon: LayoutTemplate,
       layout: "list",
       value: loadedTemplate ? String(loadedTemplate.id) : "",
-      options: templates.map((t) => ({ value: String(t.id), label: t.name })),
+      options: templates.map((t) => ({
+        value: String(t.id),
+        label: t.id === suggestedTemplateId ? `${t.name} · Suggested` : t.name,
+      })),
       onSelect: (v) => void loadTemplate(Number(v)),
       placeholder: templates.length === 0 ? "None for this length" : "Load template…",
     },

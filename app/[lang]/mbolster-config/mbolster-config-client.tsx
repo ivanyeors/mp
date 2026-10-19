@@ -88,7 +88,6 @@ import {
   isFlowRoutePending,
   missingStepsAfterCarryOver,
   parseRecommendationRecord,
-  plainLanguageWhy,
   shouldRevealRecommendation,
   withJourneyOnAccept,
   withJourneyOnDecline,
@@ -401,6 +400,18 @@ export function MbolsterConfigClient({
     (t) => String(t.id) === String(previewRecord?.templateId),
   );
   const guestPlacements = rowsToBolsterPlacements(recommendedTemplate?.placements ?? []);
+  // Staff start from the engine's Filling Template and edit from there. Once per
+  // length: emptying the bolster afterwards is a choice, not a gap to refill.
+  const seededLengthRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!staffAssist || !suggestedLength || !recommendedTemplate) return;
+    if (assistLoadedTemplate || assistPlacements.length > 0) return;
+    if (seededLengthRef.current === suggestedLength) return;
+    seededLengthRef.current = suggestedLength;
+    const placements = rowsToBolsterPlacements(recommendedTemplate.placements ?? []);
+    setAssistLoadedTemplate({ id: Number(recommendedTemplate.id), placements });
+    setAssistPlacements(placements);
+  }, [staffAssist, suggestedLength, recommendedTemplate, assistLoadedTemplate, assistPlacements.length]);
   const guestItemSubtypes = new Map(
     (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, fillingDescriptor(f) || null]),
   );
@@ -1218,9 +1229,6 @@ export function MbolsterConfigClient({
                 />
               )}
               {(() => {
-                const why = previewRecord
-                  ? plainLanguageWhy(previewRecord)
-                  : shopRecommendation?.recommendation?.explanation ?? "";
                 // Guest x-ray replaces the text mix summary; legacy-flat templates keep it.
                 const mixLines = guestXray
                   ? []
@@ -1261,7 +1269,6 @@ export function MbolsterConfigClient({
                     <RecommendationReveal
                       reveal={revealNow}
                       sizeLabel={suggestedLength ? String(suggestedLength) : ""}
-                      why={why}
                       // Assisted: LENGTH ONLY — drop the Filling Template surface (AC3).
                       templateName={partnerAssisted ? null : recommendedTemplate?.name ?? null}
                       mixLines={partnerAssisted ? [] : mixLines}
@@ -1277,6 +1284,7 @@ export function MbolsterConfigClient({
                   onPlacementsChange={setAssistPlacements}
                   loadedTemplate={assistLoadedTemplate}
                   onLoadTemplate={setAssistLoadedTemplate}
+                  suggestedTemplateId={recommendedTemplate ? Number(recommendedTemplate.id) : null}
                   sessionFillingTemplateId={sessionFillingTemplateId}
                   onItemsChange={setAssistItems}
                   onColorOverridesChange={setAssistColorOverrides}
@@ -1873,9 +1881,6 @@ export function MbolsterConfigClient({
                   {shopCurrency} {shopBasePrice.toFixed(2)}
                 </p>
               )}
-              <p className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed text-muted-foreground text-left">
-                {shopRecommendation.recommendation.explanation}
-              </p>
               {(() => {
                 const record = parseRecommendationRecord(
                   shopRecommendation.recommendation_record ?? null,

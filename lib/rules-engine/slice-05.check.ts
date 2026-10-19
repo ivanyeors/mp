@@ -80,10 +80,13 @@ for (const rel of [
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.match(mp, /RecommendationReveal/);
 assert.match(mp, /shouldRevealRecommendation/);
-assert.match(mp, /plainLanguageWhy/);
+// The trace-built "why" named only the shoulder band, not what chose the
+// template, so shoppers no longer see one; Staff keep it on the assign page.
+assert.doesNotMatch(mp, /plainLanguageWhy/, "no shopper-facing why line");
 
 const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.match(bolster, /RecommendationReveal/);
+assert.doesNotMatch(bolster, /plainLanguageWhy|recommendation\.explanation/, "no shopper-facing why line");
 
 // The results detail page is an RSC shell; the assign flow lives in the client component.
 const assignPage = read("app/[lang]/settings/results/[id]/result-detail-client.tsx");
