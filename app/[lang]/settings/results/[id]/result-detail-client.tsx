@@ -1405,7 +1405,7 @@ export default function ResultDetailPage({
           )}
 
           {row.paired_build_id ? (
-            <div className="rounded-md border bg-muted/40 p-2.5 text-sm" data-section="paired-build">
+            <div className="rounded-md border bg-muted/40 p-2.5 text-sm">
               <span className="font-medium">Paired build.</span>{" "}
               {row.paired_build_id === row.id
                 ? "This Mpillow carries an Mbolster on the same hold. The customer accepts both together; cancelling this one cancels the Mbolster too."
