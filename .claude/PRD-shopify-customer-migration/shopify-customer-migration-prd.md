@@ -347,7 +347,7 @@ goes last, in smaller waves.
 | Someone with Customers access bulk-imports or undoes by mistake | Manager and Staff both hold `customers` | A separate `customer-import` key, held by Owner and Admin only. A preview before every import and every undo, a typed confirmation, and an audit row for each. |
 | The tab closes, or the network drops, mid-import | Likely with thousands of rows | Each chunk is one transaction. The batch records `rows_done`, a chunk out of order is refused, and picking the same file resumes. |
 | Customer PII passes through the browser | Inherent in a browser import | It goes only to our own server over HTTPS, as it would by CLI. Unused columns are dropped before sending, nothing is stored but the imported rows, and the preview returns no PII. |
-| Pre-existing: staff `customers.notes` is already readable by its customer | Live today, independent of this work | Recorded here. Fix with a column grant (the precedent is `order_items` cost columns, `20261013110000_order_items_kind.sql:23`) in a separate PR. |
+| Pre-existing: staff `customers.notes` and `tags`, and `orders.internal_notes`, are already readable by their customer | Live today, independent of this work | Fixed by CRM slice 02 (`PRD-customer-crm`, P1), with column grants following the `order_items` precedent. It needs nothing from this initiative and can ship first. |
 
 ## Success criteria
 
@@ -369,7 +369,9 @@ goes last, in smaller waves.
 
 The owner wants this to grow into a simple CRM: one place to manage customers and build a
 relationship with them. This initiative does not build that CRM. It is shaped so that the CRM
-is the next step rather than a rewrite.
+is the next step rather than a rewrite. The CRM now has its own plan,
+[`PRD-customer-crm`](../PRD-customer-crm/customer-crm-prd.md), which is the source of truth for
+everything in this section past the table below.
 
 ### What this initiative already lays down
 
@@ -388,13 +390,16 @@ is the next step rather than a rewrite.
    *Lapsed* in the overview view, where they cannot drift.
 2. **Staff-only facts never live on `customers`.** The customer can read their own row.
 3. **Every per-customer event table is append-only and carries `customer_id` and a
-   timestamp.** A future timeline is then a `union` over existing tables, with no backfill.
-4. **Audience rules live in `lib/`.** The wave sender is a script today; a Campaigns page later
+   timestamp.** The CRM timeline then merges existing tables when it is read, with no backfill.
+   Each slice here that creates such a table adds one timeline adapter (CRM slice 03).
+4. **Audience rules live in `lib/`.** The wave sender is a script today. The future
+   email-marketing initiative ([`PRD-email-marketing`](../PRD-email-marketing/email-marketing-prd.md))
    calls the same function and writes the same ledger.
 
-### What a CRM PRD would add next (not in this initiative)
+### What the CRM adds next (not in this initiative)
 
-In the order that helps the relationship most:
+The owner approved these six on 2026-10-19. They are specified in `PRD-customer-crm`. In the
+order that helps the relationship most:
 
 1. **Staff notes customers cannot read.** A `customer_notes` table (author, time, text), and the
    fix for the live `customers.notes` exposure (see Risks). Everything else leans on this.
@@ -405,7 +410,10 @@ In the order that helps the relationship most:
    should confirm whether it counts as a service message or as marketing.
 4. **Saved segments.** A named filter on the Customers list, such as *Premium, bought over a year
    ago, never re-adjusted*.
-5. **A Campaigns page**: sending from the Admin Panel, on slice 08's ledger and rules.
+5. **Email marketing, as a hand-off.** The CRM's Segments become audiences for the future
+   [`PRD-email-marketing`](../PRD-email-marketing/email-marketing-prd.md). That initiative
+   builds campaigns on slice 07's consent and slice 08's ledger. The CRM itself sends no
+   marketing.
 6. **Follow-ups.** *Call back Friday*, assigned to a **Staff** profile.
 
 Out of scope even then: WhatsApp and SMS marketing (Do Not Call duties), and scoring or

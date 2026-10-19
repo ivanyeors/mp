@@ -18,7 +18,7 @@ None of the items below is built yet. Each is planned in the slice named.
 | The campaign transport: Resend on its own subdomain, never the Gmail mailbox that sends order emails | migration slices 08–09 | deliverability that cannot hurt order mail |
 | The send ledger `customer_campaign_sends`, with bounce and complaint handling | migration slice 08 | no double sends; suppression |
 | Audience rules in `lib/` (`selectCampaignAudience`) | migration slice 08 | sending rules that are not tied to a script |
-| **Segments** (saved Customer filters) | CRM slice 05 | the audiences a campaign is sent to |
+| **Segments** (saved Customer filters) and `resolveSegment` | CRM slice 05 | the audiences a campaign is sent to: `resolveSegment`, narrowed by consent and suppression |
 | The **Customer timeline** | CRM slice 03 | every send shows on the Customer's history |
 
 ## Likely scope (to be decided when specified)
@@ -30,6 +30,9 @@ None of the items below is built yet. Each is planned in the slice named.
 - **Templates and copy** beyond the three migration emails.
 - **Reporting** per campaign: sent, bounced, complained, clicked, unsubscribed, and the revenue
   on attributed **Orders**.
+- **The periodic re-adjustment check-up**, but only if counsel classes it as marketing
+  (CRM slice 08). It would be an automated flow to `subscribed` owners, using CRM slice 04's
+  `bought` and `last_readjusted_at` filters.
 
 ## Rules it must keep
 

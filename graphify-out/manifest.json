@@ -15312,15 +15312,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/07-marketing-consent-and-unsubscribe.md": {
-    "mtime": 1792423103.1308227,
-    "seen": 1792423175.0659049,
-    "ast_hash": "1e2b13f11f42d6e90c5a550e741374fb",
+    "mtime": 1792424198.1164339,
+    "seen": 1792424273.4225657,
+    "ast_hash": "c0d4aa06a18345e052549d568b4f48ca",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/08-campaign-emails-and-wave-sender.md": {
-    "mtime": 1792422998.655178,
-    "seen": 1792423175.0659065,
-    "ast_hash": "8d26c8f1bffe9e8aab8149370d1dbae0",
+    "mtime": 1792424198.1172135,
+    "seen": 1792424273.422567,
+    "ast_hash": "baadf4d1d601a96cb2659f4c741fe729",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/09-pilot-and-waves.md": {
@@ -15348,9 +15348,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md": {
-    "mtime": 1792423094.1583302,
-    "seen": 1792423175.0659173,
-    "ast_hash": "ae1ba231995b1217c52d415b285cf29c",
+    "mtime": 1792424198.1154191,
+    "seen": 1792424273.4225748,
+    "ast_hash": "8f8df11302c9defbc1793a145779de0f",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md": {
@@ -15360,9 +15360,75 @@
     "semantic_hash": ""
   },
   ".claude/PRD-email-marketing/email-marketing-prd.md": {
-    "mtime": 1792423501.8832078,
-    "seen": 1792423576.1899652,
-    "ast_hash": "8ba1b7446de452d1c29be2e90ed99ed4",
+    "mtime": 1792424198.1176898,
+    "seen": 1792424273.4220705,
+    "ast_hash": "1733315633ed9cb019019d507ef01354",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/customer-crm-prd.md": {
+    "mtime": 1792423926.2232332,
+    "seen": 1792424273.4220414,
+    "ast_hash": "37d285e200a2350b1a99119de743a4eb",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md": {
+    "mtime": 1792423998.6592374,
+    "seen": 1792424273.422045,
+    "ast_hash": "0d260f64d04a17307243e22b08af393a",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md": {
+    "mtime": 1792424015.4912384,
+    "seen": 1792424273.422047,
+    "ast_hash": "5030add97ea2e7e8dca976af7cd0f806",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/03-customer-timeline.md": {
+    "mtime": 1792423998.7152374,
+    "seen": 1792424273.4220483,
+    "ast_hash": "4293606423d6a732caa40c42afc37cd7",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/04-crm-filters-and-overview-columns.md": {
+    "mtime": 1792424137.8312457,
+    "seen": 1792424273.4220493,
+    "ast_hash": "307b7b8323145d63ef96256ed971ad89",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/05-saved-segments.md": {
+    "mtime": 1792424137.8592458,
+    "seen": 1792424273.4220502,
+    "ast_hash": "e16dff3cf57b626781a1f2e263c937d6",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/06-follow-ups.md": {
+    "mtime": 1792424137.8872457,
+    "seen": 1792424273.4220517,
+    "ast_hash": "6929c9f62246f1db251724f4a82a1572",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/07-care-reminder-free-readjustment.md": {
+    "mtime": 1792424153.2926118,
+    "seen": 1792424273.4220529,
+    "ast_hash": "c71b4d98c68bf1c3cc06b9dd1923864a",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/08-care-reminder-checkup.md": {
+    "mtime": 1792424137.9472458,
+    "seen": 1792424273.422054,
+    "ast_hash": "e4f04db3115478e9afa42ab2d5562d03",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/09-signoff.md": {
+    "mtime": 1792424137.9712458,
+    "seen": 1792424273.4220552,
+    "ast_hash": "ee0aa873e7e69fce85155004bef9b1b3",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/README.md": {
+    "mtime": 1792424173.5152478,
+    "seen": 1792424273.4220562,
+    "ast_hash": "f216f21c543a230ba072a7b3f68c7dda",
     "semantic_hash": ""
   }
 }

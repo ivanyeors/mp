@@ -71,16 +71,18 @@ npx tsx --env-file=.env.local scripts/customer-migration-send.ts \
   `--retry-failed`.
 - It throttles to about 2 messages a second, and stops after 5 consecutive failures.
 - Its transport is `getCampaignTransport()`, built from `RESEND_API_KEY` and
-  `CAMPAIGN_EMAIL_FROM`. It is a separate instance from `getEmailTransport()`, so order mail
+  `CAMPAIGN_EMAIL_FROM`. It is a separate instance from `getDefaultTransport()`, so order mail
   keeps its transport.
 - Every send sets `List-Unsubscribe: <https://…/api/email/unsubscribe?u=…&t=…>`, `<mailto:…>` and
   `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Reply-To is the support address.
 
 **Audience selection lives in `lib/`, not in the script.** `selectCampaignAudience(template,
 filters)` (`lib/customer-migration/audience.ts`) is a pure function plus one query, and the
-script only parses flags and calls it. The CRM's later Campaigns page in the Admin Panel (PRD,
-*Toward a simple CRM*) calls the same function and writes to the same ledger, so moving sending
-into the Admin Panel later means adding a page, not rewriting the rules.
+script only parses flags and calls it. The Campaigns page that the future email-marketing
+initiative builds (`PRD-email-marketing`) calls the same function and writes to the same
+ledger. Moving sending into the Admin Panel later therefore means adding a page, not
+rewriting the rules. The sends appear on the CRM timeline through one adapter
+(`PRD-customer-crm`, slice 03).
 
 **Admin Panel.** `admin_customer_overview` adds `last_campaign_sent_at`, and the migration card
 (slice 12) gains *Emailed*.

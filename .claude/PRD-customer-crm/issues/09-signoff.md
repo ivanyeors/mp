@@ -1,0 +1,34 @@
+# 09 — Sign-off: the privacy check in production, a Staff walkthrough, and the first reminders
+
+**Type:** HITL
+**Blocked by:** 02, 03, 05, 06, 07
+**User stories:** all
+**Labels:** `ops`, `needs-triage`, `P2`, `area:customers`
+
+## Steps
+
+1. **Run the privacy check against production** with the owner's own customer login.
+   - Call the database API with that session's key for `customers.notes`, `customers.tags`,
+     `orders.internal_notes` and `customer_notes`. Each must be refused or return nothing.
+   - Then open `/account`, every order, the addresses page and re-adjustment booking. All of
+     them must still work.
+   - Record the results here.
+2. **Staff walkthrough.** Each Staff role (Owner, Manager, Staff) opens three real Customers.
+   - The timeline shows only the kinds that role may see.
+   - Add a note and a follow-up, and save a Segment.
+   - Note anything confusing here, then fix it or file it.
+3. **Turn on care reminders** (`care_reminders_enabled`).
+   - Watch the first run's report on the Care reminders card: sent, and skipped by reason.
+   - Check one real reminder in the owner's inbox (or a Staff test order): it renders, the
+     button lands on booking after Sign in, and it is not in spam.
+4. **After 30 days**, record: reminders sent, bookings after a reminder, and *skipped: not
+   marked delivered*. If that last count is high, fix order delivery marking first: the
+   reminder depends on it.
+5. **Confirm the Telegram digest** posted once a day with counts only.
+
+## Acceptance criteria
+
+- [ ] The production privacy check is recorded, and every check passes.
+- [ ] Each role's walkthrough is recorded.
+- [ ] The first care reminder run is recorded, with one inbox check.
+- [ ] The 30-day numbers are recorded and reported to the owner.

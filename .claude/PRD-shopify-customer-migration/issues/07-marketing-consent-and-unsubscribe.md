@@ -35,7 +35,9 @@ create table customer_consent_events (
 
 - `customer_consent_events` is append-only and service-role only.
 - The customer can read their own `marketing_email` through the existing own-row policy, and
-  is meant to.
+  is meant to. Once CRM slice 02's column grants on `customers` exist, it also needs
+  `grant select (marketing_email) on public.customers to authenticated`. Whichever of the two
+  slices lands second adds that grant.
 
 **Backfill from `migrated_customers`:** where `email_marketing_at_export = 'yes'` **and** the
 Customer is currently `not_subscribed`, set `subscribed` with `source = 'shopify_import'` and
