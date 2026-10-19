@@ -21,6 +21,7 @@ import {
 } from "@/lib/appointments/slots";
 import {
   isMorningOfEligible,
+  missedReminder,
   transitionReminder,
 } from "@/lib/appointments/state";
 import { parseInboundActions } from "@/lib/appointments/whatsapp";
@@ -232,13 +233,50 @@ describe("appointment-reminder-state", () => {
     ).toMatchObject({ status: "cancelled", intent: "cancel_and_rebook" });
   });
 
-  it("morning-of only from reminded", () => {
+  it("morning-of from reminded, or pending as a catch-up", () => {
     expect(isMorningOfEligible("reminded")).toBe(true);
+    expect(isMorningOfEligible("pending")).toBe(true);
     expect(isMorningOfEligible("confirmed")).toBe(false);
+    expect(isMorningOfEligible("skipped_invalid_phone")).toBe(false);
     expect(transitionReminder("reminded", { type: "morning_of_sent" })).toMatchObject({
       status: "morning_sent",
     });
+    expect(transitionReminder("pending", { type: "morning_of_sent" })).toMatchObject({
+      ok: true,
+      status: "morning_sent",
+    });
     expect(transitionReminder("confirmed", { type: "morning_of_sent" }).ok).toBe(false);
+  });
+
+  describe("missedReminder (short-notice bookings)", () => {
+    // Booking made on Mon 19 Oct 2026 (SGT) at the given hour.
+    const at = (hour: number, minute = 0) => sgtLocalToUtcMs(2026, 10, 19, hour, minute);
+    const tomorrow5pm = sgtLocalToUtcMs(2026, 10, 20, 17);
+
+    it("same day → morning-of, whatever the hour", () => {
+      expect(missedReminder(sgtLocalToUtcMs(2026, 10, 19, 17), at(8))).toBe("morning_of");
+      expect(missedReminder(sgtLocalToUtcMs(2026, 10, 19, 17), at(11))).toBe("morning_of");
+    });
+
+    it("tomorrow → day-before once today's 09:00 run has gone", () => {
+      expect(missedReminder(tomorrow5pm, at(9))).toBe("day_before");
+      expect(missedReminder(tomorrow5pm, at(23, 59))).toBe("day_before");
+    });
+
+    it("tomorrow, before the run → left to the run", () => {
+      expect(missedReminder(tomorrow5pm, at(8, 59))).toBeNull();
+    });
+
+    it("later, or already started → nothing", () => {
+      expect(missedReminder(sgtLocalToUtcMs(2026, 10, 21, 10), at(23))).toBeNull();
+      expect(missedReminder(at(10), at(11))).toBeNull();
+    });
+
+    it("crosses month ends in SGT, not UTC", () => {
+      // 31 Oct 23:30 SGT is still 31 Oct 15:30 UTC.
+      const lateOct31 = sgtLocalToUtcMs(2026, 10, 31, 23, 30);
+      expect(missedReminder(sgtLocalToUtcMs(2026, 11, 1, 10), lateOct31)).toBe("day_before");
+    });
   });
 
   it("invalid phone → skipped", () => {
@@ -271,10 +309,37 @@ describe("whatsapp inbound parse", () => {
     ]);
   });
 
-  it("free chatter is unknown", () => {
+  it("free chatter and media are unknown; reactions are ignored", () => {
     expect(
       parseInboundActions(inbound({ type: "text", text: { body: "can I come at 6 instead?" } })),
     ).toMatchObject([{ kind: "unknown" }]);
+    expect(parseInboundActions(inbound({ type: "audio", audio: { id: "a1" } }))).toMatchObject([
+      { kind: "unknown" },
+    ]);
+    expect(parseInboundActions(inbound({ type: "reaction", reaction: { emoji: "👍" } }))).toEqual([]);
+  });
+
+  it("only acts on messages sent to our sender", () => {
+    const to = (phoneNumberId: string) => ({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: phoneNumberId },
+                messages: [{ id: "wamid.2", from: "6591234567", type: "text", text: { body: "yes" } }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(parseInboundActions(to("sales-line"), "utility-sender")).toEqual([]);
+    expect(parseInboundActions(to("utility-sender"), "utility-sender")).toMatchObject([
+      { kind: "confirm" },
+    ]);
+    // No sender configured (dev): accept everything.
+    expect(parseInboundActions(to("sales-line"))).toMatchObject([{ kind: "confirm" }]);
   });
 });
 

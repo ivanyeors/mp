@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/__tests__/appointments.test.ts": {
-    "mtime": 1792375073.359598,
-    "seen": 1792375154.091527,
-    "ast_hash": "baf8f9b6ac4e6b53af252ae4380430e3",
+    "mtime": 1792422504.3489554,
+    "seen": 1792423482.5544739,
+    "ast_hash": "a4bee2b48fa521c9108f55acfb9029d6",
     "semantic_hash": ""
   },
   "lib/appointments/calendar.ts": {
@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/reminders-db.ts": {
-    "mtime": 1790212159.1247334,
-    "seen": 1792375154.0915682,
-    "ast_hash": "f3eaad1ad31c8a124d4584f50c617abe",
+    "mtime": 1792422382.5420747,
+    "seen": 1792423482.554506,
+    "ast_hash": "79ff59d1653776ae950b3af79b8c2216",
     "semantic_hash": ""
   },
   "lib/appointments/settings.ts": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/state.ts": {
-    "mtime": 1790212159.1247334,
-    "seen": 1792375154.0915759,
-    "ast_hash": "9ba8b42571d13b91960d02e6641eae59",
+    "mtime": 1792422388.0588336,
+    "seen": 1792423482.554512,
+    "ast_hash": "48249474b791c32f02c383b147ebdc06",
     "semantic_hash": ""
   },
   "lib/appointments/type.ts": {
@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/whatsapp.ts": {
-    "mtime": 1792374810.6284688,
-    "seen": 1792375154.0915802,
-    "ast_hash": "8b6629b6446faf9bc359f4542a7d2357",
+    "mtime": 1792422485.4649756,
+    "seen": 1792423482.554515,
+    "ast_hash": "a655c47306d32906cb0e64ee1bcf3432",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/admin-guard.test.ts": {
@@ -2436,9 +2436,9 @@
     "semantic_hash": ""
   },
   "app/api/cron/appointment-reminders/route.ts": {
-    "mtime": 1790212158.9196932,
-    "seen": 1792375154.089735,
-    "ast_hash": "978dd4899aa66ca91febb92b7e9cd71f",
+    "mtime": 1792422455.7868793,
+    "seen": 1792423482.5534203,
+    "ast_hash": "f4cf01e63cc0f55d86cba4eac19d8ac1",
     "semantic_hash": ""
   },
   "app/api/cron/results-sla/route.ts": {
@@ -3060,9 +3060,9 @@
     "semantic_hash": ""
   },
   "app/api/webhooks/whatsapp/route.ts": {
-    "mtime": 1792374850.8844125,
-    "seen": 1792375154.0902812,
-    "ast_hash": "2dd2892953b49e9050c4615cb5a7c513",
+    "mtime": 1792422485.4655845,
+    "seen": 1792423482.553764,
+    "ast_hash": "6822a523e1947d53b82f0934f0ca84f0",
     "semantic_hash": ""
   },
   "app/auth/callback/route.ts": {
@@ -7962,9 +7962,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/OPS-CHECKLIST.md": {
-    "mtime": 1792374874.414474,
-    "seen": 1792375154.095139,
-    "ast_hash": "44cb2769acfba320fb499e46e8dd6b22",
+    "mtime": 1792422635.6873336,
+    "seen": 1792423482.5565014,
+    "ast_hash": "8d6115e8e4005342d4ce845ea5336d46",
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/issues/01-ops-meta-google-setup.md": {
@@ -10356,9 +10356,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-preflight.ts": {
-    "mtime": 1792374841.8979883,
-    "seen": 1792375154.0937617,
-    "ast_hash": "3288e975495181a91ff9bda1939ab1fa",
+    "mtime": 1792422635.688712,
+    "seen": 1792423482.5556993,
+    "ast_hash": "63ee4dab30e78d4ccb366563473c083f",
     "semantic_hash": ""
   },
   "components/configurator/save-filling-template.tsx": {
@@ -14868,9 +14868,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/book-slot.ts": {
-    "mtime": 1792374722.6692984,
-    "seen": 1792375154.091545,
-    "ast_hash": "d6ec7581036166e519341710a83a300d",
+    "mtime": 1792422468.0686865,
+    "seen": 1792423482.5544853,
+    "ast_hash": "1ee6d33180f7d84ff9aba0103cd69c2f",
     "semantic_hash": ""
   },
   "lib/email/__tests__/service-only-order.test.ts": {
@@ -15273,6 +15273,18 @@
     "mtime": 1792374722.018757,
     "seen": 1792375154.0953789,
     "ast_hash": "390426d3edf0fc530e441f7a848a9f77",
+    "semantic_hash": ""
+  },
+  "lib/appointments/remind.ts": {
+    "mtime": 1792422399.6100023,
+    "seen": 1792423482.5545042,
+    "ast_hash": "95b6801aecfd5ea91a6405493e6dc0b1",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261019152211_appointment_reminder_errors.sql": {
+    "mtime": 1792422367.0980031,
+    "seen": 1792423482.5559087,
+    "ast_hash": "da967fa3ec30f60d7cde868eb0d34f71",
     "semantic_hash": ""
   }
 }

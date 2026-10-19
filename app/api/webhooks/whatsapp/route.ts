@@ -22,6 +22,7 @@ import {
 import { transitionReminder } from "@/lib/appointments/state";
 import { formatDateSgt, formatTimeSgt } from "@/lib/appointments/format";
 import {
+  claimAutoReply,
   getOpenReminderByPhone,
   updateReminder,
 } from "@/lib/appointments/reminders-db";
@@ -40,6 +41,9 @@ import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 // The sender is an automated Cloud API line: no person reads what guests type
 // to it. Anything that needs a human points at the staffed sales line instead.
 const TALK_TO_TEAM = `message our team on WhatsApp at ${SUPPORT_WHATSAPP_DISPLAY}: ${SUPPORT_WHATSAPP_URL}`;
+
+/** One auto-reply per phone per window, however many messages it sends. */
+const AUTO_REPLY_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,7 +77,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const actions = parseInboundActions(payload);
+  const actions = parseInboundActions(
+    payload,
+    process.env.WHATSAPP_PHONE_NUMBER_ID?.trim(),
+  );
   if (actions.length === 0) return NextResponse.json({ ok: true });
 
   const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
@@ -105,7 +112,19 @@ async function handleAction(
   action: ReturnType<typeof parseInboundActions>[number],
   settings: AppointmentSettings,
 ): Promise<void> {
-  if (action.kind === "unknown") return;
+  if (action.kind === "unknown") {
+    // Free text, a photo, a voice note: nothing here can act on it, and nobody
+    // will see it. Say so and point at the staffed line, so the guest is not
+    // left waiting on an answer that never comes. The inbound message opens the
+    // 24h service window, so free text is allowed.
+    if (await claimAutoReply(action.fromE164, AUTO_REPLY_COOLDOWN_MS)) {
+      await sendText(
+        action.fromE164,
+        `Hi! This number only sends automated appointment messages, so no one here will see your reply. To chat with us, ${TALK_TO_TEAM}`,
+      );
+    }
+    return;
+  }
 
   const row = await getOpenReminderByPhone(action.fromE164);
   if (!row) {

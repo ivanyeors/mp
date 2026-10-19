@@ -1,6 +1,7 @@
 /**
  * Book one slot on the central calendar: the `freeBusy` re-check, the event, the
- * pending WhatsApp reminder, the immediate confirmation and the Contacts sync.
+ * pending WhatsApp reminder, the immediate confirmation (or, at short notice,
+ * the reminder the daily run would miss) and the Contacts sync.
  *
  * Shared by the guest booking route and both re-adjustment routes (ADR 0024) so a
  * re-adjustment is reminded, confirmed and contact-synced exactly like any other
@@ -13,7 +14,10 @@ import { syncGuestContact, type ContactSyncResult } from "@/lib/appointments/con
 import { formatDateSgt, formatTimeSgt } from "@/lib/appointments/format";
 import { isPhoneAllowed } from "@/lib/appointments/phone";
 import { upsertPendingReminder } from "@/lib/appointments/reminders-db";
+import { sendDayBeforeReminder, sendMorningOfReminder } from "@/lib/appointments/remind";
 import type { AppointmentSettings } from "@/lib/appointments/settings";
+import { missedReminder } from "@/lib/appointments/state";
+import { resolveAppointmentType } from "@/lib/appointments/type";
 import { sendTemplateMessage } from "@/lib/appointments/whatsapp";
 import type { ApptType } from "@/lib/appointments/appt-type";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -103,24 +107,57 @@ export async function bookCalendarSlot(input: BookSlotInput): Promise<BookSlotRe
   });
   await input.onEventCreated?.(eventId);
 
+  const startsAt = new Date(Date.parse(input.startIso)).toISOString();
   await upsertPendingReminder({
     calendarEventId: eventId,
     phone: input.phone,
     guestName: input.guestName,
     appointmentType: input.appointmentType,
-    startsAt: new Date(Date.parse(input.startIso)).toISOString(),
+    startsAt,
   });
 
-  // Best-effort immediate WhatsApp confirmation. A web booking has no open 24h
-  // service window, so this must be an approved template — dormant until
-  // WHATSAPP_TEMPLATE_CONFIRM names one (e.g. appointment_confirmation). Without
-  // it, short-notice bookers get no message at all (the daily reminder cron only
-  // fires the day-before/morning-of and skips same-day/pending rows). Never let a
-  // send failure fail the booking. Params match the 4-slot day_before shape.
-  // Also honours the Settings → Appointments kill switch, so turning
-  // notifications off silences this path too, not just the cron and webhook.
+  // Every WhatsApp send here honours the Settings → Appointments kill switch, so
+  // turning notifications off silences booking too, not just the cron and
+  // webhook. None of them may fail the booking.
+  const canMessage = input.settings.whatsappEnabled && isPhoneAllowed(input.phone);
+
+  // Short notice: a booking the daily 09:00 run will never remind — tomorrow
+  // after that run, or today — gets its reminder now, through the same send and
+  // row update the run uses. It stands in for the confirmation below: it carries
+  // the same date and time, and the day-before adds Confirm / Reschedule. A
+  // failure is recorded on the row, which stays `pending`, and a day-before that
+  // failed is caught up by tomorrow's morning-of.
+  const missed = canMessage ? missedReminder(Date.parse(startsAt), Date.now()) : null;
+  const target = {
+    calendarEventId: eventId,
+    phone: input.phone,
+    guestName: input.guestName,
+    startsAt,
+  };
+  if (missed) {
+    try {
+      if (missed === "day_before") {
+        // The label the cron would read off this event's summary.
+        const { label } = resolveAppointmentType(summary, input.settings);
+        await sendDayBeforeReminder({ ...target, typeLabel: label });
+      } else {
+        await sendMorningOfReminder({
+          ...target,
+          venue: input.location.address,
+          from: "pending",
+        });
+      }
+    } catch (e) {
+      console.error(`[appointments/book] ${missed} send`, e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Otherwise, a best-effort immediate WhatsApp confirmation. A web booking has
+  // no open 24h service window, so this must be an approved template — dormant
+  // until WHATSAPP_TEMPLATE_CONFIRM names one (e.g. appointment_confirmation).
+  // Params match the 4-slot day_before shape.
   const confirmTemplate = process.env.WHATSAPP_TEMPLATE_CONFIRM?.trim();
-  if (input.settings.whatsappEnabled && confirmTemplate && isPhoneAllowed(input.phone)) {
+  if (canMessage && !missed && confirmTemplate) {
     try {
       await sendTemplateMessage(input.phone, confirmTemplate, [
         input.guestName,

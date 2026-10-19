@@ -11,8 +11,12 @@ HITL slices 01 + 08. Complete before relying on staging/prod automation.
 
 These are separate on purpose — do not sync them. Publishing the utility number
 in customer-facing copy starts conversations nobody reads: the webhook only
-understands Confirm, Reschedule, and "none of these", and silently drops
-anything else.
+understands Confirm, Reschedule, and "none of these". Anything else a guest
+sends (text, photo, voice note) gets one auto-reply per 12 hours pointing at the
+sales line, and goes no further.
+
+The webhook acts only on messages addressed to `WHATSAPP_PHONE_NUMBER_ID`, so
+putting the sales line on the same WABA later cannot make the bot answer it.
 
 ## 0.5 Prove the sender reaches guests
 
@@ -199,7 +203,7 @@ Settings → Appointments → **WhatsApp** tab → **WhatsApp notifications** is
 kill switch (`appointments_whatsapp_enabled` in `site_settings`). Off silences
 all three send paths:
 
-- the booking route skips its immediate confirmation;
+- the booking route skips its immediate confirmation and short-notice reminder;
 - the daily cron returns `{ disabled: true }` without touching Calendar or Meta;
 - the inbound webhook acks without replying or mutating reminder rows.
 
@@ -210,4 +214,31 @@ change needed.
 
 - Remove or empty `WHATSAPP_ALLOWLIST` (ignored in production anyway).
 - Confirm coexistence still shows Cloud API messages in the phone app.
-- Monitor cron JSON `{ scanned, reminded, morning, skipped, errors }`.
+- Monitor cron JSON `{ scanned, reminded, morning, skipped, errors }`, and the
+  failures recorded on rows (section 10).
+
+## 10. When each message goes out
+
+The daily run fires at 09:00 SGT (`0 1 * * *` UTC; Hobby lands anywhere in that
+hour). It sends tomorrow's day-before and today's morning-of. Bookings it would
+miss are reminded by the booking path itself (`missedReminder` in
+`lib/appointments/state.ts`):
+
+| Booked | Gets |
+|--------|------|
+| 2+ days ahead | Confirmation (if `WHATSAPP_TEMPLATE_CONFIRM` is set), day-before at 09:00, morning-of if silent |
+| Tomorrow, before 09:00 | Confirmation, day-before at today's 09:00 run |
+| Tomorrow, 09:00 or later | Day-before immediately (with buttons), morning-of if silent |
+| Today | Morning-of immediately |
+| Straight in Google Calendar after the run | Morning-of on the day (catch-up) |
+
+A failed send writes `last_error` / `last_error_at` on the row and leaves its
+status alone. A day-before that failed leaves the row `pending`, and the next
+morning's run sends the morning-of instead. To see what failed:
+
+```sql
+select guest_name, starts_at, status, last_error, last_error_at
+from appointment_reminders
+where last_error is not null
+order by last_error_at desc;
+```

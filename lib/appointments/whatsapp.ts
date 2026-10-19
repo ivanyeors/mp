@@ -262,13 +262,40 @@ export type InboundWaAction =
   | { kind: "reject_slots"; fromE164: string; messageId: string }
   | { kind: "unknown"; fromE164: string; messageId: string };
 
-/** Parse Cloud API webhook payload into actionable intents. */
-export function parseInboundActions(payload: unknown): InboundWaAction[] {
+/**
+ * Inbound types a person sends that this line cannot act on. They parse as
+ * `unknown`, which the webhook answers with the auto-reply. Reactions, system
+ * notices and the like are left out on purpose: replying to a thumbs-up
+ * reaction with "nobody reads this" is noise.
+ */
+const UNACTIONABLE_TYPES = new Set([
+  "image",
+  "audio",
+  "video",
+  "document",
+  "sticker",
+  "location",
+  "contacts",
+]);
+
+/**
+ * Parse Cloud API webhook payload into actionable intents.
+ *
+ * Meta delivers messages for every number on the WABA to one webhook. Pass the
+ * sender's `phoneNumberId` and messages addressed to any other number are
+ * ignored — otherwise a guest chatting to a staffed line on the same WABA would
+ * have "yes" read as a Confirm, and get the auto-reply.
+ */
+export function parseInboundActions(
+  payload: unknown,
+  phoneNumberId?: string,
+): InboundWaAction[] {
   const out: InboundWaAction[] = [];
   const root = payload as {
     entry?: Array<{
       changes?: Array<{
         value?: {
+          metadata?: { phone_number_id?: string };
           messages?: Array<{
             id?: string;
             from?: string;
@@ -288,6 +315,8 @@ export function parseInboundActions(payload: unknown): InboundWaAction[] {
 
   for (const entry of root.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      const to = change.value?.metadata?.phone_number_id;
+      if (phoneNumberId && to && to !== phoneNumberId) continue;
       for (const msg of change.value?.messages ?? []) {
         if (!msg.from || !msg.id) continue;
         const fromE164 = msg.from.startsWith("+") ? msg.from : `+${msg.from}`;
@@ -346,6 +375,11 @@ export function parseInboundActions(payload: unknown): InboundWaAction[] {
           } else {
             out.push({ kind: "unknown", fromE164, messageId });
           }
+          continue;
+        }
+
+        if (msg.type && UNACTIONABLE_TYPES.has(msg.type)) {
+          out.push({ kind: "unknown", fromE164, messageId });
         }
       }
     }

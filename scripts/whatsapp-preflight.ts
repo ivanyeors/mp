@@ -295,7 +295,8 @@ async function main() {
 
   // --- 3. The two numbers must stay distinct -------------------------------
   // The public number is a staffed sales line; the sender is automated. Pointing
-  // customers at the sender starts conversations the webhook silently drops.
+  // customers at the sender starts conversations nobody reads — the webhook only
+  // auto-replies with the sales line.
   const publicDigits = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "6587805311")
     .replace(/\D/g, "");
   if (senderDigits && publicDigits === senderDigits) {
