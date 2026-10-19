@@ -6,9 +6,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  newPairedMbolsterDraft,
-  pairedBolsterPayload,
+  bolsterSleepPosition,
+  pairedHoldBody,
+  parsePairedHandoff,
   runsPairedStepper,
+  type PairedHandoff,
 } from "./paired-mbolster";
 
 // --- Who gets the stepper: a card-holding shopper whose graph routes to Mbolster ---
@@ -20,40 +22,70 @@ assert.equal(runsPairedStepper({ ...base, assisted: true }), false, "an Assisted
 assert.equal(runsPairedStepper({ ...base, partnerAssisted: true }), false, "partner runs see no upsells");
 assert.equal(runsPairedStepper({ ...base, reopened: true }), false, "a reopened Result is past this decision");
 
-// --- The hold payload exists only once step 2 has a length and a case ---
-const draft = newPairedMbolsterDraft("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
-assert.equal(pairedBolsterPayload(draft, "side"), null, "empty draft → nothing to hold");
+// --- Sleep position carries over in the Mbolster flow's words ---
+assert.equal(bolsterSleepPosition("side"), "side");
+assert.equal(bolsterSleepPosition("stomach"), "stomach");
+assert.equal(bolsterSleepPosition("back"), "other");
+assert.equal(bolsterSleepPosition("mixed"), "other");
+
+// --- The hand-off survives storage and refuses anything malformed ---
+const pendingRecord = {
+  flow: "premium-mpillow",
+  size: "M",
+  flowRoute: { targetFlow: "mbolster", reason: "You already sleep with a bolster.", nodeId: "route-mbolster" },
+  flowRouteDecision: "pending",
+};
+const handoff: PairedHandoff = {
+  v: 1,
+  pillowHold: { responseId: "a", suggestedSize: "M", recommendationRecord: pendingRecord },
+  companionId: "b",
+  sleepPosition: "side",
+  reason: "You already sleep with a bolster.",
+  configPath: "/mp-config",
+  pillow: { label: "Mpillow M · premium", ballpark: 360, currency: "SGD" },
+};
+assert.deepEqual(parsePairedHandoff(JSON.parse(JSON.stringify(handoff))), handoff, "round-trips");
+assert.equal(parsePairedHandoff({ ...handoff, v: 2 }), null, "unknown version refused");
+assert.equal(parsePairedHandoff({ ...handoff, configPath: "https://evil.test" }), null, "only a local return path");
+assert.equal(parsePairedHandoff({ ...handoff, companionId: "" }), null, "needs a companion id");
+
+// --- One request for both; Skip sends the pillow alone. The route is answered either way ---
+const bolster = {
+  responseId: "b",
+  suggestedLength: "medium",
+  measurements: { height_cm: 170, sleep_position: "side" as const },
+  preferenceLines: [{ item_id: 42, quantity: 1, category: "case" as const }],
+  addonLines: [],
+};
+const withBolster = pairedHoldBody(handoff, bolster);
+assert.deepEqual(withBolster.pairedBolster, bolster, "Add carries the Mbolster");
+assert.equal(withBolster.suggestedSize, "M", "the Mpillow's own body is sent unchanged");
 assert.equal(
-  pairedBolsterPayload({ ...draft, heightCm: "170", length: "medium" }, "side"),
-  null,
-  "no case yet → nothing to hold",
+  (withBolster.recommendationRecord as { flowRouteDecision: string }).flowRouteDecision,
+  "accepted",
+  "Add accepts the route",
 );
-assert.deepEqual(
-  pairedBolsterPayload({ ...draft, heightCm: "170", length: "medium", caseId: 42 }, "side"),
-  {
-    responseId: draft.responseId,
-    suggestedLength: "medium",
-    measurements: { height_cm: 170, sleep_position: "side" },
-    preferenceLines: [{ item_id: 42, quantity: 1, category: "case" }],
-  },
-  "complete step 2 → the hold's pairedBolster",
+const skipped = pairedHoldBody(handoff, null);
+assert.equal(skipped.pairedBolster, undefined, "Skip sends no Mbolster");
+assert.equal(
+  (skipped.recommendationRecord as { flowRouteDecision: string }).flowRouteDecision,
+  "declined",
+  "Skip declines the route, so the hold gate passes",
 );
 
-// --- Wiring in the Mpillow configurator ---
+// --- Wiring: the Mpillow hands over, the Mbolster page asks height only ---
 const mp = readFileSync("app/[lang]/mp-config/mp-config-client.tsx", "utf8");
-assert.match(mp, /<PairedStepper step=\{pairStep\} \/>/, "stepper header renders");
-assert.match(mp, /<PairedMbolsterStep/, "step 2 panel renders");
-assert.match(mp, /pairedBolster: opts\.pairedBolster/, "Add Mbolster sends the companion with the hold");
-assert.match(
-  mp,
-  /record\.flowRoute\.targetFlow !== "mbolster"/,
-  "the Upsell card never offers an Mbolster 'upgrade' it cannot perform",
-);
-assert.match(
-  mp,
-  /r\.flowRoute\?\.targetFlow !== "mbolster"/,
-  "a pending Mbolster route never blocks the hold — step 2 or Skip answers it",
-);
-assert.match(mp, /withJourneyOnDecline\(parsedRecord\)/, "Skip records the route as declined");
+assert.match(mp, /<PairedStepper step=\{1\} \/>/, "step 1 header on the Mpillow preview");
+assert.match(mp, /writePairedHandoff\(window\.sessionStorage/, "Next: Mbolster writes the hand-off");
+assert.match(mp, /"\/mbolster-config\?paired=1"/, "and goes to the Mbolster page");
+assert.match(mp, /record\.flowRoute\.targetFlow !== "mbolster"/, "no Upsell card for an Mbolster route");
+assert.match(mp, /r\.flowRoute\?\.targetFlow !== "mbolster"/, "a pending Mbolster route never blocks the hold");
+
+const mb = readFileSync("app/[lang]/mbolster-config/mbolster-config-client.tsx", "utf8");
+assert.match(mb, /<PairedStepper step=\{2\} \/>/, "step 2 header on the Mbolster page");
+assert.match(mb, /nextStep: "preview"/, "paired: height goes straight to the customisation page");
+assert.match(mb, /if \(pairedHandoffOnPage\(\)\) return;/, "a paired run never overwrites the standalone draft");
+assert.match(mb, /pairedHoldBody\(/, "one request for both builds");
+assert.match(mb, /handlePairedHold\(false\)/, "Skip holds the Mpillow alone");
 
 console.log("paired-mbolster self-check ok");

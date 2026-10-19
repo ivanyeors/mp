@@ -77,12 +77,13 @@ import {
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
-import { PairedMbolsterStep, PairedStepper } from "@/components/configurator/paired-mbolster-step";
+import { PairedStepper } from "@/components/configurator/paired-stepper";
 import {
-  newPairedMbolsterDraft,
-  pairedBolsterPayload,
+  bolsterSleepPosition,
+  clearPairedHandoff,
+  readPairedHandoff,
   runsPairedStepper,
-  type PairedMbolsterDraft,
+  writePairedHandoff,
 } from "@/lib/configurator/paired-mbolster";
 import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
 import { UpsellCard } from "@/components/rules-engine/upsell-card";
@@ -660,9 +661,6 @@ export function MpConfigClient({
   /** Basic → Premium accept: collect only missing neck steps, then re-eval Premium. */
   const [upsoldToPremium, setUpsoldToPremium] = useState(false);
   const [postUpsellSteps, setPostUpsellSteps] = useState<Step[] | null>(null);
-  /** Paired build stepper (ADR 0026): 1 Mpillow, 2 Mbolster (optional). */
-  const [pairStep, setPairStep] = useState<1 | 2>(1);
-  const [pairDraft, setPairDraft] = useState<PairedMbolsterDraft | null>(null);
   const [routeAltPrice, setRouteAltPrice] = useState<number | null>(null);
   const [routeBusy, setRouteBusy] = useState(false);
   const entryJourneyRef = useRef<RecommendationRecord | null>(null);
@@ -1228,8 +1226,11 @@ export function MpConfigClient({
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
     // A shared device's next customer must not inherit this one's Mbolster.
-    setPairStep(1);
-    setPairDraft(null);
+    try {
+      clearPairedHandoff(window.sessionStorage);
+    } catch {
+      // private mode — nothing was stored
+    }
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
   };
@@ -2136,8 +2137,11 @@ export function MpConfigClient({
   };
 
   const handleAuthorizeHold = useCallback(async (opts?: {
-    /** Step 2 of a Paired build: the Mbolster held with this Mpillow. */
-    pairedBolster?: ReturnType<typeof pairedBolsterPayload>;
+    /**
+     * Paired build step 1 → 2 (ADR 0026): hand this finished hold to the
+     * Mbolster page, which sends it with the Mbolster, instead of sending it.
+     */
+    toMbolster?: { label: string; ballpark: number | null; currency: string };
   }) => {
     const size =
       shopRecommendation?.pillow_product?.size ??
@@ -2159,17 +2163,18 @@ export function MpConfigClient({
     const parsedRecord = parseRecommendationRecord(
       shopRecommendation?.recommendation_record ?? null,
     );
-    // The Mbolster route is answered here: adding the Mbolster accepts it, and
-    // anything else (Skip, or a session with no stepper) declines it.
+    // The Mbolster route is answered by the shopper on the Mbolster page, which
+    // gets it still pending; holding from here (Skip, or a session with no
+    // stepper) declines it.
     const journeyRecord =
-      parsedRecord?.flowRoute?.targetFlow === "mbolster" && isFlowRoutePending(parsedRecord)
-        ? opts?.pairedBolster
-          ? withJourneyOnAccept(parsedRecord, "mbolster")
-          : withJourneyOnDecline(parsedRecord)
+      !opts?.toMbolster &&
+      parsedRecord?.flowRoute?.targetFlow === "mbolster" &&
+      isFlowRoutePending(parsedRecord)
+        ? withJourneyOnDecline(parsedRecord)
         : parsedRecord;
-    const routeGate = assertPreStripeRouteResolved(
-      journeyRecord ?? { flowRoute: null },
-    );
+    const routeGate = opts?.toMbolster
+      ? ({ ok: true } as const)
+      : assertPreStripeRouteResolved(journeyRecord ?? { flowRoute: null });
     if (!routeGate.ok) {
       toast.error(routeGate.reason);
       return;
@@ -2186,57 +2191,76 @@ export function MpConfigClient({
 
     setHoldSubmitting(true);
     try {
-      await upsertToDb();
+      const saved = await upsertToDb();
+      const holdBody = {
+        responseId: responseId ?? undefined,
+        // Re-submitting an existing Result needs its access token (ownership).
+        token: readToken(tokenStorageKey),
+        // Assisted customisation: no card. The server honours this only if the
+        // row it already stored is `source = 'staff_assisted'`, so the flag is
+        // a request, not a grant.
+        ...(assisted ? { deferred: true } : {}),
+        email: holdEmail.trim(),
+        phone: holdPhone.trim(),
+        discoverySource,
+        discoverySourceOther:
+          discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+        referralCode: referralCode.trim() || undefined,
+        // Assist priority (#78): server re-resolves this code → partner id.
+        ...(partner ? { partnerAssistCode: partner.code } : {}),
+        measurements: {
+          ...measurementData,
+          ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
+        },
+        suggestedSize: size,
+        suggestedTier: tier,
+        preferenceLines: [
+          { item_id: selectedCover!, quantity: 1, category: "cover" },
+          { item_id: selectedCase!, quantity: 1, category: "case" },
+        ],
+        addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+        // Staff assist snapshot (slice 05): session mix + still-matching template claim.
+        ...(staffAssist && assistPlacements.length > 0
+          ? {
+              assistFilling: {
+                placements: pillowPlacementsToRows(assistPlacements),
+                templateId: sessionFillingTemplateId,
+              },
+            }
+          : {}),
+        shippingMethodId: selectedShippingId,
+        shippingAddress: {
+          ...holdAddress,
+          recipient: holdAddress.recipient || measurementData.name,
+        },
+        cancelPath: configPath,
+        ...(journeyRecord
+          ? { recommendationRecord: journeyRecord }
+          : {}),
+      };
+      if (opts?.toMbolster) {
+        // Back and forth keeps the Mbolster's id and answers while this is
+        // still the same Mpillow session.
+        const prior = readPairedHandoff(window.sessionStorage);
+        const anchorId = saved?.id ?? responseId;
+        const same = prior && prior.pillowHold.responseId === anchorId;
+        writePairedHandoff(window.sessionStorage, {
+          v: 1,
+          pillowHold: { ...holdBody, responseId: anchorId ?? undefined },
+          companionId: same ? prior.companionId : newResponseId(),
+          sleepPosition: bolsterSleepPosition(deriveSleepPosition(measurementData.sleepPositionType)),
+          reason: parsedRecord?.flowRoute?.reason ?? "",
+          configPath,
+          pillow: opts.toMbolster,
+          ...(same && prior.bolster ? { bolster: prior.bolster } : {}),
+        });
+        router.push(withLocale("/mbolster-config?paired=1", locale));
+        return;
+      }
       const res = await fetch("/api/results/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          responseId: responseId ?? undefined,
-          // Re-submitting an existing Result needs its access token (ownership).
-          token: readToken(tokenStorageKey),
-          // Assisted customisation: no card. The server honours this only if the
-          // row it already stored is `source = 'staff_assisted'`, so the flag is
-          // a request, not a grant.
-          ...(assisted ? { deferred: true } : {}),
-          email: holdEmail.trim(),
-          phone: holdPhone.trim(),
-          discoverySource,
-          discoverySourceOther:
-            discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-          referralCode: referralCode.trim() || undefined,
-          // Assist priority (#78): server re-resolves this code → partner id.
-          ...(partner ? { partnerAssistCode: partner.code } : {}),
-          measurements: {
-            ...measurementData,
-            ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
-          },
-          suggestedSize: size,
-          suggestedTier: tier,
-          preferenceLines: [
-            { item_id: selectedCover!, quantity: 1, category: "cover" },
-            { item_id: selectedCase!, quantity: 1, category: "case" },
-          ],
-          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
-          // Staff assist snapshot (slice 05): session mix + still-matching template claim.
-          ...(staffAssist && assistPlacements.length > 0
-            ? {
-                assistFilling: {
-                  placements: pillowPlacementsToRows(assistPlacements),
-                  templateId: sessionFillingTemplateId,
-                },
-              }
-            : {}),
-          shippingMethodId: selectedShippingId,
-          shippingAddress: {
-            ...holdAddress,
-            recipient: holdAddress.recipient || measurementData.name,
-          },
-          cancelPath: configPath,
-          ...(journeyRecord
-            ? { recommendationRecord: journeyRecord }
-            : {}),
-          ...(opts?.pairedBolster ? { pairedBolster: opts.pairedBolster } : {}),
-        }),
+        body: JSON.stringify(holdBody),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -2248,6 +2272,12 @@ export function MpConfigClient({
       // customer goes straight to the status page to wait for Staff.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
+      // Held without the Mbolster: a stale hand-off must not offer it again.
+      try {
+        clearPairedHandoff(window.sessionStorage);
+      } catch {
+        // private mode — nothing was stored
+      }
       // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
       trackGaEventThen(
         {
@@ -2293,6 +2323,8 @@ export function MpConfigClient({
     sessionFillingTemplateId,
     partner,
     tokenStorageKey,
+    router,
+    locale,
   ]);
 
   const saveLabel:
@@ -2541,22 +2573,16 @@ export function MpConfigClient({
           window.location.href = returnPath;
         }
       : goToPreviousStep;
-    // Step 1 of a Paired build checks the Mpillow's finish, then moves on to the
-    // optional Mbolster rather than holding.
-    const goToPairStepTwo = () => {
-      const errors = buildFieldErrorMap(holdFields);
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        return;
-      }
-      setPairDraft((d) => d ?? newPairedMbolsterDraft(newResponseId()));
-      setPairStep(2);
-    };
-    const pairOnStepTwo = pairedStepper && pairStep === 2;
-    const pairPayload = pairedBolsterPayload(
-      pairDraft,
-      deriveSleepPosition(measurementData.sleepPositionType),
-    );
+    // Step 1 of a Paired build checks the Mpillow's finish, then hands it to the
+    // Mbolster page — the optional step 2 — rather than holding.
+    const goToMbolster = () =>
+      handleAuthorizeHold({
+        toMbolster: {
+          label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
+          ballpark: quoteBlocked ? null : basePrice + addonTotal + serviceTotal,
+          currency,
+        },
+      });
     // One primary action for the preview, whichever mode opened it.
     const onPreviewContinue = () =>
       void (staffEdit
@@ -2564,7 +2590,7 @@ export function MpConfigClient({
         : resumeFinish
           ? handleFinishAndPay()
           : pairedStepper
-            ? goToPairStepTwo()
+            ? goToMbolster()
             : handleAuthorizeHold());
     // A pending Upgrade/Keep route is a question for the shopper. Staff pick the
     // tier outright in the assist panel, so it must not freeze their save.
@@ -2881,17 +2907,7 @@ export function MpConfigClient({
             <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100dvh-56px)] lg:border-l">
               <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
                 {partner ? <CoBrandBanner partner={partner} /> : null}
-                {pairedStepper ? <PairedStepper step={pairStep} /> : null}
-                {pairOnStepTwo && pairDraft ? (
-                  <PairedMbolsterStep
-                    draft={pairDraft}
-                    onDraftChange={(update) => setPairDraft((d) => (d ? update(d) : d))}
-                    reason={record?.flowRoute?.reason ?? ""}
-                    sleepPosition={deriveSleepPosition(measurementData.sleepPositionType)}
-                    currency={currency}
-                  />
-                ) : (
-                <>
+                {pairedStepper ? <PairedStepper step={1} /> : null}
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">
                     {staffEdit ? "Edit configuration" : "Customize finish"}
@@ -3195,8 +3211,6 @@ export function MpConfigClient({
                   </Button>
                 </div>
                 )}
-                </>
-                )}
               </div>
 
               {waitingCopy ? (
@@ -3212,57 +3226,6 @@ export function MpConfigClient({
                   configuratorMobileCloseClearanceClassName,
                 )}
               >
-                {pairOnStepTwo ? (
-                  <>
-                    <div className="mb-1 flex justify-between gap-4 text-sm">
-                      <span className="text-muted-foreground">Mpillow (before shipping/tax)</span>
-                      <span className="tabular-nums">
-                        {quoteBlocked
-                          ? "Not available"
-                          : `${currency} ${(basePrice + addonTotal + serviceTotal).toFixed(2)}`}
-                      </span>
-                    </div>
-                    {pairDraft?.length && pairDraft.price != null ? (
-                      <div className="mb-1 flex justify-between gap-4 text-sm">
-                        <span className="text-muted-foreground">
-                          Mbolster <span className="capitalize">{pairDraft.length}</span> (ships with it)
-                        </span>
-                        <span className="tabular-nums">{`${currency} ${pairDraft.price.toFixed(2)}`}</span>
-                      </div>
-                    ) : null}
-                    <p className="mb-3 text-xs text-muted-foreground">
-                      One card authorisation covers both. You are not charged until you accept the final builds.
-                    </p>
-                    <ConfiguratorStepActions
-                      mobile={isMobile}
-                      slot={mobileActionsSlot}
-                      className="flex gap-3"
-                    >
-                      <Button variant="outline" onClick={() => setPairStep(1)} className="flex-1 max-md:flex-none">
-                        <ArrowLeft className="size-4" />
-                        Back
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => void handleAuthorizeHold()}
-                        disabled={continueBlocked}
-                        className="flex-1"
-                      >
-                        Skip
-                      </Button>
-                      <Button
-                        className="flex-[2]"
-                        size="lg"
-                        onClick={() => void handleAuthorizeHold({ pairedBolster: pairPayload })}
-                        disabled={continueBlocked || !pairPayload}
-                      >
-                        {holdSubmitting ? "Redirecting…" : "Add Mbolster"}
-                        <ArrowRight className="size-4" />
-                      </Button>
-                    </ConfiguratorStepActions>
-                  </>
-                ) : (
-                <>
                 {!quoteBlocked &&
                   serviceLines.map((l) => (
                     <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
@@ -3297,8 +3260,17 @@ export function MpConfigClient({
                     <ArrowRight className="size-4" />
                   </Button>
                 </ConfiguratorStepActions>
-                </>
-                )}
+                {pairedStepper ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleAuthorizeHold()}
+                    disabled={continueBlocked}
+                    className="mt-2 w-full text-muted-foreground"
+                  >
+                    Skip the Mbolster — just my Mpillow
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>

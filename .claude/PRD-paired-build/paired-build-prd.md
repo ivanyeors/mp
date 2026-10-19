@@ -20,10 +20,12 @@ Order and refund assumed one Result per PaymentIntent.
 ## Solution
 
 When the evaluated graph routes to Mbolster, the preview becomes a two-step stepper:
-**1 Mpillow** → **2 Mbolster (optional)**. Step 2 asks only what the Mbolster flow needs that the
-pillow did not, which is height, plus the case. It shows the recommended length and price, and
-offers **Add Mbolster** or **Skip**. Skip holds the pillow exactly as today. Add holds a **Paired
-build**: two Results under one Authorization hold and one Stripe Checkout. Staff assign each build
+**1 Mpillow** → **2 Mbolster (optional)**. "Next: Mbolster" takes the shopper to the Mbolster
+configurator in paired mode. It asks only what the Mbolster flow needs that the pillow did not,
+which is height, then opens the Mbolster's own customisation page: recommended length and price,
+case, add-ons, and the Staff x-ray editor in store. It offers **Add Mbolster** or **Skip**. Skip
+holds the pillow exactly as today. Add holds a **Paired build**: two Results under one
+Authorization hold and one Stripe Checkout. Staff assign each build
 as usual. The shopper accepts both together on one status page, may drop the Mbolster there, and
 gets one Order.
 
@@ -71,8 +73,14 @@ anchor-led endings, one accept, one capture and one Order.
 - **Status page:** shows both builds and the pair total, accepts on the anchor, and offers "Remove
   Mbolster" (decline the companion) once it is assigned. The assigned email waits until no member is
   still `held`.
-- **Configurator:** the stepper replaces the Upsell card when the route targets Mbolster. Height
-  uses the same inches/cm entry as the Mbolster configurator.
+- **Configurator:** the stepper replaces the Upsell card when the route targets Mbolster. Step 1's
+  "Next: Mbolster" validates the Mpillow's finish, writes its hold body to `sessionStorage`
+  (`mp_paired_build_handoff`, with a stable companion id), and opens `/mbolster-config?paired=1`.
+  Paired mode never reads or writes that device's standalone Mbolster draft. It asks height only,
+  hides contact and shipping, and sends `pairedHoldBody(handoff, bolster)`: the Mpillow's body,
+  route answered, plus the Mbolster with its Staff mix. Back returns to the Mpillow preview, which
+  restores itself. A cancelled Checkout returns there too, and the hand-off keeps the Mbolster's
+  answers.
 - **Rollout gate:** the live Premium graph's `route-mbolster` node has no wire into it. Nothing
   reaches this flow until Staff connect `uses_bolster = true` to it on the canvas and publish.
 
@@ -87,6 +95,5 @@ anchor-led endings, one accept, one capture and one Order.
 ## Out of Scope
 
 - Paired builds from an Assisted customisation (deferred) or a Staff re-configuration.
-- A Staff assist mix for the companion at hold. Its fillings are assigned in the Admin Panel.
 - Pairing on the Basic → Premium upsell, or more than two Results.
 - Free shipping earned by the pair's combined goods.

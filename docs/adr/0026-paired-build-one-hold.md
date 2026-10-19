@@ -64,5 +64,10 @@ Everything downstream of the hold assumes one Result per PaymentIntent:
   intent is what frees its share.
 - Free-shipping thresholds read the anchor's goods alone, not the pair's.
 - v1 creates Paired builds only on the card path (or with holds switched off), never from an
-  **Assisted customisation**, and with no **Staff assist mode** mix for the companion. Staff assign
-  its fillings in the Admin Panel.
+  **Assisted customisation**.
+- Step 2 is the Mbolster configurator itself, in paired mode. The Mpillow preview hands over its
+  finished hold body (`sessionStorage`, `mp_paired_build_handoff`). The Mbolster page asks only for
+  height, since sleep position carries over and contact and shipping ride with the Mpillow. It then
+  shows its own customisation page: case and add-ons online, plus the **X-ray editor** under **Staff
+  assist mode**, so a Staff mix for the companion goes in with the same hold. Skip, on either page,
+  holds the Mpillow alone.

@@ -126,6 +126,8 @@ const PairedBolsterSchema = z.object({
   preferenceLines: z.array(PreferenceLineSchema).min(1),
   addonLines: z.array(AddonLineSchema).default([]),
   recommendationRecord: z.record(z.string(), z.unknown()).optional(),
+  /** Staff's bolster mix from the Mbolster page's x-ray editor; guests send nothing. */
+  assistFilling: AssistFillingSchema.optional(),
 });
 
 const HoldSchema = z
@@ -457,6 +459,36 @@ export async function POST(req: Request) {
       }
       fillingSnapshot = buildFillingSnapshot({ placements, claimedTemplateId, templatePlacements });
     }
+  }
+
+  // The paired Mbolster's Staff mix: the same gate and validation as a bolster
+  // hold's own, written to the companion once it exists.
+  let companionSnapshot: BolsterFillingSnapshot | null = null;
+  if (paired?.assistFilling) {
+    if (!(await getAdminContext())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const ids = [...new Set(paired.assistFilling.placements.map((p) => p.item_id))];
+    const { data: companionItems } = await admin.from("items").select("id, category, name").in("id", ids);
+    const companionKinds = new Map(
+      (companionItems ?? []).map((i) => [
+        i.id as number,
+        placementKind({ category: String(i.category), name: String(i.name) }),
+      ]),
+    );
+    const placements = rowsToBolsterPlacements(paired.assistFilling.placements);
+    const valid = validateBolsterPlacements(placements, companionKinds);
+    if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
+    const claimed = paired.assistFilling.templateId ?? null;
+    let templatePlacements: BolsterPlacement[] | null = null;
+    if (claimed != null) {
+      const { data: tplRows } = await admin
+        .from("bolster_template_placements")
+        .select("slot, item_id")
+        .eq("template_id", claimed);
+      templatePlacements = rowsToBolsterPlacements((tplRows ?? []) as BolsterPlacementRow[]);
+    }
+    companionSnapshot = buildBolsterFillingSnapshot({ placements, claimedTemplateId: claimed, templatePlacements });
   }
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
@@ -971,8 +1003,8 @@ export async function POST(req: Request) {
         }),
       ),
       recommendation_record: paired.recommendationRecord ?? null,
-      filling_fingerprint: null,
-      filling_template_id: null,
+      filling_fingerprint: companionSnapshot?.fingerprint ?? null,
+      filling_template_id: companionSnapshot?.fillingTemplateId ?? null,
       paired_build_id: resultId,
     };
     const companionWrite = companionPrior
@@ -993,6 +1025,18 @@ export async function POST(req: Request) {
         { error: "This Result changed while it was being submitted. Please refresh and try again." },
         { status: 409 },
       );
+    }
+    // Replace-insert, as for any Result: a re-submit without a mix clears it.
+    const { error: snapDelErr } = await admin
+      .from("result_bolster_filling_placements")
+      .delete()
+      .eq("result_id", paired.responseId);
+    if (snapDelErr) return NextResponse.json({ error: snapDelErr.message }, { status: 500 });
+    if (companionSnapshot) {
+      const { error: snapInsErr } = await admin
+        .from("result_bolster_filling_placements")
+        .insert(companionSnapshot.rows.map((r) => ({ result_id: paired.responseId, ...r })));
+      if (snapInsErr) return NextResponse.json({ error: snapInsErr.message }, { status: 500 });
     }
   }
 
