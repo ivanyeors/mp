@@ -63,16 +63,27 @@ anchor-led endings, one accept, one capture and one Order.
   `suggestedLength`, `measurements`, `preferenceLines` [case], `addonLines`,
   `recommendationRecord`). Only a pillow hold that is not deferred can carry one. Both rows share
   the anchor's access token, contact, address and shipping method. A re-submit that drops the
-  bolster deletes the old companion, which never took money.
-- **Attach:** `attachHoldPaymentIntent` compares the session total with the pair's sum and writes
-  the intent onto both rows under the same check-and-set.
-- **Endings:** decline, cancel, the SLA cron and Result delete all go through the ending plan.
+  bolster deletes the old companion, which never took money. A re-submit also unlinks any ended
+  companion of the same anchor, so a pair only ever has one companion to read.
+- **Attach:** `attachHoldPaymentIntent` compares the session total with the anchor's quote plus
+  the companion named in the session metadata (`paired_result_id`, with `paired_result_amount` for
+  one deleted since), and writes the intent onto both rows under the same check-and-set. A session
+  that names no companion is compared with the members still waiting for a card.
+- **Endings:** decline, cancel, the SLA cron and Result delete all go through the ending plan. The
+  Mbolster can no longer be removed on its own once money has moved for the pair — a Balance
+  payment paid, or the shared intent captured (409 `pair_paid`). When an Mbolster ends while the
+  Mpillow carries on, the customer gets the "Mbolster removed" email, never "hold released"; if the
+  Mpillow is already assigned it doubles as its "ready" email.
 - **Accept:** the route generalises to members (one for an unpaired Result, two for a pair). It
   claims all members, captures once, writes one Order with lines per member, ledgers once, and
-  deducts stock and books commission per member.
+  deducts stock and books commission per member. It refuses rather than settles when money and
+  builds disagree: a paid Balance payment that no longer matches the pair's top-up (409
+  `paid_mismatch`), or an intent already captured for an amount other than this capture (409
+  `capture_mismatch`). Staff settle those from the queue alarms.
 - **Status page:** shows both builds and the pair total, accepts on the anchor, and offers "Remove
   Mbolster" (decline the companion) once it is assigned. The assigned email waits until no member is
-  still `held`.
+  still `held`, and the SLA sends no payment reminder for an anchor whose companion is still `held`.
+  Every reader picks the live partner when a pair ever has more than one companion row.
 - **Configurator:** the stepper replaces the Upsell card when the route targets Mbolster. Step 1's
   "Next: Mbolster" validates the Mpillow's finish, writes its hold body to `sessionStorage`
   (`mp_paired_build_handoff`, with a stable companion id), and opens `/mbolster-config?paired=1`.
@@ -91,6 +102,9 @@ anchor-led endings, one accept, one capture and one Order.
   declined → anchor-only capture).
 - Hold route and attach: pair rows, Checkout amount and line items, amount-mismatch refusal.
 - `*.check.ts` for the stepper's wiring.
+- `app/api/results/__tests__/paired-build.e2e.test.ts`: the whole pair end to end against an
+  in-memory Supabase and Stripe — hold, attach, assign, accept, every ending, the SLA cron, re-holds,
+  removal after money has moved, and mismatched captures.
 
 ## Out of Scope
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   companionAtAccept,
+  liveCompanions,
+  pickPartner,
   endingPlan,
   isAnchor,
   isCompanion,
@@ -110,5 +112,21 @@ describe("pairReadyToAccept", () => {
     expect(pairReadyToAccept([{ status: "assigned" }, { status: "held" }])).toBe(false);
     expect(pairReadyToAccept([{ status: "assigned" }, { status: "assigned" }])).toBe(true);
     expect(pairReadyToAccept([{ status: "assigned" }, { status: "declined" }])).toBe(true);
+  });
+});
+
+describe("pickPartner / liveCompanions", () => {
+  const rows = [
+    { id: "a", status: "assigned" },
+    { id: "old", status: "declined" },
+    { id: "new", status: "held" },
+  ];
+  it("prefers the partner still in play over one the pair left behind", () => {
+    expect(pickPartner(rows, "a")?.id).toBe("new");
+    expect(pickPartner([{ id: "a", status: "held" }, { id: "old", status: "expired" }], "a")?.id).toBe("old");
+    expect(pickPartner([{ id: "a", status: "held" }], "a")).toBeNull();
+  });
+  it("counts only companions still in play", () => {
+    expect(liveCompanions(rows, "a").map((r) => r.id)).toEqual(["new"]);
   });
 });

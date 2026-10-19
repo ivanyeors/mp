@@ -124,3 +124,24 @@ export function companionAtAccept(companion: { status: Status } | null): Compani
 export function pairReadyToAccept(members: ReadonlyArray<{ status: Status }>): boolean {
   return members.every((m) => m.status !== "held");
 }
+
+/**
+ * The partner among a pair's rows, preferring one still in play. A re-held
+ * anchor unlinks the companions it left behind, but a reader must never let an
+ * ended one stand in for the live one.
+ */
+export function pickPartner<T extends { id: string; status?: Status }>(
+  members: ReadonlyArray<T>,
+  selfId: string,
+): T | null {
+  const others = members.filter((m) => m.id !== selfId);
+  return others.find((m) => isLive(m.status) || m.status === "captured") ?? others[0] ?? null;
+}
+
+/** More than one companion still in play: a state Accept must refuse, not guess. */
+export function liveCompanions<T extends { id: string; status?: Status }>(
+  members: ReadonlyArray<T>,
+  anchorId: string,
+): T[] {
+  return members.filter((m) => m.id !== anchorId && (isLive(m.status) || m.status === "captured"));
+}

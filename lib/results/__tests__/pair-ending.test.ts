@@ -35,7 +35,12 @@ describe("loadEndingPlan + cascadeEnding", () => {
     const rows = pair("assigned", "held");
     const admin = fakeAdmin(rows);
     const plan = await loadEndingPlan(admin, rows[0]);
-    expect(plan).toEqual({ releaseHold: true, cascadeTo: "b", intentAmount: 420 });
+    expect(plan).toEqual({
+      releaseHold: true,
+      cascadeTo: "b",
+      intentAmount: 420,
+      partner: { id: "b", status: "held" },
+    });
     await cascadeEnding(admin, plan, "declined");
     expect(rows[1].status).toBe("declined");
   });
@@ -59,6 +64,7 @@ describe("loadEndingPlan + cascadeEnding", () => {
       releaseHold: true,
       cascadeTo: null,
       intentAmount: 99,
+      partner: null,
     });
   });
 });

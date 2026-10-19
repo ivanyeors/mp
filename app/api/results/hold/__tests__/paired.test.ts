@@ -212,7 +212,11 @@ describe("POST /api/results/hold — Paired build", () => {
       { name: "Mpillow M premium hold", amount: 200 },
       { name: "Mbolster medium hold", amount: 200 },
     ]);
-    expect(checkout.metadata).toEqual({ result_id: ID, paired_result_id: COMPANION });
+    expect(checkout.metadata).toEqual({
+      result_id: ID,
+      paired_result_id: COMPANION,
+      paired_result_amount: "200",
+    });
   });
 
   it("refuses a companion id that is someone else's Result", async () => {

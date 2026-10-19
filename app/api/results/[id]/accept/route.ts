@@ -15,7 +15,14 @@ import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { SERVICE_SKUS } from "@/lib/pricing/service-prices";
 import { quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { settleResult } from "@/lib/results/settlement";
-import { companionAtAccept, isAnchor, isCompanion, pairAuthorized } from "@/lib/results/paired-build";
+import {
+  companionAtAccept,
+  isAnchor,
+  isCompanion,
+  liveCompanions,
+  pairAuthorized,
+  pickPartner,
+} from "@/lib/results/paired-build";
 import { round2 } from "@/lib/commissions";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
@@ -112,16 +119,23 @@ export async function POST(
   // The companion comes along when it is assigned, is left out once it has
   // ended, and blocks Accept while it is still being built: the shared hold can
   // be captured only once.
-  const companion = isAnchor(row)
-    ? (
+  const companions = isAnchor(row)
+    ? ((
         await admin
           .from("mp_config_responses")
           .select(ACCEPT_COLUMNS)
           .eq("paired_build_id", id)
           .neq("id", id)
-          .maybeSingle()
-      ).data
-    : null;
+      ).data ?? [])
+    : [];
+  // One hold, one Mbolster: two in play is a state to stop on, not to guess at.
+  if (liveCompanions(companions, id).length > 1) {
+    return NextResponse.json(
+      { error: "This order has changed. Please contact us to complete it.", code: "pair_conflict" },
+      { status: 409 },
+    );
+  }
+  const companion = pickPartner(companions, id);
   const atAccept = companionAtAccept(companion);
   if (!atAccept.ok) {
     return NextResponse.json({ error: atAccept.error, code: atAccept.code }, { status: 409 });
@@ -284,6 +298,28 @@ export async function POST(
     }
   }
 
+  // A Paired build's Balance payment was taken for the pair as it stood then.
+  // If the pair has changed since — the Mbolster removed while a Checkout was
+  // open — what was paid no longer matches anything Accept could settle, and
+  // settling it anyway records money that is not on the Order. Stop for a human:
+  // the row stays `assigned` with `topup_paid_at`, which the queue flags.
+  if (isAnchor(row)) {
+    const paidBalance =
+      topUpPaid > 0 ||
+      (row.topup_payment_intent_id != null && row.topup_paid_at != null);
+    const settles =
+      plan.kind === "top_up" && Math.round(topUpPaid * 100) === Math.round(plan.topUp * 100);
+    if (paidBalance && !settles) {
+      return NextResponse.json(
+        {
+          error: "Your order changed after you paid. Our team will settle it with you.",
+          code: "paid_mismatch",
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   // Claim the Result before anything moves money or writes an Order. Every check
   // above read the row and then acted, so a double click or two racing requests
   // both passed and each made an Order, a commission and a stock deduction. Only
@@ -363,6 +399,21 @@ export async function POST(
       const intent = await stripe.paymentIntents.retrieve(row.payment_intent_id);
       if (intent.status !== "succeeded") {
         await captureHold(row.payment_intent_id, holdCaptureAmount);
+      } else if (
+        typeof intent.amount_received === "number" &&
+        intent.amount_received !== Math.round(holdCaptureAmount * 100)
+      ) {
+        // A previous attempt captured a different amount than this one would:
+        // the build changed in between. Recording this attempt's amount would
+        // ledger less (or more) than Stripe took. Keep the claim — the row reads
+        // accept_interrupted for a human — rather than write a wrong Order.
+        return NextResponse.json(
+          {
+            error: "Payment was already taken for a different total. Our team will settle it with you.",
+            code: "capture_mismatch",
+          },
+          { status: 409 },
+        );
       }
     } catch (e) {
       await releaseClaim();

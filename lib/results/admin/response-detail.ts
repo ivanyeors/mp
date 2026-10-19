@@ -3,6 +3,7 @@ import {
   resolveDiscoverySourceLabel,
 } from "@/lib/discovery-source";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { pickPartner } from "@/lib/results/paired-build";
 import {
   inputsFromMpConfigData,
   recommendWithEngine,
@@ -227,13 +228,12 @@ export async function loadMpConfigResponseDetail(
   // move between the Mpillow and the Mbolster it carries.
   let paired_result_id: string | null = null;
   if (responseRow.paired_build_id === responseRow.id) {
-    const { data: companion } = await admin
+    const { data: companions } = await admin
       .from("mp_config_responses")
-      .select("id")
+      .select("id, status")
       .eq("paired_build_id", responseRow.id)
-      .neq("id", responseRow.id)
-      .maybeSingle();
-    paired_result_id = (companion?.id as string | undefined) ?? null;
+      .neq("id", responseRow.id);
+    paired_result_id = pickPartner(companions ?? [], responseRow.id)?.id ?? null;
   } else if (responseRow.paired_build_id) {
     paired_result_id = responseRow.paired_build_id;
   }

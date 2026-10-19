@@ -6,7 +6,7 @@ import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
-import { shipsWithAnchor } from "@/lib/results/paired-build";
+import { pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
@@ -329,7 +329,8 @@ export async function GET(
     partnerQuery = anchorSide
       ? partnerQuery.eq("paired_build_id", row.id).neq("id", row.id)
       : partnerQuery.eq("id", row.paired_build_id);
-    const { data: partner } = await partnerQuery.maybeSingle();
+    const { data: partners } = await partnerQuery;
+    const partner = pickPartner(partners ?? [], row.id);
     if (partner) {
       const partnerPublic: Record<string, unknown> = { ...partner };
       delete partnerPublic.shipping_address;

@@ -7,7 +7,7 @@ import { getEmailTransport } from "@/lib/email";
 import { renderResultDeclinedEmail } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { authorizeResultAccess } from "@/lib/results/access";
-import { cascadeEnding, loadEndingPlan } from "@/lib/results/pair-ending";
+import { cascadeEnding, companionLockReason, loadEndingPlan } from "@/lib/results/pair-ending";
 import { getPublicOrigin } from "@/lib/site-url";
 import { sendTelegram } from "@/lib/telegram/notify";
 
@@ -54,6 +54,10 @@ export async function POST(
       { status: 400 },
     );
   }
+
+  // "Remove Mbolster" is refused once money has moved for the whole pair.
+  const locked = await companionLockReason(admin, row);
+  if (locked) return NextResponse.json({ error: locked, code: "pair_paid" }, { status: 409 });
 
   const life = transitionResult(
     {

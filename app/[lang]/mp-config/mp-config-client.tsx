@@ -2240,10 +2240,13 @@ export function MpConfigClient({
       };
       if (opts?.toMbolster) {
         // Back and forth keeps the Mbolster's id and answers while this is
-        // still the same Mpillow session.
+        // still the same Mpillow session. A cancelled Checkout comes back on a
+        // fresh session id (the held row is final), so the old companion stays
+        // with the old Result — but the same customer keeps their answers.
         const prior = readPairedHandoff(window.sessionStorage);
         const anchorId = saved?.id ?? responseId;
         const same = prior && prior.pillowHold.responseId === anchorId;
+        const sameCustomer = prior && prior.pillowHold.email === holdBody.email;
         writePairedHandoff(window.sessionStorage, {
           v: 1,
           pillowHold: { ...holdBody, responseId: anchorId ?? undefined },
@@ -2252,7 +2255,7 @@ export function MpConfigClient({
           reason: parsedRecord?.flowRoute?.reason ?? "",
           configPath,
           pillow: opts.toMbolster,
-          ...(same && prior.bolster ? { bolster: prior.bolster } : {}),
+          ...((same || sameCustomer) && prior.bolster ? { bolster: prior.bolster } : {}),
         });
         router.push(withLocale("/mbolster-config?paired=1", locale));
         return;

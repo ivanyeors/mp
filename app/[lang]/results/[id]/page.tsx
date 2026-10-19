@@ -29,6 +29,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { trackGaEventOnce } from "@/lib/analytics/ga-events";
+import { clearPairedHandoff } from "@/lib/configurator/paired-mbolster";
 
 type BuildSummary = {
   fillingTemplateName: string | null;
@@ -223,21 +224,25 @@ function ResultStatusPage() {
       ? result.paired.partner
       : null;
   const companionPending = companion?.status === "held";
-  const ownAmount = result?.final_amount ?? result?.authorized_amount;
-  const companionAmount = companion ? (companion.final_amount ?? companion.authorized_amount) : null;
-  // One hold, one payment: a Paired build's page quotes both builds.
-  const amount =
-    ownAmount != null && companionAmount != null
-      ? Math.round((Number(ownAmount) + Number(companionAmount)) * 100) / 100
-      : ownAmount;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  /** The whole hold: one Checkout authorised both, whatever became of the Mbolster since. */
   const pairAuthorized =
     result?.authorized_amount != null
-      ? Number(result.authorized_amount) + Number(companion?.authorized_amount ?? 0)
+      ? round2(
+          Number(result.authorized_amount) +
+            Number(pairedRole === "anchor" ? (result.paired?.partner.authorized_amount ?? 0) : 0),
+        )
       : null;
+  /** The Mbolster's price once it is built; never its quote mixed into a final. */
+  const companionFinal = companion?.final_amount != null ? Number(companion.final_amount) : null;
   const pairFinal =
-    result?.final_amount != null
-      ? Number(result.final_amount) + Number(companion?.final_amount ?? 0)
-      : null;
+    result?.final_amount != null ? round2(Number(result.final_amount) + (companionFinal ?? 0)) : null;
+  // Before Staff build it, a pair shows the hold it authorised; after, the
+  // finals of the builds still in the order. Never one of each.
+  const amount =
+    result?.status === "held" || result?.final_amount == null
+      ? (pairedRole === "anchor" ? pairAuthorized : null) ?? result?.authorized_amount
+      : pairFinal;
 
   const reloadResult = async () => {
     const qs = new URLSearchParams();
@@ -396,6 +401,17 @@ function ResultStatusPage() {
       setActing(false);
     }
   };
+
+  // Back from a completed Checkout: the Paired build hand-off (contact, address,
+  // the Result token) has done its job and must not linger on a shared device.
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      clearPairedHandoff(window.sessionStorage);
+    } catch {
+      // private mode — nothing was stored
+    }
+  }, [sessionId]);
 
   const topupStarted = useRef(false);
   // Resume accept after top-up Checkout returns.
@@ -645,13 +661,13 @@ function ResultStatusPage() {
               </ul>
             </div>
           ) : null}
-          {companionAmount != null ? (
+          {companion && (companion.final_amount ?? companion.authorized_amount) != null ? (
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">
-                {companion?.final_amount != null ? "Total (ships with your Mpillow)" : "Authorized (not charged)"}
+                {companion.final_amount != null ? "Total (ships with your Mpillow)" : "Authorized (not charged)"}
               </span>
               <span className="tabular-nums">
-                {currency} {Number(companionAmount).toFixed(2)}
+                {currency} {Number(companion.final_amount ?? companion.authorized_amount).toFixed(2)}
               </span>
             </div>
           ) : null}
@@ -668,7 +684,7 @@ function ResultStatusPage() {
         </div>
       ) : null}
 
-      {companion && showFinalBuild && amount != null ? (
+      {companionFinal != null && showFinalBuild && amount != null ? (
         <div className="flex justify-between gap-4 font-medium">
           <span>Total for both</span>
           <span className="tabular-nums">

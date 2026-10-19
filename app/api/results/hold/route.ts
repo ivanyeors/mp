@@ -909,7 +909,12 @@ export async function POST(req: Request) {
         successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
         description,
-        metadata: { result_id: resultId, ...(paired ? { paired_result_id: paired.responseId } : {}) },
+        metadata: {
+          result_id: resultId,
+          ...(paired && companion?.ok
+            ? { paired_result_id: paired.responseId, paired_result_amount: String(companion.total) }
+            : {}),
+        },
         ...(companion?.ok
           ? {
               lines: [
@@ -963,18 +968,29 @@ export async function POST(req: Request) {
   }
 
   // The companion is written after the anchor its paired_build_id points at.
-  // A companion this anchor carried before and no longer does never took money
-  // (the anchor gate above refuses a paid one), so it goes.
+  // A companion this anchor carried before and no longer does: one that never
+  // took money (the anchor gate above refuses a paid one) goes; one that ended
+  // with the pair stays as a record but is unlinked, so this anchor never has
+  // two companions for Accept, the endings or the status page to choose from.
   if (assisted?.paired_build_id === resultId) {
+    const keep = paired?.responseId ?? resultId;
     const { error: dropErr } = await admin
       .from("mp_config_responses")
       .delete()
       .eq("paired_build_id", resultId)
       .neq("id", resultId)
-      .neq("id", paired?.responseId ?? resultId)
+      .neq("id", keep)
       .eq("status", "held")
       .is("payment_intent_id", null);
     if (dropErr) return NextResponse.json({ error: dropErr.message }, { status: 500 });
+    const { error: unlinkErr } = await admin
+      .from("mp_config_responses")
+      .update({ paired_build_id: null })
+      .eq("paired_build_id", resultId)
+      .neq("id", resultId)
+      .neq("id", keep)
+      .in("status", ["declined", "cancelled", "expired"]);
+    if (unlinkErr) return NextResponse.json({ error: unlinkErr.message }, { status: 500 });
   }
 
   if (paired && companion?.ok) {

@@ -24,7 +24,7 @@ import {
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
-import { pairAuthorized, shipsWithAnchor } from "@/lib/results/paired-build";
+import { pairAuthorized, pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -541,7 +541,7 @@ export async function POST(
       .from("mp_config_responses")
       .select("id, status, product_type, assigned_size, assigned_tier, assigned_length, final_amount, authorized_amount")
       .eq("paired_build_id", row.paired_build_id);
-    const partner = (members ?? []).find((m) => m.id !== id);
+    const partner = pickPartner(members ?? [], id);
     pairStillBuilding = partner?.status === "held";
     emailResultId = row.paired_build_id;
     emailPricing = { ...pricingBreakdown, authorized: pairAuthorized(members ?? []) };

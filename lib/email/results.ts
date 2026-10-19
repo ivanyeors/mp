@@ -772,6 +772,51 @@ ${paragraphHtml(
 }
 
 // ------------------------------------------------------------
+// Paired build: the Mbolster dropped out, the Mpillow carries on (ADR 0026)
+// ------------------------------------------------------------
+
+/**
+ * The Mbolster of a Paired build ended on its own — Staff cancelled it, or it
+ * was not reviewed in time — while its Mpillow carries on. The hold stays for
+ * the Mpillow, so this never claims a release. When the Mpillow is already
+ * built, it is also the "ready" email the customer was waiting for: that one
+ * waits until no build is still being made.
+ */
+export function renderPairedMbolsterRemovedEmail(p: {
+  origin: string;
+  /** The Mpillow's Result: where the customer reviews and accepts. */
+  anchorId: string;
+  accessToken: string | null;
+  /** The Mpillow is assigned and can be accepted now. */
+  anchorReady: boolean;
+  /** The Mpillow's total, when it is ready. */
+  amount: number | null;
+  currency: string;
+}): RenderedEmail {
+  const url = statusUrl(p.origin, p.anchorId, p.accessToken);
+  const subject = p.anchorReady
+    ? "Your Mpillow is ready — your Mbolster was removed"
+    : "Your Mbolster has been removed from your order";
+  const lead = p.anchorReady
+    ? "Your Mpillow is built and ready for you to review and accept. We could not go ahead with your Mbolster, so it has been removed from the order — nothing will be charged for it."
+    : "We could not go ahead with your Mbolster, so it has been removed from your order. Nothing will be charged for it, and your Mpillow is unaffected.";
+  const total =
+    p.anchorReady && p.amount != null ? `Mpillow total: ${money(p.amount, p.currency)}` : null;
+
+  const text = [lead, ...(total ? ["", total] : []), "", `Status page: ${url}`].join("\n");
+  const html = renderEmailShell({
+    title: subject,
+    preheader: p.anchorReady
+      ? "Your Mpillow is ready to review and accept."
+      : "Your Mbolster was removed; your Mpillow is unaffected.",
+    bodyHtml: `${paragraph(lead)}
+${total ? paragraph(total, { muted: true }) : ""}`,
+    cta: { href: url, label: p.anchorReady ? "Review your Mpillow" : "View your order" },
+  });
+  return { subject, text, html };
+}
+
+// ------------------------------------------------------------
 // Pre-order stock recovered → restock notice
 // ------------------------------------------------------------
 

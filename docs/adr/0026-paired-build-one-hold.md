@@ -34,11 +34,17 @@ Everything downstream of the hold assumes one Result per PaymentIntent:
 - **The anchor anchors.** Declining, cancelling or expiring the anchor ends the companion too, and
   releases the hold. Declining or cancelling the companion leaves the anchor and its hold untouched.
   A companion is never left on its own with no shipping charged.
+- **No dropping a build after money has moved.** Once a Balance payment has been paid for the pair,
+  or the shared intent has been captured by an Accept that then failed, the companion can no longer
+  be removed on its own. Accept the pair, then refund the line.
 - **Accept is one act.** It runs on the anchor and takes the companion along when the companion is
   `assigned`. It refuses while the companion is still `held`, and leaves out a companion that has
   ended. It claims both rows, then captures once: the sum of the live finals against the whole
   intent. Stripe releases what is not captured, which is how a dropped Mbolster is never charged.
-  A Balance payment covers anything above the hold, exactly as for one Result.
+  A Balance payment covers anything above the hold, exactly as for one Result. When the money and
+  the builds disagree — a paid Balance payment that no longer covers the pair's top-up, or an intent
+  already captured for a different amount — Accept stops with a 409 and leaves it to Staff, rather
+  than refunding or charging the difference on its own.
 - **One Order.** That one Order carries a goods line, plus service lines, for each accepted Result.
   The intent stays one-to-one with an Order, so the ledger, refunds, RMA and dispute handling are
   unchanged. Both Results point at the Order.
@@ -63,6 +69,10 @@ Everything downstream of the hold assumes one Result per PaymentIntent:
 - A companion dropped at Accept is `declined` with no release call. Capturing less than the whole
   intent is what frees its share.
 - Free-shipping thresholds read the anchor's goods alone, not the pair's.
+- A re-hold of the same Mpillow unlinks a companion that has ended, so a pair has at most one
+  companion that counts. Readers still pick the live one, should two rows ever share an anchor.
+- The Checkout session names its companion and that companion's quote in metadata, so attaching
+  the card still checks the full amount if the companion is deleted before Checkout completes.
 - v1 creates Paired builds only on the card path (or with holds switched off), never from an
   **Assisted customisation**.
 - Step 2 is the Mbolster configurator itself, in paired mode. The Mpillow preview hands over its
