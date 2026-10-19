@@ -15,9 +15,10 @@ behind, and no copy of their data is kept longer than needed.
 1. **Before the cutover date, point Shopify customers to the new site.** In the Shopify theme,
    add an announcement bar and a notice on the customer account page linking to the new site.
    This is a theme setting, with no code and no app. It honours the 2026-10-13 rule.
-2. **Delta import on cutover day.** Take a fresh export, then dry run, then apply. Only customers
-   new since slice 04 are `create` / `merge`; everyone else is `already_imported`. New
-   consented rows enter the next wave automatically, because the ledger has no row for them.
+2. **Delta import on cutover day.** Take a fresh export and import it from Admin Panel →
+   Customers → Import from Shopify: preview, then import. Only customers new since slice 04 are
+   `create` / `merge`; everyone else is `already_imported`. New consented rows enter the next
+   wave automatically, because the ledger has no row for them.
 3. **Stop Shopify checkout** on the cutover date. The **Shopify order mirror** tables hold no PII
    and stay as the read-only Analytics input, unchanged.
 4. **Erase customer data held in Shopify.** After a grace period the owner sets, either close

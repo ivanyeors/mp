@@ -15276,27 +15276,27 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/01-glossary-and-adr.md": {
-    "mtime": 1792385478.241349,
-    "seen": 1792385534.8987217,
-    "ast_hash": "a68dfdc6f4eea1646f7c7f13478e8d76",
+    "mtime": 1792423012.9003766,
+    "seen": 1792423175.0658934,
+    "ast_hash": "e5d555fe358c64a67340af5bdbf5e174",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/02-import-tables-and-dry-run.md": {
-    "mtime": 1792385478.2419276,
-    "seen": 1792385534.8987234,
-    "ast_hash": "30eeac91e3fa425e8d05c9719d2bb14d",
+    "mtime": 1792423094.1576133,
+    "seen": 1792423175.0658967,
+    "ast_hash": "e7f3bb3f57be79ec164a71a9cb76f0ec",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/03-import-apply-and-rollback.md": {
-    "mtime": 1792385478.2422824,
-    "seen": 1792385534.8987246,
-    "ast_hash": "28bfc57feb13b7d476c3ab88843a1cef",
+    "mtime": 1792423087.242451,
+    "seen": 1792423175.0658987,
+    "ast_hash": "65033bf51e5057d2cb4a95d0da97e426",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/04-export-rehearse-import.md": {
-    "mtime": 1792385478.2426014,
-    "seen": 1792385534.8987257,
-    "ast_hash": "69a32d87290985a393e35f7c9efa5277",
+    "mtime": 1792422941.0471747,
+    "seen": 1792423175.0659,
+    "ast_hash": "835740f642b773d4e17e68c9ce8a65e4",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/05-claim-and-welcome-back-voucher.md": {
@@ -15306,21 +15306,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/06-welcome-page-and-surfaces.md": {
-    "mtime": 1792385478.2432113,
-    "seen": 1792385534.898728,
-    "ast_hash": "da9bc3e29033cbeaafab49211a2b8369",
+    "mtime": 1792422988.1151774,
+    "seen": 1792423175.0659032,
+    "ast_hash": "fef4e4bedba87d86cfe657b5d08ef938",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/07-marketing-consent-and-unsubscribe.md": {
-    "mtime": 1792385478.2437272,
-    "seen": 1792385534.8987288,
-    "ast_hash": "a5c3980973be4ff353ffa355865753e8",
+    "mtime": 1792423103.1308227,
+    "seen": 1792423175.0659049,
+    "ast_hash": "1e2b13f11f42d6e90c5a550e741374fb",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/08-campaign-emails-and-wave-sender.md": {
-    "mtime": 1792385478.244004,
-    "seen": 1792385534.89873,
-    "ast_hash": "a218e5ce1c91a2d4308fae66c4c39527",
+    "mtime": 1792422998.655178,
+    "seen": 1792423175.0659065,
+    "ast_hash": "8d26c8f1bffe9e8aab8149370d1dbae0",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/09-pilot-and-waves.md": {
@@ -15330,9 +15330,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/10-cutover-and-shopify-wind-down.md": {
-    "mtime": 1792385478.2446275,
-    "seen": 1792385534.898732,
-    "ast_hash": "ad798b876e34232dc749bc674efe5438",
+    "mtime": 1792422998.707178,
+    "seen": 1792423175.0659094,
+    "ast_hash": "dd534cb822d3884d15ac559d283a928e",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/11-optional-complimentary-readjustment.md": {
@@ -15342,15 +15342,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/README.md": {
-    "mtime": 1792385478.2452087,
-    "seen": 1792385534.898734,
-    "ast_hash": "41ac175f96e5d45b69795c79f16d9458",
+    "mtime": 1792423103.130175,
+    "seen": 1792423175.0659158,
+    "ast_hash": "9b98bff82c6a24208843f80ea9affd7d",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md": {
-    "mtime": 1792385478.2402568,
-    "seen": 1792385534.898735,
-    "ast_hash": "eb4ef2a7acc4262e90bf653cb39bfedc",
+    "mtime": 1792423094.1583302,
+    "seen": 1792423175.0659173,
+    "ast_hash": "ae1ba231995b1217c52d415b285cf29c",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md": {
+    "mtime": 1792422980.131177,
+    "seen": 1792423175.0659142,
+    "ast_hash": "6de95284d35e8911f5a48af00c233ad4",
     "semantic_hash": ""
   }
 }

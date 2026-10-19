@@ -48,18 +48,30 @@ appended to `customer_consent_events`.
 _Avoid_ — inferring consent from having an account, a past **Order**, or a **Claim**. Do not
 treat Shopify's "no" as `unsubscribed`: it may mean "never asked".
 
-**Import batch** — one run of the importer that wrote to the database. It records the file's
-SHA-256, the counts by outcome, and who ran it and when. It is the unit of reconciliation and
-of rollback.
+**Import batch** — one import that wrote to the database, run from **Admin Panel** → Customers →
+Import from Shopify. It records the file's name and SHA-256, the counts by outcome, the
+**Staff** who ran it, and when. It is the unit of reconciliation, of resume, and of undo.
+_Avoid_ — "upload". The file itself is never uploaded or stored; the browser reads it and sends
+rows.
+
+**Account status** — whether a **Customer** row is bound to a login: *Signed up* (since
+`account_linked_at`) or *No account*. It is derived from `auth_user_id` in the Customer overview,
+never stored as text. It applies to every Customer, not only Migrated ones.
+_Avoid_ — "registered", "member" (a **Member** is Staff) or "active" for this. For a Migrated
+customer, *Signed up* and **Claimed** usually coincide. They differ when the person already had
+an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their
+next sign-in.
 
 Also amend **Shopify order mirror**'s `_Avoid_` line to add: *Shopify customers are imported
 once (ADR 0026); their orders stay unlinked.*
 
 ## ADR 0026 — decisions to record
 
-- **(a) The source is the owner's Admin CSV export.** No Admin API customer access, no new
-  scope, no protected-customer-data approval. Record the header row the first real file
-  carried (slice 04).
+- **(a) The source is the owner's Admin CSV export, imported from the Admin Panel.** No Admin API
+  customer access, no new scope, no protected-customer-data approval. Record the header row the
+  first real file carried (slice 04). The browser reads the file and sends rows in chunks; the
+  file is never stored. The import needs its own permission, `customer-import`, and there is no
+  second import path (no CLI).
 - **(b) The import creates Customers, never auth users.** No `auth.admin.*` calls in this
   initiative. Binding happens only in `linkCustomerToAuthUser`.
 - **(c) Platform data wins.** A matching Customer is only filled where its fields are null. The
@@ -80,12 +92,19 @@ once (ADR 0026); their orders stay unlinked.*
 - **(j) Accepted risk:** a one-person voucher can be redeemed twice by the same person paying
   twice at once, because coupons have no reservation today. This is not worth a reservation
   table.
+- **(k) Facts, not statuses.** Tables store events and timestamps (`account_linked_at`,
+  `claimed_at`, sends, clicks, consent events). Statuses such as *Signed up* or *Voucher used*
+  are derived in `admin_customer_overview`, the one read model the Admin Panel lists Customers
+  from. This is the base the CRM builds on (PRD, *Toward a simple CRM*).
+- **(l) Staff-only facts never live on `customers`.** The customer can read their own row. Staff
+  notes, tags from other systems and campaign history go in service-role-only tables keyed by
+  `customer_id`.
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` carries the six terms above with `_Avoid_` lines, and the amended **Shopify
+- [ ] `CONTEXT.md` carries the seven terms above with `_Avoid_` lines, and the amended **Shopify
       order mirror** line.
-- [ ] `docs/adr/0026-shopify-customer-migration.md` records (a)–(j). It links ADR 0024 (the
+- [ ] `docs/adr/0026-shopify-customer-migration.md` records (a)–(l). It links ADR 0024 (the
       "No Shopify" rule it narrows, not reverses) and ADR 0007 (why journey analytics does not
       carry the funnel).
 - [ ] `./scripts/graphify update .` is run in the same commit.

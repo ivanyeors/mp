@@ -80,7 +80,7 @@ Shopify's documentation host was unreachable from the session that wrote this PR
 > Company / Address1 / Address2 / City / Province Code / Country Code / Zip / Phone · Phone ·
 > Accepts SMS Marketing · Total Spent · Total Orders · Note · Tax Exempt · Tags
 
-The importer validates the header row and refuses a file it does not recognise.
+The import page validates the header row and refuses a file it does not recognise.
 
 ### 5. A coupon engine exists, but every code is a bearer code, and only the shop cart takes one
 
@@ -120,12 +120,29 @@ The importer validates the header row and refuses a file it does not recognise.
   `linkVisitToPaidOrder` have no callers (`lib/analytics/journey/identity.ts:105,149`). The
   campaign funnel is measured in its own ledger instead.
 
+### 7. The Admin Panel can host the import, within two limits, and shows no account state
+
+- **The Customers page shows no account state.** `/settings/customers` lists Name, Email,
+  Orders, Spent, Tags and Joined (`app/[lang]/settings/customers/customers-client.tsx`). Nothing
+  shows whether a Customer has signed up, and nothing records when a row was bound to a login:
+  `linkCustomerToAuthUser` writes `auth_user_id` and no timestamp.
+- **A CSV import precedent exists.** Analytics reads CSV files in the browser with `f.text()` and
+  hands them to a server action (`app/[lang]/settings/analytics/SearchVisibilityCard.tsx:74`,
+  `seo-actions.ts:309`), with a pure parser (`lib/seo-metrics/csv-import.ts:42`).
+- **Limit 1: request size.** A server action body is capped at 1 MB by default, and
+  `next.config.ts` does not raise it. A Shopify customer export passes 1 MB at around 3,000
+  rows, so the rows go in chunks.
+- **Limit 2: permissions.** Permissions are granted per page, and the Manager and Staff roles
+  both hold `customers` (`lib/auth/permissions.ts:191-217`). Bulk-writing customer data needs
+  its own key, in the way `categories` is a tab-level key of Products.
+
 ## Solution
 
 Stated as one sentence, because it keeps the work small:
 
-> **Import every Shopify customer who has an email as an unclaimed Customer row, silently and
-> reversibly. Let the existing Sign in adopt that row the first time they use the same email.
+> **Import every Shopify customer who has an email as an unclaimed Customer row, from the Admin
+> Panel, silently and reversibly. Let the existing Sign in adopt that row the first time they
+> use the same email, and show Staff who has.
 > Give them a reason to do it: an account-bound welcome-back voucher, issued at that moment,
 > through a campaign that honours what they agreed to on Shopify.**
 
@@ -153,8 +170,8 @@ when they do sign in.
 
 ### Decisions (ADR 0026 records these)
 
-1. **The source is the owner's Admin CSV export, not the Admin API.** This adds no scopes and no
-   Shopify code, and leaves an auditable file with a recorded hash.
+1. **The source is the owner's Shopify CSV export, not the Shopify Admin API.** This adds no
+   scopes and no Shopify code. The batch records the file's hash.
 2. **The import creates Customers, never auth users.** No `auth.admin.*`, no invite emails. An
    account exists only once its owner proves the email.
 3. **Platform data wins.** Where a Customer already exists, the import only fills fields that are
@@ -163,7 +180,7 @@ when they do sign in.
    Shopify id, order count, spend, tags, note and consent snapshot. It is readable only by the
    service role, so a customer never sees staff notes (trap 3b).
 5. **Every import is idempotent and reversible by batch.** Re-running a file changes nothing.
-   Rolling back a batch removes what it created, unless a person has since claimed it.
+   Undoing a batch removes what it created, unless the person has since signed up or bought.
 6. **Claim means the first sign-in after import, and happens exactly once.** One SQL function
    stamps `claimed_at` and issues the voucher in the same transaction.
 7. **A Claim link prefills and attributes. It never signs anyone in.** Its token is opaque, keeps
@@ -175,6 +192,16 @@ when they do sign in.
    one service notice that contains no offer.
 10. **Shopify orders stay unlinked** (owner, 2026-10-13). Customers see no Shopify order history.
     Staff see the Shopify-era count and spend from `migrated_customers`.
+11. **The import runs in the Admin Panel, Customers → Import from Shopify, behind its own
+    `customer-import` permission.**
+    - The browser reads the file and sends only the columns used, in chunks. The file is never
+      stored.
+    - The server re-validates every row, and one SQL function does every write.
+    - There is no CLI importer, so there is one write path. The owner needs no developer and no
+      service-role key on a laptop.
+12. **Every Customer shows an Account status** (*Signed up* since a date, or *No account*), not
+    only the imported ones. Statuses are derived from stored facts in one read model,
+    `admin_customer_overview`, which is also the base of the CRM (below).
 
 ## The incentive: options and recommendation
 
@@ -267,9 +294,11 @@ goes last, in smaller waves.
 **Staff**
 
 8. As Staff, I can see in Admin Panel → Customers who came from Shopify and whether they have
-   claimed. I can also see their Shopify-era order count and spend, and their consent.
-9. As Staff, I can re-run the import with a fresh export and nothing duplicates.
-10. As Staff, I can roll back an import batch, and anyone who has already claimed is kept.
+   signed up, and I can filter to those who have not. I can also see their Shopify-era order
+   count and spend, and their consent.
+9. As Staff, I can import a fresh export from the Admin Panel and nothing duplicates. If the tab
+   closes mid-import, picking the same file continues it.
+10. As Staff, I can undo an import batch, and anyone who has signed up or bought since is kept.
 11. As Staff, I can see the funnel: sent → clicked → claimed → voucher redeemed → revenue.
 
 **Owner**
@@ -277,6 +306,10 @@ goes last, in smaller waves.
 12. As the owner, I can see what the incentive costs at any moment: vouchers issued, vouchers
     redeemed, and the revenue on those orders.
 13. As the owner, I know the Shopify export never lands in git and is destroyed at cutover.
+14. As Staff, I can see for **any** Customer whether they have an account, since when, and when
+    they last opened their account while signed in.
+15. As the owner, I can preview and run the import myself in the Admin Panel, without a
+    developer, and see exactly what it will do before it writes anything.
 
 ## Non-goals
 
@@ -302,15 +335,18 @@ goes last, in smaller waves.
 | Shopify notes or tags become visible to the customer | **Certain** if written to `customers`: the customer can read their own row (`0037_customer_auth.sql:15-18`) | Decision 4: `migrated_customers` is service-role only. |
 | Imported totals silently overwritten or mixed into platform figures | Certain if written to `customers.total_*` | Decision 4. |
 | SG postal codes lose their leading zero | Certain if the file is opened in Excel | Plain-CSV export, a "never open in Excel" step (slice 04), and the importer left-pads a 5-digit SG zip and counts each repair. |
-| A typo'd Shopify email belongs to someone else, who claims the row and sees the address | Low. Shopify has the same exposure today through its email-code customer login | Bounced addresses are suppressed. `--no-addresses` is available if the owner prefers the conservative import. |
+| A typo'd Shopify email belongs to someone else, who claims the row and sees the address | Low. Shopify has the same exposure today through its email-code customer login | Bounced addresses are suppressed. An *Import without addresses* option (slice 03) is there if the owner prefers the conservative import. |
 | The campaign damages order-email deliverability | Real if it is sent through the Gmail transport | Separate Resend subdomain; the campaign sender refuses Gmail (slice 08). |
 | Bot sign-ups on Shopify's newsletter form are spam traps | Common on Shopify stores | Buyers first; subscribers-only last, in small waves; pause rules. |
 | A voucher is used by someone other than its owner | Certain with today's bearer coupons | Decision 8: session check at preview and at checkout. |
 | A Claim is processed twice and issues two vouchers | `linkCustomerToAuthUser` runs on every account page | Decision 6: one transaction plus a unique index on `(customer_id, issued_for)`. |
 | A customer signs in before the claim code ships | Harmless | The claim runs on any later `linkCustomerToAuthUser` call, so they claim on their next page load. |
 | Concurrent checkouts both pass the coupon's `usage_limit` | Exists today for all coupons (no reservation) | For a one-person voucher, this needs the same person to pay twice at once. Accepted; recorded in ADR 0026. |
-| The export lands in git like `info/GET-from-shopify.md` did | That file is the precedent for Shopify exports in this repo | The importer refuses any input path that is tracked by git or not ignored by it. `info/private/` is gitignored. |
+| The export lands in git like `info/GET-from-shopify.md` did | That file is the precedent for Shopify exports in this repo | The import happens in the browser, so the file never needs to be near the repo. Slice 04's steps keep it out of shared folders, and slice 10 destroys it. |
 | The import runs against production before rehearsal | Possible | Slice 04 makes rehearsal on a Supabase branch a precondition. |
+| Someone with Customers access bulk-imports or undoes by mistake | Manager and Staff both hold `customers` | A separate `customer-import` key, held by Owner and Admin only. A preview before every import and every undo, a typed confirmation, and an audit row for each. |
+| The tab closes, or the network drops, mid-import | Likely with thousands of rows | Each chunk is one transaction. The batch records `rows_done`, a chunk out of order is refused, and picking the same file resumes. |
+| Customer PII passes through the browser | Inherent in a browser import | It goes only to our own server over HTTPS, as it would by CLI. Unused columns are dropped before sending, nothing is stored but the imported rows, and the preview returns no PII. |
 | Pre-existing: staff `customers.notes` is already readable by its customer | Live today, independent of this work | Recorded here. Fix with a column grant (the precedent is `order_items` cost columns, `20261013110000_order_items_kind.sql:23`) in a separate PR. |
 
 ## Success criteria
@@ -328,6 +364,52 @@ goes last, in smaller waves.
   numbers.
 - By the cutover date, the Shopify export is destroyed and the customer data held in Shopify is
   erased or the store is closed.
+
+## Toward a simple CRM
+
+The owner wants this to grow into a simple CRM: one place to manage customers and build a
+relationship with them. This initiative does not build that CRM. It is shaped so that the CRM
+is the next step rather than a rewrite.
+
+### What this initiative already lays down
+
+| CRM need | What is built here | Slice |
+|---|---|---|
+| One list of every customer, filterable | `admin_customer_overview`, filters kept in the URL | 12 |
+| Whether they have an account, and how recently they used it | `account_linked_at`, `account_last_seen_at` | 12 |
+| Where they came from | `migrated_customers`, import batches, the *Source* filter | 02, 12 |
+| Bringing in customers from elsewhere | preview, import, resume and undo, with `source` widened per new source | 02, 03 |
+| Whether we may email them, with proof | `marketing_email` and `customer_consent_events`, unsubscribe | 07 |
+| What we sent, and what happened | `customer_campaign_sends`, Claim link clicks, bounces and complaints | 06, 08 |
+
+### Rules that keep it CRM-shaped (ADR 0026 k, l)
+
+1. **Facts, not statuses.** Store events and timestamps. Derive *Signed up*, *Voucher used* or
+   *Lapsed* in the overview view, where they cannot drift.
+2. **Staff-only facts never live on `customers`.** The customer can read their own row.
+3. **Every per-customer event table is append-only and carries `customer_id` and a
+   timestamp.** A future timeline is then a `union` over existing tables, with no backfill.
+4. **Audience rules live in `lib/`.** The wave sender is a script today; a Campaigns page later
+   calls the same function and writes the same ledger.
+
+### What a CRM PRD would add next (not in this initiative)
+
+In the order that helps the relationship most:
+
+1. **Staff notes customers cannot read.** A `customer_notes` table (author, time, text), and the
+   fix for the live `customers.notes` exposure (see Risks). Everything else leans on this.
+2. **One timeline on the Customer detail**, newest first: orders, Results, re-adjustment
+   bookings, returns, reviews, emails sent, consent changes and notes.
+3. **Care reminders.** A *your re-adjustment is due* email some months after delivery, which
+   links to booking. This is the strongest relationship lever a pillow business has. Counsel
+   should confirm whether it counts as a service message or as marketing.
+4. **Saved segments.** A named filter on the Customers list, such as *Premium, bought over a year
+   ago, never re-adjusted*.
+5. **A Campaigns page**: sending from the Admin Panel, on slice 08's ledger and rules.
+6. **Follow-ups.** *Call back Friday*, assigned to a **Staff** profile.
+
+Out of scope even then: WhatsApp and SMS marketing (Do Not Call duties), and scoring or
+predictions.
 
 ## Open decisions for the owner
 

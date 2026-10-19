@@ -76,6 +76,15 @@ npx tsx --env-file=.env.local scripts/customer-migration-send.ts \
 - Every send sets `List-Unsubscribe: <https://…/api/email/unsubscribe?u=…&t=…>`, `<mailto:…>` and
   `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Reply-To is the support address.
 
+**Audience selection lives in `lib/`, not in the script.** `selectCampaignAudience(template,
+filters)` (`lib/customer-migration/audience.ts`) is a pure function plus one query, and the
+script only parses flags and calls it. The CRM's later Campaigns page in the Admin Panel (PRD,
+*Toward a simple CRM*) calls the same function and writes to the same ledger, so moving sending
+into the Admin Panel later means adding a page, not rewriting the rules.
+
+**Admin Panel.** `admin_customer_overview` adds `last_campaign_sent_at`, and the migration card
+(slice 12) gains *Emailed*.
+
 ## Bounces and complaints
 
 `POST /api/email/resend-webhook` verifies Resend's signature, then handles two events:

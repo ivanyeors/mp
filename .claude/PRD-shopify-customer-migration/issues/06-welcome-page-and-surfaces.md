@@ -1,7 +1,7 @@
 # 06 — Welcome page, Claim link, and the account and Admin Panel surfaces
 
 **Type:** AFK
-**Blocked by:** 05
+**Blocked by:** 05, 12
 **User stories:** 1, 3, 6, 8, 11, 12
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:account`, `area:admin`
 
@@ -58,15 +58,18 @@ customer who claimed organically still finds it.
 
 ## Admin Panel
 
-These sit behind the existing `customers` and `discounts` permissions.
+These sit behind the existing `customers` and `discounts` permissions. The Account column, the
+Shopify badge and filters, and the *From Shopify* card already exist from slice 12. This slice
+adds what the Claim link and the voucher make knowable.
 
-- **Customers list:** a "Shopify" filter (*all / claimed / not claimed*) and a small badge on
-  migrated rows. The filter reads `migrated_customers`, not tags.
-- **Customer detail:** a *From Shopify* panel showing Shopify-era orders and spend (labelled as
-  not linked), Shopify tags and note, imported and claimed dates, and the consent snapshot.
-- **Customers page header:** a migration card showing imported, claimed (with %), vouchers
-  issued, vouchers redeemed, and revenue on redeemed orders. Revenue means paid **Orders** whose
-  `coupon_id` is a `welcome_back` voucher; there is no new revenue path.
+- **Customer overview:** `create or replace view admin_customer_overview` adds
+  `claim_link_first_clicked_at` and `welcome_voucher_state` (*none / issued / used / expired*).
+- **Customers list:** a *Voucher* filter (*issued, unused* / *used*). *Issued, unused* is the
+  list to nudge before the vouchers expire.
+- **Customer detail:** the *From Shopify* card gains the Claim link's first click and the
+  voucher's code, state and expiry.
+- **Migration card:** add *Clicked*, *Voucher used* and *Revenue*. Revenue means paid **Orders**
+  whose `coupon_id` is a `welcome_back` voucher; there is no new revenue path.
 - **Discounts:**
   - hide account-bound vouchers from the list by default, with a toggle to show them;
   - add a *Welcome-back voucher* card that edits the slice 05 `site_settings` keys, and shows

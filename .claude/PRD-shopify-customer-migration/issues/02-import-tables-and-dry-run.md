@@ -1,15 +1,16 @@
-# 02 — Import tables and a dry-run importer that reports and never writes
+# 02 — Import tables, and an Admin Panel upload that previews and never writes
 
 **Type:** AFK
 **Blocked by:** 01
-**User stories:** 9
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:db`
+**User stories:** 9, 15
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`, `area:db`
 
 ## Goal
 
-Read a real Shopify export and say exactly what an import *would* do, row by row, without
-touching the database. The owner should be able to run this on day one and see their true skip
-counts before anything else is built.
+The owner opens **Admin Panel → Customers → Import from Shopify**, picks the Shopify export, and
+sees exactly what an import *would* do, row by row, without anything being written. They can do
+this on day one, with no developer and no terminal, and see their true skip counts before
+anything else is built.
 
 ## Schema (one migration, `YYYYMMDDHHMMSS_customer_import.sql`)
 
@@ -17,13 +18,17 @@ counts before anything else is built.
 create table customer_import_batches (
   id            uuid primary key default gen_random_uuid(),
   source        text not null check (source in ('shopify_customers_csv')),
-  file_sha256   text not null,
+  file_name     text not null,                 -- as picked in the browser, for the history list
+  file_sha256   text not null,                 -- computed in the browser; a label, not a control
   rows_total    int  not null,
+  rows_done     int  not null default 0,       -- resume point (slice 03)
+  with_addresses boolean not null default true, -- false = the conservative import (slice 03)
   created       int  not null default 0,
   merged        int  not null default 0,
   already_imported int not null default 0,
   skipped       jsonb not null default '{}',   -- { reason: count }
-  run_by        text not null,                 -- operator label, not an email
+  run_by_user_id    uuid null references auth.users(id) on delete set null,
+  run_by_profile_id uuid null references mp_staff(id) on delete set null,
   applied_at    timestamptz,
   rolled_back_at timestamptz,
   created_at    timestamptz not null default now()
@@ -45,31 +50,85 @@ create table migrated_customers (
   claimed_at           timestamptz null
 );
 create index on migrated_customers (claimed_at);
+create index on migrated_customers (batch_id);
 ```
 
 RLS is enabled on both tables, with only a service-role policy, matching the
 `Service role full access` pattern (scoped to `service_role` since `20260902000000`). There is
-deliberately **no** `authenticated` policy (ADR 0026 d).
+deliberately **no** `authenticated` policy (ADR 0026 d). The batch records who ran it the same
+way `admin_audit_log` does (`actor_id`, `actor_profile_id`), and never an email.
 
-## Importer
+## Permission
 
-`scripts/import-shopify-customers.ts`, run as
-`npx tsx --env-file=.env.local scripts/import-shopify-customers.ts --in <path>`. It is **dry-run
-by default**, following the convention of `scripts/costings-sync-prices.ts`.
+Add one catalog entry to `lib/auth/permissions.ts`, as a tab of the Customers page, following
+`categories`:
 
-The pure logic lives in `lib/customer-migration/`, so vitest can cover it without a database:
+```ts
+{ key: "customer-import", label: "Customer import (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers"] },
+```
 
-- `shopify-csv.ts`: parse, check the header row, normalise.
-- `plan.ts`: `planCustomerRow(row, existing) → create | merge | already_imported | skip(reason)`.
+- Owner and Admin hold it through `grants_all`. No other role holds it until someone ticks it on
+  **Users & permissions → Roles**. Manager and Staff can see Customers, but cannot bulk-write
+  them.
+- Check that `lib/auth/__tests__/permissions.test.ts` still holds. The new key is a gain for
+  Owner and Admin only, which is what `ALL` already means.
 
-### Input guard
+## The page
 
-- Refuse a path that git tracks, or a path inside the worktree that git does not ignore (use
-  `git check-ignore`). Add `info/private/` to `.gitignore` as the suggested drop folder.
-- Refuse a header row that lacks any required column (`Email`, `First Name`, `Last Name`,
-  `Accepts Email Marketing`, `Total Orders`, `Total Spent`). List what is missing and exit
-  non-zero. Optional columns that are absent are reported, not fatal.
-- Record the SHA-256 of the file.
+`/[lang]/settings/customers/import`, guarded by `requireAdminPage("customer-import", locale)`.
+The Customers page header gains an **Import from Shopify** button, shown only to Staff who hold
+the key.
+
+1. **Pick the file.** The page uses an `<input type="file" accept=".csv">` and refuses anything
+   over 20 MB. The browser reads it (`file.text()`) and computes its SHA-256 with
+   `crypto.subtle.digest`. **The file itself is never uploaded or stored**: not to Storage, not
+   to Media, not to Drive. It lives only in this tab's memory and is gone when the tab closes.
+   The page says so in one line.
+2. **Check the header, instantly, in the browser.** The required columns are `Email`,
+   `First Name`, `Last Name`, `Accepts Email Marketing`, `Total Orders` and `Total Spent`. If any
+   is missing, the page lists what is missing and stops. An absent optional column is listed as
+   a note, not an error.
+3. **Drop what we do not use, before anything leaves the browser.** Only the columns in the
+   normalisation table below are sent. `Accepts SMS Marketing` and `Tax Exempt` never reach the
+   server.
+4. **Preview against live data.** The browser sends the rows in chunks of 250 to the server
+   action `previewShopifyImport(rows)` (`app/[lang]/settings/customers/import/actions.ts`). The
+   action:
+   - calls `assertAdmin("customer-import")` on every chunk;
+   - re-normalises every row itself, never trusting the browser's normalisation;
+   - looks up existing Customers by `lower(email)`, and existing Migrated customers by Shopify
+     id;
+   - returns `{ i, outcome, reason?, repairs[] }` per row, keyed by the row's index. It sends no
+     PII back: the browser already holds the row.
+5. **Show the plan.** The page shows:
+   - cards for *would create*, *would merge*, *already imported* and *skipped*;
+   - each skip reason and each repair (`zip_repaired`, `phone_dropped`) with its count;
+   - buyers (`Total Orders ≥ 1`) against non-buyers, and consented against not consented;
+   - a table of the skipped rows (email, name, reason) built from the browser's own copy;
+   - **Download skipped rows**, a CSV the browser builds, so nothing extra touches the server.
+
+The **Import** button that applies the plan arrives in slice 03. In this slice the page ends at
+the preview.
+
+### Why chunks, and why not raise the limit
+
+The precedent for a CSV import from the Admin Panel reads the file with `f.text()`
+(`app/[lang]/settings/analytics/SearchVisibilityCard.tsx:74`) and sends the whole text to a
+server action in one call (`seo-actions.ts:309`). That cannot work here. Next.js caps a server
+action body at 1 MB by default, `next.config.ts` sets no `serverActions.bodySizeLimit`, and a
+Shopify export passes 1 MB at around 3,000 customers. Chunks of 250 rows stay near 100 KB and
+keep every call short. Do not raise the global limit for one page.
+
+## Pure modules (`lib/customer-migration/`)
+
+These have no Node or Supabase imports, so they run in the browser and on the server, and
+vitest covers them without a database.
+
+- **`shopify-csv.ts`**: `parseShopifyCustomersCsv(text)`, which returns the header check and the
+  raw rows, plus `normaliseShopifyRow(raw)`. Reuse `parseCsv` (`lib/seo-metrics/csv-import.ts:42`,
+  RFC 4180 with BOM handling). This is its second caller, so lift it to `lib/csv.ts` and
+  re-export it from the SEO module.
+- **`plan.ts`**: `planCustomerRow(row, existing) → create | merge | already_imported | skip(reason)`.
 
 ### Normalisation rules
 
@@ -85,7 +144,7 @@ The pure logic lives in `lib/customer-migration/`, so vitest can cover it withou
 | `Total Orders` / `Total Spent` | int / numeric; unparseable becomes 0 and is counted. |
 | `Tags` | Split on commas and trimmed, into `shopify_tags` only. |
 | `Note` | Copied as-is into `shopify_note` only. |
-| `Accepts SMS Marketing`, `Tax Exempt` | Dropped (data minimisation: we do not market by SMS and do not tax-exempt). |
+| `Accepts SMS Marketing`, `Tax Exempt` | Dropped in the browser (data minimisation: we do not market by SMS and do not tax-exempt). |
 
 ### Plan rules (`planCustomerRow`)
 
@@ -97,24 +156,18 @@ The pure logic lives in `lib/customer-migration/`, so vitest can cover it withou
    null `first_name` / `last_name` / `phone`. Add the address only if the Customer has none.
 4. **`create`**: there is no row with this email.
 
-### Dry-run output
-
-- Counts by outcome and by skip reason.
-- Counts of each repair (`zip_repaired`, `phone_dropped`).
-- How many rows are buyers (`Total Orders ≥ 1`) and how many have marketing consent.
-- **No PII on stdout.**
-- A `skipped.csv` written next to the input file, outside git, so the owner can inspect the
-  skipped rows.
-
 ## Acceptance criteria
 
 - [ ] The migration applies cleanly. Both tables have RLS on, with no `authenticated` or `anon`
       policy.
+- [ ] `customer-import` is in the catalog. A Manager or Staff session gets the denied page at
+      `/settings/customers/import` and does not see the button. Owner and Admin do.
 - [ ] vitest covers every normalisation rule and every plan outcome, including: BOM, a
       leading `'`, an `018956` zip read back as `18956`, a duplicate email, a phone-only row, an
       existing claimed Customer (`merge`), and a re-run (`already_imported`).
-- [ ] Running against a tracked or un-ignored path exits non-zero before reading the file.
-- [ ] A dry run against a 5-row fixture prints counts that sum to `rows_total`.
-- [ ] The importer makes **no** insert, update or delete in this slice, and imports nothing from
-      `supabase.auth.admin`.
+- [ ] A file missing a required column is refused in the browser before any server call.
+- [ ] Previewing a 5-row fixture shows counts that sum to the row count.
+- [ ] A 5,000-row fixture previews in chunks, with no call over 1 MB.
+- [ ] The preview makes **no** insert, update or delete, writes no file anywhere, and imports
+      nothing from `supabase.auth.admin`.
 - [ ] `./scripts/graphify update .` is run in the same commit.

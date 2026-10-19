@@ -1,7 +1,7 @@
 # 07 — Marketing consent with provenance, and one-click unsubscribe
 
 **Type:** AFK
-**Blocked by:** 02
+**Blocked by:** 02, 12
 **User stories:** 4, 5
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:customers`, `area:email`, `area:privacy`
 
@@ -56,6 +56,16 @@ customer's own `account` action.** The importer applies the same rule to future 
   writes the event, and is idempotent.
 - **Profile.** Add an *"Email me news and offers"* toggle on `/account` (source `account`). This
   is the platform's first first-party consent capture.
+
+## Admin Panel
+
+- `admin_customer_overview` (slice 12) adds `marketing_email` and `marketing_email_updated_at`.
+- The Customers list gains an *Email consent* filter (*subscribed / not subscribed /
+  unsubscribed*).
+- The Customer detail shows the state, its source and date, and the event history from
+  `customer_consent_events`. Staff can read consent, but not change it. Only the customer's own
+  action, an unsubscribe link or a complaint changes it, so the history stays trustworthy. A
+  support request to unsubscribe uses source `support`, through a single *Unsubscribe* button.
 
 ## Transport
 
