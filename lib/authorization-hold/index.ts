@@ -3,6 +3,7 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
+import { pairAuthorized } from "@/lib/results/paired-build";
 
 export function toStripeAmountCents(amountMajor: number): number {
   return Math.round(amountMajor * 100);
@@ -37,15 +38,30 @@ export async function attachHoldPaymentIntent(
 
   const { data: held } = await admin
     .from("mp_config_responses")
-    .select("authorized_amount, currency")
+    .select("authorized_amount, currency, paired_build_id")
     .eq("id", resultId)
     .eq("status", "held")
     .is("payment_intent_id", null)
     .maybeSingle();
   if (!held) return { ok: false, mismatch: null };
+
+  // A Paired build's one Checkout authorised both Results (ADR 0026): it must
+  // match their sum, and its intent is written onto both.
+  let memberIds = [resultId];
+  let quoted = held.authorized_amount == null ? null : Number(held.authorized_amount);
+  if (held.paired_build_id === resultId) {
+    const { data: members } = await admin
+      .from("mp_config_responses")
+      .select("id, authorized_amount")
+      .eq("paired_build_id", resultId)
+      .eq("status", "held")
+      .is("payment_intent_id", null);
+    memberIds = (members ?? []).map((m) => String(m.id));
+    quoted = pairAuthorized(members ?? []);
+  }
   if (
-    held.authorized_amount == null ||
-    toStripeAmountCents(Number(held.authorized_amount)) !== session.amount_total ||
+    quoted == null ||
+    toStripeAmountCents(quoted) !== session.amount_total ||
     String(held.currency).toLowerCase() !== session.currency?.toLowerCase()
   ) {
     return {
@@ -53,18 +69,20 @@ export async function attachHoldPaymentIntent(
       mismatch:
         `Result ${resultId} hold session ${session.id} authorised ${session.currency} ` +
         `${session.amount_total}, but the Result quotes ${held.currency} ` +
-        `${held.authorized_amount}. Card not attached.`,
+        `${quoted}. Card not attached.`,
     };
   }
 
   const { data: written } = await admin
     .from("mp_config_responses")
     .update({ payment_intent_id: paymentIntentId })
-    .eq("id", resultId)
+    .in("id", memberIds)
     .eq("status", "held")
     .is("payment_intent_id", null)
     .select("id");
-  return written?.length ? { ok: true, paymentIntentId } : { ok: false, mismatch: null };
+  return written?.some((w) => w.id === resultId)
+    ? { ok: true, paymentIntentId }
+    : { ok: false, mismatch: null };
 }
 
 export type CreateHoldInput = {
@@ -104,30 +122,44 @@ export type CreateHoldCheckoutInput = CreateHoldInput & {
   resultId: string;
   successUrl: string;
   cancelUrl: string;
+  /**
+   * One line per product when a Paired build is held together (ADR 0026); they
+   * must sum to `amount`. Omitted, the Checkout shows one line for the whole hold.
+   */
+  lines?: Array<{ name: string; amount: number }>;
 };
+
+const HOLD_LINE_NOTE =
+  "Card authorization only — you are not charged until you accept the final build.";
 
 /** Hosted Checkout that creates a manual-capture PaymentIntent. */
 export async function createHoldCheckout(
   input: CreateHoldCheckoutInput,
 ): Promise<{ sessionId: string; url: string }> {
+  if (
+    input.lines &&
+    input.lines.reduce((t, l) => t + toStripeAmountCents(l.amount), 0) !==
+      toStripeAmountCents(input.amount)
+  ) {
+    throw new Error("Hold lines must add up to the hold amount");
+  }
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
       customer_email: input.customerEmail,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: input.currency.toLowerCase(),
-            unit_amount: toStripeAmountCents(input.amount),
-            product_data: {
-              name: input.description ?? "Mpillow customisation hold",
-              description: "Card authorization only — you are not charged until you accept the final build.",
-            },
-          },
+      line_items: (
+        input.lines ?? [
+          { name: input.description ?? "Mpillow customisation hold", amount: input.amount },
+        ]
+      ).map((line) => ({
+        quantity: 1,
+        price_data: {
+          currency: input.currency.toLowerCase(),
+          unit_amount: toStripeAmountCents(line.amount),
+          product_data: { name: line.name, description: HOLD_LINE_NOTE },
         },
-      ],
+      })),
       payment_intent_data: {
         capture_method: "manual",
         metadata: { ...(input.metadata ?? {}), result_id: input.resultId },

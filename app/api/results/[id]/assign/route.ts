@@ -24,6 +24,7 @@ import {
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
+import { shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -129,7 +130,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type",
+      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -414,7 +415,10 @@ export async function POST(
       .maybeSingle();
     if (shippingRow) {
       // Free shipping is earned by goods; tax is due on goods and services alike.
-      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
+      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
+      shippingAmount = shipsWithAnchor(row)
+        ? 0
+        : calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
         { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
