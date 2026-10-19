@@ -23,6 +23,7 @@ import {
   isMorningOfEligible,
   transitionReminder,
 } from "@/lib/appointments/state";
+import { parseInboundActions } from "@/lib/appointments/whatsapp";
 import {
   extractPhoneFromEvent,
   extractGuestName,
@@ -244,6 +245,36 @@ describe("appointment-reminder-state", () => {
     expect(transitionReminder("pending", { type: "invalid_phone" })).toMatchObject({
       status: "skipped_invalid_phone",
     });
+  });
+});
+
+describe("whatsapp inbound parse", () => {
+  const inbound = (msg: Record<string, unknown>) => ({
+    entry: [{ changes: [{ value: { messages: [{ id: "wamid.1", from: "6591234567", ...msg }] } }] }],
+  });
+
+  // A tap on the day-before template's quick reply arrives as a `button`
+  // message carrying the label as its text (and as its payload when the send
+  // sets none). The parser reads both.
+  it("template quick-reply taps → confirm / reschedule", () => {
+    expect(
+      parseInboundActions(inbound({ type: "button", button: { payload: "Confirm", text: "Confirm" } })),
+    ).toEqual([{ kind: "confirm", fromE164: "+6591234567", messageId: "wamid.1" }]);
+    expect(
+      parseInboundActions(inbound({ type: "button", button: { payload: "Reschedule", text: "Reschedule" } })),
+    ).toMatchObject([{ kind: "reschedule" }]);
+  });
+
+  it("typed confirm still works without a button", () => {
+    expect(parseInboundActions(inbound({ type: "text", text: { body: " Confirm " } }))).toMatchObject([
+      { kind: "confirm" },
+    ]);
+  });
+
+  it("free chatter is unknown", () => {
+    expect(
+      parseInboundActions(inbound({ type: "text", text: { body: "can I come at 6 instead?" } })),
+    ).toMatchObject([{ kind: "unknown" }]);
   });
 });
 

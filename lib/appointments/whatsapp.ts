@@ -84,8 +84,13 @@ export async function sendDayBeforeTemplate(
   e164: string,
   params: DayBeforeParams,
 ): Promise<string | null> {
+  // The template, not this payload, carries the Confirm / Reschedule quick
+  // replies. Static quick replies need no send-time component; a tap comes back
+  // as a `button` message whose text the webhook matches. The original
+  // `appointment_day_before` was approved without buttons — see
+  // scripts/whatsapp-create-templates.ts.
   const name =
-    process.env.WHATSAPP_TEMPLATE_DAY_BEFORE?.trim() || "appointment_day_before";
+    process.env.WHATSAPP_TEMPLATE_DAY_BEFORE?.trim() || "appointment_day_before_v2";
   return sendPayload({
     messaging_product: "whatsapp",
     to: toWa(e164),

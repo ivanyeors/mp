@@ -35,6 +35,11 @@ import {
   withinServiceWindow,
 } from "@/lib/appointments/whatsapp";
 import { resolveAppointmentType } from "@/lib/appointments/type";
+import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
+
+// The sender is an automated Cloud API line: no person reads what guests type
+// to it. Anything that needs a human points at the staffed sales line instead.
+const TALK_TO_TEAM = `message our team on WhatsApp at ${SUPPORT_WHATSAPP_DISPLAY}: ${SUPPORT_WHATSAPP_URL}`;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,7 +115,7 @@ async function handleAction(
     // it silently (only unknown chatter returned earlier reaches this quietly).
     await sendText(
       action.fromE164,
-      "Thanks for your message. To change or cancel your appointment, reply here and our team will help you.",
+      `Thanks for your message. To change or cancel your appointment, ${TALK_TO_TEAM}`,
     );
     return;
   }
@@ -154,7 +159,7 @@ async function handleAction(
     if (slots.length === 0) {
       await sendText(
         row.phone,
-        "Sorry — no open slots in the next two weeks. Please rebook using the link staff will share, or reply here and we will help.",
+        `Sorry — no open slots in the next two weeks. To find another time, ${TALK_TO_TEAM}`,
       );
       return;
     }

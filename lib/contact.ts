@@ -6,8 +6,8 @@
  *
  *   - This one (+65 8780 5311) is staffed by a person. Customers message it and
  *     get a reply from sales.
- *   - The utility sender (`WHATSAPP_PHONE_NUMBER_ID`, +65 8809 7571) is an
- *     automated Cloud API line that sends appointment templates and handles the
+ *   - The utility sender (whichever number `WHATSAPP_PHONE_NUMBER_ID` names) is
+ *     an automated Cloud API line that sends appointment templates and handles the
  *     Confirm / Reschedule button replies. Nobody chats to it.
  *
  * So do NOT "keep them in sync" — they are separate on purpose. Never surface
