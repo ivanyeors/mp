@@ -15358,5 +15358,11 @@
     "seen": 1792423175.0659142,
     "ast_hash": "6de95284d35e8911f5a48af00c233ad4",
     "semantic_hash": ""
+  },
+  ".claude/PRD-email-marketing/email-marketing-prd.md": {
+    "mtime": 1792423501.8832078,
+    "seen": 1792423576.1899652,
+    "ast_hash": "8ba1b7446de452d1c29be2e90ed99ed4",
+    "semantic_hash": ""
   }
 }
