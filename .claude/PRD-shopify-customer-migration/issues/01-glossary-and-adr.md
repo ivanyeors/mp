@@ -1,0 +1,91 @@
+# 01 — Glossary and ADR 0026: what moves, what never moves, and what a Claim is
+
+**Type:** AFK
+**Blocked by:** none
+**User stories:** underpins all
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:docs`
+
+## Goal
+
+Write down the vocabulary before any table is named. "Migration" invites two wrong designs:
+moving logins, which there are none of, and moving orders, which the owner ruled out on
+2026-10-13. These terms close both doors.
+
+## CONTEXT.md entries
+
+**Migrated customer** — a **Customer** whose row was created or enriched from the Shopify customer
+export. It carries one `migrated_customers` row: Shopify customer id, Shopify-era order count and
+spend, Shopify tags and note, the consent snapshot, the import batch and `claimed_at`. Readable
+by the service role only.
+_Avoid_ — "imported account" or "migrated account". No login moved, and Shopify credentials
+never leave Shopify. Until it is **Claimed**, a Migrated customer is a row, not an account.
+_Avoid_ — writing Shopify-era figures into `customers.total_orders` / `total_spent`. Those are
+platform-derived and recomputed by `updateCustomerStats`.
+
+**Claim** — the first **Sign in**, after import, by the person who owns a **Migrated customer**'s
+email. `linkCustomerToAuthUser` binds `auth_user_id` as it would for any customer row. The
+Claim stamps `claimed_at` and issues the **Welcome-back voucher**, both in one transaction and
+both exactly once.
+_Avoid_ — "invite" or "activation". Nothing is created in `auth.users` before the person signs
+in, and no Supabase invite is sent.
+
+**Claim link** — the per-customer link in a campaign email, `/account/welcome?c=<token>`. The
+token is opaque; only its hash is stored. It prefills the email on the welcome page and
+attributes the click.
+_Avoid_ — "magic link". A Claim link never signs anyone in. Proof of the email is always the
+sign-in itself.
+
+**Welcome-back voucher** — the one `coupons` row issued to a **Migrated customer** at **Claim**
+(`issued_for = 'welcome_back'`). It is bound to that Customer: valid only while they are
+signed in and checking out with the account email. It is a shop-cart voucher, like every coupon
+today.
+_Avoid_ — "store credit", "points", "gift card" (none exist). Do not describe it as usable on a
+customisation: **Results** price with no discount (`app/api/results/hold/route.ts:558`).
+
+**Marketing consent** — whether a **Customer** agreed to marketing email, stored as
+`subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is
+appended to `customer_consent_events`.
+_Avoid_ — inferring consent from having an account, a past **Order**, or a **Claim**. Do not
+treat Shopify's "no" as `unsubscribed`: it may mean "never asked".
+
+**Import batch** — one run of the importer that wrote to the database. It records the file's
+SHA-256, the counts by outcome, and who ran it and when. It is the unit of reconciliation and
+of rollback.
+
+Also amend **Shopify order mirror**'s `_Avoid_` line to add: *Shopify customers are imported
+once (ADR 0026); their orders stay unlinked.*
+
+## ADR 0026 — decisions to record
+
+- **(a) The source is the owner's Admin CSV export.** No Admin API customer access, no new
+  scope, no protected-customer-data approval. Record the header row the first real file
+  carried (slice 04).
+- **(b) The import creates Customers, never auth users.** No `auth.admin.*` calls in this
+  initiative. Binding happens only in `linkCustomerToAuthUser`.
+- **(c) Platform data wins.** A matching Customer is only filled where its fields are null. The
+  import never changes email, `auth_user_id`, `tags`, `notes` or `total_*`.
+- **(d) Shopify-era facts live in `migrated_customers`, which is service-role only.** The reason:
+  the customer can read their own `customers` row (`0037_customer_auth.sql:15-18`).
+- **(e) Batches are idempotent and reversible.** Shopify customer id is the import key, with email
+  as the fallback. Rollback never deletes a row that has been claimed or that anything references.
+- **(f) A Claim is exactly once.** The `claimed_at` stamp and the voucher insert share one SQL
+  function, and a unique index on `(customer_id, issued_for)` is the race guard.
+- **(g) The voucher is account-bound.** `coupons.customer_id` is checked against the signed-in
+  Customer at preview and at checkout. A bound coupon is never valid for a guest.
+- **(h) Consent carries provenance.** Shopify "yes" becomes `subscribed` (`shopify_import`, export
+  date). An import never re-subscribes anyone who is `unsubscribed`.
+- **(i) Campaign mail is not transactional mail.** It goes through its own transport and
+  subdomain, never the Gmail mailbox that sends order emails. Unsubscribing stops campaign mail
+  only.
+- **(j) Accepted risk:** a one-person voucher can be redeemed twice by the same person paying
+  twice at once, because coupons have no reservation today. This is not worth a reservation
+  table.
+
+## Acceptance criteria
+
+- [ ] `CONTEXT.md` carries the six terms above with `_Avoid_` lines, and the amended **Shopify
+      order mirror** line.
+- [ ] `docs/adr/0026-shopify-customer-migration.md` records (a)–(j). It links ADR 0024 (the
+      "No Shopify" rule it narrows, not reverses) and ADR 0007 (why journey analytics does not
+      carry the funnel).
+- [ ] `./scripts/graphify update .` is run in the same commit.
