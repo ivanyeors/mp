@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { countReviewRequests } from "@/lib/aftercare/review-request-counts";
 import type { CountWindow, SignUpCounts, WeeklySummaryCounts } from "@/lib/crm/telegram-updates";
 
 /**
@@ -71,8 +72,8 @@ export async function countNewCustomers(admin: SupabaseClient, window: CountWind
  * each source is added by the slice that owns it, and the renderer
  * (`renderWeeklySummary`) already knows its wording:
  *
- *  - CRM slice 07 adds `reviewRequests` (`customer_review_requests`: sent, and
- *    `first_clicked_at` set);
+ *  - CRM slice 07's `reviewRequests` (`customer_review_requests`: asked in the
+ *    week, and how many of those have `first_clicked_at` set) is in;
  *  - CRM slice 12 adds `googleReviewsLinked` (`customer_google_reviews.linked_at`);
  *  - CRM slice 06 adds `followUps` (`customer_followups`: done in the week, and
  *    overdue now).
@@ -87,6 +88,12 @@ export const WEEKLY_SUMMARY_SOURCES: readonly WeeklySummarySource[] = [
   async (admin, week) => {
     const signUps = await countSignUps(admin, week);
     return signUps ? { signUps: signUps.total } : {};
+  },
+  // CRM slice 07: Customers asked in the week, and how many of them opened the
+  // link. No line in a week nobody was asked, such as while it is switched off.
+  async (admin, week) => {
+    const reviewRequests = await countReviewRequests(admin, week);
+    return reviewRequests.sent > 0 ? { reviewRequests } : {};
   },
 ];
 

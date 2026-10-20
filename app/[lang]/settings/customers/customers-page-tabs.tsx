@@ -6,12 +6,14 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { AftercareCardData } from "@/lib/aftercare/settings";
+import { AftercareSettingsCard } from "./aftercare-settings-card";
 import { TelegramUpdatesCard, type TelegramUpdatesCardData } from "./telegram-updates-card";
 import { parseCustomersView, type CustomersView } from "./views";
 
 /**
  * The Customers page: the list, and a *Settings* tab for the CRM's settings
- * cards (CRM slice 14's Telegram updates; slice 07's Aftercare card joins it).
+ * cards (CRM slice 07's Aftercare, slice 14's Telegram updates).
  * The tab is kept in `?view=` so it can be linked and survives a reload.
  */
 export function CustomersPageTabs({
@@ -19,6 +21,7 @@ export function CustomersPageTabs({
   canEdit,
   canEditOnlineResult,
   telegramUpdates,
+  aftercare,
   importHref,
   children,
 }: {
@@ -29,6 +32,8 @@ export function CustomersPageTabs({
   canEditOnlineResult: boolean;
   /** Read by the page when it opens on the Settings tab; otherwise the card fetches it. */
   telegramUpdates?: TelegramUpdatesCardData;
+  /** Same, for the Aftercare card. */
+  aftercare?: AftercareCardData;
   /** Import from Shopify, when the role holds `customer-import` (migration slice 02). */
   importHref?: string;
   /** The Customers list. */
@@ -83,6 +88,7 @@ export function CustomersPageTabs({
           className="pt-4 data-[state=inactive]:hidden"
         >
           <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+            <AftercareSettingsCard canEdit={canEdit} initialData={aftercare} />
             <TelegramUpdatesCard
               canEdit={canEdit}
               canEditOnlineResult={canEditOnlineResult}
