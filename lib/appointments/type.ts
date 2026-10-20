@@ -51,6 +51,19 @@ export function matchAppointmentType(
 }
 
 /**
+ * A stored type's label and rebook link. A reminder row keeps the type, not the
+ * event summary, and the event may already be gone when the guest is told.
+ */
+export function appointmentTypeInfo(
+  type: AppointmentType,
+  settings: AppointmentSettings,
+): ResolvedAppointmentType {
+  return type === "readjustment"
+    ? { type, bookingUrl: settings.readjustmentBookingUrl, label: "Re-adjustment" }
+    : { type: "customisation", bookingUrl: settings.customisationBookingUrl, label: "Customisation" };
+}
+
+/**
  * Infer type for WhatsApp rebook flows. Unclear → customisation (fallback URL).
  */
 export function resolveAppointmentType(

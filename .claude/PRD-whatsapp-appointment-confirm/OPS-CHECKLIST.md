@@ -11,9 +11,11 @@ HITL slices 01 + 08. Complete before relying on staging/prod automation.
 
 These are separate on purpose — do not sync them. Publishing the utility number
 in customer-facing copy starts conversations nobody reads: the webhook only
-understands Confirm, Reschedule, and "none of these". Anything else a guest
-sends (text, photo, voice note) gets one auto-reply per 12 hours pointing at the
-sales line, and goes no further.
+understands Confirm, Reschedule, a picked time, "none of these" and "cancel".
+Anything else a guest sends (text, photo, voice note) gets one auto-reply per 12
+hours pointing at the sales line, and goes no further. Every one of those
+answers something — a tap that cannot apply (a list that has closed, an
+appointment already over) says so and points at the sales line.
 
 The webhook acts only on messages addressed to `WHATSAPP_PHONE_NUMBER_ID`, so
 putting the sales line on the same WABA later cannot make the bot answer it.
@@ -63,7 +65,7 @@ Record exact names in env (defaults below):
 |-----|--------------|---------|
 | `WHATSAPP_TEMPLATE_DAY_BEFORE` | `appointment_day_before_v2` | Body: guest, date, time, type. Buttons: **Confirm** / **Reschedule** (the original `appointment_day_before` was approved without them) |
 | `WHATSAPP_TEMPLATE_MORNING_OF` | `appointment_morning_of` | Body: guest, date, time, venue. No buttons |
-| `WHATSAPP_TEMPLATE_CANCEL` | `appointment_cancelled` | Body: type, rebook URL (used outside 24h window) |
+| `WHATSAPP_TEMPLATE_CANCEL` | `appointment_cancelled_v2` | Body: guest, type, date + time, rebook URL, sales-line link. Used when the guest has not messaged in 24h; inside that window it is free text. The original `appointment_cancelled` (type, rebook URL) still works under its exact name but cannot name the sales line |
 
 Body parameter order must match `lib/appointments/whatsapp.ts` (positional).
 
@@ -174,7 +176,7 @@ code names a number. To move it (e.g. to `+65 8809 7571`):
 1. Add and verify the number in the **same WABA** that owns the current one.
    Templates are approved per WABA, so staying in it carries all three across;
    a new WABA means re-approving `appointment_day_before_v2`,
-   `appointment_morning_of`, and `appointment_cancelled` from scratch.
+   `appointment_morning_of`, and `appointment_cancelled_v2` from scratch.
 2. Register it for Cloud API and set its 2FA PIN — **save the PIN**, it is
    required to re-register or move the number later:
    `npx tsx --env-file=.env.local scripts/whatsapp-register.ts`
@@ -214,8 +216,8 @@ change needed.
 
 - Remove or empty `WHATSAPP_ALLOWLIST` (ignored in production anyway).
 - Confirm coexistence still shows Cloud API messages in the phone app.
-- Monitor cron JSON `{ scanned, reminded, morning, skipped, errors }`, and the
-  failures recorded on rows (section 10).
+- Monitor cron JSON `{ scanned, reminded, morning, cancelled, skipped, errors,
+  watch }`, and the failures recorded on rows (section 10).
 
 ## 10. When each message goes out
 
@@ -242,3 +244,49 @@ from appointment_reminders
 where last_error is not null
 order by last_error_at desc;
 ```
+
+A send Meta accepted but could not deliver (an unreachable number, a paused
+template) arrives later as a `failed` status on the webhook, and is written to
+the same `last_error` — if the webhook is reaching the site (section 12).
+
+## 11. Cancellations
+
+However an appointment is called off, the guest gets one WhatsApp saying so,
+with the rebook link and the sales line, and no reminder after it:
+
+| Cancelled by | How the site hears |
+|--------------|--------------------|
+| Guest replies "cancel", or "none of these" to a list of times | The webhook, at once. The event is deleted |
+| Guest answers **No** to the calendar invite | Google Calendar push, at once. The event is deleted so the slot frees up (Google emails the guest) |
+| Guest cancels a Google booking, or staff delete the event in Google Calendar | Google Calendar push, at once |
+| Staff cancel a Re-adjustment in Settings | That action itself |
+
+The 09:00 run is the net under all of it: before a reminder it skips (and
+cancels) a declined invite, and it asks Google about every other live upcoming
+row, so a missed push is caught by the next morning at the latest. Only rows the
+site knows about are covered — a booking made straight in Google Calendar has
+none until the run the day before it.
+
+The push needs a channel open (`google_calendar_channels`). The daily run opens
+and renews it; to open it right after a deploy, open
+`https://<host>/api/cron/calendar-watch` signed in as staff (or curl it with
+`CRON_SECRET`). It answers `{ watch: { status: "renewed" | "kept", expiresAt } }`.
+
+## 12. A guest's reply gets nothing back
+
+Every message that reaches the webhook is recorded in `whatsapp_inbound` (the
+intent and what was done, never the text):
+
+```sql
+select phone, kind, outcome, received_at
+from whatsapp_inbound
+order by received_at desc
+limit 20;
+```
+
+Nothing there for a reply you sent means Meta never got it to the site. Run
+`scripts/whatsapp-preflight.ts`: it checks the app is subscribed to the WABA,
+its webhook points at `/api/webhooks/whatsapp` for `messages`, the app secret
+is the one Meta signs with, and the live site accepts a POST signed with it. A
+secret mismatch is silent from the guest's side; within the hour, Vercel's logs
+show `[whatsapp/webhook] signature rejected`.

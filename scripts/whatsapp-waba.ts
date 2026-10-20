@@ -30,7 +30,7 @@ async function main() {
   const trows: Array<{ name: string; language: string; status: string }> = tpl?.data ?? [];
   console.log(`  templates: ${trows.length}`);
   for (const t of trows) console.log(`    · ${t.name} [${t.language}] ${t.status}`);
-  const need = ["appointment_day_before_v2", "appointment_morning_of", "appointment_cancelled"];
+  const need = ["appointment_day_before_v2", "appointment_morning_of", "appointment_cancelled_v2"];
   console.log("  needed:");
   for (const n of need) {
     const hit = trows.find((r) => r.name === n);

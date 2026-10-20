@@ -19,6 +19,7 @@ export type ReminderAction =
   | { type: "request_reschedule" }
   | { type: "slot_picked" }
   | { type: "slots_rejected" }
+  | { type: "cancel" }
   | { type: "morning_of_sent" };
 
 export type SideEffectIntent =
@@ -39,35 +40,58 @@ export type TransitionResult = {
   error?: string;
 };
 
-const TERMINAL: ReminderStatus[] = [
+/**
+ * Every status a guest's appointment can still change from. Confirmed and
+ * rescheduled are not the end: the guest can still cancel, or ask for another
+ * time, and a rescheduled visit is still due its reminders.
+ */
+export const LIVE_STATUSES: readonly ReminderStatus[] = [
+  "pending",
+  "reminded",
+  "offering_slots",
+  "morning_sent",
   "confirmed",
   "rescheduled",
-  "cancelled",
-  "skipped_invalid_phone",
 ];
+
+/**
+ * Per action: the statuses it moves from, where it lands, and the status that
+ * makes a repeat a harmless no-op (a second tap, a retried webhook).
+ */
+const RULES: Record<
+  ReminderAction["type"],
+  { from: readonly ReminderStatus[]; to: ReminderStatus; intent: SideEffectIntent; idempotentAt?: ReminderStatus }
+> = {
+  invalid_phone: { from: ["pending"], to: "skipped_invalid_phone", intent: "none", idempotentAt: "skipped_invalid_phone" },
+  // From `rescheduled` too: a visit moved to a later day is reminded the day
+  // before its new date, like any other.
+  day_before_sent: { from: ["pending", "rescheduled"], to: "reminded", intent: "send_day_before", idempotentAt: "reminded" },
+  confirm: { from: ["reminded", "offering_slots", "morning_sent", "rescheduled"], to: "confirmed", intent: "ack_confirm", idempotentAt: "confirmed" },
+  // Again from `offering_slots` sends a fresh list; from `confirmed` or
+  // `rescheduled`, the guest's plans changed after all.
+  request_reschedule: { from: ["reminded", "morning_sent", "offering_slots", "confirmed", "rescheduled"], to: "offering_slots", intent: "offer_slots" },
+  slot_picked: { from: ["offering_slots"], to: "rescheduled", intent: "confirm_reschedule", idempotentAt: "rescheduled" },
+  slots_rejected: { from: ["offering_slots"], to: "cancelled", intent: "cancel_and_rebook", idempotentAt: "cancelled" },
+  // The guest typed "cancel", declined the invite, or the event left the
+  // calendar — whoever removed it, the guest hears it is off.
+  cancel: { from: LIVE_STATUSES, to: "cancelled", intent: "cancel_and_rebook", idempotentAt: "cancelled" },
+  // From `pending` too: a guest the day-before never reached (it failed, or
+  // they booked after that day's run) gets the morning-of as a catch-up.
+  morning_of_sent: { from: ["reminded", "pending", "rescheduled"], to: "morning_sent", intent: "send_morning_of", idempotentAt: "morning_sent" },
+};
 
 export function transitionReminder(
   status: ReminderStatus,
   action: ReminderAction,
 ): TransitionResult {
-  // Idempotent confirms / cancels on terminal states
-  if (action.type === "confirm" && status === "confirmed") {
+  const rule = RULES[action.type];
+  if (!rule) {
+    return { ok: false, status, noop: true, intent: "none", error: "unknown action" };
+  }
+  if (rule.idempotentAt === status) {
     return { ok: true, status, noop: true, intent: "none" };
   }
-  if (action.type === "slots_rejected" && status === "cancelled") {
-    return { ok: true, status, noop: true, intent: "none" };
-  }
-  if (action.type === "slot_picked" && status === "rescheduled") {
-    return { ok: true, status, noop: true, intent: "none" };
-  }
-  if (action.type === "morning_of_sent" && status === "morning_sent") {
-    return { ok: true, status, noop: true, intent: "none" };
-  }
-  if (action.type === "day_before_sent" && status === "reminded") {
-    return { ok: true, status, noop: true, intent: "none" };
-  }
-
-  if (TERMINAL.includes(status) && action.type !== "invalid_phone") {
+  if (!rule.from.includes(status)) {
     return {
       ok: false,
       status,
@@ -76,137 +100,21 @@ export function transitionReminder(
       error: `cannot ${action.type} from ${status}`,
     };
   }
-
-  switch (action.type) {
-    case "invalid_phone":
-      if (status !== "pending" && status !== "skipped_invalid_phone") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot mark invalid phone from ${status}`,
-        };
-      }
-      return {
-        ok: true,
-        status: "skipped_invalid_phone",
-        noop: status === "skipped_invalid_phone",
-        intent: "none",
-      };
-
-    case "day_before_sent":
-      if (status !== "pending") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot day_before_sent from ${status}`,
-        };
-      }
-      return { ok: true, status: "reminded", noop: false, intent: "send_day_before" };
-
-    case "confirm":
-      if (status !== "reminded" && status !== "offering_slots" && status !== "morning_sent") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot confirm from ${status}`,
-        };
-      }
-      return { ok: true, status: "confirmed", noop: false, intent: "ack_confirm" };
-
-    case "request_reschedule":
-      if (status !== "reminded" && status !== "morning_sent") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot request_reschedule from ${status}`,
-        };
-      }
-      return {
-        ok: true,
-        status: "offering_slots",
-        noop: false,
-        intent: "offer_slots",
-      };
-
-    case "slot_picked":
-      if (status !== "offering_slots") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot slot_picked from ${status}`,
-        };
-      }
-      return {
-        ok: true,
-        status: "rescheduled",
-        noop: false,
-        intent: "confirm_reschedule",
-      };
-
-    case "slots_rejected":
-      if (status !== "offering_slots") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot slots_rejected from ${status}`,
-        };
-      }
-      return {
-        ok: true,
-        status: "cancelled",
-        noop: false,
-        intent: "cancel_and_rebook",
-      };
-
-    case "morning_of_sent":
-      // From `pending` too: a guest the day-before never reached (it failed, or
-      // they booked after that day's run) gets the morning-of as a catch-up.
-      if (status !== "reminded" && status !== "pending") {
-        return {
-          ok: false,
-          status,
-          noop: true,
-          intent: "none",
-          error: `cannot morning_of_sent from ${status}`,
-        };
-      }
-      return {
-        ok: true,
-        status: "morning_sent",
-        noop: false,
-        intent: "send_morning_of",
-      };
-
-    default:
-      return {
-        ok: false,
-        status,
-        noop: true,
-        intent: "none",
-        error: "unknown action",
-      };
-  }
+  return { ok: true, status: rule.to, noop: false, intent: rule.intent };
 }
 
 /**
- * Morning-of cron eligibility: still silent after the day-before, or never
- * reached by one (`pending` on the day itself — the send failed, or the booking
- * came in after the run that would have sent it).
+ * Morning-of cron eligibility: still silent after the day-before, never reached
+ * by one (`pending` on the day itself — the send failed, or the booking came in
+ * after the run that would have sent it), or moved to today over WhatsApp.
  */
 export function isMorningOfEligible(status: ReminderStatus): boolean {
-  return status === "reminded" || status === "pending";
+  return RULES.morning_of_sent.from.includes(status);
+}
+
+/** Should the day-before go to a row in this status? */
+export function isDayBeforeEligible(status: ReminderStatus): boolean {
+  return RULES.day_before_sent.from.includes(status);
 }
 
 /**

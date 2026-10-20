@@ -6,15 +6,15 @@
     "semantic_hash": ""
   },
   "lib/appointments/__tests__/appointments.test.ts": {
-    "mtime": 1792422504.3489554,
-    "seen": 1792423482.5544739,
-    "ast_hash": "a4bee2b48fa521c9108f55acfb9029d6",
+    "mtime": 1792463316.1373186,
+    "seen": 1792467741.4726567,
+    "ast_hash": "d85654cd12d004fc47f4dc8ed37ce114",
     "semantic_hash": ""
   },
   "lib/appointments/calendar.ts": {
-    "mtime": 1792374722.6707573,
-    "seen": 1792375154.0915473,
-    "ast_hash": "fca9cf8ee4da8437ecb31fe8e1053f10",
+    "mtime": 1792463058.6094303,
+    "seen": 1792467741.472669,
+    "ast_hash": "ba4bce1c4e1d0e58b18fd2f6c8662b85",
     "semantic_hash": ""
   },
   "lib/appointments/contacts.ts": {
@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/reminders-db.ts": {
-    "mtime": 1792422382.5420747,
-    "seen": 1792423482.554506,
-    "ast_hash": "79ff59d1653776ae950b3af79b8c2216",
+    "mtime": 1792463075.1591308,
+    "seen": 1792467741.4726865,
+    "ast_hash": "71d5bf5821417b4265700b74cbeebf3b",
     "semantic_hash": ""
   },
   "lib/appointments/settings.ts": {
@@ -66,21 +66,21 @@
     "semantic_hash": ""
   },
   "lib/appointments/state.ts": {
-    "mtime": 1792422388.0588336,
-    "seen": 1792423482.554512,
-    "ast_hash": "48249474b791c32f02c383b147ebdc06",
+    "mtime": 1792462920.5830283,
+    "seen": 1792467741.472692,
+    "ast_hash": "534c2cb365b7df709e031919e3ba44b7",
     "semantic_hash": ""
   },
   "lib/appointments/type.ts": {
-    "mtime": 1790212159.1247334,
-    "seen": 1792375154.091578,
-    "ast_hash": "d55a7b53efb99199b0d36dd363c857d3",
+    "mtime": 1792463054.1624584,
+    "seen": 1792467741.4726932,
+    "ast_hash": "f441fc705868fd9ce9b3a783dbbe1e44",
     "semantic_hash": ""
   },
   "lib/appointments/whatsapp.ts": {
-    "mtime": 1792422485.4649756,
-    "seen": 1792423482.554515,
-    "ast_hash": "a655c47306d32906cb0e64ee1bcf3432",
+    "mtime": 1792462957.6628768,
+    "seen": 1792467741.4726942,
+    "ast_hash": "008adf96d529177256e76233f1de09ba",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/admin-guard.test.ts": {
@@ -2436,9 +2436,9 @@
     "semantic_hash": ""
   },
   "app/api/cron/appointment-reminders/route.ts": {
-    "mtime": 1792422455.7868793,
-    "seen": 1792423482.5534203,
-    "ast_hash": "f4cf01e63cc0f55d86cba4eac19d8ac1",
+    "mtime": 1792463458.9110978,
+    "seen": 1792467741.4716837,
+    "ast_hash": "ece72ff9326d641cc1858961ba68d467",
     "semantic_hash": ""
   },
   "app/api/cron/results-sla/route.ts": {
@@ -3060,9 +3060,9 @@
     "semantic_hash": ""
   },
   "app/api/webhooks/whatsapp/route.ts": {
-    "mtime": 1792422485.4655845,
-    "seen": 1792423482.553764,
-    "ast_hash": "6822a523e1947d53b82f0934f0ca84f0",
+    "mtime": 1792463458.9105759,
+    "seen": 1792467741.471973,
+    "ast_hash": "105abdd51af4bd7fd96081d19be79c06",
     "semantic_hash": ""
   },
   "app/auth/callback/route.ts": {
@@ -6342,9 +6342,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-create-templates.ts": {
-    "mtime": 1792374803.125543,
-    "seen": 1792375154.0937545,
-    "ast_hash": "aa2cb464c14844779d8f6f59af01a036",
+    "mtime": 1792463388.5315318,
+    "seen": 1792467741.473914,
+    "ast_hash": "9a2cbfc1feef9224d7f4e3f03952a5a5",
     "semantic_hash": ""
   },
   "scripts/whatsapp-discover.ts": {
@@ -6366,9 +6366,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-templates.ts": {
-    "mtime": 1792374894.018203,
-    "seen": 1792375154.0937667,
-    "ast_hash": "16dcf01f36fefae7badbbb7c74c795fa",
+    "mtime": 1792463391.3164945,
+    "seen": 1792467741.4739206,
+    "ast_hash": "441ff034a975cbdbe24967cf66878ac0",
     "semantic_hash": ""
   },
   "scripts/whatsapp-test.ts": {
@@ -6378,9 +6378,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-waba.ts": {
-    "mtime": 1792374894.0188756,
-    "seen": 1792375154.0937712,
-    "ast_hash": "ac812f012f4c20b3087936aef6f76cad",
+    "mtime": 1792463391.3251417,
+    "seen": 1792467741.4739225,
+    "ast_hash": "fadbfe2079a951eeaff7e82e4197bddd",
     "semantic_hash": ""
   },
   "scripts/whatsapp-wait-and-test.ts": {
@@ -7962,9 +7962,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/OPS-CHECKLIST.md": {
-    "mtime": 1792422635.6873336,
-    "seen": 1792423482.5565014,
-    "ast_hash": "8d6115e8e4005342d4ce845ea5336d46",
+    "mtime": 1792463411.90241,
+    "seen": 1792467741.474661,
+    "ast_hash": "e68050bf1f27ed09e7bd8b5954cd822b",
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/issues/01-ops-meta-google-setup.md": {
@@ -10356,9 +10356,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-preflight.ts": {
-    "mtime": 1792422635.688712,
-    "seen": 1792423482.5556993,
-    "ast_hash": "63ee4dab30e78d4ccb366563473c083f",
+    "mtime": 1792463388.5308514,
+    "seen": 1792467741.473918,
+    "ast_hash": "97516ef288dfff9f718ec6d097a14ed0",
     "semantic_hash": ""
   },
   "components/configurator/save-filling-template.tsx": {
@@ -14832,9 +14832,9 @@
     "semantic_hash": ""
   },
   "app/api/settings/readjustments/[id]/route.ts": {
-    "mtime": 1792374721.9665072,
-    "seen": 1792375154.0900059,
-    "ast_hash": "17966cfeb3e2f4fac92a759e594af107",
+    "mtime": 1792463234.5818307,
+    "seen": 1792467741.4718456,
+    "ast_hash": "46e7a7a5c54b834f6356c23f9b0b56d1",
     "semantic_hash": ""
   },
   "app/api/settings/service-fees/route.ts": {
@@ -15276,15 +15276,45 @@
     "semantic_hash": ""
   },
   "lib/appointments/remind.ts": {
-    "mtime": 1792422399.6100023,
-    "seen": 1792423482.5545042,
-    "ast_hash": "95b6801aecfd5ea91a6405493e6dc0b1",
+    "mtime": 1792463096.8175645,
+    "seen": 1792467741.472685,
+    "ast_hash": "1f59fa572a3189bb720a7e12f9c03cc1",
     "semantic_hash": ""
   },
   "supabase/migrations/20261019152211_appointment_reminder_errors.sql": {
     "mtime": 1792422367.0980031,
     "seen": 1792423482.5559087,
     "ast_hash": "da967fa3ec30f60d7cde868eb0d34f71",
+    "semantic_hash": ""
+  },
+  "app/api/cron/calendar-watch/route.ts": {
+    "mtime": 1792463131.3392003,
+    "seen": 1792467741.4716878,
+    "ast_hash": "89594f6494690aefa71793a2440d7871",
+    "semantic_hash": ""
+  },
+  "app/api/webhooks/google-calendar/route.ts": {
+    "mtime": 1792463131.3343236,
+    "seen": 1792467741.4719687,
+    "ast_hash": "3bf84d796e0f58506bacd8a2bfc4787d",
+    "semantic_hash": ""
+  },
+  "lib/appointments/calendar-watch.ts": {
+    "mtime": 1792463112.3140786,
+    "seen": 1792467741.4726677,
+    "ast_hash": "948fab3b9e676ee894c9d37e56986305",
+    "semantic_hash": ""
+  },
+  "lib/appointments/cancel.ts": {
+    "mtime": 1792463131.3241446,
+    "seen": 1792467741.4726698,
+    "ast_hash": "3a4ca229309f89a5a657d305f3c41ca1",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261020024120_whatsapp_inbound_calendar_channels.sql": {
+    "mtime": 1792463096.8247738,
+    "seen": 1792467741.4741457,
+    "ast_hash": "68067c2325a1eaf5271a102ddab17c88",
     "semantic_hash": ""
   }
 }

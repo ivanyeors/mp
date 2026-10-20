@@ -6,8 +6,8 @@
  *
  *   npx tsx --env-file=.env.local scripts/whatsapp-preflight.ts
  *
- * It reads config only; it never sends a message. Use scripts/whatsapp-test.ts
- * for an actual send.
+ * It reads config only and never sends a WhatsApp message (the one write is
+ * the empty webhook probe below). Use scripts/whatsapp-test.ts for a send.
  *
  * `scripts/**` is excluded from tsconfig.ci.json, so `pnpm typecheck` does NOT
  * cover this file. Check it explicitly after editing:
@@ -20,9 +20,16 @@
  * expect and is registered for Cloud API, that every template the code names is
  * APPROVED in the language that code sends it as and takes the number of body
  * params the code passes, that the day-before template has the Confirm /
- * Reschedule quick replies, that the webhook is subscribed, and that the public
- * sales number is not the automated sender.
+ * Reschedule quick replies, that guest replies can reach the site (app
+ * subscribed to the WABA, its webhook pointed here for `messages`, the app
+ * secret matching what Meta signs with, and the live endpoint accepting a POST
+ * signed with it), and that the public sales number is not the automated sender.
+ *
+ * The webhook probe POSTs an empty, signed payload to the live endpoint: it
+ * carries no message, so nothing is sent or changed.
  */
+import { createHmac } from "node:crypto";
+
 const GRAPH = "https://graph.facebook.com/v21.0";
 
 type Check = { label: string; ok: boolean; detail: string; fatal: boolean };
@@ -331,8 +338,20 @@ async function main() {
       buttons: ["confirm", "reschedule"],
     },
     { env: "WHATSAPP_TEMPLATE_MORNING_OF", fallback: "appointment_morning_of", lang: "en", params: 4, note: "morning-of nudge" },
-    { env: "WHATSAPP_TEMPLATE_CANCEL", fallback: "appointment_cancelled", lang: "en", params: 2, note: "cancel + rebook link" },
   ];
+  // lib/appointments/whatsapp.ts sends the first cancel template's 2-param
+  // shape only under its exact name; anything else gets v2's five.
+  const cancelName = process.env.WHATSAPP_TEMPLATE_CANCEL?.trim() || "appointment_cancelled_v2";
+  if (cancelName === "appointment_cancelled") {
+    wanted.push({ env: "WHATSAPP_TEMPLATE_CANCEL", fallback: cancelName, lang: "en", params: 2, note: "cancel + rebook link" });
+    fail(
+      "cancel template",
+      "appointment_cancelled cannot name the staffed line — create appointment_cancelled_v2 and switch WHATSAPP_TEMPLATE_CANCEL",
+      false,
+    );
+  } else {
+    wanted.push({ env: "WHATSAPP_TEMPLATE_CANCEL", fallback: cancelName, lang: "en", params: 5, note: "cancel + rebook link + staffed line" });
+  }
   const confirm = process.env.WHATSAPP_TEMPLATE_CONFIRM?.trim();
   if (confirm) {
     wanted.push({ env: "WHATSAPP_TEMPLATE_CONFIRM", fallback: confirm, lang: envLang, params: 4, note: "booking confirmation" });
@@ -400,17 +419,115 @@ async function main() {
   }
 
   // --- 5. Webhook ----------------------------------------------------------
+  // A guest's tap or reply reaches the site only if every link holds: the WABA
+  // has our app subscribed, that app's webhook points at this site for the
+  // `messages` field, and Meta signs with the secret the site checks. Break any
+  // one and every Confirm, Reschedule and reply vanishes with no error anywhere
+  // — the guest simply hears nothing back.
+  const secret = process.env.WHATSAPP_APP_SECRET?.trim();
+  const appLookup = await get(`${GRAPH}/app?fields=id,name`, token);
+  const appId =
+    process.env.WHATSAPP_APP_ID?.trim() || (appLookup.json.id as string | undefined);
+  const appLabel = appId
+    ? `${(appLookup.json.name as string | undefined) ?? "app"} (${appId})`
+    : "the token's app";
+  if (appId) pass("token app", appLabel);
+  else fail("token app", `could not tell which app the token belongs to — set WHATSAPP_APP_ID`, false);
+
   const subs = await get(`${GRAPH}/${waba}/subscribed_apps`, token);
-  const apps = (subs.json.data as Array<{ whatsapp_business_api_data?: { name?: string } }>) ?? [];
+  const apps =
+    (subs.json.data as Array<{ whatsapp_business_api_data?: { id?: string; name?: string } }>) ?? [];
   if (!subs.ok) {
     fail("webhook subscription", `could not read (${subs.status}): ${subs.json.error?.message ?? "?"}`, false);
   } else if (apps.length === 0) {
-    fail("webhook subscription", "no app subscribed — Confirm/Reschedule replies never arrive");
+    fail("webhook subscription", `no app subscribed — run: curl -X POST -H "Authorization: Bearer $WHATSAPP_TOKEN" ${GRAPH}/${waba}/subscribed_apps`);
+  } else if (appId && !apps.some((a) => a.whatsapp_business_api_data?.id === appId)) {
+    fail(
+      "webhook subscription",
+      `${appLabel} is not subscribed to WABA ${waba} (subscribed: ${apps.map((a) => a.whatsapp_business_api_data?.name ?? "?").join(", ")}) — its webhook never hears this number`,
+    );
   } else {
     pass(
       "webhook subscription",
       apps.map((a) => a.whatsapp_business_api_data?.name ?? "app").join(", "),
     );
+  }
+
+  let callback: string | undefined;
+  if (secret) {
+    // Graph checks appsecret_proof against the token's own app, so this says
+    // whether the secret here is that app's — the one Meta signs webhooks with.
+    const proof = createHmac("sha256", secret).update(token).digest("hex");
+    const me = await get(`${GRAPH}/me?fields=id&appsecret_proof=${proof}`, token);
+    if (me.ok) {
+      pass("app secret", `WHATSAPP_APP_SECRET is ${appLabel}'s secret`);
+    } else if (/appsecret_proof/i.test(me.json.error?.message ?? "")) {
+      fail(
+        "app secret",
+        `WHATSAPP_APP_SECRET is not ${appLabel}'s secret — Meta signs every webhook POST with the real one, so the site rejects every guest reply (401). Copy it from App Dashboard → App settings → Basic`,
+      );
+    } else {
+      fail("app secret", `could not verify (${me.status}): ${me.json.error?.message ?? "?"}`, false);
+    }
+
+    if (appId) {
+      const res = await fetch(
+        `${GRAPH}/${appId}/subscriptions?access_token=${encodeURIComponent(`${appId}|${secret}`)}`,
+      );
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: Array<{ object?: string; callback_url?: string; active?: boolean; fields?: Array<{ name?: string } | string> }>;
+        error?: { message?: string };
+      };
+      const wa = json.data?.find((o) => o.object === "whatsapp_business_account");
+      const fields = (wa?.fields ?? []).map((f) => (typeof f === "string" ? f : f.name ?? ""));
+      if (!res.ok) {
+        fail("webhook callback", `could not read (${res.status}): ${json.error?.message ?? "?"}`, false);
+      } else if (!wa) {
+        fail("webhook callback", `${appLabel} has no WhatsApp webhook — App Dashboard → WhatsApp → Configuration`);
+      } else if (!wa.active) {
+        fail("webhook callback", `${wa.callback_url} is set but inactive`);
+      } else if (!fields.includes("messages")) {
+        fail(
+          "webhook callback",
+          `${wa.callback_url} is not subscribed to the "messages" field — taps and replies never arrive (subscribed: ${fields.join(", ") || "none"})`,
+        );
+      } else if (!/\/api\/webhooks\/whatsapp\/?$/.test(wa.callback_url ?? "")) {
+        fail("webhook callback", `${wa.callback_url} is not this site's /api/webhooks/whatsapp`);
+      } else {
+        callback = wa.callback_url;
+        pass("webhook callback", `${callback} · messages`);
+      }
+    }
+  }
+
+  // The live endpoint must accept a POST signed with this secret. Vercel's copy
+  // of WHATSAPP_APP_SECRET is not this file's: a 401 here means the deployed one
+  // differs, and Meta's POSTs fail the same way. The payload has no messages, so
+  // the site does nothing with it.
+  const site = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://custom.mpillow.com").replace(/\/$/, "");
+  const endpoint = callback ?? `${site}/api/webhooks/whatsapp`;
+  if (secret) {
+    const body = JSON.stringify({ object: "whatsapp_business_account", entry: [] });
+    const sig = `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Hub-Signature-256": sig },
+        body,
+      });
+      if (res.ok) {
+        pass("webhook endpoint", `${endpoint} accepts a POST signed with this secret`);
+      } else if (res.status === 401) {
+        fail(
+          "webhook endpoint",
+          `${endpoint} rejected a POST signed with this WHATSAPP_APP_SECRET — the deployed value differs (Vercel env → redeploy)`,
+        );
+      } else {
+        fail("webhook endpoint", `${endpoint} answered ${res.status}`);
+      }
+    } catch (e) {
+      fail("webhook endpoint", `${endpoint} unreachable: ${e instanceof Error ? e.message : e}`);
+    }
   }
 
   // --- 6. Allowlist --------------------------------------------------------
