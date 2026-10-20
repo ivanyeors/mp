@@ -10,7 +10,7 @@ Parent PRD: `.claude/PRD-paired-build/paired-build-prd.md` · ADR 0026
 | 04 | Accept: one capture, one Order | AFK | done | 01 | 6, 7, 11 |
 | 05 | Status page, emails, admin link | HITL | hitl-review | 02–04 | 6, 7, 9 |
 | 06 | Configurator stepper (1 Mpillow · 2 Mbolster, skippable) | HITL | hitl-review | 02 | 1–3, 5 |
-| 07 | Wire `uses_bolster → route-mbolster` on the Premium graph and publish | HITL (Staff) | todo | 01–06 merged + migration `20261020004221_result_paired_build` applied | 1 |
+| 07 | Wire `uses_bolster → route-mbolster` on the Premium graph and publish | HITL (Staff) | wired in the Premium draft (2026-10-20); publish once 01–06 are deployed | 01–06 merged + migration `20261020004221_result_paired_build` applied | 1 |
 
 Slice 07 is the rollout gate: until it is published, no shopper reaches the stepper.
 

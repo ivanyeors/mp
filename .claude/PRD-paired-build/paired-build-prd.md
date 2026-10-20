@@ -92,8 +92,11 @@ anchor-led endings, one accept, one capture and one Order.
   route answered, plus the Mbolster with its Staff mix. Back returns to the Mpillow preview, which
   restores itself. A cancelled Checkout returns there too, and the hand-off keeps the Mbolster's
   answers.
-- **Rollout gate:** the live Premium graph's `route-mbolster` node has no wire into it. Nothing
-  reaches this flow until Staff connect `uses_bolster = true` to it on the canvas and publish.
+- **Rollout gate:** the Premium **draft** graph wires `uses_bolster = true` into `route-mbolster`
+  (`in-bolster` → `m-bolster` → route; `lib/rules-engine/__tests__/mbolster-route.test.ts`). Nothing
+  reaches this flow until that draft is published, which must wait for this code to deploy: the
+  code before it shows an upsell card for the route whose Add button does nothing, and holds the
+  Mpillow's checkout until the shopper declines it.
 
 ## Testing Decisions
 
