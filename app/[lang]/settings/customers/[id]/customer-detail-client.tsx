@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
     Table,
     TableBody,
@@ -43,6 +42,10 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import { toast } from "sonner";
+import { changedCustomerFields } from "@/lib/crm/customer-patch";
+import type { CustomerNote } from "@/lib/crm/note-rules";
+import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +112,8 @@ export type CustomerDetailResponse = { ok: true; row: Customer } | { error: stri
 
 export type CustomerDetailInitialData = {
     customer: CustomerDetailResponse;
+    /** The Customer's notes, or null when the server could not read them. */
+    notes: CustomerNote[] | null;
 };
 
 const emptyAddress: AddressFormState = {
@@ -127,8 +132,10 @@ const emptyAddress: AddressFormState = {
 
 export function CustomerDetailClient({
     initialData,
+    viewer,
 }: {
     initialData?: CustomerDetailInitialData;
+    viewer: CustomerNotesViewer;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -161,7 +168,6 @@ export function CustomerDetailClient({
     const [firstName, setFirstName] = useState(initialRow?.first_name ?? "");
     const [lastName, setLastName] = useState(initialRow?.last_name ?? "");
     const [phone, setPhone] = useState(initialRow?.phone ?? "");
-    const [notes, setNotes] = useState(initialRow?.notes ?? "");
     const [tags, setTags] = useState<string[]>(initialRow?.tags ?? []);
     const [tagInput, setTagInput] = useState("");
 
@@ -191,7 +197,6 @@ export function CustomerDetailClient({
             setFirstName(row.first_name ?? "");
             setLastName(row.last_name ?? "");
             setPhone(row.phone ?? "");
-            setNotes(row.notes ?? "");
             setTags(row.tags ?? []);
         } catch {
             setCustomer(null);
@@ -238,21 +243,42 @@ export function CustomerDetailClient({
         fetchAddresses();
     }, [fetchCustomer, fetchOrders, fetchAddresses]);
 
+    // Sends only the fields that changed; an empty name or phone clears it.
+    // Notes save on their own, from the Notes card.
     const saveChanges = async () => {
+        if (!customer) return;
+        const { after } = changedCustomerFields(customer, {
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            tags,
+        });
+        if (Object.keys(after).length === 0) {
+            toast.info("Nothing to save.");
+            return;
+        }
         setSaving(true);
         try {
-            await fetch(`/api/shop/customers/${customerId}`, {
+            const res = await fetch(`/api/shop/customers/${customerId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    first_name: firstName,
-                    last_name: lastName,
-                    phone: phone || null,
-                    notes: notes || null,
-                    tags,
-                }),
+                body: JSON.stringify(after),
             });
-            await fetchCustomer();
+            const payload = await res.json().catch(() => null);
+            if (!res.ok || !payload?.row) {
+                throw new Error(
+                    typeof payload?.error === "string" ? payload.error : "Could not save the customer",
+                );
+            }
+            const row = payload.row as Customer;
+            setCustomer(row);
+            setFirstName(row.first_name ?? "");
+            setLastName(row.last_name ?? "");
+            setPhone(row.phone ?? "");
+            setTags(row.tags ?? []);
+            toast.success("Saved");
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Could not save the customer");
         } finally {
             setSaving(false);
         }
@@ -624,7 +650,7 @@ export function CustomerDetailClient({
                     </Card>
                 </div>
 
-                {/* ── Right: Info + Stats + Tags + Notes ── */}
+                {/* ── Right: Info + Stats + Tags, Save, then Notes ── */}
                 <div className="space-y-4">
                     {/* Info Card */}
                     <Card>
@@ -771,23 +797,7 @@ export function CustomerDetailClient({
                         </CardContent>
                     </Card>
 
-                    {/* Notes Card */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Notes</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <Textarea
-                                placeholder="Internal notes about this customer..."
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                rows={4}
-                                className="resize-none"
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* Save button */}
+                    {/* Save button: the details and tags above. Notes save on their own. */}
                     <Button
                         className="w-full"
                         onClick={saveChanges}
@@ -800,6 +810,13 @@ export function CustomerDetailClient({
                         )}
                         Save Changes
                     </Button>
+
+                    {/* Notes Card */}
+                    <CustomerNotesCard
+                        customerId={customer.id}
+                        initialNotes={initialData ? initialData.notes : null}
+                        viewer={viewer}
+                    />
                 </div>
             </div>
         </div>
