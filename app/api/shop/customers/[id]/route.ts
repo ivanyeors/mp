@@ -23,8 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
  * differs are written, and the audit entry holds just those, before and after.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  // customers-edit once CRM 10 lands.
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
 
   const { id } = await params;

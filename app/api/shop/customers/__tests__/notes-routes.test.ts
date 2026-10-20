@@ -36,6 +36,7 @@ const MISSING = "aaaaaaaa-0000-4000-8000-0000000000ff";
 const STUDIO = "00000000-0000-4000-8000-0000000000b1"; // Owner login, two profiles
 const CLERK = "00000000-0000-4000-8000-0000000000b2"; // Staff login, one profile
 const VIEWER = "00000000-0000-4000-8000-0000000000b3"; // no customers key
+const LOOKER = "00000000-0000-4000-8000-0000000000b4"; // customers, without customers-edit
 const JESS = "11111111-1111-4111-8111-111111111111";
 const KAI = "22222222-2222-4222-8222-222222222222";
 const CLERK_PROFILE = "33333333-3333-4333-8333-333333333333";
@@ -71,13 +72,15 @@ beforeEach(() => {
   h.db = {
     admin_roles: [
       { id: "r-owner", key: "owner", name: "Owner", grants_all: true, permissions: [] },
-      { id: "r-staff", key: "staff", name: "Staff", grants_all: false, permissions: ["customers", "orders"] },
+      { id: "r-staff", key: "staff", name: "Staff", grants_all: false, permissions: ["customers", "customers-edit", "orders"] },
+      { id: "r-crm-viewer", key: "crm-viewer", name: "CRM viewer", grants_all: false, permissions: ["customers"] },
       { id: "r-viewer", key: "viewer", name: "Viewer", grants_all: false, permissions: ["orders"] },
     ],
     admin_users: [
       { id: STUDIO, email: "studio@x.test", role_id: "r-owner", is_active: true, auth_user_id: "auth-studio" },
       { id: CLERK, email: "clerk@x.test", role_id: "r-staff", is_active: true, auth_user_id: "auth-clerk" },
       { id: VIEWER, email: "viewer@x.test", role_id: "r-viewer", is_active: true, auth_user_id: "auth-viewer" },
+      { id: LOOKER, email: "looker@x.test", role_id: "r-crm-viewer", is_active: true, auth_user_id: "auth-looker" },
     ],
     mp_staff: [
       { id: JESS, name: "Jess", admin_user_id: STUDIO, archived_at: null },
@@ -205,10 +208,26 @@ describe("deleting a note", () => {
     expect(h.db.admin_audit_log).toHaveLength(0);
   });
 
-  it("needs the customers key", async () => {
+  it("needs customers-edit", async () => {
     signIn(VIEWER);
     expect((await deleteNote(N_CLERK)).status).toBe(403);
     expect(note(N_CLERK).deleted_at).toBeNull();
+  });
+});
+
+describe("view-only Customers (customers without customers-edit, CRM 10)", () => {
+  it("reads the notes, and is refused every note write and the PATCH, changing nothing", async () => {
+    signIn(LOOKER);
+    expect((await listNotes()).status).toBe(200);
+    expect((await addNote({ body: "hi" })).status).toBe(403);
+    // Even a note their own login wrote is not theirs to delete without customers-edit.
+    h.db.customer_notes.find((n) => n.id === N_CLERK)!.author_user_id = "auth-looker";
+    expect((await deleteNote(N_CLERK)).status).toBe(403);
+    expect((await patchCustomer({ first_name: "Changed" })).status).toBe(403);
+    expect(h.db.customer_notes).toHaveLength(4);
+    expect(note(N_CLERK).deleted_at).toBeNull();
+    expect(h.db.customers[0].first_name).toBe("Mei");
+    expect(h.db.admin_audit_log).toHaveLength(0);
   });
 });
 

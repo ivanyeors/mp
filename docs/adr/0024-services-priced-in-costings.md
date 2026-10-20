@@ -68,3 +68,5 @@ booked by a signed-in **Customer** against one purchase and charged unless it is
 - A paid re-adjustment's calendar event is created only after payment; the slot is held in our
   database for the 30 minutes the Checkout Session lives, so no Google invite is sent for an
   abandoned checkout.
+- Narrowed by ADR 0028: Shopify customers are imported once, from the owner's CSV export, as
+  **Customer** rows. Their Shopify orders stay unlinked, and the rest of "No Shopify" stands.

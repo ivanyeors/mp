@@ -18,8 +18,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string; noteId: string }> },
 ) {
-  // customers-edit once CRM 10 lands.
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

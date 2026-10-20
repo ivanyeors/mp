@@ -97,6 +97,23 @@ describe("role → permission matrix", () => {
       expect([...applyRequires(held)].sort()).toEqual([...new Set(held)].sort());
     }
   });
+
+  // CRM slice 10: seeing Customers and changing them are separate keys.
+  it("customers-edit is a Customers tab that requires customers", () => {
+    expect(permissionEntry("customers-edit")).toMatchObject({ surface: "admin-panel", requires: ["customers"] });
+    expect(permissionEntry("customers-edit").href).toBeUndefined();
+    expect(permissionForHref("/settings/customers")).toBe("customers");
+  });
+
+  it("every seeded role that sees Customers can change them; viewer gains neither", () => {
+    for (const role of ROLES) {
+      if (roleHasPermission(role, "customers")) expect(roleHasPermission(role, "customers-edit"), role).toBe(true);
+    }
+    expect(roleHasPermission("manager", "customers-edit")).toBe(true);
+    expect(roleHasPermission("staff", "customers-edit")).toBe(true);
+    expect(roleHasPermission("viewer", "customers")).toBe(false);
+    expect(roleHasPermission("viewer", "customers-edit")).toBe(false);
+  });
 });
 
 /**
@@ -119,6 +136,8 @@ describe("one key per page: the split changed no one's access", () => {
 
   const SPLIT: Record<string, Permission[]> = {
     staff: ["users"],
+    // CRM slice 10: changing Customers moved to its own key; every holder kept both.
+    customers: ["customers", "customers-edit"],
     results: ["results", "appointments"],
     inventory: ["inventory", "configure", "shopify-link"],
     orders: ["orders", "returns"],
@@ -255,21 +274,36 @@ describe("first-admin bootstrap allowlist", () => {
 });
 
 describe("admin_roles seed (slice 03)", () => {
-  const SQL = readFileSync(
-    join(process.cwd(), "supabase", "migrations", "20261004100000_admin_roles.sql"),
-    "utf8",
-  );
+  const migration = (name: string) => readFileSync(join(process.cwd(), "supabase", "migrations", name), "utf8");
+  const SQL = migration("20261004100000_admin_roles.sql");
   const seeded = (key: string) => {
     const m = SQL.match(new RegExp(`\\('${key}',[^]*?array\\[([^\\]]*)\\]`));
     return m ? [...m[1].matchAll(/'([a-z.-]+)'/g)].map((k) => k[1]) : null;
   };
 
+  /**
+   * Data migrations that gave existing custom roles a new key, each as the rule
+   * it applies to a stored permission list. A test below pins each rule to its
+   * SQL, so the seed plus these is what a database migrated from scratch holds.
+   */
+  const CUSTOMERS_EDIT = migration("20261020102000_customers_edit_permission.sql");
+  const afterDataMigrations = (keys: string[]) =>
+    keys.includes("customers") && !keys.includes("customers-edit") ? [...keys, "customers-edit"] : keys;
+
   it.each([
     ["manager", "manager"],
     ["fulfilment", "staff"],
     ["viewer", "viewer"],
-  ] as const)("seeds %s with the code matrix's %s list", (key, legacy) => {
-    expect(seeded(key)?.sort()).toEqual([...ROLE_PERMISSIONS[legacy]].sort());
+  ] as const)("seeds %s with the code matrix's %s list, after the data migrations", (key, legacy) => {
+    expect(afterDataMigrations(seeded(key) ?? []).sort()).toEqual([...ROLE_PERMISSIONS[legacy]].sort());
+  });
+
+  it("the customers-edit migration adds the key to every custom role holding customers, once", () => {
+    const sql = CUSTOMERS_EDIT.replace(/--.*$/gm, "").replace(/\s+/g, " ").trim();
+    expect(sql).toBe(
+      "update admin_roles set permissions = array_append(permissions, 'customers-edit') " +
+        "where not grants_all and 'customers' = any(permissions) and not 'customers-edit' = any(permissions);",
+    );
   });
 
   it("seeds owner and admin as grants_all system roles", () => {

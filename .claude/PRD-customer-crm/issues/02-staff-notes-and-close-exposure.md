@@ -121,17 +121,21 @@ grant select (/* every column except internal_notes */) on public.orders to auth
 - `lib/crm/notes.ts` (server: list, create, `noteProfileFor`) and `lib/crm/note-rules.ts`
   (shared with the browser: `NoteInputSchema`, `CustomerNote`, `canDeleteNote`).
 - `GET` / `POST /api/shop/customers/[id]/notes` and
-  `DELETE /api/shop/customers/[id]/notes/[noteId]`. The writes check `customers` today, each
-  marked `// customers-edit once CRM 10 lands.`
+  `DELETE /api/shop/customers/[id]/notes/[noteId]`. The writes, and the PATCH, check
+  `customers-edit` (CRM 10, merged in); `GET` stays on `customers`.
 - `lib/crm/customer-patch.ts`: `UpdateCustomerSchema` (strict; `null` or `""` clears a name or
   phone; no `notes`) and `changedCustomerFields`, used by both the client (send only what
   changed) and the PATCH route (write and audit only what changed, as `customer.update`).
 - Admin Panel: `customer-notes-card.tsx` replaces the textarea; the page reads the notes on the
-  server and passes `viewer` (`userId`, `grantsAll`, `canEdit`). The Save button now sits above
-  the Notes card, since notes save on their own. Saves and note actions show a toast on failure.
+  server and passes `viewer` (`userId`, `grantsAll`). CRM 10's one `canEdit` flag
+  (`customers-edit`) drives both its edit controls and the Notes card's add box and delete
+  buttons; without it the notes read as text. The Save button now sits above the Notes card,
+  since notes save on their own. Saves and note actions show a toast on failure.
 - `lib/shop/customer-orders.ts`: `CUSTOMER_ORDER_COLUMNS` / `CUSTOMER_ORDER_ITEM_COLUMNS`
   replace `*`, and the reads return `CustomerOrder` (`Omit<Order, "internal_notes">`).
 - Deleted `app/[lang]/settings/customers/actions.ts`; `dead-surface.test.ts` keeps it gone.
+  CRM 10 had moved it to `customers-edit`; on merge the deletion stands, and CRM 10's tests drop
+  its `updateCustomer` cases (the guard test now expects the two note routes instead).
   `POST /api/shop/customers` no longer accepts `notes`.
 - `.env.example` documents the check's optional `CUSTOMER_CHECK_*` variables.
 
@@ -149,12 +153,15 @@ Migration slice 07's `marketing_email` is not on `main` yet, so slice 07 adds it
 the customer order column lists against the grants, and that `customer_notes` is server-only.
 A new column on either table fails it until it is granted or listed as hidden.
 `app/api/shop/customers/__tests__/notes-routes.test.ts` (list, add, delete, permissions,
-working-as attribution, audit rows without text, PATCH with no name, changed-only audit).
-`lib/crm/__tests__/customer-patch.test.ts` (schema, diff, note rules).
+working-as attribution, audit rows without text, PATCH with no name, changed-only audit, and a
+view-only role refused every note write and the PATCH).
+`lib/crm/__tests__/customer-patch.test.ts` (schema, diff, note rules). CRM 10's render test now
+passes notes and a viewer, and counts *Add note* and the delete button as edit controls.
 
-**DB check.** `db-check.sh` passes (154 migrations). Repeated with Supabase's default
-privileges emulated, plus a fixture customer: before the migration the customer's role read
-`notes`, `tags` and `internal_notes`; after it, those, `select *` on both tables and every
+**DB check.** `db-check.sh` (which now emulates Supabase's default privileges) passes on
+`mp_c02` after merging CRM 10 (155 migrations). With a fixture customer: before the
+migration the customer's role read `notes`, `tags` and `internal_notes`; after it, those,
+`select *` on both tables and every
 `customer_notes` access are "permission denied", while the storefront's own selects, the
 address writes and RLS isolation between two customers still work. The backfill is idempotent,
 skips blank notes, and dates the note from `customers.updated_at`.
@@ -178,5 +185,5 @@ skips blank notes, and dates the note from `customers.updated_at`.
 
 - Run `lib/shop/customer-privacy.check.ts` live (CRM 09, on production with the owner's login).
 - Deploy order: code first, then the migration (as `20260915170000` required).
-- The integrator switches the two note routes (POST, DELETE) and the PATCH to `customers-edit`
-  when CRM 10 merges.
+- Migration slice 06 cites `updateCustomer` (`actions.ts:11`), which no longer exists: it should
+  use the PATCH route.

@@ -20,6 +20,9 @@ export const runtime = "nodejs";
  *
  * A missing row is handed to the client as the same `{ error }` body the route
  * returns with its 404, so the screen behaves exactly as it does today.
+ *
+ * Seeing this page needs `customers`; its edit controls render only for
+ * `customers-edit` (CRM slice 10). The write routes refuse without it anyway.
  */
 export default async function CustomerDetailPage({
     params,
@@ -46,12 +49,8 @@ export default async function CustomerDetailPage({
     return (
         <CustomerDetailClient
             initialData={initialData}
-            viewer={{
-                userId: ctx.userId,
-                grantsAll: ctx.grantsAll,
-                // customers-edit once CRM 10 lands.
-                canEdit: hasPermission(ctx, "customers"),
-            }}
+            canEdit={hasPermission(ctx, "customers-edit")}
+            viewer={{ userId: ctx.userId, grantsAll: ctx.grantsAll }}
         />
     );
 }

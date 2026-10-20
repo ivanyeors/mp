@@ -132,10 +132,18 @@ const emptyAddress: AddressFormState = {
 
 export function CustomerDetailClient({
     initialData,
+    canEdit,
     viewer,
 }: {
     initialData?: CustomerDetailInitialData;
-    viewer: CustomerNotesViewer;
+    /**
+     * Holds `customers-edit` (CRM slice 10). Without it every edit control is
+     * left out and the fields read as text; the write routes refuse regardless.
+     * The same flag lets the Notes card add and delete notes.
+     */
+    canEdit: boolean;
+    /** Who is looking: decides which notes they may delete (CRM 02). */
+    viewer: Omit<CustomerNotesViewer, "canEdit">;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -440,167 +448,169 @@ export function CustomerDetailClient({
                                 <MapPin className="h-4 w-4" />
                                 Addresses
                             </CardTitle>
-                            <Dialog open={addAddressOpen} onOpenChange={setAddAddressOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm" variant="outline">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Address
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-lg">
-                                    <DialogHeader>
-                                        <DialogTitle>Add Address</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="grid grid-cols-2 gap-3 py-2">
-                                        <div className="col-span-2 space-y-1.5">
-                                            <Label>Label</Label>
-                                            <Input
-                                                placeholder="e.g. Home, Office"
-                                                value={addressForm.label}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        label: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1.5">
-                                            <Label>Recipient</Label>
-                                            <Input
-                                                placeholder="Full name"
-                                                value={addressForm.recipient}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        recipient: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1.5">
-                                            <Label>Address Line 1</Label>
-                                            <Input
-                                                value={addressForm.line1}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        line1: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1.5">
-                                            <Label>
-                                                Address Line 2{" "}
-                                                <span className="text-muted-foreground font-normal">
-                                                    (optional)
-                                                </span>
-                                            </Label>
-                                            <Input
-                                                value={addressForm.line2}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        line2: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>City</Label>
-                                            <Input
-                                                value={addressForm.city}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        city: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>State</Label>
-                                            <Input
-                                                value={addressForm.state}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        state: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>Postal Code</Label>
-                                            <Input
-                                                value={addressForm.postal_code}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        postal_code: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>Country</Label>
-                                            <Input
-                                                value={addressForm.country}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        country: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1.5">
-                                            <Label>
-                                                Phone{" "}
-                                                <span className="text-muted-foreground font-normal">
-                                                    (optional)
-                                                </span>
-                                            </Label>
-                                            <Input
-                                                value={addressForm.phone}
-                                                onChange={(e) =>
-                                                    setAddressForm((f) => ({
-                                                        ...f,
-                                                        phone: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setAddAddressOpen(false)}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            onClick={saveAddress}
-                                            disabled={
-                                                savingAddress ||
-                                                !addressForm.recipient.trim() ||
-                                                !addressForm.line1.trim() ||
-                                                !addressForm.city.trim() ||
-                                                !addressForm.postal_code.trim() ||
-                                                !addressForm.country.trim()
-                                            }
-                                        >
-                                            {savingAddress ? (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <Plus className="mr-2 h-4 w-4" />
-                                            )}
+                            {canEdit && (
+                                <Dialog open={addAddressOpen} onOpenChange={setAddAddressOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline">
+                                            <Plus className="mr-2 h-4 w-4" />
                                             Add Address
                                         </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-lg">
+                                        <DialogHeader>
+                                            <DialogTitle>Add Address</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="grid grid-cols-2 gap-3 py-2">
+                                            <div className="col-span-2 space-y-1.5">
+                                                <Label>Label</Label>
+                                                <Input
+                                                    placeholder="e.g. Home, Office"
+                                                    value={addressForm.label}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            label: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="col-span-2 space-y-1.5">
+                                                <Label>Recipient</Label>
+                                                <Input
+                                                    placeholder="Full name"
+                                                    value={addressForm.recipient}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            recipient: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="col-span-2 space-y-1.5">
+                                                <Label>Address Line 1</Label>
+                                                <Input
+                                                    value={addressForm.line1}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            line1: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="col-span-2 space-y-1.5">
+                                                <Label>
+                                                    Address Line 2{" "}
+                                                    <span className="text-muted-foreground font-normal">
+                                                        (optional)
+                                                    </span>
+                                                </Label>
+                                                <Input
+                                                    value={addressForm.line2}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            line2: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label>City</Label>
+                                                <Input
+                                                    value={addressForm.city}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            city: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label>State</Label>
+                                                <Input
+                                                    value={addressForm.state}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            state: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label>Postal Code</Label>
+                                                <Input
+                                                    value={addressForm.postal_code}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            postal_code: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label>Country</Label>
+                                                <Input
+                                                    value={addressForm.country}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            country: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="col-span-2 space-y-1.5">
+                                                <Label>
+                                                    Phone{" "}
+                                                    <span className="text-muted-foreground font-normal">
+                                                        (optional)
+                                                    </span>
+                                                </Label>
+                                                <Input
+                                                    value={addressForm.phone}
+                                                    onChange={(e) =>
+                                                        setAddressForm((f) => ({
+                                                            ...f,
+                                                            phone: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setAddAddressOpen(false)}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                onClick={saveAddress}
+                                                disabled={
+                                                    savingAddress ||
+                                                    !addressForm.recipient.trim() ||
+                                                    !addressForm.line1.trim() ||
+                                                    !addressForm.city.trim() ||
+                                                    !addressForm.postal_code.trim() ||
+                                                    !addressForm.country.trim()
+                                                }
+                                            >
+                                                {savingAddress ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                )}
+                                                Add Address
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </CardHeader>
                         <CardContent>
                             {addressesLoading ? (
@@ -661,48 +671,61 @@ export function CustomerDetailClient({
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="first-name">First Name</Label>
-                                    <Input
-                                        id="first-name"
-                                        value={firstName}
-                                        onChange={(e) => setFirstName(e.target.value)}
-                                    />
+                            {canEdit ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="first-name">First Name</Label>
+                                        <Input
+                                            id="first-name"
+                                            value={firstName}
+                                            onChange={(e) => setFirstName(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="last-name">Last Name</Label>
+                                        <Input
+                                            id="last-name"
+                                            value={lastName}
+                                            onChange={(e) => setLastName(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="last-name">Last Name</Label>
-                                    <Input
-                                        id="last-name"
-                                        value={lastName}
-                                        onChange={(e) => setLastName(e.target.value)}
-                                    />
-                                </div>
-                            </div>
+                            ) : (
+                                <p className="text-sm font-medium">
+                                    {[firstName, lastName].filter(Boolean).join(" ") || "—"}
+                                </p>
+                            )}
                             <div className="space-y-1 text-sm">
                                 <div className="flex items-center gap-1.5 text-muted-foreground py-1">
                                     <Mail className="h-3.5 w-3.5 shrink-0" />
                                     <span className="truncate">{customer.email}</span>
                                 </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="phone">
-                                    Phone{" "}
-                                    <span className="text-muted-foreground font-normal">
-                                        (optional)
-                                    </span>
-                                </Label>
-                                <div className="relative">
-                                    <Phone className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                                    <Input
-                                        id="phone"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        className="pl-9"
-                                        placeholder="+60..."
-                                    />
+                            {canEdit ? (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="phone">
+                                        Phone{" "}
+                                        <span className="text-muted-foreground font-normal">
+                                            (optional)
+                                        </span>
+                                    </Label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                        <Input
+                                            id="phone"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            className="pl-9"
+                                            placeholder="+60..."
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                                    <span>{phone || "No phone"}</span>
+                                </div>
+                            )}
                             <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                                 <Clock className="h-3.5 w-3.5" />
                                 <span>Locale: {customer.locale}</span>
@@ -754,7 +777,19 @@ export function CustomerDetailClient({
                             <CardTitle className="text-base">Tags</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {tags.length > 0 && (
+                            {!canEdit && tags.length === 0 && (
+                                <p className="text-sm text-muted-foreground">No tags.</p>
+                            )}
+                            {!canEdit && tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {tags.map((tag) => (
+                                        <Badge key={tag} variant="secondary">
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+                            {canEdit && tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5">
                                     {tags.map((tag) => (
                                         <Badge
@@ -772,50 +807,54 @@ export function CustomerDetailClient({
                                     ))}
                                 </div>
                             )}
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder="Add tag..."
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            addTag();
-                                        }
-                                    }}
-                                    className="flex-1"
-                                />
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={addTag}
-                                    disabled={!tagInput.trim()}
-                                >
-                                    <Plus className="h-4 w-4" />
-                                </Button>
-                            </div>
+                            {canEdit && (
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Add tag..."
+                                        value={tagInput}
+                                        onChange={(e) => setTagInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                addTag();
+                                            }
+                                        }}
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={addTag}
+                                        disabled={!tagInput.trim()}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
                     {/* Save button: the details and tags above. Notes save on their own. */}
-                    <Button
-                        className="w-full"
-                        onClick={saveChanges}
-                        disabled={saving}
-                    >
-                        {saving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Save Changes
-                    </Button>
+                    {canEdit && (
+                        <Button
+                            className="w-full"
+                            onClick={saveChanges}
+                            disabled={saving}
+                        >
+                            {saving ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Save Changes
+                        </Button>
+                    )}
 
                     {/* Notes Card */}
                     <CustomerNotesCard
                         customerId={customer.id}
                         initialNotes={initialData ? initialData.notes : null}
-                        viewer={viewer}
+                        viewer={{ ...viewer, canEdit }}
                     />
                 </div>
             </div>

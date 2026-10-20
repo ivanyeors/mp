@@ -29,8 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
  * the profile they work as. The audit entry names the note, never its text.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  // customers-edit once CRM 10 lands.
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
