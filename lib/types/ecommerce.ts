@@ -153,6 +153,17 @@ export interface Customer {
   total_spent: number;
   created_at: string;
   updated_at: string;
+  /**
+   * When the current login was bound to this row; null without one. Set by a
+   * trigger, never by app code (migration slice 12). Staff-only: read through
+   * the service role, not granted to the customer's own key.
+   */
+  account_linked_at: string | null;
+  /**
+   * The last time they opened an account page while signed in, to the hour
+   * (`touchCustomerLastSeen`). Not the last site visit. Staff-only.
+   */
+  account_last_seen_at: string | null;
   addresses?: CustomerAddress[];
 }
 

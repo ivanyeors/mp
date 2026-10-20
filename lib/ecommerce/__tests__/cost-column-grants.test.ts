@@ -58,7 +58,14 @@ function grantedTo(table: string, role: string): Set<string> {
 const cases = [
   { table: "product_variants", hidden: ["cost_price"], roles: ["anon", "authenticated"] },
   { table: "order_items", hidden: ["unit_cost", "total_cost"], roles: ["authenticated"] },
-  { table: "customers", hidden: ["notes", "tags"], roles: ["authenticated"] },
+  // account_linked_at / account_last_seen_at (migration slice 12) are not
+  // secret, but no customer surface reads them: Staff read them through the
+  // service role, so they stay ungranted until one does.
+  {
+    table: "customers",
+    hidden: ["notes", "tags", "account_linked_at", "account_last_seen_at"],
+    roles: ["authenticated"],
+  },
   { table: "orders", hidden: ["internal_notes"], roles: ["authenticated"] },
 ];
 

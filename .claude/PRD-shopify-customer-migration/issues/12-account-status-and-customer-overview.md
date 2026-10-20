@@ -128,15 +128,112 @@ into the funnel in user story 11 without a second card.
 
 ## Acceptance criteria
 
-- [ ] Signing in as a Customer with no account sets `account_linked_at` once, and a later sign-in
+- [x] Signing in as a Customer with no account sets `account_linked_at` once, and a later sign-in
       does not move it. Deleting the auth user clears it.
-- [ ] The backfill gives every already-linked row a date, and no unlinked row one.
-- [ ] `account_last_seen_at` is written at most once an hour per Customer, and a failing write
+- [x] The backfill gives every already-linked row a date, and no unlinked row one.
+- [x] `account_last_seen_at` is written at most once an hour per Customer, and a failing write
       does not break `/account`.
 - [ ] `admin_customer_overview` cannot be selected with the anon key or as an authenticated
       Customer. The Supabase security advisor reports nothing new.
-- [ ] The *from Shopify + no account* filter matches
+      — _not yet: the grant half is verified on Postgres 16 (both roles get `permission denied`);
+      the security advisor needs the Supabase project, and the MCP connection was down_
+- [x] The *from Shopify + no account* filter matches
       `migrated_customers join customers where auth_user_id is null`, counted by hand.
-- [ ] The migration card's numbers match the same hand-counted queries.
-- [ ] vitest covers the list's filter-to-query mapping as a pure function.
+- [x] The migration card's numbers match the same hand-counted queries.
+- [x] vitest covers the list's filter-to-query mapping as a pure function.
 - [ ] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+**What was built.**
+
+- `lib/crm/customer-overview.ts`: the TS read model. `CUSTOMER_OVERVIEW_COLUMNS` (the view's
+  columns, in order) and `CustomerOverviewRow`. A later slice adds its column here and in the view.
+- `lib/crm/customer-filters.ts`: one zod-backed reader of the list's URL parameters
+  (`parseCustomerFilters`, which drops and names an invalid value), `applyCustomerFilters` (pure,
+  over the query's `or`/`overlaps`/`eq`/`order`), and `customerFilterParams` for the URL. CRM 04
+  extends this file. URL values: `account=signed-up|no-account`, `source=shopify|platform`,
+  `sort=signed-up` (hyphens, like the existing `name-asc`).
+- `lib/ecommerce/admin/customers.ts`: `listAdminCustomers` reads `admin_customer_overview`
+  through the filters. `getAdminCustomer` is unchanged; the Account card reads the row's own
+  `auth_user_id`, `account_linked_at` and `account_last_seen_at`.
+- `lib/auth/customer-identity.ts`: `touchCustomerLastSeen` (and `lastSeenIsStale`), its own
+  block below `linkCustomerToAuthUser`, called as one line before `return customer`. It skips the
+  write while the stored value is under an hour old, and the update re-checks the value it read
+  (`.is(null)` or `.lt(now − 1h)`), so of two concurrent loads only one writes. Errors and throws
+  are swallowed.
+- `lib/customer-migration/overview.ts`: `getMigrationSummary` (the card) and
+  `getMigratedCustomer` (the From Shopify card, with its batch embedded). Neither throws.
+- Customers list (`page.tsx`, `customers-client.tsx`, `migration-card.tsx`): the Account column
+  (*Signed up* with its date, or a muted *No account*; a badge under the name below `md`), the
+  *Shopify* badge, Account / Source / Sort selects (*Recently signed up* added), and the Migration
+  card. Search, tags, account, source and sort live in the URL (`history.replaceState`, as on
+  Users & permissions); the RSC page reads them and renders that list first. The card's
+  *N from Shopify not signed up yet* link applies the filter in place.
+- Customer detail (`[id]/customer-account-cards.tsx`): the Account card (*Signed up on {date}*
+  with the backfill tooltip, or *No account yet …{email}*; *Last signed-in visit*, labelled as an
+  account page opened while signed in) and the From Shopify card (imported on, the batch, matched
+  or created, Shopify-era orders and spend *on Shopify, not linked to this account*, tags, note,
+  consent at export, and *Claimed on* once `claimed_at` is set).
+
+**Migration.** `supabase/migrations/20261020111000_customer_account_status_and_overview.sql`:
+the two columns; the backfill from `auth.users.created_at` with `trg_customers_updated_at` held
+off, so `updated_at` is untouched; the `before insert or update of auth_user_id` trigger; a check
+`(auth_user_id is null) = (account_linked_at is null)`; `admin_customer_overview` exactly as
+specified; and `admin_customer_migration_summary`. Both views are `security_invoker` and revoked
+from `anon, authenticated`. Verified on Postgres 16 with every migration, from a database seeded
+*before* this migration (two linked rows and one guest): the linked rows got their logins'
+`created_at`, the guest none, `updated_at` unchanged; a re-run changes nothing. Then: a first
+link stamps `now()`; the same login written again (with or without a supplied date) keeps it; a
+new login re-stamps; deleting the auth user nulls both columns through `on delete set null`; an
+insert without a login drops a supplied date. anon and an authenticated Customer get `permission
+denied` on both views and on the two new columns; the service role reads both. The *from Shopify
++ no account* list and every card number equal the hand-counted joins.
+`supabase/tests/customer-migration/assert-12-account-status.sql` replays all of this in a rolled
+back transaction (`psql -v ON_ERROR_STOP=1 -f …` on a database with the migrations applied).
+
+**Tests.**
+
+- `lib/crm/__tests__/customer-filters.test.ts`: the filter-to-query mapping over a recording stub
+  (*from Shopify + no account* → `eq has_account false`, `eq from_shopify true`), dropped values,
+  sorts, and the URL round trip.
+- `lib/crm/__tests__/customer-overview-view.test.ts`: the latest definition of each view has
+  exactly the TS columns in order; every redefinition only appends; no `*`; `security_invoker`;
+  revoked and never granted to `anon` / `authenticated`.
+- `lib/auth/__tests__/customer-last-seen.test.ts`: the hour rule, the conditional update's
+  filters, swallowed errors and throws, and `linkCustomerToAuthUser` still returning the Customer
+  when the write fails.
+- `lib/customer-migration/__tests__/overview.test.ts`: the card's row reader and percentage, and
+  the From Shopify reader.
+- `app/[lang]/settings/customers/__tests__/account-status-render.test.tsx`: the Account column,
+  the Shopify badge, the filter controls, the card (shown from the first applied batch), and both
+  detail cards.
+- `lib/ecommerce/__tests__/cost-column-grants.test.ts`: the two columns are on the customers
+  hidden list.
+
+**Deviations.**
+
+- **A second view for the Migration card**, `admin_customer_migration_summary`, aggregated from
+  the overview, rather than counting in TypeScript. One query, and the card cannot disagree with
+  the *From Shopify* filter. Slices 06 and 08 append their funnel columns to it, and to
+  `MIGRATION_SUMMARY_COLUMNS`, the same way as the overview. *Already had an account before
+  import* is `account_linked_at <= imported_at`.
+- **The trigger also ignores a date app code supplies** (with the same login, it keeps the old
+  value; without a login, it clears it), and a check constraint holds the date to the login. The
+  backfill falls back to `customers.created_at` for an `auth.users` row with no `created_at`, which
+  GoTrue never writes, so the check cannot fail.
+- **The two columns are not granted to the customer's own key.** No customer surface reads them.
+- **The card shows from the first batch ever applied** (an undone one included) and counts every
+  `migrated_customers` row, whatever batch made it, so kept rows of an undone batch still count.
+- **The batch link** is `/settings/customers/import#batch-<id>`, rendered only for a viewer with
+  `customer-import` (others see the file name). Slice 03's history rows should carry
+  `id="batch-<id>"`; until then the link lands on the import page.
+- **`account_last_seen_at` comes from every `linkCustomerToAuthUser` call**, which includes the
+  account API routes (orders, addresses, results, reviews) as well as the pages. The UI says
+  *opened one of their account pages while signed in*. An hourly write also moves
+  `customers.updated_at`, which nothing reads.
+- **Search is unchanged**: the unescaped `.or()` moved from `lib/ecommerce/admin/customers.ts:40`
+  to `applyCustomerFilters`. CRM 04 replaces it.
+
+**Left for ops.** Apply the migration before the code: the new code reads the views, and the old
+code keeps working with the new columns and trigger. Then run the Supabase security advisor.

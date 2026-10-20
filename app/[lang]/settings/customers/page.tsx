@@ -2,41 +2,57 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { requireAdminPage } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { listAdminCustomers } from "@/lib/ecommerce/admin/customers";
-import type { Customer } from "@/lib/types/ecommerce";
+import { customerFilterParams, parseCustomerFilters, searchParamsFromRecord } from "@/lib/crm/customer-filters";
+import { getMigrationSummary } from "@/lib/customer-migration/overview";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 
 export const runtime = "nodejs";
+
+/** Rows per page, as the client asks for them. */
+const LIMIT = 20;
 
 /**
  * Customers list. The first page the client used to fetch on mount
  * (`GET /api/shop/customers?page=1&limit=20`) is read here instead, so the
  * table renders in the first paint. The API route stays in place for search,
  * pagination and refreshes.
+ *
+ * The list reads the Customer overview (migration slice 12). Its filters live
+ * in the URL (`?account=no-account&source=shopify`), so a filtered list is a
+ * link: this page reads the same parameters and renders that list first.
  */
 export default async function SettingsCustomersPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ lang: string }>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-    const { lang } = await params;
+    const [{ lang }, query] = await Promise.all([params, searchParams ?? {}]);
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
     const ctx = await requireAdminPage("customers", locale);
 
-    // Mirrors the client's default state: no search, page 1, LIMIT 20.
-    const customers = await listAdminCustomers(
-        new URLSearchParams({ page: "1", limit: "20" }),
-    );
+    // The client's first state: the URL's filters, page 1, LIMIT 20.
+    const { filters } = parseCustomerFilters(searchParamsFromRecord(query));
+    const first = { ...filters, page: 1, limit: LIMIT };
+
+    const [customers, migration] = await Promise.all([
+        listAdminCustomers(customerFilterParams(first, { paging: true })),
+        getMigrationSummary(),
+    ]);
 
     // On a read failure fall through to the client's own fetch rather than
     // rendering a misleading empty list.
     const initialData: CustomersInitialData | undefined = customers.ok
-        ? { customers: { ...customers, rows: customers.rows as Customer[] } }
+        ? { customers }
         : undefined;
 
     return (
         <CustomersClient
             initialData={initialData}
+            initialFilters={first}
+            migration={migration}
             canImport={hasPermission(ctx, "customer-import")}
         />
     );

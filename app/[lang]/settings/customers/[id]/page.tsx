@@ -3,6 +3,7 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getAdminCustomer } from "@/lib/ecommerce/admin/customers";
 import { listCustomerNotes } from "@/lib/crm/notes";
+import { getMigratedCustomer } from "@/lib/customer-migration/overview";
 import type { Customer } from "@/lib/types/ecommerce";
 import {
     CustomerDetailClient,
@@ -13,7 +14,9 @@ export const runtime = "nodejs";
 
 /**
  * Customer detail. The `GET /api/shop/customers/[id]` request the client used
- * to make on mount is read here instead, with the Customer's notes. The orders
+ * to make on mount is read here instead, with the Customer's notes and what the
+ * Shopify import holds for them (the From Shopify card, migration slice 12;
+ * the Account card reads the customer row itself). The orders
  * and addresses panels keep their own fetches (`/api/shop/orders`,
  * `/api/shop/customers/[id]/addresses`), which are guarded by different
  * permissions and are outside this change.
@@ -34,9 +37,10 @@ export default async function CustomerDetailPage({
 
     const ctx = await requireAdminPage("customers", locale);
 
-    const [customer, notes] = await Promise.all([
+    const [customer, notes, migration] = await Promise.all([
         getAdminCustomer(id),
         listCustomerNotes(id).catch(() => null),
+        getMigratedCustomer(id),
     ]);
 
     const initialData: CustomerDetailInitialData = {
@@ -44,12 +48,14 @@ export default async function CustomerDetailPage({
             ? { ok: true, row: customer.row as Customer }
             : { error: customer.error },
         notes,
+        migration,
     };
 
     return (
         <CustomerDetailClient
             initialData={initialData}
             canEdit={hasPermission(ctx, "customers-edit")}
+            canImport={hasPermission(ctx, "customer-import")}
             viewer={{ userId: ctx.userId, grantsAll: ctx.grantsAll }}
         />
     );

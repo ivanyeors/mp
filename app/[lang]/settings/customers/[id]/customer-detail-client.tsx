@@ -46,6 +46,8 @@ import { toast } from "sonner";
 import { changedCustomerFields } from "@/lib/crm/customer-patch";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
+import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
+import { AccountCard, FromShopifyCard } from "./customer-account-cards";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -114,6 +116,8 @@ export type CustomerDetailInitialData = {
     customer: CustomerDetailResponse;
     /** The Customer's notes, or null when the server could not read them. */
     notes: CustomerNote[] | null;
+    /** What the Shopify import holds for them (migration slice 12): the From Shopify card. */
+    migration?: MigratedCustomerResult;
 };
 
 const emptyAddress: AddressFormState = {
@@ -133,6 +137,7 @@ const emptyAddress: AddressFormState = {
 export function CustomerDetailClient({
     initialData,
     canEdit,
+    canImport = false,
     viewer,
 }: {
     initialData?: CustomerDetailInitialData;
@@ -142,6 +147,8 @@ export function CustomerDetailClient({
      * The same flag lets the Notes card add and delete notes.
      */
     canEdit: boolean;
+    /** Holds `customer-import`: the From Shopify card links its batch in the import history. */
+    canImport?: boolean;
     /** Who is looking: decides which notes they may delete (CRM 02). */
     viewer: Omit<CustomerNotesViewer, "canEdit">;
 }) {
@@ -737,6 +744,9 @@ export function CustomerDetailClient({
                         </CardContent>
                     </Card>
 
+                    {/* Account status, for every Customer (migration slice 12) */}
+                    <AccountCard customer={customer} />
+
                     {/* Stats Card */}
                     <Card>
                         <CardHeader className="pb-3">
@@ -770,6 +780,12 @@ export function CustomerDetailClient({
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Shopify-era facts, only for a Migrated customer */}
+                    <FromShopifyCard
+                        migration={initialData?.migration}
+                        importHistoryHref={canImport ? to("/settings/customers/import") : null}
+                    />
 
                     {/* Tags Card */}
                     <Card>
