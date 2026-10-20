@@ -10,7 +10,7 @@ demoable path through all layers.
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) · [#278](https://github.com/ivanyeors/mp/issues/278) | Glossary and ADR 0027: what the CRM is made of | AFK | **not started** | none | underpins all |
+| [01](01-glossary-and-adr.md) · [#278](https://github.com/ivanyeors/mp/issues/278) | Glossary and ADR 0027: what the CRM is made of | AFK | **built** (`a9f1e95`) | none | underpins all |
 | [02](02-staff-notes-and-close-exposure.md) · [#279](https://github.com/ivanyeors/mp/issues/279) | Staff notes customers cannot read, and closing the live exposure | AFK | **not started** | 01 | 1, 2, 10 |
 | [03](03-customer-timeline.md) · [#280](https://github.com/ivanyeors/mp/issues/280) | One timeline on the Customer detail, merged when it is read | AFK | **not started** | 02 | 3, 4 |
 | [04](04-crm-filters-and-overview-columns.md) · [#281](https://github.com/ivanyeors/mp/issues/281) | CRM columns on the Customer overview, the filters that use them, and safe search | AFK | **not started** | 01; migration 12 | 5, 9 |

@@ -421,6 +421,40 @@ _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freeb
 Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards** only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action can act. The old **Review manager** maps to both Telegram actions, **Shop moderator** to moderating **Shop reviews** only.
 _Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
 
+## Customer CRM (ADR 0027)
+
+**Customer note**:
+A dated, authored remark by **Staff** about a **Customer**, in `customer_notes`. Only the service role can read it. Notes are never edited; a correction is a new note.
+_Avoid_: `customers.notes` — the **Customer** can read their own row (`0037_customer_auth.sql:14-18`), so that column is retired
+
+**Customer timeline**:
+Everything that happened with a **Customer**, newest first, merged when it is read from the tables that already record it: **Orders**, **Results**, **Re-adjustment bookings**, **Returns**, reviews, emails, **Customer notes** and **Follow-ups**. Each kind is shown only to **Staff** holding that source's **Permission**.
+_Avoid_: "activity log" or "events table" — nothing is copied
+
+**Segment**:
+A named, saved set of Customers-list filters, shared by all **Staff** with `customers` and counted live. A **Segment** and the same filters in the URL always return the same **Customers**.
+_Avoid_: "list" (a Segment is a query, not a frozen set of people); "audience" (that is email marketing's word for a Segment narrowed by consent)
+
+**Follow-up**:
+A dated to-do about one **Customer**, assigned to a **Staff profile**, and done or not done.
+_Avoid_: "task" or "ticket" (it is not a support queue); assigning it to a **Member** or a login — a person works as a profile
+
+**Aftercare message**:
+A service message, by email and WhatsApp, about something the **Customer** bought. There are two: the **Review request**, once per Customer, 14 days after delivery; and the **Check-up reminder**, yearly, stating that the visit is paid and its fee. Email uses the transactional transport and is on unless switched off (`aftercare_email`). WhatsApp is off until the customer opts in (`aftercare_whatsapp`). Every change is recorded with who made it and how. Neither ever carries an offer.
+_Avoid_: calling it marketing, or gating it on **Marketing consent** (migration PRD) — the one exception is the **Check-up reminder**, which offers a paid visit and so goes only to customers who agreed (ADR 0027 h); anything promotional belongs to `PRD-email-marketing`; an email about the free re-adjustment window (there is none, owner, 2026-10-20)
+
+**Review request**:
+The one message, by email and (when they opted in) WhatsApp, that asks a **Customer** for a **Google review**, with an unconditional *"need anything else? message us"* line. It goes once per Customer, ever, to every eligible Customer alike.
+_Avoid_: choosing who is asked by satisfaction, returns or ratings, or offering anything for a review — both break Google's review policy
+
+**Linked Google review**:
+A **Google review** that **Staff** have confirmed belongs to a **Customer**. Google never says who wrote a review, so the code only suggests a match, from the name and the timing of a **Review request**.
+_Avoid_: linking automatically; treating a review-link click as proof of a review
+
+**Contact status**:
+What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number answered an **Appointment reminder**).
+_Avoid_: "verified mobile" — nothing verifies a phone number by code; letting **Staff** tick "verified"
+
 ## Shipping (ADR 0020, ADR 0022)
 
 **Shipping method**:
