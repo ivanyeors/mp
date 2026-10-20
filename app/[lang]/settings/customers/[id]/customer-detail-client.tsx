@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { changedCustomerFields } from "@/lib/crm/customer-patch";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
+import { CustomerTimelineCard } from "./customer-timeline-card";
 import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
 import { AccountCard, FromShopifyCard } from "./customer-account-cards";
 import { AftercareCard } from "./aftercare-card";
@@ -448,6 +449,9 @@ export function CustomerDetailClient({
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Timeline (CRM 03): everything that happened, newest first */}
+                    <CustomerTimelineCard customerId={customer.id} />
 
                     {/* Addresses */}
                     <Card>
