@@ -2040,9 +2040,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/page.tsx": {
-    "mtime": 1792499439.5733368,
-    "seen": 1792499730.7650225,
-    "ast_hash": "f34ce118e7479b86431dd9f6c52920d7",
+    "mtime": 1792500836.0019732,
+    "seen": 1792501156.6812408,
+    "ast_hash": "4f699aa4eef55ed4bd7a34818fdeead6",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/actions.ts": {
@@ -2436,9 +2436,9 @@
     "semantic_hash": ""
   },
   "app/api/cron/results-sla/route.ts": {
-    "mtime": 1792483949.476789,
-    "seen": 1792484008.7108362,
-    "ast_hash": "2519bb38d11d38a7f6fcc51506e5bfe9",
+    "mtime": 1792500808.6047287,
+    "seen": 1792501156.6815243,
+    "ast_hash": "ffd59281c1287f419924187058ba69d5",
     "semantic_hash": ""
   },
   "app/api/discovery-source/route.ts": {
@@ -2700,9 +2700,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1792483949.479383,
-    "seen": 1792484008.7109694,
-    "ast_hash": "cca106193d8345a5ff47b44e33e1cb07",
+    "mtime": 1792500808.6120753,
+    "seen": 1792501156.6816373,
+    "ast_hash": "50a7ba92bf507e6d0fbdbf4777cb1a6a",
     "semantic_hash": ""
   },
   "app/api/results/route.ts": {
@@ -9114,9 +9114,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
-    "mtime": 1792499439.5722916,
-    "seen": 1792499730.7650063,
-    "ast_hash": "d6d722dc4706f615a254b4c41428d2eb",
+    "mtime": 1792501084.0809734,
+    "seen": 1792501156.68122,
+    "ast_hash": "3c808d5b455ad5e90ffa2e02c71c3335",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/[id]/discount-editor-client.tsx": {
@@ -15510,15 +15510,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/14-telegram-updates.md": {
-    "mtime": 1792486863.9684596,
-    "seen": 1792486924.0864289,
-    "ast_hash": "e37d37fce7c2ce17e53e316de30a7285",
+    "mtime": 1792500880.1494892,
+    "seen": 1792501156.6842427,
+    "ast_hash": "e4990af9ac969b960604ff1a29ee9f3e",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/README.md": {
-    "mtime": 1792499869.1581657,
-    "seen": 1792500089.2946208,
-    "ast_hash": "8c5de875525a210ebb812a1303c055d0",
+    "mtime": 1792500880.1503787,
+    "seen": 1792501156.6842442,
+    "ast_hash": "82f888b6feb76a57ade7047ab5fca6d2",
     "semantic_hash": ""
   },
   ".claude/PRD-email-marketing/email-marketing-prd.md": {
@@ -15648,9 +15648,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import/__tests__/page-gate.test.tsx": {
-    "mtime": 1792499486.3010519,
-    "seen": 1792499730.7650115,
-    "ast_hash": "74c14b183640b71ddd29b8025b8d1de2",
+    "mtime": 1792500872.4509213,
+    "seen": 1792501156.6812298,
+    "ast_hash": "c05e531828277c104b09ec79a35cf20c",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import/__tests__/preview-action.test.ts": {
@@ -15795,6 +15795,84 @@
     "mtime": 1792499862.3292675,
     "seen": 1792500089.2944,
     "ast_hash": "3a99bddfc6d653c7a72823bd54b69654",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/__tests__/telegram-updates-card-render.test.tsx": {
+    "mtime": 1792500808.6007288,
+    "seen": 1792501156.681216,
+    "ast_hash": "009eb90f3273affa16e13e584c0ab69b",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/customers-page-tabs.tsx": {
+    "mtime": 1792500836.0021431,
+    "seen": 1792501156.6812224,
+    "ast_hash": "6938feca615a4d55809310b9605a2dc4",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/telegram-updates-card.tsx": {
+    "mtime": 1792500808.6047287,
+    "seen": 1792501156.6812422,
+    "ast_hash": "f51fffbfdc892c1d3fe01b8763ab036e",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/views.ts": {
+    "mtime": 1792500808.6047287,
+    "seen": 1792501156.6812437,
+    "ast_hash": "dd32832fc5291a5ceee6fdb9a1790493",
+    "semantic_hash": ""
+  },
+  "app/api/results/hold/__tests__/telegram-switch.test.ts": {
+    "mtime": 1792500808.6092176,
+    "seen": 1792501156.681636,
+    "ast_hash": "b8e62f1dd0b45a20e985737e21b3411d",
+    "semantic_hash": ""
+  },
+  "app/api/settings/customers/__tests__/telegram-updates-route.test.ts": {
+    "mtime": 1792500808.6125617,
+    "seen": 1792501156.6816545,
+    "ast_hash": "a2c113c193cf620652b1da3450547540",
+    "semantic_hash": ""
+  },
+  "app/api/settings/customers/telegram-updates/route.ts": {
+    "mtime": 1792500808.6127586,
+    "seen": 1792501156.681656,
+    "ast_hash": "9ba33eb681dd554ca9ba01796140ef46",
+    "semantic_hash": ""
+  },
+  "app/api/settings/customers/telegram-updates/test/route.ts": {
+    "mtime": 1792500808.6129246,
+    "seen": 1792501156.6816568,
+    "ast_hash": "944fa99d951daea2ce63cc0fce938d5b",
+    "semantic_hash": ""
+  },
+  "lib/crm/__tests__/telegram-updates-job.test.ts": {
+    "mtime": 1792500808.6129246,
+    "seen": 1792501156.682557,
+    "ast_hash": "eeefc9ad269e5f0760997c22a97e443e",
+    "semantic_hash": ""
+  },
+  "lib/crm/__tests__/telegram-updates.test.ts": {
+    "mtime": 1792500808.6129246,
+    "seen": 1792501156.682559,
+    "ast_hash": "21eb72bd681d5e49f4c337d8e319e621",
+    "semantic_hash": ""
+  },
+  "lib/crm/telegram-update-sources.ts": {
+    "mtime": 1792500808.6129246,
+    "seen": 1792501156.6825645,
+    "ast_hash": "9a6016ac221586c6b0221f9396a9e92a",
+    "semantic_hash": ""
+  },
+  "lib/crm/telegram-updates-server.ts": {
+    "mtime": 1792500808.6129246,
+    "seen": 1792501156.6825662,
+    "ast_hash": "dfb8d34825d03b6e52cb52817a63d6bd",
+    "semantic_hash": ""
+  },
+  "lib/crm/telegram-updates.ts": {
+    "mtime": 1792500808.6129246,
+    "seen": 1792501156.6825674,
+    "ast_hash": "33d46cfb3a65350c7ab95ce38ea280d0",
     "semantic_hash": ""
   }
 }

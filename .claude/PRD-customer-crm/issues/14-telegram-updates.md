@@ -2,6 +2,7 @@
 
 **Issue:** [#291](https://github.com/ivanyeors/mp/issues/291) (parent #277)
 **Type:** AFK
+**Status:** built in `a299f53` on `claude/shopify-migration-plan-izv7fo`
 **Blocked by:** 10. Two types start posting only when their source exists: *Google reviews to
 match* after 12, and *New sign-ups* after migration slice 12.
 **User stories:** 29, 30
@@ -144,16 +145,127 @@ Permissions:
 
 ## Acceptance criteria
 
-- [ ] With `online_result_held` off, an online hold succeeds and posts nothing. When it is on,
+- [x] With `online_result_held` off, an online hold succeeds and posts nothing. When it is on,
       or the setting cannot be read, the hold posts exactly today's text, including the
       **Paired build** lines (*➕ Paired Mbolster…*, *Quoted:*, a second *Platform:* link). The hold route's
       existing tests pass unchanged.
-- [ ] Changing the online Result type needs both `results` and `customers-edit`. With
+- [x] Changing the online Result type needs both `results` and `customers-edit`. With
       `customers-edit` alone, the switch is disabled and the API refuses the change.
-- [ ] Each CRM type renders from fixtures to the exact example wording, with no customer name,
+- [x] Each CRM type renders from fixtures to the exact example wording, with no customer name,
       contact details, order or review text. A test scans the output for the fixture customers'
       names and emails.
-- [ ] A scheduled type posts at most once per period, even when the cron is re-run by hand.
+- [x] A scheduled type posts at most once per period, even when the cron is re-run by hand.
       Types that post only when > 0 post nothing on a zero day.
-- [ ] *Send test* posts only enabled types, each marked TEST, with no real customer data.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] *Send test* posts only enabled types, each marked TEST, with no real customer data.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `0ae10de` (CRM 01 and CRM 10 merged).
+
+**What was built.**
+
+- `lib/crm/telegram-updates.ts` (pure): the `crm_telegram_updates` zod schema and parser (each
+  type read on its own; missing or malformed is on), the patch schema, the Singapore-time periods
+  (yesterday; the previous Monday to Sunday keyed by ISO week), the compare-and-set step for
+  `crm_telegram_last_sent`, one renderer per type, and the *Send test* samples.
+- `lib/crm/telegram-update-sources.ts`: the counts. Every query is `head: true`, so no row that
+  names a customer is ever read. Holds the two seams and `WEEKLY_SUMMARY_SOURCES` (below).
+- `lib/crm/telegram-updates-server.ts`: `readTelegramUpdates`, `isOnlineResultNoticeOn` (fails
+  open), `claimTelegramPeriod`, the daily job `runCrmTelegramUpdates`, and
+  `sendTelegramUpdatesTest`.
+- `app/api/results/hold/route.ts`: the notice now goes through `renderOnlineResultHeld` (today's
+  text, moved verbatim) behind `isOnlineResultNoticeOn()`. Off: `telegramStatus: "skipped"`.
+- `app/api/cron/results-sla/route.ts`: one more chained job, `crmTelegram`, after the Google
+  review catch-up. `vercel.json` is unchanged.
+- `app/api/settings/customers/telegram-updates/route.ts` (GET on `customers`; PUT on
+  `customers-edit`, plus `results` for a change to the online Result switch) and
+  `…/telegram-updates/test/route.ts` (POST on `customers-edit`). Both writes call
+  `recordAdminAction` (`crm_telegram_updates.update`, `crm_telegram_updates.test`).
+- Customers page: `customers-page-tabs.tsx` (header, plus *Customers* and *Settings* tabs in
+  `?view=`), `views.ts`, and `telegram-updates-card.tsx` (a switch and example line per type, the
+  weekly day, the read-only held-Result reminder line linking to Settings → General, and *Send
+  test*). The page header moved out of `customers-client.tsx` into the tabs wrapper.
+
+**Migrations.** None. Both keys live in `site_settings` and are created on first write, so nothing
+changes on deploy. The compare-and-set is a PostgREST conditional update
+(`update … where key = … and value = <text read>`), plus a plain insert whose unique-key collision
+(23505) means another run created the row first. Checked against Postgres 16 (`mp_c14`): of two
+overlapping updates, the second waits on the row lock and then matches no row; the second insert
+fails `site_settings_pkey`; `anon` can read the row (public read, by design, and harmless) and
+cannot change it.
+
+**Seams for the slices that own the missing sources.** All in
+`lib/crm/telegram-update-sources.ts`, so neither slice touches the job, the renderers or the card:
+
+- **CRM 12:** replace the body of `countGoogleReviewsToMatch(admin)` (returns `null` today) with
+  the count of its *Google reviews to match* list. The daily update then posts when it is > 0. Add
+  a `WEEKLY_SUMMARY_SOURCES` entry returning `{ googleReviewsLinked }`.
+- **Migration 12:** replace the body of `countSignUps(admin, window)` (returns `null` today) with
+  two `head: true` counts on `customers.account_linked_at` in `[from, to)`, total and joined to
+  `migrated_customers`. That one function feeds both *New sign-ups* (yesterday) and the weekly
+  summary's sign-ups line, which is already registered.
+- **CRM 07** adds `{ reviewRequests: { sent, opened } }` and **CRM 06** adds
+  `{ followUps: { done, overdue } }` as `WEEKLY_SUMMARY_SOURCES` entries. `renderWeeklySummary`
+  already has every line's wording, and a missing count renders no line.
+
+While a seam returns `null` the job reports `not_built` for that type and posts nothing.
+
+**Tests.**
+
+- `lib/crm/__tests__/telegram-updates.test.ts`: settings defaults and per-type fallback, the patch,
+  the online-switch change rule, SGT day and week windows across UTC midnight and the ISO year
+  boundary, the compare-and-set step, every renderer to the PRD's exact example wording, the online
+  notice's exact text (paired and single), and a scan of every CRM type's output and every test
+  message for the fixture customers' names, emails and phones.
+- `lib/crm/__tests__/telegram-updates-job.test.ts`: against an in-memory `site_settings` with a
+  unique key: once per week however often the cron is re-run, once when three runs overlap, the
+  next week posts again, not on another day, a failed send not retried that period, daily types
+  once a day, nothing and no claim on a zero day, `not_built` from the real seams, off posts
+  nothing, unreadable switches send nothing, no bot token claims nothing, the PII scan on
+  everything the job posts, *Send test* only for enabled types, and two crons in `vercel.json`
+  with the job chained in `results-sla`.
+- `app/api/results/hold/__tests__/telegram-switch.test.ts`: off → 200, `telegramStatus:
+  "skipped"`, no Telegram call, Checkout and email still happen; on, missing, unreadable and
+  malformed → exactly today's text, Paired build lines included. The existing hold tests and the
+  paired-build e2e suite pass unchanged.
+- `app/api/settings/customers/__tests__/telegram-updates-route.test.ts`: real role checks.
+  View-only is refused PUT and *Send test*; `customers-edit` changes CRM types and the day but
+  gets a 403 for the online switch; with `results` (or Owner) it may. Also covers audit rows and
+  400 for unknown keys. The slice 10 guard test picks up both new write routes.
+- `app/[lang]/settings/customers/__tests__/telegram-updates-card-render.test.tsx`: every switch is
+  live with both keys; the online switch is disabled, with its reason, with `customers-edit` alone;
+  everything is read-only with no *Send test* without `customers-edit`.
+
+**Deviations.**
+
+- **"Open" is a line, not a word.** `sendTelegram` posts plain text, so each CRM type renders the
+  example sentence exactly, then `Open: <Admin Panel link>` on the next line, which Telegram turns
+  into a link. Singular forms are grammatical (*1 Google review is waiting to be matched to a
+  customer.*, *1 customer signed up yesterday, from Shopify.*).
+- **The online notice's text moved into `renderOnlineResultHeld`**, with no change to its content,
+  so *Send test* posts exactly what a real hold posts. Its switch is read on its own, after the
+  writes, and an unreadable setting means on. The SLA settings read is untouched.
+- **The Customers page had no tabs.** This slice adds `?view=list|settings`, following the Users
+  page's `?tab=`. CRM 06 (`followups`) and CRM 12 (`reviews`) add theirs to `views.ts`. The
+  Settings tab has a two-column grid, ready for CRM 07's Aftercare card.
+- **At most once is strict.** A type claims its period before it sends, so a send that Telegram
+  refuses is not retried in that period. Without a bot token nothing is claimed.
+- **Unreadable switches fail closed for scheduled types.** The online notice posts, as the slice
+  says. A scheduled type can wait a day, and must not post while it is switched off.
+- **The weekly summary goes only on its own day.** If the cron misses that day, the week is skipped.
+  There is no catch-up later in the week.
+- **Links.** *Google reviews to match* opens `/settings/customers?view=reviews` (CRM 12's tab; until
+  then the page shows the list). The other two open `/settings/customers`.
+
+**For the owner or ops.** Nothing is needed to deploy: every type is on, and nothing posts until
+there is something to post. Two things to know:
+
+- The first Monday after deploy posts a weekly summary with the new-customers line only.
+- Open question: *new customers* counts every `customers` row created in the week. The week of a
+  Shopify import it would count the imported rows. Migration 12 can exclude `created_by_import`
+  rows through `migrated_customers` in the same source.
+
+**Noticed, not fixed here.** `npx tsx components/settings/settings-mobile.check.ts` already fails at
+the base commit, on a Costings assertion (`app/[lang]/settings/costings/page.tsx`). It is not wired
+into `pnpm test`. Its Customers assertion still holds.

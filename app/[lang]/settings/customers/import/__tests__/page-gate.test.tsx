@@ -35,7 +35,7 @@ vi.mock("next/navigation", () => ({
 
 const { default: ImportPage } = await import("../page");
 const { default: CustomersPage } = await import("../../page");
-const { CustomersClient } = await import("../../customers-client");
+const { CustomersPageTabs } = await import("../../customers-page-tabs");
 const { CustomerImportClient } = await import("../import-client");
 
 /** What each seeded role row resolves to at runtime (`permissionsForRoleRow`). */
@@ -94,23 +94,28 @@ describe("/settings/customers/import", () => {
 });
 
 describe("the Import from Shopify button on Customers", () => {
+  const searchParams = Promise.resolve({});
+
   it.each(Object.keys(ROLE_ROWS) as RoleKey[])("is offered to %s only when the role holds customer-import", async (role) => {
     signInAs(role);
     if (!h.permissions.has("customers")) {
-      await expect(CustomersPage({ params })).rejects.toThrow("denied=customers");
+      await expect(CustomersPage({ params, searchParams })).rejects.toThrow("denied=customers");
       return;
     }
-    const page = (await CustomersPage({ params })) as ReactElement<{ canImport: boolean }>;
-    expect(page.props.canImport).toBe(role === "owner" || role === "admin");
+    const page = (await CustomersPage({ params, searchParams })) as ReactElement<{ importHref?: string }>;
+    expect(page.props.importHref !== undefined).toBe(role === "owner" || role === "admin");
   });
 
-  it("renders only under canImport", () => {
-    const initialData = { customers: { ok: true as const, rows: [], total: 0, page: 1, limit: 20 } };
-    const withButton = renderToStaticMarkup(<CustomersClient initialData={initialData} canImport />);
-    const without = renderToStaticMarkup(<CustomersClient initialData={initialData} canImport={false} />);
+  it("renders only with an importHref", () => {
+    const tabs = (importHref?: string) =>
+      renderToStaticMarkup(
+        <CustomersPageTabs initialView="list" canEdit={false} canEditOnlineResult={false} importHref={importHref}>
+          <div />
+        </CustomersPageTabs>,
+      );
+    const withButton = tabs("/en/settings/customers/import");
     expect(withButton).toContain("Import from Shopify");
     expect(withButton).toMatch(/href="[^"]*\/settings\/customers\/import"/);
-    expect(without).not.toContain("Import from Shopify");
-    expect(renderToStaticMarkup(<CustomersClient initialData={initialData} />)).not.toContain("Import from Shopify");
+    expect(tabs()).not.toContain("Import from Shopify");
   });
 });
