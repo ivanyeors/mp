@@ -2,11 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 
 import { deleteEvent } from "@/lib/appointments/calendar";
-import { updateReminder } from "@/lib/appointments/reminders-db";
+import { cancelAppointment } from "@/lib/appointments/cancel";
+import { getReminderByEventId } from "@/lib/appointments/reminders-db";
+import {
+  APPOINTMENT_SETTING_KEYS,
+  parseAppointmentSettings,
+} from "@/lib/appointments/settings";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { STAFF_ACTIONS, type StaffAction } from "@/lib/readjustment/lifecycle";
+import { getSiteSettings } from "@/lib/site-settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -82,14 +88,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const now = new Date().toISOString();
 
   if (action === "cancel" && before.calendar_event_id) {
+    const eventId = before.calendar_event_id as string;
     try {
-      await deleteEvent(before.calendar_event_id as string);
-      await updateReminder(before.calendar_event_id as string, { status: "cancelled" });
+      await deleteEvent(eventId);
     } catch (e) {
       return NextResponse.json(
         { error: `Could not remove the calendar event: ${e instanceof Error ? e.message : e}` },
         { status: 502 },
       );
+    }
+    // The guest hears it on WhatsApp too, with a rebook link — unless the
+    // Calendar push already told them. Never fails the staff action.
+    try {
+      const row = await getReminderByEventId(eventId);
+      if (row) {
+        const settings = parseAppointmentSettings(
+          await getSiteSettings([...APPOINTMENT_SETTING_KEYS]),
+        );
+        await cancelAppointment(row, settings, { cause: "removed" });
+      }
+    } catch (e) {
+      console.error("[readjustments] cancel notice", e instanceof Error ? e.message : e);
     }
   }
 
@@ -100,7 +119,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .eq("status", before.status as string)
     .select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!moved?.length) return NextResponse.json({ error: "This booking just changed — refresh" }, { status: 409 });
+  if (!moved?.length) {
+    // Removing the event can itself cancel the booking (the Calendar push, or
+    // the notice above): already where this action was taking it is success.
+    const { data: current } = await admin
+      .from("readjustment_bookings")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    if (current?.status !== rule.to) {
+      return NextResponse.json({ error: "This booking just changed — refresh" }, { status: 409 });
+    }
+  }
 
   // A paid visit that happened: its service Order is fulfilled.
   if (action === "attended" && before.fee_order_id && before.fee_order_status === "confirmed") {

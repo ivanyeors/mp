@@ -1,7 +1,7 @@
 /**
  * Create + submit the 4 appointment templates on a WABA, with body-param counts
  * that exactly match lib/appointments/whatsapp.ts (day_before/morning_of/
- * confirmation = 4, cancelled = 2). Category UTILITY, language en. Idempotent-ish:
+ * confirmation = 4, cancelled = 5). Category UTILITY, language en. Idempotent-ish:
  * a duplicate name+lang just returns an error we print and skip.
  *
  * The day-before template carries the Confirm / Reschedule quick replies the
@@ -10,6 +10,11 @@
  * approved template sends it back to review, so a new name keeps the old one
  * sending until the new one is approved and WHATSAPP_TEMPLATE_DAY_BEFORE is
  * switched over.
+ *
+ * `appointment_cancelled_v2` is the same story: the first took only the type
+ * and a rebook link, with nowhere to name the staffed line a guest can talk
+ * to. Until v2 is approved and WHATSAPP_TEMPLATE_CANCEL names it, the code
+ * keeps sending the first one's shape.
  *
  * After appointment_confirmation shows Approved, set WHATSAPP_TEMPLATE_CONFIRM=
  * appointment_confirmation to activate the immediate booking confirmation in
@@ -38,10 +43,11 @@ const TEMPLATES: Def[] = [
     example: ["Ivan", "6 Aug", "3:00 PM", "Mpillow Studio"],
   },
   {
-    name: "appointment_cancelled",
-    // {{1}} type, {{2}} rebook url — body must not END with a variable
-    text: "Your {{1}} appointment has been cancelled. Rebook anytime here: {{2}} — hope to see you soon.",
-    example: ["Chiropractic", "https://mpillow.com/book"],
+    name: "appointment_cancelled_v2",
+    // {{1}} name, {{2}} type, {{3}} date + time, {{4}} rebook url, {{5}} staffed
+    // line's number (WhatsApp makes it tappable) — body must not END with a variable
+    text: "Hi {{1}}, your {{2}} appointment on {{3}} has been cancelled.\n\nYou can rebook here: {{4}}\n\nIf you have any questions, please message our team on WhatsApp at {{5}}. Hope to see you soon!",
+    example: ["Ivan", "Customisation", "Tue 20 Oct 2026 at 17:00", "https://mpillow.com/book", "+65 8780 5311"],
   },
   {
     name: "appointment_confirmation",

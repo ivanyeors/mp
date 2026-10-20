@@ -22,7 +22,7 @@ type ReminderTarget = {
   startsAt: string;
 };
 
-async function sendOrRecord(
+export async function sendOrRecord(
   calendarEventId: string,
   send: () => Promise<string | null>,
 ): Promise<string | null> {
@@ -42,13 +42,17 @@ async function sendOrRecord(
   }
 }
 
-/** Day-before template (Confirm / Reschedule) to a `pending` row → `reminded`. */
+/**
+ * Day-before template (Confirm / Reschedule) to a `pending` row, or one moved
+ * over WhatsApp to a later day (`rescheduled`) → `reminded`.
+ */
 export async function sendDayBeforeReminder(
-  target: ReminderTarget & { typeLabel: string },
+  target: ReminderTarget & { typeLabel: string; from?: ReminderStatus },
   now: Date = new Date(),
 ): Promise<boolean> {
-  const t = transitionReminder("pending", { type: "day_before_sent" });
-  if (!t.ok) throw new Error(t.error);
+  const from = target.from ?? "pending";
+  const t = transitionReminder(from, { type: "day_before_sent" });
+  if (!t.ok || t.noop) throw new Error(t.error ?? `day-before already sent (${from})`);
 
   const waId = await sendOrRecord(target.calendarEventId, () =>
     sendDayBeforeTemplate(target.phone, {
@@ -73,7 +77,7 @@ export async function sendDayBeforeReminder(
       last_error: null,
       last_error_at: null,
     },
-    "pending",
+    from,
   );
 }
 

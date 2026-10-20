@@ -20,11 +20,17 @@ import {
   type BusyInterval,
 } from "@/lib/appointments/slots";
 import {
+  LIVE_STATUSES,
+  isDayBeforeEligible,
   isMorningOfEligible,
   missedReminder,
   transitionReminder,
 } from "@/lib/appointments/state";
-import { parseInboundActions } from "@/lib/appointments/whatsapp";
+import {
+  parseFailedDeliveries,
+  parseInboundActions,
+  withinServiceWindow,
+} from "@/lib/appointments/whatsapp";
 import {
   extractPhoneFromEvent,
   extractGuestName,
@@ -33,6 +39,8 @@ import {
   plainDescription,
   toGCalRfc3339,
   formatGoogleCalendarError,
+  eventStateOf,
+  mapGCalItemToGuestEvent,
 } from "@/lib/appointments/calendar";
 
 describe("appointment-phone", () => {
@@ -279,6 +287,42 @@ describe("appointment-reminder-state", () => {
     });
   });
 
+  it("cancel from any live status, once", () => {
+    for (const from of LIVE_STATUSES) {
+      expect(transitionReminder(from, { type: "cancel" })).toMatchObject({
+        ok: true,
+        noop: false,
+        status: "cancelled",
+      });
+    }
+    expect(transitionReminder("cancelled", { type: "cancel" })).toMatchObject({
+      ok: true,
+      noop: true,
+    });
+    expect(transitionReminder("skipped_invalid_phone", { type: "cancel" }).ok).toBe(false);
+  });
+
+  it("confirmed and rescheduled guests can still ask for another time", () => {
+    for (const from of ["confirmed", "rescheduled", "offering_slots"] as const) {
+      expect(transitionReminder(from, { type: "request_reschedule" })).toMatchObject({
+        ok: true,
+        status: "offering_slots",
+      });
+    }
+    expect(transitionReminder("cancelled", { type: "request_reschedule" }).ok).toBe(false);
+  });
+
+  it("a visit moved over WhatsApp is reminded for its new date", () => {
+    expect(isDayBeforeEligible("rescheduled")).toBe(true);
+    expect(isMorningOfEligible("rescheduled")).toBe(true);
+    expect(transitionReminder("rescheduled", { type: "day_before_sent" })).toMatchObject({
+      ok: true,
+      status: "reminded",
+    });
+    expect(isDayBeforeEligible("confirmed")).toBe(false);
+    expect(isMorningOfEligible("cancelled")).toBe(false);
+  });
+
   it("invalid phone → skipped", () => {
     expect(transitionReminder("pending", { type: "invalid_phone" })).toMatchObject({
       status: "skipped_invalid_phone",
@@ -317,6 +361,63 @@ describe("whatsapp inbound parse", () => {
       { kind: "unknown" },
     ]);
     expect(parseInboundActions(inbound({ type: "reaction", reaction: { emoji: "👍" } }))).toEqual([]);
+  });
+
+  it("a whole-message cancel cancels; a question that mentions it does not", () => {
+    expect(parseInboundActions(inbound({ type: "text", text: { body: "Cancel" } }))).toMatchObject([
+      { kind: "cancel" },
+    ]);
+    expect(
+      parseInboundActions(inbound({ type: "text", text: { body: "None of these" } })),
+    ).toMatchObject([{ kind: "reject_slots" }]);
+    expect(
+      parseInboundActions(inbound({ type: "text", text: { body: "can I cancel and come Friday?" } })),
+    ).toMatchObject([{ kind: "unknown" }]);
+    expect(parseInboundActions(inbound({ type: "text", text: { body: "Ok" } }))).toMatchObject([
+      { kind: "unknown" },
+    ]);
+  });
+
+  it("reads failed deliveries, ignores other statuses", () => {
+    const payload = {
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: "utility-sender" },
+                statuses: [
+                  { id: "wamid.ok", status: "delivered", recipient_id: "6591234567" },
+                  {
+                    id: "wamid.bad",
+                    status: "failed",
+                    recipient_id: "6591234567",
+                    errors: [
+                      { code: 131026, title: "Message undeliverable", error_data: { details: "Receiver incapable" } },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseFailedDeliveries(payload, "utility-sender")).toEqual([
+      {
+        waId: "wamid.bad",
+        recipient: "+6591234567",
+        reason: "WhatsApp delivery failed (131026): Receiver incapable",
+      },
+    ]);
+    expect(parseFailedDeliveries(payload, "sales-line")).toEqual([]);
+  });
+
+  it("the free-text window is opened by the guest's message", () => {
+    const now = Date.parse("2026-10-20T10:00:00Z");
+    expect(withinServiceWindow("2026-10-19T10:30:00Z", now)).toBe(true);
+    expect(withinServiceWindow("2026-10-19T09:30:00Z", now)).toBe(false);
+    expect(withinServiceWindow(null, now)).toBe(false);
   });
 
   it("only acts on messages sent to our sender", () => {
@@ -715,6 +816,35 @@ describe("calendar extract helpers", () => {
     );
     expect(ooo?.kind).toBe("busy");
     expect(ooo?.rsvp).toBeNull();
+  });
+
+  it("an appointment is off when deleted or declined, on otherwise", () => {
+    expect(eventStateOf({ status: "cancelled" })).toBe("cancelled");
+    expect(eventStateOf({ status: "confirmed", attendees: [{ responseStatus: "declined" }] })).toBe(
+      "declined",
+    );
+    // The organiser declining their own event is not the guest declining.
+    expect(
+      eventStateOf({ status: "confirmed", attendees: [{ self: true, responseStatus: "declined" }] }),
+    ).toBe("live");
+    expect(eventStateOf({ status: "confirmed", attendees: [{ responseStatus: "accepted" }] })).toBe(
+      "live",
+    );
+
+    const guest = (responseStatus: string) =>
+      mapGCalItemToGuestEvent(
+        {
+          id: "g1",
+          summary: "Alice - Mpillow Customisation",
+          description: "Name: Alice\nPhone: +6591234567",
+          start: { dateTime: "2026-07-10T02:00:00Z" },
+          end: { dateTime: "2026-07-10T03:00:00Z" },
+          attendees: [{ email: "a@example.com", responseStatus }],
+        },
+        DEFAULT_APPOINTMENT_SETTINGS,
+      );
+    expect(guest("declined")?.guestDeclined).toBe(true);
+    expect(guest("needsAction")?.guestDeclined).toBe(false);
   });
 });
 
