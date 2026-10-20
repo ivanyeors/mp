@@ -25,10 +25,17 @@
  * secret matching what Meta signs with, and the live endpoint accepting a POST
  * signed with it), and that the public sales number is not the automated sender.
  *
+ * The two aftercare templates (CRM slice 13) are checked the same way, plus
+ * their URL button, and the category Meta gave each is printed: both are
+ * submitted as UTILITY, Meta has the final say, and nothing in the code depends
+ * on it. While WHATSAPP_TEMPLATE_AFTERCARE_* is unset aftercare goes by email
+ * only, so that is a warning, not a failure.
+ *
  * The webhook probe POSTs an empty, signed payload to the live endpoint: it
  * carries no message, so nothing is sent or changed.
  */
 import { createHmac } from "node:crypto";
+import { AFTERCARE_WA_TEMPLATES, templateParamCount } from "@/lib/whatsapp/aftercare-templates";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -85,6 +92,21 @@ function quickReplies(components: unknown): string[] {
     if (comp.type?.toUpperCase() !== "BUTTONS") continue;
     for (const b of comp.buttons ?? []) {
       if (b.type?.toUpperCase() === "QUICK_REPLY" && b.text) out.push(b.text.toLowerCase());
+    }
+  }
+  return out;
+}
+
+/** The template's URL buttons, and whether each ends in a `{{1}}` filled at send. */
+function urlButtons(components: unknown): Array<{ text: string; url: string; variable: boolean }> {
+  const list = Array.isArray(components) ? components : [];
+  const out: Array<{ text: string; url: string; variable: boolean }> = [];
+  for (const c of list) {
+    const comp = c as { type?: string; buttons?: Array<{ type?: string; text?: string; url?: string }> };
+    if (comp.type?.toUpperCase() !== "BUTTONS") continue;
+    for (const b of comp.buttons ?? []) {
+      if (b.type?.toUpperCase() !== "URL" || !b.url) continue;
+      out.push({ text: b.text ?? "", url: b.url, variable: /\{\{1\}\}$/.test(b.url) });
     }
   }
   return out;
@@ -364,7 +386,7 @@ async function main() {
   }
 
   const tpl = await get(
-    `${GRAPH}/${waba}/message_templates?fields=name,status,language,components&limit=200`,
+    `${GRAPH}/${waba}/message_templates?fields=name,status,language,category,components&limit=200`,
     token,
   );
   const rows =
@@ -372,6 +394,7 @@ async function main() {
       name: string;
       status: string;
       language: string;
+      category?: string;
       components?: unknown;
     }>) ?? [];
   if (!tpl.ok) {
@@ -415,6 +438,65 @@ async function main() {
       }
       const btn = w.buttons?.length ? ` · buttons ${replies.join(" / ")}` : "";
       pass(`template ${name}`, `APPROVED [${w.lang}] · ${w.params} params${btn} · ${w.note}`);
+    }
+
+    // --- 4b. Aftercare templates (CRM slice 13) ----------------------------
+    // Sent through sendTemplateMessage, so in WHATSAPP_TEMPLATE_LANG. Each takes
+    // five body params and one URL button whose {{1}} is filled at send.
+    for (const def of AFTERCARE_WA_TEMPLATES) {
+      const configured = process.env[def.env]?.trim();
+      const name = configured || def.name;
+      // Unset: aftercare goes by email only, so nothing below is blocking yet.
+      const fatal = Boolean(configured);
+      const sameName = rows.filter((r) => r.name === name);
+      const exact = sameName.find((r) => r.language === envLang);
+      const params = templateParamCount(def.text);
+      const unset = configured ? "" : ` — ${def.env} unset, aftercare WhatsApp is skipped (email still goes)`;
+      if (!exact) {
+        fail(
+          `template ${name}`,
+          sameName.length
+            ? `exists as [${sameName.map((r) => r.language).join(", ")}] but code sends "${envLang}" — silent #132001${unset}`
+            : `not on this WABA — submit it with scripts/whatsapp-create-templates.ts${unset}`,
+          fatal,
+        );
+        continue;
+      }
+      const category = (exact.category ?? "?").toUpperCase();
+      if (exact.status.toUpperCase() !== "APPROVED") {
+        fail(`template ${name}`, `status ${exact.status} (needs APPROVED) · category ${category}${unset}`, fatal);
+        continue;
+      }
+      const actual = bodyParamCount(exact.components);
+      if (actual !== params) {
+        fail(`template ${name}`, `body takes ${actual} param(s), code passes ${params} — #132000 at send${unset}`, fatal);
+        continue;
+      }
+      const url = urlButtons(exact.components)[0];
+      if (!url?.variable) {
+        fail(
+          `template ${name}`,
+          url
+            ? `URL button ${url.url} does not end in {{1}} — the link would carry no token`
+            : "no URL button — the customer has nothing to tap",
+          fatal,
+        );
+        continue;
+      }
+      if (!configured) {
+        fail(`template ${name}`, `APPROVED · category ${category}, but ${def.env} is unset — set it to switch WhatsApp on`, false);
+        continue;
+      }
+      pass(`template ${name}`, `APPROVED [${envLang}] · ${params} params · URL "${url.text}" · category ${category}`);
+      if (category === "MARKETING") {
+        // Not a failure: Meta decides. It costs more, and skips people who turned
+        // marketing messages off in WhatsApp (131050, recorded as whatsapp_marketing_off).
+        fail(
+          `category ${name}`,
+          "Meta filed it as MARKETING (submitted as UTILITY): ~S$0.09 a message, and 131050 for people who turned marketing off — ask for a review within 60 days, and record it in CRM slice 13",
+          false,
+        );
+      }
     }
   }
 

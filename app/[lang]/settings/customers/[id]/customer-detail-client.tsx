@@ -43,6 +43,7 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import { AftercareCard } from "./aftercare-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -708,6 +709,9 @@ export function CustomerDetailClient({
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Aftercare switches (CRM slice 13) */}
+                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>

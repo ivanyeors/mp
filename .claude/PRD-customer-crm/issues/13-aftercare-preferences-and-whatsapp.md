@@ -316,22 +316,233 @@ body starts and ends with fixed text, and no two variables sit side by side:
 
 ## Acceptance criteria
 
-- [ ] Both ways of changing a preference write the column and exactly one event. A change to the
+- [x] Both ways of changing a preference write the column and exactly one event. A change to the
       same value writes nothing. Turning WhatsApp on stores the wording shown.
-- [ ] The Profile toggles change only the signed-in Customer's own row, whatever the request
+- [x] The Profile toggles change only the signed-in Customer's own row, whatever the request
       body says. Turning WhatsApp on with no valid mobile asks for one first.
-- [ ] A view-only role sees the switches and their history, and cannot change them.
-- [ ] Turning WhatsApp on from the Admin Panel requires a note.
-- [ ] A *STOP* gets the stop reply every time and changes no preference. No aftercare WhatsApp
+- [x] A view-only role sees the switches and their history, and cannot change them.
+- [x] Turning WhatsApp on from the Admin Panel requires a note.
+- [x] A *STOP* gets the stop reply every time and changes no preference. No aftercare WhatsApp
       goes to a matching Customer until a later preference change. An open appointment
       reminder for that number is unaffected.
-- [ ] A bare *cancel* right after an aftercare message asks a question and cancels nothing. The
+- [x] A bare *cancel* right after an aftercare message asks a question and cancels nothing. The
       same word with no aftercare send since the last reminder cancels, as today.
-- [ ] The generic auto-reply no longer says "appointment messages".
-- [ ] `decideAftercareWhatsApp` is covered for every skip reason. The ledger prevents a second
+- [x] The generic auto-reply no longer says "appointment messages".
+- [x] `decideAftercareWhatsApp` is covered for every skip reason. The ledger prevents a second
       send under concurrent runs. A `131050` failure is recorded as `whatsapp_marketing_off`.
-- [ ] `sendTemplateMessage` sends a URL-button parameter when given one, and is unchanged when
+- [x] `sendTemplateMessage` sends a URL-button parameter when given one, and is unchanged when
       not.
 - [ ] Preflight passes with both templates approved. The category Meta gave each is
-      recorded here.
+      recorded here. — _not yet: HITL/ops. Submit with the script, wait for Meta, run
+      preflight, then record each category here. There are no Meta credentials in the build
+      environment._
+  - `aftercare_review_request`: category _not yet known_.
+  - `aftercare_checkup`: category _not yet known_.
 - [ ] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `claude/shopify-migration-plan-izv7fo` @ `0ae10de` (CRM 01 and CRM 10 merged).
+
+**What was built**
+
+- **Migration** `supabase/migrations/20261020114000_aftercare_preferences.sql`:
+  - `customers.aftercare_email` (default true) and `customers.aftercare_whatsapp` (default
+    false), one `alter table` each so the migration scans see both columns;
+  - `grant select (aftercare_email, aftercare_whatsapp) on public.customers to authenticated`;
+  - `customer_preference_events`:
+    - server-only: RLS on, no policy, `revoke all` from anon and authenticated;
+    - append-only, enforced by a trigger. It refuses UPDATE and DELETE unless they come from a
+      foreign key's own action (`pg_trigger_depth() > 1`), such as a deleted Customer or a
+      deleted Staff profile;
+  - `set_aftercare_preference(...)`:
+    - SECURITY DEFINER, with a row lock;
+    - writes the column and one event, writes nothing for the same value, and returns whether
+      it changed;
+    - refuses WhatsApp on without `wording` (source `profile`) or a note (source `staff`);
+    - `revoke execute` from public, anon and authenticated; `grant execute` to service_role;
+  - `customer_whatsapp`, the ledger:
+    - server-only, with `unique (customer_id, template, entity_id)`;
+    - indexes for the webhook's two lookups (phone with `sent_at`, and `wa_id`).
+- **One write path, and the reads:** `lib/aftercare/preferences.ts`.
+  - It has `setAftercarePreference`, `readAftercareView`, `readWhatsAppGate`,
+    `readProfileAftercare` and `listOpenStopRequests`.
+  - The pure rules and the approved copy are in `lib/aftercare/state.ts`: `isStopRequestOpen`,
+    `describeSwitch`, `aftercareWhatsAppWording`, `AFTERCARE_EMAIL_LABEL`, and
+    `AFTERCARE_EMAIL_FOOTER` for slices 07 and 08.
+- **The WhatsApp channel for slices 07 and 08:** `lib/whatsapp/aftercare-notify.ts`.
+  - `decideAftercareWhatsApp`: pure, with all six skips.
+  - `notifyAftercareWhatsApp`: claims the row as `pending`, sends, and marks it `sent` or
+    `failed`. A failed send is never retried.
+  - `aftercareSendError`: maps 131050 to `whatsapp_marketing_off`.
+  - `latestAftercareSentAt` and `recordAftercareDeliveryFailure`, for the webhook.
+  - The ledger keys are `aftercare.review_request` and `` aftercare.checkup_<n>m ``.
+- **The two templates:** `lib/whatsapp/aftercare-templates.ts`.
+  - It holds the approved copy, the URL buttons and the examples.
+  - It also has `reviewRequestTemplateParams` and `checkupTemplateParams`. They set the
+    parameter order, the "Hi there" greeting, the SGT delivery date and the staffed line.
+  - The check-up builder throws when there is no fee.
+- **`sendTemplateMessage`:**
+  - takes `{ urlButtonParam }` and adds the URL button component
+    (`{ type: "button", sub_type: "url", index: "0", ... }`);
+  - without it, the payload is exactly what it was;
+  - a refused send now throws `WhatsAppSendError` with Meta's `code`. The error message is
+    unchanged.
+- **Inbound** (`lib/appointments/whatsapp.ts`, `app/api/webhooks/whatsapp/route.ts`):
+  - a `stop` intent: an exact match on one of the four words. It is answered with the stop reply
+    before the reminder lookup, every time, with no cooldown, and nothing else changes;
+  - `cancel` carries `bare`. A bare cancel gets the cancel question when `askBeforeCancel` finds
+    an aftercare send newer than the reminder's `last_outbound_at`;
+  - a `failed` status on the webhook is also recorded on the aftercare ledger.
+- **Copy** (`lib/appointments/messages.ts`): `guestText.stopReply`, `guestText.cancelQuestion`
+  and the reworded `autoReply`, word for word.
+- **Staff's manual switch:**
+  - **The route**, `GET` and `POST /api/shop/customers/[id]/aftercare`:
+    - GET checks `customers`. POST checks `customers-edit`, and the guard test finds it.
+    - POST requires a note to turn WhatsApp on. It records the working-as Staff profile.
+    - When something changed, POST writes `recordAdminAction` (`customer.aftercare_preference`).
+  - **The card**, `app/[lang]/settings/customers/[id]/aftercare-card.tsx`:
+    - two switches, each with its last change ("Off since 20 Oct: switched off by Mei: asked on
+      WhatsApp.");
+    - the open STOP notice, the 131050 notice and the history;
+    - a note dialog, where the note is required to turn WhatsApp on;
+    - the switches are disabled without `customers-edit`.
+- **The Profile:** `app/[lang]/account/aftercare-preferences.tsx`, with the server action
+  `app/[lang]/account/actions.ts`.
+  - The Customer comes from the session (`getCurrentCustomerId`), never from the body.
+  - With no valid mobile on file, the toggle asks for one and saves it normalised.
+  - The stored wording carries that number.
+- **Scripts:**
+  - `whatsapp-create-templates.ts`: URL-button support and both templates.
+  - `whatsapp-preflight.ts` checks each template: approved, language, 5 params, and a URL button
+    ending in `{{1}}`. It prints the category, and only warns while the env var is unset.
+  - `whatsapp-preview.ts`: sends both templates, the stop reply and the cancel question.
+  - `pnpm typecheck` excludes the scripts, so they were checked separately with `tsc`, and
+    pass.
+  - The create script was **not run against Meta**.
+- **Env:** `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW` and `WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP` in
+  `.env.example`.
+
+**Column grants (CRM 02)**
+
+- **Both approaches are used.** The Profile reads the switches server-side with the service
+  role, keyed by the session's own Customer (`readProfileAftercare`), so it needs no grant. The
+  migration also adds the slice's `grant select (aftercare_email, aftercare_whatsapp) on
+  customers to authenticated`.
+- **What CRM 02 must do.** A table-level `revoke select` that runs after these grants also drops
+  them. So if CRM 02's migration sorts after this one, its grant list must name both columns.
+- **The app is safe either way.**
+
+**Database check** (`mp_c13`, Postgres 16 with the Supabase stubs)
+
+All 155 migrations apply. Checked in psql:
+
+- **The one write function:**
+  - a change writes the column and one event;
+  - the same value writes nothing and returns false;
+  - WhatsApp on is refused without wording (Profile) or a note (Staff);
+  - an unknown preference, a missing Customer and a note over 300 characters are refused.
+- **The events table:**
+  - UPDATE and DELETE are refused;
+  - a deleted Customer cascades;
+  - a deleted Staff profile nulls `changed_by_profile_id`.
+- **Grants:**
+  - anon and authenticated cannot execute the function or read either table; service_role can;
+  - authenticated reads its own two columns through the column grant, even after a simulated
+    CRM 02 revoke.
+- **Concurrency:**
+  - three concurrent ledger claims leave exactly one row;
+  - three concurrent identical preference changes write exactly one event.
+
+**Tests added**
+
+- `lib/aftercare/__tests__/state.test.ts`: the approved Profile copy and footer, the open-STOP
+  rule and the status lines.
+- `lib/aftercare/__tests__/preferences.test.ts`: the RPC arguments, one event per change, an
+  open STOP and a closed one, and the view.
+- `lib/whatsapp/__tests__/aftercare-notify.test.ts`:
+  - every skip reason, and their order;
+  - the env names;
+  - 131050 at send and on the webhook;
+  - one send across three concurrent runs;
+  - a failure not retried;
+  - sending resumes after a later change.
+- `lib/whatsapp/__tests__/aftercare-templates.test.ts`: the approved copy pinned word for word,
+  Meta's rules, and the parameter builders.
+- `lib/appointments/__tests__/whatsapp-aftercare.test.ts`:
+  - the stop intent, and bare and named cancels;
+  - `askBeforeCancel`;
+  - the exact reply copy;
+  - `sendTemplateMessage` with and without the URL button.
+- `app/api/webhooks/whatsapp/__tests__/route-aftercare.test.ts`:
+  - a STOP gets the reply every time, with no cooldown, and the reminder is untouched;
+  - a bare cancel asks after an aftercare message and cancels otherwise;
+  - a named cancel always cancels;
+  - the auto-reply;
+  - a late failure reaches the ledger.
+- `app/api/shop/customers/__tests__/aftercare-route.test.ts`:
+  - a view-only role reads, and gets a 403 on a write;
+  - the editor and the owner write the column, one event and an audit row;
+  - the same value writes nothing;
+  - WhatsApp on needs a note;
+  - a note over 300 characters is refused.
+- `app/[lang]/account/__tests__/aftercare-action.test.ts`:
+  - only the session's own row changes;
+  - the wording is stored;
+  - the mobile is asked for, saved and normalised;
+  - nothing changes without a session.
+- Two render tests:
+  - `app/[lang]/settings/customers/__tests__/aftercare-card-render.test.tsx`: a view-only role
+    sees disabled switches and the history;
+  - `app/[lang]/account/__tests__/aftercare-preferences-render.test.tsx`: the Profile card.
+
+**Deviations**
+
+- **There is no Contact and sign-in card yet.**
+  - Slice 11 is not built.
+  - The two switches sit in their own *Aftercare* card in the Customer detail's right column,
+    with its own fetch.
+  - Slice 11 can move them into its card.
+- **"The Aftercare card counts open requests".**
+  - That card belongs to slice 07 (Customers page, Settings tab), and it does not exist yet.
+  - `listOpenStopRequests()` is built and tested for it.
+- **An open STOP request needs WhatsApp to be on.**
+  - With WhatsApp already off there is nothing to pause.
+  - Staff could not close such a request either, because switching off again writes no event.
+  - Sending is unaffected: `opted_out` is decided before `stop_requested`.
+- **`nonProdAllowed` is a predicate**, `(e164) => boolean` (`isPhoneAllowed`). The decision
+  stays pure and is handed the normalised number.
+- **Extra skips outside the pure decision.** `notifyAftercareWhatsApp` also skips with
+  `transport_unconfigured`, `no_customer` or `duplicate`, like the partner channel.
+- **The Appointments kill switch still silences every reply,** the stop reply included
+  (Settings → Appointments, WhatsApp off).
+  - The STOP is still recorded as kind `stop`.
+  - So the open request is derived either way.
+- **A failed aftercare lookup on a bare cancel asks instead of cancelling.** A question can be
+  asked again; a cancelled booking is harder to undo.
+- **The template copy lives in `lib/whatsapp/aftercare-templates.ts`,** not inline in the
+  script.
+  - A test pins the approved text, and preflight and preview share it.
+  - The check-up's example URL uses a sample order item id, because the slice gives none.
+
+**Open question for the owner, before submitting the templates**
+
+- **The approved button URLs** point at `https://mpillow.com/r/review?t=…` and
+  `https://mpillow.com/appointments?…`.
+- **This app's production origin is `custom.mpillow.com`** (`lib/site-url.ts`, and the
+  preflight default). `mpillow.com` may still be the Shopify store until cutover.
+- **Confirm that those two paths reach this app.** Changing a URL after approval needs a new
+  template name.
+
+**Left for ops or the owner**
+
+1. Apply the migration.
+2. Submit both templates:
+   `npx tsx --env-file=.env.local scripts/whatsapp-create-templates.ts <WABA_ID> aftercare_review_request,aftercare_checkup`
+3. Once Meta approves them, set `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW=aftercare_review_request`
+   and `WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP=aftercare_checkup`.
+4. Run `scripts/whatsapp-preflight.ts`, and record each template's category above.
+5. Prove the sender reaches a phone that is not on the test list (OPS-CHECKLIST §0.5).
+6. Watch the support Reply-To inbox. Handle stop requests with the manual switch within 10
+   business days.
+7. Counsel confirms at sign-off (slice 09) that a Staff note is enough evidence for the check-up.
