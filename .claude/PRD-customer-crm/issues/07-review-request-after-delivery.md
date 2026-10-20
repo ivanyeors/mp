@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** 01, 13
 **User stories:** 11, 12, 13, 14, 15
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:email`, `area:whatsapp`, `area:reviews`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:email`, `area:admin`
 
 ## Decided
 

@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** 01; migration PRD slice 12 (`admin_customer_overview`)
 **User stories:** 5, 9
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`, `area:db`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

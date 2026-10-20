@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** 02; owner decision 2 for the default terms
 **User stories:** 2, 3, 7
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:checkout`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:checkout`, `area:admin`
 
 ## Goal
 

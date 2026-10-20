@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** 05; owner decision 5
 **User stories:** 7
-**Labels:** `enhancement`, `needs-triage`, `P3`, `area:readjustment`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:storefront`
 
 ## Goal
 

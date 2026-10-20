@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** 02
 **User stories:** 9, 10, 13, 15
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`, `area:db`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

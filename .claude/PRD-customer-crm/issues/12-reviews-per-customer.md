@@ -3,7 +3,7 @@
 **Type:** AFK, plus one HITL dependency (the Google review sync must be live)
 **Blocked by:** 04, 07, 10
 **User stories:** 21, 22, 23
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`, `area:reviews`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

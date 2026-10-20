@@ -3,7 +3,7 @@
 **Type:** HITL
 **Blocked by:** 02, 03, 05, 06, 07, 10, 11, 12, 13, 14
 **User stories:** all
-**Labels:** `ops`, `needs-triage`, `P2`, `area:customers`
+**Labels:** `needs-triage`, `P2`, `area:admin`
 
 ## Steps
 

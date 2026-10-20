@@ -3,7 +3,7 @@
 **Type:** HITL
 **Blocked by:** 09; owner decision 6 (cutover date)
 **User stories:** 13
-**Labels:** `ops`, `needs-triage`, `P2`, `area:customers`, `area:privacy`
+**Labels:** `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

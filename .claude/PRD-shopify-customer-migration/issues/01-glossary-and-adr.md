@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** none
 **User stories:** underpins all
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:docs`
+**Labels:** `documentation`, `enhancement`, `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

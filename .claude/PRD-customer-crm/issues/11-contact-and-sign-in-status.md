@@ -3,7 +3,7 @@
 **Type:** AFK
 **Blocked by:** 01; migration PRD slice 12 (Account status and `linkCustomerToAuthUser` changes)
 **User stories:** 19, 20
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

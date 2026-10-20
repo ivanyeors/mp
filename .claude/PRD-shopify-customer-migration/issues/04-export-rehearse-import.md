@@ -3,7 +3,7 @@
 **Type:** HITL
 **Blocked by:** 03, 12; owner decisions 1 and 7
 **User stories:** 2, 8, 14, 15
-**Labels:** `ops`, `needs-triage`, `P2`, `area:customers`
+**Labels:** `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 

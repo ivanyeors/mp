@@ -4,7 +4,7 @@
 recorded below before building.
 **Blocked by:** 01, 10
 **User stories:** 25, 26, 27, 28
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:email`, `area:whatsapp`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:email`, `area:admin`
 
 ## Decided
 

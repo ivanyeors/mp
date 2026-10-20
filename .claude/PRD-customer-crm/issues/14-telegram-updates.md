@@ -4,7 +4,7 @@
 **Blocked by:** 10. Two types start posting only when their source exists: *Google reviews to
 match* after 12, and *New sign-ups* after migration slice 12.
 **User stories:** 29, 30
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:results`, `area:telegram`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:email`, `area:admin`
 
 ## Decided
 

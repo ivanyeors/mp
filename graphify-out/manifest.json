@@ -15438,87 +15438,87 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md": {
-    "mtime": 1792483248.8819902,
-    "seen": 1792484008.7131166,
-    "ast_hash": "634f9f356eaebcb56982c995ab5480c8",
+    "mtime": 1792484270.4967885,
+    "seen": 1792484356.613018,
+    "ast_hash": "f35d1e4f42ed7fd27cd6e941aa5b53fa",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md": {
-    "mtime": 1792471046.0626671,
-    "seen": 1792484008.7131178,
-    "ast_hash": "5e7a4b7d2e2d6a7fd4d2350ae0d525da",
+    "mtime": 1792484270.4958622,
+    "seen": 1792484356.6130219,
+    "ast_hash": "6c5c8a0f785b76f5ec1f72f7bd79923a",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/03-customer-timeline.md": {
-    "mtime": 1792423998.7152374,
-    "seen": 1792484008.7131195,
-    "ast_hash": "4293606423d6a732caa40c42afc37cd7",
+    "mtime": 1792484270.4938698,
+    "seen": 1792484356.6130242,
+    "ast_hash": "919698d64b1edb99636e534452eb517e",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/04-crm-filters-and-overview-columns.md": {
-    "mtime": 1792424137.8312457,
-    "seen": 1792484008.7131205,
-    "ast_hash": "307b7b8323145d63ef96256ed971ad89",
+    "mtime": 1792484270.497167,
+    "seen": 1792484356.6130261,
+    "ast_hash": "bcfb6fecac02d915a48c1b639ebf3549",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/05-saved-segments.md": {
-    "mtime": 1792471046.0628898,
-    "seen": 1792484008.7131217,
-    "ast_hash": "4b8ece12cad6949048b172aa40974ce2",
+    "mtime": 1792484270.4947944,
+    "seen": 1792484356.613028,
+    "ast_hash": "9a3af6cef2d4651e10af0866e23873ac",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/06-follow-ups.md": {
-    "mtime": 1792483248.6979902,
-    "seen": 1792484008.7131226,
-    "ast_hash": "43df3f662917173dab853f0b3a6a2870",
+    "mtime": 1792484270.4974747,
+    "seen": 1792484356.6130297,
+    "ast_hash": "efc82fa2ca1a58e4a032fccc9d6e80d2",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md": {
-    "mtime": 1792483228.773989,
-    "seen": 1792484008.7131233,
-    "ast_hash": "1a76d3deb07c4603a81c46a521d95f6e",
+    "mtime": 1792484270.4941955,
+    "seen": 1792484356.613031,
+    "ast_hash": "c706f49ff25b48752eb47decc8d2c58d",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/08-checkup-reminder.md": {
-    "mtime": 1792483248.64999,
-    "seen": 1792484008.7131245,
-    "ast_hash": "03442f849cc582edb1efa5e26f0135a4",
+    "mtime": 1792484270.49642,
+    "seen": 1792484356.6130323,
+    "ast_hash": "f7ce35a13073e6f27124c05937c176be",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/09-signoff.md": {
-    "mtime": 1792483248.7699902,
-    "seen": 1792484008.7131255,
-    "ast_hash": "af06654ef2b146eb35f8661b78024b67",
+    "mtime": 1792484270.4954572,
+    "seen": 1792484356.613034,
+    "ast_hash": "11c365b6195914154f6fd2f94a20b117",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/10-customers-view-permission.md": {
-    "mtime": 1792483248.8259902,
-    "seen": 1792484008.7131264,
-    "ast_hash": "a1cfe8b18a94abbd0830e6eae8a65e87",
+    "mtime": 1792484270.495156,
+    "seen": 1792484356.6130354,
+    "ast_hash": "8cbe0bb881835444b328c6d2f92d3aad",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/11-contact-and-sign-in-status.md": {
-    "mtime": 1792480967.1235065,
-    "seen": 1792484008.7131271,
-    "ast_hash": "8a87b0a33ee23deb630201d0acf9deff",
+    "mtime": 1792484270.497766,
+    "seen": 1792484356.6130369,
+    "ast_hash": "716ed9ba67e5bd5a52cf44484d008680",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/12-reviews-per-customer.md": {
-    "mtime": 1792480119.2410665,
-    "seen": 1792484008.713128,
-    "ast_hash": "e58af4f7fd68d756ebf37fd47b9501c0",
+    "mtime": 1792484270.494559,
+    "seen": 1792484356.6130383,
+    "ast_hash": "9436face443b4f4d36b21837c87ad838",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md": {
-    "mtime": 1792483210.557988,
-    "seen": 1792484008.7131293,
-    "ast_hash": "c6408986e37fd73e3025cf8d5a3fbec5",
+    "mtime": 1792484270.4934902,
+    "seen": 1792484356.6130397,
+    "ast_hash": "94a01b6e81997aeac1bf2dfabab09416",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/14-telegram-updates.md": {
-    "mtime": 1792483145.929984,
-    "seen": 1792484008.7131302,
-    "ast_hash": "5b0f62f5bfe8a43c7a5f73f9e01dbc0b",
+    "mtime": 1792484270.4980154,
+    "seen": 1792484356.613041,
+    "ast_hash": "904e65e3ebcf480c802d8e0368664b24",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/README.md": {
@@ -15534,75 +15534,75 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/01-glossary-and-adr.md": {
-    "mtime": 1792423012.9003766,
-    "seen": 1792484008.7135863,
-    "ast_hash": "e5d555fe358c64a67340af5bdbf5e174",
+    "mtime": 1792484270.4916081,
+    "seen": 1792484356.6136732,
+    "ast_hash": "c814b872687276625d4af9830b6fcb92",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/02-import-tables-and-dry-run.md": {
-    "mtime": 1792471046.0642662,
-    "seen": 1792484008.7135878,
-    "ast_hash": "0c0b7e513451eb9fcc5976888ba4c17d",
+    "mtime": 1792484270.4928854,
+    "seen": 1792484356.6136746,
+    "ast_hash": "fba8f2af6b19482000fa9539f33eeaaf",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/03-import-apply-and-rollback.md": {
-    "mtime": 1792423087.242451,
-    "seen": 1792484008.7135885,
-    "ast_hash": "65033bf51e5057d2cb4a95d0da97e426",
+    "mtime": 1792484270.4898095,
+    "seen": 1792484356.6136763,
+    "ast_hash": "83e5b9713f1afcbc14fcca2aa90dbb9a",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/04-export-rehearse-import.md": {
-    "mtime": 1792422941.0471747,
-    "seen": 1792484008.7135894,
-    "ast_hash": "835740f642b773d4e17e68c9ce8a65e4",
+    "mtime": 1792484270.4901576,
+    "seen": 1792484356.6136775,
+    "ast_hash": "9118d16958f9b681105e1137d10b90b1",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/05-claim-and-welcome-back-voucher.md": {
-    "mtime": 1792385478.247447,
-    "seen": 1792484008.7135906,
-    "ast_hash": "2689fac7b8f6443f4804be59fdc862d1",
+    "mtime": 1792484270.491949,
+    "seen": 1792484356.613679,
+    "ast_hash": "3dc4711236bc1ab6afc3b4ea35f351ab",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/06-welcome-page-and-surfaces.md": {
-    "mtime": 1792422988.1151774,
-    "seen": 1792484008.7135916,
-    "ast_hash": "fef4e4bedba87d86cfe657b5d08ef938",
+    "mtime": 1792484270.490625,
+    "seen": 1792484356.6136801,
+    "ast_hash": "1ebf8025a68b6636019beca596cb140b",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/07-marketing-consent-and-unsubscribe.md": {
-    "mtime": 1792424198.1164339,
-    "seen": 1792484008.7135925,
-    "ast_hash": "c0d4aa06a18345e052549d568b4f48ca",
+    "mtime": 1792484270.4925275,
+    "seen": 1792484356.6136813,
+    "ast_hash": "4293be35eeb6a31df4db09202c99801d",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/08-campaign-emails-and-wave-sender.md": {
-    "mtime": 1792424198.1172135,
-    "seen": 1792484008.7135935,
+    "mtime": 1792484270.4894178,
+    "seen": 1792484356.613683,
     "ast_hash": "baadf4d1d601a96cb2659f4c741fe729",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/09-pilot-and-waves.md": {
-    "mtime": 1792385478.2442672,
-    "seen": 1792484008.7135944,
-    "ast_hash": "84db18f85f557b31379827307f95d13e",
+    "mtime": 1792484270.4888182,
+    "seen": 1792484356.6136842,
+    "ast_hash": "b8b64643f13eafd313236610e4f76e67",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/10-cutover-and-shopify-wind-down.md": {
-    "mtime": 1792422998.707178,
-    "seen": 1792484008.7135956,
-    "ast_hash": "dd534cb822d3884d15ac559d283a928e",
+    "mtime": 1792484270.4922464,
+    "seen": 1792484356.6136856,
+    "ast_hash": "5363cbb080da33b0a0c182aa2daf70b8",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/11-optional-complimentary-readjustment.md": {
-    "mtime": 1792385478.244958,
-    "seen": 1792484008.7135966,
-    "ast_hash": "36920af991097e384f4d6f97a6f4360e",
+    "mtime": 1792484270.4913156,
+    "seen": 1792484356.613687,
+    "ast_hash": "4d30a841b6311780ac58cc130d1b7e2e",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md": {
-    "mtime": 1792422980.131177,
-    "seen": 1792484008.7135975,
-    "ast_hash": "6de95284d35e8911f5a48af00c233ad4",
+    "mtime": 1792484270.49098,
+    "seen": 1792484356.6136882,
+    "ast_hash": "0172d67621f8d6a7d2ac3873615a88ba",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/README.md": {
