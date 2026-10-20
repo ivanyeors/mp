@@ -8160,9 +8160,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1792483949.4728165,
-    "seen": 1792484008.7137785,
-    "ast_hash": "f29df74c566b69ce8a0281dc3d39be93",
+    "mtime": 1792498333.626072,
+    "seen": 1792498395.0067215,
+    "ast_hash": "5484c3871e7f852cad51f48cf67ce56e",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -15000,9 +15000,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0024-services-priced-in-costings.md": {
-    "mtime": 1792384287.8181934,
-    "seen": 1792484008.713836,
-    "ast_hash": "a78d84119a80bb7e50c7678e2b0b22c7",
+    "mtime": 1792498333.626072,
+    "seen": 1792498395.0067925,
+    "ast_hash": "4be44ff6af0e60b6d1f1cb155a4ca065",
     "semantic_hash": ""
   },
   "components/spatial/slab-shape.test.ts": {
@@ -15438,9 +15438,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md": {
-    "mtime": 1792495394.0509272,
-    "seen": 1792495469.866779,
-    "ast_hash": "eb7229b4aa66768a068ab558f77da953",
+    "mtime": 1792498324.9467452,
+    "seen": 1792498395.0059383,
+    "ast_hash": "908293d35d044a7894dad38e3654862e",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md": {
@@ -15522,9 +15522,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/README.md": {
-    "mtime": 1792496270.6944146,
-    "seen": 1792496328.3049705,
-    "ast_hash": "7aa1c316b4cca1c39b129f0a8aaca07d",
+    "mtime": 1792498324.9474802,
+    "seen": 1792498395.0059621,
+    "ast_hash": "eb5eca2d8cf5aae172577b6f39e89907",
     "semantic_hash": ""
   },
   ".claude/PRD-email-marketing/email-marketing-prd.md": {
@@ -15534,9 +15534,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/01-glossary-and-adr.md": {
-    "mtime": 1792486863.957636,
-    "seen": 1792486924.086922,
-    "ast_hash": "d6b95cac0c0cf6da8e3b09b2b04cebd0",
+    "mtime": 1792498339.038956,
+    "seen": 1792498395.0065155,
+    "ast_hash": "c630d89a74ca84326870ec10e61cf51a",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/02-import-tables-and-dry-run.md": {
@@ -15606,15 +15606,27 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/README.md": {
-    "mtime": 1792486863.9551268,
-    "seen": 1792486924.086938,
-    "ast_hash": "e0caab67d828d357f9e81d41b0878785",
+    "mtime": 1792498339.039916,
+    "seen": 1792498395.0065322,
+    "ast_hash": "8a8e1352ebe7bb442d00f22c42391708",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md": {
     "mtime": 1792486863.962912,
     "seen": 1792486924.086939,
     "ast_hash": "346b914437cce35bad9c4c4de94b54be",
+    "semantic_hash": ""
+  },
+  "docs/adr/0027-customer-crm.md": {
+    "mtime": 1792498324.9005811,
+    "seen": 1792498395.0067985,
+    "ast_hash": "13bf9cef0c2806961376098793dd5481",
+    "semantic_hash": ""
+  },
+  "docs/adr/0028-shopify-customer-migration.md": {
+    "mtime": 1792498333.6283414,
+    "seen": 1792498395.0068004,
+    "ast_hash": "69aa26f4c020bc5effd3342010085216",
     "semantic_hash": ""
   }
 }
