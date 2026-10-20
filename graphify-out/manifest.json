@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/whatsapp.ts": {
-    "mtime": 1792470470.7323694,
-    "seen": 1792470622.8163307,
-    "ast_hash": "9271cc00c875325bdadc7b837fcfbcc4",
+    "mtime": 1792471397.4225314,
+    "seen": 1792471484.7021997,
+    "ast_hash": "404642e58cbccbe67ebcff48dfaa4910",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/admin-guard.test.ts": {
@@ -6342,9 +6342,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-create-templates.ts": {
-    "mtime": 1792463388.5315318,
-    "seen": 1792467741.473914,
-    "ast_hash": "9a2cbfc1feef9224d7f4e3f03952a5a5",
+    "mtime": 1792471408.053226,
+    "seen": 1792471484.7034376,
+    "ast_hash": "906b5ce493bef6b82492d6897e243b0b",
     "semantic_hash": ""
   },
   "scripts/whatsapp-discover.ts": {
@@ -7962,9 +7962,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/OPS-CHECKLIST.md": {
-    "mtime": 1792470572.5546627,
-    "seen": 1792470622.8181036,
-    "ast_hash": "150b701de695cf8ba4b0e1b64583455c",
+    "mtime": 1792471408.0541854,
+    "seen": 1792471484.7041714,
+    "ast_hash": "036f1b877e2a24cfe81dc32877a6519d",
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/issues/01-ops-meta-google-setup.md": {
@@ -15318,9 +15318,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/messages.ts": {
-    "mtime": 1792470470.7055812,
-    "seen": 1792470622.8163178,
-    "ast_hash": "41351f04672f52625c4c8f29b188e660",
+    "mtime": 1792471397.421683,
+    "seen": 1792471484.7021823,
+    "ast_hash": "1e23ec1b8edb036c126b7fe2e8b13b71",
     "semantic_hash": ""
   },
   "scripts/whatsapp-preview.ts": {

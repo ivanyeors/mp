@@ -45,9 +45,9 @@ const TEMPLATES: Def[] = [
   {
     name: "appointment_cancelled_v2",
     // {{1}} name, {{2}} type, {{3}} date + time, {{4}} rebook url, {{5}} staffed
-    // line's wa.me link — body must not END with a variable
-    text: "Hi {{1}}, your {{2}} appointment on {{3}} has been cancelled. You can rebook here: {{4}} — or chat with our team on WhatsApp: {{5}}. Hope to see you soon!",
-    example: ["Ivan", "Customisation", "Tue 20 Oct 2026 at 17:00", "https://mpillow.com/book", "https://wa.me/6587805311"],
+    // line's number (WhatsApp makes it tappable) — body must not END with a variable
+    text: "Hi {{1}}, your {{2}} appointment on {{3}} has been cancelled.\n\nYou can rebook here: {{4}}\n\nIf you have any questions, please message our team on WhatsApp at {{5}}. Hope to see you soon!",
+    example: ["Ivan", "Customisation", "Tue 20 Oct 2026 at 17:00", "https://mpillow.com/book", "+65 8780 5311"],
   },
   {
     name: "appointment_confirmation",

@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { secretMatches } from "@/lib/auth/secret";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
+import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 import { guestText, whenLabel } from "./messages";
 import { formatSlotLabelSgt, type SlotOffer } from "./slots";
 
@@ -178,7 +178,7 @@ export async function sendCancelMessage(
   const values =
     name === "appointment_cancelled"
       ? [params.typeLabel, params.bookingUrl]
-      : [params.guestName, params.typeLabel, whenLabel(params.startsAt), params.bookingUrl, SUPPORT_WHATSAPP_URL];
+      : [params.guestName, params.typeLabel, whenLabel(params.startsAt), params.bookingUrl, SUPPORT_WHATSAPP_DISPLAY];
   return sendPayload({
     messaging_product: "whatsapp",
     to: toWa(e164),

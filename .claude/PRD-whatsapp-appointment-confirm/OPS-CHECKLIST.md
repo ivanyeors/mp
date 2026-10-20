@@ -65,7 +65,7 @@ Record exact names in env (defaults below):
 |-----|--------------|---------|
 | `WHATSAPP_TEMPLATE_DAY_BEFORE` | `appointment_day_before_v2` | Body: guest, date, time, type. Buttons: **Confirm** / **Reschedule** (the original `appointment_day_before` was approved without them) |
 | `WHATSAPP_TEMPLATE_MORNING_OF` | `appointment_morning_of` | Body: guest, date, time, venue. No buttons |
-| `WHATSAPP_TEMPLATE_CANCEL` | `appointment_cancelled_v2` | Body: guest, type, date + time, rebook URL, sales-line link. Used when the guest has not messaged in 24h; inside that window it is free text. The original `appointment_cancelled` (type, rebook URL) still works under its exact name but cannot name the sales line |
+| `WHATSAPP_TEMPLATE_CANCEL` | `appointment_cancelled_v2` | Body: guest, type, date + time, rebook URL, sales-line number. Used when the guest has not messaged in 24h; inside that window it is free text. The original `appointment_cancelled` (type, rebook URL) still works under its exact name but cannot name the sales line |
 
 Body parameter order must match `lib/appointments/whatsapp.ts` (positional).
 
