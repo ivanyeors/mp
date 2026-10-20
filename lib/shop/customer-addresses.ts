@@ -34,6 +34,8 @@ export async function getCurrentCustomerId(): Promise<string | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Granted columns only, never `*`: notes and tags are Staff-only
+  // (20261020101000_customer_notes_and_column_grants.sql).
   const { data } = await supabase
     .from("customers")
     .select("id")

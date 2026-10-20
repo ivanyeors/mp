@@ -20,7 +20,6 @@ vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
   return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
 });
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 // The list and detail reads page and search through PostgREST calls the fake
 // does not model; the guard in front of them is what is under test.
 vi.mock("@/lib/ecommerce/admin/customers", () => ({
@@ -32,7 +31,6 @@ vi.mock("@/lib/ecommerce/admin/customers", () => ({
 const list = await import("../route");
 const one = await import("../[id]/route");
 const addresses = await import("../[id]/addresses/route");
-const { updateCustomer } = await import("@/app/[lang]/settings/customers/actions");
 
 const role = (id: string, permissions: string[], grantsAll = false) => ({
   id,
@@ -99,13 +97,8 @@ describe("a view-only role (customers, no customers-edit)", () => {
     expect((await call()).status).toBe(403);
   });
 
-  it("is refused the updateCustomer server action", async () => {
-    await expect(updateCustomer("c1", { first_name: "Changed" })).rejects.toThrow("Forbidden");
-  });
-
   it("changes nothing", async () => {
     for (const [, call] of WRITES) await call();
-    await updateCustomer("c1", { first_name: "Changed" }).catch(() => null);
     expect(h.db.customers).toEqual([{ id: "c1", email: "ana@x.test", first_name: "Ana", last_name: "Tan", tags: [] }]);
     expect(h.db.customer_addresses).toEqual([]);
   });
@@ -118,8 +111,8 @@ describe.each(["crm-editor", "owner"])("a role that can change Customers (%s)", 
     expect((await call()).status).toBe(200);
   });
 
-  it("runs the updateCustomer server action", async () => {
-    await expect(updateCustomer("c1", { first_name: "Changed" })).resolves.toMatchObject({ ok: true });
+  it("changes the Customer through the PATCH", async () => {
+    await one.PATCH(req("PATCH", { first_name: "Changed" }), ctx);
     expect(h.db.customers[0].first_name).toBe("Changed");
   });
 });

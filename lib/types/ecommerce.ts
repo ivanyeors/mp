@@ -142,7 +142,12 @@ export interface Customer {
   last_name: string | null;
   phone: string | null;
   locale: string;
+  /** Staff-only: the customer's own key is not granted it. */
   tags: string[];
+  /**
+   * Retired (ADR 0027 (a)): moved into `customer_notes`, and never written.
+   * Staff-only, like `tags`. Dropped by a later migration.
+   */
   notes: string | null;
   total_orders: number;
   total_spent: number;
@@ -233,6 +238,7 @@ export interface Order {
   coupon_id: string | null;
   coupon_code: string | null;
   notes: string | null;
+  /** Staff-only: the customer's own key is not granted it (CustomerOrder omits it). */
   internal_notes: string | null;
   payment_method: string | null;
   payment_reference: string | null;

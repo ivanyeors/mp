@@ -2,6 +2,7 @@
 
 **Issue:** [#279](https://github.com/ivanyeors/mp/issues/279) (parent #277)
 **Type:** AFK
+**Status:** built in `5ebb85f` on `claude/shopify-migration-plan-izv7fo`
 **Blocked by:** 01
 **User stories:** 1, 2, 10
 **Labels:** `bug`, `enhancement`, `needs-triage`, `P1`, `area:admin`
@@ -93,13 +94,96 @@ grant select (/* every column except internal_notes */) on public.orders to auth
 
 ## Acceptance criteria
 
-- [ ] As a signed-in customer, a direct database API call for `customers.notes`,
+- [x] As a signed-in customer, a direct database API call for `customers.notes`,
       `customers.tags`, `orders.internal_notes` or `customer_notes` is refused or returns
       nothing. This is a `*.check.ts` that signs in as a fixture customer.
-- [ ] `/account`, `/account/orders`, an order's detail page, `/account/addresses` and
+      — _`lib/shop/customer-privacy.check.ts`. Verified on Postgres 16 as `authenticated`
+      (each is "permission denied"); its live mode needs a Supabase project, and CRM 09 runs
+      it on production._
+- [x] `/account`, `/account/orders`, an order's detail page, `/account/addresses` and
       `/appointments?type=readjustment` all still work for a customer. This is the same check,
       reading each path.
-- [ ] Existing notes appear as the first note, with no author and the old date.
-- [ ] Adding and deleting a note writes an audit row with no note text.
-- [ ] Saving a Customer with no name succeeds. A failed save shows an error.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+      — _every select those pages run under the customer's key was run as `authenticated` on
+      Postgres 16 and works; the check opens the pages too when given
+      `CUSTOMER_CHECK_SITE_URL`._
+- [x] Existing notes appear as the first note, with no author and the old date.
+- [x] Adding and deleting a note writes an audit row with no note text.
+- [x] Saving a Customer with no name succeeds. A failed save shows an error.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+**Built**
+
+- `supabase/migrations/20261020101000_customer_notes_and_column_grants.sql`: `customer_notes`
+  (schema as above, RLS on, a `to service_role` policy, `revoke all` from anon and
+  authenticated), the backfill, and the two column grants.
+- `lib/crm/notes.ts` (server: list, create, `noteProfileFor`) and `lib/crm/note-rules.ts`
+  (shared with the browser: `NoteInputSchema`, `CustomerNote`, `canDeleteNote`).
+- `GET` / `POST /api/shop/customers/[id]/notes` and
+  `DELETE /api/shop/customers/[id]/notes/[noteId]`. The writes, and the PATCH, check
+  `customers-edit` (CRM 10, merged in); `GET` stays on `customers`.
+- `lib/crm/customer-patch.ts`: `UpdateCustomerSchema` (strict; `null` or `""` clears a name or
+  phone; no `notes`) and `changedCustomerFields`, used by both the client (send only what
+  changed) and the PATCH route (write and audit only what changed, as `customer.update`).
+- Admin Panel: `customer-notes-card.tsx` replaces the textarea; the page reads the notes on the
+  server and passes `viewer` (`userId`, `grantsAll`). CRM 10's one `canEdit` flag
+  (`customers-edit`) drives both its edit controls and the Notes card's add box and delete
+  buttons; without it the notes read as text. The Save button now sits above the Notes card,
+  since notes save on their own. Saves and note actions show a toast on failure.
+- `lib/shop/customer-orders.ts`: `CUSTOMER_ORDER_COLUMNS` / `CUSTOMER_ORDER_ITEM_COLUMNS`
+  replace `*`, and the reads return `CustomerOrder` (`Omit<Order, "internal_notes">`).
+- Deleted `app/[lang]/settings/customers/actions.ts`; `dead-surface.test.ts` keeps it gone.
+  CRM 10 had moved it to `customers-edit`; on merge the deletion stands, and CRM 10's tests drop
+  its `updateCustomer` cases (the guard test now expects the two note routes instead).
+  `POST /api/shop/customers` no longer accepts `notes`.
+- `.env.example` documents the check's optional `CUSTOMER_CHECK_*` variables.
+
+**Grants.** Columns listed from the migrated schema, not `0028`: `orders` has 48, and
+`authenticated` gets 47 (all but `internal_notes`); `customers` gets 11 (not `notes`, `tags`).
+`anon` gets neither table (it had no policy on them). The RLS policies on `customers`,
+`orders`, `order_items` and `customer_addresses` read only `id`, `customer_id` and
+`auth_user_id`, all granted. Under the customer's key, the only reads of these tables are
+`lib/shop/customer-orders.ts` and `customer-addresses.ts` (`id`); every other account, order
+and booking read is the service role. No browser-client or RPC read touches either table.
+Migration slice 07's `marketing_email` is not on `main` yet, so slice 07 adds it to the grant.
+
+**Tests.** `lib/ecommerce/__tests__/cost-column-grants.test.ts` now covers `customers` and
+`orders` (and reads multi-column `alter table … add column …, add column …` statements), checks
+the customer order column lists against the grants, and that `customer_notes` is server-only.
+A new column on either table fails it until it is granted or listed as hidden.
+`app/api/shop/customers/__tests__/notes-routes.test.ts` (list, add, delete, permissions,
+working-as attribution, audit rows without text, PATCH with no name, changed-only audit, and a
+view-only role refused every note write and the PATCH).
+`lib/crm/__tests__/customer-patch.test.ts` (schema, diff, note rules). CRM 10's render test now
+passes notes and a viewer, and counts *Add note* and the delete button as edit controls.
+
+**DB check.** `db-check.sh` (which now emulates Supabase's default privileges) passes on
+`mp_c02` after merging CRM 10 (155 migrations). With a fixture customer: before the
+migration the customer's role read `notes`, `tags` and `internal_notes`; after it, those,
+`select *` on both tables and every
+`customer_notes` access are "permission denied", while the storefront's own selects, the
+address writes and RLS isolation between two customers still work. The backfill is idempotent,
+skips blank notes, and dates the note from `customers.updated_at`.
+
+**Deviations**
+
+- A note written with no "Working as" profile chosen uses the login's only profile when it has
+  exactly one (`noteProfileFor`); on a shared login with none chosen it names no profile, and
+  the note shows the login's email. The slice says "from `getAdminContext` plus
+  `getWorkingAs`", which alone would leave every personal login's notes without a profile name.
+- "The author" may delete means the author's login (`author_user_id`), not the profile:
+  "Working as" is attribution only (`lib/staff/working-as.ts`), so it never authorises.
+- A legacy note longer than 5,000 characters is cut to 5,000 in `customer_notes` to meet the
+  body check; the full text stays in `customers.notes`. The migration that drops the column must
+  check for one first.
+- A note with neither author is shown as moved from the old box ("Notes before {date}"). A real
+  note whose profile and login were both later deleted would read the same; the schema has no
+  flag to tell them apart.
+
+**Left for ops / others**
+
+- Run `lib/shop/customer-privacy.check.ts` live (CRM 09, on production with the owner's login).
+- Deploy order: code first, then the migration (as `20260915170000` required).
+- Migration slice 06 cites `updateCustomer` (`actions.ts:11`), which no longer exists: it should
+  use the PATCH route.

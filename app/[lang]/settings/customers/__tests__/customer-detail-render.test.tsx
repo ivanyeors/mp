@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
+import type { CustomerNote } from "@/lib/crm/note-rules";
 
 /**
  * View-only Customers (CRM slice 10): without `customers-edit` the Customer
@@ -22,18 +23,38 @@ const customer = {
   phone: "+6591234567",
   locale: "en-US",
   tags: ["vip"],
-  notes: "Prefers mornings.",
   total_orders: 2,
   total_spent: 480,
   created_at: "2026-09-01T00:00:00Z",
   updated_at: "2026-09-01T00:00:00Z",
 } as unknown as Customer;
 
+/** A Customer note (CRM 02) written by the viewer, so it is theirs to delete. */
+const notes: CustomerNote[] = [
+  { id: "n1", body: "Prefers mornings.", createdAt: "2026-10-01T02:00:00Z", authorName: "Jess", authorUserId: "u1", legacy: false },
+];
+
 const render = (canEdit: boolean) =>
-  renderToString(<CustomerDetailClient initialData={{ customer: { ok: true, row: customer } }} canEdit={canEdit} />);
+  renderToString(
+    <CustomerDetailClient
+      initialData={{ customer: { ok: true, row: customer }, notes }}
+      canEdit={canEdit}
+      viewer={{ userId: "u1", grantsAll: false }}
+    />,
+  );
 
 /** Each edit control, as it appears in the markup. */
-const CONTROLS = ["Save Changes", "Add Address", 'placeholder="Add tag..."', 'id="first-name"', 'id="phone"', "<textarea", "Click to remove"];
+const CONTROLS = [
+  "Save Changes",
+  "Add Address",
+  'placeholder="Add tag..."',
+  'id="first-name"',
+  'id="phone"',
+  "<textarea",
+  "Click to remove",
+  "Add note",
+  'aria-label="Delete note"',
+];
 
 describe("Customer detail edit controls", () => {
   it("renders every edit control for customers-edit", () => {
@@ -44,6 +65,6 @@ describe("Customer detail edit controls", () => {
   it("renders none of them without customers-edit, and still shows the Customer", () => {
     const html = render(false);
     for (const c of CONTROLS) expect(html, c).not.toContain(c);
-    for (const fact of ["Ana Tan", "ana@x.test", "+6591234567", "vip", "Prefers mornings."]) expect(html, fact).toContain(fact);
+    for (const fact of ["Ana Tan", "ana@x.test", "+6591234567", "vip", "Prefers mornings.", "Jess"]) expect(html, fact).toContain(fact);
   });
 });
