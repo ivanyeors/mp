@@ -208,7 +208,8 @@ describe("Customers write paths check customers-edit", () => {
         "app/api/shop/customers/route.ts POST",
         "app/api/shop/customers/[id]/route.ts PATCH",
         "app/api/shop/customers/[id]/addresses/route.ts POST",
-        "app/[lang]/settings/customers/actions.ts updateCustomer",
+        "app/api/shop/customers/[id]/notes/route.ts POST",
+        "app/api/shop/customers/[id]/notes/[noteId]/route.ts DELETE",
       ]),
     );
     // GET handlers are reads: they stay on `customers` and are not listed.

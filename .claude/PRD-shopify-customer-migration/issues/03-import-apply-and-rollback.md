@@ -263,6 +263,15 @@ functions run end to end.
   `customer_import_batch`. The file name is left out, because an operator-chosen name could
   carry PII.
 
+**Merging the integration branch** (with CRM 02, 13 and 14, and migration 05) raised no textual
+conflict, but it did raise one in meaning. Slice 05's `assert-05-claim.sql` inserted a batch
+without `exported_at`, which is now NOT NULL, so its fixture now passes a date.
+
+The undo plan picks up the merged foreign keys by itself. Those are `customer_notes`,
+`customer_emails`, `customer_preference_events`, `customer_whatsapp` and `coupons.customer_id`.
+None of them is written when a Customer is created, so an unreferenced created row still
+undoes. The assert files pass on the merged schema.
+
 **For ops and the owner.** Nothing new. Slice 04 rehearses this on a branch. For slice 12:
 batches gain `exported_at` and `undo_counts`, and created rows an undo kept still point their
 `migrated_customers.batch_id` at the undone batch. `./scripts/check-customer-import-sql.sh`

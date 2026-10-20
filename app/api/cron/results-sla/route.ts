@@ -26,6 +26,7 @@ import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
+import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -503,6 +504,17 @@ export async function GET(req: Request) {
     googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
   }
 
+  // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
+  // match, New sign-ups and the Weekly summary. Each goes at most once per
+  // period by compare-and-set, so a manual re-run posts nothing twice. After
+  // the Google review catch-up, so today's reviews are counted.
+  let crmTelegram: Awaited<ReturnType<typeof runCrmTelegramUpdates>> | { ok: false; error: string };
+  try {
+    crmTelegram = await runCrmTelegramUpdates(admin, { origin, now });
+  } catch (e) {
+    crmTelegram = { ok: false, error: e instanceof Error ? e.message : "crm telegram updates failed" };
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
@@ -512,6 +524,7 @@ export async function GET(req: Request) {
     gscIngest,
     preOrderRestock,
     googleReviews,
+    crmTelegram,
   });
 }
 

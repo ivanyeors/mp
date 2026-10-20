@@ -16,6 +16,8 @@ it("the retired routes stay deleted", () => {
     "app/api/shop/products/[id]/stock/route.ts",
     "app/api/shop/cart/route.ts",
     "app/api/shop/cart/items/[itemId]/route.ts",
+    // CRM 02: an uncalled second write path to customers (wrote notes, no audit).
+    "app/[lang]/settings/customers/actions.ts",
   ]) {
     expect(existsSync(fileURLToPath(new URL(path, root))), path).toBe(false);
   }

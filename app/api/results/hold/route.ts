@@ -14,7 +14,9 @@ import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
-import { sendTelegram } from "@/lib/telegram/notify";
+import { sendTelegram, type TelegramStatus } from "@/lib/telegram/notify";
+import { renderOnlineResultHeld } from "@/lib/crm/telegram-updates";
+import { isOnlineResultNoticeOn } from "@/lib/crm/telegram-updates-server";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { renderResultHeldEmail } from "@/lib/email/results";
 import {
@@ -1078,27 +1080,31 @@ export async function POST(req: Request) {
   // No inventory reserve or deduct on hold (US36).
 
   const platformLink = `${origin}/settings/results/${resultId}`;
-  const telegramStatus = await sendTelegram(
-    [
-      "💤 Held Result (online purchase) — review needed",
-      suggestLabel,
-      `Email: ${input.email}`,
-      ...serviceLines.map((l) => `${l.label}: ${currency} ${l.msrp.toFixed(2)}`),
-      takeCard
-        ? `Authorized: ${currency} ${priced.total.toFixed(2)}`
-        : `No card taken — quoted ${currency} ${priced.total.toFixed(2)}`,
-      ...(paired && companion?.ok
-        ? [
-            "",
-            `➕ Paired Mbolster ${paired.suggestedLength} — same hold, ships with this pillow`,
-            `Quoted: ${currency} ${companion.total.toFixed(2)}`,
-            `Platform: ${origin}/settings/results/${paired.responseId}`,
-          ]
-        : []),
-      "",
-      `Platform: ${platformLink}`,
-    ].join("\n"),
-  );
+  // The build team's notice. Its content is unchanged (the renderer is today's
+  // text, moved so *Send test* shows the same); only its switch is new, on the
+  // Customers page (CRM slice 14). An unreadable setting leaves it on: the
+  // switch can silence the notice, but it can never break a hold.
+  const telegramStatus: TelegramStatus = (await isOnlineResultNoticeOn())
+    ? await sendTelegram(
+        renderOnlineResultHeld({
+          label: suggestLabel,
+          email: input.email,
+          serviceLines,
+          currency,
+          total: priced.total,
+          cardTaken: takeCard,
+          paired:
+            paired && companion?.ok
+              ? {
+                  length: paired.suggestedLength,
+                  total: companion.total,
+                  platformUrl: `${origin}/settings/results/${paired.responseId}`,
+                }
+              : null,
+          platformUrl: platformLink,
+        }),
+      )
+    : "skipped";
 
   const emailStatus = await sendHeldEmail({
     to: input.email,
