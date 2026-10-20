@@ -300,3 +300,28 @@ export function sampleApplication(fixture: EmailFixture = "happy") {
     supportEmail: pick(fixture, "sg@mpillow.com"),
   };
 }
+
+export function sampleWelcomeVoucher(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    code: pick(fixture, "WB-7KQ4MZP2XH"),
+    discountType: "fixed_amount" as const,
+    value: 20,
+    currency: "SGD",
+    minOrderAmount: 50,
+    expiresOn: pick(fixture, "19 December 2026"),
+    shopUrl: `${ORIGIN}/en-US/shop`,
+  };
+}
+
+/** Free-shipping terms, no minimum, and a customer with no first name. */
+export function sampleWelcomeVoucherFreeShipping(fixture: EmailFixture = "happy") {
+  return {
+    ...sampleWelcomeVoucher(fixture),
+    firstName: null,
+    discountType: "free_shipping" as const,
+    value: 1,
+    minOrderAmount: null,
+  };
+}

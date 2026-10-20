@@ -1,34 +1,6 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { validateCoupon } from "@/lib/ecommerce/discounts";
-
-export async function validateCouponCode(
-  code: string,
-  subtotal: number,
-  productIds?: string[],
-  categoryIds?: string[],
-) {
-  if (!code || code.trim().length === 0) {
-    return { valid: false, reason: "Please enter a coupon code" };
-  }
-
-  const result = await validateCoupon(code, subtotal, productIds, categoryIds);
-
-  if (!result.valid) {
-    return {
-      valid: false as const,
-      reason: result.error ?? "Invalid coupon",
-    };
-  }
-
-  return {
-    valid: true as const,
-    discount_amount: result.discount_amount,
-    // Public action: never hand back the coupon row.
-    free_shipping: result.coupon?.discount_type === "free_shipping",
-  };
-}
 
 /**
  * Validates cart item prices against the database before checkout.

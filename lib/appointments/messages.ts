@@ -4,7 +4,8 @@
  * scripts/whatsapp-preview.ts sends each one to a phone so the copy can be read
  * the way a guest reads it. The approved templates (day-before, morning-of,
  * cancelled, confirmation) live on Meta; their wording is in
- * scripts/whatsapp-create-templates.ts.
+ * scripts/whatsapp-create-templates.ts, and the two aftercare templates' in
+ * lib/whatsapp/aftercare-templates.ts.
  *
  * Free text only reaches a guest inside the 24h window their own last message
  * opened — see withinServiceWindow in ./whatsapp.
@@ -25,10 +26,28 @@ export const TALK_TO_TEAM = `message our team on WhatsApp at ${SUPPORT_WHATSAPP_
 /** "Tue 20 Oct 2026 at 17:00" (SGT). */
 export const whenLabel = (iso: string) => `${formatDateSgt(iso)} at ${formatTimeSgt(iso)}`;
 
+/**
+ * Copy approved by the owner word for word (CRM slice 13, 2026-10-20): the
+ * auto-reply, the stop reply and the cancel question. Changing any of it needs
+ * the owner again.
+ */
 export const guestText = {
-  /** Anything the line cannot act on: chatter, photos, voice notes. */
+  /**
+   * Anything the line cannot act on: chatter, photos, voice notes. The line
+   * sends aftercare messages too, so it no longer says "appointment messages".
+   */
   autoReply: () =>
-    `Hi! This number only sends automated appointment messages, so no one here will see your reply. Please ${TALK_TO_TEAM}.`,
+    `Hi! This number only sends automated messages from Mpillow, so no one here will see your reply. Please ${TALK_TO_TEAM}.`,
+  /**
+   * A "stop" reply. Sent every time, with no cooldown. It switches nothing
+   * off: Staff see it as an open request, and the customer can do it in their
+   * Profile.
+   */
+  stopReply: () =>
+    "Thanks, we'll switch off aftercare messages for you. You can also turn them off yourself in your Mpillow account.",
+  /** A bare "cancel" right after an aftercare message: ask, do not cancel. */
+  cancelQuestion: (startsAt: string) =>
+    `Do you want to cancel your appointment on ${whenLabel(startsAt)}? Reply "cancel appointment" to cancel it. To stop aftercare messages, reply "stop".`,
   /** Chatter while a list of new times is open. */
   slotHint: () =>
     `To move your appointment, tap "View times" above and pick one, or reply "none of these" to cancel it. For anything else, please ${TALK_TO_TEAM}.`,
