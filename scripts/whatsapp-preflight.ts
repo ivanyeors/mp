@@ -19,7 +19,8 @@
  * Checks: required env, that the phone-number ID resolves to the number you
  * expect and is registered for Cloud API, that every template the code names is
  * APPROVED in the language that code sends it as and takes the number of body
- * params the code passes, that the webhook is subscribed, and that the public
+ * params the code passes, that the day-before template has the Confirm /
+ * Reschedule quick replies, that the webhook is subscribed, and that the public
  * sales number is not the automated sender.
  */
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -66,6 +67,20 @@ function bodyParamCount(components: unknown): number {
     return max;
   }
   return 0;
+}
+
+/** Labels of the template's QUICK_REPLY buttons, lower-cased. */
+function quickReplies(components: unknown): string[] {
+  const list = Array.isArray(components) ? components : [];
+  const out: string[] = [];
+  for (const c of list) {
+    const comp = c as { type?: string; buttons?: Array<{ type?: string; text?: string }> };
+    if (comp.type?.toUpperCase() !== "BUTTONS") continue;
+    for (const b of comp.buttons ?? []) {
+      if (b.type?.toUpperCase() === "QUICK_REPLY" && b.text) out.push(b.text.toLowerCase());
+    }
+  }
+  return out;
 }
 
 /**
@@ -237,20 +252,26 @@ async function main() {
     `${sender} — "${num.json.verified_name ?? "?"}" · quality ${num.json.quality_rating ?? "?"}`,
   );
 
-  // Meta auto-provisions a sandbox number (+1 555-…, the reserved test prefix)
-  // with every new app. It reads healthy everywhere else — verified name, a
-  // quality rating, CLOUD_API, and a normal messaging-limit tier — while
-  // delivery stays restricted to a short list of verified test recipients. The
-  // tier and that restriction are separate axes, so a healthy-looking limit is
-  // no evidence the number can reach guests. Confirm in API Setup, where the
-  // recipient list is capped and the number is labelled a test number.
-  if (/^\+?1\s*555/.test(sender)) {
+  // Meta's auto-provisioned test number (display name "Test Number") delivers
+  // only to the short recipient list in API Setup, and sends to anyone else fail
+  // with #131030. The +1 555 prefix alone settles nothing: a number on it can
+  // carry the business's own verified name, a quality rating and a normal tier.
+  // So the test name is the blocker, the prefix only warns, and the proof is a
+  // send to a phone that is not on that list.
+  const testName = /^test number$/i.test(String(num.json.verified_name ?? "").trim());
+  if (testName) {
     fail(
       "test number",
-      `${sender} is on Meta's +1 555 sandbox prefix — not a production sender; confirm the recipient list in API Setup`,
+      `${sender} is Meta's test number — it only reaches API Setup's recipient list (#131030 otherwise)`,
+    );
+  } else if (/^\+?1\s*555/.test(sender)) {
+    fail(
+      "test number",
+      `${sender} is on the +1 555 prefix — prove it reaches guests with a send to a phone NOT on API Setup's recipient list`,
+      false,
     );
   } else {
-    pass("test number", "not a +1 555 sandbox number");
+    pass("test number", "not a +1 555 number");
   }
 
   const platform = String(num.json.platform_type ?? "");
@@ -274,7 +295,8 @@ async function main() {
 
   // --- 3. The two numbers must stay distinct -------------------------------
   // The public number is a staffed sales line; the sender is automated. Pointing
-  // customers at the sender starts conversations the webhook silently drops.
+  // customers at the sender starts conversations nobody reads — the webhook only
+  // auto-replies with the sales line.
   const publicDigits = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "6587805311")
     .replace(/\D/g, "");
   if (senderDigits && publicDigits === senderDigits) {
@@ -290,8 +312,24 @@ async function main() {
   // Language and param count are per call site, because the code is not uniform:
   // three helpers hardcode "en", while sendTemplateMessage honours the env.
   const envLang = process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "en";
-  const wanted: { env: string; fallback: string; lang: string; params: number; note: string }[] = [
-    { env: "WHATSAPP_TEMPLATE_DAY_BEFORE", fallback: "appointment_day_before", lang: "en", params: 4, note: "day-before reminder" },
+  // `buttons` are words a QUICK_REPLY label must contain for the webhook to act
+  // on the tap (parseInboundActions matches by substring).
+  const wanted: {
+    env: string;
+    fallback: string;
+    lang: string;
+    params: number;
+    note: string;
+    buttons?: string[];
+  }[] = [
+    {
+      env: "WHATSAPP_TEMPLATE_DAY_BEFORE",
+      fallback: "appointment_day_before_v2",
+      lang: "en",
+      params: 4,
+      note: "day-before reminder",
+      buttons: ["confirm", "reschedule"],
+    },
     { env: "WHATSAPP_TEMPLATE_MORNING_OF", fallback: "appointment_morning_of", lang: "en", params: 4, note: "morning-of nudge" },
     { env: "WHATSAPP_TEMPLATE_CANCEL", fallback: "appointment_cancelled", lang: "en", params: 2, note: "cancel + rebook link" },
   ];
@@ -347,7 +385,17 @@ async function main() {
         );
         continue;
       }
-      pass(`template ${name}`, `APPROVED [${w.lang}] · ${w.params} params · ${w.note}`);
+      const replies = quickReplies(exact.components);
+      const missing = (w.buttons ?? []).filter((b) => !replies.some((r) => r.includes(b)));
+      if (missing.length) {
+        fail(
+          `template ${name}`,
+          `no ${missing.join(" / ")} button — guests cannot tap to reply; create appointment_day_before_v2 (scripts/whatsapp-create-templates.ts)`,
+        );
+        continue;
+      }
+      const btn = w.buttons?.length ? ` · buttons ${replies.join(" / ")}` : "";
+      pass(`template ${name}`, `APPROVED [${w.lang}] · ${w.params} params${btn} · ${w.note}`);
     }
   }
 

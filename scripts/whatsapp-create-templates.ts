@@ -4,6 +4,13 @@
  * confirmation = 4, cancelled = 2). Category UTILITY, language en. Idempotent-ish:
  * a duplicate name+lang just returns an error we print and skip.
  *
+ * The day-before template carries the Confirm / Reschedule quick replies the
+ * webhook acts on. It is `appointment_day_before_v2` because the first
+ * `appointment_day_before` was approved without them: adding buttons to an
+ * approved template sends it back to review, so a new name keeps the old one
+ * sending until the new one is approved and WHATSAPP_TEMPLATE_DAY_BEFORE is
+ * switched over.
+ *
  * After appointment_confirmation shows Approved, set WHATSAPP_TEMPLATE_CONFIRM=
  * appointment_confirmation to activate the immediate booking confirmation in
  * app/api/appointments/book/route.ts (it stays dormant until then).
@@ -12,14 +19,17 @@
  */
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-type Def = { name: string; text: string; example: string[] };
+/** `buttons` are QUICK_REPLY labels; a tap arrives at the webhook as that text. */
+type Def = { name: string; text: string; example: string[]; buttons?: string[] };
 
 const TEMPLATES: Def[] = [
   {
-    name: "appointment_day_before",
+    name: "appointment_day_before_v2",
     // {{1}} name, {{2}} date, {{3}} time, {{4}} type
-    text: "Hi {{1}}, a reminder that your {{4}} appointment is tomorrow, {{2}} at {{3}}. See you then!",
+    text: "Hi {{1}}, a reminder that your {{4}} appointment is tomorrow, {{2}} at {{3}}. Tap Confirm if you can make it, or Reschedule to pick a new time.",
     example: ["Ivan", "6 Aug", "3:00 PM", "Chiropractic"],
+    // Labels must keep the words the webhook matches (parseInboundActions).
+    buttons: ["Confirm", "Reschedule"],
   },
   {
     name: "appointment_morning_of",
@@ -58,6 +68,14 @@ async function main() {
       category: "UTILITY",
       components: [
         { type: "BODY", text: t.text, example: { body_text: [t.example] } },
+        ...(t.buttons?.length
+          ? [
+              {
+                type: "BUTTONS",
+                buttons: t.buttons.map((text) => ({ type: "QUICK_REPLY", text })),
+              },
+            ]
+          : []),
       ],
     };
     const res = await fetch(`${GRAPH}/${waba}/message_templates`, {

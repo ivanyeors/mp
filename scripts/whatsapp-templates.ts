@@ -39,7 +39,7 @@ async function main() {
     ?.data ?? [];
   console.log(`\nWABA ${waba} has ${rows.length} template(s):`);
   for (const r of rows) console.log(`  - ${r.name}  [${r.language}]  ${r.status}`);
-  const need = ["appointment_day_before", "appointment_morning_of", "appointment_cancelled"];
+  const need = ["appointment_day_before_v2", "appointment_morning_of", "appointment_cancelled"];
   console.log("\nNeeded by the code (lang en):");
   for (const n of need) {
     const hit = rows.find((r) => r.name === n);
