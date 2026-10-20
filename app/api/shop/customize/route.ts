@@ -12,6 +12,7 @@ import {
   incompleteEngineInputs,
   measurementPrefsToEngineInputs,
 } from "@/lib/rules-engine/legacy-inputs";
+import { HEAD_TO_BACK_MIN_CM } from "@/lib/rules-engine/units";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ const MeasurementRecommendRequestSchema = z.object({
     measurements: z.object({
       shoulder_length_cm: z.number().positive(),
       neck_to_back_cm: z.number().positive(),
-      head_to_back_cm: z.number().positive(),
+      head_to_back_cm: z.number().min(HEAD_TO_BACK_MIN_CM),
       neck_length_cm: z.number().positive(),
     }),
     demographics: z.object({

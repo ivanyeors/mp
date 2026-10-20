@@ -91,6 +91,7 @@ import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
   assertPreStripeRouteResolved,
   carryOverAnswers,
+  HEAD_TO_BACK_MIN_CM,
   incompleteEngineInputs,
   isFlowRoutePending,
   missingStepsAfterCarryOver,
@@ -219,6 +220,11 @@ const EMPTY_MEASURE_DRAFTS: Record<MeasureKey, string> = {
   neckToBack: "",
   headToBack: "",
   neckLength: "",
+};
+
+/** Lowest accepted value per measurement; a key left out must be positive. */
+const MEASURE_MIN_CM: Partial<Record<MeasureKey, number>> = {
+  headToBack: HEAD_TO_BACK_MIN_CM,
 };
 
 /** Prefer BOM default, else first in-stock option, else first row. */
@@ -815,7 +821,9 @@ export function MpConfigClient({
     {
       key,
       touched: measurementDrafts[key].trim() !== "",
-      valid: normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]) !== null,
+      valid:
+        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key], MEASURE_MIN_CM[key]) !==
+        null,
       message: "Enter a valid measurement",
     },
   ];
@@ -825,7 +833,11 @@ export function MpConfigClient({
   };
 
   const commitMeasureDraft = (key: MeasureKey) => {
-    const cm = normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]);
+    const cm = normalizeMeasurementDraft(
+      measurementUnit,
+      measurementDrafts[key],
+      MEASURE_MIN_CM[key],
+    );
     if (cm === null) return;
     updateMeasurement(key, cm);
     setMeasureDraft(key, displayMeasurement(measurementUnit, cm));
@@ -836,7 +848,7 @@ export function MpConfigClient({
     const nextData = { ...measurementData };
     for (const key of Object.keys(EMPTY_MEASURE_DRAFTS) as MeasureKey[]) {
       const cm =
-        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]) ??
+        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key], MEASURE_MIN_CM[key]) ??
         measurementData[key];
       nextData[key] = cm;
       nextDrafts[key] = displayMeasurement(next, cm);

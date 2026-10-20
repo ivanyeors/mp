@@ -5,6 +5,7 @@
 import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
 import type { MeasurementBasedPreferences } from "@/lib/types/customization";
 import { missingRequiredInputs } from "./catalog";
+import { HEAD_TO_BACK_MIN_CM } from "./units";
 import type { EngineInputs, RuleFlow } from "./types";
 
 export type WizardMeasurementData = {
@@ -28,6 +29,12 @@ function positiveCm(raw: string): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+function headToBackCm(raw: string): number | undefined {
+  if (raw.trim() === "") return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= HEAD_TO_BACK_MIN_CM ? n : undefined;
+}
+
 function yesNo(raw: string): boolean | undefined {
   if (raw === "yes") return true;
   if (raw === "no") return false;
@@ -40,7 +47,7 @@ export function wizardToEngineInputs(data: WizardMeasurementData): EngineInputs 
   return {
     shoulder_length_cm: positiveCm(data.shoulderLength),
     neck_to_back_cm: positiveCm(data.neckToBack),
-    head_to_back_cm: positiveCm(data.headToBack),
+    head_to_back_cm: headToBackCm(data.headToBack),
     neck_length_cm: positiveCm(data.neckLength),
     sleep_position:
       sleepTypes.length > 0 ? deriveSleepPosition(sleepTypes) : undefined,
