@@ -26,6 +26,7 @@ import {
   BOLSTER_LENGTHS,
   loadComposedSellable,
 } from "@/lib/results/composed-sellable";
+import { priceCompanionBolster } from "@/lib/results/paired-hold";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import {
   AddonLineSchema,
@@ -113,6 +114,22 @@ const AssistFillingSchema = z.object({
   templateId: z.number().int().positive().nullable().optional(),
 });
 
+/**
+ * The Mbolster bought with this Mpillow under the same hold (ADR 0026). Its own
+ * build and case; contact, address and shipping are the anchor's.
+ */
+const PairedBolsterSchema = z.object({
+  /** Minted by the configurator and reused on a re-submit, like an Mbolster session id. */
+  responseId: z.string().uuid(),
+  suggestedLength: z.enum(BOLSTER_LENGTHS),
+  measurements: z.record(z.string(), z.unknown()).optional(),
+  preferenceLines: z.array(PreferenceLineSchema).min(1),
+  addonLines: z.array(AddonLineSchema).default([]),
+  recommendationRecord: z.record(z.string(), z.unknown()).optional(),
+  /** Staff's bolster mix from the Mbolster page's x-ray editor; guests send nothing. */
+  assistFilling: AssistFillingSchema.optional(),
+});
+
 const HoldSchema = z
   .object({
     responseId: z.string().uuid().optional(),
@@ -153,8 +170,33 @@ const HoldSchema = z
     cancelPath: z.string().regex(/^\//).optional(),
     /** Client journey-resolved recommendation record (entry→final flow + route decision). */
     recommendationRecord: z.record(z.string(), z.unknown()).optional(),
+    /** Paired build: an Mbolster held with this Mpillow, under one Checkout. */
+    pairedBolster: PairedBolsterSchema.optional(),
   })
   .superRefine((v, ctx) => {
+    if (v.pairedBolster) {
+      // A pair is bought in one go, so it needs the card path and a session the
+      // companion can hang off; v1 never pairs an Assisted customisation.
+      if (v.productType !== "pillow" || v.deferred || !v.responseId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Only an Mpillow hold with a session can carry a paired Mbolster",
+          path: ["pairedBolster"],
+        });
+      }
+      if (v.pairedBolster.responseId === v.responseId) {
+        ctx.addIssue({ code: "custom", message: "The paired Mbolster needs its own id", path: ["pairedBolster", "responseId"] });
+      }
+      v.pairedBolster.preferenceLines.forEach((line, index) => {
+        if (!preferenceCategoryAllowed("bolster", line.category)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Bolster preferences may only include a case",
+            path: ["pairedBolster", "preferenceLines", index, "category"],
+          });
+        }
+      });
+    }
     if (v.productType === "pillow") {
       if (!v.suggestedSize) {
         ctx.addIssue({ code: "custom", message: "suggestedSize required for pillow", path: ["suggestedSize"] });
@@ -257,7 +299,7 @@ export async function POST(req: Request) {
     ? await admin
         .from("mp_config_responses")
         .select(
-          "source, status, access_token, customer_id, customer_email, order_id, payment_intent_id, measured_by_type, measured_by_staff_id",
+          "source, status, access_token, customer_id, customer_email, order_id, payment_intent_id, measured_by_type, measured_by_staff_id, paired_build_id",
         )
         .eq("id", input.responseId)
         .maybeSingle()
@@ -311,6 +353,24 @@ export async function POST(req: Request) {
         { status: 409 },
       );
     }
+  }
+
+  // Paired build (ADR 0026). A re-submit reuses the companion's id, so it may
+  // already exist, but only as this anchor's own companion and still unpaid; any
+  // other row with that id is someone else's Result.
+  const paired = input.pairedBolster ?? null;
+  let companionPrior: { status: string | null } | null = null;
+  if (paired) {
+    const { data, error } = await admin
+      .from("mp_config_responses")
+      .select("status, paired_build_id, payment_intent_id")
+      .eq("id", paired.responseId)
+      .maybeSingle();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (data && (data.paired_build_id !== input.responseId || data.status !== "held" || data.payment_intent_id)) {
+      return NextResponse.json({ error: "This Mbolster has already been submitted" }, { status: 409 });
+    }
+    companionPrior = data;
   }
 
   const phoneNormalized = normalizePhone(input.phone);
@@ -399,6 +459,36 @@ export async function POST(req: Request) {
       }
       fillingSnapshot = buildFillingSnapshot({ placements, claimedTemplateId, templatePlacements });
     }
+  }
+
+  // The paired Mbolster's Staff mix: the same gate and validation as a bolster
+  // hold's own, written to the companion once it exists.
+  let companionSnapshot: BolsterFillingSnapshot | null = null;
+  if (paired?.assistFilling) {
+    if (!(await getAdminContext())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const ids = [...new Set(paired.assistFilling.placements.map((p) => p.item_id))];
+    const { data: companionItems } = await admin.from("items").select("id, category, name").in("id", ids);
+    const companionKinds = new Map(
+      (companionItems ?? []).map((i) => [
+        i.id as number,
+        placementKind({ category: String(i.category), name: String(i.name) }),
+      ]),
+    );
+    const placements = rowsToBolsterPlacements(paired.assistFilling.placements);
+    const valid = validateBolsterPlacements(placements, companionKinds);
+    if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
+    const claimed = paired.assistFilling.templateId ?? null;
+    let templatePlacements: BolsterPlacement[] | null = null;
+    if (claimed != null) {
+      const { data: tplRows } = await admin
+        .from("bolster_template_placements")
+        .select("slot, item_id")
+        .eq("template_id", claimed);
+      templatePlacements = rowsToBolsterPlacements((tplRows ?? []) as BolsterPlacementRow[]);
+    }
+    companionSnapshot = buildBolsterFillingSnapshot({ placements, claimedTemplateId: claimed, templatePlacements });
   }
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
@@ -568,6 +658,27 @@ export async function POST(req: Request) {
   // Cents, once: the row's numeric(12,2) would round a float-dust total on store,
   // and the hold webhook compares that stored amount against what Checkout charged.
   priced.total = round2(priced.total);
+
+  // The paired Mbolster quotes its own build and rides in this shipment.
+  const companion = paired
+    ? await priceCompanionBolster(admin, {
+        length: paired.suggestedLength,
+        preferenceLines: paired.preferenceLines,
+        addonLines: paired.addonLines,
+        measuredByType: measuredBy.type,
+        country: input.shippingAddress?.country ?? "SG",
+      })
+    : null;
+  if (companion && !companion.ok) {
+    return companion.pricingUnavailable
+      ? NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 })
+      : NextResponse.json({ error: companion.error }, { status: companion.status });
+  }
+  if (companion && companion.currency !== composed.sellable.currency) {
+    return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
+  }
+  /** What the one Checkout authorises: both quotes for a pair, else this one. */
+  const holdTotal = companion ? round2(priced.total + companion.total) : priced.total;
 
   // Whether to take a card now. Two independent reasons not to:
   //   - `deferred` — an Assisted customisation, authorised by the stored row above.
@@ -752,6 +863,9 @@ export async function POST(req: Request) {
     access_token: accessToken,
     source: input.deferred ? "staff_assisted" : "online_purchase",
     is_pre_order,
+    // The anchor's own id marks it as one; null unpairs a re-submit that dropped
+    // the Mbolster.
+    paired_build_id: paired ? resultId : null,
     ...(recommendation_record ? { recommendation_record } : {}),
     // Only assist holds carry snapshot columns; guest rows stay untouched (null snapshot).
     ...(fillingSnapshot
@@ -773,6 +887,7 @@ export async function POST(req: Request) {
     productType === "bolster"
       ? `Mbolster ${input.suggestedLength} hold`
       : `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`;
+  const companionDescription = paired ? `Mbolster ${paired.suggestedLength} hold` : null;
 
   // An Assisted customisation takes no card, so there is no Checkout to create.
   // Everything else still runs: pricing, attribution, discovery source, the
@@ -787,14 +902,27 @@ export async function POST(req: Request) {
   if (takeCard) {
     try {
       const hold = {
-        amount: priced.total,
+        amount: holdTotal,
         currency,
         customerEmail: input.email,
         resultId,
         successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
         description,
-        metadata: { result_id: resultId },
+        metadata: {
+          result_id: resultId,
+          ...(paired && companion?.ok
+            ? { paired_result_id: paired.responseId, paired_result_amount: String(companion.total) }
+            : {}),
+        },
+        ...(companion?.ok
+          ? {
+              lines: [
+                { name: description, amount: priced.total },
+                { name: companionDescription!, amount: companion.total },
+              ],
+            }
+          : {}),
       };
       // Stripe rejects a reused key sent with different parameters, so the key
       // hashes exactly what is sent: an honest retry replays the same session, a
@@ -839,6 +967,95 @@ export async function POST(req: Request) {
     );
   }
 
+  // The companion is written after the anchor its paired_build_id points at.
+  // A companion this anchor carried before and no longer does: one that never
+  // took money (the anchor gate above refuses a paid one) goes; one that ended
+  // with the pair stays as a record but is unlinked, so this anchor never has
+  // two companions for Accept, the endings or the status page to choose from.
+  if (assisted?.paired_build_id === resultId) {
+    const keep = paired?.responseId ?? resultId;
+    const { error: dropErr } = await admin
+      .from("mp_config_responses")
+      .delete()
+      .eq("paired_build_id", resultId)
+      .neq("id", resultId)
+      .neq("id", keep)
+      .eq("status", "held")
+      .is("payment_intent_id", null);
+    if (dropErr) return NextResponse.json({ error: dropErr.message }, { status: 500 });
+    const { error: unlinkErr } = await admin
+      .from("mp_config_responses")
+      .update({ paired_build_id: null })
+      .eq("paired_build_id", resultId)
+      .neq("id", resultId)
+      .neq("id", keep)
+      .in("status", ["declined", "cancelled", "expired"]);
+    if (unlinkErr) return NextResponse.json({ error: unlinkErr.message }, { status: 500 });
+  }
+
+  if (paired && companion?.ok) {
+    const companionRow = {
+      ...row,
+      id: paired.responseId,
+      data: paired.measurements ?? {},
+      measured_by_type: measuredBy.type,
+      measured_by_staff_id: measuredBy.staffId,
+      product_type: "bolster",
+      suggested_size: null,
+      suggested_tier: null,
+      suggested_length: paired.suggestedLength,
+      preference_lines: paired.preferenceLines.map((l) => ({
+        item_id: l.item_id,
+        quantity: l.quantity,
+        category: l.category,
+      })),
+      addon_lines: paired.addonLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity })),
+      authorized_amount: takeCard ? companion.total : null,
+      is_pre_order: preOrderFlagForResult(
+        await loadPreOrderTriggerAtHold(admin, {
+          productType: "bolster",
+          preferenceItemIds: paired.preferenceLines.map((l) => l.item_id),
+          suggestedLength: paired.suggestedLength,
+        }),
+      ),
+      recommendation_record: paired.recommendationRecord ?? null,
+      filling_fingerprint: companionSnapshot?.fingerprint ?? null,
+      filling_template_id: companionSnapshot?.fillingTemplateId ?? null,
+      paired_build_id: resultId,
+    };
+    const companionWrite = companionPrior
+      ? await admin
+          .from("mp_config_responses")
+          .update(companionRow)
+          .eq("id", paired.responseId)
+          .eq("paired_build_id", resultId)
+          .eq("status", "held")
+          .is("payment_intent_id", null)
+          .select("id")
+      : await admin.from("mp_config_responses").insert(companionRow).select("id");
+    if (companionWrite.error) {
+      return NextResponse.json({ error: companionWrite.error.message }, { status: 500 });
+    }
+    if (!companionWrite.data?.length) {
+      return NextResponse.json(
+        { error: "This Result changed while it was being submitted. Please refresh and try again." },
+        { status: 409 },
+      );
+    }
+    // Replace-insert, as for any Result: a re-submit without a mix clears it.
+    const { error: snapDelErr } = await admin
+      .from("result_bolster_filling_placements")
+      .delete()
+      .eq("result_id", paired.responseId);
+    if (snapDelErr) return NextResponse.json({ error: snapDelErr.message }, { status: 500 });
+    if (companionSnapshot) {
+      const { error: snapInsErr } = await admin
+        .from("result_bolster_filling_placements")
+        .insert(companionSnapshot.rows.map((r) => ({ result_id: paired.responseId, ...r })));
+      if (snapInsErr) return NextResponse.json({ error: snapInsErr.message }, { status: 500 });
+    }
+  }
+
   if (fillingSnapshot) {
     // Replace-insert copy rows keyed by result — no FK to template placements, so
     // later catalog template edits never change this Result (ADR 0008). Bolster
@@ -870,6 +1087,14 @@ export async function POST(req: Request) {
       takeCard
         ? `Authorized: ${currency} ${priced.total.toFixed(2)}`
         : `No card taken — quoted ${currency} ${priced.total.toFixed(2)}`,
+      ...(paired && companion?.ok
+        ? [
+            "",
+            `➕ Paired Mbolster ${paired.suggestedLength} — same hold, ships with this pillow`,
+            `Quoted: ${currency} ${companion.total.toFixed(2)}`,
+            `Platform: ${origin}/settings/results/${paired.responseId}`,
+          ]
+        : []),
       "",
       `Platform: ${platformLink}`,
     ].join("\n"),
@@ -881,10 +1106,10 @@ export async function POST(req: Request) {
     accessToken,
     origin,
     productType,
-    label: suggestLabel,
+    label: paired ? `${suggestLabel} + Mbolster ${paired.suggestedLength}` : suggestLabel,
     // Null swaps the email to its no-card voice: no authorized-amount panel, and
     // a promise of the price by email once Staff finish the build.
-    amount: takeCard ? priced.total : null,
+    amount: takeCard ? holdTotal : null,
     currency,
   });
 
@@ -894,7 +1119,8 @@ export async function POST(req: Request) {
     ok: true,
     resultId,
     accessToken,
-    authorizedAmount: takeCard ? priced.total : null,
+    authorizedAmount: takeCard ? holdTotal : null,
+    ...(paired ? { pairedResultId: paired.responseId } : {}),
     currency,
     // Deferred submits have no Checkout — the client goes straight to the status
     // page, which is where the customer waits for Staff to finish the build.

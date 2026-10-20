@@ -88,3 +88,23 @@ describe("renderResultAssignedEmail", () => {
     }
   });
 });
+
+describe("renderResultAssignedEmail — Paired build (ADR 0026)", () => {
+  it("names the other build and adds both into one total", () => {
+    const base = sampleResultAssigned();
+    const paired = renderResultAssignedEmail({
+      ...base,
+      paired: { label: "Mbolster medium", total: 60 },
+    });
+    const total = base.pricing!.total + 60;
+    for (const body of [paired.text, paired.html]) {
+      expect(body).toContain("Also in this order: Mbolster medium");
+      expect(body).toContain("Total for both");
+      expect(body).toContain(total.toFixed(2));
+    }
+  });
+
+  it("is unchanged when there is no pair", () => {
+    expect(renderResultAssignedEmail({ ...sampleResultAssigned(), paired: null })).toEqual(hold);
+  });
+});

@@ -88,7 +88,6 @@ import {
   isFlowRoutePending,
   missingStepsAfterCarryOver,
   parseRecommendationRecord,
-  plainLanguageWhy,
   shouldRevealRecommendation,
   withJourneyOnAccept,
   withJourneyOnDecline,
@@ -127,6 +126,14 @@ import {
 } from "@/lib/configurator/height-draft";
 import { soleCaseId } from "@/lib/configurator/preference-policy";
 import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
+import { PairedStepper } from "@/components/configurator/paired-stepper";
+import {
+  clearPairedHandoff,
+  pairedHoldBody,
+  readPairedHandoff,
+  writePairedHandoff,
+  type PairedHandoff,
+} from "@/lib/configurator/paired-mbolster";
 import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
@@ -195,6 +202,17 @@ function normalizeStep(step: unknown): Step | null {
     return step;
   }
   return null;
+}
+
+/**
+ * Arrived as step 2 of a Paired build (ADR 0026): the Mpillow's hand-off, read
+ * synchronously so not even the first effect touches this device's standalone
+ * Mbolster draft.
+ */
+function pairedHandoffOnPage(): PairedHandoff | null {
+  if (typeof window === "undefined") return null;
+  if (new URLSearchParams(window.location.search).get("paired") !== "1") return null;
+  return readPairedHandoff(window.sessionStorage);
 }
 
 const STEP_ORDER: Step[] = [
@@ -268,6 +286,8 @@ export function MbolsterConfigClient({
     sleepPosition: null,
   });
   const [heightDraft, setHeightDraft] = React.useState("");
+  /** Step 2 of a Paired build: the Mpillow's finished hold, waiting for this one. */
+  const [paired, setPaired] = React.useState<PairedHandoff | null>(null);
 
   const [shopRecommendation, setShopRecommendation] =
     React.useState<ShopRecommendationData | null>(null);
@@ -401,6 +421,18 @@ export function MbolsterConfigClient({
     (t) => String(t.id) === String(previewRecord?.templateId),
   );
   const guestPlacements = rowsToBolsterPlacements(recommendedTemplate?.placements ?? []);
+  // Staff start from the engine's Filling Template and edit from there. Once per
+  // length: emptying the bolster afterwards is a choice, not a gap to refill.
+  const seededLengthRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!staffAssist || !suggestedLength || !recommendedTemplate) return;
+    if (assistLoadedTemplate || assistPlacements.length > 0) return;
+    if (seededLengthRef.current === suggestedLength) return;
+    seededLengthRef.current = suggestedLength;
+    const placements = rowsToBolsterPlacements(recommendedTemplate.placements ?? []);
+    setAssistLoadedTemplate({ id: Number(recommendedTemplate.id), placements });
+    setAssistPlacements(placements);
+  }, [staffAssist, suggestedLength, recommendedTemplate, assistLoadedTemplate, assistPlacements.length]);
   const guestItemSubtypes = new Map(
     (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, fillingDescriptor(f) || null]),
   );
@@ -442,6 +474,20 @@ export function MbolsterConfigClient({
   }, [measuredByStaff, servicePrices]);
 
   React.useEffect(() => {
+    // Paired build step 2: the hand-off decides the session. Only height is new;
+    // sleep position comes from the Mpillow, contact and shipping ride with it.
+    const handoff = pairedHandoffOnPage();
+    if (handoff) {
+      const heightUnit = (handoff.bolster?.heightUnit as HeightUnit | undefined) ?? "in";
+      const heightCm = handoff.bolster?.heightCm ?? "";
+      setPaired(handoff);
+      setConfigSessionId(handoff.companionId);
+      setState({ step: "height", heightUnit, heightCm, sleepPosition: handoff.sleepPosition });
+      setHeightDraft(displayHeight(heightUnit, heightCm));
+      if (handoff.bolster?.caseId != null) setSelectedCase(handoff.bolster.caseId);
+      if (handoff.bolster?.addonIds) setSelectedAddons(new Set(handoff.bolster.addonIds));
+      return;
+    }
     let hydratedStep: Step | null = null;
     try {
       const raw =
@@ -523,6 +569,9 @@ export function MbolsterConfigClient({
   }, []);
 
   React.useEffect(() => {
+    // A paired run keeps its answers in the hand-off, below; this device's
+    // standalone Mbolster draft is never overwritten by it.
+    if (pairedHandoffOnPage()) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
@@ -530,9 +579,27 @@ export function MbolsterConfigClient({
     }
   }, [state]);
 
-  // Persist hold-prep while on preview (covers Stripe cancel return).
   React.useEffect(() => {
-    if (state.step !== "preview") return;
+    if (!paired) return;
+    try {
+      writePairedHandoff(window.sessionStorage, {
+        ...paired,
+        bolster: {
+          heightUnit: state.heightUnit,
+          heightCm: state.heightCm,
+          caseId: selectedCase,
+          addonIds: [...selectedAddons],
+        },
+      });
+    } catch {
+      // private mode — the answers live in state for this visit
+    }
+  }, [paired, state.heightUnit, state.heightCm, selectedCase, selectedAddons]);
+
+  // Persist hold-prep while on preview (covers Stripe cancel return). A paired
+  // run's Checkout returns to the Mpillow, so it writes nothing here.
+  React.useEffect(() => {
+    if (state.step !== "preview" || paired) return;
     try {
       writeHoldCancelDraft(window.localStorage, {
         v: 1,
@@ -573,6 +640,7 @@ export function MbolsterConfigClient({
     holdNotes,
     holdAddress,
     configSessionId,
+    paired,
   ]);
 
   React.useEffect(() => {
@@ -663,6 +731,12 @@ export function MbolsterConfigClient({
     selectedShippingId,
   ]);
 
+  // A paired Mbolster's contact, address and shipping are its Mpillow's.
+  const pairedFields = React.useMemo(
+    (): FieldCheck[] => holdFields.filter((f) => f.key === "case"),
+    [holdFields],
+  );
+
   const activeFields = React.useMemo((): FieldCheck[] => {
     switch (state.step) {
       case "height":
@@ -670,11 +744,11 @@ export function MbolsterConfigClient({
       case "sleep-position":
         return sleepFields;
       case "preview":
-        return holdFields;
+        return paired ? pairedFields : holdFields;
       default:
         return [];
     }
-  }, [state.step, heightFields, sleepFields, holdFields]);
+  }, [state.step, heightFields, sleepFields, holdFields, pairedFields, paired]);
 
   React.useEffect(() => {
     setFieldErrors({});
@@ -742,10 +816,7 @@ export function MbolsterConfigClient({
       description: "This will clear your session and return home.",
       action: {
         label: "Exit",
-        onClick: () => {
-          reset();
-          router.push(homeHref);
-        },
+        onClick: () => exitConfirmed(),
       },
       cancel: "Stay",
       id: "mbolster-config-exit",
@@ -753,7 +824,16 @@ export function MbolsterConfigClient({
   };
 
   const exitConfirmed = () => {
-    reset();
+    if (paired) {
+      // Leaving a paired run abandons the hand-off, not this device's own draft.
+      try {
+        clearPairedHandoff(window.sessionStorage);
+      } catch {
+        // private mode — nothing was stored
+      }
+    } else {
+      reset();
+    }
     router.push(homeHref);
   };
 
@@ -763,8 +843,16 @@ export function MbolsterConfigClient({
     else confirmExit();
   };
 
-  const fetchBolsterRecommendation = React.useCallback(async (opts?: { preserveSelections?: boolean; stayOnStep?: boolean }) => {
-    if (!heightNum) return;
+  const fetchBolsterRecommendation = React.useCallback(async (opts?: {
+    preserveSelections?: boolean;
+    stayOnStep?: boolean;
+    /** Height committed in the same click, before state has caught up. */
+    heightCm?: number;
+    /** Where to land once it resolves (a paired run skips the length step). */
+    nextStep?: Step;
+  }) => {
+    const height = opts?.heightCm ?? heightNum;
+    if (!height) return;
     setShopLoading(true);
     try {
       const res = await fetch("/api/shop/customize", {
@@ -773,7 +861,7 @@ export function MbolsterConfigClient({
         body: JSON.stringify({
           purpose: "ballpark",
           bolster_preferences: {
-            height_cm: heightNum,
+            height_cm: height,
             sleep_position: state.sleepPosition ?? "other",
           },
         }),
@@ -791,10 +879,17 @@ export function MbolsterConfigClient({
 
       if (!opts?.preserveSelections) {
         setSelectedCase(soleCaseId(data.components.cases));
+      } else {
+        // Kept only while it is still cut for the length just recommended.
+        setSelectedCase((prev) =>
+          data.components.cases.some((c) => c.item_id === prev)
+            ? prev
+            : soleCaseId(data.components.cases),
+        );
       }
 
       if (!opts?.stayOnStep) {
-        setState((s) => ({ ...s, step: "recommendation" }));
+        setState((s) => ({ ...s, step: opts?.nextStep ?? "recommendation" }));
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get recommendation");
@@ -848,6 +943,8 @@ export function MbolsterConfigClient({
         .catch(() => setAddons([]));
     }
 
+    // A paired Mbolster ships with its Mpillow: no shipping choice of its own.
+    if (paired) return;
     const country = holdAddress.country || "SG";
     fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
@@ -863,7 +960,7 @@ export function MbolsterConfigClient({
         );
       })
       .catch(() => setShippingMethods([]));
-  }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant]);
+  }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant, paired]);
 
   const handleKeepFlowRoute = React.useCallback(() => {
     const record = parseRecommendationRecord(
@@ -909,6 +1006,87 @@ export function MbolsterConfigClient({
     router,
     to,
   ]);
+
+  /**
+   * Paired build step 2 (ADR 0026): one hold for the Mpillow handed over and this
+   * Mbolster, or — on Skip — the Mpillow alone. Either way the Mpillow's own
+   * body goes as it was built; only the route answer and the Mbolster are added.
+   */
+  const handlePairedHold = async (withBolster: boolean) => {
+    if (!paired) return;
+    if (withBolster) {
+      if (!suggestedLength || heightNum == null) {
+        toast.error("Missing length recommendation");
+        return;
+      }
+      const errors = buildFieldErrorMap(pairedFields);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return;
+      }
+      // Slice 09: a mix the bolster cannot fit is a confirm, never a block (ADR 0019).
+      if (staffAssist && !confirmSaveWithBolsterFit(assistBolsterFit, "Hold")) return;
+    }
+
+    setHoldSubmitting(true);
+    try {
+      const body = pairedHoldBody(
+        paired,
+        withBolster && suggestedLength && heightNum != null
+          ? {
+              responseId: paired.companionId,
+              suggestedLength,
+              measurements: {
+                height_cm: heightNum,
+                sleep_position: state.sleepPosition ?? paired.sleepPosition,
+              },
+              preferenceLines: [{ item_id: selectedCase!, quantity: 1, category: "case" }],
+              addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+              ...(shopRecommendation?.recommendation_record
+                ? { recommendationRecord: shopRecommendation.recommendation_record as Record<string, unknown> }
+                : {}),
+              ...(staffAssist && assistPlacements.length > 0
+                ? {
+                    assistFilling: {
+                      placements: bolsterPlacementsToRows(assistPlacements),
+                      templateId: sessionFillingTemplateId,
+                    },
+                  }
+                : {}),
+            }
+          : null,
+      );
+      const res = await fetch("/api/results/hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
+      }
+      const next = data.checkoutUrl ?? data.statusUrl;
+      if (!next) throw new Error("Missing checkout URL");
+      // The hand-off stays: a cancelled Checkout returns to the Mpillow, and going
+      // on to step 2 again should find this Mbolster as it was left.
+      trackGaEventThen(
+        {
+          name: "generate_lead",
+          params: {
+            product_type: "pillow",
+            ...(typeof data.authorizedAmount === "number" ? { value: data.authorizedAmount } : {}),
+            ...(data.currency ? { currency: String(data.currency) } : {}),
+          },
+        },
+        () => {
+          window.location.href = next as string;
+        },
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to authorize");
+      setHoldSubmitting(false);
+    }
+  };
 
   const handleAuthorizeHold = React.useCallback(async () => {
     if (!suggestedLength) {
@@ -1046,6 +1224,8 @@ export function MbolsterConfigClient({
 
   // Hold preview uses the same mp-config split layout (case, add-ons, shipping).
   if (state.step === "preview") {
+    // A paired run skipped the sleep and length steps, so Back is height.
+    const backFromPreview = paired ? () => setState((s) => ({ ...s, step: "height" })) : goBack;
     const caseStock = preferenceStockFor(
       selectedCase,
       shopRecommendation?.components.cases ?? [],
@@ -1088,7 +1268,7 @@ export function MbolsterConfigClient({
               variant="ghost"
               size="icon"
               className="size-8"
-              onClick={goBack}
+              onClick={backFromPreview}
               aria-label="Back"
             >
               <ArrowLeft className="size-4" />
@@ -1218,9 +1398,6 @@ export function MbolsterConfigClient({
                 />
               )}
               {(() => {
-                const why = previewRecord
-                  ? plainLanguageWhy(previewRecord)
-                  : shopRecommendation?.recommendation?.explanation ?? "";
                 // Guest x-ray replaces the text mix summary; legacy-flat templates keep it.
                 const mixLines = guestXray
                   ? []
@@ -1244,7 +1421,7 @@ export function MbolsterConfigClient({
                     {showTierAdvice && previewRecord?.tierSuggestion ? (
                       <TierSuggestion tier={previewRecord.tierSuggestion} />
                     ) : null}
-                    {routePending && previewRecord?.flowRoute && !partnerAssisted ? (
+                    {routePending && previewRecord?.flowRoute && !partnerAssisted && !paired ? (
                       <UpsellCard
                         reason={previewRecord.flowRoute.reason}
                         fromLabel="Mbolster"
@@ -1261,7 +1438,6 @@ export function MbolsterConfigClient({
                     <RecommendationReveal
                       reveal={revealNow}
                       sizeLabel={suggestedLength ? String(suggestedLength) : ""}
-                      why={why}
                       // Assisted: LENGTH ONLY — drop the Filling Template surface (AC3).
                       templateName={partnerAssisted ? null : recommendedTemplate?.name ?? null}
                       mixLines={partnerAssisted ? [] : mixLines}
@@ -1277,6 +1453,7 @@ export function MbolsterConfigClient({
                   onPlacementsChange={setAssistPlacements}
                   loadedTemplate={assistLoadedTemplate}
                   onLoadTemplate={setAssistLoadedTemplate}
+                  suggestedTemplateId={recommendedTemplate ? Number(recommendedTemplate.id) : null}
                   sessionFillingTemplateId={sessionFillingTemplateId}
                   onItemsChange={setAssistItems}
                   onColorOverridesChange={setAssistColorOverrides}
@@ -1298,11 +1475,15 @@ export function MbolsterConfigClient({
               )}
             >
               {partner ? <CoBrandBanner partner={partner} /> : null}
+              {paired ? <PairedStepper step={2} /> : null}
               <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  {paired ? "Customize your Mbolster" : "Customize finish"}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Choose a case, optional add-ons, then authorize payment. You are not
-                  charged until you accept the final build.
+                  {paired
+                    ? "Choose a case and any add-ons. It ships with your Mpillow, on the same card authorisation, and you can still remove it when you review the final builds."
+                    : "Choose a case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
                 </p>
               </div>
 
@@ -1380,6 +1561,12 @@ export function MbolsterConfigClient({
                 />
               ) : null}
 
+              {paired ? (
+                <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                  Ships with your Mpillow, to the address you gave for it — no extra shipping.
+                </p>
+              ) : (
+              <>
               <PreviewContactFields
                   locale={locale}
                   fieldErrors={fieldErrors}
@@ -1513,6 +1700,10 @@ export function MbolsterConfigClient({
                 </div>
               </div>
 
+              </>
+              )}
+
+              {paired ? null : (
               <div className="text-center">
                 <Button
                   variant="ghost"
@@ -1523,6 +1714,7 @@ export function MbolsterConfigClient({
                   Start over
                 </Button>
               </div>
+              )}
             </div>
 
             {waitingCopy ? (
@@ -1546,20 +1738,64 @@ export function MbolsterConfigClient({
                   </span>
                 </div>
               ))}
+              {paired ? (
+                <div className="mb-1 flex justify-between text-sm">
+                  <span className="text-muted-foreground">{paired.pillow.label}</span>
+                  <span className="tabular-nums">
+                    {paired.pillow.ballpark != null
+                      ? `${paired.pillow.currency} ${paired.pillow.ballpark.toFixed(2)}`
+                      : "Not available"}
+                  </span>
+                </div>
+              ) : null}
               <div className="mb-3 flex justify-between text-sm">
-                <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
+                <span className="text-muted-foreground">
+                  {paired ? "Mbolster (ships with it)" : "Ballpark (before shipping/tax)"}
+                </span>
                 <span className="font-medium tabular-nums">
                   {serviceLines
                     ? `${shopCurrency} ${(shopBasePrice + addonTotal + sumServiceLines(serviceLines)).toFixed(2)}`
                     : "Not available"}
                 </span>
               </div>
+              {paired ? (
+                <>
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex gap-3"
+                >
+                  <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:flex-none">
+                    <ArrowLeft className="size-4" />
+                    Back
+                  </Button>
+                  <Button
+                    className="flex-[2]"
+                    size="lg"
+                    onClick={() => void handlePairedHold(true)}
+                    disabled={holdSubmitting || shopLoading || !shopRecommendation}
+                  >
+                    {holdSubmitting ? "Redirecting…" : "Add Mbolster"}
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </ConfiguratorStepActions>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handlePairedHold(false)}
+                  disabled={holdSubmitting}
+                  className="mt-2 w-full text-muted-foreground"
+                >
+                  Skip the Mbolster — just my Mpillow
+                </Button>
+                </>
+              ) : (
               <ConfiguratorStepActions
                 mobile={isMobile}
                 slot={mobileActionsSlot}
                 className="flex gap-3"
               >
-                <Button variant="outline" onClick={goBack} className="flex-1 max-md:flex-none">
+                <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:flex-none">
                   <ArrowLeft className="size-4" />
                   Back
                 </Button>
@@ -1578,6 +1814,7 @@ export function MbolsterConfigClient({
                   <ArrowRight className="size-4" />
                 </Button>
               </ConfiguratorStepActions>
+              )}
             </div>
           </div>
         </div>
@@ -1712,11 +1949,16 @@ export function MbolsterConfigClient({
 
         {state.step === "height" ? (
           <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
+            {paired ? <PairedStepper step={2} /> : null}
             <div className="space-y-1">
-              <div className="text-sm font-semibold text-muted-foreground">Step 1</div>
+              {paired ? null : (
+                <div className="text-sm font-semibold text-muted-foreground">Step 1</div>
+              )}
               <h2 className="text-2xl font-semibold tracking-tight">Your height</h2>
               <p className="text-sm text-muted-foreground">
-                We use height to recommend a Mbolster length.
+                {paired
+                  ? `${paired.reason ? `${paired.reason} ` : ""}Your height is all we need to size it.`
+                  : "We use height to recommend a Mbolster length."}
               </p>
             </div>
 
@@ -1777,21 +2019,34 @@ export function MbolsterConfigClient({
               slot={mobileActionsSlot}
               className="flex items-center justify-between pt-2"
             >
-              <Button variant="outline" onClick={goBack}>
+              <Button
+                variant="outline"
+                onClick={paired ? () => router.push(to(paired.configPath)) : goBack}
+              >
                 Back
               </Button>
               <Button
                 onClick={() =>
-                  tryAdvance(heightFields, () => {
+                  tryAdvance(heightFields, async () => {
                     const heightCm = normalizeHeightDraft(state.heightUnit, heightDraft)!;
                     setState((s) => ({ ...s, heightCm }));
                     setHeightDraft(displayHeight(state.heightUnit, heightCm));
+                    // Paired: sleep position came with the Mpillow, so straight to
+                    // the Mbolster's own customisation page.
+                    if (paired) {
+                      await fetchBolsterRecommendation({
+                        heightCm: Number(heightCm),
+                        preserveSelections: true,
+                        nextStep: "preview",
+                      });
+                      return;
+                    }
                     goNext();
                   })
                 }
-                disabled={!hybridCtaEnabled(heightFields)}
+                disabled={!hybridCtaEnabled(heightFields) || shopLoading}
               >
-                Continue
+                {paired && shopLoading ? "Sizing…" : "Continue"}
               </Button>
             </ConfiguratorStepActions>
           </Card>
@@ -1873,9 +2128,6 @@ export function MbolsterConfigClient({
                   {shopCurrency} {shopBasePrice.toFixed(2)}
                 </p>
               )}
-              <p className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed text-muted-foreground text-left">
-                {shopRecommendation.recommendation.explanation}
-              </p>
               {(() => {
                 const record = parseRecommendationRecord(
                   shopRecommendation.recommendation_record ?? null,
@@ -1892,7 +2144,7 @@ export function MbolsterConfigClient({
                     {showTierAdvice && record?.tierSuggestion ? (
                       <TierSuggestion tier={record.tierSuggestion} />
                     ) : null}
-                    {routePending && record?.flowRoute && !partnerAssisted ? (
+                    {routePending && record?.flowRoute && !partnerAssisted && !paired ? (
                       <UpsellCard
                         reason={record.flowRoute.reason}
                         fromLabel="Mbolster"

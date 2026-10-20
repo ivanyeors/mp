@@ -15,6 +15,15 @@ import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { SERVICE_SKUS } from "@/lib/pricing/service-prices";
 import { quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { settleResult } from "@/lib/results/settlement";
+import {
+  companionAtAccept,
+  isAnchor,
+  isCompanion,
+  liveCompanions,
+  pairAuthorized,
+  pickPartner,
+} from "@/lib/results/paired-build";
+import { round2 } from "@/lib/commissions";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
@@ -30,11 +39,13 @@ const BodySchema = z.object({
   topupSessionId: z.string().min(1).optional(),
 });
 
+const ACCEPT_COLUMNS = `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source` as const;
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
+  const { id: requestedId } = await params;
   const body = await req.json().catch(() => ({}));
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) {
@@ -44,19 +55,31 @@ export async function POST(
   const admin = supabaseAdmin();
   const origin = getPublicOrigin(req);
 
-  const { data: row, error: loadErr } = await admin
+  const { data: requested, error: loadErr } = await admin
     .from("mp_config_responses")
-    .select(
-      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source`,
-    )
-    .eq("id", id)
+    .select(ACCEPT_COLUMNS)
+    .eq("id", requestedId)
     .maybeSingle();
 
   if (loadErr) return NextResponse.json({ error: loadErr.message }, { status: 500 });
-  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!requested) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const allowed = await authorizeResultAccess(row, token);
+  const allowed = await authorizeResultAccess(requested, token);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // A Paired build is accepted as one, on its anchor (ADR 0026). Both share an
+  // access token, so the check above already covered the anchor too.
+  const row = isCompanion(requested)
+    ? (
+        await admin
+          .from("mp_config_responses")
+          .select(ACCEPT_COLUMNS)
+          .eq("id", requested.paired_build_id as string)
+          .maybeSingle()
+      ).data
+    : requested;
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const id = row.id as string;
 
   // Idempotent: already captured. Checked before the order_id guard, which used to
   // shadow it, so a repeat accept gets the Order it already made rather than a 400.
@@ -93,24 +116,85 @@ export async function POST(
     return NextResponse.json({ error: acceptLife.error }, { status: 400 });
   }
 
+  // The companion comes along when it is assigned, is left out once it has
+  // ended, and blocks Accept while it is still being built: the shared hold can
+  // be captured only once.
+  const companions = isAnchor(row)
+    ? ((
+        await admin
+          .from("mp_config_responses")
+          .select(ACCEPT_COLUMNS)
+          .eq("paired_build_id", id)
+          .neq("id", id)
+      ).data ?? [])
+    : [];
+  // One hold, one Mbolster: two in play is a state to stop on, not to guess at.
+  if (liveCompanions(companions, id).length > 1) {
+    return NextResponse.json(
+      { error: "This order has changed. Please contact us to complete it.", code: "pair_conflict" },
+      { status: 409 },
+    );
+  }
+  const companion = pickPartner(companions, id);
+  const atAccept = companionAtAccept(companion);
+  if (!atAccept.ok) {
+    return NextResponse.json({ error: atAccept.error, code: atAccept.code }, { status: 409 });
+  }
+  const mate = atAccept.include ? companion : null;
+  if (mate) {
+    if (needsCustomerFinish(mate)) {
+      return NextResponse.json(
+        { error: "Choose your cover, case and shipping first", code: "needs_finish" },
+        { status: 409 },
+      );
+    }
+    const mateLife = transitionResult(
+      {
+        status: mate.status as "assigned",
+        filling_template_id: mate.filling_template_id,
+        payment_intent_id: mate.payment_intent_id,
+      },
+      { action: "accept" },
+    );
+    if (!mateLife.ok) {
+      return NextResponse.json({ error: mateLife.error }, { status: 400 });
+    }
+  }
+
   const build = await loadAssignedBuild(admin, row);
   if (!build.ok) {
     return NextResponse.json({ error: build.error }, { status: 400 });
   }
-  if (build.shortages.length > 0) {
-    const detail = build.shortages
+  const mateBuild = mate ? await loadAssignedBuild(admin, mate) : null;
+  if (mateBuild && !mateBuild.ok) {
+    return NextResponse.json({ error: mateBuild.error }, { status: 400 });
+  }
+  const shortages = [...build.shortages, ...(mateBuild?.ok ? mateBuild.shortages : [])];
+  if (shortages.length > 0) {
+    const detail = shortages
       .map((s) => `${s.name}: need ${s.needed}, have ${s.available}`)
       .join("; ");
     return NextResponse.json(
-      { error: `Insufficient stock to accept: ${detail}`, shortages: build.shortages },
+      { error: `Insufficient stock to accept: ${detail}`, shortages },
       { status: 409 },
     );
   }
 
-  const authorized =
-    row.authorized_amount != null ? Number(row.authorized_amount) : null;
-  const finalAmount =
+  // One intent authorised the whole pair; each row quotes only its own build.
+  const authorized = isAnchor(row)
+    ? pairAuthorized(companion ? [row, companion] : [row])
+    : row.authorized_amount != null
+      ? Number(row.authorized_amount)
+      : null;
+  const anchorFinal =
     row.final_amount != null ? Number(row.final_amount) : build.pricing.total;
+  const mateFinal =
+    mate && mateBuild?.ok
+      ? mate.final_amount != null
+        ? Number(mate.final_amount)
+        : mateBuild.pricing.total
+      : 0;
+  const finalAmount = mate ? round2(anchorFinal + mateFinal) : anchorFinal;
   // No Authorization hold is not "unsellable" — it means the whole total is a
   // Balance payment (ADR 0016). planCapture reads 0 as exactly that and returns a
   // top_up plan with nothing to capture from a hold, so both kinds of Result take
@@ -124,7 +208,26 @@ export async function POST(
     build.pricing,
     build.serviceLines,
   );
-  const orderSubtotal = build.pricing.goods + sumServiceLines(chargedServiceLines);
+  const mateServiceLines =
+    mate && mateBuild?.ok
+      ? quotedServiceLines(
+          mate.final_amount != null ? Number(mate.final_amount) : null,
+          mateBuild.pricing,
+          mateBuild.serviceLines,
+        )
+      : [];
+  /** Each build that becomes a line on the one Order. */
+  const members = [
+    { row, build, finalAmount: anchorFinal, serviceLines: chargedServiceLines },
+    ...(mate && mateBuild?.ok
+      ? [{ row: mate, build: mateBuild, finalAmount: mateFinal, serviceLines: mateServiceLines }]
+      : []),
+  ];
+  const memberIds = members.map((m) => m.row.id as string);
+  const orderSubtotal = members.reduce(
+    (t, m) => t + m.build.pricing.goods + sumServiceLines(m.serviceLines),
+    0,
+  );
   let topUpPaid = 0;
   /** Second PaymentIntent when the final total outgrew the hold. Ledgered separately. */
   let topUpPaymentIntentId: string | null = null;
@@ -195,6 +298,28 @@ export async function POST(
     }
   }
 
+  // A Paired build's Balance payment was taken for the pair as it stood then.
+  // If the pair has changed since — the Mbolster removed while a Checkout was
+  // open — what was paid no longer matches anything Accept could settle, and
+  // settling it anyway records money that is not on the Order. Stop for a human:
+  // the row stays `assigned` with `topup_paid_at`, which the queue flags.
+  if (isAnchor(row)) {
+    const paidBalance =
+      topUpPaid > 0 ||
+      (row.topup_payment_intent_id != null && row.topup_paid_at != null);
+    const settles =
+      plan.kind === "top_up" && Math.round(topUpPaid * 100) === Math.round(plan.topUp * 100);
+    if (paidBalance && !settles) {
+      return NextResponse.json(
+        {
+          error: "Your order changed after you paid. Our team will settle it with you.",
+          code: "paid_mismatch",
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   // Claim the Result before anything moves money or writes an Order. Every check
   // above read the row and then acted, so a double click or two racing requests
   // both passed and each made an Order, a commission and a stock deduction. Only
@@ -232,11 +357,30 @@ export async function POST(
     const { error } = await admin
       .from("mp_config_responses")
       .update({ status: "assigned" })
-      .eq("id", id)
+      .in("id", memberIds)
       .eq("status", "accepted")
       .is("order_id", null);
     if (error) console.error("Failed to release accept claim", id, error);
   };
+
+  // The companion is claimed behind its anchor. Only this request holds the
+  // anchor, so a miss means Staff moved the companion meanwhile; hand both back.
+  if (mate) {
+    const { data: mateClaimed, error: mateClaimErr } = await admin
+      .from("mp_config_responses")
+      .update({ status: acceptLife.status })
+      .eq("id", mate.id as string)
+      .eq("status", "assigned")
+      .is("order_id", null)
+      .select("id");
+    if (mateClaimErr || !mateClaimed?.length) {
+      await releaseClaim();
+      return NextResponse.json(
+        { error: "Your Mbolster changed while accepting. Reload and try again." },
+        { status: 409 },
+      );
+    }
+  }
 
   const holdCaptureAmount = plan.kind === "capture" ? plan.amount : plan.holdCapture;
 
@@ -255,6 +399,21 @@ export async function POST(
       const intent = await stripe.paymentIntents.retrieve(row.payment_intent_id);
       if (intent.status !== "succeeded") {
         await captureHold(row.payment_intent_id, holdCaptureAmount);
+      } else if (
+        typeof intent.amount_received === "number" &&
+        intent.amount_received !== Math.round(holdCaptureAmount * 100)
+      ) {
+        // A previous attempt captured a different amount than this one would:
+        // the build changed in between. Recording this attempt's amount would
+        // ledger less (or more) than Stripe took. Keep the claim — the row reads
+        // accept_interrupted for a human — rather than write a wrong Order.
+        return NextResponse.json(
+          {
+            error: "Payment was already taken for a different total. Our team will settle it with you.",
+            code: "capture_mismatch",
+          },
+          { status: 409 },
+        );
       }
     } catch (e) {
       await releaseClaim();
@@ -289,15 +448,7 @@ export async function POST(
     topUpIntentId: topUpPaymentIntentId,
   });
 
-  const productType = row.product_type ?? "pillow";
-  const title =
-    productType === "bolster"
-      ? `Custom Mbolster ${row.assigned_length ?? ""}`.trim()
-      : `Custom Mpillow ${row.assigned_size ?? ""} ${row.assigned_tier ?? "tier"}`.trim();
-  const sku =
-    productType === "bolster"
-      ? `RESULT-BOLSTER-${row.assigned_length ?? "X"}`
-      : `RESULT-${row.assigned_size ?? "X"}-${row.assigned_tier ?? "basic"}`;
+  const productTypeOf = (r: typeof row) => (r.product_type ?? "pillow") as "pillow" | "bolster";
 
   const shippingAddress = (row.shipping_address ?? {
     recipient: row.customer_email ?? "Customer",
@@ -324,8 +475,9 @@ export async function POST(
       status: inStoreHandover ? "delivered" : "confirmed",
       currency: row.currency ?? "SGD",
       subtotal: orderSubtotal,
-      shipping_amount: build.pricing.shipping,
-      tax_amount: build.pricing.tax,
+      // A Paired build's Mbolster ships with its Mpillow, so its shipping is 0.
+      shipping_amount: round2(members.reduce((t, m) => t + m.build.pricing.shipping, 0)),
+      tax_amount: round2(members.reduce((t, m) => t + m.build.pricing.tax, 0)),
       discount_amount: 0,
       total: finalAmount,
       shipping_address: shippingAddress,
@@ -353,94 +505,111 @@ export async function POST(
     );
   }
 
-  // Null template id = diverged custom mix; the Result snapshot rows carry the fillings.
-  const { data: fillingTpl } = row.filling_template_id
-    ? await admin
-        .from("bom_templates")
-        .select("name")
-        .eq("id", row.filling_template_id)
-        .maybeSingle()
-    : { data: null };
+  // One goods line per build, each with its own service lines (ADR 0024) and its
+  // own snapshot, so a Paired build's Order reads as the two builds it is.
+  const orderItemIds: string[] = [];
+  let itemsErr: string | null = null;
+  for (const m of members) {
+    const productType = productTypeOf(m.row);
+    // Null template id = diverged custom mix; the Result snapshot rows carry the fillings.
+    const { data: fillingTpl } = m.row.filling_template_id
+      ? await admin
+          .from("bom_templates")
+          .select("name")
+          .eq("id", m.row.filling_template_id)
+          .maybeSingle()
+      : { data: null };
 
-  const snapshot = buildResultOrderSnapshot({
-    resultId: id,
-    productType: productType as "pillow" | "bolster",
-    assignedSize: row.assigned_size,
-    assignedTier: row.assigned_tier,
-    assignedLength: row.assigned_length,
-    fillingTemplateId: row.filling_template_id,
-    fillingTemplateName: fillingTpl?.name ?? null,
-    fillingPlacements: build.fillingPlacements,
-    buildLines: build.lines,
-    nameByItem: build.nameByItem,
-    cogs: build.cogs,
-    pricing: {
-      ...build.pricing,
-      services: orderSubtotal - build.pricing.goods,
-      subtotal: orderSubtotal,
-    },
-    // The snapshot is customer-readable: price and name only, never cost.
-    serviceLines: chargedServiceLines.map((l) => ({ ...l, costPrice: null })),
-  });
+    const memberSubtotal = m.build.pricing.goods + sumServiceLines(m.serviceLines);
+    const snapshot = buildResultOrderSnapshot({
+      resultId: m.row.id as string,
+      productType,
+      assignedSize: m.row.assigned_size,
+      assignedTier: m.row.assigned_tier,
+      assignedLength: m.row.assigned_length,
+      fillingTemplateId: m.row.filling_template_id,
+      fillingTemplateName: fillingTpl?.name ?? null,
+      fillingPlacements: m.build.fillingPlacements,
+      buildLines: m.build.lines,
+      nameByItem: m.build.nameByItem,
+      cogs: m.build.cogs,
+      pricing: {
+        ...m.build.pricing,
+        services: memberSubtotal - m.build.pricing.goods,
+        subtotal: memberSubtotal,
+      },
+      // The snapshot is customer-readable: price and name only, never cost.
+      serviceLines: m.serviceLines.map((l) => ({ ...l, costPrice: null })),
+    });
 
-  const { data: orderItem, error: itemErr } = await admin
-    .from("order_items")
-    .insert({
-      order_id: order.id,
-      variant_id: null,
-      sku,
-      product_title: title,
-      variant_title:
-        productType === "pillow"
-          ? `${row.assigned_size} · ${row.assigned_tier} tier`
-          : row.assigned_length,
-      quantity: 1,
-      // Goods only. Service fees are their own lines below (ADR 0024), so the
-      // Order's lines still sum to its subtotal and nothing ships a service.
-      unit_price: build.pricing.goods,
-      total_price: build.pricing.goods,
-      unit_cost: build.cogs,
-      total_cost: build.cogs,
-      customization_snapshot: snapshot,
-    })
-    .select("id")
-    .single();
+    const { data: orderItem, error: itemErr } = await admin
+      .from("order_items")
+      .insert({
+        order_id: order.id,
+        variant_id: null,
+        sku:
+          productType === "bolster"
+            ? `RESULT-BOLSTER-${m.row.assigned_length ?? "X"}`
+            : `RESULT-${m.row.assigned_size ?? "X"}-${m.row.assigned_tier ?? "basic"}`,
+        product_title:
+          productType === "bolster"
+            ? `Custom Mbolster ${m.row.assigned_length ?? ""}`.trim()
+            : `Custom Mpillow ${m.row.assigned_size ?? ""} ${m.row.assigned_tier ?? "tier"}`.trim(),
+        variant_title:
+          productType === "pillow"
+            ? `${m.row.assigned_size} · ${m.row.assigned_tier} tier`
+            : m.row.assigned_length,
+        quantity: 1,
+        // Goods only. Service fees are their own lines below (ADR 0024), so the
+        // Order's lines still sum to its subtotal and nothing ships a service.
+        unit_price: m.build.pricing.goods,
+        total_price: m.build.pricing.goods,
+        unit_cost: m.build.cogs,
+        total_cost: m.build.cogs,
+        customization_snapshot: snapshot,
+      })
+      .select("id")
+      .single();
+    if (itemErr || !orderItem) {
+      itemsErr = itemErr?.message ?? "Failed to create order item";
+      break;
+    }
+    orderItemIds.push(orderItem.id as string);
 
-  // The Measurement service, when Staff measured (ADR 0024): its own line, never
-  // shipped, never stock-deducted, never returnable. Written before the ledger so
-  // a failure here still rolls the whole Order back below.
-  const serviceErr =
-    !itemErr && orderItem && chargedServiceLines.length > 0
-      ? (
-          await admin.from("order_items").insert(
-            chargedServiceLines.map((l) => ({
-              order_id: order.id,
-              variant_id: null,
-              kind: "service",
-              service_key: l.key,
-              sku: SERVICE_SKUS[l.key],
-              product_title: l.label,
-              variant_title: null,
-              quantity: 1,
-              unit_price: l.msrp,
-              total_price: l.msrp,
-              unit_cost: l.costPrice,
-              total_cost: l.costPrice,
-            })),
-          )
-        ).error
-      : null;
+    // The Measurement service, when Staff measured (ADR 0024): its own line, never
+    // shipped, never stock-deducted, never returnable. Written before the ledger so
+    // a failure here still rolls the whole Order back below.
+    if (m.serviceLines.length > 0) {
+      const { error: serviceErr } = await admin.from("order_items").insert(
+        m.serviceLines.map((l) => ({
+          order_id: order.id,
+          variant_id: null,
+          kind: "service",
+          service_key: l.key,
+          sku: SERVICE_SKUS[l.key],
+          product_title: l.label,
+          variant_title: null,
+          quantity: 1,
+          unit_price: l.msrp,
+          total_price: l.msrp,
+          unit_cost: l.costPrice,
+          total_cost: l.costPrice,
+        })),
+      );
+      if (serviceErr) {
+        itemsErr = serviceErr.message;
+        break;
+      }
+    }
+  }
 
-  if (itemErr || !orderItem || serviceErr) {
+  if (itemsErr) {
     // order_items cascade with the Order, so one delete undoes both inserts.
     const { error: rollbackErr } = await admin.from("orders").delete().eq("id", order.id);
     // An Order we could not delete must not be joined by a second one on retry:
     // keep the claim so the Result shows as accept_interrupted for a human.
     if (!rollbackErr) await releaseClaim();
-    return NextResponse.json(
-      { error: itemErr?.message ?? serviceErr?.message ?? "Failed to create order item" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: itemsErr }, { status: 500 });
   }
 
   // Record what we actually charged as ledger rows. Without these the order has no
@@ -478,14 +647,12 @@ export async function POST(
         partnerId: row.partner_id,
         // Null for shipped orders: release is dated from real delivery, not capture.
         deliveredAt: inStoreHandover ? now : null,
-        lines: [
-          {
-            orderItemId: orderItem.id,
-            productType: productType as "pillow" | "bolster",
-            baseAmount: build.basePrice,
-            quantity: 1,
-          },
-        ],
+        lines: members.map((m, i) => ({
+          orderItemId: orderItemIds[i],
+          productType: productTypeOf(m.row),
+          baseAmount: m.build.basePrice,
+          quantity: 1,
+        })),
       });
     } catch (e) {
       console.error("Commission creation failed after capture", e);
@@ -513,12 +680,14 @@ export async function POST(
   }
 
   // Deduct inventory only after successful capture (US37).
-  const transactions = build.lines.map((line) => ({
-    item_id: line.item_id,
-    quantity_signed: -line.quantity,
-    reason: "sale" as const,
-    metadata: { order_id: order.id, result_id: id, role: line.role },
-  }));
+  const transactions = members.flatMap((m) =>
+    m.build.lines.map((line) => ({
+      item_id: line.item_id,
+      quantity_signed: -line.quantity,
+      reason: "sale" as const,
+      metadata: { order_id: order.id, result_id: m.row.id, role: line.role },
+    })),
+  );
   if (transactions.length > 0) {
     const { error: txErr } = await admin.from("inventory_transactions").insert(transactions);
     if (txErr) {
@@ -530,22 +699,27 @@ export async function POST(
   await admin.from("order_timeline").insert({
     order_id: order.id,
     event_type: "order_created",
-    message: "Order created from accepted Result (authorize-then-capture).",
-    metadata: { result_id: id },
+    message: mate
+      ? "Order created from an accepted Paired build: Mpillow and Mbolster (authorize-then-capture)."
+      : "Order created from accepted Result (authorize-then-capture).",
+    metadata: { result_id: id, ...(mate ? { paired_result_id: mate.id } : {}) },
   });
 
-  const { error: updateErr } = await admin
-    .from("mp_config_responses")
-    .update({
-      status: captureLife.status,
-      order_id: order.id,
-      final_amount: finalAmount,
-    })
-    .eq("id", id)
-    .is("order_id", null);
+  // Every member points at the one Order, each keeping its own final amount.
+  for (const m of members) {
+    const { error: updateErr } = await admin
+      .from("mp_config_responses")
+      .update({
+        status: captureLife.status,
+        order_id: order.id,
+        final_amount: m.finalAmount,
+      })
+      .eq("id", m.row.id as string)
+      .is("order_id", null);
 
-  if (updateErr) {
-    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    if (updateErr) {
+      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({

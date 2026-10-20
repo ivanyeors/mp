@@ -21,14 +21,14 @@ vi.mock("@/lib/stripe/client", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from: (table: string) => {
-      const filters: Array<[string, unknown]> = [];
+      const filters: Array<(r: Record<string, unknown>) => boolean> = [];
       let patch: Record<string, unknown> | null = null;
-      const hit = () =>
-        [...h.rows.values()].filter((r) => filters.every(([c, v]) => (r[c] ?? null) === v));
+      const hit = () => [...h.rows.values()].filter((r) => filters.every((f) => f(r)));
       const b = {
         select: () => b,
-        eq: (c: string, v: unknown) => (filters.push([c, v]), b),
-        is: (c: string, v: unknown) => (filters.push([c, v]), b),
+        eq: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), b),
+        is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), b),
+        in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), b),
         update: (p: Record<string, unknown>) => ((patch = p), b),
         upsert: async (row: Record<string, unknown>) => {
           if (table === "stripe_webhook_failures") h.failures.push(row);
@@ -36,10 +36,9 @@ vi.mock("@/lib/supabase/server", () => ({
         },
         maybeSingle: async () => ({ data: table === "mp_config_responses" ? hit()[0] ?? null : null, error: null }),
         then: (resolve: (v: unknown) => unknown) => {
-          if (table === "mp_config_responses" && patch) {
-            for (const r of hit()) h.rows.set(r.id as string, { ...r, ...patch });
-          }
-          return Promise.resolve({ data: null, error: null }).then(resolve);
+          const rows = table === "mp_config_responses" ? hit() : [];
+          if (patch) for (const r of rows) h.rows.set(r.id as string, { ...r, ...patch });
+          return Promise.resolve({ data: rows, error: null }).then(resolve);
         },
       };
       return b;
@@ -131,5 +130,34 @@ describe("Stripe webhook — Result authorization hold", () => {
   it("does not attach a session in a different currency", async () => {
     await completed(20000, "usd");
     expect(h.rows.get(ID)?.payment_intent_id).toBeNull();
+  });
+});
+
+describe("Stripe webhook — Paired build hold (ADR 0026)", () => {
+  const COMPANION = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  beforeEach(() => {
+    h.rows.set(ID, { ...h.rows.get(ID), paired_build_id: ID });
+    h.rows.set(COMPANION, {
+      id: COMPANION,
+      status: "held",
+      authorized_amount: 80,
+      currency: "SGD",
+      payment_intent_id: null,
+      paired_build_id: ID,
+    });
+  });
+
+  it("attaches one card to both Results when the session authorised their sum", async () => {
+    await completed(28000);
+    expect(h.rows.get(ID)?.payment_intent_id).toBe("pi_1");
+    expect(h.rows.get(COMPANION)?.payment_intent_id).toBe("pi_1");
+    expect(h.cancel).not.toHaveBeenCalled();
+  });
+
+  it("refuses a session for the anchor's amount alone", async () => {
+    await completed(20000);
+    expect(h.rows.get(ID)?.payment_intent_id).toBeNull();
+    expect(h.rows.get(COMPANION)?.payment_intent_id).toBeNull();
+    expect(h.cancel).toHaveBeenCalledWith("pi_1");
   });
 });

@@ -29,6 +29,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { trackGaEventOnce } from "@/lib/analytics/ga-events";
+import { clearPairedHandoff } from "@/lib/configurator/paired-mbolster";
 
 type BuildSummary = {
   fillingTemplateName: string | null;
@@ -68,6 +69,36 @@ type ResultPublic = {
   needs_finish?: boolean;
   build: BuildSummary | null;
   referenceImages?: { id: string; hostedUrl: string }[];
+  /** A Paired build (ADR 0026): the other half, decided on the Mpillow's page. */
+  paired?: { role: "anchor" | "companion"; partner: PairedPartner } | null;
+};
+
+type PairedPartner = {
+  id: string;
+  status: string | null;
+  product_type: string | null;
+  suggested_size: string | null;
+  suggested_tier: string | null;
+  suggested_length: string | null;
+  assigned_size: string | null;
+  assigned_tier: string | null;
+  assigned_length: string | null;
+  authorized_amount: number | null;
+  final_amount: number | null;
+  build: BuildSummary | null;
+};
+
+/** Still part of the order: not dropped, cancelled or expired. */
+const PAIR_LIVE = new Set(["held", "assigned", "accepted", "captured"]);
+
+const PARTNER_STATUS: Record<string, string> = {
+  held: "Being built",
+  assigned: "Ready",
+  accepted: "Accepted",
+  captured: "In production",
+  declined: "Removed",
+  cancelled: "Cancelled",
+  expired: "Expired",
 };
 
 type ResultListRow = {
@@ -182,8 +213,36 @@ function ResultStatusPage() {
   const [myResults, setMyResults] = useState<ResultListRow[]>([]);
   const [acting, setActing] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const topupSessionId = searchParams.get("topup_session_id");
+
+  const pairedRole = result?.paired?.role ?? null;
+  /** The Mbolster riding with this Mpillow, while it is still part of the order. */
+  const companion =
+    pairedRole === "anchor" && result?.paired && PAIR_LIVE.has(result.paired.partner.status ?? "")
+      ? result.paired.partner
+      : null;
+  const companionPending = companion?.status === "held";
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  /** The whole hold: one Checkout authorised both, whatever became of the Mbolster since. */
+  const pairAuthorized =
+    result?.authorized_amount != null
+      ? round2(
+          Number(result.authorized_amount) +
+            Number(pairedRole === "anchor" ? (result.paired?.partner.authorized_amount ?? 0) : 0),
+        )
+      : null;
+  /** The Mbolster's price once it is built; never its quote mixed into a final. */
+  const companionFinal = companion?.final_amount != null ? Number(companion.final_amount) : null;
+  const pairFinal =
+    result?.final_amount != null ? round2(Number(result.final_amount) + (companionFinal ?? 0)) : null;
+  // Before Staff build it, a pair shows the hold it authorised; after, the
+  // finals of the builds still in the order. Never one of each.
+  const amount =
+    result?.status === "held" || result?.final_amount == null
+      ? (pairedRole === "anchor" ? pairAuthorized : null) ?? result?.authorized_amount
+      : pairFinal;
 
   const reloadResult = async () => {
     const qs = new URLSearchParams();
@@ -234,7 +293,7 @@ function ResultStatusPage() {
       }
       // GA4 purchase: the hold was captured into an Order (this path also runs
       // after a top-up Checkout returns). Once per order in this browser.
-      const value = result?.final_amount ?? result?.authorized_amount;
+      const value = amount;
       if (typeof value === "number") {
         const transactionId = data.orderNumber ? String(data.orderNumber) : `result-${id}`;
         trackGaEventOnce(`purchase:${transactionId}`, {
@@ -262,6 +321,30 @@ function ResultStatusPage() {
       await reloadResult();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Accept failed");
+    } finally {
+      setActing(false);
+    }
+  };
+
+  /** Drop the Mbolster from a Paired build; the Mpillow and its hold stay. */
+  const removeCompanion = async () => {
+    if (!companion) return;
+    setActing(true);
+    setActionMessage(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/results/${companion.id}/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token ? { token } : {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not remove the Mbolster");
+      setRemoveOpen(false);
+      setActionMessage("Mbolster removed. You will not be charged for it.");
+      await reloadResult();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not remove the Mbolster");
     } finally {
       setActing(false);
     }
@@ -319,6 +402,17 @@ function ResultStatusPage() {
     }
   };
 
+  // Back from a completed Checkout: the Paired build hand-off (contact, address,
+  // the Result token) has done its job and must not linger on a shared device.
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      clearPairedHandoff(window.sessionStorage);
+    } catch {
+      // private mode — nothing was stored
+    }
+  }, [sessionId]);
+
   const topupStarted = useRef(false);
   // Resume accept after top-up Checkout returns.
   useEffect(() => {
@@ -373,14 +467,14 @@ function ResultStatusPage() {
     STATUS_COPY.held;
   const size = result?.assigned_size ?? result?.suggested_size;
   const tier = result?.assigned_tier ?? result?.suggested_tier;
-  const amount = result?.final_amount ?? result?.authorized_amount;
   const currency = result?.currency ?? "SGD";
   const build = result?.build;
   const showFinalBuild = status === "assigned" || status === "accepted" || status === "captured";
   // A no-hold Result is decidable too: Accept creates a Balance payment Checkout
   // for the whole total instead of capturing a hold (ADR 0016). Gating this on a
   // hold is what used to strand an assigned build with no way to pay for it.
-  const canDecide = status === "assigned";
+  // An Mbolster bought with an Mpillow is accepted from the Mpillow's page.
+  const canDecide = status === "assigned" && pairedRole !== "companion";
   /** Arrived here from a reorder whose total differs from the original quote. */
   const repriced = searchParams.get("repriced") === "1";
   const activeStep = journeyIndex(status);
@@ -524,6 +618,81 @@ function ResultStatusPage() {
         </>
       )}
 
+      {pairedRole === "companion" && result.paired ? (
+        <p className="rounded-md border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+          This Mbolster is part of your Mpillow order, so it is accepted and paid for
+          together with it.{" "}
+          <a
+            className="font-medium text-foreground underline underline-offset-2"
+            href={withLocale(
+              `/results/${encodeURIComponent(result.paired.partner.id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`,
+              locale,
+            )}
+          >
+            Go to your Mpillow
+          </a>
+        </p>
+      ) : null}
+
+      {pairedRole === "anchor" && result.paired ? (
+        <div className="space-y-1.5 rounded-md border p-3" id="paired-mbolster" data-section="paired-mbolster">
+          <div className="flex items-center justify-between gap-4">
+            <span className="font-medium">Your Mbolster</span>
+            <Badge variant="outline">
+              {PARTNER_STATUS[result.paired.partner.status ?? "held"] ?? "—"}
+            </Badge>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Length</span>
+            <span className="font-medium">
+              {result.paired.partner.assigned_length ?? result.paired.partner.suggested_length ?? "—"}
+            </span>
+          </div>
+          {companion?.build && showFinalBuild ? (
+            <div>
+              <div className="text-muted-foreground">Fillings</div>
+              <ul className="mt-1 list-disc pl-4">
+                {(companion.build.fillingSummary.length
+                  ? companion.build.fillingSummary
+                  : [companion.build.fillingTemplateName ?? "—"]
+                ).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {companion && (companion.final_amount ?? companion.authorized_amount) != null ? (
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">
+                {companion.final_amount != null ? "Total (ships with your Mpillow)" : "Authorized (not charged)"}
+              </span>
+              <span className="tabular-nums">
+                {currency} {Number(companion.final_amount ?? companion.authorized_amount).toFixed(2)}
+              </span>
+            </div>
+          ) : null}
+          {companionPending && canDecide ? (
+            <p className="text-xs text-muted-foreground">
+              We are still building your Mbolster. You can accept both once it is ready.
+            </p>
+          ) : null}
+          {companion?.status === "assigned" && canDecide ? (
+            <Button variant="outline" size="sm" disabled={acting} onClick={() => setRemoveOpen(true)}>
+              Remove Mbolster
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {companionFinal != null && showFinalBuild && amount != null ? (
+        <div className="flex justify-between gap-4 font-medium">
+          <span>Total for both</span>
+          <span className="tabular-nums">
+            {currency} {Number(amount).toFixed(2)}
+          </span>
+        </div>
+      ) : null}
+
       {!showFinalBuild && (
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Authorized (not charged)</span>
@@ -567,13 +736,15 @@ function ResultStatusPage() {
           <Button
             variant="default"
             size="sm"
-            disabled={acting}
+            disabled={acting || companionPending}
             onClick={() => void accept()}
           >
             {acting
               ? "Working…"
               : hasPaymentHold
-                ? "Accept"
+                ? companion
+                  ? "Accept both"
+                  : "Accept"
                 : amount != null
                   ? `Pay ${currency} ${Number(amount).toFixed(2)}`
                   : "Pay"}
@@ -586,9 +757,9 @@ function ResultStatusPage() {
           >
             Decline
           </Button>
-          {result.authorized_amount != null &&
-            result.final_amount != null &&
-            Number(result.final_amount) > Number(result.authorized_amount) && (
+          {pairAuthorized != null &&
+            pairFinal != null &&
+            pairFinal > pairAuthorized && (
               <p className="w-full text-xs text-muted-foreground">
                 Final total exceeds your hold — Accept will ask you to approve a top-up
                 before payment is captured.
@@ -659,8 +830,9 @@ function ResultStatusPage() {
         <DialogHeader>
           <DialogTitle>Decline this build?</DialogTitle>
           <DialogDescription>
-            Your card authorization hold will be released and you will need to start
-            customisation again. This cannot be undone.
+            {companion
+              ? "Your Mbolster is cancelled with it, the card authorization hold for both is released, and you will need to start customisation again. This cannot be undone."
+              : "Your card authorization hold will be released and you will need to start customisation again. This cannot be undone."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
@@ -669,6 +841,28 @@ function ResultStatusPage() {
           </Button>
           <Button variant="destructive" disabled={acting} onClick={() => void decline()}>
             {acting ? "Releasing…" : "Release hold and decline"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const removeDialog = (
+    <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove the Mbolster?</DialogTitle>
+          <DialogDescription>
+            Your Mpillow stays as it is. The Mbolster is not charged: Accept will take
+            only your Mpillow from the hold. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" disabled={acting} onClick={() => setRemoveOpen(false)}>
+            Keep both
+          </Button>
+          <Button variant="destructive" disabled={acting} onClick={() => void removeCompanion()}>
+            {acting ? "Removing…" : "Remove Mbolster"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -774,6 +968,7 @@ function ResultStatusPage() {
           </>
         )}
         {declineDialog}
+        {removeDialog}
       </div>
     );
   }
@@ -824,6 +1019,7 @@ function ResultStatusPage() {
         </Card>
       </div>
       {declineDialog}
+      {removeDialog}
     </div>
   );
 }

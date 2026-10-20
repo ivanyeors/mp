@@ -13,6 +13,8 @@ import {
 import { getSiteSettings } from "@/lib/site-settings";
 import { sendTelegram } from "@/lib/telegram/notify";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
+import { isCompanion } from "@/lib/results/paired-build";
+import { cascadeEnding, loadEndingPlan, notifyCompanionRemoved } from "@/lib/results/pair-ending";
 import {
   SLA_SETTING_KEYS,
   authExpiresAt,
@@ -99,7 +101,7 @@ export async function GET(req: Request) {
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count, topup_paid_at",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count, topup_paid_at, paired_build_id, authorized_amount",
     )
     // `assigned` joins the scan because a Result sitting there owes a Balance
     // payment and nothing else in the system would ever chase it (ADR 0016).
@@ -119,7 +121,25 @@ export async function GET(req: Request) {
     errors: [] as string[],
   };
 
+  // A Paired build (ADR 0026) is chased and paid as one: its anchor's reminder
+  // quotes both builds, so each anchor's total adds its assigned companion's.
+  const companionFinal = new Map<string, number>();
+  /** Anchors whose Mbolster is still being built: Accept would be refused. */
+  const awaitingCompanion = new Set<string>();
+  /** Anchors with a paid Balance payment: it covered their Mbolster too. */
+  const anchorPaid = new Set<string>();
+  for (const r of rows ?? []) {
+    if (isCompanion(r) && r.status === "assigned" && r.final_amount != null) {
+      companionFinal.set(r.paired_build_id as string, Number(r.final_amount));
+    }
+    if (isCompanion(r) && r.status === "held") awaitingCompanion.add(r.paired_build_id as string);
+    if (r.topup_paid_at && r.paired_build_id === r.id) anchorPaid.add(r.id);
+  }
+  /** Members ended by their anchor this run, so the loop does not end them twice. */
+  const endedThisRun = new Set<string>();
+
   for (const row of rows ?? []) {
+    if (endedThisRun.has(row.id)) continue;
     const hasHold = Boolean(row.payment_intent_id);
     const assisted = row.source === "staff_assisted";
     const heldAt = new Date(row.created_at);
@@ -149,6 +169,10 @@ export async function GET(req: Request) {
       // who has paid us that nothing was charged. Accept still knows how to
       // settle from the stored intent; leave it for that.
       if (hasHold && row.topup_paid_at) {
+        continue;
+      }
+      // Nor the Mbolster that same payment covered (ADR 0026).
+      if (isCompanion(row) && anchorPaid.has(row.paired_build_id as string)) {
         continue;
       }
       if (hasHold && now.getTime() >= authExpiresAt(heldAt).getTime()) {
@@ -188,13 +212,18 @@ export async function GET(req: Request) {
           // resolving correctly.
           continue;
         }
+        // A Paired build's anchor takes its companion with it; a companion keeps
+        // the hold while the anchor still lives (ADR 0026).
+        const pairPlan = await loadEndingPlan(admin, row);
+        await cascadeEnding(admin, pairPlan, "expired");
+        if (pairPlan.cascadeTo) endedThisRun.add(pairPlan.cascadeTo);
 
         // Best-effort, and expected to fail: Stripe rejects cancelling a
         // PaymentIntent that is no longer cancellable, and we are here precisely
         // because the authorization has lapsed. Harmless either way — Stripe
         // releases an uncaptured hold by itself at seven days, so a cancel that
         // does not land costs the customer nothing.
-        if (life.releaseHold && row.payment_intent_id) {
+        if (life.releaseHold && pairPlan.releaseHold && row.payment_intent_id) {
           try {
             await releaseHold(row.payment_intent_id);
           } catch {
@@ -202,7 +231,9 @@ export async function GET(req: Request) {
           }
         }
 
-        if (row.customer_email) {
+        // A Paired build's Mbolster and Mpillow lapse together on one hold; the
+        // Mpillow's email tells that story, once.
+        if (row.customer_email && !isCompanion(row)) {
           try {
             await sendCustomerExpiredEmail({
               to: row.customer_email,
@@ -226,6 +257,9 @@ export async function GET(req: Request) {
       }
 
       if (!row.customer_email) continue;
+      // The companion is accepted, and so chased, through its anchor; an anchor
+      // waiting on its Mbolster cannot be accepted yet, so nothing is due.
+      if (isCompanion(row) || awaitingCompanion.has(row.id)) continue;
       // A hold no longer skips the chase. Both kinds of assigned Result are
       // waiting on the same customer action — Accept — and the held one is the
       // more urgent of the two, since its authorization dies at 7 days.
@@ -257,7 +291,10 @@ export async function GET(req: Request) {
             resultId: row.id,
             accessToken: row.access_token,
             productType: row.product_type,
-            amount: row.final_amount != null ? Number(row.final_amount) : null,
+            amount:
+              row.final_amount != null
+                ? Number(row.final_amount) + (companionFinal.get(row.id) ?? 0)
+                : null,
             currency: row.currency ?? "SGD",
             needsFinish: needsCustomerFinish(row),
           }),
@@ -320,7 +357,10 @@ export async function GET(req: Request) {
         continue;
       }
 
-      if (life.releaseHold && row.payment_intent_id) {
+      // A Paired build's companion expiring keeps the hold its anchor still
+      // needs; the anchor expiring frees it and ends the companion (ADR 0026).
+      const pairPlan = await loadEndingPlan(admin, row);
+      if (life.releaseHold && pairPlan.releaseHold && row.payment_intent_id) {
         try {
           await releaseHold(row.payment_intent_id);
         } catch (e) {
@@ -341,8 +381,19 @@ export async function GET(req: Request) {
         summary.errors.push(`${row.id}: ${updateErr.message}`);
         continue;
       }
+      await cascadeEnding(admin, pairPlan, "expired");
+      if (pairPlan.cascadeTo) endedThisRun.add(pairPlan.cascadeTo);
 
-      if (row.customer_email) {
+      // An Mbolster lapsing while its Mpillow carries on released nothing: say
+      // it was removed (and, if the Mpillow was waiting on it, that it is ready).
+      if (isCompanion(row) && !pairPlan.releaseHold) {
+        const sent = await notifyCompanionRemoved(admin, {
+          companion: row,
+          partner: pairPlan.partner,
+          origin,
+        });
+        if (sent === "failed") summary.errors.push(`${row.id}: paired removal email failed`);
+      } else if (row.customer_email) {
         try {
           await sendCustomerExpiredEmail({
             to: row.customer_email,
