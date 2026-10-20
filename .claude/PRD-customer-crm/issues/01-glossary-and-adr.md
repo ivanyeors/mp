@@ -100,7 +100,8 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
   `PRD-email-marketing`. The yearly check-up is built here (owner, 2026-10-20) under (f)'s
   rules, but it offers a paid visit, which the PDPA treats as direct marketing. So it goes only
   to customers who agreed: Marketing consent for email, and an opt-in that names it for
-  WhatsApp. Both WhatsApp templates are filed as Marketing.
+  WhatsApp. Both WhatsApp templates are submitted as Utility (owner, 2026-10-20); Meta has the
+  final say on category, and nothing depends on it.
 - **(i) Seeing and changing are separate keys.** `customers` means seeing the Customers page;
   `customers-edit` (which requires `customers`) covers every change. Existing roles are
   migrated to hold both, and a guard test keeps writes on `customers-edit`.

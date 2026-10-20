@@ -15432,15 +15432,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/customer-crm-prd.md": {
-    "mtime": 1792486863.9689288,
-    "seen": 1792486924.0864053,
-    "ast_hash": "303958b1bc5ed4dd7af2122b6d4b48ee",
+    "mtime": 1792495394.0518048,
+    "seen": 1792495469.8667758,
+    "ast_hash": "0686c229c777a09f6b9bf1d927f46b72",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md": {
-    "mtime": 1792486863.9636848,
-    "seen": 1792486924.0864096,
-    "ast_hash": "9e9e1e3b17833a74f6b2ff385a6300a4",
+    "mtime": 1792495394.0509272,
+    "seen": 1792495469.866779,
+    "ast_hash": "eb7229b4aa66768a068ab558f77da953",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md": {
@@ -15474,15 +15474,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md": {
-    "mtime": 1792486863.9656324,
-    "seen": 1792486924.08642,
-    "ast_hash": "3dd716f6811d1ac25185000e76ad441d",
+    "mtime": 1792495394.0502248,
+    "seen": 1792495469.8667881,
+    "ast_hash": "47b28f5d2523b4632a250bcc02334187",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/08-checkup-reminder.md": {
-    "mtime": 1792486863.965962,
-    "seen": 1792486924.0864213,
-    "ast_hash": "5c1cb60689f97830ded7d90faef70b0a",
+    "mtime": 1792495394.05067,
+    "seen": 1792495469.8667893,
+    "ast_hash": "ca6e1ed81522c3bc183ce4089b4e12eb",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/09-signoff.md": {
@@ -15510,9 +15510,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md": {
-    "mtime": 1792486863.9680688,
-    "seen": 1792486924.0864277,
-    "ast_hash": "8aecbd4651675d51214f70617af4d31e",
+    "mtime": 1792495394.0498257,
+    "seen": 1792495469.8667955,
+    "ast_hash": "aee4d822bd6a5a2294c26424eebfb41a",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/14-telegram-updates.md": {

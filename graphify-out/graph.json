@@ -147668,7 +147668,7 @@
       "node_kind": "heading",
       "norm_label": "who gets it",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L83"
+      "source_location": "L85"
     },
     {
       "id": "claude_prd_service_fees_readjustment_issues_06_readjustment_core",
@@ -160684,7 +160684,7 @@
       "node_kind": "heading",
       "norm_label": "the email",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L122"
+      "source_location": "L123"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_08_campaign_emails_and_wave_sender",
@@ -166504,7 +166504,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L289"
+      "source_location": "L302"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_decided",
@@ -166564,7 +166564,7 @@
       "node_kind": "heading",
       "norm_label": "the two templates",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L230"
+      "source_location": "L231"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_two_channels_two_defaults",
@@ -169489,7 +169489,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L123"
+      "source_location": "L124"
     },
     {
       "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0027_decisions_to_record",
@@ -169813,7 +169813,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L191"
+      "source_location": "L192"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_admin_panel",
@@ -169825,7 +169825,7 @@
       "node_kind": "heading",
       "norm_label": "admin panel",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L180"
+      "source_location": "L181"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_decided",
@@ -169849,7 +169849,7 @@
       "node_kind": "heading",
       "norm_label": "goal",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L31"
+      "source_location": "L32"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_rules_from_google_that_this_slice_must_keep",
@@ -169861,7 +169861,7 @@
       "node_kind": "heading",
       "norm_label": "rules from google that this slice must keep",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L37"
+      "source_location": "L38"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_schema",
@@ -169873,7 +169873,7 @@
       "node_kind": "heading",
       "norm_label": "schema",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L87"
+      "source_location": "L88"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_the_redirect",
@@ -169885,7 +169885,7 @@
       "node_kind": "heading",
       "norm_label": "the redirect",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L169"
+      "source_location": "L170"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_the_whatsapp_message",
@@ -169897,7 +169897,7 @@
       "node_kind": "heading",
       "norm_label": "the whatsapp message",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L152"
+      "source_location": "L153"
     },
     {
       "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery_who_gets_it",
@@ -169909,7 +169909,7 @@
       "node_kind": "heading",
       "norm_label": "who gets it",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L55"
+      "source_location": "L56"
     },
     {
       "id": "claude_prd_customer_crm_issues_09_signoff",
@@ -173218,7 +173218,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L115"
+      "source_location": "L117"
     },
     {
       "id": "claude_prd_customer_crm_issues_08_checkup_reminder_consent_what_the_research_changed_2026_10_20",
@@ -173254,7 +173254,7 @@
       "node_kind": "heading",
       "norm_label": "goal",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L56"
+      "source_location": "L58"
     },
     {
       "id": "claude_prd_customer_crm_issues_08_checkup_reminder_settings",
@@ -173266,7 +173266,7 @@
       "node_kind": "heading",
       "norm_label": "settings",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L106"
+      "source_location": "L108"
     },
     {
       "id": "claude_prd_customer_crm_issues_08_checkup_reminder_the_price_stated_from_one_source",
@@ -173278,7 +173278,7 @@
       "node_kind": "heading",
       "norm_label": "the price, stated, from one source",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L62"
+      "source_location": "L64"
     },
     {
       "id": "claude_prd_in_store_counter_payments_issues_07_ops_kill_switch_and_fleet_health",
@@ -563029,7 +563029,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L123",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
@@ -563436,7 +563436,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L122",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -563447,7 +563447,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L152",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -563458,7 +563458,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L169",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -563469,7 +563469,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L180",
+      "source_location": "L181",
       "weight": 1.0
     },
     {
@@ -563480,7 +563480,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L191",
+      "source_location": "L192",
       "weight": 1.0
     },
     {
@@ -563491,7 +563491,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L31",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -563502,7 +563502,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L37",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -563513,7 +563513,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L55",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -563524,7 +563524,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L87",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -563557,7 +563557,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L106",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -563568,7 +563568,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L115",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -563590,7 +563590,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L56",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -563601,7 +563601,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L62",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -563612,7 +563612,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L83",
+      "source_location": "L85",
       "weight": 1.0
     },
     {
@@ -563997,7 +563997,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L230",
+      "source_location": "L231",
       "weight": 1.0
     },
     {
@@ -564019,7 +564019,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L289",
+      "source_location": "L302",
       "weight": 1.0
     },
     {
@@ -694621,7 +694621,7 @@
       "confidence_score": 0.95,
       "context": "EmailGroup",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L147",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -697657,7 +697657,7 @@
       "confidence_score": 0.95,
       "context": "classifyOrderLine",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L98",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -698389,7 +698389,7 @@
       "confidence_score": 0.95,
       "context": "dispatchOrderEmail",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L107",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -698401,7 +698401,7 @@
       "confidence_score": 0.95,
       "context": "dispatchOrderEmail",
       "source_file": ".claude/PRD-customer-crm/issues/08-checkup-reminder.md",
-      "source_location": "L92",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -699577,7 +699577,7 @@
       "confidence_score": 0.95,
       "context": "getDefaultTransport()",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L145",
+      "source_location": "L146",
       "weight": 1.0
     },
     {
@@ -699613,7 +699613,7 @@
       "confidence_score": 0.95,
       "context": "getEmailTransport()",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L144",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -704377,7 +704377,7 @@
       "confidence_score": 0.95,
       "context": "purchaseLabel",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L128",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -704389,7 +704389,7 @@
       "confidence_score": 0.95,
       "context": "purchaseLabel",
       "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L162",
+      "source_location": "L163",
       "weight": 1.0
     },
     {
@@ -706057,7 +706057,7 @@
       "confidence_score": 0.95,
       "context": "sendTemplateMessage",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L305",
+      "source_location": "L318",
       "weight": 1.0
     },
     {
@@ -706069,7 +706069,7 @@
       "confidence_score": 0.95,
       "context": "sendTemplateMessage",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L217",
+      "source_location": "L218",
       "weight": 1.0
     },
     {
@@ -708208,5 +708208,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "211d6ea6f46c80507ceb5b4682c862f589ca77ad"
+  "built_at_commit": "4f397048ab73b0e332daf18d20372ed0c77f8685"
 }

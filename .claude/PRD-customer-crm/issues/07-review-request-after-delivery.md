@@ -24,9 +24,10 @@ The owner decided on 2026-10-20:
 - **A service message.** A review request offers nothing for sale. So it is very unlikely to be
   a commercial message under the Spam Control Act, or a "specified message" under the PDPA's Do
   Not Call rules, as long as the copy stays free of offers.
-- **Marketing on WhatsApp.** Meta will very likely class the WhatsApp template as Marketing,
-  because a public review mainly helps the business. So it is submitted as Marketing (slice 13).
-  It goes only to customers who opted in, which Marketing requires anyway.
+- **Utility on WhatsApp, if Meta agrees.** The template is submitted as Utility (owner,
+  2026-10-20). It is tied to the customer's own order, which is what Meta's feedback rule asks
+  for. Meta decides the category and may file it as Marketing instead; nothing here depends on
+  which (slice 13). It goes only to customers who opted in, either way.
 
 ## Goal
 
@@ -154,13 +155,13 @@ is previewable like the rest, with a pure render.
 This uses slice 13's channel, with template `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW`.
 
 - **The template is `aftercare_review_request`,** drafted in slice 13 and submitted as
-  Marketing with `scripts/whatsapp-create-templates.ts`. No aftercare template exists on the
+  Utility with `scripts/whatsapp-create-templates.ts`. No aftercare template exists on the
   WhatsApp Business account yet.
 - **What it carries:** thanks, the ask, the *"Need anything else?"* line naming the staffed
   sales line, and a close saying how to stop.
 - **Parameters:**
-  - body: first name (or *there*), the product (`purchaseLabel`), and the sales line
-    (`SUPPORT_WHATSAPP_DISPLAY`);
+  - body: first name (or *there*), the order number, the product (`purchaseLabel`), the
+    delivery date (SGT), and the sales line (`SUPPORT_WHATSAPP_DISPLAY`);
   - URL button suffix: the same token as the email (`/r/review?t={{1}}`), so WhatsApp clicks are
     recorded too.
 - **A *STOP* reply** reaches Staff as an open request and pauses WhatsApp (slice 13).

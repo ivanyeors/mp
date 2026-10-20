@@ -244,7 +244,7 @@ roles.
      `PRD-email-marketing`.
    - The check-up always states that the visit is paid, and its fee from Costings.
    - **The check-up needs consent** (research, 2026-10-20). Offering a paid visit is direct
-     marketing under the PDPA, and Meta classes it as Marketing. Its email goes only to
+     marketing under the PDPA, whatever category Meta gives its template. Its email goes only to
      Customers with Marketing consent `subscribed`, and its WhatsApp only to those whose
      opt-in wording names it. The owner may relax the email rule if counsel advises (slice 08).
 7. **The review request goes to every eligible customer alike** (Google's policy).
@@ -443,7 +443,7 @@ The owner added this on 2026-10-20.
   page, pauses WhatsApp for that Customer, and gets a reply saying Staff will switch it off.
 - **WhatsApp** sends through the existing utility sender. The WhatsApp Business account and
   its appointment templates are approved. The two aftercare templates are new: slice 13 drafts
-  them, and adds them to `scripts/whatsapp-create-templates.ts` as **Marketing** templates. It
+  them, and adds them to `scripts/whatsapp-create-templates.ts` as **Utility** templates. It
   follows the partner WhatsApp alerts: email always goes, and WhatsApp is added on top when
   allowed.
 - **"Cancel" stays safe.** A bare *cancel* right after an aftercare message asks before it
@@ -561,7 +561,7 @@ and aftercare updates are not built.
 | A Google review is linked to the wrong Customer | Real: names collide | Suggestions only, never automatic. Staff confirm, can unlink, and rejected pairs are never suggested again. |
 | An aftercare message is treated as spam | Low for one review request per Customer and one check-up per milestone | No offer, transactional transport, a switch per channel. Counsel reads the final copy once. |
 | A WhatsApp message goes to someone who never agreed | Real if Staff switch it on casually | WhatsApp is off by default. Turning it on needs the customer's own action, or a Staff note recording that they agreed. Every change is an event. |
-| Meta classes a template as Marketing | Expected for both (research, 2026-10-20) | Submitted as Marketing from the start, so nothing is recategorised later. It costs about S$0.09 a message instead of S$0.02, and goes to opted-in people only, which our opt-in covers. A person who turned off marketing in WhatsApp gets error `131050`; that is recorded and shown, and email still goes. |
+| Meta files a template as Marketing | Possible: Meta decides, and has filed review requests and paid-visit reminders as Marketing | Submitted as Utility, with copy tied to the customer's own order and no pitch (owner, 2026-10-20). If Meta files one as Marketing, it costs about S$0.09 a message instead of S$0.02 and skips people who turned off marketing in WhatsApp (`131050`, recorded and shown); email still goes. We can ask Meta to review within 60 days. |
 | The check-up is direct marketing without consent | Real: the PDPA treats offering a paid visit as direct marketing, needing express consent | Email only to Marketing consent `subscribed`; WhatsApp only with an opt-in that names it, its wording stored (slices 08, 13). Counsel confirms at sign-off. |
 | A customer types *cancel* to stop aftercare and cancels an appointment | Real: `CANCEL_WORDS` cancels the next appointment on that number | A bare *cancel* right after an aftercare message asks first (slice 13). |
 | A STOP reply is missed | Real: today a STOP gets the generic auto-reply, which says the number only sends *appointment* messages, and nothing records it as a request (`app/api/webhooks/whatsapp/route.ts`) | A *STOP* becomes an open request on the Customer page, pauses WhatsApp for that Customer, and gets its own reply (slice 13). |

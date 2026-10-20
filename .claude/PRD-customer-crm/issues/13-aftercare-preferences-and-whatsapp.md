@@ -209,7 +209,8 @@ It mirrors the partner WhatsApp notifications (`lib/whatsapp/partner-notify.ts`)
 - **Ledger.** `customer_whatsapp`, claimed as `pending`, then marked `sent` or `failed`. A failed
   WhatsApp send is not retried: email carries the message.
 - **WhatsApp's own marketing switch.** A person can stop marketing messages from a business
-  inside WhatsApp. A marketing template to them then fails with error `131050`.
+  inside WhatsApp. If Meta ever files one of our templates as Marketing, a send to them fails
+  with error `131050`.
   - The ledger records `last_error = 'whatsapp_marketing_off'`.
   - The Contact card shows *"Turned off marketing messages in WhatsApp"*.
   - Our switch is left alone. It is their WhatsApp setting, not ours.
@@ -230,58 +231,70 @@ It mirrors the partner WhatsApp notifications (`lib/whatsapp/partner-notify.ts`)
 ## The two templates
 
 They are added to `scripts/whatsapp-create-templates.ts`, where the approved appointment
-templates already live.
+templates already live. The script gains a URL button with one variable at the end of the URL.
+It already files every template as `UTILITY`.
 
-- **The script gains two things:** a `category` per template, since it hardcodes `UTILITY`
-  today, and a URL button with one variable at the end of the URL.
-- **Both are submitted as `MARKETING`.**
-  - Meta's rules make a utility template non-promotional *and* specific to something the
-    customer did or asked for.
-  - A paid-visit reminder is a renewal-style offer, which Meta lists as marketing. A request
-    for a public review is very likely marketing too.
-  - Since April 2025, Meta approves a misfiled template as Marketing anyway. Repeated misfiling
-    risks enforcement on the account, so file them honestly.
-  - Marketing costs about 4–5× utility per message (about S$0.09 against S$0.02). At tens a day,
-    that is cents.
+**Both are submitted as `UTILITY`** (owner, 2026-10-20): they are service reminders about a
+product the customer owns, not promotions.
 
-Draft copy, for the owner to approve before submitting. Every body starts and ends with fixed
-text, and no variable sits next to another:
+- **Meta's test for Utility.** A template must be:
+  - non-promotional, with no persuasive intent;
+  - and specific to something the customer did, or asked for.
+- **Meta decides the category, not us.**
+  - If Meta disagrees, it approves the template as **Marketing** instead of rejecting it, and
+    says so in WhatsApp Manager.
+  - We can ask for a review within 60 days.
+  - Nothing in the code depends on the category. Preflight prints what Meta gave, and this
+    slice records it.
+- **The copy is written to pass that test.**
+  - Each message names the customer's own order and product.
+  - It states facts, not a pitch.
+  - It names no other product.
+  - The "message our team" line is a plain offer of help.
+- **If one lands as Marketing:**
+  - it costs about S$0.09 a message instead of S$0.02, which is cents a day at our volume;
+  - it is not delivered to people who turned off marketing messages in WhatsApp (error
+    `131050`), which the ledger records as `whatsapp_marketing_off`.
 
-**`aftercare_review_request`** (MARKETING, `en`)
+Draft copy, **for the owner to approve before submitting**. Every body starts and ends with fixed
+text, and no two variables sit side by side:
 
-> Hi {{1}}, thank you for choosing Mpillow for your {{2}}. If you have a minute, a Google review
-> helps other people find a pillow that fits them.
+**`aftercare_review_request`** (UTILITY, `en`)
+
+> Hi {{1}}, your order {{2}} ({{3}}) was delivered on {{4}}. We'd love to hear how it's going: you
+> can leave us a Google review with the button below.
 >
-> Need anything else, like a re-adjustment or a spare cover? Message our team on WhatsApp at
-> {{3}}.
->
-> To stop these messages, turn them off in your Mpillow account, or tell our team.
-
-- Examples: `Ivan`, `Premium Mpillow`, `+65 8780 5311`.
-- URL button **Write a Google review**: `https://mpillow.com/r/review?t={{1}}`. The suffix is
-  slice 07's token, so WhatsApp clicks are recorded, and the button points at our own domain
-  rather than Google's redirect link.
-
-**`aftercare_checkup`** (MARKETING, `en`)
-
-> Hi {{1}}, it has been about a year since your {{2}} arrived. A re-adjustment keeps it fitting
-> you as your sleep changes.
->
-> A re-adjustment is a paid visit: {{3}}, paid when you book. Tap below to pick a time, or message
-> our team on WhatsApp at {{4}}.
+> If you need anything else, message our team on WhatsApp at {{5}}.
 >
 > To stop these messages, turn them off in your Mpillow account, or tell our team.
 
-- Examples: `Ivan`, `Premium Mpillow`, `S$30`, `+65 8780 5311`.
+- Examples: `Ivan`, `#1042`, `Premium Mpillow`, `3 Nov 2026`, `+65 8780 5311`.
+- URL button **Write a Google review**: `https://mpillow.com/r/review?t={{1}}`, example
+  `https://mpillow.com/r/review?t=Zx81kQ`.
+  - The suffix is slice 07's token, so WhatsApp clicks are recorded.
+  - The button points at our own domain rather than Google's redirect link.
+
+**`aftercare_checkup`** (UTILITY, `en`)
+
+> Hi {{1}}, your {{2}} from order {{3}} is due for its yearly re-adjustment, which keeps it
+> fitted to you.
+>
+> A re-adjustment is a paid visit: {{4}}, paid when you book. Use the button below to pick a time,
+> or message our team on WhatsApp at {{5}}.
+>
+> To stop these reminders, turn them off in your Mpillow account, or tell our team.
+
+- Examples: `Ivan`, `Premium Mpillow`, `#1042`, `S$30`, `+65 8780 5311`.
 - The fee is a variable, read from Costings at send time (slice 08). It is never written into
   the template.
 - URL button **Book a re-adjustment**:
   `https://mpillow.com/appointments?type=readjustment&item={{1}}`, with the order item id.
+- A customer with no first name on file is greeted *"Hi there"*.
 
 **Tooling.**
 
-- **Preflight.** `scripts/whatsapp-preflight.ts` checks both templates: approved, language, 3
-  and 4 body parameters, and the URL button. It also prints the category Meta gave.
+- **Preflight.** `scripts/whatsapp-preflight.ts` checks both templates: approved, language, 5
+  body parameters each, and the URL button. It also prints the category Meta gave.
 - **Preview.** `scripts/whatsapp-preview.ts` sends both to one phone with sample data, and also
   the stop reply and the cancel question.
 - **Copy.** The free-text replies live in `lib/appointments/messages.ts` beside the rest.
@@ -304,5 +317,6 @@ text, and no variable sits next to another:
       send under concurrent runs. A `131050` failure is recorded as `whatsapp_marketing_off`.
 - [ ] `sendTemplateMessage` sends a URL-button parameter when given one, and is unchanged when
       not.
-- [ ] Preflight passes with both templates approved. Their category is recorded here.
+- [ ] Preflight passes with both templates approved. The category Meta gave each is
+      recorded here.
 - [ ] `./scripts/graphify update .` is run in the same commit.

@@ -36,7 +36,9 @@ marketing, whatever we call it:
   cannot be used for it. The "ongoing relationship" exclusion does not cover a one-off purchase.
 - **Do Not Call.** The WhatsApp check-up is a "specified message". It needs clear, evidenced
   consent that names it, or a check against the Do Not Call register.
-- **Meta.** A renewal-style reminder with a price is a Marketing template (slice 13).
+- **Meta** decides the WhatsApp template's category. It is submitted as Utility (owner,
+  2026-10-20) and may come back as Marketing (slice 13). That changes the price per message, not
+  who may receive it: consent is the PDPA question above.
 
 So the check-up is still built here as the owner decided, but it goes **only to customers who
 agreed**:
@@ -66,7 +68,7 @@ The fee is read at send time from Costings, which is the single source of sell p
 S$30, `20261013100000_service_prices.sql:29`). It is never a constant in the template.
 
 - **Email:** *"A re-adjustment is a paid visit: S${fee}, paid when you book."*
-- **WhatsApp:** the fee is the third body parameter of `aftercare_checkup` (slice 13), formatted
+- **WhatsApp:** the fee is the fourth body parameter of `aftercare_checkup` (slice 13), formatted
   as `S$30`, never written into the template.
 - **If the fee cannot be read, nothing is sent that day.** A check-up that does not say what it
   costs is not sent.
