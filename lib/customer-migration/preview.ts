@@ -73,7 +73,8 @@ export const REPAIR_LABELS: Record<RowRepair, string> = {
   total_spent_invalid: "Total Spent unreadable, counted as 0",
 };
 
-function pickFields(raw: ShopifyRawRow, fields: readonly ShopifyField[]): ShopifyRawRow {
+/** Only `fields`' non-empty string cells: anything else a row carries is dropped. */
+export function pickFields(raw: ShopifyRawRow, fields: readonly ShopifyField[]): ShopifyRawRow {
   const out: ShopifyRawRow = {};
   for (const f of fields) {
     const v = raw[f];
@@ -90,25 +91,37 @@ export function previewPayload(rows: readonly ShopifyRawRow[]): IndexedRawRow[] 
 const encoder = new TextEncoder();
 export const jsonBytes = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
 
+/**
+ * The chunk that starts at `start`: at most `maxRows` rows and about
+ * `maxBytes` of JSON, and always at least one row.
+ */
+export function takeChunk<T>(
+  rows: readonly T[],
+  start: number,
+  { maxRows = PREVIEW_CHUNK_ROWS, maxBytes = PREVIEW_CHUNK_MAX_BYTES } = {},
+): T[] {
+  const chunk: T[] = [];
+  let bytes = 2;
+  for (let k = start; k < rows.length && chunk.length < maxRows; k++) {
+    const size = jsonBytes(rows[k]) + 1;
+    if (chunk.length && bytes + size > maxBytes) break;
+    chunk.push(rows[k]);
+    bytes += size;
+  }
+  return chunk;
+}
+
 /** Split rows into chunks of at most `maxRows` rows and about `maxBytes` of JSON. */
 export function chunkRows<T>(
   rows: readonly T[],
-  { maxRows = PREVIEW_CHUNK_ROWS, maxBytes = PREVIEW_CHUNK_MAX_BYTES } = {},
+  limits: { maxRows?: number; maxBytes?: number } = {},
 ): T[][] {
   const chunks: T[][] = [];
-  let current: T[] = [];
-  let bytes = 2;
-  for (const row of rows) {
-    const size = jsonBytes(row) + 1;
-    if (current.length && (current.length >= maxRows || bytes + size > maxBytes)) {
-      chunks.push(current);
-      current = [];
-      bytes = 2;
-    }
-    current.push(row);
-    bytes += size;
+  for (let start = 0; start < rows.length; ) {
+    const chunk = takeChunk(rows, start, limits);
+    chunks.push(chunk);
+    start += chunk.length;
   }
-  if (current.length) chunks.push(current);
   return chunks;
 }
 
