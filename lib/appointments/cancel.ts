@@ -14,7 +14,6 @@
 
 import { markReadjustmentCancelledByEvent } from "@/lib/readjustment/lifecycle";
 import { deleteEvent, type EventState } from "./calendar";
-import { formatDateSgt, formatTimeSgt } from "./format";
 import { isPhoneAllowed } from "./phone";
 import {
   getReminderByEventId,
@@ -84,7 +83,7 @@ export async function cancelAppointment(
       {
         guestName: row.guest_name,
         typeLabel: type.label,
-        whenLabel: `${formatDateSgt(row.starts_at)} at ${formatTimeSgt(row.starts_at)}`,
+        startsAt: row.starts_at,
         bookingUrl: type.bookingUrl,
       },
       { within24h },

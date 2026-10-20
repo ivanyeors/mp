@@ -17,7 +17,7 @@ import {
   type SlotOffer,
 } from "@/lib/appointments/slots";
 import { transitionReminder } from "@/lib/appointments/state";
-import { formatDateSgt, formatTimeSgt } from "@/lib/appointments/format";
+import { guestText } from "@/lib/appointments/messages";
 import {
   claimAutoReply,
   claimInboundMessage,
@@ -28,7 +28,6 @@ import {
   type ReminderRow,
 } from "@/lib/appointments/reminders-db";
 import {
-  TALK_TO_TEAM,
   parseFailedDeliveries,
   parseInboundActions,
   sendSlotList,
@@ -134,8 +133,6 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-const when = (iso: string) => `${formatDateSgt(iso)} at ${formatTimeSgt(iso)}`;
-
 /**
  * Answer one inbound message. Every path replies — a guest who taps or types
  * something and hears nothing assumes it worked, or that nobody is there.
@@ -152,10 +149,7 @@ async function handleAction(
     // Mid-reschedule, the guest is most likely trying to pick a time: say how,
     // every time, rather than wait out the cooldown.
     if (row?.status === "offering_slots") {
-      await sendText(
-        from,
-        `To move your appointment, tap "View times" above and pick one, or reply "none of these" to cancel it. For anything else, ${TALK_TO_TEAM}`,
-      );
+      await sendText(from, guestText.slotHint());
       return "unknown: slot hint";
     }
     // Free text, a photo, a voice note: nothing here can act on it, and nobody
@@ -165,20 +159,14 @@ async function handleAction(
     if (!(await claimAutoReply(from, AUTO_REPLY_COOLDOWN_MS))) {
       return "unknown: auto-reply cooling down";
     }
-    await sendText(
-      from,
-      `Hi! This number only sends automated appointment messages, so no one here will see your reply. To chat with us, ${TALK_TO_TEAM}`,
-    );
+    await sendText(from, guestText.autoReply());
     return "unknown: auto-reply";
   }
 
   if (!row) {
     // A real intent with nothing upcoming to apply it to: already cancelled,
     // already happened, or booked but not yet reminded.
-    await sendText(
-      from,
-      `Thanks for your message. We couldn't find an upcoming appointment to update for this number. To book or change one, ${TALK_TO_TEAM}`,
-    );
+    await sendText(from, guestText.noUpcoming());
     return `${action.kind}: no upcoming appointment`;
   }
 
@@ -189,10 +177,7 @@ async function handleAction(
   // "none of these" only means cancel while a list of times is open; "cancel"
   // always does.
   if (action.kind === "reject_slots" && row.status !== "offering_slots") {
-    await sendText(
-      from,
-      `Your appointment is still on for ${when(row.starts_at)}. To change it, tap Reschedule on our reminder, or ${TALK_TO_TEAM}`,
-    );
+    await sendText(from, guestText.stillOn(row.starts_at));
     return "reject_slots: no list open";
   }
   return cancelByGuest(row, settings);
@@ -201,27 +186,24 @@ async function handleAction(
 async function confirm(row: ReminderRow): Promise<string> {
   const t = transitionReminder(row.status, { type: "confirm" });
   if (t.ok && t.noop) {
-    await sendText(row.phone, `You're all set — your appointment is confirmed for ${when(row.starts_at)}.`);
+    await sendText(row.phone, guestText.alreadyConfirmed(row.starts_at));
     return "confirm: already confirmed";
   }
   if (!t.ok) {
-    await sendText(row.phone, `Thanks! Your appointment is on ${when(row.starts_at)}. To change it, ${TALK_TO_TEAM}`);
+    await sendText(row.phone, guestText.cannotConfirm(row.starts_at));
     return `confirm: ${t.error}`;
   }
   if (!(await updateReminder(row.calendar_event_id, { status: "confirmed" }, row.status))) {
     return "confirm: row changed underneath";
   }
-  await sendText(
-    row.phone,
-    `Thanks ${row.guest_name} — your appointment is confirmed for ${when(row.starts_at)}.`,
-  );
+  await sendText(row.phone, guestText.confirmed(row.guest_name, row.starts_at));
   return "confirmed";
 }
 
 async function offerNewTimes(row: ReminderRow, settings: AppointmentSettings): Promise<string> {
   const t = transitionReminder(row.status, { type: "request_reschedule" });
   if (!t.ok) {
-    await sendText(row.phone, `To change your appointment, ${TALK_TO_TEAM}`);
+    await sendText(row.phone, guestText.cannotReschedule());
     return `reschedule: ${t.error}`;
   }
 
@@ -242,19 +224,13 @@ async function offerNewTimes(row: ReminderRow, settings: AppointmentSettings): P
   const slots = offerSlots([...calendarBusy, ...holds], settings, now);
 
   if (slots.length === 0) {
-    await sendText(
-      row.phone,
-      `Sorry — no open slots in the next two weeks. Your appointment on ${when(row.starts_at)} is unchanged. To find another time, ${TALK_TO_TEAM}`,
-    );
+    await sendText(row.phone, guestText.noSlots(row.starts_at));
     return "reschedule: no slots";
   }
 
   // Append a reject row via text instruction (list has no native reject).
   const waId = await sendSlotList(row.phone, slots);
-  await sendText(
-    row.phone,
-    'Reply "none of these" if none of the times work — we will cancel and send a rebook link.',
-  );
+  await sendText(row.phone, guestText.slotListNone());
 
   await updateReminder(
     row.calendar_event_id,
@@ -276,10 +252,7 @@ async function pickSlot(
 ): Promise<string> {
   const t = transitionReminder(row.status, { type: "slot_picked" });
   if (!t.ok || t.noop) {
-    await sendText(
-      row.phone,
-      `That list of times has closed. Your appointment is on ${when(row.starts_at)} — tap Reschedule on our reminder for fresh times, or ${TALK_TO_TEAM}`,
-    );
+    await sendText(row.phone, guestText.listClosed(row.starts_at));
     return `slot: ${t.error ?? "already rescheduled"}`;
   }
 
@@ -289,10 +262,7 @@ async function pickSlot(
     parseSlotId(slotId, settings.durationMinutes);
   // The list may be a day old: someone else can have booked that time since.
   if (!picked || !(await isSlotFree(picked.startIso, picked.endIso))) {
-    await sendText(
-      row.phone,
-      "Sorry — that time was just taken. Reply Reschedule for fresh times.",
-    );
+    await sendText(row.phone, guestText.slotTaken());
     return "slot: taken";
   }
 
@@ -312,10 +282,7 @@ async function pickSlot(
   );
   if (!ok) return "slot: row changed underneath";
 
-  await sendText(
-    row.phone,
-    `Done — your appointment is now ${formatDateSgt(picked.startIso)} at ${formatTimeSgt(picked.startIso)} (Asia/Singapore). See you then!`,
-  );
+  await sendText(row.phone, guestText.rescheduled(picked.startIso));
   return "rescheduled";
 }
 
@@ -325,10 +292,7 @@ async function cancelByGuest(row: ReminderRow, settings: AppointmentSettings): P
     const outcome = await cancelAppointment(row, settings, { cause: "guest", within24h: true });
     return outcome.kind === "cancelled" ? "cancelled" : `cancel: ${outcome.kind}`;
   } catch (e) {
-    await sendText(
-      row.phone,
-      `Sorry — we couldn't cancel that automatically. Please ${TALK_TO_TEAM}`,
-    ).catch(() => {});
+    await sendText(row.phone, guestText.cancelFailed()).catch(() => {});
     throw e;
   }
 }

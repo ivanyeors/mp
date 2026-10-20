@@ -510,12 +510,20 @@ async function main() {
     const body = JSON.stringify({ object: "whatsapp_business_account", entry: [] });
     const sig = `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
     try {
+      // Meta does not follow redirects, so neither does the probe: a callback on
+      // a host that redirects (work.mpillow.com → custom.) loses every message.
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Hub-Signature-256": sig },
         body,
+        redirect: "manual",
       });
-      if (res.ok) {
+      if (res.status >= 300 && res.status < 400) {
+        fail(
+          "webhook endpoint",
+          `${endpoint} redirects (${res.status}) to ${res.headers.get("location") ?? "?"} — Meta does not follow redirects, so no message arrives. Set the callback to the final URL`,
+        );
+      } else if (res.ok) {
         pass("webhook endpoint", `${endpoint} accepts a POST signed with this secret`);
       } else if (res.status === 401) {
         fail(

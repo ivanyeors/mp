@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/whatsapp.ts": {
-    "mtime": 1792462957.6628768,
-    "seen": 1792467741.4726942,
-    "ast_hash": "008adf96d529177256e76233f1de09ba",
+    "mtime": 1792470470.7323694,
+    "seen": 1792470622.8163307,
+    "ast_hash": "9271cc00c875325bdadc7b837fcfbcc4",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/admin-guard.test.ts": {
@@ -3060,9 +3060,9 @@
     "semantic_hash": ""
   },
   "app/api/webhooks/whatsapp/route.ts": {
-    "mtime": 1792463458.9105759,
-    "seen": 1792467741.471973,
-    "ast_hash": "105abdd51af4bd7fd96081d19be79c06",
+    "mtime": 1792470470.7342904,
+    "seen": 1792470622.8156223,
+    "ast_hash": "13e3992645920055f51bed7413369cc5",
     "semantic_hash": ""
   },
   "app/auth/callback/route.ts": {
@@ -7962,9 +7962,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/OPS-CHECKLIST.md": {
-    "mtime": 1792463411.90241,
-    "seen": 1792467741.474661,
-    "ast_hash": "e68050bf1f27ed09e7bd8b5954cd822b",
+    "mtime": 1792470572.5546627,
+    "seen": 1792470622.8181036,
+    "ast_hash": "150b701de695cf8ba4b0e1b64583455c",
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/issues/01-ops-meta-google-setup.md": {
@@ -10356,9 +10356,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-preflight.ts": {
-    "mtime": 1792463388.5308514,
-    "seen": 1792467741.473918,
-    "ast_hash": "97516ef288dfff9f718ec6d097a14ed0",
+    "mtime": 1792470428.359974,
+    "seen": 1792470622.8173482,
+    "ast_hash": "fee02239b9319181254b31b76bd5ea63",
     "semantic_hash": ""
   },
   "components/configurator/save-filling-template.tsx": {
@@ -15306,15 +15306,27 @@
     "semantic_hash": ""
   },
   "lib/appointments/cancel.ts": {
-    "mtime": 1792463131.3241446,
-    "seen": 1792467741.4726698,
-    "ast_hash": "3a4ca229309f89a5a657d305f3c41ca1",
+    "mtime": 1792470470.7331717,
+    "seen": 1792470622.8163059,
+    "ast_hash": "b2a507009a8427172884c248ea1ffa48",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020024120_whatsapp_inbound_calendar_channels.sql": {
     "mtime": 1792463096.8247738,
     "seen": 1792467741.4741457,
     "ast_hash": "68067c2325a1eaf5271a102ddab17c88",
+    "semantic_hash": ""
+  },
+  "lib/appointments/messages.ts": {
+    "mtime": 1792470470.7055812,
+    "seen": 1792470622.8163178,
+    "ast_hash": "41351f04672f52625c4c8f29b188e660",
+    "semantic_hash": ""
+  },
+  "scripts/whatsapp-preview.ts": {
+    "mtime": 1792470494.0609825,
+    "seen": 1792470622.81735,
+    "ast_hash": "0520bcec8173404a7303ded886ffd0bc",
     "semantic_hash": ""
   }
 }

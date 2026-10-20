@@ -290,3 +290,20 @@ its webhook points at `/api/webhooks/whatsapp` for `messages`, the app secret
 is the one Meta signs with, and the live site accepts a POST signed with it. A
 secret mismatch is silent from the guest's side; within the hour, Vercel's logs
 show `[whatsapp/webhook] signature rejected`.
+
+Point the callback at the host that serves the site, not one that redirects to
+it: `work.mpillow.com` 308s everything to `custom.mpillow.com`, and Meta does not
+follow redirects, so a callback on `work.` silently loses every message. The
+preflight probe does not follow them either and flags a redirect.
+
+## 13. Read every guest message on your own phone
+
+All the free-text copy lives in `lib/appointments/messages.ts`; the template
+wording in `scripts/whatsapp-create-templates.ts`. To see each one as a guest
+would, labelled and in order, message the sender from your phone first (free
+text needs that 24h window), then:
+
+    npx tsx --env-file=.env.local scripts/whatsapp-preview.ts +65XXXXXXXX
+
+It sends sample data only, but a tap on the previews is a real reply and acts on
+that phone's next upcoming appointment, if it has one.

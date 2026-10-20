@@ -1,15 +1,10 @@
 import { createHmac } from "node:crypto";
 import { secretMatches } from "@/lib/auth/secret";
-import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
+import { guestText, whenLabel } from "./messages";
 import { formatSlotLabelSgt, type SlotOffer } from "./slots";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
-
-/**
- * The sender is an automated Cloud API line: no person reads what guests type
- * to it. Anything that needs a human points at the staffed sales line instead.
- */
-export const TALK_TO_TEAM = `message our team on WhatsApp at ${SUPPORT_WHATSAPP_DISPLAY}: ${SUPPORT_WHATSAPP_URL}`;
 
 function phoneNumberId(): string {
   const id = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
@@ -158,8 +153,7 @@ export async function sendMorningOfTemplate(
 export type CancelParams = {
   guestName: string;
   typeLabel: string;
-  /** e.g. "Tue 20 Oct at 5:00 PM". */
-  whenLabel: string;
+  startsAt: string;
   bookingUrl: string;
 };
 
@@ -173,16 +167,7 @@ export async function sendCancelMessage(
   params: CancelParams,
   opts: { within24h: boolean },
 ): Promise<string | null> {
-  if (opts.within24h) {
-    return sendText(
-      e164,
-      [
-        `Hi ${params.guestName}, your ${params.typeLabel} appointment on ${params.whenLabel} has been cancelled.`,
-        `You can rebook here: ${params.bookingUrl}`,
-        `To chat with us, ${TALK_TO_TEAM}`,
-      ].join("\n\n"),
-    );
-  }
+  if (opts.within24h) return sendText(e164, guestText.cancelled(params));
 
   // The first `appointment_cancelled` takes only {{1}} type and {{2}} rebook
   // link, and has no room for the staffed line; v2 adds the guest, the time
@@ -193,7 +178,7 @@ export async function sendCancelMessage(
   const values =
     name === "appointment_cancelled"
       ? [params.typeLabel, params.bookingUrl]
-      : [params.guestName, params.typeLabel, params.whenLabel, params.bookingUrl, SUPPORT_WHATSAPP_URL];
+      : [params.guestName, params.typeLabel, whenLabel(params.startsAt), params.bookingUrl, SUPPORT_WHATSAPP_URL];
   return sendPayload({
     messaging_product: "whatsapp",
     to: toWa(e164),
@@ -224,7 +209,7 @@ export async function sendSlotList(
     interactive: {
       type: "list",
       body: {
-        text: "Please pick a new appointment time:",
+        text: guestText.slotListBody(),
       },
       action: {
         button: "View times",
