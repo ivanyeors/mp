@@ -1,4 +1,4 @@
-# PRD — Customer CRM: notes, timeline, aftercare emails, reviews, segments, follow-ups
+# PRD — Customer CRM: notes, timeline, aftercare messages, reviews, segments, follow-ups
 
 **Status:** specified, not started
 **ADR:** `docs/adr/0027-customer-crm.md` (to be written by slice 01)
@@ -224,11 +224,13 @@ roles.
 4. **Filters never interpolate typed text into a PostgREST `.or()`.**
 5. **Follow-ups are assigned to a Staff profile, not to a login.** Any notice outside the Admin
    Panel (Telegram) carries counts and a link, never customer names or details.
-6. **An Aftercare email is a service message about something the customer bought.** There
+6. **An Aftercare message is a service message about something the customer bought.** There
    are two: the review request and the check-up reminder.
-   - They use the transactional transport and a claim-before-send ledger.
-   - They share their own opt-out, so they never depend on marketing consent.
+   - They go by email and WhatsApp, each channel with its own switch.
+   - They use claim-before-send ledgers.
+   - They never depend on marketing consent.
    - They never carry an offer. Anything promotional belongs to `PRD-email-marketing`.
+   - The check-up always states that the visit is paid, and its fee from Costings.
 7. **The review request goes to every eligible customer alike** (Google's policy).
    - It is once per Customer and never selected by satisfaction.
    - It offers no incentive.
@@ -249,16 +251,24 @@ roles.
     - *Signs in with Google* comes from their sign-in identities, recorded at sign-in.
     - *Mobile replied on WhatsApp* comes from an **Appointment reminder** reply.
     - Staff never tick a "verified" box.
-12. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
+12. **Aftercare switches are per channel, and every change is recorded.**
+    - Email is on unless switched off.
+    - WhatsApp is off until the customer opts in (Meta's rule).
+    - The customer, a WhatsApp STOP, the email link, checkout, or Staff's manual switch (with a
+      note) can change them.
+    - Each change writes who, how and when.
+13. **CRM Telegram updates are a catalogue of types, each with its own switch.** They carry
+    counts, Staff names and links only.
+14. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
    - facts, not statuses;
    - staff-only data off `customers`;
    - append-only events, each keyed by `customer_id` with a timestamp.
 
 ## The parts
 
-Parts 1–6 are the ones the owner approved on 2026-10-19. Parts 7, 8 and 9 were added at the
-owner's request on 2026-10-20, when part 3 also changed from a free re-adjustment reminder to a
-review request.
+Parts 1–6 are the ones the owner approved on 2026-10-19. Parts 7–11 were added at the owner's
+request on 2026-10-20, when part 3 also changed from a free re-adjustment reminder to a review
+request, by email and WhatsApp.
 
 ### 1. Staff notes customers cannot read (slice 02)
 
@@ -288,20 +298,27 @@ The timeline sits on the Customer detail. It draws from:
 
 It shows the newest 50 entries, can load more, and filters by kind.
 
-### 3. Aftercare emails (slices 07, 08)
+### 3. Aftercare messages (slices 07, 08), by email and WhatsApp
 
-- **Slice 07: a review request.** About two weeks after an order is delivered, the customer
-  gets one email.
+- **Slice 07: a review request.** 14 days after an order is delivered, the customer gets one
+  message by email and, if they opted in, by WhatsApp.
+  - The button opens our Google review link, `https://g.page/r/CfdGhvgB1hwUEBM/review` (owner,
+    2026-10-20).
   - It thanks them, asks for a Google review with one button, and then has a short line:
     *"Need anything else — a re-adjustment, a spare cover, or help with your order? Message us
     on WhatsApp…"*.
   - It goes once per Customer, ever, and to everyone eligible alike.
   - The button goes through our own redirect, so we know who opened it.
   - This replaces the free re-adjustment reminder, which the owner dropped on 2026-10-20.
-- **Slice 08: a periodic *"time for a re-adjustment"*** some months after delivery (default 12).
+- **Slice 08: a yearly *"time for a re-adjustment"***, 12 months after delivery.
   - It is a **service message** (owner, 2026-10-20), under the same rules: no offer, the same
-    opt-out, once per milestone per Order.
-  - Its timing and which pillows it covers are owner decision 2.
+    switches, once per milestone per Order.
+  - **It says the visit is paid**, with the fee read from Costings at send time (S$30 today).
+    If the fee cannot be read, it is not sent.
+  - Which pillows it covers is owner decision 1. The default is every Mpillow and Mbolster.
+- **Turning them off** (slice 13). The customer can do it from their Profile, from the email's
+  *Stop these emails* link, by replying STOP on WhatsApp, or at checkout. Staff can do it with a
+  manual switch on the Customer page.
 
 ### 4. Saved segments (slices 04, 05)
 
@@ -325,7 +342,7 @@ things:
   re-implements the filters.
 - **History.** Every campaign send is a timeline entry, through an adapter on
   `customer_campaign_sends` (migration slice 08).
-- **A boundary.** Aftercare emails (part 3) stay in the CRM as service messages. Newsletters,
+- **A boundary.** Aftercare messages (part 3) stay in the CRM as service messages. Newsletters,
   offers and promotional flows belong to email marketing.
 
 No CRM slice builds a Campaigns page, a composer, or a marketing send.
@@ -340,8 +357,8 @@ No CRM slice builds a Campaigns page, a composer, or a marketing send.
 - **Reminders.**
   - A sidebar badge counts what is due today and overdue for the current profile, following
     the Results badge.
-  - A morning digest goes to the Staff Telegram group, chained onto `results-sla`. It carries
-    counts per Staff profile and a link, and no customer details.
+  - Telegram updates about follow-ups are types in part 11's catalogue, each with its own
+    switch.
 - **Who sees what.** Everyone who can see Customers sees every follow-up (owner, 2026-10-20).
   Creating, completing and reassigning need `customers-edit` (part 8).
 
@@ -355,8 +372,8 @@ Staff see whether a customer's email and mobile are "linked up":
 - **Mobile:** whether a number is on file, whether it is a valid Singapore mobile, whether it
   has ever replied to a WhatsApp appointment reminder, and any other numbers seen on their
   bookings and Results.
-- **Reminders:** aftercare emails on or off, marketing consent (once migration slice 07
-  lands), and bounces (once migration slice 08 records them).
+- **Aftercare:** the email and WhatsApp switches, with their last change, plus marketing
+  consent (once migration slice 07 lands) and bounces (once migration slice 08 records them).
 
 The list gains matching filters, such as *email not verified* or *mobile missing*. Every status
 comes from a fact, never from a box Staff tick.
@@ -389,6 +406,38 @@ The owner added this on 2026-10-20.
   replied), their shop reviews, and when we asked.
 - **The Google side needs the Google review sync live.** Until then the column shows *Asked*
   and *Clicked* only.
+
+### 10. Aftercare switches and WhatsApp (slice 13)
+
+- **Two switches per Customer:** *Aftercare by email* (on by default) and *Aftercare by
+  WhatsApp* (off until they opt in).
+- **The manual switch.** Staff can flip either on the Customer page, for example when a
+  customer asks on WhatsApp to stop. A note records why, and turning WhatsApp on requires a
+  note saying how the customer agreed.
+- **Customers can change them themselves:**
+  - in their Profile;
+  - with the email's *Stop these emails* link;
+  - by replying STOP or START on WhatsApp;
+  - with an unticked opt-in checkbox at checkout.
+- **WhatsApp** sends through the existing utility sender, using two templates that Meta must
+  approve (HITL). It follows the partner WhatsApp alerts: email always goes, and WhatsApp is
+  added on top when allowed.
+
+### 11. Telegram updates (slice 14)
+
+A catalogue of update types the CRM can post to the Staff group, each with its own switch on
+the Customers page, plus *Send test*. The proposal, for the owner to confirm:
+
+- **Daily:**
+  - follow-ups due;
+  - Google reviews to match;
+  - aftercare sent;
+  - aftercare turned off;
+  - new sign-ups.
+- **Instant:** a follow-up assigned.
+- **Weekly:** a summary.
+
+Every update carries counts, Staff names and a link, never a customer's details.
 
 ## User stories
 
@@ -438,15 +487,25 @@ The owner added this on 2026-10-20.
     link one by hand. Nothing is linked without me.
 23. As Staff, I can filter and save Segments by review status, such as *reviewed 5★ on Google*.
 24. As a pillow owner, about a year after delivery, I get one check-up reminder that a
-    re-adjustment would help, with the fee stated plainly.
+    re-adjustment would help, and it tells me plainly that it is a paid visit and what it costs.
+25. As a customer who asks to stop the reminders, Staff switch them off for me, and I get none
+    after that.
+26. As a customer, I can stop aftercare messages myself: from my Profile, from the email's
+    link, or by replying STOP on WhatsApp.
+27. As a customer, I only get aftercare on WhatsApp if I said yes to it: at checkout, in my
+    Profile, by replying START, or by telling Staff.
+28. As Staff, I see each Customer's aftercare switches with who changed them, how and when.
+29. As the owner, I choose which kinds of CRM update the Telegram group gets, and switch each
+    one on or off.
+30. As the owner, I can send a test of the updates I have switched on before relying on them.
 
 ## Non-goals
 
 - **Marketing email of any kind**, which belongs to `PRD-email-marketing`. That includes
   newsletters, offers, campaigns and promotional automations.
-- **WhatsApp or SMS outreach from the CRM.** Do Not Call duties apply, and the WhatsApp channel
-  is for **Appointment reminders**. Sending aftercare emails by WhatsApp as well is owner
-  decision 4; it is not built until decided.
+- **WhatsApp or SMS marketing from the CRM.** Do Not Call duties apply. WhatsApp carries only
+  Aftercare messages, and only to customers who opted in (slice 13). Nothing promotional goes
+  by WhatsApp.
 - **Linking Google reviews automatically.** A name is not an identity (decision 8).
 - **Asking only happy customers for a review**, or rewarding a review. Both are against
   Google's policy (decision 7).
@@ -473,9 +532,12 @@ The owner added this on 2026-10-20.
 | A review request goes out before the pillow arrives | Real if timed from payment | Timed from `delivered_at`, after a set number of days. Orders never marked delivered are counted on the Aftercare card, not emailed. |
 | The review request counts as review gating | Real if the copy steers unhappy customers away, or if candidates are filtered by satisfaction | Everyone eligible is asked alike; the "reach us" line is unconditional; no incentive. A check asserts the candidate query never reads review or return data. The owner reads the copy against Google's policy. |
 | A Google review is linked to the wrong Customer | Real: names collide | Suggestions only, never automatic. Staff confirm, can unlink, and rejected pairs are never suggested again. |
-| Aftercare email is treated as spam | Low for one review request per Customer and one check-up per milestone | No offer, transactional transport, its own opt-out. Counsel reads the final copy once. |
+| An aftercare message is treated as spam | Low for one review request per Customer and one check-up per milestone | No offer, transactional transport, a switch per channel. Counsel reads the final copy once. |
+| A WhatsApp message goes to someone who never agreed | Real if Staff switch it on casually | WhatsApp is off by default. Turning it on needs the customer's own action, or a Staff note recording that they agreed. Every change is an event. |
+| Meta classes a template as Marketing | Possible for a review request or a paid-visit check-up | A higher per-message cost, and opted-in people only, which our opt-in covers. The category is recorded at approval (slice 13), and email still goes either way. |
+| A STOP reply is missed | Real if only Staff read the WhatsApp inbox | The webhook handles STOP and START itself and replies to confirm (slice 13). |
 | A mail scanner "clicks" the review link | Common with Outlook Safe Links | A click is a hint that strengthens a match, never proof of a review. |
-| Telegram leaks customer data to a group | Certain if names are posted | Counts and a link only (decision 5). |
+| Telegram leaks customer data to a group | Certain if names are posted | Counts, Staff names and a link only (decisions 5 and 13). A test scans every update type's output for fixture customer names and emails (slice 14). |
 | The Hobby cron runs late (about ±1 hour) | Known | Reminders and digests are day-granular. |
 
 ## Success criteria
@@ -497,14 +559,13 @@ The owner added this on 2026-10-20.
 
 ## Open decisions for the owner
 
-1. **Review request timing:** how many days after delivery (default 14), and the Google
-   review link to use (the *Ask for reviews* link from Google Business Profile).
-2. **The periodic check-up (slice 08):** its timing (default 12 months after delivery), and
-   which pillows it covers (Premium only, every Mpillow, or Mbolster too).
-3. **The Telegram digest:** on or off (default on, counts only).
-4. **WhatsApp for aftercare emails:** should the review request or check-up also go by
-   WhatsApp when the mobile has replied before? This needs a Meta-approved utility template and the customer's WhatsApp
-   opt-in.
+1. **Which pillows the yearly check-up covers:** Premium only, every Mpillow, or Mbolster too.
+   The default is every Mpillow and Mbolster.
+2. **The Telegram update catalogue (slice 14):** which types to keep, cut or change, and each
+   one's default.
+
+HITL, not decisions: the owner approves the email and WhatsApp copy, and submits the two
+WhatsApp templates to Meta (slice 13).
 
 **Decided** (owner, 2026-10-20):
 
@@ -515,3 +576,9 @@ The owner added this on 2026-10-20.
 - **No email about the free re-adjustment window.** Instead, a Google review request after
   delivery, with a short "reach us if you need anything else" line (slice 07).
 - **Each Customer shows their reviews** (slice 12).
+- **The review request goes 14 days after delivery,** to `https://g.page/r/CfdGhvgB1hwUEBM/review`.
+- **The yearly check-up says it is a paid visit,** with the fee from Costings.
+- **Both email and WhatsApp,** with a manual switch for Staff to turn a customer's reminders
+  off (slice 13).
+- **The Telegram updates are in scope,** as a catalogue of switchable types for the owner to
+  define (slice 14).

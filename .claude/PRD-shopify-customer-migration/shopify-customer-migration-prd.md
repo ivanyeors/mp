@@ -405,10 +405,12 @@ order that helps the relationship most:
    fix for the live `customers.notes` exposure (see Risks). Everything else leans on this.
 2. **One timeline on the Customer detail**, newest first: orders, Results, re-adjustment
    bookings, returns, reviews, emails sent, consent changes and notes.
-3. **Aftercare emails** (service messages, owner 2026-10-20):
-   - one Google review request after delivery, with a short *"need anything else? message us"*
-     line;
-   - a yearly re-adjustment check-up.
+3. **Aftercare messages** by email and WhatsApp (service messages, owner 2026-10-20):
+   - one Google review request 14 days after delivery, with a short *"need anything else?
+     message us"* line;
+   - a yearly re-adjustment check-up that states the fee.
+
+   Staff have a manual switch to turn them off.
 
    There is no email about the free re-adjustment window.
 4. **Saved segments.** A named filter on the Customers list, such as *Premium, bought over a year
@@ -423,7 +425,8 @@ Added on 2026-10-20:
 
 - a view-only Customers permission;
 - contact and sign-in status, showing whether the email and mobile are linked up;
-- reviews on every Customer: shop reviews exactly, and Google reviews by Staff-confirmed match.
+- reviews on every Customer: shop reviews exactly, and Google reviews by Staff-confirmed match;
+- a catalogue of CRM Telegram updates, each switchable.
 
 Out of scope even then: WhatsApp and SMS marketing (Do Not Call duties), and scoring or
 predictions.

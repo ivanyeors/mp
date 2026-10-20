@@ -1,7 +1,7 @@
 # 06 — Follow-ups assigned to Staff profiles
 
 **Type:** AFK
-**Blocked by:** 03, 10; owner decision 3 (the digest)
+**Blocked by:** 03, 10
 **User stories:** 7, 8
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`, `area:db`
 
@@ -59,18 +59,11 @@ create index on customer_followups (customer_id, created_at desc);
 - **Audit.** Create, done, reassign and delete each write `recordAdminAction`, with ids and no
   title text.
 
-## The morning digest
+## Telegram
 
-- **When.** It is chained onto `results-sla`, after its other jobs. There is no third cron
-  (ADR 0027 g).
-- **What it says.** It posts to the Staff Telegram group through `lib/telegram/notify.ts`:
-  > Follow-ups today: Ivan 2 (1 overdue) · Mei 1 — {link to the Follow-ups tab}
-- **No customer data.** No customer names, titles or details. The group is a shared chat
-  (ADR 0027 e).
-- **No double posts.** At most one post per Singapore date, guarded by a compare-and-set on a
-  `crm_followup_digest_last_sent_on` site setting, so a manual re-run of the cron does not post
-  twice.
-- **A switch.** `crm_followup_digest_enabled` (owner decision 3; on by default).
+Follow-up updates on Telegram are types 1 (*Follow-ups due*, daily) and 2 (*Follow-up
+assigned*, instant) of slice 14's catalogue. Each has its own switch. This slice only exposes
+the counts they need: `followUpCounts(dateSgt)` per Staff profile.
 
 ## Acceptance criteria
 
@@ -79,7 +72,5 @@ create index on customer_followups (customer_id, created_at desc);
       profiles are not in the assignee picker.
 - [ ] *Overdue* means `due_on` is before today in Singapore, tested across midnight SGT.
 - [ ] An archived assignee's open follow-ups stay visible and can be reassigned.
-- [ ] Running the digest twice on one date posts once. The post contains no customer name or
-      title.
 - [ ] Follow-ups appear on the timeline.
 - [ ] `./scripts/graphify update .` is run in the same commit.

@@ -1,7 +1,7 @@
 # 09 — Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests
 
 **Type:** HITL
-**Blocked by:** 02, 03, 05, 06, 07, 10, 11, 12
+**Blocked by:** 02, 03, 05, 06, 07, 10, 11, 12, 13, 14
 **User stories:** all
 **Labels:** `ops`, `needs-triage`, `P2`, `area:customers`
 
@@ -27,6 +27,11 @@
    - Check one real request in the owner's inbox (or a Staff test order): it renders, the
      button opens Google's review form, the WhatsApp line opens the support chat, and it is not
      in spam.
+   - Once Meta has approved the WhatsApp templates (slice 13), send the WhatsApp version to the
+     owner's own opted-in number. Check that the button opens the review form, then reply STOP:
+     the switch turns off and the reply confirms. Reply START to turn it back on. Record the
+     category Meta gave each template.
+   - Flip one test Customer's switches from the Admin Panel, and check the history line.
 4. **After 30 days, record:**
    - requests sent;
    - links opened;
@@ -36,7 +41,8 @@
 5. **Match the first Google reviews.** If the Google review sync is live, work through
    *Google reviews to match* once. Record how many had a correct suggestion, as the measure of
    whether the matching rules need tuning.
-6. **Confirm the Telegram digest** posted once a day with counts only.
+6. **Telegram updates.** Choose the types on the Telegram updates card (slice 14), press
+   *Send test*, then confirm that a week of real posts went out on schedule with counts only.
 
 ## Acceptance criteria
 

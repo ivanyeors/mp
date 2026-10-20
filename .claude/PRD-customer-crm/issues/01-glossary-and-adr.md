@@ -40,13 +40,15 @@ done or not done.
 _Avoid_ — "task" or "ticket". It is not a support queue. Do not assign it to a **Member** or a
 login: a person works as a profile.
 
-**Aftercare email** — a service email about something the **Customer** bought. There are two:
+**Aftercare message** — a service message, by email and WhatsApp, about something the
+**Customer** bought. There are two:
 
-- the **Review request**, once per Customer, some days after delivery;
-- the **Check-up reminder**, once per milestone per Order.
+- the **Review request**, once per Customer, 14 days after delivery;
+- the **Check-up reminder**, yearly, stating that the visit is paid and its fee.
 
-Both use the transactional transport, honour the `aftercare_emails` opt-out, and never carry
-an offer.
+Email uses the transactional transport and is on unless switched off (`aftercare_email`).
+WhatsApp is off until the customer opts in (`aftercare_whatsapp`). Every change is recorded
+with who made it and how. Neither ever carries an offer.
 _Avoid_ — calling it marketing, or gating it on **Marketing consent** (migration PRD).
 Anything promotional belongs to `PRD-email-marketing`. There is no email about the free
 re-adjustment window (owner, 2026-10-20).
@@ -86,9 +88,10 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
 - **(d) No typed text goes into a PostgREST `.or()` filter.**
 - **(e) Follow-ups are assigned to Staff profiles.** A notice outside the Admin Panel carries
   counts and a link only.
-- **(f) An Aftercare email is a service message.** It uses the transactional transport, a
-  claim-before-send ledger (`customer_review_requests`, `order_emails`), the `aftercare_emails`
-  opt-out, and no offer. The Review request goes to every eligible Customer alike, once, with no
+- **(f) An Aftercare message is a service message.** It uses the transactional email
+  transport and the utility WhatsApp sender, claim-before-send ledgers
+  (`customer_review_requests`, `order_emails`, `customer_whatsapp`), per-channel switches, and
+  no offer. The Review request goes to every eligible Customer alike, once, with no
   incentive (Google's policy). There is no free-window reminder (owner, 2026-10-20).
 - **(g) No third cron.** CRM jobs chain onto `results-sla` (ADR 0006's precedent).
 - **(h) The CRM sends no marketing.** It hands Segments and timeline history to
@@ -101,11 +104,19 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
   replies, never from a Staff-set flag.
 - **(k) A Google review is linked to a Customer only by Staff confirmation.** The code
   suggests, and a person decides. Review data never selects who receives a Review request.
+- **(l) Aftercare preferences are per channel, and every change is an event.** Email
+  defaults on and WhatsApp defaults off (Meta's opt-in rule, following the partners'
+  `notify_whatsapp`). Five sources can change them: the customer's Profile, checkout, the email
+  link, a WhatsApp STOP or START, and Staff's manual switch with a note. One SQL function writes
+  the column and the event together.
+- **(m) CRM Telegram updates come from a catalogue of types, each switchable.** Counts, Staff
+  names and links only. Scheduled types go at most once per period, and instant types never
+  block their write.
 
 ## Acceptance criteria
 
 - [ ] `CONTEXT.md` carries the eight terms above with `_Avoid_` lines.
-- [ ] `docs/adr/0027-customer-crm.md` records (a)–(k). It links ADR 0026 (the Customer overview
+- [ ] `docs/adr/0027-customer-crm.md` records (a)–(m). It links ADR 0026 (the Customer overview
       and the "facts, not statuses" rule), ADR 0024 (the re-adjustment rule) and ADR 0006
       (cron chaining).
 - [ ] `./scripts/graphify update .` is run in the same commit.
