@@ -26,7 +26,6 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
-import { InfoTip } from "@/components/ui/info-tip";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -145,17 +144,7 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-                  <InfoTip label="About Customers">
-                    <p>Browse and manage your customer accounts.</p>
-                  </InfoTip>
-                </div>
-            </div>
-
-            {/* Toolbar */}
+            {/* Toolbar (the page header and tabs are CustomersPageTabs') */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
