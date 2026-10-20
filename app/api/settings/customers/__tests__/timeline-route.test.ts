@@ -6,7 +6,9 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * its emails, a guest Result matched by email in another case and padded, a
  * Paired build, a booking, a return, a review and notes. Every event shows, in
  * order, each kind only to a role holding its source's permission, and no
- * Result of another Customer whose email merely contains this one's.
+ * Result of another Customer whose email merely contains this one's. Since the
+ * merge with CRM 13 and migration 05, also aftercare switches and the account
+ * (imported, Claimed, Welcome-back voucher).
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -40,6 +42,7 @@ const RMA = "0c000000-0000-4000-8000-000000000001";
 const REVIEW = "0d000000-0000-4000-8000-000000000001";
 const NOTE = "0a000000-0000-4000-8000-000000000001";
 const LEGACY_NOTE = "0a000000-0000-4000-8000-000000000002";
+const VOUCHER = "0c000000-0000-4000-8000-0000000000a1";
 
 const OWNER = "00000000-0000-4000-8000-0000000000b1";
 const NO_ORDERS = "00000000-0000-4000-8000-0000000000b2";
@@ -147,6 +150,21 @@ beforeEach(() => {
       { id: LEGACY_NOTE, customer_id: MEI, body: "old box", author_profile_id: null, author_user_id: null, created_at: t("04-01T00:00"), deleted_at: null },
       { id: "gone", customer_id: MEI, body: "Deleted", author_profile_id: JESS, author_user_id: "auth-owner", created_at: t("09-25T00:00"), deleted_at: t("09-26T00:00") },
     ],
+    // CRM 13: every switch change is an event.
+    customer_preference_events: [
+      { id: 1, customer_id: MEI, preference: "aftercare_whatsapp", to_value: true, source: "staff", changed_by_profile_id: JESS, note: "Agreed on the phone.", wording: null, created_at: t("09-25T05:00") },
+      { id: 2, customer_id: MEI, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-25T00:00") },
+      { id: 3, customer_id: KIM, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-26T00:00") },
+    ],
+    // Migration 02 and 05: imported, Claimed, and the voucher the Claim issued in the same transaction.
+    migrated_customers: [
+      { customer_id: MEI, created_by_import: false, imported_at: t("03-01T00:00"), claimed_at: t("06-15T00:00") },
+      { customer_id: KIM, created_by_import: true, imported_at: t("03-01T00:00"), claimed_at: null },
+    ],
+    coupons: [
+      { id: VOUCHER, code: "WB-SECRETCODE", customer_id: MEI, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 1, expires_at: t("08-14T00:00"), created_at: t("06-15T00:00") },
+      { id: "coupon-kim", code: "WB-KIMS", customer_id: KIM, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 0, expires_at: null, created_at: t("06-16T00:00") },
+    ],
   };
 });
 
@@ -169,6 +187,7 @@ async function page(id = MEI, query = "") {
 /** Every event on Mei's timeline, newest first, for a role that holds every key. */
 const EVERYTHING = [
   `note.added:${NOTE}`,
+  "aftercare.turned_on:1",
   "readjustment.attended:au-2",
   `readjustment.booked:${BOOKING}`,
   "return.status_changed:ev-2",
@@ -179,15 +198,20 @@ const EVERYTHING = [
   "order.email_sent:em-1",
   `order.paid:${O1}`,
   `order.placed:${O1}`,
+  "aftercare.turned_off:2",
   `result.build_sent:${GUEST}`,
   `result.created:${GUEST}`,
   `result.balance_paid:${ANCHOR}`,
   `result.build_sent:${ANCHOR}`,
   `result.created:${ANCHOR}`,
+  // Same instant (one transaction): ties go by kind.
+  `account.claimed:${MEI}`,
+  `account.voucher_issued:${VOUCHER}`,
   `result.created:${DECLINED}`,
   "result.cancelled:au-1",
   `result.created:${CANCELLED}`,
   `note.added:${LEGACY_NOTE}`,
+  `account.imported:${MEI}`,
 ];
 
 describe("GET /api/settings/customers/[id]/timeline", () => {
@@ -197,7 +221,9 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.entries.map((e) => e.id)).toEqual(EVERYTHING);
     expect(body.next).toBeNull();
     expect(body.unavailable).toEqual([]);
-    expect(body.groups.map((g) => g.key)).toEqual(["orders", "results", "readjustments", "returns", "reviews", "notes"]);
+    expect(body.groups.map((g) => g.key)).toEqual([
+      "orders", "results", "readjustments", "returns", "reviews", "aftercare", "account", "notes",
+    ]);
   });
 
   it("says what happened in one line, links what has a page, and keeps a note in full", async () => {
@@ -213,6 +239,13 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`review.submitted:${REVIEW}`)).toMatchObject({ summary: "Shop review: 5★ on Mpillow", status: "approved" });
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
     expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
+    expect(byId.get("aftercare.turned_on:1")).toMatchObject({ summary: "Aftercare WhatsApp turned on by Jess", detail: "Agreed on the phone." });
+    expect(byId.get("aftercare.turned_off:2")?.summary).toBe("Aftercare email turned off by the customer");
+    expect(byId.get(`account.imported:${MEI}`)?.summary).toBe("Imported from Shopify, matched to this Customer");
+    expect(byId.get(`account.claimed:${MEI}`)?.summary).toBe("Claimed: first sign-in since the import");
+    // A coupon stores no time it was used: that is its pill. Its code is never shown.
+    expect(byId.get(`account.voucher_issued:${VOUCHER}`)).toMatchObject({ summary: "Welcome-back voucher issued", status: "used" });
+    for (const e of byId.values()) expect(JSON.stringify(e)).not.toContain("WB-SECRETCODE");
     // No customer email in any line.
     for (const e of byId.values()) expect(e.summary.toLowerCase()).not.toContain("mei@x.test");
   });
@@ -258,11 +291,13 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.groups.map((g) => g.key)).not.toContain("results");
   });
 
-  it("shows a customers-only role the Customer's own facts: reviews and notes", async () => {
+  it("shows a customers-only role the Customer's own facts: reviews, aftercare, account and notes", async () => {
     signIn(CRM_ONLY);
     const body = await page();
-    expect(body.entries.map((e) => e.kind)).toEqual(["note.added", "review.submitted", "note.added"]);
-    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "notes"]);
+    expect(body.entries.map((e) => e.id)).toEqual(
+      EVERYTHING.filter((id) => /^(note|review|aftercare|account)\./.test(id)),
+    );
+    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "account", "notes"]);
   });
 
   it("narrows to the kind groups asked for, among those the viewer may see", async () => {

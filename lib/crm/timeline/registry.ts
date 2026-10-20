@@ -1,3 +1,5 @@
+import { accountAdapter } from "@/lib/crm/timeline/sources/account";
+import { aftercareAdapter } from "@/lib/crm/timeline/sources/aftercare";
 import { notesAdapter } from "@/lib/crm/timeline/sources/notes";
 import { orderEmailsAdapter, ordersAdapter } from "@/lib/crm/timeline/sources/orders";
 import { readjustmentsAdapter } from "@/lib/crm/timeline/sources/readjustments";
@@ -11,9 +13,9 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
  * The timeline is merged when it is read from the tables that already record
  * each fact: nothing is copied, so a new source needs no backfill.
  *
- * HOW TO ADD A SOURCE (CRM 06 follow-ups, 07 review requests, 08 check-ups,
- * 12 reviews, 13 aftercare preference events; migration 02 imported, 05
- * claimed and voucher, 07 consent, 08 campaign sends, 12 signed up):
+ * HOW TO ADD A SOURCE (still to come: CRM 06 follow-ups, 07 review requests,
+ * 08 check-ups, 12 reviews; migration 07 consent, 08 campaign sends, 12 signed
+ * up, in the Account group):
  *
  * 1. Write `sources/<name>.ts` exporting one `TimelineAdapter`:
  *    - `group`: one from `groups.ts`, or a new one added there (a new chip);
@@ -40,5 +42,7 @@ export const TIMELINE_ADAPTERS: readonly TimelineAdapter[] = [
   readjustmentsAdapter,
   returnsAdapter,
   reviewsAdapter,
+  aftercareAdapter,
+  accountAdapter,
   notesAdapter,
 ];

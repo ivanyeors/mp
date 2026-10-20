@@ -12,3 +12,6 @@ export const READJUSTMENTS_GROUP: TimelineGroup = { key: "readjustments", label:
 export const RETURNS_GROUP: TimelineGroup = { key: "returns", label: "Returns" };
 export const REVIEWS_GROUP: TimelineGroup = { key: "reviews", label: "Reviews" };
 export const NOTES_GROUP: TimelineGroup = { key: "notes", label: "Notes" };
+export const AFTERCARE_GROUP: TimelineGroup = { key: "aftercare", label: "Aftercare" };
+/** The Customer's account: imported from Shopify, Claimed, the Welcome-back voucher (migration PRD). */
+export const ACCOUNT_GROUP: TimelineGroup = { key: "account", label: "Account" };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+    BellRing,
     Clock,
     History,
     Loader2,
@@ -13,6 +14,7 @@ import {
     Star,
     StickyNote,
     Undo2,
+    UserCheck,
     type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +40,8 @@ const GROUP_ICONS: Record<string, LucideIcon> = {
     readjustments: RefreshCw,
     returns: Undo2,
     reviews: Star,
+    aftercare: BellRing,
+    account: UserCheck,
     notes: StickyNote,
 };
 
