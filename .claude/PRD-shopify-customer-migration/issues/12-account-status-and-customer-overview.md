@@ -45,11 +45,18 @@ alter table customers
   - Failures are swallowed, as `recordAdminAction` does, so it never blocks a page.
   - It means *the last time they opened an account page while signed in*, not the last site
     visit, and the UI labels it that way.
-- **Not used:** `auth.users.last_sign_in_at`. Reading it would mean joining `auth.users` into a
-  view or calling `supabase.auth.admin.*`. The README's second hazard rules out the second, and
-  the first is a Supabase security lint.
+- **Not used for this:** `user.last_sign_in_at`. It is on the session user, and
+  `lib/auth/partner.ts:110` reads it that way, but it records sign-ins, not visits: a customer
+  whose session lasts a month shows a month-old date however often they come back.
+  `account_last_seen_at` records visits. Storing `last_sign_in_at` would still need no
+  `auth.users` join and no `supabase.auth.admin.*` call.
 
 ## The Customer overview
+
+The Customer **detail** page reads `customers` directly through `getAdminCustomer`
+(`lib/ecommerce/admin/customers.ts:79`), not through the list. Moving `listAdminCustomers` onto
+the view does not reach it, so the detail page's Account card reads the same columns itself.
+
 
 ```sql
 create view admin_customer_overview with (security_invoker = true) as

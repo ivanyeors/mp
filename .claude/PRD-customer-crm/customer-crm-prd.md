@@ -1,6 +1,7 @@
 # PRD — Customer CRM: notes, timeline, aftercare messages, reviews, segments, follow-ups
 
 **Status:** specified, not started
+**Audited:** 2026-10-20 against `main` @ `48c643f`: every code reference re-checked after the paired-build and WhatsApp merges (#258–#262), plus research on Meta's template rules, Singapore's Spam Control Act and PDPA, and Google's review policy.
 **ADR:** `docs/adr/0027-customer-crm.md` (to be written by slice 01)
 **Builds on:** `PRD-shopify-customer-migration`, slice 12 (`admin_customer_overview`) and its
 *Toward a simple CRM* section, which this PRD replaces as the source of truth.
@@ -67,7 +68,7 @@ platform already records, not from a second copy of them.
 |---|---|---|---|
 | `orders` (`0028:384`) | `customer_id` | `created_at`, `paid_at`, `shipped_at`, `delivered_at`, `cancelled_at`, `refund_requested_at` | list only (needs `orders`) |
 | `order_emails` (`0035_order_emails.sql:10`) | via `order_id` | `created_at`, status | no |
-| `mp_config_responses`, the **Results** (`0023:6`) | `customer_id` **or** `customer_email`, with no FK (`0045_result_customer_access.sql:4-5`) | `created_at`, status changes | no |
+| `mp_config_responses`, the **Results** (`0023:6`) | `customer_id` **or** `customer_email`, with no FK (`0045_result_customer_access.sql:4-5`) | `created_at`, `assigned_at`, `topup_paid_at` only. A status change has no time of its own (`updated_at` moves on every reminder write); acceptance is dated by its **Order** | no |
 | `readjustment_bookings` (`20261013120000:10`) | `customer_id` (NOT NULL) | `start_at`, `created_at`, status | no |
 | `rma_requests` and `rma_status_events` (`20260723120000:23,54`) | `customer_id` | `created_at`, each status change | no |
 | `product_reviews` (`0028:498`) | `customer_id` | `created_at`, status | no |
@@ -82,14 +83,17 @@ Planned in the migration PRD:
 
 Ruled out:
 
-- customisation appointments, which live only in Google Calendar;
-- `appointment_reminders`, which has no customer link (`20260709120000:2`);
+- customisation appointments: their `appointment_reminders` rows carry a phone and a name, but no
+  Customer link (`20260709120000:2`). A re-adjustment's reminder does reach its Customer, through
+  `readjustment_bookings.calendar_event_id`, and that booking is already a source;
 - journey analytics (ADR 0007's consent boundary);
 - `shopify_orders`, which has no customer fields.
 
-**Results are matched the way the storefront matches them.** That means `customer_id`, or the
-email when no id is set (`lib/results/access.ts:9-37`). A timeline that joins only on
-`customer_id` would miss guest Results.
+**Results are matched the way the storefront matches them** (`lib/results/access.ts:30-36`):
+`customer_id` equal, **or** the lower-cased emails equal, even when `customer_id` is set. A
+timeline that joins only on `customer_id` would miss guest Results. A paired build is two
+Results with the same customer and email (`paired_build_id`, `20261020004221`), and the
+timeline shows them as one entry.
 
 **Each source sits behind its own permission.** The keys are `orders`, `results`, `returns`
 and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already needs
@@ -123,8 +127,9 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
   - A Google review carries only the reviewer's display name, a photo and an anonymous flag,
     never an email (`lib/google/business-profile.ts:28`). So it can be matched to a Customer
     only by name and timing, with a person confirming.
-  - The sync needs Google's approval of API access, which may still be pending
-    (`.claude/PRD-google-review-replies/OPS-CHECKLIST.md`, steps 1–2).
+  - The sync needs Google's approval of API access, which may still be pending, plus the
+    refresh token and location (`.claude/PRD-google-review-replies/OPS-CHECKLIST.md`, steps
+    1–4). Pub/Sub (step 6) only makes it real-time.
 - **Nothing in the code links to Google's review form.** No "write a review" URL exists
   anywhere.
 - **The staffed support number** lives in `lib/contact.ts` (`SUPPORT_WHATSAPP_URL`,
@@ -134,7 +139,7 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
   alike.
 - **Delivery is not always recorded.** `delivered_at` is written by the Easyship "Delivered"
   event, by a manual status change, and at an in-store handover (`lib/ecommerce/fulfilment.ts:75-98`;
-  `app/api/results/[id]/accept/route.ts:334-337`). It stays null when Easyship webhooks are not
+  `app/api/results/[id]/accept/route.ts:487-489`). It stays null when Easyship webhooks are not
   configured, or when Staff ship without marking the order delivered. Any email timed from
   delivery depends on it.
 - **Booking needs Sign in.** `/appointments?type=readjustment&item=…` already sends a
@@ -148,12 +153,13 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
   `/api/cron/results-sla`. A test asserts there are exactly two
   (`lib/shopify/order-mirror-catchup.check.ts:24`).
   - New jobs chain onto `results-sla`, which already runs six other jobs
-    (`app/api/cron/results-sla/route.ts:404-464`; ADR 0006).
+    (`app/api/cron/results-sla/route.ts:455-515`; ADR 0006).
 - **Staff profiles.** A **Staff profile** (`mp_staff`) has a name and its **Member**, and no
   email or phone (`20261004110000_staff_profiles.sql:19-21`).
   - "Working as" is attribution only, never authorisation (`lib/staff/working-as.ts:9`).
-  - The only business row that points at a profile today is
-    `mp_config_responses.measured_by_staff_id` (`0025_staff_management.sql:40-57`).
+  - Few rows point at a profile today: `mp_config_responses.measured_by_staff_id`
+    (`0025_staff_management.sql:40-57`), `telegram_operators.staff_profile_id`
+    (`20261004130000:25`) and `admin_audit_log.actor_profile_id` (`20261004140000:10`).
 - **Telegram.** Notices go to one shared group chat (`lib/telegram/notify.ts:11,38-53`). There
   are no direct messages to a profile.
 - **The Admin Panel has no inbox.** The one live signal is the sidebar Results badge
@@ -168,12 +174,16 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
   Whether Google is linked is visible only on the signed-in user's `identities`
   (`app/[lang]/account/page.tsx:38`), and nothing stores it for Staff.
 - **Mobile.** There is no mobile sign-in, so no number is ever verified by sign-in.
-  - Numbers come from checkout and the Profile (`customers.phone`), and from bookings and Results
-    (their own phone snapshots).
-  - A WhatsApp **Appointment reminder** records the guest's reply (`appointment_reminders`,
-    `20260709120000:11-20`). That reply is the one proof that a number reaches a person. It is
-    keyed by phone, with no Customer link; `phonesMatch` (`lib/appointments/contacts.ts:55`)
-    matches it.
+  - `customers.phone` is written at checkout (`findOrCreateCustomer`,
+    `app/api/shop/checkout/route.ts:652`). The Profile only shows it
+    (`app/[lang]/account/page.tsx:37,59-61`); the addresses page edits `customer_addresses.phone`.
+    Bookings and Results carry their own phone snapshots.
+  - Since 2026-10-20 every WhatsApp message a person sends to the utility sender is recorded in
+    `whatsapp_inbound` (phone, kind, outcome, `received_at`; never the text;
+    `20261020024120`). That is the proof a number reaches a person on WhatsApp. It is keyed by
+    phone, with no Customer link; `phonesMatch` (`lib/appointments/contacts.ts:55`) matches it.
+  - A send that failed leaves `appointment_reminders.last_error` (`20261019152211`), a sign that
+    a number does not reach anyone.
 
 ### 7. One key covers seeing and changing Customers
 
@@ -228,9 +238,14 @@ roles.
    are two: the review request and the check-up reminder.
    - They go by email and WhatsApp, each channel with its own switch.
    - They use claim-before-send ledgers.
-   - They never depend on marketing consent.
-   - They never carry an offer. Anything promotional belongs to `PRD-email-marketing`.
+   - The review request never depends on marketing consent.
+   - They never carry a discount or another product. Anything promotional belongs to
+     `PRD-email-marketing`.
    - The check-up always states that the visit is paid, and its fee from Costings.
+   - **The check-up needs consent** (research, 2026-10-20). Offering a paid visit is direct
+     marketing under the PDPA, and Meta classes it as Marketing. Its email goes only to
+     Customers with Marketing consent `subscribed`, and its WhatsApp only to those whose
+     opt-in wording names it. The owner may relax the email rule if counsel advises (slice 08).
 7. **The review request goes to every eligible customer alike** (Google's policy).
    - It is once per Customer and never selected by satisfaction.
    - It offers no incentive.
@@ -257,12 +272,15 @@ roles.
     - Only two things change them: the customer in their own Profile, once signed in, and
       Staff's manual switch, with a note (owner, 2026-10-20).
     - A WhatsApp *STOP* becomes an open request for Staff, and pauses WhatsApp until they act.
+    - Every email also says *"or reply to this email and we'll do it for you"*, which is the
+      unsubscribe address Singapore's Spam Control Act asks for.
+    - Turning WhatsApp on stores the exact opt-in wording, as evidence of consent.
     - Each change writes who, how and when.
 13. **Telegram updates are four types, each with its own switch** (owner, 2026-10-20): new
     online Result to review, Google reviews to match, new sign-ups, and a weekly summary.
     - The CRM's own types carry counts, Staff names and links only.
     - The online Result notice already exists, and keeps its content. Only its switch is new.
-14. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
+14. **The CRM's own tables follow the migration PRD's rules** (ADR 0028 k, l):
    - facts, not statuses;
    - staff-only data off `customers`;
    - append-only events, each keyed by `customer_id` with a timestamp.
@@ -319,6 +337,8 @@ It shows the newest 50 entries, can load more, and filters by kind.
   - **It says the visit is paid**, with the fee read from Costings at send time (S$30 today).
     If the fee cannot be read, it is not sent.
   - It covers **Premium Mpillow only** (owner, 2026-10-20).
+  - It goes only to customers who agreed: email needs Marketing consent, and WhatsApp needs an
+    opt-in that names it (research, 2026-10-20; slice 08).
 - **Turning them off** (slice 13). The customer can do it in their Profile, once signed in.
   Staff can do it for anyone who asks, with a manual switch on the Customer page.
 
@@ -420,9 +440,13 @@ The owner added this on 2026-10-20.
   self-serve way (owner, 2026-10-20). The email footer links there.
 - **A *STOP* reply on WhatsApp** is not dropped. It becomes an open request on the Customer
   page, pauses WhatsApp for that Customer, and gets a reply saying Staff will switch it off.
-- **WhatsApp** sends through the existing utility sender, using two templates Meta has already
-  approved (owner, 2026-10-20). It follows the partner WhatsApp alerts: email always goes, and
-  WhatsApp is added on top when allowed.
+- **WhatsApp** sends through the existing utility sender. The WhatsApp Business account and
+  its appointment templates are approved. The two aftercare templates are new: slice 13 drafts
+  them, and adds them to `scripts/whatsapp-create-templates.ts` as **Marketing** templates. It
+  follows the partner WhatsApp alerts: email always goes, and WhatsApp is added on top when
+  allowed.
+- **"Cancel" stays safe.** A bare *cancel* right after an aftercare message asks before it
+  cancels an appointment.
 - **Fewer WhatsApp recipients.** With no checkout checkbox, WhatsApp reaches only customers who
   turned it on in their Profile, or told Staff they agree. Most aftercare will go by email.
 
@@ -517,8 +541,8 @@ and aftercare updates are not built.
   and PRD.
 - **Scoring, predictions, "churn risk", or AI summaries.**
 - **Journey analytics on the timeline.** ADR 0007's consent boundary applies.
-- **Customisation appointments on the timeline.** They live only in Google Calendar, with no
-  customer link.
+- **Customisation appointments on the timeline.** Their reminder rows carry a phone and a name,
+  but no Customer link, and matching a booking to a Customer by phone alone is a guess.
 - **Staff email notifications per profile.** A profile has no email address.
 - **Merging two Customers.** Support handles it case by case, as in the migration PRD.
 - **Editing the re-adjustment rule.** That belongs to ADR 0024 and Costings.
@@ -529,15 +553,17 @@ and aftercare updates are not built.
 |---|---|---|
 | The column grant breaks a storefront read | Real: `orders` is read with `select *` under RLS | The same slice lists columns in `customer-orders.ts`. A check test reads every storefront path as a customer. |
 | A new `customers` column is invisible to the customer once grants exist | Certain, by design | Every later migration that adds a customer-readable column must grant it. Migration slice 07's `marketing_email` is the first; whichever lands second adds the grant. |
-| The timeline shows a Result to the wrong Customer through an email match | Possible if the emails differ only in case or whitespace | Match exactly as `lib/results/access.ts` does, with a test covering case and whitespace. |
+| The timeline shows a Result to the wrong Customer through an email match | Possible: the storefront already grants access on a lower-cased email match | Match exactly as `lib/results/access.ts:30-36` does (id, or lower-cased email), so the timeline never shows a Customer a Result their own login could not open. A test pins the two together. |
 | The timeline is slow on a long-standing Customer | Each source query is bounded | Each adapter loads at most `limit` rows before the cursor, and the merge takes the newest `limit` overall. |
 | A review request goes out before the pillow arrives | Real if timed from payment | Timed from `delivered_at`, after a set number of days. Orders never marked delivered are counted on the Aftercare card, not emailed. |
 | The review request counts as review gating | Real if the copy steers unhappy customers away, or if candidates are filtered by satisfaction | Everyone eligible is asked alike; the "reach us" line is unconditional; no incentive. A check asserts the candidate query never reads review or return data. The owner reads the copy against Google's policy. |
 | A Google review is linked to the wrong Customer | Real: names collide | Suggestions only, never automatic. Staff confirm, can unlink, and rejected pairs are never suggested again. |
 | An aftercare message is treated as spam | Low for one review request per Customer and one check-up per milestone | No offer, transactional transport, a switch per channel. Counsel reads the final copy once. |
 | A WhatsApp message goes to someone who never agreed | Real if Staff switch it on casually | WhatsApp is off by default. Turning it on needs the customer's own action, or a Staff note recording that they agreed. Every change is an event. |
-| Meta classes a template as Marketing | Possible for a review request or a paid-visit check-up | A higher per-message cost, and opted-in people only, which our opt-in covers. The category is recorded in slice 13, and email still goes either way. |
-| A STOP reply is missed | Real: today the webhook drops messages it does not recognise | A *STOP* becomes an open request on the Customer page, pauses WhatsApp for that Customer, and gets a reply (slice 13). |
+| Meta classes a template as Marketing | Expected for both (research, 2026-10-20) | Submitted as Marketing from the start, so nothing is recategorised later. It costs about S$0.09 a message instead of S$0.02, and goes to opted-in people only, which our opt-in covers. A person who turned off marketing in WhatsApp gets error `131050`; that is recorded and shown, and email still goes. |
+| The check-up is direct marketing without consent | Real: the PDPA treats offering a paid visit as direct marketing, needing express consent | Email only to Marketing consent `subscribed`; WhatsApp only with an opt-in that names it, its wording stored (slices 08, 13). Counsel confirms at sign-off. |
+| A customer types *cancel* to stop aftercare and cancels an appointment | Real: `CANCEL_WORDS` cancels the next appointment on that number | A bare *cancel* right after an aftercare message asks first (slice 13). |
+| A STOP reply is missed | Real: today a STOP gets the generic auto-reply, which says the number only sends *appointment* messages, and nothing records it as a request (`app/api/webhooks/whatsapp/route.ts`) | A *STOP* becomes an open request on the Customer page, pauses WhatsApp for that Customer, and gets its own reply (slice 13). |
 | The check-up template's price goes stale | Real if the approved template has the price written into it | WhatsApp goes only while Costings' fee matches the price recorded for the template; otherwise email only, and the Aftercare card says why (slice 13). |
 | A mail scanner "clicks" the review link | Common with Outlook Safe Links | A click is a hint that strengthens a match, never proof of a review. |
 | Telegram leaks customer data to a group | Certain if names are posted | The CRM's types carry counts, Staff names and a link only (decisions 5 and 13). A test scans their output for fixture customer names and emails (slice 14). The online Result notice keeps today's content, which this PRD does not change. |
@@ -562,12 +588,16 @@ and aftercare updates are not built.
 
 ## Owner decisions
 
-None are open.
+None are open. One rule was tightened by research, and the owner can relax it after counsel:
+
+- **The check-up email needs Marketing consent** (slice 08). If counsel advises that a Premium
+  Mpillow buyer may be reminded without it, drop that condition.
 
 HITL, not decisions:
 
-- the owner approves the email copy;
-- someone records the approved WhatsApp templates' names, variables and buttons in slice 13.
+- the owner approves the email copy and the two WhatsApp templates' copy (slice 13);
+- someone runs `scripts/whatsapp-create-templates.ts` for the two templates, then preflight;
+- counsel reads the final copy and the opt-in wording once (slice 09).
 
 **Decided** (owner, 2026-10-20):
 
@@ -585,7 +615,8 @@ HITL, not decisions:
 - **The Telegram updates are in scope** (slice 14).
 - **Customers change aftercare only in their Profile, once signed in** (slice 13). There is no
   email unsubscribe link, no WhatsApp keyword, and no checkout checkbox.
-- **Meta has approved the WhatsApp templates** (slice 13).
+- **Meta approval is done** for the WhatsApp Business account and its appointment templates.
+  The two aftercare templates are new, and slice 13 submits them.
 - **Four Telegram types:** new online Result to review, Google reviews to match, new sign-ups,
   and a weekly summary (slice 14).
 - **The yearly check-up covers Premium Mpillow only** (slice 08).

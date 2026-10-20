@@ -27,8 +27,10 @@ or match the wrong person.
 
 ## The Google side depends on the review sync being live
 
-`google_reviews` fills only once Google approves Business Profile API access, and the
-Pub/Sub sync is set up (`.claude/PRD-google-review-replies/OPS-CHECKLIST.md`, steps 1–2).
+`google_reviews` fills only once Google approves Business Profile API access and the refresh
+token and location are set (`.claude/PRD-google-review-replies/OPS-CHECKLIST.md`, steps 1–4).
+The daily catch-up chained on `results-sla` (`syncGoogleReviews`) then fills it; Pub/Sub (step 6)
+only makes it real-time.
 Until then the Google part of the column shows only *Asked* and *Clicked*. Everything else in
 this slice still ships. The one location is `GOOGLE_BUSINESS_LOCATION`.
 

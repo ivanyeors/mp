@@ -14,19 +14,30 @@ in two taps, and shows them what they just got. Staff can see who has moved and 
 
 ```sql
 create table customer_claim_links (
-  customer_id     uuid primary key references customers(id) on delete cascade,
-  token_hash      text not null unique,           -- sha256 of a 32-byte base64url token
-  created_at      timestamptz not null default now(),
+  id               bigserial primary key,
+  customer_id      uuid not null references customers(id) on delete cascade,
+  token_hash       text not null unique,          -- sha256 of a 32-byte base64url token
+  template         text not null,                 -- which campaign email carried it
+  created_at       timestamptz not null default now(),
   first_clicked_at timestamptz null,
-  last_clicked_at timestamptz null,
-  click_count     int not null default 0
+  last_clicked_at  timestamptz null,
+  click_count      int not null default 0
 );
+create index on customer_claim_links (customer_id);
 ```
 
-- There is one token per Customer. Like the **Assist link** precedent, the announcement and the
-  reminder reuse it.
-- The slice 08 sender creates the token lazily and only ever sees it in plaintext at send time.
-- Service-role only.
+- **One token per email sent.** Only the hash is stored, so a token cannot be read back and
+  reused: the announcement and the reminder each mint their own. Every token stays valid, so an
+  old email still works after a newer one went out. (The **Assist link** stores its code in
+  plaintext, `20260912000000_admin_assist_code.sql:10`, which is why it can be reused; a claim
+  link is a per-customer capability and must not be.)
+- The slice 08 sender mints the token at send time, writes the hash, and puts the plaintext only
+  in that email.
+- **An email change voids the tokens.** Staff can change a Customer's email
+  (`updateCustomer`, `app/[lang]/settings/customers/actions.ts:11`). For a Migrated customer
+  who has not claimed, that change deletes their claim links, so an old email cannot claim for
+  the new address.
+- Server-only: RLS on, no policy, `revoke all … from anon, authenticated`.
 
 ## `/[lang]/account/welcome?c=<token>`
 
@@ -34,7 +45,7 @@ The page is `noindex`.
 
 - **Signed out, token valid:** shows *"Welcome back, {first_name}. Your Mpillow account is
   ready."* It embeds `LoginForm` prefilled with that Customer's email, exactly as the Result
-  status page does (`app/[lang]/results/[id]/page.tsx:805-823`), with `next` pointing back to
+  status page does (`app/[lang]/results/[id]/page.tsx:1000-1018`), with `next` pointing back to
   this URL. Google sign-in sits beside it. Record the click.
 - **Signed out, token missing, unknown or for a deleted Customer:** shows the same page with no
   name and an empty form. It never says whether a token was valid.
@@ -44,9 +55,11 @@ The page is `noindex`.
   - shows *what your account does*: saved address (already imported), orders, re-adjustment
     booking, Results, returns.
 - **Signed in as a different email than the token's Customer:** shows *"You're signed in as
-  x@…. Your voucher was sent to the email you shopped with."*, with a switch-account link
-  (`/account/login?reauth=1`). It shows no detail of the token's Customer beyond what the
-  prefilled form would.
+  x@…. Your voucher was sent to the email you shopped with."*, with a *Use another account*
+  button. It signs out and returns to this URL, so the prefilled form shows. It must not link to
+  `/account/login?reauth=1`: that parameter belongs to the Partner Hub's 7-day cap and shows
+  *"Your Partner Hub session has expired"* (`app/[lang]/account/login/page.tsx:45-47`). It shows
+  no detail of the token's Customer beyond what the prefilled form would.
 
 Add `utm_source=shopify_migration&utm_medium=email&utm_campaign=<template>` to every campaign
 link, so GA4 and **Entry source** see the channel even though the claim ledger carries the funnel.

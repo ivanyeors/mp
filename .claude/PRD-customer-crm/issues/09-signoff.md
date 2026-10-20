@@ -17,7 +17,14 @@
    - The timeline shows only the kinds that role may see.
    - Add a note and a follow-up, and save a Segment.
    - Note anything confusing here, then fix it or file it.
-3. **Turn on review requests.**
+3. **Counsel check, once.** Counsel reads:
+   - the two emails and the two WhatsApp templates;
+   - the Profile's WhatsApp opt-in wording;
+   - whether a Staff note is enough evidence of consent for the check-up on WhatsApp;
+   - whether the check-up email may drop its Marketing-consent condition (slice 08).
+
+   Record the answers here.
+4. **Turn on review requests.**
    - Set `google_review_url` to the *Ask for reviews* link from Google Business Profile, and
      check it opens the review form.
    - Read the final copy against Google's three rules (slice 07): everyone alike, an
@@ -35,16 +42,16 @@
      - switch it off from the Admin Panel, and check the request closes.
    - Turn email off in the owner's Profile, and check the history line says *Profile*.
    - Flip one test Customer's switches from the Admin Panel, and check the history line.
-4. **After 30 days, record:**
+5. **After 30 days, record:**
    - requests sent;
    - links opened;
    - Google reviews linked to asked Customers (slice 12);
    - *skipped: not marked delivered*. If this count is high, fix order delivery marking first,
      because the request depends on it.
-5. **Match the first Google reviews.** If the Google review sync is live, work through
+6. **Match the first Google reviews.** If the Google review sync is live, work through
    *Google reviews to match* once. Record how many had a correct suggestion, as the measure of
    whether the matching rules need tuning.
-6. **Telegram updates.** On the Telegram updates card (slice 14):
+7. **Telegram updates.** On the Telegram updates card (slice 14):
    - press *Send test*, and check the four types arrive marked TEST;
    - switch *New online Result to review* off, make a test online hold, and check nothing is
      posted; switch it back on, and check the next hold posts as before;

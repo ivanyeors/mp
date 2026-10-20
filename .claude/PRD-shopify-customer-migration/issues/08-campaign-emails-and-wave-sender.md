@@ -16,6 +16,10 @@ emails.
 These go in `lib/email/migration.ts`, registered in `lib/email/registry.ts`, previewable with
 `npm run email:*`, and rendered with `renderEmailShell({ audience: "customer", unsubscribeUrl })`.
 
+- `EmailGroup` is a closed union (`lib/email/registry.ts:70-78`), so add a `migration` group.
+- Each template needs a fixture in `lib/email/__fixtures__/samples.ts`.
+  `__tests__/registry-coverage.test.ts` fails the build on a renderer with no registry entry.
+
 | Template | Who | Content |
 |---|---|---|
 | `migration_announcement` | Migrated customers, unclaimed, `subscribed` | *"Your Mpillow account is ready."* Explains the move in one paragraph, has a single button (the Claim link), states the voucher and its terms, and says what the account does (addresses saved, re-adjustment booking, orders, returns). |
@@ -70,9 +74,14 @@ npx tsx --env-file=.env.local scripts/customer-migration-send.ts \
 - On a send error it marks the row `failed`. A failed row is retried only with
   `--retry-failed`.
 - It throttles to about 2 messages a second, and stops after 5 consecutive failures.
-- Its transport is `getCampaignTransport()`, built from `RESEND_API_KEY` and
-  `CAMPAIGN_EMAIL_FROM`. It is a separate instance from `getDefaultTransport()`, so order mail
-  keeps its transport.
+- Its transport is `getCampaignTransport()`, built from `CAMPAIGN_RESEND_API_KEY` and
+  `CAMPAIGN_EMAIL_FROM`. It is a separate instance from `getDefaultTransport()`.
+  - **The key must not be called `RESEND_API_KEY`.** `resolveTransport` picks Resend for
+    *order* mail whenever `RESEND_API_KEY` is set and `EMAIL_PROVIDER` is not
+    (`lib/email/transport.ts:173-200`). A campaign key under that name would silently move every
+    order email off Gmail.
+  - Belt and braces: production sets `EMAIL_PROVIDER=gmail` explicitly, and a check test
+    asserts `getDefaultTransport()` ignores `CAMPAIGN_RESEND_API_KEY`.
 - Every send sets `List-Unsubscribe: <https://…/api/email/unsubscribe?u=…&t=…>`, `<mailto:…>` and
   `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Reply-To is the support address.
 

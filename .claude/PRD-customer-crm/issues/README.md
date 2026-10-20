@@ -17,7 +17,7 @@ demoable path through all layers.
 | [05](05-saved-segments.md) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
 | [06](06-follow-ups.md) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
 | [07](07-review-request-after-delivery.md) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **not started** | 01, 13 | 11–15 |
-| [08](08-checkup-reminder.md) | Check-up reminder: yearly, Premium Mpillow only, and it says the visit is paid | AFK | **not started** | 07, 13 | 24 |
+| [08](08-checkup-reminder.md) | Check-up reminder: yearly, Premium Mpillow only, says the visit is paid, to customers who agreed | AFK | **not started** | 07, 13; migration 07 | 24 |
 | [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
 | [10](10-customers-view-permission.md) | A view-only Customers permission | AFK | **not started** | 01 | 17, 18 |
 | [11](11-contact-and-sign-in-status.md) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **not started** | 01; migration 12 | 19, 20 |
@@ -56,6 +56,8 @@ graph TD
   s02 --> s03
   s01 --> s04
   m12 --> s04
+  m07[Migration 07: Marketing consent]
+  m07 --> s08
   s04 --> s05
   s03 --> s06
   s01 --> s10
@@ -96,9 +98,8 @@ graph TD
    any of it.
 2. **10 next.** It is small, and once it lands, every later slice's write path is born on
    `customers-edit`. It does not block 02, the urgent fix.
-3. **03 and 13 in parallel.** 13 creates the aftercare switches and the WhatsApp channel. Meta
-   has already approved the templates; record their names, variables and buttons in slice 13
-   before building. Then **07**.
+3. **03 and 13 in parallel.** 13 creates the aftercare switches, the WhatsApp channel and the
+   two templates. Submit the templates as soon as their copy is approved. Then **07**.
    **14** can go any time after 10. Its online Result switch works at once, and its other
    types start posting as 12 and migration slice 12 land.
 4. **04 and 11 once migration slice 12 has merged**, because both extend its overview and its
@@ -128,9 +129,11 @@ customer should read must grant it, as `20261013110000_order_items_kind.sql:23-2
 `order_items`. The check from slice 02 catches a miss.
 
 **Second hazard: no marketing.** If a CRM change sends an email with an offer, or selects
-recipients by `marketing_email`, it belongs to `PRD-email-marketing`. Aftercare messages are
-service messages: no offer, and a switch per channel. The review request goes once per Customer;
-the check-up once per milestone per Order. **WhatsApp never goes to a Customer whose
+recipients by `marketing_email`, it belongs to `PRD-email-marketing`. Aftercare messages carry
+no offer and have a switch per channel. The review request goes once per Customer; the check-up
+once per milestone per Order. **One exception, on purpose:** the check-up offers a paid visit,
+which the PDPA treats as direct marketing, so its email goes only to Customers whose
+`marketing_email` is `subscribed` (slice 08). **WhatsApp never goes to a Customer whose
 `aftercare_whatsapp` is off.** Turning it on needs the customer's own action, or a Staff note
 recording that the customer agreed.
 
@@ -165,7 +168,8 @@ escalations. They are worth one small PR outside the CRM.
 
 - **Slice 09** needs the owner's own customer login on production, each Staff role for the
   walkthrough, and 30 days of reminders.
-- **Slice 08** is decided as a service message (owner, 2026-10-20). Have counsel read the final
-  copy once, as a check rather than a gate.
-- **Slice 13:** Meta has approved the WhatsApp templates (owner, 2026-10-20). Before building,
-  record each one's name, language, category, variables and buttons in the slice.
+- **Slice 08** is built in the CRM (owner, 2026-10-20), and goes only to customers who agreed
+  (research, 2026-10-20). Counsel reads the copy and may relax the email consent rule (slice 09).
+- **Slice 13:** the WhatsApp Business account and its appointment templates are approved. The two
+  aftercare templates are new. The owner approves their copy, then someone runs
+  `scripts/whatsapp-create-templates.ts` and preflight. Meta's review usually takes minutes.

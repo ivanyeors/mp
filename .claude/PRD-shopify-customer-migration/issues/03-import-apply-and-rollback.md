@@ -77,16 +77,24 @@ and the state (*applied*, *stopped*, *undone*).
   Revert nothing on `customers`: the filled nulls are true facts about the person.
 - **Kept rows.** A claimed or referenced row is kept, and the preview lists the count:
   *"312 will be removed. 41 are kept, because they have signed up or bought since."*
+- Both functions are SECURITY DEFINER, so each gets `revoke execute … from anon, authenticated`
+  (`20260917033807:39-40`), and is called with the service role only.
 - The undo runs through a second SECURITY DEFINER function,
   `undo_shopify_import(batch_id)`, then sets `rolled_back_at` and records
   `customer_import.undo` (counts only).
 
 ## Defaults fix (PRD trap 3c)
 
-- Move the `customer_addresses.country` column default `'MY'` → `'SG'` in a migration.
-- Change the zod default in `lib/shop/customer-addresses.ts:22` to match.
-- Before changing these, check that the address form always sends a country. If the form relies
-  on the default, it is relying on a Malaysian default for a Singapore shop, which is the bug.
+`'MY'` is the default in four places, and all four move to `'SG'`:
+
+- the `customer_addresses.country` column default, in a migration (`0028_ecommerce.sql:251`);
+- the customer zod schema (`lib/shop/customer-addresses.ts:22`);
+- the Staff route's zod schema (`app/api/shop/customers/[id]/addresses/route.ts:16`);
+- the customer address form's starting value, which it always sends
+  (`app/[lang]/account/addresses/addresses-client.tsx:51`). Changing only the defaults would
+  leave every new address from the form Malaysian.
+
+Existing rows keep the country they were saved with. This slice does not rewrite them.
 
 ## Acceptance criteria
 
@@ -100,7 +108,8 @@ and the state (*applied*, *stopped*, *undone*).
       finished batch reconciles. A chunk sent twice is refused, not counted twice.
 - [ ] Undo removes created-and-unclaimed rows, keeps claimed and referenced rows, and reports
       both counts.
-- [ ] `admin_audit_log` holds one row per apply and per undo, with counts and no email or name.
+- [ ] `admin_audit_log` holds one row per apply and per undo, with counts and no customer PII (the
+      Staff member's own `actor_email` is written, as `recordAdminAction` always does).
 - [ ] The `country` default is `'SG'` in the DB and in the zod schema.
 - [ ] `import_shopify_customers` and `undo_shopify_import` cannot be executed by `anon` or
       `authenticated`.

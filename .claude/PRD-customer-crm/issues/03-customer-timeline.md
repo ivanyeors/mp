@@ -44,11 +44,22 @@ type TimelineAdapter = {
 |---|---|---|---|
 | orders | `orders` by `customer_id` | placed, paid, shipped, delivered, cancelled, refund requested | `orders` |
 | order emails | `order_emails` joined to the Customer's orders, `status = 'sent'` | *"Email sent: {template label from the registry}"* | `orders` |
-| results | `mp_config_responses` where `customer_id = id`, **or** `customer_id is null` and the email matches as `lib/results/access.ts:9-37` does | created, accepted, declined, captured, expired | `results` |
+| results | `mp_config_responses` where `customer_id = id` **or** the lower-cased email matches, exactly as `lib/results/access.ts:30-36` does | *created* (`created_at`), with its current status as a pill; *build sent* (`assigned_at`); *balance paid* (`topup_paid_at`). A paired build is one entry for both Results (`paired_build_id`) | `results` |
 | re-adjustments | `readjustment_bookings` by `customer_id` | booked (with Location and date), attended, no-show, cancelled | `appointments` |
 | returns | `rma_requests` and `rma_status_events` by `customer_id` | opened, each status change | `returns` |
 | reviews | `product_reviews` by `customer_id` | submitted, approved or rejected | `customers` |
 | notes | `customer_notes` (slice 02), not deleted | the note, in full | `customers` |
+
+**Results have no time per status.** `mp_config_responses` stores no time for accept, decline or
+expiry, and `updated_at` moves on every reminder write. So the timeline never invents one:
+
+- an accepted Result shows up as its **Order** (the orders adapter);
+- a Staff cancel shows from `admin_audit_log` (`app/api/results/[id]/cancel/route.ts:132`), with
+  the `results` permission;
+- *declined* and *expired* show only as the Result's current status, never as a dated entry.
+
+**Results emails are not in `order_emails`.** Emails such as `results.assigned` and
+`results.paired_mbolster_removed` have no ledger, so the timeline cannot list them.
 
 **Added later, by the slices that create the source:**
 

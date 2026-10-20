@@ -10,7 +10,7 @@ slice is a thin, demoable path through all layers.
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR 0026: what moves, what never moves, and what a Claim is | AFK | **not started** | none | underpins all |
+| [01](01-glossary-and-adr.md) | Glossary and ADR 0028: what moves, what never moves, and what a Claim is | AFK | **not started** | none | underpins all |
 | [02](02-import-tables-and-dry-run.md) | Import tables, and an Admin Panel upload that previews and never writes | AFK | **not started** | 01 | 9, 15 |
 | [03](03-import-apply-and-rollback.md) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **not started** | 02 | 9, 10, 13, 15 |
 | [12](12-account-status-and-customer-overview.md) | Account status on every Customer, and the Customer overview | AFK | **not started** | 02 | 8, 14 |
@@ -27,7 +27,7 @@ slice is a thin, demoable path through all layers.
 
 ```mermaid
 graph TD
-  s01[01 Glossary + ADR 0026]
+  s01[01 Glossary + ADR 0028]
   s02[02 Import tables + admin preview]
   s03[03 Admin import / resume / undo]
   s12[12 Account status + Customer overview]
@@ -104,7 +104,8 @@ actions with `customers`, which the Manager and Staff roles also hold.
   verified email (`lib/auth/customer-identity.ts:39-56`). Do not write a second linking path.
 - **The Shopify Admin API is not needed.** The owner's CSV export covers every field this plan
   uses, and building on Shopify is off the roadmap (owner, 2026-10-13).
-- **Coupons do not apply to customisations.** That is deliberate (`app/api/results/hold/route.ts:558`).
+- **Coupons do not apply to customisations.** That is deliberate (`app/api/results/hold/route.ts:648`; paired builds
+  `lib/results/paired-hold.ts:118`).
   The voucher is a shop-cart voucher. Do not "fix" the hold path inside this initiative.
 - **Shopify orders stay unlinked.** The mirror has no customer fields. Staff see Shopify-era
   totals from `migrated_customers`, and customers see none.

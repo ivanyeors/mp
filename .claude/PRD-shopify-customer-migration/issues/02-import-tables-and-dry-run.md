@@ -53,10 +53,13 @@ create index on migrated_customers (claimed_at);
 create index on migrated_customers (batch_id);
 ```
 
-RLS is enabled on both tables, with only a service-role policy, matching the
-`Service role full access` pattern (scoped to `service_role` since `20260902000000`). There is
-deliberately **no** `authenticated` policy (ADR 0026 d). The batch records who ran it the same
-way `admin_audit_log` does (`actor_id`, `actor_profile_id`), and never an email.
+Both tables are server-only, as the newest tables are (`20261019152211`, `20261020024120`):
+RLS is enabled with **no** policy, and `revoke all … from anon, authenticated`
+(`20260917033807_security_advisor_hardening.sql:43-72`). The service role bypasses RLS. There is
+deliberately no `authenticated` access (ADR 0028 d). The batch records who ran it by
+`run_by_user_id` and `run_by_profile_id`. It never stores a customer's email or name.
+(`admin_audit_log` does store the Staff member's own `actor_email`, `lib/auth/audit.ts:40`; that
+is Staff data, not customer PII.)
 
 ## Permission
 

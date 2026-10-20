@@ -18,6 +18,15 @@ The owner decided on 2026-10-20:
   `google_review_url`.
 - **Channels:** email and WhatsApp (slice 13).
 
+**What the law and Meta make of it** (research, 2026-10-20; counsel confirms at sign-off):
+
+- **A service message.** A review request offers nothing for sale. So it is very unlikely to be
+  a commercial message under the Spam Control Act, or a "specified message" under the PDPA's Do
+  Not Call rules, as long as the copy stays free of offers.
+- **Marketing on WhatsApp.** Meta will very likely class the WhatsApp template as Marketing,
+  because a public review mainly helps the business. So it is submitted as Marketing (slice 13).
+  It goes only to customers who opted in, which Marketing requires anyway.
+
 ## Goal
 
 Every customer who receives an order hears from us once, two weeks later, with one button to
@@ -52,7 +61,7 @@ The job runs daily, chained onto `results-sla` (ADR 0027 g).
    - have `delivered_at` set.
 
    An in-store handover sets `delivered_at` at handover
-   (`app/api/results/[id]/accept/route.ts:334-337`), so it qualifies too.
+   (`app/api/results/[id]/accept/route.ts:487-489`), so it qualifies too.
 2. **Timing**, in Singapore calendar days. Both of these must hold:
    - `today ≥ delivered_date + review_request_days_after` (14);
    - `today ≤ delivered_date + review_request_max_age_days` (60).
@@ -81,8 +90,6 @@ create table customer_review_requests (
   customer_id      uuid primary key references customers(id) on delete cascade,  -- once per Customer
   order_id         uuid null references orders(id) on delete set null,
   token_hash       text not null unique,       -- sha256 of the link token, shared by both channels
-  email_status     text null check (email_status in ('pending','sent','failed')),
-  email_sent_at    timestamptz null,
   first_clicked_at timestamptz null,
   click_count      int not null default 0,
   created_at       timestamptz not null default now()
@@ -92,12 +99,16 @@ create table customer_review_requests (
 - **Access.** Service-role only.
 - **The once-per-Customer guard.** The primary key on `customer_id` is the guard. The row is
   claimed before anything is sent.
-  - **Email** is claimed as `pending` and marked `sent` or `failed`, as `order_emails` does
-    (`lib/email/index.ts:159-216`). A `failed` email is retried by the next run.
+  - **Email** is recorded in the `customer_emails` ledger (migration slice 05, created by
+    whichever slice lands first), with template `aftercare.review_request` and
+    `entity_id = customer_id`. It is claimed as `pending`, then marked `sent` or `failed`. A
+    failed send is retried by a later run, up to 3 attempts. That is deliberately unlike
+    `order_emails`, whose failed rows are final (`dispatchOrderEmail` claims with
+    `ignoreDuplicates`, `lib/email/index.ts:159-216`).
   - **WhatsApp** is recorded in slice 13's `customer_whatsapp` ledger, with template
     `aftercare.review_request` and `entity_id = customer_id`, so it too is sent at most once.
-- **"Asked on"** (slice 12) is the earlier of `email_sent_at` and the WhatsApp ledger's sent
-  time.
+- **"Asked on"** (slice 12) is the earlier `sent_at` of the two ledgers' rows for this
+  template.
 
 These are `site_settings` keys:
 
@@ -125,24 +136,33 @@ is previewable like the rest, with a pure render.
   It uses `lib/contact.ts`, which is the staffed support number and never the automated
   sender. Reply-To is the support address.
 - **Footer:** *"You're getting this because you bought from Mpillow. To stop these emails, turn
-  them off in your account."* The link goes to `/account` through Sign in, which is the only
-  place customers change it (slice 13).
+  them off in your account, or reply to this email and we'll do it for you."* The link goes to
+  `/account` through Sign in, the only place customers change it themselves. The reply reaches
+  Staff, who use the manual switch (slice 13).
 - **No** offer, price, or other product.
-- **Transport:** the transactional one (`getDefaultTransport()`), because this is a service
-  message (ADR 0027 f).
+- **Transport:** the transactional one, through `getEmailTransport()` (`lib/email/index.ts:33`),
+  which wraps `getDefaultTransport()` and lets tests swap it. This is a service message (ADR
+  0027 f).
+- **Registry:** `EmailGroup` is a closed union (`lib/email/registry.ts:70-78`), so add an
+  `aftercare` group. Each template needs a fixture in `lib/email/__fixtures__/samples.ts`;
+  `__tests__/registry-coverage.test.ts` fails the build without one.
 - **Outside production**, send only to allowlisted addresses.
 
 ## The WhatsApp message
 
 This uses slice 13's channel, with template `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW`.
 
-- **Meta has approved the template** (owner, 2026-10-20). Its wording is what Meta approved, and
-  slice 13 records its variables and button.
-- **What it should carry:** thanks, the ask, and a button to the review form. If the button
-  has a dynamic suffix, it carries the same token (`/r/review?t={{1}}`).
-- **Then the line:** *"Need anything else? Message us at {support number}."*
-- **The close says how to stop:** in their account, or by messaging the support number. A
-  *STOP* reply still reaches Staff (slice 13).
+- **The template is `aftercare_review_request`,** drafted in slice 13 and submitted as
+  Marketing with `scripts/whatsapp-create-templates.ts`. No aftercare template exists on the
+  WhatsApp Business account yet.
+- **What it carries:** thanks, the ask, the *"Need anything else?"* line naming the staffed
+  sales line, and a close saying how to stop.
+- **Parameters:**
+  - body: first name (or *there*), the product (`purchaseLabel`), and the sales line
+    (`SUPPORT_WHATSAPP_DISPLAY`);
+  - URL button suffix: the same token as the email (`/r/review?t={{1}}`), so WhatsApp clicks are
+    recorded too.
+- **A *STOP* reply** reaches Staff as an open request and pauses WhatsApp (slice 13).
 - **Until the template name is set in env,** WhatsApp is skipped and email still goes.
 
 ## The redirect

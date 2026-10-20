@@ -1,7 +1,9 @@
 # PRD — Shopify customer migration and account onboarding
 
 **Status:** specified, not started
-**ADR:** `docs/adr/0026-shopify-customer-migration.md` (to be written by slice 01)
+**Audited:** 2026-10-20 against `main` @ `48c643f`: every code reference re-checked after the paired-build and WhatsApp merges (#258–#262), plus research on Meta's template rules, Singapore's Spam Control Act and PDPA, and Google's review policy.
+**ADR:** `docs/adr/0028-shopify-customer-migration.md` (to be written by slice 01; 0026 went to
+the paired build and 0027 to the CRM, so take the next free number if either moves)
 **Owner decisions still open:** see [Open decisions](#open-decisions-for-the-owner) — slice 04
 cannot run until 1, 2 and 7 are answered.
 
@@ -46,7 +48,7 @@ Two precedents make the onboarding page cheap to build:
 
 - `/account/login` already takes an `?email=` prefill (`app/[lang]/account/login/page.tsx:14-38`).
 - The Result status page already embeds `LoginForm` with the customer's email filled in
-  (`app/[lang]/results/[id]/page.tsx:805-823`).
+  (`app/[lang]/results/[id]/page.tsx:1000-1018`).
 
 ### 3. Five traps in the customer schema
 
@@ -54,7 +56,7 @@ Two precedents make the onboarding page cheap to build:
 |---|------|-------------|
 | a | `customers.total_orders` / `total_spent` are recomputed from platform **Orders** by `updateCustomerStats` (`lib/ecommerce/customers.ts:65-81`), which the Stripe webhook calls | Shopify totals written there would be overwritten on the customer's next payment, and would mix two channels in one figure. Shopify-era figures get their own table. |
 | b | A signed-in Customer can `select` **every column of their own row** (`supabase/migrations/0037_customer_auth.sql:15-18`) | Shopify `Note` and `Tags` are staff-facing and may contain health remarks (neck pain, CPAP). They must not go into `customers.notes` / `tags`. |
-| c | `customer_addresses.country` defaults to `'MY'` in the DB (`0028_ecommerce.sql:251`) and in the zod schema (`lib/shop/customer-addresses.ts:22`). This is left over from the MYR era: coupon currency was fixed to SGD in `0031`, but this default was not | The importer always writes country explicitly. Slice 03 moves both defaults to `'SG'`. |
+| c | `customer_addresses.country` defaults to `'MY'` in four places: the DB (`0028_ecommerce.sql:251`), the customer zod schema (`lib/shop/customer-addresses.ts:22`), the Staff route's zod schema (`app/api/shop/customers/[id]/addresses/route.ts:16`), and the customer address form, which starts at `country: "MY"` and always sends it (`app/[lang]/account/addresses/addresses-client.tsx:51`). This is left over from the MYR era: coupon currency was fixed to SGD in `0031`, but this default was not | The importer always writes country explicitly. Slice 03 moves all four to `'SG'`. |
 | d | `recipient`, `line1`, `city`, `postal_code` are NOT NULL (`0028_ecommerce.sql:245-250`) | An incomplete Shopify address is skipped, never padded. Singapore postal codes start with `0` (018956), so the export must never pass through Excel. |
 | e | `customers.email` is NOT NULL and unique on `lower(email)` (`0028_ecommerce.sql:214,227`) | A phone-only Shopify customer cannot be imported, and could not sign in anyway. They are counted and skipped. |
 
@@ -71,7 +73,7 @@ The export is therefore the **owner's own Admin CSV** (Customers → Export → 
 - no new access scope;
 - no protected-customer-data approval;
 - no new code against Shopify, which keeps the owner's rule of 2026-10-13
-  (`CONTEXT.md:329`, ADR 0024: Shopify is ad hoc and off the roadmap).
+  (`CONTEXT.md:333`, ADR 0024: Shopify is ad hoc and off the roadmap).
 
 **Expected columns.** These must be confirmed against a real file in slice 04, because
 Shopify's documentation host was unreachable from the session that wrote this PRD:
@@ -95,8 +97,8 @@ The import page validates the header row and refuses a file it does not recognis
 - **No reservation.** `usage_count` only increments after payment
   (`app/api/stripe/webhook/route.ts:378-385`).
 - **Coupons never reach a customisation.** The hold prices with `discountAmount: 0`
-  (`app/api/results/hold/route.ts:558`) and accept writes `discount_amount: 0`
-  (`app/api/results/[id]/accept/route.ts:329`).
+  (`app/api/results/hold/route.ts:648`, and the paired-build path `lib/results/paired-hold.ts:118`)
+  and accept writes `discount_amount: 0` (`app/api/results/[id]/accept/route.ts:481`).
 - **No other incentive mechanism.** There is no loyalty, points, store credit or gift card. A
   **Complimentary re-adjustment** applies only to purchases on the platform. An unlisted
   purchase is always charged (`lib/readjustment/eligibility.ts:78`), and a DB CHECK binds
@@ -116,7 +118,7 @@ The import page validates the header row and refuses a file it does not recognis
 - **Precedent for a send ledger.** Idempotent sends already use ledger tables (`order_emails`,
   `partner_emails`).
 - **Journey analytics cannot measure the campaign.** UTM parameters are captured as **Entry
-  source** (`lib/analytics/journey/entry-source.ts:55-90`), but `mergeVisitorIdentity` and
+  source** (`lib/analytics/journey/entry-source.ts:55-88`), but `mergeVisitorIdentity` and
   `linkVisitToPaidOrder` have no callers (`lib/analytics/journey/identity.ts:105,149`). The
   campaign funnel is measured in its own ledger instead.
 
@@ -168,7 +170,7 @@ the same row and issues the same voucher. Buying as a guest with that email atta
 **Order** to the imported row too (`findOrCreateCustomer` finds it), so their history is waiting
 when they do sign in.
 
-### Decisions (ADR 0026 records these)
+### Decisions (ADR 0028 records these)
 
 1. **The source is the owner's Shopify CSV export, not the Shopify Admin API.** This adds no
    scopes and no Shopify code. The batch records the file's hash.
@@ -341,7 +343,7 @@ goes last, in smaller waves.
 | A voucher is used by someone other than its owner | Certain with today's bearer coupons | Decision 8: session check at preview and at checkout. |
 | A Claim is processed twice and issues two vouchers | `linkCustomerToAuthUser` runs on every account page | Decision 6: one transaction plus a unique index on `(customer_id, issued_for)`. |
 | A customer signs in before the claim code ships | Harmless | The claim runs on any later `linkCustomerToAuthUser` call, so they claim on their next page load. |
-| Concurrent checkouts both pass the coupon's `usage_limit` | Exists today for all coupons (no reservation) | For a one-person voucher, this needs the same person to pay twice at once. Accepted; recorded in ADR 0026. |
+| Concurrent checkouts both pass the coupon's `usage_limit` | Exists today for all coupons (no reservation) | For a one-person voucher, this needs the same person to pay twice at once. Accepted; recorded in ADR 0028. |
 | The export lands in git like `info/GET-from-shopify.md` did | That file is the precedent for Shopify exports in this repo | The import happens in the browser, so the file never needs to be near the repo. Slice 04's steps keep it out of shared folders, and slice 10 destroys it. |
 | The import runs against production before rehearsal | Possible | Slice 04 makes rehearsal on a Supabase branch a precondition. |
 | Someone with Customers access bulk-imports or undoes by mistake | Manager and Staff both hold `customers` | A separate `customer-import` key, held by Owner and Admin only. A preview before every import and every undo, a typed confirmation, and an audit row for each. |
@@ -384,7 +386,7 @@ everything in this section past the table below.
 | Whether we may email them, with proof | `marketing_email` and `customer_consent_events`, unsubscribe | 07 |
 | What we sent, and what happened | `customer_campaign_sends`, Claim link clicks, bounces and complaints | 06, 08 |
 
-### Rules that keep it CRM-shaped (ADR 0026 k, l)
+### Rules that keep it CRM-shaped (ADR 0028 k, l)
 
 1. **Facts, not statuses.** Store events and timestamps. Derive *Signed up*, *Voucher used* or
    *Lapsed* in the overview view, where they cannot drift.

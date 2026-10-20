@@ -1,4 +1,4 @@
-# 01 — Glossary and ADR 0026: what moves, what never moves, and what a Claim is
+# 01 — Glossary and ADR 0028: what moves, what never moves, and what a Claim is
 
 **Type:** AFK
 **Blocked by:** none
@@ -40,7 +40,7 @@ sign-in itself.
 signed in and checking out with the account email. It is a shop-cart voucher, like every coupon
 today.
 _Avoid_ — "store credit", "points", "gift card" (none exist). Do not describe it as usable on a
-customisation: **Results** price with no discount (`app/api/results/hold/route.ts:558`).
+customisation: **Results** price with no discount (`app/api/results/hold/route.ts:648`, `lib/results/paired-hold.ts:118`).
 
 **Marketing consent** — whether a **Customer** agreed to marketing email, stored as
 `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is
@@ -62,10 +62,17 @@ customer, *Signed up* and **Claimed** usually coincide. They differ when the per
 an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their
 next sign-in.
 
-Also amend **Shopify order mirror**'s `_Avoid_` line to add: *Shopify customers are imported
-once (ADR 0026); their orders stay unlinked.*
+Also amend two existing entries:
 
-## ADR 0026 — decisions to record
+- **Customer** (`CONTEXT.md:319-321`) today reads *"A shopper account identity after Sign in"*.
+  That was already narrower than the table: checkout creates a `customers` row for a guest, and
+  this initiative creates them by import. Rewrite it as *"A shopper's record (`customers` row),
+  created at checkout, at Sign in, or by the Shopify import. It **has an account** once a Sign in
+  is bound to it (`auth_user_id`)."* Keep the Profile line.
+- **Shopify order mirror**'s `_Avoid_` line gains: *Shopify customers are imported once (ADR
+  0028); their orders stay unlinked.*
+
+## ADR 0028 — decisions to record
 
 - **(a) The source is the owner's Admin CSV export, imported from the Admin Panel.** No Admin API
   customer access, no new scope, no protected-customer-data approval. Record the header row the
@@ -102,9 +109,9 @@ once (ADR 0026); their orders stay unlinked.*
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` carries the seven terms above with `_Avoid_` lines, and the amended **Shopify
-      order mirror** line.
-- [ ] `docs/adr/0026-shopify-customer-migration.md` records (a)–(l). It links ADR 0024 (the
+- [ ] `CONTEXT.md` carries the seven terms above with `_Avoid_` lines, the rewritten
+      **Customer** entry, and the amended **Shopify order mirror** line.
+- [ ] `docs/adr/0028-shopify-customer-migration.md` records (a)–(l). It links ADR 0024 (the
       "No Shopify" rule it narrows, not reverses) and ADR 0007 (why journey analytics does not
       carry the funnel).
 - [ ] `./scripts/graphify update .` is run in the same commit.

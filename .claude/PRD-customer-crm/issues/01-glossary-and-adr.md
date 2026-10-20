@@ -90,18 +90,21 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
   counts and a link only.
 - **(f) An Aftercare message is a service message.** It uses the transactional email
   transport and the utility WhatsApp sender, claim-before-send ledgers
-  (`customer_review_requests`, `order_emails`, `customer_whatsapp`), per-channel switches, and
-  no offer. The Review request goes to every eligible Customer alike, once, with no
+  (`customer_review_requests`, `customer_emails`, `customer_whatsapp`), per-channel switches, and
+  no discount or other product. A failed email is retried; `order_emails`' final-failure rule
+  is not copied. The Review request goes to every eligible Customer alike, once, with no
   incentive (Google's policy). There is no free-window reminder (owner, 2026-10-20).
 - **(g) No third cron.** CRM jobs chain onto `results-sla` (ADR 0006's precedent).
 - **(h) The CRM sends no marketing.** It hands Segments and timeline history to
-  `PRD-email-marketing`. The periodic check-up reminder is a service message (owner,
-  2026-10-20) under (f)'s rules.
+  `PRD-email-marketing`. The yearly check-up is built here (owner, 2026-10-20) under (f)'s
+  rules, but it offers a paid visit, which the PDPA treats as direct marketing. So it goes only
+  to customers who agreed: Marketing consent for email, and an opt-in that names it for
+  WhatsApp. Both WhatsApp templates are filed as Marketing.
 - **(i) Seeing and changing are separate keys.** `customers` means seeing the Customers page;
   `customers-edit` (which requires `customers`) covers every change. Existing roles are
   migrated to hold both, and a guard test keeps writes on `customers-edit`.
-- **(j) Contact status is derived.** It comes from sign-in, sign-in identities and WhatsApp
-  replies, never from a Staff-set flag.
+- **(j) Contact status is derived.** It comes from sign-in, sign-in identities and
+  `whatsapp_inbound`, never from a Staff-set flag.
 - **(k) A Google review is linked to a Customer only by Staff confirmation.** The code
   suggests, and a person decides. Review data never selects who receives a Review request.
 - **(l) Aftercare preferences are per channel, and every change is an event.** Email
@@ -109,7 +112,7 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
   `notify_whatsapp`). Two sources can change them: the customer's own Profile, once signed in,
   and Staff's manual switch with a note (owner, 2026-10-20). A WhatsApp *STOP* becomes an open
   request for Staff, and pauses WhatsApp until they act. One SQL function writes the column and
-  the event together.
+  the event together. Turning WhatsApp on stores the opt-in wording shown, as evidence.
 - **(m) Telegram updates are four switchable types** (owner, 2026-10-20): new online Result to
   review, Google reviews to match, new sign-ups, and a weekly summary. The CRM's own types
   carry counts, Staff names and links only. The online Result notice already exists, and keeps
@@ -119,7 +122,7 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
 ## Acceptance criteria
 
 - [ ] `CONTEXT.md` carries the eight terms above with `_Avoid_` lines.
-- [ ] `docs/adr/0027-customer-crm.md` records (a)–(m). It links ADR 0026 (the Customer overview
+- [ ] `docs/adr/0027-customer-crm.md` records (a)–(m). It links ADR 0028 (the Customer overview
       and the "facts, not statuses" rule), ADR 0024 (the re-adjustment rule) and ADR 0006
       (cron chaining).
 - [ ] `./scripts/graphify update .` is run in the same commit.

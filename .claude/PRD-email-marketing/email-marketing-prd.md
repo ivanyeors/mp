@@ -45,7 +45,8 @@ These are already decided upstream; changing one means changing that plan too.
   own rules and switches (CRM slice 13): the Google review request after delivery and the
   yearly paid re-adjustment check-up (owner, 2026-10-20; CRM slices 07–08). They go by email
   and WhatsApp. This initiative does not send them. An aftercare message that gains an offer
-  becomes this initiative's.
+  becomes this initiative's. The check-up already follows this initiative's consent rule: it
+  offers a paid visit, so its email goes only to `subscribed` Customers (CRM slice 08).
 - **Never ask for reviews in a campaign.** Review requests go to every eligible customer alike,
   from CRM slice 07, under Google's policy. A campaign must not select reviewers, reward
   reviews, or send a second ask.

@@ -32,7 +32,7 @@ kind of update on or off from the Customers page.
   - Only one kind of notice can be switched off: the reminder for a held Result that is still
     waiting. That switch is in Settings → General, review SLA (`results_sla_remind_telegram`,
     `lib/sla-reminders/index.ts:46`).
-- **The online Result notice already exists.** `app/api/results/hold/route.ts:862-875` posts it
+- **The online Result notice already exists.** `app/api/results/hold/route.ts:1080-1099` posts it
   through `sendTelegram` on every online hold, with or without a card. Nothing can switch it off.
 - **In-store Results post a different notice.** When Staff finalise one, *Custom Mpillow
   created* is posted (`app/api/mp-config/responses/route.ts:448-519`). It is not an online
@@ -125,6 +125,7 @@ Aftercare card. It has:
   General.*
 - **Send test.** It posts each enabled type once with sample numbers, marked **TEST**.
   - The online Result sample uses a made-up build and `test@example.com`, never a real Result.
+    It includes a paired Mbolster, so the longer form is seen too.
   - The precedent is the review cards' *Send preview*.
 
 Permissions:
@@ -143,7 +144,8 @@ Permissions:
 ## Acceptance criteria
 
 - [ ] With `online_result_held` off, an online hold succeeds and posts nothing. When it is on,
-      or the setting cannot be read, the hold posts exactly today's text. The hold route's
+      or the setting cannot be read, the hold posts exactly today's text, including the
+      **Paired build** lines (*➕ Paired Mbolster…*, *Quoted:*, a second *Platform:* link). The hold route's
       existing tests pass unchanged.
 - [ ] Changing the online Result type needs both `results` and `customers-edit`. With
       `customers-edit` alone, the switch is disabled and the API refuses the change.
