@@ -3,7 +3,10 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { AccountSecurity } from "@/components/auth/account-security";
+import { AftercarePreferences } from "./aftercare-preferences";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -37,6 +40,10 @@ export default async function AccountProfilePage({
   const phone = customer.phone?.trim() || null;
   const googleLinked = (user.identities ?? []).some((i) => i.provider === "google");
   const initials = initialsFrom(displayName, email);
+  // Read server-side by the session's own Customer (CRM slice 13), so the card
+  // does not depend on the customer's column grants on `customers`. A failed
+  // read hides the card rather than the whole Profile.
+  const aftercare = await readProfileAftercare(supabaseAdmin(), customer.id).catch(() => null);
 
   return (
     <div className="w-full max-w-3xl space-y-8">
@@ -63,6 +70,14 @@ export default async function AccountProfilePage({
       </div>
 
       <AccountSecurity googleLinked={googleLinked} />
+
+      {aftercare ? (
+        <AftercarePreferences
+          email={aftercare.email}
+          whatsapp={aftercare.whatsapp}
+          phone={aftercare.phone}
+        />
+      ) : null}
 
       <Separator />
 

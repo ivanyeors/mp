@@ -13,6 +13,10 @@
  * Sample data only — no booking is created or changed. But a tap on these is a
  * real reply: Confirm, Reschedule or a time acts on that phone's next upcoming
  * appointment, if it has one.
+ *
+ * The two aftercare templates (CRM slice 13) go too, under their env names or
+ * their default names, with sample data and a sample link; so do the stop reply
+ * and the cancel question. Nothing is written to the aftercare ledger.
  */
 import { getSiteSettings } from "@/lib/site-settings";
 import {
@@ -23,6 +27,12 @@ import {
 import { formatDateSgt, formatTimeSgt } from "@/lib/appointments/format";
 import { guestText } from "@/lib/appointments/messages";
 import { normalizePhone } from "@/lib/appointments/phone";
+import {
+  AFTERCARE_CHECKUP_TEMPLATE,
+  AFTERCARE_REVIEW_TEMPLATE,
+  checkupTemplateParams,
+  reviewRequestTemplateParams,
+} from "@/lib/whatsapp/aftercare-templates";
 import { addSgtDays, sgtLocalToUtcMs, sgtParts, type SlotOffer } from "@/lib/appointments/slots";
 import {
   sendCancelMessage,
@@ -88,6 +98,31 @@ async function main() {
     ["Any other message (once per 12 hours)", () => sendText(to, guestText.autoReply())],
     ["A tap or command with no upcoming appointment", () => sendText(to, guestText.noUpcoming())],
     ["Cancelling failed on our side", () => sendText(to, guestText.cancelFailed())],
+    ["Aftercare: the review request (template, with a URL button)", () => {
+      const p = reviewRequestTemplateParams({
+        firstName: guestName,
+        orderNumber: "1042",
+        product: "Premium Mpillow",
+        deliveredAt: day(-14, 12),
+        token: "Zx81kQ",
+      });
+      const name = process.env.WHATSAPP_TEMPLATE_AFTERCARE_REVIEW?.trim() || AFTERCARE_REVIEW_TEMPLATE.name;
+      return sendTemplateMessage(to, name, p.bodyParams, { urlButtonParam: p.urlButtonParam });
+    }],
+    ["Aftercare: the yearly check-up (template, with a URL button)", () => {
+      const p = checkupTemplateParams({
+        firstName: guestName,
+        product: "Premium Mpillow",
+        orderNumber: "1042",
+        fee: "S$30",
+        orderItemId: "00000000-0000-4000-8000-000000000000",
+      });
+      const name = process.env.WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP?.trim() || AFTERCARE_CHECKUP_TEMPLATE.name;
+      return sendTemplateMessage(to, name, p.bodyParams, { urlButtonParam: p.urlButtonParam });
+    }],
+    ['They reply "stop" (every time, no cooldown)', () => sendText(to, guestText.stopReply())],
+    ['They reply a bare "cancel" right after an aftercare message', () =>
+      sendText(to, guestText.cancelQuestion(startsAt))],
   ];
   const confirmTemplate = process.env.WHATSAPP_TEMPLATE_CONFIRM?.trim();
   if (confirmTemplate) {

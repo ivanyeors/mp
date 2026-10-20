@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/whatsapp.ts": {
-    "mtime": 1792483949.5780318,
-    "seen": 1792484008.7116559,
-    "ast_hash": "404642e58cbccbe67ebcff48dfaa4910",
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.6111665,
+    "ast_hash": "ee686d2462387161ac82c6022a763b59",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/admin-guard.test.ts": {
@@ -1698,9 +1698,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/account/page.tsx": {
-    "mtime": 1791895456.4324355,
-    "seen": 1792484008.7104697,
-    "ast_hash": "03ad2ebff98d2dfcdd7eb4c6698ba21c",
+    "mtime": 1792501215.1992862,
+    "seen": 1792501470.6088767,
+    "ast_hash": "946539b09069a5be3fe9d622e5016bad",
     "semantic_hash": ""
   },
   "app/[lang]/account/results/page.tsx": {
@@ -3054,9 +3054,9 @@
     "semantic_hash": ""
   },
   "app/api/webhooks/whatsapp/route.ts": {
-    "mtime": 1792483949.4814258,
-    "seen": 1792484008.7111294,
-    "ast_hash": "13e3992645920055f51bed7413369cc5",
+    "mtime": 1792501215.2019114,
+    "seen": 1792501470.6100457,
+    "ast_hash": "fb8301866bb17e9e305110a09298ba64",
     "semantic_hash": ""
   },
   "app/auth/callback/route.ts": {
@@ -6336,9 +6336,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-create-templates.ts": {
-    "mtime": 1792483949.582032,
-    "seen": 1792484008.7127235,
-    "ast_hash": "8c37347f3691a0c131513acb72a19205",
+    "mtime": 1792501215.205675,
+    "seen": 1792501470.6137352,
+    "ast_hash": "a36eab8eae684d1636df39dace484b81",
     "semantic_hash": ""
   },
   "scripts/whatsapp-discover.ts": {
@@ -9108,9 +9108,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/[id]/customer-detail-client.tsx": {
-    "mtime": 1792499862.3126724,
-    "seen": 1792500089.2893863,
-    "ast_hash": "9474a944ae6e136ab18b2e1f6fa777a3",
+    "mtime": 1792501222.910675,
+    "seen": 1792501470.6090891,
+    "ast_hash": "2b26a281d0a48ae15b9dde27f4689e52",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
@@ -10350,9 +10350,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-preflight.ts": {
-    "mtime": 1792483949.582032,
-    "seen": 1792484008.7127266,
-    "ast_hash": "fee02239b9319181254b31b76bd5ea63",
+    "mtime": 1792501215.2095435,
+    "seen": 1792501470.6137404,
+    "ast_hash": "d7e3c6168d617c639434ac05c4b4abe1",
     "semantic_hash": ""
   },
   "components/configurator/save-filling-template.tsx": {
@@ -15402,15 +15402,15 @@
     "semantic_hash": ""
   },
   "lib/appointments/messages.ts": {
-    "mtime": 1792483949.5740318,
-    "seen": 1792484008.7116456,
-    "ast_hash": "1e23ec1b8edb036c126b7fe2e8b13b71",
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.6111438,
+    "ast_hash": "72d015534c63021a3fe773f2c72949db",
     "semantic_hash": ""
   },
   "scripts/whatsapp-preview.ts": {
-    "mtime": 1792483949.582032,
-    "seen": 1792484008.7127275,
-    "ast_hash": "0520bcec8173404a7303ded886ffd0bc",
+    "mtime": 1792501215.2095435,
+    "seen": 1792501470.6137428,
+    "ast_hash": "b77aec056fc3d9d1b8e6eea81754c985",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020024120_whatsapp_inbound_calendar_channels.sql": {
@@ -15504,9 +15504,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md": {
-    "mtime": 1792496270.6926827,
-    "seen": 1792496328.3049676,
-    "ast_hash": "f5f60f9883d576e6b340735414790413",
+    "mtime": 1792501235.3017328,
+    "seen": 1792501470.6142964,
+    "ast_hash": "6c13641c98c10e0c5e7847adddae6955",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/14-telegram-updates.md": {
@@ -15516,9 +15516,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/README.md": {
-    "mtime": 1792500880.1503787,
-    "seen": 1792501156.6842442,
-    "ast_hash": "82f888b6feb76a57ade7047ab5fca6d2",
+    "mtime": 1792501235.3027854,
+    "seen": 1792501470.614301,
+    "ast_hash": "a3c4a8be32c466e02de19cd10059bbc7",
     "semantic_hash": ""
   },
   ".claude/PRD-email-marketing/email-marketing-prd.md": {
@@ -15873,6 +15873,126 @@
     "mtime": 1792500808.6129246,
     "seen": 1792501156.6825674,
     "ast_hash": "33d46cfb3a65350c7ab95ce38ea280d0",
+    "semantic_hash": ""
+  },
+  "app/[lang]/account/__tests__/aftercare-action.test.ts": {
+    "mtime": 1792501215.1989994,
+    "seen": 1792501470.6087954,
+    "ast_hash": "3a40b6e2bc8e28e3ae94820a9a440fb2",
+    "semantic_hash": ""
+  },
+  "app/[lang]/account/__tests__/aftercare-preferences-render.test.tsx": {
+    "mtime": 1792501215.1992862,
+    "seen": 1792501470.6088002,
+    "ast_hash": "0ed89b5eb4f118b3be1f150910b7853e",
+    "semantic_hash": ""
+  },
+  "app/[lang]/account/actions.ts": {
+    "mtime": 1792501215.1992862,
+    "seen": 1792501470.6088076,
+    "ast_hash": "472fa0bbd6491fd042f95b5844c630fa",
+    "semantic_hash": ""
+  },
+  "app/[lang]/account/aftercare-preferences.tsx": {
+    "mtime": 1792501215.1992862,
+    "seen": 1792501470.6088507,
+    "ast_hash": "c92e75238f8114e1a7bd08d884445ae9",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/[id]/aftercare-card.tsx": {
+    "mtime": 1792501215.2005699,
+    "seen": 1792501470.6090858,
+    "ast_hash": "d9eb0e02da15e84bda4d05c03065e225",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/__tests__/aftercare-card-render.test.tsx": {
+    "mtime": 1792501215.2005699,
+    "seen": 1792501470.6090972,
+    "ast_hash": "7126a9c1f42921d48b5fe417e054d618",
+    "semantic_hash": ""
+  },
+  "app/api/shop/customers/[id]/aftercare/route.ts": {
+    "mtime": 1792501215.2019114,
+    "seen": 1792501470.6098592,
+    "ast_hash": "f83ec388397778e7c6a0d348216ed0b9",
+    "semantic_hash": ""
+  },
+  "app/api/shop/customers/__tests__/aftercare-route.test.ts": {
+    "mtime": 1792501215.2019114,
+    "seen": 1792501470.6098716,
+    "ast_hash": "3a784fa760c8bf41146807cd57faaf3b",
+    "semantic_hash": ""
+  },
+  "app/api/webhooks/whatsapp/__tests__/route-aftercare.test.ts": {
+    "mtime": 1792501215.2019114,
+    "seen": 1792501470.6100426,
+    "ast_hash": "bf5824ac64614de43bfe7be1c0d365d2",
+    "semantic_hash": ""
+  },
+  "lib/aftercare/__tests__/fake-db.ts": {
+    "mtime": 1792501215.203266,
+    "seen": 1792501470.6109467,
+    "ast_hash": "2012d31c3fa726a8e0cbe11b72bff69e",
+    "semantic_hash": ""
+  },
+  "lib/aftercare/__tests__/preferences.test.ts": {
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.6109502,
+    "ast_hash": "9611ad2ebdd9fe92dfbb3c918069b2b1",
+    "semantic_hash": ""
+  },
+  "lib/aftercare/__tests__/state.test.ts": {
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.6109521,
+    "ast_hash": "c4e0f7b32d19d5c7c3ac70cb4b1459f6",
+    "semantic_hash": ""
+  },
+  "lib/aftercare/preferences.ts": {
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.610954,
+    "ast_hash": "ca0cdf3826cba800e58a4d381d3dbcf8",
+    "semantic_hash": ""
+  },
+  "lib/aftercare/state.ts": {
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.610956,
+    "ast_hash": "4640a84ab99724142448dd5d42b1f21f",
+    "semantic_hash": ""
+  },
+  "lib/appointments/__tests__/whatsapp-aftercare.test.ts": {
+    "mtime": 1792501215.2034292,
+    "seen": 1792501470.6111042,
+    "ast_hash": "382054396985d5a63d77af7e8877f2c7",
+    "semantic_hash": ""
+  },
+  "lib/whatsapp/__tests__/aftercare-notify.test.ts": {
+    "mtime": 1792501215.205675,
+    "seen": 1792501470.6134646,
+    "ast_hash": "b6fc5011a10a8dd513733a56a1f76373",
+    "semantic_hash": ""
+  },
+  "lib/whatsapp/__tests__/aftercare-templates.test.ts": {
+    "mtime": 1792501215.205675,
+    "seen": 1792501470.6134691,
+    "ast_hash": "28d914d478f1952fbacbabc15732304b",
+    "semantic_hash": ""
+  },
+  "lib/whatsapp/aftercare-notify.ts": {
+    "mtime": 1792501215.205675,
+    "seen": 1792501470.6134758,
+    "ast_hash": "0e77c789079806f0c870c624189de74b",
+    "semantic_hash": ""
+  },
+  "lib/whatsapp/aftercare-templates.ts": {
+    "mtime": 1792501215.205675,
+    "seen": 1792501470.6134784,
+    "ast_hash": "dc62c4f5bfd4f27f0176be5e0ba37d87",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261020114000_aftercare_preferences.sql": {
+    "mtime": 1792501215.2111773,
+    "seen": 1792501470.6140883,
+    "ast_hash": "281322dc9a5f6edff53db46da201a6cc",
     "semantic_hash": ""
   }
 }

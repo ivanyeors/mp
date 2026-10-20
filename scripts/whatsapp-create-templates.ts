@@ -1,7 +1,8 @@
 /**
- * Create + submit the 4 appointment templates on a WABA, with body-param counts
- * that exactly match lib/appointments/whatsapp.ts (day_before/morning_of/
- * confirmation = 4, cancelled = 5). Category UTILITY, language en. Idempotent-ish:
+ * Create + submit the 4 appointment templates and the 2 aftercare templates on a
+ * WABA, with body-param counts that exactly match lib/appointments/whatsapp.ts
+ * (day_before/morning_of/confirmation = 4, cancelled = 5, aftercare = 5).
+ * Category UTILITY, language en. Idempotent-ish:
  * a duplicate name+lang just returns an error we print and skip.
  *
  * The day-before template carries the Confirm / Reschedule quick replies the
@@ -20,12 +21,33 @@
  * appointment_confirmation to activate the immediate booking confirmation in
  * app/api/appointments/book/route.ts (it stays dormant until then).
  *
+ * The two aftercare templates (CRM slice 13), `aftercare_review_request` and
+ * `aftercare_checkup`, are 5 body params each plus a URL button whose one
+ * variable ends the URL. Their copy is approved by the owner word for word and
+ * lives in lib/whatsapp/aftercare-templates.ts, where a test pins it. Once each
+ * shows Approved, set WHATSAPP_TEMPLATE_AFTERCARE_REVIEW / _CHECKUP to its name;
+ * until then aftercare goes by email only. Meta may file either as Marketing
+ * instead of Utility: run scripts/whatsapp-preflight.ts to see the category.
+ *
  *   npx tsx --env-file=.env.local scripts/whatsapp-create-templates.ts <WABA_ID>
+ *   npx tsx --env-file=.env.local scripts/whatsapp-create-templates.ts <WABA_ID> aftercare_review_request,aftercare_checkup
  */
+import { AFTERCARE_WA_TEMPLATES } from "@/lib/whatsapp/aftercare-templates";
+
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-/** `buttons` are QUICK_REPLY labels; a tap arrives at the webhook as that text. */
-type Def = { name: string; text: string; example: string[]; buttons?: string[] };
+/**
+ * `buttons` are QUICK_REPLY labels; a tap arrives at the webhook as that text.
+ * `urlButton` is one URL button with a variable at the end of its URL, filled
+ * at send by sendTemplateMessage's `urlButtonParam`.
+ */
+type Def = {
+  name: string;
+  text: string;
+  example: string[];
+  buttons?: string[];
+  urlButton?: { text: string; url: string; example: string };
+};
 
 const TEMPLATES: Def[] = [
   {
@@ -55,7 +77,20 @@ const TEMPLATES: Def[] = [
     text: "Hi {{1}}, your {{4}} appointment is booked for {{2}} at {{3}}. We'll remind you the day before — see you then!",
     example: ["Ivan", "6 Aug", "3:00 PM", "Chiropractic"],
   },
+  // aftercare_review_request, aftercare_checkup (CRM slice 13).
+  ...AFTERCARE_WA_TEMPLATES.map(({ name, text, example, urlButton }) => ({ name, text, example, urlButton })),
 ];
+
+/** The template's BUTTONS component, or none. */
+function buttonsOf(t: Def): Record<string, unknown>[] {
+  const buttons: Record<string, unknown>[] = [
+    ...(t.buttons ?? []).map((text) => ({ type: "QUICK_REPLY", text })),
+    ...(t.urlButton
+      ? [{ type: "URL", text: t.urlButton.text, url: t.urlButton.url, example: [t.urlButton.example] }]
+      : []),
+  ];
+  return buttons.length ? [{ type: "BUTTONS", buttons }] : [];
+}
 
 async function main() {
   const waba = process.argv[2]?.trim();
@@ -74,14 +109,7 @@ async function main() {
       category: "UTILITY",
       components: [
         { type: "BODY", text: t.text, example: { body_text: [t.example] } },
-        ...(t.buttons?.length
-          ? [
-              {
-                type: "BUTTONS",
-                buttons: t.buttons.map((text) => ({ type: "QUICK_REPLY", text })),
-              },
-            ]
-          : []),
+        ...buttonsOf(t),
       ],
     };
     const res = await fetch(`${GRAPH}/${waba}/message_templates`, {

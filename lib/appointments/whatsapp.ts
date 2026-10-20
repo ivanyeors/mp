@@ -18,6 +18,22 @@ function token(): string {
   return t;
 }
 
+/**
+ * A send the Cloud API refused. `code` is Meta's error code when it gave one
+ * (131050: the person turned off marketing messages from us in WhatsApp), so a
+ * caller can tell a refusal it records apart from one it only logs.
+ */
+export class WhatsAppSendError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: number | null,
+  ) {
+    super(message);
+    this.name = "WhatsAppSendError";
+  }
+}
+
 async function sendPayload(body: Record<string, unknown>): Promise<string | null> {
   const res = await fetch(`${GRAPH}/${phoneNumberId()}/messages`, {
     method: "POST",
@@ -30,11 +46,13 @@ async function sendPayload(body: Record<string, unknown>): Promise<string | null
   });
   const json = (await res.json().catch(() => ({}))) as {
     messages?: Array<{ id?: string }>;
-    error?: { message?: string };
+    error?: { message?: string; code?: number };
   };
   if (!res.ok) {
-    throw new Error(
+    throw new WhatsAppSendError(
       `WhatsApp send failed (${res.status}): ${json.error?.message ?? JSON.stringify(json)}`,
+      res.status,
+      typeof json.error?.code === "number" ? json.error.code : null,
     );
   }
   return json.messages?.[0]?.id ?? null;
@@ -51,16 +69,32 @@ function toWa(e164: string): string {
  * approved template — free text is only allowed inside a 24h service window.
  * Returns the provider message id, or throws on API failure (callers decide
  * whether that is fatal; partner notifications treat it as best-effort).
+ *
+ * `urlButtonParam` fills the `{{1}}` at the end of the template's first URL
+ * button (the aftercare templates', CRM slice 13). Without it the payload is
+ * exactly what it always was: body parameters only.
  */
 export async function sendTemplateMessage(
   e164: string,
   templateName: string,
   bodyParams: string[],
+  options: { urlButtonParam?: string } = {},
 ): Promise<string | null> {
   // Meta approves each template under an exact language code. Default "en", but
   // let ops override (e.g. "en_US") to match how the templates were approved —
   // a mismatch is a silent 132001 "template does not exist in this language".
   const lang = process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "en";
+  const components: Record<string, unknown>[] = bodyParams.length
+    ? [{ type: "body", parameters: bodyParams.map((text) => ({ type: "text", text })) }]
+    : [];
+  if (options.urlButtonParam !== undefined) {
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: options.urlButtonParam }],
+    });
+  }
   return sendPayload({
     messaging_product: "whatsapp",
     to: toWa(e164),
@@ -68,9 +102,7 @@ export async function sendTemplateMessage(
     template: {
       name: templateName,
       language: { code: lang },
-      components: bodyParams.length
-        ? [{ type: "body", parameters: bodyParams.map((text) => ({ type: "text", text })) }]
-        : [],
+      components,
     },
   });
 }
@@ -265,7 +297,14 @@ export type InboundWaAction =
   | { kind: "reschedule"; fromE164: string; messageId: string }
   | { kind: "slot"; fromE164: string; messageId: string; slotId: string }
   | { kind: "reject_slots"; fromE164: string; messageId: string }
-  | { kind: "cancel"; fromE164: string; messageId: string }
+  /**
+   * `bare` is a cancel that does not say what it cancels ("cancel", "cancel
+   * please"). Right after an aftercare message it may mean "stop these", so the
+   * webhook asks before it cancels an appointment (CRM slice 13).
+   */
+  | { kind: "cancel"; fromE164: string; messageId: string; bare: boolean }
+  /** A request to stop aftercare messages. Recorded and answered, never acted on. */
+  | { kind: "stop"; fromE164: string; messageId: string }
   | { kind: "unknown"; fromE164: string; messageId: string };
 
 /**
@@ -287,9 +326,18 @@ const UNACTIONABLE_TYPES = new Set([
 /**
  * A whole message that means "cancel my appointment". Exact matches only, so
  * "can I cancel and come Friday instead?" is chatter for the staffed line, not
- * a cancellation.
+ * a cancellation. The bare ones do not name what they cancel; see `bare` on the
+ * cancel action.
  */
-const CANCEL_WORDS = new Set(["cancel", "cancel appointment", "cancel booking", "cancel please", "please cancel"]);
+const BARE_CANCEL_WORDS = new Set(["cancel", "cancel please", "please cancel"]);
+const CANCEL_WORDS = new Set([...BARE_CANCEL_WORDS, "cancel appointment", "cancel booking"]);
+
+/**
+ * A whole message that means "stop the aftercare messages" (CRM slice 13).
+ * Exact matches only, like CANCEL_WORDS. It never flips a switch: customers
+ * change that in their Profile, and Staff with the manual switch.
+ */
+const STOP_WORDS = new Set(["stop", "unsubscribe", "stop messages", "stop sending"]);
 
 /**
  * Parse Cloud API webhook payload into actionable intents.
@@ -382,7 +430,9 @@ export function parseInboundActions(
           } else if (body.includes("none of these") || body === "reject") {
             out.push({ kind: "reject_slots", fromE164, messageId });
           } else if (CANCEL_WORDS.has(body)) {
-            out.push({ kind: "cancel", fromE164, messageId });
+            out.push({ kind: "cancel", fromE164, messageId, bare: BARE_CANCEL_WORDS.has(body) });
+          } else if (STOP_WORDS.has(body)) {
+            out.push({ kind: "stop", fromE164, messageId });
           } else {
             out.push({ kind: "unknown", fromE164, messageId });
           }
@@ -411,6 +461,27 @@ export function withinServiceWindow(
   const t = Date.parse(lastInboundAt);
   if (!Number.isFinite(t)) return false;
   return now - t < 24 * 60 * 60 * 1000;
+}
+
+/**
+ * Whether a cancel should be answered with a question instead of cancelling
+ * (CRM slice 13). A bare "cancel" typed after an aftercare message most likely
+ * means "stop these", and cancelling a booked re-adjustment for it would be
+ * wrong. So it asks when the number's latest aftercare send is newer than the
+ * open reminder's latest message. "cancel appointment" never asks.
+ */
+export function askBeforeCancel(input: {
+  bare: boolean;
+  /** `customer_whatsapp.sent_at` of the number's latest aftercare send that has not failed. */
+  lastAftercareSentAt: string | null | undefined;
+  /** The open reminder's `last_outbound_at`. */
+  reminderLastOutboundAt: string | null | undefined;
+}): boolean {
+  if (!input.bare || !input.lastAftercareSentAt) return false;
+  const aftercare = Date.parse(input.lastAftercareSentAt);
+  if (!Number.isFinite(aftercare)) return false;
+  const reminder = input.reminderLastOutboundAt ? Date.parse(input.reminderLastOutboundAt) : NaN;
+  return !Number.isFinite(reminder) || aftercare > reminder;
 }
 
 export type FailedDelivery = { waId: string; recipient: string; reason: string };

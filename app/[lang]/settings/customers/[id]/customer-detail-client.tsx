@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { changedCustomerFields } from "@/lib/crm/customer-patch";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
+import { AftercareCard } from "./aftercare-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -736,6 +737,9 @@ export function CustomerDetailClient({
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Aftercare switches (CRM slice 13) */}
+                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>
