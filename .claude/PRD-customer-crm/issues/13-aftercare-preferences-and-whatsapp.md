@@ -2,8 +2,8 @@
 
 **Issue:** [#290](https://github.com/ivanyeors/mp/issues/290) (parent #277)
 **Type:** AFK, plus one HITL step: submitting the two new WhatsApp templates with the existing
-**Status:** built in `d1dbf95` on `claude/shopify-migration-plan-izv7fo`
 script and waiting for Meta's review (usually minutes).
+**Status:** built in `d1dbf95` on `claude/shopify-migration-plan-izv7fo`
 **Blocked by:** 01, 10
 **User stories:** 25, 26, 27, 28
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:email`, `area:admin`, `area:customer-accounts`

@@ -9,6 +9,7 @@
 //
 // Every `render` must be PURE — no network, no DB.
 
+import { renderWelcomeVoucherEmail } from "./account";
 import { renderApplicationOutcomeEmail } from "./application";
 import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderContactEmail } from "./contact";
@@ -60,6 +61,8 @@ import {
   sampleResultUpdatedBalance,
   sampleResultUpdatedWithinHold,
   sampleRma,
+  sampleWelcomeVoucher,
+  sampleWelcomeVoucherFreeShipping,
   type EmailFixture,
 } from "./__fixtures__/samples";
 import type { EmailTemplateName, RenderedEmail } from "./types";
@@ -69,6 +72,7 @@ export type { EmailFixture };
 
 export type EmailGroup =
   | "order"
+  | "account"
   | "rma"
   | "partner"
   | "application"
@@ -286,6 +290,26 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f)),
   },
 
+  // --- Customer account ---
+  {
+    // Sent once, at the Claim (PRD-shopify-customer-migration slice 05). The
+    // id is also its customer_emails.template (WELCOME_VOUCHER_EMAIL).
+    id: "account.welcome_voucher",
+    label: "Welcome-back voucher",
+    group: "account",
+    audience: "customer",
+    render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucher(f)),
+  },
+  {
+    // Same renderer, free-shipping terms and no first name: the "worth" line
+    // and the greeting are the two sentences that change.
+    id: "account.welcome_voucher_free_shipping",
+    label: "Welcome-back voucher — free shipping",
+    group: "account",
+    audience: "customer",
+    render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucherFreeShipping(f)),
+  },
+
   // --- Partner programme ---
   {
     id: "partner.referral_earned",
@@ -405,6 +429,7 @@ export function getEmailCase(id: string): EmailCase | undefined {
 
 export const EMAIL_GROUP_LABELS: Record<EmailGroup, string> = {
   order: "Orders",
+  account: "Customer account",
   rma: "Returns",
   results: "Customisation",
   partner: "Partner programme",
