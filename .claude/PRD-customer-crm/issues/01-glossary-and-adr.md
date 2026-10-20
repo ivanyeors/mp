@@ -106,12 +106,15 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
   suggests, and a person decides. Review data never selects who receives a Review request.
 - **(l) Aftercare preferences are per channel, and every change is an event.** Email
   defaults on and WhatsApp defaults off (Meta's opt-in rule, following the partners'
-  `notify_whatsapp`). Five sources can change them: the customer's Profile, checkout, the email
-  link, a WhatsApp STOP or START, and Staff's manual switch with a note. One SQL function writes
-  the column and the event together.
-- **(m) CRM Telegram updates come from a catalogue of types, each switchable.** Counts, Staff
-  names and links only. Scheduled types go at most once per period, and instant types never
-  block their write.
+  `notify_whatsapp`). Two sources can change them: the customer's own Profile, once signed in,
+  and Staff's manual switch with a note (owner, 2026-10-20). A WhatsApp *STOP* becomes an open
+  request for Staff, and pauses WhatsApp until they act. One SQL function writes the column and
+  the event together.
+- **(m) Telegram updates are four switchable types** (owner, 2026-10-20): new online Result to
+  review, Google reviews to match, new sign-ups, and a weekly summary. The CRM's own types
+  carry counts, Staff names and links only. The online Result notice already exists, and keeps
+  its content. Scheduled types go at most once per period, and instant types never block their
+  write.
 
 ## Acceptance criteria
 

@@ -1,7 +1,7 @@
-# 08 — Check-up reminder: the yearly "time for a re-adjustment", which says it is paid
+# 08 — Check-up reminder: the yearly "time for a re-adjustment" for Premium Mpillow, which says it is paid
 
 **Type:** AFK
-**Blocked by:** 07, 13; owner decision 1 (coverage)
+**Blocked by:** 07, 13
 **User stories:** 24
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:customers`, `area:email`, `area:whatsapp`, `area:readjustment`
 
@@ -14,6 +14,7 @@ The owner decided on 2026-10-20:
 - **Yearly.** 12 months after delivery.
 - **It says plainly that the visit is paid.**
 - **Both channels:** email and WhatsApp (slice 13), each honouring its own switch.
+- **Premium Mpillow only.** Basic Mpillow and Mbolster owners get no check-up.
 
 What makes it a service message, and must stay true:
 
@@ -28,8 +29,9 @@ gate.
 
 ## Goal
 
-A year after delivery, a pillow owner hears that a re-adjustment keeps the pillow fitting them,
-**and that it is a paid visit, at a stated price**. There are no surprises at booking.
+A year after delivery, a Premium Mpillow owner hears that a re-adjustment keeps the pillow
+fitting them, **and that it is a paid visit, at a stated price**. There are no surprises at
+booking.
 
 ## The price, stated, from one source
 
@@ -38,7 +40,8 @@ The fee is read at send time from Costings, which is the single source of sell p
 S$30, `20261013100000_service_prices.sql:29`). It is never a constant in the template.
 
 - **Email:** *"A re-adjustment is a paid visit: S${fee}, paid when you book."*
-- **WhatsApp:** the fee is a template parameter.
+- **WhatsApp:** the fee is a template parameter. If the approved template has the price written
+  into it instead, WhatsApp goes only while Costings' fee matches it (slice 13).
 - **If the fee cannot be read, nothing is sent that day.** A check-up that does not say what it
   costs is not sent.
 
@@ -59,24 +62,28 @@ This reuses slice 07's machinery: the same daily job, chained onto `results-sla`
 - **When:** the first run on or after `delivered_at + checkup_months` (12).
 - **Skip:** a Customer with a **Re-adjustment booking** booked or attended within the previous
   `checkup_months`. Skipped Customers are counted, not sent.
-- **Coverage:** owner decision 1. Until the owner chooses, the default is **every Mpillow and
-  Mbolster**, because a paid re-adjustment applies to all of them. It is read from
-  `customer_purchase_lines` (slice 04). If slice 04 has not landed, use `classifyOrderLine`
-  (`lib/readjustment/purchases.ts:80-122`) directly.
+- **Coverage: Premium Mpillow only** (owner, 2026-10-20). A line is covered when
+  `classifyOrderLine` (`lib/readjustment/purchases.ts:80-122`) gives `productType = 'pillow'`
+  and `tier = 'premium'`. It is read from `customer_purchase_lines` (slice 04), which has a parity
+  check against that function; if slice 04 has not landed, call the function directly.
+  - A pillow whose tier is unknown is not covered.
+  - An Order with a Premium Mpillow and other lines gets one check-up for the Order.
 
 ## Settings
 
 These are `site_settings` keys, edited on slice 07's Aftercare card:
 
 - `checkup_reminders_enabled` (default **false**);
-- `checkup_months` (12);
-- `checkup_covers`: `premium` | `all_pillows` | `pillows_and_bolsters` (default
-  `pillows_and_bolsters`).
+- `checkup_months` (12).
+
+Coverage is not a setting. It is Premium Mpillow, in code, with its test.
 
 ## Acceptance criteria
 
 - [ ] vitest covers the timing and skip rules as a pure function: on time, already re-adjusted
       within the period, opted out per channel, and not delivered.
+- [ ] A Basic Mpillow, an Mbolster, and a pillow of unknown tier get no check-up. A Premium
+      Mpillow bought alongside them does.
 - [ ] Each Order gets at most one check-up per milestone per channel, through the two ledgers.
 - [ ] The rendered email and the WhatsApp parameters state the fee as read from Costings.
       Changing the price in Costings changes the next message. A failed price read sends

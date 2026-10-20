@@ -408,9 +408,9 @@ order that helps the relationship most:
 3. **Aftercare messages** by email and WhatsApp (service messages, owner 2026-10-20):
    - one Google review request 14 days after delivery, with a short *"need anything else?
      message us"* line;
-   - a yearly re-adjustment check-up that states the fee.
+   - a yearly re-adjustment check-up for Premium Mpillow that states the fee.
 
-   Staff have a manual switch to turn them off.
+   Customers turn them off in their Profile, and Staff have a manual switch.
 
    There is no email about the free re-adjustment window.
 4. **Saved segments.** A named filter on the Customers list, such as *Premium, bought over a year
@@ -426,7 +426,7 @@ Added on 2026-10-20:
 - a view-only Customers permission;
 - contact and sign-in status, showing whether the email and mobile are linked up;
 - reviews on every Customer: shop reviews exactly, and Google reviews by Staff-confirmed match;
-- a catalogue of CRM Telegram updates, each switchable.
+- four switchable Telegram updates, including the existing online Result notice.
 
 Out of scope even then: WhatsApp and SMS marketing (Do Not Call duties), and scoring or
 predictions.

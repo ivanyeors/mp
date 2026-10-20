@@ -17,13 +17,13 @@ demoable path through all layers.
 | [05](05-saved-segments.md) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
 | [06](06-follow-ups.md) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
 | [07](07-review-request-after-delivery.md) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **not started** | 01, 13 | 11–15 |
-| [08](08-checkup-reminder.md) | Check-up reminder: yearly, and it says the visit is paid | AFK | **not started** | 07, 13 | 24 |
+| [08](08-checkup-reminder.md) | Check-up reminder: yearly, Premium Mpillow only, and it says the visit is paid | AFK | **not started** | 07, 13 | 24 |
 | [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
 | [10](10-customers-view-permission.md) | A view-only Customers permission | AFK | **not started** | 01 | 17, 18 |
 | [11](11-contact-and-sign-in-status.md) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **not started** | 01; migration 12 | 19, 20 |
 | [12](12-reviews-per-customer.md) | Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff | AFK + HITL (Google sync live) | **not started** | 04, 07, 10 | 21–23 |
-| [13](13-aftercare-preferences-and-whatsapp.md) | Aftercare by email and WhatsApp, with a manual switch to turn them off | AFK + HITL (Meta templates) | **not started** | 01, 10 | 25–28 |
-| [14](14-telegram-updates.md) | CRM updates on Telegram: a catalogue of update types, each with its own switch | AFK | **owner to confirm catalogue** | 06 | 29, 30 |
+| [13](13-aftercare-preferences-and-whatsapp.md) | Aftercare by email and WhatsApp, with a manual switch to turn them off | AFK (Meta templates approved) | **not started** | 01, 10 | 25–28 |
+| [14](14-telegram-updates.md) | Telegram updates: four types, each with its own switch | AFK | **not started** | 10 | 29, 30 |
 
 PRD part 5, email marketing, has no slice here. It is a hand-off to
 [`PRD-email-marketing`](../../PRD-email-marketing/email-marketing-prd.md), and slice 05's
@@ -48,7 +48,7 @@ graph TD
   gr[Google review sync live · HITL]
   s13[13 Aftercare prefs + WhatsApp]
   s14[14 Telegram updates]
-  meta[Meta templates approved · HITL]
+  meta[Meta templates approved · done]
   m12[Migration 12: Customer overview]
   em[PRD-email-marketing · future]
 
@@ -73,8 +73,10 @@ graph TD
   s10 --> s13
   s13 --> s07
   s13 --> s08
-  meta -. WhatsApp sends .-> s13
-  s06 --> s14
+  meta -. template details .-> s13
+  s10 --> s14
+  s12 -. reviews to match .-> s14
+  m12 -. sign-ups .-> s14
   s13 --> s09
   s14 --> s09
   s01 --> s07
@@ -94,13 +96,15 @@ graph TD
    any of it.
 2. **10 next.** It is small, and once it lands, every later slice's write path is born on
    `customers-edit`. It does not block 02, the urgent fix.
-3. **03 and 13 in parallel.** 13 creates the aftercare switches and the WhatsApp channel. Submit
-   the two WhatsApp templates to Meta as soon as the copy is approved, because approval takes
-   days. Then **07**.
+3. **03 and 13 in parallel.** 13 creates the aftercare switches and the WhatsApp channel. Meta
+   has already approved the templates; record their names, variables and buttons in slice 13
+   before building. Then **07**.
+   **14** can go any time after 10. Its online Result switch works at once, and its other
+   types start posting as 12 and migration slice 12 land.
 4. **04 and 11 once migration slice 12 has merged**, because both extend its overview and its
    `linkCustomerToAuthUser` change. Then 05.
 5. **06** after 03 and 10, so follow-ups land on the timeline and on the right permission in the
-   same PR. Then **14**, once the owner has confirmed its catalogue.
+   same PR.
 6. **08** after 07 (the same job), and **12** after 04, 07 and 10. 12's Google matching
    lights up once the Google review sync is live (`PRD-google-review-replies` OPS-CHECKLIST).
    It ships without it.
@@ -130,8 +134,9 @@ the check-up once per milestone per Order. **WhatsApp never goes to a Customer w
 `aftercare_whatsapp` is off.** Turning it on needs the customer's own action, or a Staff note
 recording that the customer agreed.
 
-**Third hazard: no PII in Telegram.** The Staff group is a shared chat. Updates carry counts
-and links only.
+**Third hazard: no PII in Telegram.** The Staff group is a shared chat. The CRM's own updates
+carry counts, Staff names and links only. The one exception is not the CRM's: the online Result
+notice is today's build-team notice, and it keeps its content. Slice 14 adds only its switch.
 
 **Fourth hazard: no third cron.** Vercel Hobby allows two, and a test asserts it
 (`lib/shopify/order-mirror-catchup.check.ts:24`). Chain onto `results-sla`.
@@ -162,6 +167,5 @@ escalations. They are worth one small PR outside the CRM.
   walkthrough, and 30 days of reminders.
 - **Slice 08** is decided as a service message (owner, 2026-10-20). Have counsel read the final
   copy once, as a check rather than a gate.
-- **Slice 13** needs the owner to approve the WhatsApp copy and submit both templates in
-  WhatsApp Manager. Meta's approval takes days, so start early.
-- **Slice 14** needs the owner to confirm the Telegram update catalogue (PRD owner decision 2).
+- **Slice 13:** Meta has approved the WhatsApp templates (owner, 2026-10-20). Before building,
+  record each one's name, language, category, variables and buttons in the slice.

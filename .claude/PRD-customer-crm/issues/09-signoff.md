@@ -27,10 +27,13 @@
    - Check one real request in the owner's inbox (or a Staff test order): it renders, the
      button opens Google's review form, the WhatsApp line opens the support chat, and it is not
      in spam.
-   - Once Meta has approved the WhatsApp templates (slice 13), send the WhatsApp version to the
-     owner's own opted-in number. Check that the button opens the review form, then reply STOP:
-     the switch turns off and the reply confirms. Reply START to turn it back on. Record the
-     category Meta gave each template.
+   - Test the WhatsApp version on the owner's own number:
+     - turn WhatsApp on in the owner's own Profile, and send the request;
+     - check that the button opens the review form;
+     - reply STOP, and check the reply, the open request on the Contact card, and that a
+       second run sends nothing;
+     - switch it off from the Admin Panel, and check the request closes.
+   - Turn email off in the owner's Profile, and check the history line says *Profile*.
    - Flip one test Customer's switches from the Admin Panel, and check the history line.
 4. **After 30 days, record:**
    - requests sent;
@@ -41,8 +44,12 @@
 5. **Match the first Google reviews.** If the Google review sync is live, work through
    *Google reviews to match* once. Record how many had a correct suggestion, as the measure of
    whether the matching rules need tuning.
-6. **Telegram updates.** Choose the types on the Telegram updates card (slice 14), press
-   *Send test*, then confirm that a week of real posts went out on schedule with counts only.
+6. **Telegram updates.** On the Telegram updates card (slice 14):
+   - press *Send test*, and check the four types arrive marked TEST;
+   - switch *New online Result to review* off, make a test online hold, and check nothing is
+     posted; switch it back on, and check the next hold posts as before;
+   - after a week, confirm that the daily and weekly posts went out on schedule with counts
+     only.
 
 ## Acceptance criteria
 

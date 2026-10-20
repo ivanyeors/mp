@@ -1,6 +1,7 @@
 # 13 — Aftercare by email and WhatsApp, with a manual switch to turn them off
 
-**Type:** AFK, plus HITL for Meta template approval
+**Type:** AFK. Meta has approved the WhatsApp templates (owner, 2026-10-20). Their details are
+recorded below before building.
 **Blocked by:** 01, 10
 **User stories:** 25, 26, 27, 28
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:email`, `area:whatsapp`
@@ -13,17 +14,19 @@ The owner decided on 2026-10-20:
   **email and WhatsApp**.
 - **A manual switch.** When a customer wants the reminders to stop, Staff can switch them off
   for that customer.
+- **Customers change it themselves in one place only:** their Profile, once signed in. There
+  is no unsubscribe link in the email, no STOP or START keyword on WhatsApp, and no checkbox at
+  checkout.
+- **The WhatsApp templates are approved by Meta.**
 
 ## Goal
 
 One place decides whether a **Customer** gets **Aftercare messages** by email and by
-WhatsApp. Five ways change it:
+WhatsApp. Two ways change it:
 
 - the customer, in their Profile;
-- the customer, by replying STOP on WhatsApp;
-- the customer, from a link in the email;
-- the customer, at checkout;
-- Staff, with a manual switch on the Customer page.
+- Staff, with the manual switch on the Customer page, for anyone who asks by email reply, on
+  WhatsApp, or in person.
 
 Every change records who made it, how, and when.
 
@@ -33,6 +36,9 @@ Every change records who made it, how, and when.
 - **WhatsApp: off until the customer opts in.** Meta requires a person's opt-in before a
   business starts a conversation. The precedent is the partners' `notify_whatsapp`, which
   defaults to false while email stays always-on (`20260802000000_partner_notify_whatsapp.sql:1-12`).
+- **What that means in practice.** With no checkout checkbox, WhatsApp reaches only customers
+  who turned it on in their Profile, or who told Staff they agree. Expect most aftercare to go
+  by email.
 
 ## Schema
 
@@ -47,7 +53,7 @@ create table customer_preference_events (
   customer_id           uuid not null references customers(id) on delete cascade,
   preference            text not null check (preference in ('aftercare_email', 'aftercare_whatsapp')),
   to_value              boolean not null,
-  source                text not null check (source in ('profile', 'checkout', 'staff', 'email_link', 'whatsapp_reply')),
+  source                text not null check (source in ('profile', 'staff')),
   changed_by_profile_id uuid null references mp_staff(id) on delete set null,
   note                  text null check (length(note) <= 300),
   created_at            timestamptz not null default now()
@@ -60,8 +66,9 @@ create table customer_preference_events (
   updates the column and appends the event in one transaction, and writes nothing when the
   value is unchanged.
 - **Slices 07 and 08 read these two columns.** Neither has an opt-out column of its own.
+- **Another way to change it later** needs a new value in the `source` check.
 
-## Five ways to change it
+## Two ways to change it
 
 ### 1. Staff: the manual switch
 
@@ -77,48 +84,62 @@ switches, *Aftercare by email* and *Aftercare by WhatsApp*.
 - **Permissions and audit.** Changing either needs `customers-edit` (slice 10). It writes the
   event and `recordAdminAction` (`customer.aftercare_preference`).
 
-### 2. The customer: Profile
+### 2. The customer: Profile, once signed in
 
-Two toggles on `/account`: *Emails after a purchase* and *WhatsApp messages after a purchase*.
-They are written under the customer's own session, with source `profile`.
+`/account` gets two toggles: *Emails after a purchase* and *WhatsApp messages after a
+purchase*.
 
-### 3. The customer: the email's link
+- **Who is changing it.** A server action resolves the Customer from the session, never from
+  the request. It calls `set_aftercare_preference` with source `profile`.
+- **Customers without an account.** Signing in with the emailed code binds them to their
+  Customer (`linkCustomerToAuthUser`), and then they see the toggles.
+- **The WhatsApp toggle says what they will get:** *"A review request after delivery, and a
+  yearly check-up for a Premium Mpillow."*
+- **A mobile is needed.** If `customers.phone` is missing or fails `isValidPhone`, turning
+  WhatsApp on asks for the number first. The Profile already edits it.
 
-Every Aftercare message's email footer says *"Stop these emails"*.
+## How each message says how to stop
 
-- **The link** carries a stateless HMAC token for the Customer.
-- **GET** shows a confirm page with one button. It changes nothing, because mail scanners
-  prefetch links.
-- **POST** turns `aftercare_email` off, with source `email_link`.
-- **Shared code.** It shares its token and confirm page with migration slice 07's unsubscribe,
-  as `lib/email/preference-token.ts`, built by whichever lands first. The scope is separate: it
-  never touches **Marketing consent**, and marketing unsubscribe never touches this.
+- **Email footer:** *"You're getting this because you bought from Mpillow. To stop these
+  emails, turn them off in your account."*
+  - The link goes to `/account`, through Sign in.
+  - Reply-To is the support address. A reply asking to stop is handled with Staff's switch.
+- **WhatsApp:** the approved template's closing line. It should name the account page or the
+  support number.
+- **A "stop" reply to the WhatsApp sender.**
+  - **The problem.** Today the webhook drops any message it does not recognise
+    (`app/api/webhooks/whatsapp/route.ts:103`), so a customer who replies *STOP* hears nothing.
+    Meta requires that a request to stop is honoured. A request that is dropped risks the
+    customer blocking the number. That lowers its quality rating, and the same number sends
+    appointment reminders.
+  - **The fix.** `parseInboundActions` gains one intent, `stop_request` (*stop*,
+    *unsubscribe*, *stop messages*). It does not flip the switch, because customers change it in
+    their Profile (owner). It turns the reply into a request for Staff instead:
+    - it records a row in `customer_stop_requests` for every Customer whose phone matches the
+      sender (`phonesMatch`);
+    - it replies once, inside the 24-hour window the inbound message opened:
+      > Thanks, we'll switch off aftercare messages for you. You can also turn them off yourself
+      > in your account at mpillow.com/account.
+    - while a request is open, `decideAftercareWhatsApp` skips that Customer
+      (`stop_requested`), so nothing goes out before Staff act;
+    - the Contact card shows *"Asked to stop on WhatsApp, 3 Nov"* beside the switch, and the
+      Aftercare card counts open requests, with links.
+  - **Closing a request.** Switching WhatsApp off closes it, inside `set_aftercare_preference`.
+    Staff can also dismiss it, for example when *stop* meant something else.
+  - **Where it runs.** It is handled before the appointment-reminder lookup, and never touches
+    a reminder. With no matching Customer, it sends the same reply and records nothing.
 
-### 4. The customer: WhatsApp STOP and START
+  ```sql
+  create table customer_stop_requests (
+    id          bigserial primary key,
+    customer_id uuid not null references customers(id) on delete cascade,
+    received_at timestamptz not null default now(),
+    closed_at   timestamptz null,
+    closed_how  text null check (closed_how in ('switched_off', 'dismissed'))
+  );
+  ```
 
-The inbound webhook (`app/api/webhooks/whatsapp/route.ts`) gains two intents in
-`parseInboundActions`.
-
-- **STOP** (also *stop*, *unsubscribe*, *stop messages*) turns `aftercare_whatsapp` off for
-  every Customer whose phone matches the sender (`phonesMatch`), with source `whatsapp_reply`.
-  It replies once:
-  > You won't get aftercare messages from Mpillow on WhatsApp any more. Reply START to turn them
-  > back on. Reminders for a booked appointment still come.
-- **START** turns it back on, which is an explicit opt-in. It replies with a confirmation.
-- **The reply is allowed.** An inbound message opens WhatsApp's 24-hour window, so a free-text
-  reply is fine there (`route.ts:105-112`).
-- **Appointment reminders are not changed.** STOP covers aftercare only.
-
-### 5. The customer: at checkout
-
-An **unticked** checkbox sits under the phone field:
-
-> Send me aftercare messages on WhatsApp: a review request after delivery and a yearly
-> check-up. Reply STOP any time.
-
-- **Writing it.** When ticked, the order write calls `set_aftercare_preference` with source
-  `checkout`.
-- **Best-effort.** A failure is logged and never blocks payment.
+  It is service-role only, like the events table.
 
 ## The WhatsApp channel (used by slices 07 and 08)
 
@@ -127,10 +148,11 @@ It mirrors the partner WhatsApp notifications (`lib/whatsapp/partner-notify.ts`)
 - **WhatsApp is additive and best-effort.** Email remains the record. Every "no" is a silent,
   counted skip.
 - **The decision is pure.** `lib/whatsapp/aftercare-notify.ts` has
-  `decideAftercareWhatsApp({ templateName, optedIn, phone, nonProdAllowed })`. It returns
-  `send` or a skip:
+  `decideAftercareWhatsApp({ templateName, optedIn, stopRequested, phone, nonProdAllowed })`.
+  It returns `send` or a skip:
   - `template_unconfigured`;
   - `opted_out`;
+  - `stop_requested`;
   - `no_mobile`;
   - `invalid_mobile` (`isValidPhone`);
   - `not_allowed_outside_production` (`isPhoneAllowed`, `lib/appointments/phone.ts:52`).
@@ -145,31 +167,46 @@ It mirrors the partner WhatsApp notifications (`lib/whatsapp/partner-notify.ts`)
   `WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP`. Until a name is set, WhatsApp is skipped and email
   still goes.
 
-## Meta template approval (HITL)
+## The approved templates
 
-1. The owner approves the copy for both templates. Each ends with *"Reply STOP to stop these
-   messages."*
-   - The review template carries a URL button with a dynamic suffix:
-     `https://mpillow.com/r/review?t={{1}}`, slice 07's redirect, so WhatsApp clicks are
-     recorded too.
-   - The check-up template states the fee (slice 08).
-2. Submit both in WhatsApp Manager. **Meta assigns the category.** A review request or a
-   paid-visit check-up may be classed **Marketing** rather than **Utility**. Marketing costs
-   more per message and is limited to opted-in people. Our opt-in covers the second point.
-   Record the category Meta gave here.
-3. Set the env names in production.
+Meta has approved them (owner, 2026-10-20). **Before building,** record here for each one:
+
+- its name and language;
+- the category Meta gave it, Utility or Marketing;
+- the body variables, in order;
+- the buttons.
+
+The code sends parameters that match this record, and production env takes the approved
+names. Check each template against slices 07 and 08:
+
+- **Review request.** The button is either a dynamic suffix or a fixed link.
+  - With a dynamic suffix (`https://mpillow.com/r/review?t={{1}}`), WhatsApp clicks are recorded
+    by slice 07's redirect.
+  - With a fixed Google link, WhatsApp clicks are not counted. That is acceptable, and the Aftercare
+    card then shows clicks for email only.
+- **Check-up.** If the fee is a variable, Costings fills it at send time. If the template has
+  the price written into it, record that price here.
+  - The job sends WhatsApp only while Costings' fee equals the recorded price.
+  - Otherwise it sends email only, and the Aftercare card says *"WhatsApp check-up paused: the
+    template says S$30, Costings says S$35. Resubmit the template."*
+- **How to stop.** The closing line names the account page or the support number. If it says
+  *Reply STOP*, the `stop_request` handling above answers it.
+- **Marketing.** If Meta classed one as Marketing, it costs more per message and may go only to
+  opted-in people, which every recipient here is.
 
 ## Acceptance criteria
 
-- [ ] All five ways write the column and exactly one event. A change to the same value writes
+- [ ] Both ways write the column and exactly one event. A change to the same value writes
       nothing.
+- [ ] The Profile toggles change only the signed-in Customer's own row, whatever the request
+      body says.
 - [ ] A view-only role sees the switches and their history, and cannot change them.
 - [ ] Turning WhatsApp on from the Admin Panel requires a note.
-- [ ] A GET on the email link changes nothing. A POST turns aftercare email off, and leaves
-      marketing consent untouched.
-- [ ] STOP from a number turns WhatsApp off for every matching Customer and replies once. START
-      turns it back on. An open appointment reminder for that number is unaffected.
-- [ ] Ticking the checkout box opts in, and a failure there does not block payment.
+- [ ] A *STOP* reply records one open request per matching Customer and replies once. It
+      changes no preference, and no aftercare WhatsApp goes to that Customer until Staff switch
+      it off or dismiss the request. An open appointment reminder for that number is unaffected.
 - [ ] `decideAftercareWhatsApp` is covered for every skip reason. The ledger prevents a second
       send under concurrent runs.
+- [ ] With a recorded template price that differs from Costings, the check-up goes by email
+      only, and the card says why.
 - [ ] `./scripts/graphify update .` is run in the same commit.

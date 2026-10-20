@@ -65,7 +65,7 @@ update admin_roles
 | Aftercare settings (CRM 07, 08) | see them | change them |
 | Link, unlink or reject a Google review match (CRM 12) | see matches | yes |
 | A Customer's aftercare switches, email and WhatsApp (CRM 13) | see them and their history | flip them |
-| Telegram update types (CRM 14) | see them | change them, *Send test* |
+| Telegram update types (CRM 14) | see them | change them, *Send test*; the online Result type also needs `results` |
 | Customer import (migration slice 02) | — | requires `customers-edit` (`customer-import` now `requires: ["customers-edit"]`) |
 
 **The UI.** Without `customers-edit`, the edit controls are not rendered. The server refuses

@@ -61,9 +61,9 @@ create index on customer_followups (customer_id, created_at desc);
 
 ## Telegram
 
-Follow-up updates on Telegram are types 1 (*Follow-ups due*, daily) and 2 (*Follow-up
-assigned*, instant) of slice 14's catalogue. Each has its own switch. This slice only exposes
-the counts they need: `followUpCounts(dateSgt)` per Staff profile.
+Follow-ups post nothing to Telegram of their own (owner, 2026-10-20). The sidebar badge is the
+reminder. Slice 14's weekly summary counts follow-ups done and overdue, and this slice adds that
+line.
 
 ## Acceptance criteria
 

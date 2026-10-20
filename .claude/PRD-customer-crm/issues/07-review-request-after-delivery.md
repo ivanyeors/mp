@@ -124,8 +124,9 @@ is previewable like the rest, with a pure render.
 
   It uses `lib/contact.ts`, which is the staffed support number and never the automated
   sender. Reply-To is the support address.
-- **Footer:** *"You're getting this because you bought from Mpillow. Stop these emails"*. The
-  link is slice 13's email link.
+- **Footer:** *"You're getting this because you bought from Mpillow. To stop these emails, turn
+  them off in your account."* The link goes to `/account` through Sign in, which is the only
+  place customers change it (slice 13).
 - **No** offer, price, or other product.
 - **Transport:** the transactional one (`getDefaultTransport()`), because this is a service
   message (ADR 0027 f).
@@ -135,12 +136,14 @@ is previewable like the rest, with a pure render.
 
 This uses slice 13's channel, with template `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW`.
 
-- **The same content, shortened:** thanks, the ask, and a URL button whose dynamic suffix is
-  the same token (`/r/review?t={{1}}`).
+- **Meta has approved the template** (owner, 2026-10-20). Its wording is what Meta approved, and
+  slice 13 records its variables and button.
+- **What it should carry:** thanks, the ask, and a button to the review form. If the button
+  has a dynamic suffix, it carries the same token (`/r/review?t={{1}}`).
 - **Then the line:** *"Need anything else? Message us at {support number}."*
-- **The close:** *"Reply STOP to stop these messages."*
-- **Meta approval** of the template is HITL (slice 13). Until it is approved, WhatsApp is
-  skipped and email still goes.
+- **The close says how to stop:** in their account, or by messaging the support number. A
+  *STOP* reply still reaches Staff (slice 13).
+- **Until the template name is set in env,** WhatsApp is skipped and email still goes.
 
 ## The redirect
 

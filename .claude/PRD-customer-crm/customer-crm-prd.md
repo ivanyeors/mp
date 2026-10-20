@@ -5,7 +5,7 @@
 **Builds on:** `PRD-shopify-customer-migration`, slice 12 (`admin_customer_overview`) and its
 *Toward a simple CRM* section, which this PRD replaces as the source of truth.
 **Hands off to:** `PRD-email-marketing` (placeholder) for anything promotional.
-**Owner decisions still open:** see [Open decisions](#open-decisions-for-the-owner).
+**Owner decisions:** none open. See [Owner decisions](#owner-decisions).
 
 ## Problem statement
 
@@ -254,11 +254,14 @@ roles.
 12. **Aftercare switches are per channel, and every change is recorded.**
     - Email is on unless switched off.
     - WhatsApp is off until the customer opts in (Meta's rule).
-    - The customer, a WhatsApp STOP, the email link, checkout, or Staff's manual switch (with a
-      note) can change them.
+    - Only two things change them: the customer in their own Profile, once signed in, and
+      Staff's manual switch, with a note (owner, 2026-10-20).
+    - A WhatsApp *STOP* becomes an open request for Staff, and pauses WhatsApp until they act.
     - Each change writes who, how and when.
-13. **CRM Telegram updates are a catalogue of types, each with its own switch.** They carry
-    counts, Staff names and links only.
+13. **Telegram updates are four types, each with its own switch** (owner, 2026-10-20): new
+    online Result to review, Google reviews to match, new sign-ups, and a weekly summary.
+    - The CRM's own types carry counts, Staff names and links only.
+    - The online Result notice already exists, and keeps its content. Only its switch is new.
 14. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
    - facts, not statuses;
    - staff-only data off `customers`;
@@ -315,10 +318,9 @@ It shows the newest 50 entries, can load more, and filters by kind.
     switches, once per milestone per Order.
   - **It says the visit is paid**, with the fee read from Costings at send time (S$30 today).
     If the fee cannot be read, it is not sent.
-  - Which pillows it covers is owner decision 1. The default is every Mpillow and Mbolster.
-- **Turning them off** (slice 13). The customer can do it from their Profile, from the email's
-  *Stop these emails* link, by replying STOP on WhatsApp, or at checkout. Staff can do it with a
-  manual switch on the Customer page.
+  - It covers **Premium Mpillow only** (owner, 2026-10-20).
+- **Turning them off** (slice 13). The customer can do it in their Profile, once signed in.
+  Staff can do it for anyone who asks, with a manual switch on the Customer page.
 
 ### 4. Saved segments (slices 04, 05)
 
@@ -357,8 +359,8 @@ No CRM slice builds a Campaigns page, a composer, or a marketing send.
 - **Reminders.**
   - A sidebar badge counts what is due today and overdue for the current profile, following
     the Results badge.
-  - Telegram updates about follow-ups are types in part 11's catalogue, each with its own
-    switch.
+  - Follow-ups post nothing to Telegram of their own (owner, 2026-10-20). The weekly summary
+    counts them.
 - **Who sees what.** Everyone who can see Customers sees every follow-up (owner, 2026-10-20).
   Creating, completing and reassigning need `customers-edit` (part 8).
 
@@ -414,30 +416,30 @@ The owner added this on 2026-10-20.
 - **The manual switch.** Staff can flip either on the Customer page, for example when a
   customer asks on WhatsApp to stop. A note records why, and turning WhatsApp on requires a
   note saying how the customer agreed.
-- **Customers can change them themselves:**
-  - in their Profile;
-  - with the email's *Stop these emails* link;
-  - by replying STOP or START on WhatsApp;
-  - with an unticked opt-in checkbox at checkout.
-- **WhatsApp** sends through the existing utility sender, using two templates that Meta must
-  approve (HITL). It follows the partner WhatsApp alerts: email always goes, and WhatsApp is
-  added on top when allowed.
+- **Customers change them themselves in their Profile, once signed in.** That is the only
+  self-serve way (owner, 2026-10-20). The email footer links there.
+- **A *STOP* reply on WhatsApp** is not dropped. It becomes an open request on the Customer
+  page, pauses WhatsApp for that Customer, and gets a reply saying Staff will switch it off.
+- **WhatsApp** sends through the existing utility sender, using two templates Meta has already
+  approved (owner, 2026-10-20). It follows the partner WhatsApp alerts: email always goes, and
+  WhatsApp is added on top when allowed.
+- **Fewer WhatsApp recipients.** With no checkout checkbox, WhatsApp reaches only customers who
+  turned it on in their Profile, or told Staff they agree. Most aftercare will go by email.
 
 ### 11. Telegram updates (slice 14)
 
-A catalogue of update types the CRM can post to the Staff group, each with its own switch on
-the Customers page, plus *Send test*. The proposal, for the owner to confirm:
+Four update types, chosen by the owner on 2026-10-20. Each has its own switch on the Customers
+page, plus *Send test*.
 
-- **Daily:**
-  - follow-ups due;
-  - Google reviews to match;
-  - aftercare sent;
-  - aftercare turned off;
-  - new sign-ups.
-- **Instant:** a follow-up assigned.
-- **Weekly:** a summary.
+- **New online Result to review**, instant. This is today's *Held Result (online purchase) —
+  review needed* notice, unchanged; it just gains a switch. Changing that switch also needs
+  `results`.
+- **Google reviews to match**, daily, only when there are any.
+- **New sign-ups**, daily, only when there are any.
+- **A weekly summary**, on a chosen day (Monday by default).
 
-Every update carries counts, Staff names and a link, never a customer's details.
+The three CRM types carry counts, Staff names and a link, never a customer's details. Follow-up
+and aftercare updates are not built.
 
 ## User stories
 
@@ -486,17 +488,17 @@ Every update carries counts, Staff names and a link, never a customer's details.
 22. As Staff, I confirm or reject a suggested match between a Google review and a Customer, or
     link one by hand. Nothing is linked without me.
 23. As Staff, I can filter and save Segments by review status, such as *reviewed 5★ on Google*.
-24. As a pillow owner, about a year after delivery, I get one check-up reminder that a
+24. As a Premium Mpillow owner, about a year after delivery, I get one check-up reminder that a
     re-adjustment would help, and it tells me plainly that it is a paid visit and what it costs.
-25. As a customer who asks to stop the reminders, Staff switch them off for me, and I get none
-    after that.
-26. As a customer, I can stop aftercare messages myself: from my Profile, from the email's
-    link, or by replying STOP on WhatsApp.
-27. As a customer, I only get aftercare on WhatsApp if I said yes to it: at checkout, in my
-    Profile, by replying START, or by telling Staff.
+25. As a customer who asks to stop the reminders, by email, on WhatsApp or in person, Staff
+    switch them off for me, and I get none after that.
+26. As a customer, I can turn aftercare messages off, or WhatsApp on, myself in my Profile once
+    I sign in.
+27. As a customer, I only get aftercare on WhatsApp if I said yes to it, in my Profile or by
+    telling Staff.
 28. As Staff, I see each Customer's aftercare switches with who changed them, how and when.
-29. As the owner, I choose which kinds of CRM update the Telegram group gets, and switch each
-    one on or off.
+29. As the owner, I switch each Telegram update on or off: new online Results to review,
+    Google reviews to match, new sign-ups, and the weekly summary.
 30. As the owner, I can send a test of the updates I have switched on before relying on them.
 
 ## Non-goals
@@ -534,10 +536,11 @@ Every update carries counts, Staff names and a link, never a customer's details.
 | A Google review is linked to the wrong Customer | Real: names collide | Suggestions only, never automatic. Staff confirm, can unlink, and rejected pairs are never suggested again. |
 | An aftercare message is treated as spam | Low for one review request per Customer and one check-up per milestone | No offer, transactional transport, a switch per channel. Counsel reads the final copy once. |
 | A WhatsApp message goes to someone who never agreed | Real if Staff switch it on casually | WhatsApp is off by default. Turning it on needs the customer's own action, or a Staff note recording that they agreed. Every change is an event. |
-| Meta classes a template as Marketing | Possible for a review request or a paid-visit check-up | A higher per-message cost, and opted-in people only, which our opt-in covers. The category is recorded at approval (slice 13), and email still goes either way. |
-| A STOP reply is missed | Real if only Staff read the WhatsApp inbox | The webhook handles STOP and START itself and replies to confirm (slice 13). |
+| Meta classes a template as Marketing | Possible for a review request or a paid-visit check-up | A higher per-message cost, and opted-in people only, which our opt-in covers. The category is recorded in slice 13, and email still goes either way. |
+| A STOP reply is missed | Real: today the webhook drops messages it does not recognise | A *STOP* becomes an open request on the Customer page, pauses WhatsApp for that Customer, and gets a reply (slice 13). |
+| The check-up template's price goes stale | Real if the approved template has the price written into it | WhatsApp goes only while Costings' fee matches the price recorded for the template; otherwise email only, and the Aftercare card says why (slice 13). |
 | A mail scanner "clicks" the review link | Common with Outlook Safe Links | A click is a hint that strengthens a match, never proof of a review. |
-| Telegram leaks customer data to a group | Certain if names are posted | Counts, Staff names and a link only (decisions 5 and 13). A test scans every update type's output for fixture customer names and emails (slice 14). |
+| Telegram leaks customer data to a group | Certain if names are posted | The CRM's types carry counts, Staff names and a link only (decisions 5 and 13). A test scans their output for fixture customer names and emails (slice 14). The online Result notice keeps today's content, which this PRD does not change. |
 | The Hobby cron runs late (about ±1 hour) | Known | Reminders and digests are day-granular. |
 
 ## Success criteria
@@ -557,15 +560,14 @@ Every update carries counts, Staff names and a link, never a customer's details.
 - A view-only role gets a 403 from every write path, and the guard test fails on any write path
   left on `customers`.
 
-## Open decisions for the owner
+## Owner decisions
 
-1. **Which pillows the yearly check-up covers:** Premium only, every Mpillow, or Mbolster too.
-   The default is every Mpillow and Mbolster.
-2. **The Telegram update catalogue (slice 14):** which types to keep, cut or change, and each
-   one's default.
+None are open.
 
-HITL, not decisions: the owner approves the email and WhatsApp copy, and submits the two
-WhatsApp templates to Meta (slice 13).
+HITL, not decisions:
+
+- the owner approves the email copy;
+- someone records the approved WhatsApp templates' names, variables and buttons in slice 13.
 
 **Decided** (owner, 2026-10-20):
 
@@ -580,5 +582,10 @@ WhatsApp templates to Meta (slice 13).
 - **The yearly check-up says it is a paid visit,** with the fee from Costings.
 - **Both email and WhatsApp,** with a manual switch for Staff to turn a customer's reminders
   off (slice 13).
-- **The Telegram updates are in scope,** as a catalogue of switchable types for the owner to
-  define (slice 14).
+- **The Telegram updates are in scope** (slice 14).
+- **Customers change aftercare only in their Profile, once signed in** (slice 13). There is no
+  email unsubscribe link, no WhatsApp keyword, and no checkout checkbox.
+- **Meta has approved the WhatsApp templates** (slice 13).
+- **Four Telegram types:** new online Result to review, Google reviews to match, new sign-ups,
+  and a weekly summary (slice 14).
+- **The yearly check-up covers Premium Mpillow only** (slice 08).
