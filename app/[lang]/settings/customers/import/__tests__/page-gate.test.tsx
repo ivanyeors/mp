@@ -15,7 +15,7 @@ import {
  * so they get the denied page and never see the button.
  */
 
-const h = vi.hoisted(() => ({ permissions: new Set<string>() }));
+const h = vi.hoisted(() => ({ permissions: new Set<string>(), history: [] as unknown[] }));
 
 vi.mock("@/lib/auth/admin", () => ({
   requireAdminPage: vi.fn(async (permission: string) => {
@@ -25,12 +25,13 @@ vi.mock("@/lib/auth/admin", () => ({
   assertAdmin: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: vi.fn() }));
+vi.mock("../history", () => ({ loadImportHistory: vi.fn(async () => h.history) }));
 vi.mock("@/lib/ecommerce/admin/customers", () => ({
   listAdminCustomers: vi.fn(async () => ({ ok: true, rows: [], total: 0, page: 1, limit: 20 })),
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
 const { default: ImportPage } = await import("../page");
@@ -80,10 +81,12 @@ describe("/settings/customers/import", () => {
     await expect(ImportPage({ params })).rejects.toThrow("REDIRECT /settings?denied=customer-import");
   });
 
-  it.each(["owner", "admin"] as const)("opens for %s", async (role) => {
+  it.each(["owner", "admin"] as const)("opens for %s, with the import history", async (role) => {
     signInAs(role);
-    const page = (await ImportPage({ params })) as ReactElement;
+    h.history = [{ id: "b1" }];
+    const page = (await ImportPage({ params })) as ReactElement<{ history: unknown }>;
     expect(page.type).toBe(CustomerImportClient);
+    expect(page.props.history).toEqual([{ id: "b1" }]);
   });
 
   it("says the file stays in the tab, and offers only a .csv pick", () => {

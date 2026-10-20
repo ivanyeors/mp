@@ -12,7 +12,7 @@ slice is a thin, demoable path through all layers.
 |---|-------|------|--------|------------|--------------|
 | [01](01-glossary-and-adr.md) · [#265](https://github.com/ivanyeors/mp/issues/265) | Glossary and ADR 0028: what moves, what never moves, and what a Claim is | AFK | **built** (`11ae402`) | none | underpins all |
 | [02](02-import-tables-and-dry-run.md) · [#266](https://github.com/ivanyeors/mp/issues/266) | Import tables, and an Admin Panel upload that previews and never writes | AFK | **built** (`a143d5c`) | 01 | 9, 15 |
-| [03](03-import-apply-and-rollback.md) · [#267](https://github.com/ivanyeors/mp/issues/267) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **not started** | 02 | 9, 10, 13, 15 |
+| [03](03-import-apply-and-rollback.md) · [#267](https://github.com/ivanyeors/mp/issues/267) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **built** (`e15f787`) | 02 | 9, 10, 13, 15 |
 | [12](12-account-status-and-customer-overview.md) · [#276](https://github.com/ivanyeors/mp/issues/276) | Account status on every Customer, and the Customer overview | AFK | **not started** | 02 | 8, 14 |
 | [04](04-export-rehearse-import.md) · [#268](https://github.com/ivanyeors/mp/issues/268) | Export from Shopify, rehearse, then import into production from the Admin Panel | HITL | **not started** | 03, 12 | 2, 8, 14, 15 |
 | [05](05-claim-and-welcome-back-voucher.md) · [#269](https://github.com/ivanyeors/mp/issues/269) | Claim on first sign-in, and an account-bound welcome-back voucher | AFK | **built** (`f3d41cc`) | 02 | 2, 3, 7 |
