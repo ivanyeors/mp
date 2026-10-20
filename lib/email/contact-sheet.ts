@@ -29,6 +29,7 @@ import {
 
 const GROUP_ORDER: EmailGroup[] = [
   "order",
+  "account",
   "results",
   "rma",
   "partner",

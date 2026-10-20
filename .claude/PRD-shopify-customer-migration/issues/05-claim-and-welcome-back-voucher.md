@@ -121,15 +121,149 @@ the bearer-code path.
 
 ## Acceptance criteria
 
-- [ ] Two concurrent `claim_migrated_customer` calls for one Customer result in one `claimed_at`
+- [x] Two concurrent `claim_migrated_customer` calls for one Customer result in one `claimed_at`
       and one voucher. Covered by a SQL assert, not a mock.
-- [ ] A non-migrated Customer signing in gets no voucher, and makes no write beyond today's.
-- [ ] After `welcome_voucher_issue_until`, a Claim stamps `claimed_at` and issues nothing.
-- [ ] Checkout with a bound voucher is refused for: a guest, a different signed-in Customer, and
+- [x] A non-migrated Customer signing in gets no voucher, and makes no write beyond today's.
+- [x] After `welcome_voucher_issue_until`, a Claim stamps `claimed_at` and issues nothing.
+- [x] Checkout with a bound voucher is refused for: a guest, a different signed-in Customer, and
       the owner checking out under a different email. It is accepted for the owner using their
       own email.
-- [ ] Every existing coupon test passes unchanged. A new vitest table covers the bound-coupon
-      branch of `validateCoupon`.
-- [ ] A Shopify customer booking a re-adjustment still sees "not listed" at the fee, unchanged
+- [x] Every existing coupon test passes unchanged. A new vitest table covers the bound-coupon
+      branch of `validateCoupon`. (The two tests of `validateCouponCode` went with the action
+      this slice deletes; see Build notes.)
+- [x] A Shopify customer booking a re-adjustment still sees "not listed" at the fee, unchanged
       (PRD user story 7).
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [ ] `./scripts/graphify update .` is run in the same commit. — _not yet: the integrator
+      rebuilds the graph after merging_
+
+## Build notes
+
+Built on `claude/shopify-migration-plan-izv7fo` @ `7e1983e`.
+
+**What was built**
+
+- **The Claim.** `lib/customer-migration/claim.ts`: `claimOnSignIn` calls
+  `claim_migrated_customer` and, when the welcome email is due, sends it after the response
+  (`after()`), so the first sign-in waits on the Claim but not on the mail server. It never
+  throws: a failed Claim changes nothing and the next sign-in claims again.
+  `linkCustomerToAuthUser` (`lib/auth/customer-identity.ts`) calls it after the link, for every
+  decision type, only when the row is bound to the signed-in user. Nothing calls
+  `supabase.auth.admin.*`, and `linkCustomerToAuthUser` stays the only binding path.
+- **Voucher validation.** `lib/ecommerce/discounts.ts`: `validateCoupon` checks a bound coupon
+  first, before expiry, limits or scope, so a forwarded code tells its holder nothing. The rule is
+  the pure `mayUseBoundCoupon`. The session comes from `getCurrentCustomerId` at both call sites
+  (`app/api/shop/coupons/validate/route.ts`, `app/api/shop/checkout/route.ts`); the preview no
+  longer accepts `customer_id` from the body. `validateCouponCode` is deleted. A coupon with
+  `customer_id` null takes exactly the old path, and never resolves the session.
+- **The ledger.** `lib/email/customer-emails.ts`: `claimCustomerEmail`, `markCustomerEmailSent`,
+  `markCustomerEmailFailed` (returns whether the attempt count leaves a retry) and
+  `dispatchCustomerEmail` (claim → render → send → mark, never throws). CRM 07 and 08 can use
+  `dispatchCustomerEmail` as it stands, with their own template and entity.
+- **The email.** `lib/email/account.ts` `renderWelcomeVoucherEmail`, registered as
+  `account.welcome_voucher` (plus a free-shipping variant for the preview and contract tests) in a
+  new `account` email group.
+
+**Migrations** (block `20261020112000`–`20261020112959`)
+
+- `20261020112000_customer_emails.sql`: the `customer_emails` table exactly as specified,
+  server-only (RLS on, no policy, `revoke all` from `anon, authenticated`, and on its sequence),
+  and `claim_customer_email(customer, template, entity)`. That is one `insert … on conflict do
+  update … where status = 'failed' and attempts < 3`, so a fresh claim and a retry are each atomic.
+  Service role only.
+- `20261020112100_welcome_back_voucher.sql`: `coupons.customer_id` and `issued_for`, the
+  `coupons_one_per_customer_purpose` unique index, the six `welcome_voucher_*` keys (seeded
+  `enabled = 'false'` and `valid_days = '60'` only), and `claim_migrated_customer` (SECURITY
+  DEFINER, service role only).
+- Both apply cleanly in order and re-apply idempotently on Postgres 16 with the Supabase stubs.
+
+**Tests**
+
+- `supabase/tests/customer-migration/assert-05-claim.sql` runs against a migrated throwaway
+  database (`psql -d <db> -v ON_ERROR_STOP=1 -q -X -t -A -f …`; prints `slice 05 claim ok`). It
+  asserts:
+  - **The race.** It is real: two `dblink` sessions, the second asserted blocked behind the first's
+    uncommitted Claim, giving one `claimed_at` and one voucher.
+  - **The index on its own.** It refuses a second voucher even with `claimed_at` cleared.
+  - **The non-migrated Customer.** `txid_current_if_assigned()` is null after their call, so
+    nothing was written.
+  - **The terms.**
+    - After `issue_until`, the Claim is stamped and nothing is issued.
+    - The seeded default and unset terms issue nothing.
+    - A malformed value issues nothing and raises nothing.
+  - **The voucher.** Its code shape, value, minimum, single use, and the expiry at Claim + 60
+    days.
+  - **The ledger.** Retries run up to 3 attempts, and a sent row is final.
+  - **The email.** It is due only for an unused, unexpired voucher.
+  - **Grants.** None for the client roles, and `authenticated` reads no coupon.
+
+  It was mutation-checked: with the `claimed_at` guard removed, the race assert fails.
+- vitest:
+  - `lib/ecommerce/__tests__/bound-coupon.test.ts`: the `mayUseBoundCoupon` table, plus
+    `validateCoupon` for each refusal and acceptance, the bearer path never resolving the
+    session, and no expiry leak to a stranger.
+  - `app/api/shop/checkout/__tests__/bound-voucher.test.ts`: the real checkout handler and the
+    real `validateCoupon`. Refused for a guest, a different Customer, and the owner under another
+    email. Accepted for the owner's own email.
+  - `app/api/shop/coupons/validate/__tests__/bound-voucher.test.ts`: the body's `customer_id` is
+    ignored.
+  - `lib/email/__tests__/customer-emails.test.ts`: claim, mark sent, mark failed and its attempt
+    count, and dispatch.
+  - `lib/customer-migration/__tests__/claim.test.ts`: the RPC mapping, no email or table access
+    for a non-migrated Customer, the deferred send, and the email data. A parity check confirms
+    the SQL names the same template and attempt limit as the code.
+  - `lib/auth/__tests__/customer-identity-claim.test.ts`: the Claim runs for every decision
+    type, and never for a row another login holds.
+- The re-adjustment criterion is met by not touching it: no `lib/readjustment` file changed, and
+  `eligibility.test.ts` ("an unlisted purchase pays the fee") passes as before.
+
+**Grants on `coupons`.** No grant was added, and none is needed. A customer's session never
+reads `coupons`. Checkout, the preview and the Claim all read it through the service role, and its
+one policy has been scoped to `service_role` since `20260902000000`. The SQL assert checks that
+`authenticated` sees no coupon row. One dependency to keep in mind for CRM 02's column grants on
+`customers`: `getCurrentCustomerId` reads `customers.id` filtered on `auth_user_id` under the
+customer's own session, so both columns must stay selectable by `authenticated`.
+
+**Deviations**
+
+- **`validateCoupon` gains `getSessionCustomerId`, a resolver, not a `sessionCustomerId`
+  value.** Only a bound coupon calls it, so a bearer code costs no auth round trip. That is why
+  every existing coupon and checkout test passes without a session mock.
+- **The browser callers already sent no `customer_id`.** `lib/shop/cart-context.tsx:69` and
+  `app/[lang]/shop/checkout/page.tsx:298` send `email` only, so nothing changed there. The route
+  drops the field from its schema, and zod strips it if a stale client sends one.
+- **Two existing tests were deleted.** These are the `validateCouponCode server action` tests in
+  `public-validators.test.ts`, removed with the action itself, as the slice asks. Every other
+  coupon test is unchanged.
+- **`claim_migrated_customer(p_customer_id)` returns `claimed`, `voucher_issued` and
+  `welcome_email_due`,** not only whether a voucher was issued. The third column is how a failed
+  welcome email is retried on a later sign-in without a cron (`vercel.json` keeps two). It costs
+  two index probes inside the same RPC, and no extra round trip. The `p_` prefix follows slice 02.
+- **The ledger template is the registry id `account.welcome_voucher`,** not the bare
+  `welcome_voucher`. This matches the form CRM 07 uses (`aftercare.review_request`).
+- **The voucher insert targets only the one-per-purpose index on conflict.** A code collision
+  (50 random bits) therefore raises and rolls the Claim back, and the next sign-in claims again.
+  The alternative was stamping a Claim with no voucher.
+- **Additive schema.** A `coupons_issued_for_bound` check (a purpose-issued coupon always has a
+  Customer), and `idx_coupons_customer` for the cascade from `customers`.
+- **A free-shipping voucher stores `discount_value = 1`.** The CHECK requires > 0, and
+  `computeCouponDiscountAmount` ignores the value for free shipping.
+
+**Left for ops and the owner**
+
+- **Owner decision 2.** Set `welcome_voucher_type`, `welcome_voucher_value`,
+  `welcome_voucher_min_order` (blank = none), `welcome_voucher_issue_until` and
+  `welcome_voucher_enabled = 'true'`. Slice 06's card is the editor. Until then no voucher is
+  issued.
+- **Set the terms before slice 04 imports into production.** A Claim happens once. A Migrated
+  customer who signs in while issuance is off is Claimed with no voucher, and never gets one
+  later.
+- **Scope (decision 2) is not a setting.** The slice lists no key for it, so the voucher applies
+  to the whole shop cart (`applies_to` null). An accessories-only voucher needs one more key.
+- **For the owner or counsel: the voucher email and consent.** The PRD's *Who receives what*
+  table says the no-consent group sees the voucher on the site, not in their inbox. This slice
+  calls the `welcome_voucher` email transactional and sends it whatever the consent, and this
+  build follows the slice. If counsel reads it as a commercial message, gate the send in
+  `claimOnSignIn` on Marketing consent (slice 07), or on
+  `migrated_customers.email_marketing_at_export` until slice 07 lands.
+- **A `pending` row left by a crash between claim and mark is never retried.** `order_emails`
+  behaves the same way.
