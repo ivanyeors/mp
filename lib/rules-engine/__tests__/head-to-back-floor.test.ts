@@ -8,13 +8,13 @@ import {
   type WizardMeasurementData,
 } from "../legacy-inputs";
 import { premiumSeedGraph } from "../seeds";
-import { HEAD_TO_BACK_MIN_CM } from "../units";
+import { HEAD_TO_BACK_MIN_CM, inchesToCm, roundCm } from "../units";
 
 // A head resting on the wall line measures 0, which the configurator refused
 // as "Enter a valid measurement". Head-to-back now accepts 0 and down to −3 in.
 describe("head-to-back floor", () => {
   it("is −3 in", () => {
-    expect(HEAD_TO_BACK_MIN_CM).toBe(-7.62);
+    expect(HEAD_TO_BACK_MIN_CM).toBe(roundCm(inchesToCm(-3)));
   });
 
   it("accepts 0 and anything down to the floor, in either unit", () => {

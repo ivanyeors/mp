@@ -20,5 +20,9 @@ export function roundCm(cm: number): number {
  * rests on, so 0 is a real answer. The floor sits a little below it (−3 in)
  * rather than refuse a head that reaches past the wall line. Every other
  * measurement must be positive.
+ *
+ * A literal, not `roundCm(inchesToCm(-3))`: a top-level call reads as a side
+ * effect to the bundler, which then keeps unused rules-engine modules (the
+ * graph validator) in every client bundle that imports this file.
  */
-export const HEAD_TO_BACK_MIN_CM = roundCm(inchesToCm(-3));
+export const HEAD_TO_BACK_MIN_CM = -7.62;

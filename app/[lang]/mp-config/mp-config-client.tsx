@@ -91,6 +91,7 @@ import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
   assertPreStripeRouteResolved,
   carryOverAnswers,
+  HEAD_TO_BACK_MIN_CM,
   incompleteEngineInputs,
   isFlowRoutePending,
   missingStepsAfterCarryOver,
@@ -147,7 +148,6 @@ import {
   normalizeMeasurementDraft,
   type MeasurementUnit,
 } from "@/lib/configurator/measurement-draft";
-import { HEAD_TO_BACK_MIN_CM } from "@/lib/rules-engine/units";
 import {
   PAIN_AREA_OPTIONS,
   painAreasAnswered,
