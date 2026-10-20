@@ -252,6 +252,11 @@ export function renderResultAssignedEmail(p: {
    * "from" and asks the customer to choose rather than to pay.
    */
   needsFinish?: boolean;
+  /**
+   * The other half of a Paired build (ADR 0026), accepted and paid together with
+   * this one: named, priced, and added into a total for both.
+   */
+  paired?: { label: string; total: number } | null;
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
@@ -291,6 +296,8 @@ export function renderResultAssignedEmail(p: {
         `Shipping: ${money(p.pricing.shipping, p.pricing.currency)}`,
         `Tax: ${money(p.pricing.tax, p.pricing.currency)}`,
         `Total: ${money(p.pricing.total, p.pricing.currency)}`,
+        p.paired ? `Also in this order: ${p.paired.label} — ${money(p.paired.total, p.pricing.currency)}` : null,
+        p.paired ? `Total for both: ${money(p.pricing.total + p.paired.total, p.pricing.currency)}` : null,
         p.pricing.authorized != null
           ? `Authorized hold: ${money(p.pricing.authorized, p.pricing.currency)}`
           : null,
@@ -328,6 +335,16 @@ export function renderResultAssignedEmail(p: {
         { label: "Shipping", value: money(p.pricing.shipping, p.pricing.currency) },
         { label: "Tax", value: money(p.pricing.tax, p.pricing.currency) },
         { label: "Total", value: money(p.pricing.total, p.pricing.currency), strong: true },
+        ...(p.paired
+          ? [
+              { label: `Also in this order: ${p.paired.label}`, value: money(p.paired.total, p.pricing.currency) },
+              {
+                label: "Total for both",
+                value: money(p.pricing.total + p.paired.total, p.pricing.currency),
+                strong: true,
+              },
+            ]
+          : []),
         ...(p.pricing.authorized != null
           ? [
               {
@@ -751,6 +768,51 @@ ${paragraphHtml(
       : { href: restartUrl, label: "Start customisation again" },
   });
 
+  return { subject, text, html };
+}
+
+// ------------------------------------------------------------
+// Paired build: the Mbolster dropped out, the Mpillow carries on (ADR 0026)
+// ------------------------------------------------------------
+
+/**
+ * The Mbolster of a Paired build ended on its own — Staff cancelled it, or it
+ * was not reviewed in time — while its Mpillow carries on. The hold stays for
+ * the Mpillow, so this never claims a release. When the Mpillow is already
+ * built, it is also the "ready" email the customer was waiting for: that one
+ * waits until no build is still being made.
+ */
+export function renderPairedMbolsterRemovedEmail(p: {
+  origin: string;
+  /** The Mpillow's Result: where the customer reviews and accepts. */
+  anchorId: string;
+  accessToken: string | null;
+  /** The Mpillow is assigned and can be accepted now. */
+  anchorReady: boolean;
+  /** The Mpillow's total, when it is ready. */
+  amount: number | null;
+  currency: string;
+}): RenderedEmail {
+  const url = statusUrl(p.origin, p.anchorId, p.accessToken);
+  const subject = p.anchorReady
+    ? "Your Mpillow is ready — your Mbolster was removed"
+    : "Your Mbolster has been removed from your order";
+  const lead = p.anchorReady
+    ? "Your Mpillow is built and ready for you to review and accept. We could not go ahead with your Mbolster, so it has been removed from the order — nothing will be charged for it."
+    : "We could not go ahead with your Mbolster, so it has been removed from your order. Nothing will be charged for it, and your Mpillow is unaffected.";
+  const total =
+    p.anchorReady && p.amount != null ? `Mpillow total: ${money(p.amount, p.currency)}` : null;
+
+  const text = [lead, ...(total ? ["", total] : []), "", `Status page: ${url}`].join("\n");
+  const html = renderEmailShell({
+    title: subject,
+    preheader: p.anchorReady
+      ? "Your Mpillow is ready to review and accept."
+      : "Your Mbolster was removed; your Mpillow is unaffected.",
+    bodyHtml: `${paragraph(lead)}
+${total ? paragraph(total, { muted: true }) : ""}`,
+    cta: { href: url, label: p.anchorReady ? "Review your Mpillow" : "View your order" },
+  });
   return { subject, text, html };
 }
 

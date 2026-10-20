@@ -77,6 +77,15 @@ import {
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
+import { PairedStepper } from "@/components/configurator/paired-stepper";
+import {
+  bolsterSleepPosition,
+  clearPairedHandoff,
+  readPairedHandoff,
+  runsPairedStepper,
+  writePairedHandoff,
+} from "@/lib/configurator/paired-mbolster";
+import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
 import { UpsellCard } from "@/components/rules-engine/upsell-card";
 import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
@@ -86,7 +95,6 @@ import {
   isFlowRoutePending,
   missingStepsAfterCarryOver,
   parseRecommendationRecord,
-  plainLanguageWhy,
   shouldRevealRecommendation,
   stampAcceptedTargetRecord,
   wizardToEngineInputs,
@@ -162,12 +170,20 @@ import {
   preOrderWaitingCopy,
 } from "@/lib/configurator/pre-order-trigger";
 import {
+  mixAfterTierChange,
   recheckSelectionsForSize,
   sessionTemplateId,
+  startingTemplateId,
+  templateSuggestion,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
-import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
+import {
+  fetchPillowTemplate,
+  StaffAssistPanel,
+  type FillingItem,
+} from "@/components/configurator/staff-assist-panel";
+import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
@@ -559,6 +575,50 @@ export function MpConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
+  // The engine's Filling Template for the size it recommended. Staff start from
+  // it and edit, rather than from an empty pillow.
+  const engineSuggestion = useMemo(
+    () =>
+      templateSuggestion(
+        parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null),
+      ),
+    [shopRecommendation?.recommendation_record],
+  );
+  const suggestedTemplateId = engineSuggestion?.templateId ?? null;
+  const suggestedSize = engineSuggestion?.size ?? null;
+  const productSize = shopRecommendation?.pillow_product?.size ?? null;
+  const seededSuggestionRef = useRef<number | null>(null);
+  useEffect(() => {
+    // A reopened Result keeps its own mix. A fresh session takes the suggestion
+    // once: emptying the pillow afterwards is a choice, not a gap to refill.
+    if (!staffAssist || staffEdit || resumeFinish || suggestedTemplateId == null) return;
+    if (productSize !== suggestedSize) return;
+    if (assistLoadedTemplate || assistPlacements.length > 0) return;
+    if (seededSuggestionRef.current === suggestedTemplateId) return;
+    seededSuggestionRef.current = suggestedTemplateId;
+    let cancelled = false;
+    fetchPillowTemplate(suggestedTemplateId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setAssistLoadedTemplate(loaded);
+        setAssistPlacements(loaded.placements);
+      })
+      .catch(() => {
+        // The picker still lists every template for this size.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    staffAssist,
+    staffEdit,
+    resumeFinish,
+    suggestedTemplateId,
+    suggestedSize,
+    productSize,
+    assistLoadedTemplate,
+    assistPlacements.length,
+  ]);
   const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? staffEdit?.email ?? "");
   const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? staffEdit?.phone ?? "");
   const [discoverySource, setDiscoverySource] = useState(
@@ -620,12 +680,27 @@ export function MpConfigClient({
   const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
   const showNeckSteps = !isBasic || upsoldToPremium;
   const soldAsPremium = upsoldToPremium || !isBasic;
+  const routeTarget = useMemo(
+    () =>
+      parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null)?.flowRoute
+        ?.targetFlow ?? null,
+    [shopRecommendation?.recommendation_record],
+  );
+  // A route to Mbolster ADDS a product (a Paired build, ADR 0026) rather than
+  // switching flows, so it is answered by the stepper's step 2 — or, where there
+  // is no stepper, declined at hold — and never blocks the hold itself.
   const flowRouteBlocksHold = useMemo(() => {
     const r = parseRecommendationRecord(
       shopRecommendation?.recommendation_record ?? null,
     );
-    return Boolean(r && isFlowRoutePending(r));
+    return Boolean(r && isFlowRoutePending(r) && r.flowRoute?.targetFlow !== "mbolster");
   }, [shopRecommendation?.recommendation_record]);
+  const pairedStepper = runsPairedStepper({
+    routeTarget,
+    assisted,
+    partnerAssisted,
+    reopened: Boolean(staffEdit || resumeFinish),
+  });
 
   const patchRecommendationRecord = useCallback((next: RecommendationRecord) => {
     setShopRecommendation((prev) =>
@@ -1150,6 +1225,12 @@ export function MpConfigClient({
     setSelectedAddons(new Set());
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
+    // A shared device's next customer must not inherit this one's Mbolster.
+    try {
+      clearPairedHandoff(window.sessionStorage);
+    } catch {
+      // private mode — nothing was stored
+    }
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
   };
@@ -1487,12 +1568,13 @@ export function MpConfigClient({
 
   /**
    * Staff assist: confirmed size×tier change. Updates the product context as if
-   * the recommendation had that size×tier, clears the mix and loads the new
-   * size's Default Filling Template, then rechecks cover/case/add-on
+   * the recommendation had that size×tier. A tier-only change keeps the mix; a
+   * size change replaces it with that size's starting template (the engine's
+   * pick on the size it recommended, else the default), then rechecks cover/case/add-on
    * eligibility (wrong size → clear + note; stock 0 → keep, existing
    * OOS/Pre-order signals apply).
    */
-  const applyAssistSizeTier = async (next: SizeTier) => {
+  const applyAssistSizeTier = async (next: SizeTier, from: SizeTier) => {
     const res = await fetch(
       `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
     );
@@ -1524,13 +1606,38 @@ export function MpConfigClient({
       composed_buildable: data.composed_buildable,
     }));
 
-    const tplPlacements = rowsToPillowPlacements(
-      (data.default_template?.placements ?? []) as PillowPlacementRow[],
+    // Templates are scoped by size, so only a size change replaces the mix.
+    const neckSupportIds = new Set(
+      assistItems
+        .filter((i) => isNeckSupportItem({ category: i.category, name: i.name }))
+        .map((i) => i.id),
     );
-    setAssistPlacements(tplPlacements);
-    setAssistLoadedTemplate(
-      data.default_template ? { id: data.default_template.id, placements: tplPlacements } : null,
-    );
+    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => neckSupportIds.has(id));
+    if (kept) {
+      setAssistPlacements(kept.placements);
+      if (kept.removed > 0) {
+        toast.message("Neck support removed", {
+          description: "A neck support is for Premium pillows only.",
+        });
+      }
+    } else {
+      // A new size starts from the engine's pick when it is the size the engine
+      // recommended, else from that size's default.
+      const startId = startingTemplateId(next.size, engineSuggestion, data.default_template?.id ?? null);
+      const loaded =
+        startId == null
+          ? null
+          : startId === data.default_template?.id
+            ? {
+                id: startId,
+                placements: rowsToPillowPlacements(
+                  (data.default_template?.placements ?? []) as PillowPlacementRow[],
+                ),
+              }
+            : await fetchPillowTemplate(startId).catch(() => null);
+      setAssistPlacements(loaded?.placements ?? []);
+      setAssistLoadedTemplate(loaded);
+    }
 
     const newAddons: AddonOption[] = await fetch(
       `/api/results/addons?productType=pillow&size=${encodeURIComponent(next.size)}`,
@@ -2029,7 +2136,13 @@ export function MpConfigClient({
     }
   };
 
-  const handleAuthorizeHold = useCallback(async () => {
+  const handleAuthorizeHold = useCallback(async (opts?: {
+    /**
+     * Paired build step 1 → 2 (ADR 0026): hand this finished hold to the
+     * Mbolster page, which sends it with the Mbolster, instead of sending it.
+     */
+    toMbolster?: { label: string; ballpark: number | null; currency: string };
+  }) => {
     const size =
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
@@ -2047,12 +2160,21 @@ export function MpConfigClient({
       return;
     }
 
-    const journeyRecord = parseRecommendationRecord(
+    const parsedRecord = parseRecommendationRecord(
       shopRecommendation?.recommendation_record ?? null,
     );
-    const routeGate = assertPreStripeRouteResolved(
-      journeyRecord ?? { flowRoute: null },
-    );
+    // The Mbolster route is answered by the shopper on the Mbolster page, which
+    // gets it still pending; holding from here (Skip, or a session with no
+    // stepper) declines it.
+    const journeyRecord =
+      !opts?.toMbolster &&
+      parsedRecord?.flowRoute?.targetFlow === "mbolster" &&
+      isFlowRoutePending(parsedRecord)
+        ? withJourneyOnDecline(parsedRecord)
+        : parsedRecord;
+    const routeGate = opts?.toMbolster
+      ? ({ ok: true } as const)
+      : assertPreStripeRouteResolved(journeyRecord ?? { flowRoute: null });
     if (!routeGate.ok) {
       toast.error(routeGate.reason);
       return;
@@ -2069,56 +2191,79 @@ export function MpConfigClient({
 
     setHoldSubmitting(true);
     try {
-      await upsertToDb();
+      const saved = await upsertToDb();
+      const holdBody = {
+        responseId: responseId ?? undefined,
+        // Re-submitting an existing Result needs its access token (ownership).
+        token: readToken(tokenStorageKey),
+        // Assisted customisation: no card. The server honours this only if the
+        // row it already stored is `source = 'staff_assisted'`, so the flag is
+        // a request, not a grant.
+        ...(assisted ? { deferred: true } : {}),
+        email: holdEmail.trim(),
+        phone: holdPhone.trim(),
+        discoverySource,
+        discoverySourceOther:
+          discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+        referralCode: referralCode.trim() || undefined,
+        // Assist priority (#78): server re-resolves this code → partner id.
+        ...(partner ? { partnerAssistCode: partner.code } : {}),
+        measurements: {
+          ...measurementData,
+          ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
+        },
+        suggestedSize: size,
+        suggestedTier: tier,
+        preferenceLines: [
+          { item_id: selectedCover!, quantity: 1, category: "cover" },
+          { item_id: selectedCase!, quantity: 1, category: "case" },
+        ],
+        addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+        // Staff assist snapshot (slice 05): session mix + still-matching template claim.
+        ...(staffAssist && assistPlacements.length > 0
+          ? {
+              assistFilling: {
+                placements: pillowPlacementsToRows(assistPlacements),
+                templateId: sessionFillingTemplateId,
+              },
+            }
+          : {}),
+        shippingMethodId: selectedShippingId,
+        shippingAddress: {
+          ...holdAddress,
+          recipient: holdAddress.recipient || measurementData.name,
+        },
+        cancelPath: configPath,
+        ...(journeyRecord
+          ? { recommendationRecord: journeyRecord }
+          : {}),
+      };
+      if (opts?.toMbolster) {
+        // Back and forth keeps the Mbolster's id and answers while this is
+        // still the same Mpillow session. A cancelled Checkout comes back on a
+        // fresh session id (the held row is final), so the old companion stays
+        // with the old Result — but the same customer keeps their answers.
+        const prior = readPairedHandoff(window.sessionStorage);
+        const anchorId = saved?.id ?? responseId;
+        const same = prior && prior.pillowHold.responseId === anchorId;
+        const sameCustomer = prior && prior.pillowHold.email === holdBody.email;
+        writePairedHandoff(window.sessionStorage, {
+          v: 1,
+          pillowHold: { ...holdBody, responseId: anchorId ?? undefined },
+          companionId: same ? prior.companionId : newResponseId(),
+          sleepPosition: bolsterSleepPosition(deriveSleepPosition(measurementData.sleepPositionType)),
+          reason: parsedRecord?.flowRoute?.reason ?? "",
+          configPath,
+          pillow: opts.toMbolster,
+          ...((same || sameCustomer) && prior.bolster ? { bolster: prior.bolster } : {}),
+        });
+        router.push(withLocale("/mbolster-config?paired=1", locale));
+        return;
+      }
       const res = await fetch("/api/results/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          responseId: responseId ?? undefined,
-          // Re-submitting an existing Result needs its access token (ownership).
-          token: readToken(tokenStorageKey),
-          // Assisted customisation: no card. The server honours this only if the
-          // row it already stored is `source = 'staff_assisted'`, so the flag is
-          // a request, not a grant.
-          ...(assisted ? { deferred: true } : {}),
-          email: holdEmail.trim(),
-          phone: holdPhone.trim(),
-          discoverySource,
-          discoverySourceOther:
-            discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-          referralCode: referralCode.trim() || undefined,
-          // Assist priority (#78): server re-resolves this code → partner id.
-          ...(partner ? { partnerAssistCode: partner.code } : {}),
-          measurements: {
-            ...measurementData,
-            ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
-          },
-          suggestedSize: size,
-          suggestedTier: tier,
-          preferenceLines: [
-            { item_id: selectedCover!, quantity: 1, category: "cover" },
-            { item_id: selectedCase!, quantity: 1, category: "case" },
-          ],
-          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
-          // Staff assist snapshot (slice 05): session mix + still-matching template claim.
-          ...(staffAssist && assistPlacements.length > 0
-            ? {
-                assistFilling: {
-                  placements: pillowPlacementsToRows(assistPlacements),
-                  templateId: sessionFillingTemplateId,
-                },
-              }
-            : {}),
-          shippingMethodId: selectedShippingId,
-          shippingAddress: {
-            ...holdAddress,
-            recipient: holdAddress.recipient || measurementData.name,
-          },
-          cancelPath: configPath,
-          ...(journeyRecord
-            ? { recommendationRecord: journeyRecord }
-            : {}),
-        }),
+        body: JSON.stringify(holdBody),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -2130,6 +2275,12 @@ export function MpConfigClient({
       // customer goes straight to the status page to wait for Staff.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
+      // Held without the Mbolster: a stale hand-off must not offer it again.
+      try {
+        clearPairedHandoff(window.sessionStorage);
+      } catch {
+        // private mode — nothing was stored
+      }
       // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
       trackGaEventThen(
         {
@@ -2175,6 +2326,8 @@ export function MpConfigClient({
     sessionFillingTemplateId,
     partner,
     tokenStorageKey,
+    router,
+    locale,
   ]);
 
   const saveLabel:
@@ -2414,20 +2567,34 @@ export function MpConfigClient({
         ? "Save configuration"
         : resumeFinish
           ? "Pay"
-          : holdCtaLabel(preOrder, assisted);
+          : pairedStepper
+            ? "Next: Mbolster"
+            : holdCtaLabel(preOrder, assisted);
     const returnPath = staffEditResultPath ?? resumeStatusPath;
     const backFromPreview = returnPath
       ? () => {
           window.location.href = returnPath;
         }
       : goToPreviousStep;
+    // Step 1 of a Paired build checks the Mpillow's finish, then hands it to the
+    // Mbolster page — the optional step 2 — rather than holding.
+    const goToMbolster = () =>
+      handleAuthorizeHold({
+        toMbolster: {
+          label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
+          ballpark: quoteBlocked ? null : basePrice + addonTotal + serviceTotal,
+          currency,
+        },
+      });
     // One primary action for the preview, whichever mode opened it.
     const onPreviewContinue = () =>
       void (staffEdit
         ? handleStaffEditSave()
         : resumeFinish
           ? handleFinishAndPay()
-          : handleAuthorizeHold());
+          : pairedStepper
+            ? goToMbolster()
+            : handleAuthorizeHold());
     // A pending Upgrade/Keep route is a question for the shopper. Staff pick the
     // tier outright in the assist panel, so it must not freeze their save.
     const continueBlocked =
@@ -2552,6 +2719,7 @@ export function MpConfigClient({
                         onPlacementsChange={setAssistPlacements}
                         loadedTemplate={assistLoadedTemplate}
                         onLoadTemplate={setAssistLoadedTemplate}
+                        suggestedTemplateId={size === suggestedSize ? suggestedTemplateId : null}
                         sessionFillingTemplateId={sessionFillingTemplateId}
                         onApplySizeTier={applyAssistSizeTier}
                         onItemsChange={setAssistItems}
@@ -2674,10 +2842,6 @@ export function MpConfigClient({
                       </section>
                     )}
                     {(() => {
-                      const sleepPos = measurementData.sleepPositionType[0];
-                      const why = record
-                        ? plainLanguageWhy(record, { sleep_position: sleepPos })
-                        : shopRecommendation?.recommendation?.explanation ?? "";
                       // x-ray already shows the mix → suppress the text summary here
                       // (template name + specialists line stay in the reveal).
                       const mixLines = guestXray
@@ -2705,7 +2869,10 @@ export function MpConfigClient({
                           {showTierAdvice && record?.tierSuggestion ? (
                             <TierSuggestion tier={record.tierSuggestion} />
                           ) : null}
-                          {routePending && record?.flowRoute && !partnerAssisted ? (
+                          {routePending &&
+                          record?.flowRoute &&
+                          record.flowRoute.targetFlow !== "mbolster" &&
+                          !partnerAssisted ? (
                             <UpsellCard
                               reason={record.flowRoute.reason}
                               fromLabel={FLOW_UI_LABEL[record.flow]}
@@ -2721,7 +2888,6 @@ export function MpConfigClient({
                           <RecommendationReveal
                             reveal={revealNow}
                             sizeLabel={size ? `Size ${size}` : ""}
-                            why={why}
                             // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
                             templateName={partnerAssisted ? null : tpl?.name ?? null}
                             mixLines={partnerAssisted ? [] : mixLines}
@@ -2744,6 +2910,7 @@ export function MpConfigClient({
             <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100dvh-56px)] lg:border-l">
               <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
                 {partner ? <CoBrandBanner partner={partner} /> : null}
+                {pairedStepper ? <PairedStepper step={1} /> : null}
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">
                     {staffEdit ? "Edit configuration" : "Customize finish"}
@@ -3096,6 +3263,17 @@ export function MpConfigClient({
                     <ArrowRight className="size-4" />
                   </Button>
                 </ConfiguratorStepActions>
+                {pairedStepper ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleAuthorizeHold()}
+                    disabled={continueBlocked}
+                    className="mt-2 w-full text-muted-foreground"
+                  >
+                    Skip the Mbolster — just my Mpillow
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>

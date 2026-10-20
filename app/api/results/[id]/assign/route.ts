@@ -24,6 +24,7 @@ import {
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
+import { pairAuthorized, pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -93,6 +94,7 @@ async function sendAssignedEmail(opts: {
   addons: string[];
   pricing: ResultPricing | null;
   needsFinish: boolean;
+  paired: { label: string; total: number } | null;
 }) {
   try {
     await getEmailTransport().send({
@@ -129,7 +131,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type",
+      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -414,7 +416,10 @@ export async function POST(
       .maybeSingle();
     if (shippingRow) {
       // Free shipping is earned by goods; tax is due on goods and services alike.
-      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
+      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
+      shippingAmount = shipsWithAnchor(row)
+        ? 0
+        : calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
         { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
@@ -524,11 +529,38 @@ export async function POST(
     (l) => `${nameByItem.get(l.item_id) ?? `Item #${l.item_id}`} ×${l.quantity}`,
   );
 
+  // A Paired build (ADR 0026) is accepted as one, from its Mpillow's page, so
+  // the customer hears once neither build is still being built: the email
+  // links the Mpillow and quotes both against the one hold.
+  let emailResultId = id;
+  let emailPricing = pricingBreakdown;
+  let pairedLine: { label: string; total: number } | null = null;
+  let pairStillBuilding = false;
+  if (row.paired_build_id) {
+    const { data: members } = await admin
+      .from("mp_config_responses")
+      .select("id, status, product_type, assigned_size, assigned_tier, assigned_length, final_amount, authorized_amount")
+      .eq("paired_build_id", row.paired_build_id);
+    const partner = pickPartner(members ?? [], id);
+    pairStillBuilding = partner?.status === "held";
+    emailResultId = row.paired_build_id;
+    emailPricing = { ...pricingBreakdown, authorized: pairAuthorized(members ?? []) };
+    if (partner?.status === "assigned" && partner.final_amount != null) {
+      pairedLine = {
+        label:
+          partner.product_type === "bolster"
+            ? `Mbolster ${partner.assigned_length ?? ""}`.trim()
+            : `Mpillow ${partner.assigned_size ?? ""} · ${partner.assigned_tier ?? ""}`.trim(),
+        total: Number(partner.final_amount),
+      };
+    }
+  }
+
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
-  if (row.customer_email && row.access_token) {
+  if (row.customer_email && row.access_token && !pairStillBuilding) {
     emailStatus = await sendAssignedEmail({
       to: row.customer_email,
-      resultId: id,
+      resultId: emailResultId,
       accessToken: row.access_token,
       origin,
       size: assignedSize,
@@ -538,8 +570,9 @@ export async function POST(
       fillingSummary,
       preferences: preferenceLabels,
       addons: addonLabels,
-      pricing: pricingBreakdown,
+      pricing: emailPricing,
       needsFinish: finishLater,
+      paired: pairedLine,
     });
   }
 

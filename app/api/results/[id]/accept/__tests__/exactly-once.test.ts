@@ -54,6 +54,7 @@ function query(table: string) {
     insert: (p: Row | Row[]) => ((op = "insert"), (patch = p), b),
     delete: () => ((op = "delete"), b),
     eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), b),
+    neq: (c: string, v: unknown) => (filters.push((r) => r[c] !== v), b),
     is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), b),
     in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), b),
     maybeSingle: async () => ({ data: (await run())[0] ?? null, error: null }),
@@ -325,5 +326,124 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
     await accept();
     expect(h.db.order_items).toHaveLength(1);
     expect(h.db.order_items[0]).toMatchObject({ unit_price: 100, total_price: 100 });
+  });
+});
+
+describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
+  const BOLSTER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  /** The Mbolster bought with the Mpillow: same hold, ships with it, quoting 60. */
+  const companionRow = (extra: Row = {}): Row =>
+    assignedRow({
+      id: BOLSTER,
+      product_type: "bolster",
+      assigned_size: null,
+      assigned_tier: null,
+      assigned_length: "medium",
+      authorized_amount: 60,
+      paired_build_id: ID,
+      ...extra,
+    });
+
+  const bolsterBuild = {
+    ok: true,
+    lines: [{ item_id: 9, quantity: 1, role: "composed" }],
+    cogs: 12,
+    pricing: { goods: 60, services: 0, subtotal: 60, shipping: 0, tax: 0, total: 60 },
+    serviceLines: [],
+    basePrice: 50,
+    shortages: [],
+    nameByItem: new Map(),
+    fillingPlacements: [],
+  };
+
+  const row = (id: string) => h.db.mp_config_responses.find((r) => r.id === id)!;
+
+  beforeEach(() => {
+    h.db.mp_config_responses = [assignedRow({ paired_build_id: ID }), companionRow()];
+    h.loadAssignedBuild.mockImplementation(async (_admin: unknown, r: Row) =>
+      r.product_type === "bolster"
+        ? bolsterBuild
+        : {
+            ok: true,
+            lines: [
+              { item_id: 1, quantity: 1, role: "composed" },
+              { item_id: 2, quantity: 2, role: "filling" },
+            ],
+            cogs: 30,
+            pricing: { goods: 100, services: 0, subtotal: 100, shipping: 10, tax: 0, total: 110 },
+            serviceLines: [],
+            basePrice: 90,
+            shortages: [],
+            nameByItem: new Map(),
+            fillingPlacements: [],
+          },
+    );
+  });
+
+  it("captures the pair once into one Order with a line per build", async () => {
+    const res = await accept();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ finalAmount: 170, capturedHold: 170 });
+
+    expect(h.captureHold).toHaveBeenCalledOnce();
+    expect(h.captureHold).toHaveBeenCalledWith("pi_hold", 170);
+    expect(count("orders")).toBe(1);
+    expect(h.db.orders[0]).toMatchObject({ subtotal: 160, shipping_amount: 10, total: 170 });
+    expect(h.db.order_items.map((i) => i.sku)).toEqual(["RESULT-M-premium", "RESULT-BOLSTER-medium"]);
+    // Both builds move stock, each tagged with its own Result.
+    expect(h.db.inventory_transactions.map((t) => (t.metadata as Row).result_id)).toEqual([ID, ID, BOLSTER]);
+    expect(h.createHeldCommissionsForOrder.mock.calls[0][1].lines).toHaveLength(2);
+
+    expect(row(ID)).toMatchObject({ status: "captured", order_id: "orders-1", final_amount: 110 });
+    expect(row(BOLSTER)).toMatchObject({ status: "captured", order_id: "orders-1", final_amount: 60 });
+  });
+
+  it("accepting from the Mbolster's page accepts the pair on its Mpillow", async () => {
+    const res = await POST(
+      new Request(`https://x.test/api/results/${BOLSTER}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: TOKEN }),
+      }),
+      { params: Promise.resolve({ id: BOLSTER }) },
+    );
+    expect(res.status).toBe(200);
+    expect(count("orders")).toBe(1);
+    expect(row(BOLSTER).status).toBe("captured");
+  });
+
+  it("refuses while the Mbolster is still being built, and changes nothing", async () => {
+    row(BOLSTER).status = "held";
+    const res = await accept();
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "pair_pending" });
+    expect(h.captureHold).not.toHaveBeenCalled();
+    expect(count("orders")).toBe(0);
+    expect(row(ID).status).toBe("assigned");
+  });
+
+  it("a dropped Mbolster is left out: only the Mpillow is captured", async () => {
+    row(BOLSTER).status = "declined";
+    const res = await accept();
+    expect(res.status).toBe(200);
+    // Capturing less than the whole 180 intent is what frees the Mbolster's share.
+    expect(h.captureHold).toHaveBeenCalledWith("pi_hold", 110);
+    expect(h.db.order_items).toHaveLength(1);
+    expect(row(BOLSTER)).toMatchObject({ status: "declined", order_id: null });
+  });
+
+  it("two concurrent pair accepts make one Order and one capture", async () => {
+    const responses = await Promise.all([accept(), accept()]);
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(count("orders")).toBe(1);
+    expect(h.db.order_items).toHaveLength(2);
+    expect(h.captureHold).toHaveBeenCalledOnce();
+  });
+
+  it("hands both claims back when capture fails", async () => {
+    h.captureHold.mockRejectedValueOnce(new Error("card_declined"));
+    expect((await accept()).status).toBe(502);
+    expect(row(ID).status).toBe("assigned");
+    expect(row(BOLSTER).status).toBe("assigned");
   });
 });

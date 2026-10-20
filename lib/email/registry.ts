@@ -22,6 +22,7 @@ import {
 import {
   renderBalanceDueReminderEmail,
   renderHoldExpiredEmail,
+  renderPairedMbolsterRemovedEmail,
   renderRestockEmail,
   renderResultAssignedEmail,
   renderResultDeclinedEmail,
@@ -41,6 +42,8 @@ import {
   sampleHoldExpired,
   sampleHoldExpiredUnpaid,
   sampleOrder,
+  samplePairedMbolsterRemoved,
+  samplePairedMbolsterRemovedReady,
   samplePartnerListing,
   sampleBalanceDue,
   sampleBalanceDueFinish,
@@ -249,6 +252,24 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderHoldExpiredEmail(sampleHoldExpired(f)),
+  },
+  {
+    // A Paired build (ADR 0026) whose Mbolster ended on its own. Never a "hold
+    // released" email: the Mpillow still needs the hold.
+    id: "results.paired_mbolster_removed",
+    label: "Paired build — Mbolster removed",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemoved(f)),
+  },
+  {
+    // Same renderer once the Mpillow is assigned: it doubles as the Mpillow's
+    // "ready" email, which was held back while the Mbolster was being built.
+    id: "results.paired_mbolster_removed_ready",
+    label: "Paired build — Mbolster removed, Mpillow ready",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemovedReady(f)),
   },
   {
     id: "results.restocked",

@@ -49,6 +49,16 @@ export type FillingItem = {
 };
 type TemplateRow = { id: number; name: string };
 
+/** A pillow Filling Template's full placements, as the x-ray editor loads them. */
+export async function fetchPillowTemplate(
+  templateId: number,
+): Promise<{ id: number; placements: PillowPlacement[] }> {
+  const res = await fetch(`/api/mp-config/assist?templateId=${templateId}`);
+  const data = (await res.json()) as { placements?: PillowPlacementRow[]; error?: string };
+  if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Load failed");
+  return { id: templateId, placements: rowsToPillowPlacements(data.placements ?? []) };
+}
+
 /**
  * Staff assist mode panel (slice 04, Staff-only): size×tier control with a
  * confirm gate and a size-scoped Filling Template picker. Per-piece filling
@@ -66,6 +76,7 @@ export function StaffAssistPanel({
   onPlacementsChange,
   loadedTemplate,
   onLoadTemplate,
+  suggestedTemplateId = null,
   sessionFillingTemplateId,
   onApplySizeTier,
   onItemsChange,
@@ -79,9 +90,12 @@ export function StaffAssistPanel({
   onPlacementsChange: (next: PillowPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
+  /** The engine's Filling Template for this size, marked in the picker. */
+  suggestedTemplateId?: number | null;
   /** Kept only while the mix exactly matches the loaded template (slice 05 snapshot). */
   sessionFillingTemplateId: number | null;
-  onApplySizeTier: (next: SizeTier) => Promise<void>;
+  /** Applies a confirmed change; `from` is the size×tier the change leaves. */
+  onApplySizeTier: (next: SizeTier, from: SizeTier) => Promise<void>;
   /** Loaded filling items, surfaced for the x-ray renderer (slice 07). */
   onItemsChange?: (items: FillingItem[]) => void;
   /** Product Builder color overrides, surfaced for the x-ray CSS vars (slice 11). */
@@ -143,7 +157,7 @@ export function StaffAssistPanel({
     if (!apply) return;
     setApplying(true);
     try {
-      await onApplySizeTier(apply);
+      await onApplySizeTier(apply, current);
     } finally {
       setApplying(false);
     }
@@ -151,12 +165,9 @@ export function StaffAssistPanel({
 
   const loadTemplate = async (templateId: number) => {
     try {
-      const res = await fetch(`/api/mp-config/assist?templateId=${templateId}`);
-      const data = (await res.json()) as { placements?: PillowPlacementRow[]; error?: string };
-      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Load failed");
-      const loaded = rowsToPillowPlacements(data.placements ?? []);
-      onLoadTemplate({ id: templateId, placements: loaded });
-      onPlacementsChange(loaded);
+      const loaded = await fetchPillowTemplate(templateId);
+      onLoadTemplate(loaded);
+      onPlacementsChange(loaded.placements);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load template");
     }
@@ -187,13 +198,18 @@ export function StaffAssistPanel({
       icon: LayoutTemplate,
       layout: "list",
       value: loadedTemplate ? String(loadedTemplate.id) : "",
-      options: templates.map((t) => ({ value: String(t.id), label: t.name })),
+      options: templates.map((t) => ({
+        value: String(t.id),
+        label: t.id === suggestedTemplateId ? `${t.name} · Suggested` : t.name,
+      })),
       onSelect: (v) => void loadTemplate(Number(v)),
       placeholder: templates.length === 0 ? "None for this size" : "Load template…",
     },
   ];
 
   const affordance = saveAffordance({ placements, loaded: loadedTemplate });
+  // Templates are scoped by size alone, so only a size change replaces the mix.
+  const sizeChange = gate.pending !== null && gate.pending.size !== current.size;
   const loadedName = loadedTemplate
     ? templates.find((t) => t.id === loadedTemplate.id)?.name ?? "this template"
     : null;
@@ -233,11 +249,15 @@ export function StaffAssistPanel({
       <Dialog open={gate.pending !== null} onOpenChange={(open) => !open && void resolveGate("cancel")}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change size and tier?</DialogTitle>
+            <DialogTitle>{sizeChange ? "Change size?" : "Change tier?"}</DialogTitle>
             <DialogDescription>
-              {gate.pending
-                ? `Switching to Size ${gate.pending.size} (${gate.pending.tier}) clears the current fillings and loads that size's default Filling Template as the starting mix.`
-                : ""}
+              {!gate.pending
+                ? ""
+                : sizeChange
+                  ? `Switching to Size ${gate.pending.size} (${TIER_LABEL[gate.pending.tier]}) clears the current fillings and loads that size's Filling Template as the starting mix.`
+                  : gate.pending.tier === "basic"
+                    ? "Switching to Basic keeps the current fillings, except any neck support — that is for Premium pillows only."
+                    : "Switching to Premium keeps the current fillings."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -245,7 +265,7 @@ export function StaffAssistPanel({
               Cancel
             </Button>
             <Button onClick={() => void resolveGate("confirm")} disabled={applying}>
-              Change &amp; clear fillings
+              {sizeChange ? "Change & clear fillings" : "Change tier"}
             </Button>
           </DialogFooter>
         </DialogContent>

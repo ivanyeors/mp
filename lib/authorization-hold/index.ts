@@ -3,6 +3,7 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
+import { pairAuthorized } from "@/lib/results/paired-build";
 
 export function toStripeAmountCents(amountMajor: number): number {
   return Math.round(amountMajor * 100);
@@ -37,15 +38,54 @@ export async function attachHoldPaymentIntent(
 
   const { data: held } = await admin
     .from("mp_config_responses")
-    .select("authorized_amount, currency")
+    .select("authorized_amount, currency, paired_build_id")
     .eq("id", resultId)
     .eq("status", "held")
     .is("payment_intent_id", null)
     .maybeSingle();
   if (!held) return { ok: false, mismatch: null };
+
+  // A Paired build's one Checkout authorised both Results (ADR 0026): it must
+  // match the anchor's quote plus the companion it named, and its intent is
+  // written onto both. The companion counts whatever has become of it since —
+  // Staff cancelling it before Checkout completed must not void the Mpillow's
+  // card — but only a companion still waiting for one takes the intent.
+  let memberIds = [resultId];
+  let quoted = held.authorized_amount == null ? null : Number(held.authorized_amount);
+  if (held.paired_build_id === resultId && !session.metadata?.paired_result_id) {
+    // A session that does not name its companion: it authorised the members
+    // still waiting for a card.
+    const { data: waiting } = await admin
+      .from("mp_config_responses")
+      .select("id, authorized_amount")
+      .eq("paired_build_id", resultId)
+      .eq("status", "held")
+      .is("payment_intent_id", null);
+    const members = waiting?.length ? waiting : [{ id: resultId, ...held }];
+    quoted = pairAuthorized(members);
+    memberIds = members.map((m) => String(m.id));
+  } else if (held.paired_build_id === resultId) {
+    const companionId = session.metadata?.paired_result_id ?? null;
+    const { data: companion } = companionId
+      ? await admin
+          .from("mp_config_responses")
+          .select("id, authorized_amount, status, payment_intent_id, paired_build_id")
+          .eq("id", companionId)
+          .maybeSingle()
+      : { data: null };
+    const ours = companion?.paired_build_id === resultId;
+    // Deleted since: the session still carries what it authorised for it.
+    const companionQuote = ours
+      ? companion!.authorized_amount
+      : session.metadata?.paired_result_amount ?? null;
+    quoted = companionId ? pairAuthorized([held, { authorized_amount: companionQuote }]) : quoted;
+    if (ours && companion!.status === "held" && companion!.payment_intent_id == null) {
+      memberIds = [resultId, companionId!];
+    }
+  }
   if (
-    held.authorized_amount == null ||
-    toStripeAmountCents(Number(held.authorized_amount)) !== session.amount_total ||
+    quoted == null ||
+    toStripeAmountCents(quoted) !== session.amount_total ||
     String(held.currency).toLowerCase() !== session.currency?.toLowerCase()
   ) {
     return {
@@ -53,18 +93,20 @@ export async function attachHoldPaymentIntent(
       mismatch:
         `Result ${resultId} hold session ${session.id} authorised ${session.currency} ` +
         `${session.amount_total}, but the Result quotes ${held.currency} ` +
-        `${held.authorized_amount}. Card not attached.`,
+        `${quoted}. Card not attached.`,
     };
   }
 
   const { data: written } = await admin
     .from("mp_config_responses")
     .update({ payment_intent_id: paymentIntentId })
-    .eq("id", resultId)
+    .in("id", memberIds)
     .eq("status", "held")
     .is("payment_intent_id", null)
     .select("id");
-  return written?.length ? { ok: true, paymentIntentId } : { ok: false, mismatch: null };
+  return written?.some((w) => w.id === resultId)
+    ? { ok: true, paymentIntentId }
+    : { ok: false, mismatch: null };
 }
 
 export type CreateHoldInput = {
@@ -104,30 +146,44 @@ export type CreateHoldCheckoutInput = CreateHoldInput & {
   resultId: string;
   successUrl: string;
   cancelUrl: string;
+  /**
+   * One line per product when a Paired build is held together (ADR 0026); they
+   * must sum to `amount`. Omitted, the Checkout shows one line for the whole hold.
+   */
+  lines?: Array<{ name: string; amount: number }>;
 };
+
+const HOLD_LINE_NOTE =
+  "Card authorization only — you are not charged until you accept the final build.";
 
 /** Hosted Checkout that creates a manual-capture PaymentIntent. */
 export async function createHoldCheckout(
   input: CreateHoldCheckoutInput,
 ): Promise<{ sessionId: string; url: string }> {
+  if (
+    input.lines &&
+    input.lines.reduce((t, l) => t + toStripeAmountCents(l.amount), 0) !==
+      toStripeAmountCents(input.amount)
+  ) {
+    throw new Error("Hold lines must add up to the hold amount");
+  }
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
       customer_email: input.customerEmail,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: input.currency.toLowerCase(),
-            unit_amount: toStripeAmountCents(input.amount),
-            product_data: {
-              name: input.description ?? "Mpillow customisation hold",
-              description: "Card authorization only — you are not charged until you accept the final build.",
-            },
-          },
+      line_items: (
+        input.lines ?? [
+          { name: input.description ?? "Mpillow customisation hold", amount: input.amount },
+        ]
+      ).map((line) => ({
+        quantity: 1,
+        price_data: {
+          currency: input.currency.toLowerCase(),
+          unit_amount: toStripeAmountCents(line.amount),
+          product_data: { name: line.name, description: HOLD_LINE_NOTE },
         },
-      ],
+      })),
       payment_intent_data: {
         capture_method: "manual",
         metadata: { ...(input.metadata ?? {}), result_id: input.resultId },

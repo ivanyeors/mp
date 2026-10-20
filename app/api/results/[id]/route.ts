@@ -6,6 +6,7 @@ import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
+import { pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
@@ -18,7 +19,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PUBLIC_FIELDS =
-  "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, created_at, updated_at, customer_email, payment_intent_id, is_pre_order";
+  "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, created_at, updated_at, customer_email, payment_intent_id, is_pre_order, paired_build_id";
 
 type PrefLine = { item_id: number; quantity: number; category: string };
 type AddonLine = { item_id: number; quantity: number };
@@ -44,6 +45,7 @@ async function buildPublicSummary(row: {
   currency: string | null;
   payment_intent_id: string | null;
   measured_by_type?: string | null;
+  paired_build_id?: string | null;
 }) {
   if (row.status !== "assigned" && row.status !== "accepted" && row.status !== "captured") {
     return null;
@@ -206,10 +208,10 @@ async function buildPublicSummary(row: {
               .eq("slug", row.shipping_method)
               .maybeSingle();
             if (shippingRow) {
-              shippingAmount = calculateShippingRate(
-                shippingRow as ShippingMethod,
-                goods.subtotal,
-              );
+              // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
+              shippingAmount = shipsWithAnchor(row)
+                ? 0
+                : calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
               const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
               taxAmount = computeTax(
                 { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
@@ -313,6 +315,32 @@ export async function GET(
   }
 
   const build = await buildPublicSummary(row);
+  // A Paired build (ADR 0026) is decided on one page: the anchor's shows its
+  // Mbolster, and the Mbolster's points back at it. Same access token on both.
+  let paired: {
+    role: "anchor" | "companion";
+    partner: Record<string, unknown> & { build: Awaited<ReturnType<typeof buildPublicSummary>> };
+  } | null = null;
+  if (row.paired_build_id) {
+    const anchorSide = row.paired_build_id === row.id;
+    let partnerQuery = admin
+      .from("mp_config_responses")
+      .select(`${PUBLIC_FIELDS}, measured_by_type`);
+    partnerQuery = anchorSide
+      ? partnerQuery.eq("paired_build_id", row.id).neq("id", row.id)
+      : partnerQuery.eq("id", row.paired_build_id);
+    const { data: partners } = await partnerQuery;
+    const partner = pickPartner(partners ?? [], row.id);
+    if (partner) {
+      const partnerPublic: Record<string, unknown> = { ...partner };
+      delete partnerPublic.shipping_address;
+      delete partnerPublic.measured_by_type;
+      paired = {
+        role: anchorSide ? "anchor" : "companion",
+        partner: { ...partnerPublic, build: await buildPublicSummary(partner) },
+      };
+    }
+  }
   // Read before the address is stripped: the page needs the answer, not the address.
   const needs_finish = needsCustomerFinish(row);
   const publicRow = { ...row };
@@ -322,5 +350,5 @@ export async function GET(
   delete (publicRow as { source?: string | null }).source;
   delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
-  return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages } });
+  return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages, paired } });
 }
