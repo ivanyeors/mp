@@ -1,7 +1,7 @@
-# 09 — Sign-off: the privacy check in production, a Staff walkthrough, and the first reminders
+# 09 — Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests
 
 **Type:** HITL
-**Blocked by:** 02, 03, 05, 06, 07
+**Blocked by:** 02, 03, 05, 06, 07, 10, 11, 12
 **User stories:** all
 **Labels:** `ops`, `needs-triage`, `P2`, `area:customers`
 
@@ -17,18 +17,30 @@
    - The timeline shows only the kinds that role may see.
    - Add a note and a follow-up, and save a Segment.
    - Note anything confusing here, then fix it or file it.
-3. **Turn on care reminders** (`care_reminders_enabled`).
-   - Watch the first run's report on the Care reminders card: sent, and skipped by reason.
-   - Check one real reminder in the owner's inbox (or a Staff test order): it renders, the
-     button lands on booking after Sign in, and it is not in spam.
-4. **After 30 days**, record: reminders sent, bookings after a reminder, and *skipped: not
-   marked delivered*. If that last count is high, fix order delivery marking first: the
-   reminder depends on it.
-5. **Confirm the Telegram digest** posted once a day with counts only.
+3. **Turn on review requests.**
+   - Set `google_review_url` to the *Ask for reviews* link from Google Business Profile, and
+     check it opens the review form.
+   - Read the final copy against Google's three rules (slice 07): everyone alike, an
+     unconditional contact line, no incentive.
+   - Switch on `review_requests_enabled`.
+   - Watch the first run's report on the Aftercare card: sent, and skipped by reason.
+   - Check one real request in the owner's inbox (or a Staff test order): it renders, the
+     button opens Google's review form, the WhatsApp line opens the support chat, and it is not
+     in spam.
+4. **After 30 days, record:**
+   - requests sent;
+   - links opened;
+   - Google reviews linked to asked Customers (slice 12);
+   - *skipped: not marked delivered*. If this count is high, fix order delivery marking first,
+     because the request depends on it.
+5. **Match the first Google reviews.** If the Google review sync is live, work through
+   *Google reviews to match* once. Record how many had a correct suggestion, as the measure of
+   whether the matching rules need tuning.
+6. **Confirm the Telegram digest** posted once a day with counts only.
 
 ## Acceptance criteria
 
 - [ ] The production privacy check is recorded, and every check passes.
 - [ ] Each role's walkthrough is recorded.
-- [ ] The first care reminder run is recorded, with one inbox check.
+- [ ] The first review-request run is recorded, with one inbox check.
 - [ ] The 30-day numbers are recorded and reported to the owner.

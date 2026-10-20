@@ -15348,9 +15348,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md": {
-    "mtime": 1792424198.1154191,
-    "seen": 1792424273.4225748,
-    "ast_hash": "8f8df11302c9defbc1793a145779de0f",
+    "mtime": 1792480255.9274461,
+    "seen": 1792480321.4921927,
+    "ast_hash": "cd5c6dcb5ec8a4968a2c081ca45f87ee",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md": {
@@ -15360,21 +15360,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-email-marketing/email-marketing-prd.md": {
-    "mtime": 1792471046.0640543,
-    "seen": 1792471124.9170682,
-    "ast_hash": "61293b52bee1b6fe2a25e6f450ffc0f0",
+    "mtime": 1792480240.5541816,
+    "seen": 1792480321.4917367,
+    "ast_hash": "eff1d0f8cca914c47c7544d48659ed58",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/customer-crm-prd.md": {
-    "mtime": 1792471064.1507769,
-    "seen": 1792471124.917011,
-    "ast_hash": "a40a2ee79f382d1aaa06d7d487f50302",
+    "mtime": 1792480240.5516794,
+    "seen": 1792480321.4916987,
+    "ast_hash": "bcdb2cf636aac82339f8de0caf4b020e",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md": {
-    "mtime": 1792471046.0624614,
-    "seen": 1792471124.9170153,
-    "ast_hash": "739754d55f1fe2bb42722b07bc37764f",
+    "mtime": 1792480240.5522625,
+    "seen": 1792480321.491702,
+    "ast_hash": "e8ee7e02e8becb331d464a04cc76764e",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md": {
@@ -15407,40 +15407,46 @@
     "ast_hash": "afaed58f2a3c16d217d3db67ae7d440d",
     "semantic_hash": ""
   },
-  ".claude/PRD-customer-crm/issues/07-care-reminder-free-readjustment.md": {
-    "mtime": 1792471046.063401,
-    "seen": 1792471124.9170294,
-    "ast_hash": "ef41303fdda8dbe4a7e881939fd17cb8",
-    "semantic_hash": ""
-  },
-  ".claude/PRD-customer-crm/issues/08-care-reminder-checkup.md": {
-    "mtime": 1792470968.1396217,
-    "seen": 1792471124.9170318,
-    "ast_hash": "e676cbbfae8860b171d10a6460d3076a",
-    "semantic_hash": ""
-  },
   ".claude/PRD-customer-crm/issues/09-signoff.md": {
-    "mtime": 1792424137.9712458,
-    "seen": 1792424273.4220552,
-    "ast_hash": "ee0aa873e7e69fce85155004bef9b1b3",
+    "mtime": 1792480247.7725842,
+    "seen": 1792480321.4917173,
+    "ast_hash": "a42ddab248d71c42680175974f5713d7",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/README.md": {
-    "mtime": 1792471055.0677426,
-    "seen": 1792471124.9170434,
-    "ast_hash": "2378c2be8e723177cf2126db48df316a",
+    "mtime": 1792480240.5539374,
+    "seen": 1792480321.4917238,
+    "ast_hash": "3bfbdd8791963598a7e4a6e0f8366b5e",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/10-customers-view-permission.md": {
-    "mtime": 1792470968.6876216,
-    "seen": 1792471124.917038,
-    "ast_hash": "c2d4d64154e844c2486f7823c1f0ef3a",
+    "mtime": 1792480240.5530884,
+    "seen": 1792480321.4917195,
+    "ast_hash": "b53d929119b38cc1706ce9b5d580d635",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/11-contact-and-sign-in-status.md": {
-    "mtime": 1792470981.0636225,
-    "seen": 1792471124.9170406,
-    "ast_hash": "7e11ac1ac76a80546fee411d8c2ba556",
+    "mtime": 1792480240.5533957,
+    "seen": 1792480321.4917204,
+    "ast_hash": "dd78fbd630bcfccf9f37327bb79a725b",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md": {
+    "mtime": 1792480119.1170664,
+    "seen": 1792480321.4917133,
+    "ast_hash": "4fffdf6d05520cbed3ff932b40af97b3",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/08-checkup-reminder.md": {
+    "mtime": 1792480240.5536509,
+    "seen": 1792480321.4917154,
+    "ast_hash": "11e79add7a2bd32da68b4660c9fb94a1",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-customer-crm/issues/12-reviews-per-customer.md": {
+    "mtime": 1792480119.2410665,
+    "seen": 1792480321.4917219,
+    "ast_hash": "e58af4f7fd68d756ebf37fd47b9501c0",
     "semantic_hash": ""
   }
 }

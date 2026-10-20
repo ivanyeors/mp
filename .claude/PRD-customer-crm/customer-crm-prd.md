@@ -1,4 +1,4 @@
-# PRD — Customer CRM: notes, timeline, care reminders, segments, follow-ups
+# PRD — Customer CRM: notes, timeline, aftercare emails, reviews, segments, follow-ups
 
 **Status:** specified, not started
 **ADR:** `docs/adr/0027-customer-crm.md` (to be written by slice 01)
@@ -16,9 +16,10 @@ Staff can look a **Customer** up, but cannot keep a relationship with them.
 - **No history.** The detail page shows orders, addresses and totals. It shows none of the
   Customer's **Results**, **Re-adjustment bookings**, returns, reviews or the emails we sent
   them (audit §2).
-- **No reason to get in touch at the right moment.** A Premium Mpillow comes with a free
-  re-adjustment that expires 60 days after purchase, and nothing tells the customer before it
-  lapses (audit §4).
+- **No ask at the right moment, and no record of who reviewed us.** Google reviews are where
+  most prospects meet Mpillow (`PRD-google-review-replies`), yet nothing asks a customer for one
+  after their order arrives. No Customer record says whether they have reviewed us, on Google
+  or on the shop (audit §4).
 - **No lists to work from and no follow-through.** Staff can search by name or email, but
   cannot keep a list such as *"Premium, bought over a year ago, never re-adjusted"*, and cannot
   note *"call back Friday"* for a colleague (audit §3, §5).
@@ -111,23 +112,34 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
   - The same pattern appears in `orders-list.ts:78`, `lib/ecommerce/customers.ts:55`,
     `orders.ts:33` and `products.ts:90`.
 
-### 4. The free re-adjustment is the natural moment to get in touch
+### 4. Reviews exist in two places, and only one is tied to a Customer
 
-- **The rule.** Premium Mpillow only. Each unit gets `readjustment_free_visits` free visits
-  (default 1), within `readjustment_free_window_days` (default 60) of `orders.paid_at`, counted
-  in Singapore calendar days (`docs/adr/0024-services-priced-in-costings.md:31-35`;
-  `lib/readjustment/eligibility.ts:69-97`).
-  - `evaluateReadjustment` is the single implementation of this rule.
-  - A visit counts as used once it is `booked`, `attended` or `no_show`
-    (`lib/readjustment/purchases.ts:33`).
-- **Build and shipping eat into the window**, because it runs from payment, not delivery. The
-  re-adjustment PRD accepts this (`service-fees-readjustment-prd.md:357`).
+- **Shop reviews.** `product_reviews` carries `customer_id` and `order_id`
+  (`0028_ecommerce.sql:498-507`), and is moderated through Telegram.
+- **Google reviews.**
+  - `google_reviews` is filled by the Business Profile sync, by Pub/Sub plus a daily catch-up
+    (`lib/reviews/google-sync.ts`; `20261002060000_google_review_replies.sql:40`). It covers one
+    location, `GOOGLE_BUSINESS_LOCATION`.
+  - A Google review carries only the reviewer's display name, a photo and an anonymous flag,
+    never an email (`lib/google/business-profile.ts:28`). So it can be matched to a Customer
+    only by name and timing, with a person confirming.
+  - The sync needs Google's approval of API access, which may still be pending
+    (`.claude/PRD-google-review-replies/OPS-CHECKLIST.md`, steps 1–2).
+- **Nothing in the code links to Google's review form.** No "write a review" URL exists
+  anywhere.
+- **The staffed support number** lives in `lib/contact.ts` (`SUPPORT_WHATSAPP_URL`,
+  `SUPPORT_WHATSAPP_DISPLAY`). The review-reply drafts already send unhappy reviewers to it.
+- **Google's review policy** forbids selectively asking for positive reviews, discouraging
+  negative ones, and offering incentives. Any request must go to every eligible customer
+  alike.
 - **Delivery is not always recorded.** `delivered_at` is written by the Easyship "Delivered"
   event, by a manual status change, and at an in-store handover (`lib/ecommerce/fulfilment.ts:75-98`;
   `app/api/results/[id]/accept/route.ts:334-337`). It stays null when Easyship webhooks are not
-  configured, or when Staff ship without marking the order delivered.
+  configured, or when Staff ship without marking the order delivered. Any email timed from
+  delivery depends on it.
 - **Booking needs Sign in.** `/appointments?type=readjustment&item=…` already sends a
-  signed-out visitor to sign in and back (`app/[lang]/appointments/page.tsx:49-56`).
+  signed-out visitor to sign in and back (`app/[lang]/appointments/page.tsx:49-56`). The
+  check-up reminder links there.
 
 ### 5. Scheduling, Staff identity, and how Staff hear about things
 
@@ -180,7 +192,9 @@ roles.
 > - one timeline merged from the tables that already hold the history;
 > - saved Segments over the Customer overview;
 > - follow-ups assigned to Staff profiles;
-> - a care reminder before a free re-adjustment lapses.
+> - one review request after delivery, and a yearly re-adjustment check-up;
+> - reviews tied to each Customer: shop reviews exactly, Google reviews by Staff-confirmed
+>   match.
 >
 > **Anything promotional is email marketing's, later.**
 
@@ -210,33 +224,41 @@ roles.
 4. **Filters never interpolate typed text into a PostgREST `.or()`.**
 5. **Follow-ups are assigned to a Staff profile, not to a login.** Any notice outside the Admin
    Panel (Telegram) carries counts and a link, never customer names or details.
-6. **A care reminder is a service message about something the customer bought.**
-   - It uses the transactional transport and the `order_emails` ledger.
-   - It has its own opt-out, so it never depends on marketing consent.
-   - It never carries an offer. Anything promotional belongs to `PRD-email-marketing`.
-7. **The re-adjustment rule has one implementation.** Reminders call `evaluateReadjustment`.
-   They never restate the 60 days or the Premium-only rule.
-8. **New jobs chain onto `results-sla`.** No third cron is added.
-9. **Seeing and changing are separate permissions.**
+6. **An Aftercare email is a service message about something the customer bought.** There
+   are two: the review request and the check-up reminder.
+   - They use the transactional transport and a claim-before-send ledger.
+   - They share their own opt-out, so they never depend on marketing consent.
+   - They never carry an offer. Anything promotional belongs to `PRD-email-marketing`.
+7. **The review request goes to every eligible customer alike** (Google's policy).
+   - It is once per Customer and never selected by satisfaction.
+   - It offers no incentive.
+   - Its "reach us" line is unconditional.
+   - There is no email about the free re-adjustment window (owner, 2026-10-20).
+8. **A Google review is linked to a Customer only by a Staff confirmation.** The code
+   suggests a match from the name and the timing of the request; it never links on its own.
+   Shop reviews are linked exactly, by `customer_id`.
+9. **New jobs chain onto `results-sla`.** No third cron is added.
+10. **Seeing and changing are separate permissions.**
    - `customers` lets Staff see the whole CRM, including every follow-up.
    - A new `customers-edit` key, which requires `customers`, lets them change anything.
    - A data migration gives `customers-edit` to every role that holds `customers` today, so
      nobody loses access.
    - A guard test keeps every write path on `customers-edit`.
-10. **Contact status is derived, never typed.**
+11. **Contact status is derived, never typed.**
     - *Email verified* means the person has signed in with that email.
     - *Signs in with Google* comes from their sign-in identities, recorded at sign-in.
     - *Mobile replied on WhatsApp* comes from an **Appointment reminder** reply.
     - Staff never tick a "verified" box.
-11. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
+12. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
    - facts, not statuses;
    - staff-only data off `customers`;
    - append-only events, each keyed by `customer_id` with a timestamp.
 
 ## The parts
 
-Parts 1–6 are the ones the owner approved on 2026-10-19. Parts 7 and 8 were added at the
-owner's request on 2026-10-20.
+Parts 1–6 are the ones the owner approved on 2026-10-19. Parts 7, 8 and 9 were added at the
+owner's request on 2026-10-20, when part 3 also changed from a free re-adjustment reminder to a
+review request.
 
 ### 1. Staff notes customers cannot read (slice 02)
 
@@ -266,16 +288,18 @@ The timeline sits on the Customer detail. It draws from:
 
 It shows the newest 50 entries, can load more, and filters by kind.
 
-### 3. Care reminders (slices 07, 08)
+### 3. Aftercare emails (slices 07, 08)
 
-- **Slice 07: *"Your free re-adjustment is available until {date}."***
-  - It goes to Premium Mpillow buyers who have not used their free visit, a set number of days
-    before the window closes.
-  - It is sent only once the order is marked delivered, and only to customers who have not
-    switched care reminders off.
-  - The link opens re-adjustment booking.
+- **Slice 07: a review request.** About two weeks after an order is delivered, the customer
+  gets one email.
+  - It thanks them, asks for a Google review with one button, and then has a short line:
+    *"Need anything else — a re-adjustment, a spare cover, or help with your order? Message us
+    on WhatsApp…"*.
+  - It goes once per Customer, ever, and to everyone eligible alike.
+  - The button goes through our own redirect, so we know who opened it.
+  - This replaces the free re-adjustment reminder, which the owner dropped on 2026-10-20.
 - **Slice 08: a periodic *"time for a re-adjustment"*** some months after delivery (default 12).
-  - It is a **service message** (owner, 2026-10-20), under slice 07's rules: no offer, the same
+  - It is a **service message** (owner, 2026-10-20), under the same rules: no offer, the same
     opt-out, once per milestone per Order.
   - Its timing and which pillows it covers are owner decision 2.
 
@@ -301,7 +325,7 @@ things:
   re-implements the filters.
 - **History.** Every campaign send is a timeline entry, through an adapter on
   `customer_campaign_sends` (migration slice 08).
-- **A boundary.** Care reminders (part 3) stay in the CRM as service messages. Newsletters,
+- **A boundary.** Aftercare emails (part 3) stay in the CRM as service messages. Newsletters,
   offers and promotional flows belong to email marketing.
 
 No CRM slice builds a Campaigns page, a composer, or a marketing send.
@@ -331,8 +355,8 @@ Staff see whether a customer's email and mobile are "linked up":
 - **Mobile:** whether a number is on file, whether it is a valid Singapore mobile, whether it
   has ever replied to a WhatsApp appointment reminder, and any other numbers seen on their
   bookings and Results.
-- **Reminders:** care reminders on or off, marketing consent (once migration slice 07 lands),
-  and bounces (once migration slice 08 records them).
+- **Reminders:** aftercare emails on or off, marketing consent (once migration slice 07
+  lands), and bounces (once migration slice 08 records them).
 
 The list gains matching filters, such as *email not verified* or *mobile missing*. Every status
 comes from a fact, never from a box Staff tick.
@@ -346,6 +370,25 @@ A role can be given the CRM to **see** without being able to **change** it:
 
 Existing roles keep editing, because a data migration grants them `customers-edit`. Making a
 role view-only is one untick on Users & permissions → Roles.
+
+### 9. Reviews on every Customer (slice 12)
+
+The owner added this on 2026-10-20.
+
+- **The list.** A *Review* column shows the strongest fact first: *★5 Google*, *★4 shop (2)*,
+  *Asked 3 Nov · clicked*, *Asked 3 Nov*, or *—*. Matching filters make a Segment such as
+  *"reviewed us 5★ on Google"* one click.
+- **Shop reviews** are tied exactly, by `customer_id`.
+- **Google reviews** are tied by suggestion and confirmation, because Google never tells us
+  who wrote a review.
+  - The CRM suggests a Customer by name, preferring people we asked shortly before and who
+    opened the link.
+  - Staff confirm with *Link* or *Not them*, or link a review by hand.
+  - The more review requests go out, the better the suggestions become.
+- **The customer detail** gets a Reviews card: their Google review (stars, text, whether we
+  replied), their shop reviews, and when we asked.
+- **The Google side needs the Google review sync live.** Until then the column shows *Asked*
+  and *Clicked* only.
 
 ## User stories
 
@@ -368,16 +411,18 @@ role view-only is one untick on Users & permissions → Roles.
 
 **Customer**
 
-11. As a Premium Mpillow owner, I get one email before my free re-adjustment lapses, which takes
-    me straight to booking.
-12. As a customer, I can switch care reminders off in my Profile, and I get none after that.
-13. As a customer who has already booked my free visit, I am not reminded.
+11. As a customer, about two weeks after my order arrives, I get one email asking me to review
+    Mpillow on Google, with a one-tap button.
+12. As a customer, that email also tells me how to reach Mpillow if I need anything else.
+13. As a customer, I am asked for a review once, not after every order, and I can turn off
+    emails after a purchase in my Profile.
 
 **Owner**
 
-14. As the owner, I can turn care reminders on or off, and set how many days before the window
-    closes they go out.
-15. As the owner, I see how many care reminders went out, and how many led to a booking.
+14. As the owner, I can switch review requests on or off, set how many days after delivery they
+    go out, and set our Google review link.
+15. As the owner, I see how many requests went out, how many were opened, and how many Google
+    reviews we linked back to customers we asked.
 16. As the owner, the CRM's segments are ready to become email-marketing audiences, with no
     rework.
 17. As the owner, I can give a role view-only access to Customers: they see everything,
@@ -387,14 +432,24 @@ role view-only is one untick on Users & permissions → Roles.
     by Google.
 20. As Staff, I see whether a customer's mobile is on file, valid, and has ever replied to us
     on WhatsApp.
+21. As Staff, I see on each Customer whether they reviewed us on Google or on the shop, with the
+    stars, and whether and when we asked them.
+22. As Staff, I confirm or reject a suggested match between a Google review and a Customer, or
+    link one by hand. Nothing is linked without me.
+23. As Staff, I can filter and save Segments by review status, such as *reviewed 5★ on Google*.
+24. As a pillow owner, about a year after delivery, I get one check-up reminder that a
+    re-adjustment would help, with the fee stated plainly.
 
 ## Non-goals
 
 - **Marketing email of any kind**, which belongs to `PRD-email-marketing`. That includes
   newsletters, offers, campaigns and promotional automations.
 - **WhatsApp or SMS outreach from the CRM.** Do Not Call duties apply, and the WhatsApp channel
-  is for **Appointment reminders**. Sending care reminders by WhatsApp as well is owner
+  is for **Appointment reminders**. Sending aftercare emails by WhatsApp as well is owner
   decision 4; it is not built until decided.
+- **Linking Google reviews automatically.** A name is not an identity (decision 8).
+- **Asking only happy customers for a review**, or rewarding a review. Both are against
+  Google's policy (decision 7).
 - **Mobile sign-in or phone verification by code.** Slice 11 shows what is known about a number;
   it does not add a way to verify one.
 - **Exporting a segment as a CSV.** It is a bulk PII export, and would need its own permission
@@ -415,8 +470,11 @@ role view-only is one untick on Users & permissions → Roles.
 | A new `customers` column is invisible to the customer once grants exist | Certain, by design | Every later migration that adds a customer-readable column must grant it. Migration slice 07's `marketing_email` is the first; whichever lands second adds the grant. |
 | The timeline shows a Result to the wrong Customer through an email match | Possible if the emails differ only in case or whitespace | Match exactly as `lib/results/access.ts` does, with a test covering case and whitespace. |
 | The timeline is slow on a long-standing Customer | Each source query is bounded | Each adapter loads at most `limit` rows before the cursor, and the merge takes the newest `limit` overall. |
-| A care reminder goes out for a pillow not yet received | Real: the window runs from payment | Send only once `delivered_at` is set, and only after a settling period. Orders never marked delivered are counted on the admin card, not emailed. |
-| A care reminder is treated as spam | Low for a single service message about a benefit already bought | One email per order, no offer, transactional transport, its own opt-out. The periodic check-up follows the same rules (a service message, owner 2026-10-20); counsel reads the final copy once. |
+| A review request goes out before the pillow arrives | Real if timed from payment | Timed from `delivered_at`, after a set number of days. Orders never marked delivered are counted on the Aftercare card, not emailed. |
+| The review request counts as review gating | Real if the copy steers unhappy customers away, or if candidates are filtered by satisfaction | Everyone eligible is asked alike; the "reach us" line is unconditional; no incentive. A check asserts the candidate query never reads review or return data. The owner reads the copy against Google's policy. |
+| A Google review is linked to the wrong Customer | Real: names collide | Suggestions only, never automatic. Staff confirm, can unlink, and rejected pairs are never suggested again. |
+| Aftercare email is treated as spam | Low for one review request per Customer and one check-up per milestone | No offer, transactional transport, its own opt-out. Counsel reads the final copy once. |
+| A mail scanner "clicks" the review link | Common with Outlook Safe Links | A click is a hint that strengthens a match, never proof of a review. |
 | Telegram leaks customer data to a group | Certain if names are posted | Counts and a link only (decision 5). |
 | The Hobby cron runs late (about ±1 hour) | Known | Reminders and digests are day-granular. |
 
@@ -429,21 +487,23 @@ role view-only is one untick on Users & permissions → Roles.
 - The timeline for a test Customer lists every fixture event across all sources, in order, and
   hides each kind from a role without that kind's key.
 - A saved Segment and the same filters in the URL return identical Customers.
-- Each eligible order gets exactly one care reminder. Nobody who has booked, opted out, or not
-  had the order marked delivered gets one.
-- The owner sees the care reminders' booking rate after the first month.
+- Each eligible Customer gets exactly one review request. Nobody who opted out, or whose order
+  was never marked delivered, gets one.
+- After the first month, the owner sees requests sent, links opened, and Google reviews linked
+  to asked Customers.
+- No Google review is ever linked to a Customer without a Staff action.
 - A view-only role gets a 403 from every write path, and the guard test fails on any write path
   left on `customers`.
 
 ## Open decisions for the owner
 
-1. **Care reminder timing:** how many days before the free window closes (default 14), and the
-   settling period after delivery (default 3 days).
+1. **Review request timing:** how many days after delivery (default 14), and the Google
+   review link to use (the *Ask for reviews* link from Google Business Profile).
 2. **The periodic check-up (slice 08):** its timing (default 12 months after delivery), and
    which pillows it covers (Premium only, every Mpillow, or Mbolster too).
 3. **The Telegram digest:** on or off (default on, counts only).
-4. **WhatsApp for care reminders:** should a care reminder also go by WhatsApp when the mobile
-   has replied before? This needs a Meta-approved utility template and the customer's WhatsApp
+4. **WhatsApp for aftercare emails:** should the review request or check-up also go by
+   WhatsApp when the mobile has replied before? This needs a Meta-approved utility template and the customer's WhatsApp
    opt-in.
 
 **Decided** (owner, 2026-10-20):
@@ -452,3 +512,6 @@ role view-only is one untick on Users & permissions → Roles.
 - Every Staff member who can see Customers sees every follow-up, and there is a view-only
   permission (slice 10).
 - The CRM shows whether a customer's mobile and email are linked up (slice 11).
+- **No email about the free re-adjustment window.** Instead, a Google review request after
+  delivery, with a short "reach us if you need anything else" line (slice 07).
+- **Each Customer shows their reviews** (slice 12).

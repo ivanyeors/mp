@@ -405,9 +405,12 @@ order that helps the relationship most:
    fix for the live `customers.notes` exposure (see Risks). Everything else leans on this.
 2. **One timeline on the Customer detail**, newest first: orders, Results, re-adjustment
    bookings, returns, reviews, emails sent, consent changes and notes.
-3. **Care reminders.** A *your re-adjustment is due* email some months after delivery, which
-   links to booking. This is the strongest relationship lever a pillow business has. Counsel
-   should confirm whether it counts as a service message or as marketing.
+3. **Aftercare emails** (service messages, owner 2026-10-20):
+   - one Google review request after delivery, with a short *"need anything else? message us"*
+     line;
+   - a yearly re-adjustment check-up.
+
+   There is no email about the free re-adjustment window.
 4. **Saved segments.** A named filter on the Customers list, such as *Premium, bought over a year
    ago, never re-adjusted*.
 5. **Email marketing, as a hand-off.** The CRM's Segments become audiences for the future
@@ -415,6 +418,12 @@ order that helps the relationship most:
    builds campaigns on slice 07's consent and slice 08's ledger. The CRM itself sends no
    marketing.
 6. **Follow-ups.** *Call back Friday*, assigned to a **Staff** profile.
+
+Added on 2026-10-20:
+
+- a view-only Customers permission;
+- contact and sign-in status, showing whether the email and mobile are linked up;
+- reviews on every Customer: shop reviews exactly, and Google reviews by Staff-confirmed match.
 
 Out of scope even then: WhatsApp and SMS marketing (Do Not Call duties), and scoring or
 predictions.

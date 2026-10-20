@@ -16,11 +16,12 @@ demoable path through all layers.
 | [04](04-crm-filters-and-overview-columns.md) | CRM columns on the Customer overview, the filters that use them, and safe search | AFK | **not started** | 01; migration 12 | 5, 9 |
 | [05](05-saved-segments.md) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
 | [06](06-follow-ups.md) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
-| [07](07-care-reminder-free-readjustment.md) | Care reminder: "your free re-adjustment is available until {date}" | AFK | **not started** | 01 | 11–15 |
-| [08](08-care-reminder-checkup.md) | Care reminder: the periodic "time for a re-adjustment" (service message) | AFK | **not started** | 07 | 11–13 |
-| [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first reminders | HITL | **not started** | 02, 03, 05, 06, 07, 10, 11 | all |
+| [07](07-review-request-after-delivery.md) | Review request: one email after delivery, asking for a Google review | AFK | **not started** | 01 | 11–15 |
+| [08](08-checkup-reminder.md) | Check-up reminder: the periodic "time for a re-adjustment" (service message) | AFK | **not started** | 07 | 24 |
+| [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10, 11, 12 | all |
 | [10](10-customers-view-permission.md) | A view-only Customers permission | AFK | **not started** | 01 | 17, 18 |
 | [11](11-contact-and-sign-in-status.md) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **not started** | 01; migration 12 | 19, 20 |
+| [12](12-reviews-per-customer.md) | Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff | AFK + HITL (Google sync live) | **not started** | 04, 07, 10 | 21–23 |
 
 PRD part 5, email marketing, has no slice here. It is a hand-off to
 [`PRD-email-marketing`](../../PRD-email-marketing/email-marketing-prd.md), and slice 05's
@@ -36,11 +37,13 @@ graph TD
   s04[04 Overview columns + filters]
   s05[05 Segments]
   s06[06 Follow-ups]
-  s07[07 Care reminder: free window]
+  s07[07 Review request]
   s08[08 Check-up reminder]
   s09[09 Sign-off · HITL]
   s10[10 View-only permission]
   s11[11 Contact + sign-in status]
+  s12[12 Reviews per Customer]
+  gr[Google review sync live · HITL]
   m12[Migration 12: Customer overview]
   em[PRD-email-marketing · future]
 
@@ -56,6 +59,11 @@ graph TD
   m12 --> s11
   s10 --> s09
   s11 --> s09
+  s04 --> s12
+  s07 --> s12
+  s10 --> s12
+  gr -. Google part .-> s12
+  s12 --> s09
   s01 --> s07
   s07 --> s08
   s02 --> s09
@@ -78,7 +86,10 @@ graph TD
    `linkCustomerToAuthUser` change. Then 05.
 5. **06** after 03 and 10, so follow-ups land on the timeline and on the right permission in the
    same PR.
-6. **08** after 07 (the same job). **09** closes the build.
+6. **08** after 07 (the same job), and **12** after 04, 07 and 10. 12's Google matching
+   lights up once the Google review sync is live (`PRD-google-review-replies` OPS-CHECKLIST).
+   It ships without it.
+7. **09** closes the build.
 
 ## How this fits the Shopify migration PRD
 
@@ -98,8 +109,9 @@ customer should read must grant it, as `20261013110000_order_items_kind.sql:23-2
 `order_items`. The check from slice 02 catches a miss.
 
 **Second hazard: no marketing.** If a CRM change sends an email with an offer, or selects
-recipients by `marketing_email`, it belongs to `PRD-email-marketing`. Care reminders are
-service messages: one per Order, no offer, their own opt-out.
+recipients by `marketing_email`, it belongs to `PRD-email-marketing`. Aftercare emails are
+service messages: no offer, their own opt-out. The review request goes once per Customer; the
+check-up once per milestone per Order.
 
 **Third hazard: no PII in Telegram.** The Staff group is a shared chat. Digests carry counts
 and links only.
@@ -110,6 +122,15 @@ and links only.
 **Fifth hazard: reads on `customers`, writes on `customers-edit`.** After slice 10, a route
 or server action that changes anything checks `customers-edit`. The guard test from slice 10
 fails on a write left on `customers`.
+
+**Sixth hazard: no review gating.** Nothing about how a customer feels may decide who
+receives a review request. That rules out returns, refund requests, ratings, linked reviews and
+notes. Nothing may be offered for a review, and the "reach us" line must not be framed as an
+alternative to reviewing. Google removes reviews and restricts profiles for this. Slice 12's
+check asserts that the request query never reads review data.
+
+**Seventh hazard: Google reviews are never linked automatically.** Only a Staff action
+inserts into `customer_google_reviews`.
 
 ## Noticed, not fixed here
 

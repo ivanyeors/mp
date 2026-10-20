@@ -41,8 +41,11 @@ These are already decided upstream; changing one means changing that plan too.
 - **Ledger first.** A row is written before every send, unique per Customer and campaign.
   Widen the `customer_campaign_sends.template` check to a campaign key; do not build a second
   ledger.
-- **Care reminders are not marketing.** The CRM's service reminders stay there, under their
-  own rules. These are the free re-adjustment reminder and the periodic check-up, which the
-  owner decided on 2026-10-20 is a service message (CRM slices 07–08). This initiative does not
-  send them. A reminder that gains an offer becomes this initiative's.
+- **Aftercare emails are not marketing.** The CRM's service emails stay there, under their own
+  rules: the Google review request after delivery and the periodic re-adjustment check-up
+  (owner, 2026-10-20; CRM slices 07–08). This initiative does not send them. An aftercare email
+  that gains an offer becomes this initiative's.
+- **Never ask for reviews in a campaign.** Review requests go to every eligible customer alike,
+  from CRM slice 07, under Google's policy. A campaign must not select reviewers, reward
+  reviews, or send a second ask.
 - **Email only.** No WhatsApp or SMS marketing (Do Not Call Registry duties in Singapore).

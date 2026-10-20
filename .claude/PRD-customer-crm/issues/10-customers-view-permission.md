@@ -62,7 +62,8 @@ update admin_roles
 | Add or delete a note (CRM 02) | — | yes |
 | Create, complete or reassign a follow-up (CRM 06); appear in the assignee picker | — | yes |
 | Save, update or archive a segment (CRM 05) | — | yes |
-| Care reminder settings (CRM 07, 08) | see them | change them |
+| Aftercare settings (CRM 07, 08) | see them | change them |
+| Link, unlink or reject a Google review match (CRM 12) | see matches | yes |
 | Customer import (migration slice 02) | — | requires `customers-edit` (`customer-import` now `requires: ["customers-edit"]`) |
 
 **The UI.** Without `customers-edit`, the edit controls are not rendered. The server refuses

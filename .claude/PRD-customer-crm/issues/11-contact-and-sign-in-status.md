@@ -67,7 +67,7 @@ This replaces slice 12's Account card and keeps everything in it.
 | **Mobile** | the number, formatted; *Valid Singapore mobile* or *Not a valid number*; *No mobile on file* | `customers.phone`, `isValidPhone` |
 | **WhatsApp** | *Replied to a reminder on {date}*, or *No WhatsApp reply yet* | `appointment_reminders` where `phonesMatch`, with a status only a guest reply produces |
 | **Other numbers seen** | numbers from their bookings and Results that differ from the one on file, with dates, so Staff can ask which is current | bookings and Results |
-| **Reminders** | Care reminders on/off; Marketing *subscribed / not subscribed / unsubscribed* (once migration slice 07 lands); *Email bounced on {date}* (once migration slice 08 records bounces) | `care_reminders_email`, `marketing_email`, `customer_campaign_sends` |
+| **Reminders** | Aftercare emails on/off; Marketing *subscribed / not subscribed / unsubscribed* (once migration slice 07 lands); *Email bounced on {date}* (once migration slice 08 records bounces) | `aftercare_emails`, `marketing_email`, `customer_campaign_sends` |
 
 Notes on the card:
 

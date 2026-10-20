@@ -40,11 +40,27 @@ done or not done.
 _Avoid_ — "task" or "ticket". It is not a support queue. Do not assign it to a **Member** or a
 login: a person works as a profile.
 
-**Care reminder** — a service email about something the **Customer** bought. The first one is
-*"your free re-adjustment is available until {date}"*. It is sent through the transactional
-transport and recorded in `order_emails`. It carries its own opt-out and never an offer.
+**Aftercare email** — a service email about something the **Customer** bought. There are two:
+
+- the **Review request**, once per Customer, some days after delivery;
+- the **Check-up reminder**, once per milestone per Order.
+
+Both use the transactional transport, honour the `aftercare_emails` opt-out, and never carry
+an offer.
 _Avoid_ — calling it marketing, or gating it on **Marketing consent** (migration PRD).
-Anything promotional belongs to `PRD-email-marketing`.
+Anything promotional belongs to `PRD-email-marketing`. There is no email about the free
+re-adjustment window (owner, 2026-10-20).
+
+**Review request** — the one email that asks a **Customer** for a Google review, with an
+unconditional *"need anything else? message us"* line. It goes to every eligible Customer
+alike.
+_Avoid_ — choosing who is asked by satisfaction, returns or ratings, or offering anything for
+a review. Both break Google's review policy.
+
+**Linked Google review** — a Google review that **Staff** have confirmed belongs to a
+**Customer**. Google never says who wrote a review, so the code only suggests a match, from the
+name and the timing of a **Review request**.
+_Avoid_ — linking automatically, or treating a review-link click as proof of a review.
 
 **Contact status** — what is known about how to reach a **Customer**, each part derived from
 a fact:
@@ -70,9 +86,10 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
 - **(d) No typed text goes into a PostgREST `.or()` filter.**
 - **(e) Follow-ups are assigned to Staff profiles.** A notice outside the Admin Panel carries
   counts and a link only.
-- **(f) A Care reminder is a service message.** It uses the transactional transport, the
-  `order_emails` ledger, its own opt-out and no offer. It calls `evaluateReadjustment`, never a
-  restated rule.
+- **(f) An Aftercare email is a service message.** It uses the transactional transport, a
+  claim-before-send ledger (`customer_review_requests`, `order_emails`), the `aftercare_emails`
+  opt-out, and no offer. The Review request goes to every eligible Customer alike, once, with no
+  incentive (Google's policy). There is no free-window reminder (owner, 2026-10-20).
 - **(g) No third cron.** CRM jobs chain onto `results-sla` (ADR 0006's precedent).
 - **(h) The CRM sends no marketing.** It hands Segments and timeline history to
   `PRD-email-marketing`. The periodic check-up reminder is a service message (owner,
@@ -82,11 +99,13 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
   migrated to hold both, and a guard test keeps writes on `customers-edit`.
 - **(j) Contact status is derived.** It comes from sign-in, sign-in identities and WhatsApp
   replies, never from a Staff-set flag.
+- **(k) A Google review is linked to a Customer only by Staff confirmation.** The code
+  suggests, and a person decides. Review data never selects who receives a Review request.
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` carries the six terms above with `_Avoid_` lines.
-- [ ] `docs/adr/0027-customer-crm.md` records (a)–(j). It links ADR 0026 (the Customer overview
+- [ ] `CONTEXT.md` carries the eight terms above with `_Avoid_` lines.
+- [ ] `docs/adr/0027-customer-crm.md` records (a)–(k). It links ADR 0026 (the Customer overview
       and the "facts, not statuses" rule), ADR 0024 (the re-adjustment rule) and ADR 0006
       (cron chaining).
 - [ ] `./scripts/graphify update .` is run in the same commit.
