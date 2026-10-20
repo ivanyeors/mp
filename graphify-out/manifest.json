@@ -15311,16 +15311,10 @@
     "ast_hash": "c7b6dafaba6168c5078dca527accc19c",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261019120000_result_paired_build.sql": {
-    "mtime": 1792415445.0302296,
-    "seen": 1792416179.456631,
-    "ast_hash": "f24397ea7465ded96636e5f12fa3125f",
-    "semantic_hash": ""
-  },
   ".claude/PRD-paired-build/issues/README.md": {
-    "mtime": 1792418061.5747652,
-    "seen": 1792418113.939378,
-    "ast_hash": "de129c508e9925c77c1f7110875676bd",
+    "mtime": 1792459916.579246,
+    "seen": 1792459977.3512454,
+    "ast_hash": "32b4bc8002565e8abd870667378809d4",
     "semantic_hash": ""
   },
   ".claude/PRD-paired-build/paired-build-prd.md": {
@@ -15363,6 +15357,12 @@
     "mtime": 1792425373.7640975,
     "seen": 1792426305.71301,
     "ast_hash": "6bd664abf6ff87ee685c6cd8b01c888e",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261020004221_result_paired_build.sql": {
+    "mtime": 1792415445.0302296,
+    "seen": 1792459977.351016,
+    "ast_hash": "f24397ea7465ded96636e5f12fa3125f",
     "semantic_hash": ""
   }
 }
