@@ -99,7 +99,8 @@ graph TD
 2. **10 next.** It is small, and once it lands, every later slice's write path is born on
    `customers-edit`. It does not block 02, the urgent fix.
 3. **03 and 13 in parallel.** 13 creates the aftercare switches, the WhatsApp channel and the
-   two templates. Submit the templates as soon as their copy is approved. Then **07**.
+   two templates. Their copy is approved, so submit them as soon as the script supports URL
+   buttons. Then **07**.
    **14** can go any time after 10. Its online Result switch works at once, and its other
    types start posting as 12 and migration slice 12 land.
 4. **04 and 11 once migration slice 12 has merged**, because both extend its overview and its
@@ -171,5 +172,6 @@ escalations. They are worth one small PR outside the CRM.
 - **Slice 08** is built in the CRM (owner, 2026-10-20), and goes only to customers who agreed
   (research, 2026-10-20). Counsel reads the copy and may relax the email consent rule (slice 09).
 - **Slice 13:** the WhatsApp Business account and its appointment templates are approved. The two
-  aftercare templates are new. The owner approves their copy, then someone runs
-  `scripts/whatsapp-create-templates.ts` and preflight. Meta's review usually takes minutes.
+  aftercare templates are new, and their copy is approved (owner, 2026-10-20). Run
+  `scripts/whatsapp-create-templates.ts` for them, then preflight. Meta's review usually takes
+  minutes; record the category it gives.

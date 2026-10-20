@@ -148019,7 +148019,7 @@
       "node_kind": "heading",
       "norm_label": "hazards",
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L124"
+      "source_location": "L125"
     },
     {
       "id": "claude_prd_customer_crm_issues_readme_hitl_notes",
@@ -148031,7 +148031,7 @@
       "node_kind": "heading",
       "norm_label": "hitl notes",
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L167"
+      "source_location": "L168"
     },
     {
       "id": "claude_prd_customer_crm_issues_readme_how_this_fits_the_shopify_migration_prd",
@@ -148043,7 +148043,7 @@
       "node_kind": "heading",
       "norm_label": "how this fits the shopify migration prd",
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L114"
+      "source_location": "L115"
     },
     {
       "id": "claude_prd_customer_crm_issues_readme_noticed_not_fixed_here",
@@ -148055,7 +148055,7 @@
       "node_kind": "heading",
       "norm_label": "noticed, not fixed here",
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L160"
+      "source_location": "L161"
     },
     {
       "id": "claude_prd_customer_crm_issues_readme_slices",
@@ -166492,7 +166492,7 @@
       "node_kind": "heading",
       "norm_label": "1. staff: the manual switch",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L105"
+      "source_location": "L113"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_acceptance_criteria",
@@ -166504,7 +166504,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L302"
+      "source_location": "L317"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_decided",
@@ -166528,7 +166528,7 @@
       "node_kind": "heading",
       "norm_label": "goal",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L27"
+      "source_location": "L35"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_how_each_message_says_how_to_stop",
@@ -166540,7 +166540,7 @@
       "node_kind": "heading",
       "norm_label": "how each message says how to stop",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L143"
+      "source_location": "L151"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_schema",
@@ -166552,7 +166552,7 @@
       "node_kind": "heading",
       "norm_label": "schema",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L53"
+      "source_location": "L61"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_the_two_templates",
@@ -166564,7 +166564,7 @@
       "node_kind": "heading",
       "norm_label": "the two templates",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L231"
+      "source_location": "L239"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_two_channels_two_defaults",
@@ -166576,7 +166576,7 @@
       "node_kind": "heading",
       "norm_label": "two channels, two defaults",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L38"
+      "source_location": "L46"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_two_ways_to_change_it",
@@ -166588,7 +166588,7 @@
       "node_kind": "heading",
       "norm_label": "two ways to change it",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L103"
+      "source_location": "L111"
     },
     {
       "id": "claude_prd_staff_assisted_customisation_issues_03_no_card_submit_acceptance_criteria",
@@ -174512,7 +174512,7 @@
       "node_kind": "heading",
       "norm_label": "2. the customer: profile, once signed in",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L122"
+      "source_location": "L130"
     },
     {
       "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_the_whatsapp_channel_used_by_slices_07_and_08",
@@ -174524,7 +174524,7 @@
       "node_kind": "heading",
       "norm_label": "the whatsapp channel (used by slices 07 and 08)",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L194"
+      "source_location": "L202"
     },
     {
       "id": "claude_prd_service_fees_readjustment_issues_07_signed_in_booking_and_picker_lifecycle_sync",
@@ -563964,7 +563964,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L103",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -563975,7 +563975,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L143",
+      "source_location": "L151",
       "weight": 1.0
     },
     {
@@ -563986,7 +563986,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L194",
+      "source_location": "L202",
       "weight": 1.0
     },
     {
@@ -563997,18 +563997,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L231",
-      "weight": 1.0
-    },
-    {
-      "source": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_13_aftercare_by_email_and_whatsapp_with_a_manual_switch_to_turn_them_off",
-      "target": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_goal",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L27",
+      "source_location": "L239",
       "weight": 1.0
     },
     {
@@ -564019,7 +564008,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L302",
+      "source_location": "L317",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_13_aftercare_by_email_and_whatsapp_with_a_manual_switch_to_turn_them_off",
+      "target": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp_goal",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -564030,7 +564030,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L38",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -564041,7 +564041,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L53",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -564052,7 +564052,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L105",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -564063,7 +564063,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L122",
+      "source_location": "L130",
       "weight": 1.0
     },
     {
@@ -564239,7 +564239,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L114",
+      "source_location": "L115",
       "weight": 1.0
     },
     {
@@ -564250,7 +564250,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L124",
+      "source_location": "L125",
       "weight": 1.0
     },
     {
@@ -564261,7 +564261,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L160",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -564272,7 +564272,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L167",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -699553,7 +699553,7 @@
       "confidence_score": 0.95,
       "context": "getCurrentCustomerId",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L129",
+      "source_location": "L137",
       "weight": 1.0
     },
     {
@@ -700897,7 +700897,7 @@
       "confidence_score": 0.95,
       "context": "isPhoneAllowed",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L208",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -700993,7 +700993,7 @@
       "confidence_score": 0.95,
       "context": "isValidPhone",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L140",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -701005,7 +701005,7 @@
       "confidence_score": 0.95,
       "context": "isValidPhone",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L207",
+      "source_location": "L215",
       "weight": 1.0
     },
     {
@@ -701389,7 +701389,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L132",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -701401,7 +701401,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L106",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -702541,7 +702541,7 @@
       "confidence_score": 0.95,
       "context": "normalizePhone",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L141",
+      "source_location": "L149",
       "weight": 1.0
     },
     {
@@ -703081,7 +703081,7 @@
       "confidence_score": 0.95,
       "context": "orders",
       "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L126",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -703441,7 +703441,7 @@
       "confidence_score": 0.95,
       "context": "parseInboundActions",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L166",
+      "source_location": "L174",
       "weight": 1.0
     },
     {
@@ -704593,7 +704593,7 @@
       "confidence_score": 0.95,
       "context": "recordAdminAction",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L120",
+      "source_location": "L128",
       "weight": 1.0
     },
     {
@@ -706057,7 +706057,7 @@
       "confidence_score": 0.95,
       "context": "sendTemplateMessage",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L318",
+      "source_location": "L333",
       "weight": 1.0
     },
     {
@@ -706069,7 +706069,7 @@
       "confidence_score": 0.95,
       "context": "sendTemplateMessage",
       "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L218",
+      "source_location": "L226",
       "weight": 1.0
     },
     {
@@ -708208,5 +708208,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4f397048ab73b0e332daf18d20372ed0c77f8685"
+  "built_at_commit": "8dce0f3608ddb1589ba93c34d8c21634c4b8fdc3"
 }

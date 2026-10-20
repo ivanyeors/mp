@@ -596,7 +596,7 @@ None are open. One rule was tightened by research, and the owner can relax it af
 
 HITL, not decisions:
 
-- the owner approves the email copy and the two WhatsApp templates' copy (slice 13);
+- the owner approves the email copy (the WhatsApp copy is approved: slice 13);
 - someone runs `scripts/whatsapp-create-templates.ts` for the two templates, then preflight;
 - counsel reads the final copy and the opt-in wording once (slice 09).
 
@@ -621,3 +621,5 @@ HITL, not decisions:
 - **Four Telegram types:** new online Result to review, Google reviews to match, new sign-ups,
   and a weekly summary (slice 14).
 - **The yearly check-up covers Premium Mpillow only** (slice 08).
+- **Both WhatsApp templates are submitted as Utility,** and their copy, the automatic replies and
+  the Profile opt-in wording are approved word for word (slice 13).

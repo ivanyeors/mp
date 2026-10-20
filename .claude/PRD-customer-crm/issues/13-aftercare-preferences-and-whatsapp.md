@@ -23,6 +23,14 @@ The owner decided on 2026-10-20:
   `appointment_day_before_v2`, `appointment_morning_of`, `appointment_cancelled_v2` and
   `appointment_confirmation`. **No aftercare template exists yet.** This slice adds two to
   the same script and submits them to the same account.
+- **Both templates are submitted as Utility**, and Meta has the final say (below).
+- **The WhatsApp copy is approved** (owner, 2026-10-20), word for word as written in this slice:
+  - the two templates;
+  - the stop reply, the cancel question and the reworded auto-reply;
+  - the Profile's WhatsApp opt-in wording.
+
+  Changing any of it later needs the owner again. A template change also means a new template
+  name, because editing an approved template sends it back to Meta's review.
 
 ## Goal
 
@@ -256,8 +264,8 @@ product the customer owns, not promotions.
   - it is not delivered to people who turned off marketing messages in WhatsApp (error
     `131050`), which the ledger records as `whatsapp_marketing_off`.
 
-Draft copy, **for the owner to approve before submitting**. Every body starts and ends with fixed
-text, and no two variables sit side by side:
+The copy below is **approved by the owner (2026-10-20)**; submit it exactly as written. Every
+body starts and ends with fixed text, and no two variables sit side by side:
 
 **`aftercare_review_request`** (UTILITY, `en`)
 
@@ -297,7 +305,14 @@ text, and no two variables sit side by side:
   body parameters each, and the URL button. It also prints the category Meta gave.
 - **Preview.** `scripts/whatsapp-preview.ts` sends both to one phone with sample data, and also
   the stop reply and the cancel question.
-- **Copy.** The free-text replies live in `lib/appointments/messages.ts` beside the rest.
+- **Copy.** The free-text replies live in `lib/appointments/messages.ts` beside the rest. The
+  approved wording, with sample values filled in:
+  - **stop reply:** *"Thanks, we'll switch off aftercare messages for you. You can also turn them
+    off yourself in your Mpillow account."*
+  - **cancel question:** *"Do you want to cancel your appointment on Tue 3 Nov 2026 at 14:00?
+    Reply "cancel appointment" to cancel it. To stop aftercare messages, reply "stop"."*
+  - **auto-reply:** *"Hi! This number only sends automated messages from Mpillow, so no one here
+    will see your reply. Please message our team on WhatsApp at +65 8780 5311."*
 
 ## Acceptance criteria
 
