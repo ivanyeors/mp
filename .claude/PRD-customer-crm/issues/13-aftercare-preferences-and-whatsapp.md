@@ -1,5 +1,6 @@
 # 13 — Aftercare by email and WhatsApp, with a manual switch to turn them off
 
+**Issue:** [#290](https://github.com/ivanyeors/mp/issues/290) (parent #277)
 **Type:** AFK, plus one HITL step: submitting the two new WhatsApp templates with the existing
 script and waiting for Meta's review (usually minutes).
 **Blocked by:** 01, 10

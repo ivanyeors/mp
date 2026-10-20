@@ -1,5 +1,6 @@
 # 03 — Apply, reconcile and undo an import batch from the Admin Panel
 
+**Issue:** [#267](https://github.com/ivanyeors/mp/issues/267) (parent #264)
 **Type:** AFK
 **Blocked by:** 02
 **User stories:** 9, 10, 13, 15

@@ -1,5 +1,6 @@
 # 06 — Follow-ups assigned to Staff profiles
 
+**Issue:** [#283](https://github.com/ivanyeors/mp/issues/283) (parent #277)
 **Type:** AFK
 **Blocked by:** 03, 10
 **User stories:** 7, 8

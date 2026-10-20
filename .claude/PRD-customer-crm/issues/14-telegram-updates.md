@@ -1,5 +1,6 @@
 # 14 — Telegram updates: four types, each with its own switch
 
+**Issue:** [#291](https://github.com/ivanyeors/mp/issues/291) (parent #277)
 **Type:** AFK
 **Blocked by:** 10. Two types start posting only when their source exists: *Google reviews to
 match* after 12, and *New sign-ups* after migration slice 12.

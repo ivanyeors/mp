@@ -1,5 +1,6 @@
 # 04 — Export from Shopify, rehearse, then import into production from the Admin Panel
 
+**Issue:** [#268](https://github.com/ivanyeors/mp/issues/268) (parent #264)
 **Type:** HITL
 **Blocked by:** 03, 12; owner decisions 1 and 7
 **User stories:** 2, 8, 14, 15

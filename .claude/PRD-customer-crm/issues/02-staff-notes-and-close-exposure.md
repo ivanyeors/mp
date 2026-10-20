@@ -1,5 +1,6 @@
 # 02 — Staff notes customers cannot read, and closing the live exposure
 
+**Issue:** [#279](https://github.com/ivanyeors/mp/issues/279) (parent #277)
 **Type:** AFK
 **Blocked by:** 01
 **User stories:** 1, 2, 10

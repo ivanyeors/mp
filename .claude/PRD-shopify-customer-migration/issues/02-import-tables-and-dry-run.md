@@ -1,5 +1,6 @@
 # 02 — Import tables, and an Admin Panel upload that previews and never writes
 
+**Issue:** [#266](https://github.com/ivanyeors/mp/issues/266) (parent #264)
 **Type:** AFK
 **Blocked by:** 01
 **User stories:** 9, 15

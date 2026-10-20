@@ -1,5 +1,6 @@
 # 03 — One timeline on the Customer detail, merged when it is read
 
+**Issue:** [#280](https://github.com/ivanyeors/mp/issues/280) (parent #277)
 **Type:** AFK
 **Blocked by:** 02
 **User stories:** 3, 4

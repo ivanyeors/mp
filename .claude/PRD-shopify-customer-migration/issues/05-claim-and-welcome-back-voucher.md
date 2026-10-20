@@ -1,5 +1,6 @@
 # 05 — Claim on first sign-in, and an account-bound welcome-back voucher
 
+**Issue:** [#269](https://github.com/ivanyeors/mp/issues/269) (parent #264)
 **Type:** AFK
 **Blocked by:** 02; owner decision 2 for the default terms
 **User stories:** 2, 3, 7

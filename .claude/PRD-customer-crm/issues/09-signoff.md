@@ -1,5 +1,6 @@
 # 09 — Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests
 
+**Issue:** [#286](https://github.com/ivanyeors/mp/issues/286) (parent #277)
 **Type:** HITL
 **Blocked by:** 02, 03, 05, 06, 07, 10, 11, 12, 13, 14
 **User stories:** all

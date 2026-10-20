@@ -1,5 +1,6 @@
 # 07 — Review request: one message after delivery, asking for a Google review
 
+**Issue:** [#284](https://github.com/ivanyeors/mp/issues/284) (parent #277)
 **Type:** AFK
 **Blocked by:** 01, 13
 **User stories:** 11, 12, 13, 14, 15

@@ -4,26 +4,26 @@ This is a tracer-bullet breakdown of the PRD (`../customer-crm-prd.md`). Each sl
 demoable path through all layers.
 
 - **Triage label:** `needs-triage` (all slices)
-- **Tracker:** not yet filed on GitHub.
+- **Tracker:** [#277](https://github.com/ivanyeors/mp/issues/277) is the PRD issue. Each slice is a sub-issue (#278–#291), and its row below links it. Project **mp**: add #277 to the board by hand and its sub-issues follow.
 
 ## Slices
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR 0027: what the CRM is made of | AFK | **not started** | none | underpins all |
-| [02](02-staff-notes-and-close-exposure.md) | Staff notes customers cannot read, and closing the live exposure | AFK | **not started** | 01 | 1, 2, 10 |
-| [03](03-customer-timeline.md) | One timeline on the Customer detail, merged when it is read | AFK | **not started** | 02 | 3, 4 |
-| [04](04-crm-filters-and-overview-columns.md) | CRM columns on the Customer overview, the filters that use them, and safe search | AFK | **not started** | 01; migration 12 | 5, 9 |
-| [05](05-saved-segments.md) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
-| [06](06-follow-ups.md) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
-| [07](07-review-request-after-delivery.md) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **not started** | 01, 13 | 11–15 |
-| [08](08-checkup-reminder.md) | Check-up reminder: yearly, Premium Mpillow only, says the visit is paid, to customers who agreed | AFK | **not started** | 07, 13; migration 07 | 24 |
-| [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
-| [10](10-customers-view-permission.md) | A view-only Customers permission | AFK | **not started** | 01 | 17, 18 |
-| [11](11-contact-and-sign-in-status.md) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **not started** | 01; migration 12 | 19, 20 |
-| [12](12-reviews-per-customer.md) | Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff | AFK + HITL (Google sync live) | **not started** | 04, 07, 10 | 21–23 |
-| [13](13-aftercare-preferences-and-whatsapp.md) | Aftercare by email and WhatsApp, with a manual switch to turn them off | AFK (Meta templates approved) | **not started** | 01, 10 | 25–28 |
-| [14](14-telegram-updates.md) | Telegram updates: four types, each with its own switch | AFK | **not started** | 10 | 29, 30 |
+| [01](01-glossary-and-adr.md) · [#278](https://github.com/ivanyeors/mp/issues/278) | Glossary and ADR 0027: what the CRM is made of | AFK | **not started** | none | underpins all |
+| [02](02-staff-notes-and-close-exposure.md) · [#279](https://github.com/ivanyeors/mp/issues/279) | Staff notes customers cannot read, and closing the live exposure | AFK | **not started** | 01 | 1, 2, 10 |
+| [03](03-customer-timeline.md) · [#280](https://github.com/ivanyeors/mp/issues/280) | One timeline on the Customer detail, merged when it is read | AFK | **not started** | 02 | 3, 4 |
+| [04](04-crm-filters-and-overview-columns.md) · [#281](https://github.com/ivanyeors/mp/issues/281) | CRM columns on the Customer overview, the filters that use them, and safe search | AFK | **not started** | 01; migration 12 | 5, 9 |
+| [05](05-saved-segments.md) · [#282](https://github.com/ivanyeors/mp/issues/282) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
+| [06](06-follow-ups.md) · [#283](https://github.com/ivanyeors/mp/issues/283) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
+| [07](07-review-request-after-delivery.md) · [#284](https://github.com/ivanyeors/mp/issues/284) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **not started** | 01, 13 | 11–15 |
+| [08](08-checkup-reminder.md) · [#285](https://github.com/ivanyeors/mp/issues/285) | Check-up reminder: yearly, Premium Mpillow only, says the visit is paid, to customers who agreed | AFK | **not started** | 07, 13; migration 07 | 24 |
+| [09](09-signoff.md) · [#286](https://github.com/ivanyeors/mp/issues/286) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
+| [10](10-customers-view-permission.md) · [#287](https://github.com/ivanyeors/mp/issues/287) | A view-only Customers permission | AFK | **not started** | 01 | 17, 18 |
+| [11](11-contact-and-sign-in-status.md) · [#288](https://github.com/ivanyeors/mp/issues/288) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **not started** | 01; migration 12 | 19, 20 |
+| [12](12-reviews-per-customer.md) · [#289](https://github.com/ivanyeors/mp/issues/289) | Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff | AFK + HITL (Google sync live) | **not started** | 04, 07, 10 | 21–23 |
+| [13](13-aftercare-preferences-and-whatsapp.md) · [#290](https://github.com/ivanyeors/mp/issues/290) | Aftercare by email and WhatsApp, with a manual switch to turn them off | AFK (Meta templates approved) | **not started** | 01, 10 | 25–28 |
+| [14](14-telegram-updates.md) · [#291](https://github.com/ivanyeors/mp/issues/291) | Telegram updates: four types, each with its own switch | AFK | **not started** | 10 | 29, 30 |
 
 PRD part 5, email marketing, has no slice here. It is a hand-off to
 [`PRD-email-marketing`](../../PRD-email-marketing/email-marketing-prd.md), and slice 05's

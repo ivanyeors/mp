@@ -1,5 +1,6 @@
 # 11 — *(optional)* One complimentary re-adjustment for Migrated customers
 
+**Issue:** [#275](https://github.com/ivanyeors/mp/issues/275) (parent #264)
 **Type:** AFK
 **Blocked by:** 05; owner decision 5
 **User stories:** 7

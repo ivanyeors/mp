@@ -1,6 +1,7 @@
 # PRD — Customer CRM: notes, timeline, aftercare messages, reviews, segments, follow-ups
 
 **Status:** specified, not started
+**Issue:** [#277](https://github.com/ivanyeors/mp/issues/277), with each slice a sub-issue (#278–#291)
 **Audited:** 2026-10-20 against `main` @ `48c643f`: every code reference re-checked after the paired-build and WhatsApp merges (#258–#262), plus research on Meta's template rules, Singapore's Spam Control Act and PDPA, and Google's review policy.
 **ADR:** `docs/adr/0027-customer-crm.md` (to be written by slice 01)
 **Builds on:** `PRD-shopify-customer-migration`, slice 12 (`admin_customer_overview`) and its

@@ -1,5 +1,6 @@
 # 07 — Marketing consent with provenance, and one-click unsubscribe
 
+**Issue:** [#271](https://github.com/ivanyeors/mp/issues/271) (parent #264)
 **Type:** AFK
 **Blocked by:** 02, 12
 **User stories:** 4, 5

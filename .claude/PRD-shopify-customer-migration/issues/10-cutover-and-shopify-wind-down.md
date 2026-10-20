@@ -1,5 +1,6 @@
 # 10 — Cutover: final delta import, Shopify notices, erasure
 
+**Issue:** [#274](https://github.com/ivanyeors/mp/issues/274) (parent #264)
 **Type:** HITL
 **Blocked by:** 09; owner decision 6 (cutover date)
 **User stories:** 13

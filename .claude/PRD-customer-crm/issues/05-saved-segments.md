@@ -1,5 +1,6 @@
 # 05 — Saved Segments, shared by Staff, counted live
 
+**Issue:** [#282](https://github.com/ivanyeors/mp/issues/282) (parent #277)
 **Type:** AFK
 **Blocked by:** 04
 **User stories:** 6, 16

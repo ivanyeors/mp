@@ -1,5 +1,6 @@
 # 08 — Check-up reminder: the yearly "time for a re-adjustment" for Premium Mpillow, which says it is paid
 
+**Issue:** [#285](https://github.com/ivanyeors/mp/issues/285) (parent #277)
 **Type:** AFK
 **Blocked by:** 07, 13; migration slice 07 (Marketing consent)
 **User stories:** 24

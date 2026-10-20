@@ -1,5 +1,6 @@
 # 06 — Welcome page, Claim link, and the account and Admin Panel surfaces
 
+**Issue:** [#270](https://github.com/ivanyeors/mp/issues/270) (parent #264)
 **Type:** AFK
 **Blocked by:** 05, 12
 **User stories:** 1, 3, 6, 8, 11, 12

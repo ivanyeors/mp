@@ -1,5 +1,6 @@
 # 01 — Glossary and ADR 0027: what the CRM is made of
 
+**Issue:** [#278](https://github.com/ivanyeors/mp/issues/278) (parent #277)
 **Type:** AFK
 **Blocked by:** none
 **User stories:** underpins all

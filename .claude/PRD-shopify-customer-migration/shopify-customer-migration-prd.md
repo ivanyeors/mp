@@ -1,6 +1,7 @@
 # PRD — Shopify customer migration and account onboarding
 
 **Status:** specified, not started
+**Issue:** [#264](https://github.com/ivanyeors/mp/issues/264), with each slice a sub-issue (#265–#276)
 **Audited:** 2026-10-20 against `main` @ `48c643f`: every code reference re-checked after the paired-build and WhatsApp merges (#258–#262), plus research on Meta's template rules, Singapore's Spam Control Act and PDPA, and Google's review policy.
 **ADR:** `docs/adr/0028-shopify-customer-migration.md` (to be written by slice 01; 0026 went to
 the paired build and 0027 to the CRM, so take the next free number if either moves)

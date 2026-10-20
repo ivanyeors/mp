@@ -1,5 +1,6 @@
 # 08 — Campaign emails, the send ledger, and a wave sender that cannot double-send
 
+**Issue:** [#272](https://github.com/ivanyeors/mp/issues/272) (parent #264)
 **Type:** AFK
 **Blocked by:** 06, 07
 **User stories:** 1, 4, 5, 11

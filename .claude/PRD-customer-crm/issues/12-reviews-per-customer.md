@@ -1,5 +1,6 @@
 # 12 — Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff
 
+**Issue:** [#289](https://github.com/ivanyeors/mp/issues/289) (parent #277)
 **Type:** AFK, plus one HITL dependency (the Google review sync must be live)
 **Blocked by:** 04, 07, 10
 **User stories:** 21, 22, 23

@@ -1,5 +1,6 @@
 # 04 — CRM columns on the Customer overview, the filters that use them, and safe search
 
+**Issue:** [#281](https://github.com/ivanyeors/mp/issues/281) (parent #277)
 **Type:** AFK
 **Blocked by:** 01; migration PRD slice 12 (`admin_customer_overview`)
 **User stories:** 5, 9

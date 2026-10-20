@@ -4,24 +4,24 @@ This is a tracer-bullet breakdown of the PRD (`../shopify-customer-migration-prd
 slice is a thin, demoable path through all layers.
 
 - **Triage label:** `needs-triage` (all slices)
-- **Tracker:** not yet filed on GitHub. When filed, the PRD issue links each slice.
+- **Tracker:** [#264](https://github.com/ivanyeors/mp/issues/264) is the PRD issue. Each slice is a sub-issue (#265–#276), and its row below links it. Project **mp**: add #264 to the board by hand and its sub-issues follow.
 
 ## Slices
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR 0028: what moves, what never moves, and what a Claim is | AFK | **not started** | none | underpins all |
-| [02](02-import-tables-and-dry-run.md) | Import tables, and an Admin Panel upload that previews and never writes | AFK | **not started** | 01 | 9, 15 |
-| [03](03-import-apply-and-rollback.md) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **not started** | 02 | 9, 10, 13, 15 |
-| [12](12-account-status-and-customer-overview.md) | Account status on every Customer, and the Customer overview | AFK | **not started** | 02 | 8, 14 |
-| [04](04-export-rehearse-import.md) | Export from Shopify, rehearse, then import into production from the Admin Panel | HITL | **not started** | 03, 12 | 2, 8, 14, 15 |
-| [05](05-claim-and-welcome-back-voucher.md) | Claim on first sign-in, and an account-bound welcome-back voucher | AFK | **not started** | 02 | 2, 3, 7 |
-| [06](06-welcome-page-and-surfaces.md) | Welcome page, Claim link, and the account and Admin Panel surfaces | AFK | **not started** | 05, 12 | 1, 3, 6, 8, 11, 12 |
-| [07](07-marketing-consent-and-unsubscribe.md) | Marketing consent with provenance, and one-click unsubscribe | AFK | **not started** | 02, 12 | 4, 5 |
-| [08](08-campaign-emails-and-wave-sender.md) | Campaign emails, the send ledger, and a wave sender that cannot double-send | AFK | **not started** | 06, 07 | 1, 4, 5, 11 |
-| [09](09-pilot-and-waves.md) | Sign-off: DNS, a pilot of 50, then the waves | HITL | **not started** | 04, 08 | all |
-| [10](10-cutover-and-shopify-wind-down.md) | Cutover: final delta import, Shopify notices, erasure | HITL | **not started** | 09 | 13 |
-| [11](11-optional-complimentary-readjustment.md) | *(optional)* One complimentary re-adjustment for Migrated customers | AFK | **owner decision** | 05 | 7 |
+| [01](01-glossary-and-adr.md) · [#265](https://github.com/ivanyeors/mp/issues/265) | Glossary and ADR 0028: what moves, what never moves, and what a Claim is | AFK | **not started** | none | underpins all |
+| [02](02-import-tables-and-dry-run.md) · [#266](https://github.com/ivanyeors/mp/issues/266) | Import tables, and an Admin Panel upload that previews and never writes | AFK | **not started** | 01 | 9, 15 |
+| [03](03-import-apply-and-rollback.md) · [#267](https://github.com/ivanyeors/mp/issues/267) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **not started** | 02 | 9, 10, 13, 15 |
+| [12](12-account-status-and-customer-overview.md) · [#276](https://github.com/ivanyeors/mp/issues/276) | Account status on every Customer, and the Customer overview | AFK | **not started** | 02 | 8, 14 |
+| [04](04-export-rehearse-import.md) · [#268](https://github.com/ivanyeors/mp/issues/268) | Export from Shopify, rehearse, then import into production from the Admin Panel | HITL | **not started** | 03, 12 | 2, 8, 14, 15 |
+| [05](05-claim-and-welcome-back-voucher.md) · [#269](https://github.com/ivanyeors/mp/issues/269) | Claim on first sign-in, and an account-bound welcome-back voucher | AFK | **not started** | 02 | 2, 3, 7 |
+| [06](06-welcome-page-and-surfaces.md) · [#270](https://github.com/ivanyeors/mp/issues/270) | Welcome page, Claim link, and the account and Admin Panel surfaces | AFK | **not started** | 05, 12 | 1, 3, 6, 8, 11, 12 |
+| [07](07-marketing-consent-and-unsubscribe.md) · [#271](https://github.com/ivanyeors/mp/issues/271) | Marketing consent with provenance, and one-click unsubscribe | AFK | **not started** | 02, 12 | 4, 5 |
+| [08](08-campaign-emails-and-wave-sender.md) · [#272](https://github.com/ivanyeors/mp/issues/272) | Campaign emails, the send ledger, and a wave sender that cannot double-send | AFK | **not started** | 06, 07 | 1, 4, 5, 11 |
+| [09](09-pilot-and-waves.md) · [#273](https://github.com/ivanyeors/mp/issues/273) | Sign-off: DNS, a pilot of 50, then the waves | HITL | **not started** | 04, 08 | all |
+| [10](10-cutover-and-shopify-wind-down.md) · [#274](https://github.com/ivanyeors/mp/issues/274) | Cutover: final delta import, Shopify notices, erasure | HITL | **not started** | 09 | 13 |
+| [11](11-optional-complimentary-readjustment.md) · [#275](https://github.com/ivanyeors/mp/issues/275) | *(optional)* One complimentary re-adjustment for Migrated customers | AFK | **owner decision** | 05 | 7 |
 
 ## Dependency graph
 

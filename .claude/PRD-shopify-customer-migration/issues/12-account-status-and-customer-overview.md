@@ -1,5 +1,6 @@
 # 12 — Account status on every Customer, and the Customer overview
 
+**Issue:** [#276](https://github.com/ivanyeors/mp/issues/276) (parent #264)
 **Type:** AFK
 **Blocked by:** 02
 **User stories:** 8, 14

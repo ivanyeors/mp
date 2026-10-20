@@ -1,5 +1,6 @@
 # 10 — A view-only Customers permission
 
+**Issue:** [#287](https://github.com/ivanyeors/mp/issues/287) (parent #277)
 **Type:** AFK
 **Blocked by:** 01
 **User stories:** 17, 18

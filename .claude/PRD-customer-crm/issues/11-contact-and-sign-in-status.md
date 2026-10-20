@@ -1,5 +1,6 @@
 # 11 — Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable
 
+**Issue:** [#288](https://github.com/ivanyeors/mp/issues/288) (parent #277)
 **Type:** AFK
 **Blocked by:** 01; migration PRD slice 12 (Account status and `linkCustomerToAuthUser` changes)
 **User stories:** 19, 20

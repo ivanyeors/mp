@@ -1,5 +1,6 @@
 # 01 — Glossary and ADR 0028: what moves, what never moves, and what a Claim is
 
+**Issue:** [#265](https://github.com/ivanyeors/mp/issues/265) (parent #264)
 **Type:** AFK
 **Blocked by:** none
 **User stories:** underpins all
