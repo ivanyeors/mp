@@ -46,6 +46,17 @@ transport and recorded in `order_emails`. It carries its own opt-out and never a
 _Avoid_ — calling it marketing, or gating it on **Marketing consent** (migration PRD).
 Anything promotional belongs to `PRD-email-marketing`.
 
+**Contact status** — what is known about how to reach a **Customer**, each part derived from
+a fact:
+
+- **Verified email:** they have signed in with it.
+- **Sign-in methods:** emailed code, Google.
+- **Valid mobile:** the number on file passes `isValidPhone`.
+- **Replied on WhatsApp:** the number answered an **Appointment reminder**.
+
+_Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never let Staff tick
+"verified".
+
 ## ADR 0027 — decisions to record
 
 - **(a) Staff-only notes live in `customer_notes`.** `customers.notes` stops being written and
@@ -64,12 +75,18 @@ Anything promotional belongs to `PRD-email-marketing`.
   restated rule.
 - **(g) No third cron.** CRM jobs chain onto `results-sla` (ADR 0006's precedent).
 - **(h) The CRM sends no marketing.** It hands Segments and timeline history to
-  `PRD-email-marketing`.
+  `PRD-email-marketing`. The periodic check-up reminder is a service message (owner,
+  2026-10-20) under (f)'s rules.
+- **(i) Seeing and changing are separate keys.** `customers` means seeing the Customers page;
+  `customers-edit` (which requires `customers`) covers every change. Existing roles are
+  migrated to hold both, and a guard test keeps writes on `customers-edit`.
+- **(j) Contact status is derived.** It comes from sign-in, sign-in identities and WhatsApp
+  replies, never from a Staff-set flag.
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` carries the five terms above with `_Avoid_` lines.
-- [ ] `docs/adr/0027-customer-crm.md` records (a)–(h). It links ADR 0026 (the Customer overview
+- [ ] `CONTEXT.md` carries the six terms above with `_Avoid_` lines.
+- [ ] `docs/adr/0027-customer-crm.md` records (a)–(j). It links ADR 0026 (the Customer overview
       and the "facts, not statuses" rule), ADR 0024 (the re-adjustment rule) and ADR 0006
       (cron chaining).
 - [ ] `./scripts/graphify update .` is run in the same commit.

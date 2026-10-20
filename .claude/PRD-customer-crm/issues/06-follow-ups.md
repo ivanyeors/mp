@@ -1,7 +1,7 @@
 # 06 — Follow-ups assigned to Staff profiles
 
 **Type:** AFK
-**Blocked by:** 03; owner decisions 3 and 4
+**Blocked by:** 03, 10; owner decision 3 (the digest)
 **User stories:** 7, 8
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:customers`, `area:admin`, `area:db`
 
@@ -42,8 +42,13 @@ create index on customer_followups (customer_id, created_at desc);
 - **On the Customers page, a Follow-ups tab** (`?view=followups`):
   - **Mine**, **All** and **Overdue**, sorted by due date. Each row shows the Customer's name,
     the title, the due date and the assignee.
-  - *All* follows owner decision 3. By default every Staff member with `customers` sees
-    everything.
+  - *All* shows everyone's follow-ups to every Staff member with `customers` (owner,
+    2026-10-20).
+- **Who may change them.** Creating, completing, reassigning and deleting need `customers-edit`
+  (slice 10).
+  - The assignee picker lists only profiles whose Member holds `customers-edit`, so a
+    view-only colleague is never given one they cannot close.
+  - Without `customers-edit`, the form and the *Done* buttons are not rendered.
 - **A sidebar badge on Customers.** It counts what is due today or overdue for the current
   profile. It follows the Results badge (`components/settings/settings-sidebar-nav.tsx:259-270`),
   read from `GET /api/settings/customers/followup-counts`. With no working-as profile chosen,
@@ -65,11 +70,13 @@ create index on customer_followups (customer_id, created_at desc);
 - **No double posts.** At most one post per Singapore date, guarded by a compare-and-set on a
   `crm_followup_digest_last_sent_on` site setting, so a manual re-run of the cron does not post
   twice.
-- **A switch.** `crm_followup_digest_enabled` (owner decision 4; on by default).
+- **A switch.** `crm_followup_digest_enabled` (owner decision 3; on by default).
 
 ## Acceptance criteria
 
 - [ ] A follow-up assigned to profile A appears in A's *Mine* and badge, and not in B's.
+- [ ] A view-only role sees every follow-up under *All*, cannot create or complete one, and its
+      profiles are not in the assignee picker.
 - [ ] *Overdue* means `due_on` is before today in Singapore, tested across midnight SGT.
 - [ ] An archived assignee's open follow-ups stay visible and can be reassigned.
 - [ ] Running the digest twice on one date posts once. The post contains no customer name or

@@ -70,6 +70,8 @@ Add one catalog entry to `lib/auth/permissions.ts`, as a tab of the Customers pa
 - Owner and Admin hold it through `grants_all`. No other role holds it until someone ticks it on
   **Users & permissions → Roles**. Manager and Staff can see Customers, but cannot bulk-write
   them.
+- Once CRM slice 10 adds `customers-edit` (`PRD-customer-crm`), this key becomes
+  `requires: ["customers-edit"]`: importing is a change.
 - Check that `lib/auth/__tests__/permissions.test.ts` still holds. The new key is a gain for
   Owner and Admin only, which is what `ALL` already means.
 

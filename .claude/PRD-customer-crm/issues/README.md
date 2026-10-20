@@ -15,10 +15,12 @@ demoable path through all layers.
 | [03](03-customer-timeline.md) | One timeline on the Customer detail, merged when it is read | AFK | **not started** | 02 | 3, 4 |
 | [04](04-crm-filters-and-overview-columns.md) | CRM columns on the Customer overview, the filters that use them, and safe search | AFK | **not started** | 01; migration 12 | 5, 9 |
 | [05](05-saved-segments.md) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
-| [06](06-follow-ups.md) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03 | 7, 8 |
+| [06](06-follow-ups.md) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
 | [07](07-care-reminder-free-readjustment.md) | Care reminder: "your free re-adjustment is available until {date}" | AFK | **not started** | 01 | 11–15 |
-| [08](08-care-reminder-checkup.md) | *(owner decision)* The periodic "time for a re-adjustment" reminder | AFK | **owner decision** | 07 | 11 |
-| [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first reminders | HITL | **not started** | 02, 03, 05, 06, 07 | all |
+| [08](08-care-reminder-checkup.md) | Care reminder: the periodic "time for a re-adjustment" (service message) | AFK | **not started** | 07 | 11–13 |
+| [09](09-signoff.md) | Sign-off: the privacy check in production, a Staff walkthrough, and the first reminders | HITL | **not started** | 02, 03, 05, 06, 07, 10, 11 | all |
+| [10](10-customers-view-permission.md) | A view-only Customers permission | AFK | **not started** | 01 | 17, 18 |
+| [11](11-contact-and-sign-in-status.md) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **not started** | 01; migration 12 | 19, 20 |
 
 PRD part 5, email marketing, has no slice here. It is a hand-off to
 [`PRD-email-marketing`](../../PRD-email-marketing/email-marketing-prd.md), and slice 05's
@@ -35,8 +37,10 @@ graph TD
   s05[05 Segments]
   s06[06 Follow-ups]
   s07[07 Care reminder: free window]
-  s08[08 Check-up reminder · owner decision]
+  s08[08 Check-up reminder]
   s09[09 Sign-off · HITL]
+  s10[10 View-only permission]
+  s11[11 Contact + sign-in status]
   m12[Migration 12: Customer overview]
   em[PRD-email-marketing · future]
 
@@ -46,6 +50,12 @@ graph TD
   m12 --> s04
   s04 --> s05
   s03 --> s06
+  s01 --> s10
+  s10 --> s06
+  s01 --> s11
+  m12 --> s11
+  s10 --> s09
+  s11 --> s09
   s01 --> s07
   s07 --> s08
   s02 --> s09
@@ -54,7 +64,6 @@ graph TD
   s06 --> s09
   s07 --> s09
   s05 -. resolveSegment .-> em
-  s08 -. if marketing .-> em
 ```
 
 ## Build order
@@ -62,11 +71,14 @@ graph TD
 1. **01, then 02 straight away.** 02 closes a live exposure: customers can read staff notes,
    tags and order notes today. It needs nothing from the migration PRD, so it can ship before
    any of it.
-2. **03 and 07 in parallel.** Both only read tables that exist today.
-3. **04 once migration slice 12 has merged**, because it extends `admin_customer_overview`.
-   Then 05.
-4. **06** after 03, so follow-ups land on the timeline in the same PR.
-5. **09** closes the build. **08** waits on counsel and may move to email marketing.
+2. **10 next.** It is small, and once it lands, every later slice's write path is born on
+   `customers-edit`. It does not block 02, the urgent fix.
+3. **03 and 07 in parallel.** Both only read tables that exist today.
+4. **04 and 11 once migration slice 12 has merged**, because both extend its overview and its
+   `linkCustomerToAuthUser` change. Then 05.
+5. **06** after 03 and 10, so follow-ups land on the timeline and on the right permission in the
+   same PR.
+6. **08** after 07 (the same job). **09** closes the build.
 
 ## How this fits the Shopify migration PRD
 
@@ -95,6 +107,10 @@ and links only.
 **Fourth hazard: no third cron.** Vercel Hobby allows two, and a test asserts it
 (`lib/shopify/order-mirror-catchup.check.ts:24`). Chain onto `results-sla`.
 
+**Fifth hazard: reads on `customers`, writes on `customers-edit`.** After slice 10, a route
+or server action that changes anything checks `customers-edit`. The guard test from slice 10
+fails on a write left on `customers`.
+
 ## Noticed, not fixed here
 
 PostgREST `.or()` filters built from unescaped typed text, in `lib/ecommerce/admin/orders-list.ts:78`,
@@ -106,4 +122,5 @@ escalations. They are worth one small PR outside the CRM.
 
 - **Slice 09** needs the owner's own customer login on production, each Staff role for the
   walkthrough, and 30 days of reminders.
-- **Slice 08** needs counsel's answer (owner decision 2).
+- **Slice 08** is decided as a service message (owner, 2026-10-20). Have counsel read the final
+  copy once, as a check rather than a gate.

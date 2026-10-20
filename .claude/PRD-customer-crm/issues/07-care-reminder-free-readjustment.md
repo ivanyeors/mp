@@ -76,7 +76,8 @@ These are `site_settings` keys, following the re-adjustment policy keys:
 
 - **Profile.** A *Care reminders* toggle on `/account` writes `care_reminders_email` through a
   server action under the customer's own session.
-- **The Care reminders card on the Customers page** (behind `customers`):
+- **The Care reminders card on the Customers page.** Seeing it needs `customers`; changing a
+  setting needs `customers-edit` (slice 10). It shows:
   - the three settings;
   - sent in the last 30 days;
   - *booked after a reminder*: a booking for the same `order_item_id` created after the

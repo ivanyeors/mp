@@ -44,7 +44,8 @@ create unique index customer_segments_live_name
 - **Changing a Segment.**
   - With a Segment selected and the filters changed, *Update {name}* or *Save as new*.
   - *Rename* and *Archive* sit in the chip's menu.
-- **Permissions and audit.** Everything sits behind `customers`. Create, update and archive
+- **Permissions and audit.** Using a Segment needs `customers`. Saving, updating and
+  archiving one need `customers-edit` (slice 10). Create, update and archive
   each write `recordAdminAction` (`customer_segment.*`), with the name and filters but no
   Customer data.
 

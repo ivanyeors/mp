@@ -147,6 +147,31 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
 - **The Admin Panel has no inbox.** The one live signal is the sidebar Results badge
   (`components/settings/settings-sidebar-nav.tsx:259-270`).
 
+### 6. What "linked up" can mean for an email and a mobile
+
+- **Email.** An account binds by *verified* email (`linkCustomerToAuthUser`), so *has an
+  account* means *email verified*. Without an account, the email was typed at checkout or
+  imported, and is not verified.
+- **Sign-in methods.** Sign-in is by emailed code or by Google (`components/auth/login-form.tsx`).
+  Whether Google is linked is visible only on the signed-in user's `identities`
+  (`app/[lang]/account/page.tsx:38`), and nothing stores it for Staff.
+- **Mobile.** There is no mobile sign-in, so no number is ever verified by sign-in.
+  - Numbers come from checkout and the Profile (`customers.phone`), and from bookings and Results
+    (their own phone snapshots).
+  - A WhatsApp **Appointment reminder** records the guest's reply (`appointment_reminders`,
+    `20260709120000:11-20`). That reply is the one proof that a number reaches a person. It is
+    keyed by phone, with no Customer link; `phonesMatch` (`lib/appointments/contacts.ts:55`)
+    matches it.
+
+### 7. One key covers seeing and changing Customers
+
+`customers` guards every read and every write on the Customers page
+(`lib/auth/permissions.ts:49`). The writes today are `POST /api/shop/customers`,
+`PATCH /api/shop/customers/[id]` and `POST …/addresses`. A role cannot be given read-only
+access. Roles store closed key sets, with `requires` applied on save
+(`lib/auth/permission-matrix.ts:3,19`), so a new key needs a data migration to reach existing
+roles.
+
 ## Solution
 
 > **Put a CRM inside Admin Panel → Customers that reads the platform's own facts at view time:**
@@ -163,7 +188,7 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
 
 - **Customers list.** The migration plan's filters plus CRM filters, a row of saved
   **Segments**, and a *Follow-ups* tab that shows *mine*, *all* and *overdue*.
-- **Customer detail.** Profile and Account cards (migration slice 12), then:
+- **Customer detail.** The Profile card and a **Contact and sign-in** card (slice 11), then:
   - **Notes**, newest first, each with its author and date;
   - **Follow-ups**, open first, each with its assignee and due date;
   - **Timeline**: everything that happened, newest first, filterable by kind.
@@ -192,12 +217,26 @@ and `appointments` (`lib/auth/permissions.ts:39,49-52`). The detail page already
 7. **The re-adjustment rule has one implementation.** Reminders call `evaluateReadjustment`.
    They never restate the 60 days or the Premium-only rule.
 8. **New jobs chain onto `results-sla`.** No third cron is added.
-9. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
+9. **Seeing and changing are separate permissions.**
+   - `customers` lets Staff see the whole CRM, including every follow-up.
+   - A new `customers-edit` key, which requires `customers`, lets them change anything.
+   - A data migration gives `customers-edit` to every role that holds `customers` today, so
+     nobody loses access.
+   - A guard test keeps every write path on `customers-edit`.
+10. **Contact status is derived, never typed.**
+    - *Email verified* means the person has signed in with that email.
+    - *Signs in with Google* comes from their sign-in identities, recorded at sign-in.
+    - *Mobile replied on WhatsApp* comes from an **Appointment reminder** reply.
+    - Staff never tick a "verified" box.
+11. **The CRM's own tables follow the migration PRD's rules** (ADR 0026 k, l):
    - facts, not statuses;
    - staff-only data off `customers`;
    - append-only events, each keyed by `customer_id` with a timestamp.
 
-## The six parts
+## The parts
+
+Parts 1–6 are the ones the owner approved on 2026-10-19. Parts 7 and 8 were added at the
+owner's request on 2026-10-20.
 
 ### 1. Staff notes customers cannot read (slice 02)
 
@@ -235,9 +274,10 @@ It shows the newest 50 entries, can load more, and filters by kind.
   - It is sent only once the order is marked delivered, and only to customers who have not
     switched care reminders off.
   - The link opens re-adjustment booking.
-- **Slice 08: a periodic *"time for a re-adjustment"*** some months after delivery. This one is
-  gated: if counsel says it is marketing, it moves to `PRD-email-marketing` as an automated
-  flow and this slice is closed.
+- **Slice 08: a periodic *"time for a re-adjustment"*** some months after delivery (default 12).
+  - It is a **service message** (owner, 2026-10-20), under slice 07's rules: no offer, the same
+    opt-out, once per milestone per Order.
+  - Its timing and which pillows it covers are owner decision 2.
 
 ### 4. Saved segments (slices 04, 05)
 
@@ -278,6 +318,34 @@ No CRM slice builds a Campaigns page, a composer, or a marketing send.
     the Results badge.
   - A morning digest goes to the Staff Telegram group, chained onto `results-sla`. It carries
     counts per Staff profile and a link, and no customer details.
+- **Who sees what.** Everyone who can see Customers sees every follow-up (owner, 2026-10-20).
+  Creating, completing and reassigning need `customers-edit` (part 8).
+
+### 7. Contact and sign-in status (slice 11)
+
+Staff see whether a customer's email and mobile are "linked up":
+
+- **Email:** verified (they have signed in with it, and since when) or not, and where it came
+  from (checkout, or the Shopify import).
+- **Signs in with:** emailed code, Google, or both.
+- **Mobile:** whether a number is on file, whether it is a valid Singapore mobile, whether it
+  has ever replied to a WhatsApp appointment reminder, and any other numbers seen on their
+  bookings and Results.
+- **Reminders:** care reminders on or off, marketing consent (once migration slice 07 lands),
+  and bounces (once migration slice 08 records them).
+
+The list gains matching filters, such as *email not verified* or *mobile missing*. Every status
+comes from a fact, never from a box Staff tick.
+
+### 8. View-only access (slice 10)
+
+A role can be given the CRM to **see** without being able to **change** it:
+
+- `customers` covers seeing everything, including every follow-up;
+- the new `customers-edit` covers every change.
+
+Existing roles keep editing, because a data migration grants them `customers-edit`. Making a
+role view-only is one untick on Users & permissions → Roles.
 
 ## User stories
 
@@ -312,13 +380,23 @@ No CRM slice builds a Campaigns page, a composer, or a marketing send.
 15. As the owner, I see how many care reminders went out, and how many led to a booking.
 16. As the owner, the CRM's segments are ready to become email-marketing audiences, with no
     rework.
+17. As the owner, I can give a role view-only access to Customers: they see everything,
+    including every follow-up, and can change nothing.
+18. As Staff with view-only access, I am never assigned a follow-up I cannot close.
+19. As Staff, I see whether a customer's email is verified, and whether they sign in by code or
+    by Google.
+20. As Staff, I see whether a customer's mobile is on file, valid, and has ever replied to us
+    on WhatsApp.
 
 ## Non-goals
 
 - **Marketing email of any kind**, which belongs to `PRD-email-marketing`. That includes
   newsletters, offers, campaigns and promotional automations.
 - **WhatsApp or SMS outreach from the CRM.** Do Not Call duties apply, and the WhatsApp channel
-  is for **Appointment reminders**.
+  is for **Appointment reminders**. Sending care reminders by WhatsApp as well is owner
+  decision 4; it is not built until decided.
+- **Mobile sign-in or phone verification by code.** Slice 11 shows what is known about a number;
+  it does not add a way to verify one.
 - **Exporting a segment as a CSV.** It is a bulk PII export, and would need its own permission
   and PRD.
 - **Scoring, predictions, "churn risk", or AI summaries.**
@@ -338,7 +416,7 @@ No CRM slice builds a Campaigns page, a composer, or a marketing send.
 | The timeline shows a Result to the wrong Customer through an email match | Possible if the emails differ only in case or whitespace | Match exactly as `lib/results/access.ts` does, with a test covering case and whitespace. |
 | The timeline is slow on a long-standing Customer | Each source query is bounded | Each adapter loads at most `limit` rows before the cursor, and the merge takes the newest `limit` overall. |
 | A care reminder goes out for a pillow not yet received | Real: the window runs from payment | Send only once `delivered_at` is set, and only after a settling period. Orders never marked delivered are counted on the admin card, not emailed. |
-| A care reminder is treated as spam | Low for a single service message about a benefit already bought | One email per order, no offer, transactional transport, its own opt-out. The periodic reminder waits for counsel (owner decision 2). |
+| A care reminder is treated as spam | Low for a single service message about a benefit already bought | One email per order, no offer, transactional transport, its own opt-out. The periodic check-up follows the same rules (a service message, owner 2026-10-20); counsel reads the final copy once. |
 | Telegram leaks customer data to a group | Certain if names are posted | Counts and a link only (decision 5). |
 | The Hobby cron runs late (about ±1 hour) | Known | Reminders and digests are day-granular. |
 
@@ -354,14 +432,23 @@ No CRM slice builds a Campaigns page, a composer, or a marketing send.
 - Each eligible order gets exactly one care reminder. Nobody who has booked, opted out, or not
   had the order marked delivered gets one.
 - The owner sees the care reminders' booking rate after the first month.
+- A view-only role gets a 403 from every write path, and the guard test fails on any write path
+  left on `customers`.
 
 ## Open decisions for the owner
 
 1. **Care reminder timing:** how many days before the free window closes (default 14), and the
    settling period after delivery (default 3 days).
-2. **The periodic check-up reminder (slice 08):** is it a service message or marketing? This
-   needs counsel. Also decide its timing (default 12 months after delivery) and which pillows
-   it covers.
-3. **Follow-up visibility:** can every Staff member with `customers` see every follow-up
-   (default yes), or only their own and ones they created?
-4. **The Telegram digest:** on or off (default on, counts only).
+2. **The periodic check-up (slice 08):** its timing (default 12 months after delivery), and
+   which pillows it covers (Premium only, every Mpillow, or Mbolster too).
+3. **The Telegram digest:** on or off (default on, counts only).
+4. **WhatsApp for care reminders:** should a care reminder also go by WhatsApp when the mobile
+   has replied before? This needs a Meta-approved utility template and the customer's WhatsApp
+   opt-in.
+
+**Decided** (owner, 2026-10-20):
+
+- The periodic check-up is a **service message** (slice 08).
+- Every Staff member who can see Customers sees every follow-up, and there is a view-only
+  permission (slice 10).
+- The CRM shows whether a customer's mobile and email are linked up (slice 11).

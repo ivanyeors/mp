@@ -30,9 +30,6 @@ None of the items below is built yet. Each is planned in the slice named.
 - **Templates and copy** beyond the three migration emails.
 - **Reporting** per campaign: sent, bounced, complained, clicked, unsubscribed, and the revenue
   on attributed **Orders**.
-- **The periodic re-adjustment check-up**, but only if counsel classes it as marketing
-  (CRM slice 08). It would be an automated flow to `subscribed` owners, using CRM slice 04's
-  `bought` and `last_readjusted_at` filters.
 
 ## Rules it must keep
 
@@ -44,6 +41,8 @@ These are already decided upstream; changing one means changing that plan too.
 - **Ledger first.** A row is written before every send, unique per Customer and campaign.
   Widen the `customer_campaign_sends.template` check to a campaign key; do not build a second
   ledger.
-- **Care reminders are not marketing.** The CRM's service reminders (CRM slices 07–08) stay
-  there, under their own rules. This initiative does not send them.
+- **Care reminders are not marketing.** The CRM's service reminders stay there, under their
+  own rules. These are the free re-adjustment reminder and the periodic check-up, which the
+  owner decided on 2026-10-20 is a service message (CRM slices 07–08). This initiative does not
+  send them. A reminder that gains an offer becomes this initiative's.
 - **Email only.** No WhatsApp or SMS marketing (Do Not Call Registry duties in Singapore).

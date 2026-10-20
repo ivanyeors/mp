@@ -1,47 +1,65 @@
-# 08 — *(owner decision)* The periodic "time for a re-adjustment" reminder
+# 08 — Care reminder: the periodic "time for a re-adjustment"
 
 **Type:** AFK
-**Blocked by:** 07; owner decision 2 (with counsel)
-**User stories:** 11
+**Blocked by:** 07; owner decision 2 (timing and coverage)
+**User stories:** 11, 12, 13
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:customers`, `area:email`, `area:readjustment`
+
+## Decided
+
+**This is a service message** (owner, 2026-10-20). It is built here, under the same rules as
+slice 07. It does not move to `PRD-email-marketing`.
+
+What makes it a service message, and must stay true:
+
+- it is about a product the customer owns;
+- it carries no offer, discount or other product;
+- it honours the same care-reminder opt-out;
+- it goes at most once per milestone per Order.
+
+If the copy ever needs an offer, it stops being a care reminder and belongs to email marketing.
+Have counsel read the final copy once before it goes live; this is a check, not a gate.
 
 ## Goal
 
-Some months after delivery, a pillow owner hears that a re-adjustment would help. This one is
-a **paid** visit (ADR 0024: after the free window, the fee applies). That makes it closer to
-promotion than slice 07's reminder, and the route depends on how it is classified.
+Some months after delivery, a pillow owner hears that a re-adjustment keeps the pillow
+fitting them. This visit is **paid**: after the free window, the fee applies (ADR 0024). So the
+email states only that the fee applies, and links to the Services page and to booking.
 
-## The decision this waits on
+## Who gets it
 
-Is it a service message about a product they own, or marketing? Counsel decides. The answer
-picks one of two builds, and the other is closed.
+This reuses slice 07 whole:
 
-### If it is a service message: build it here
+- the same daily job, chained onto `results-sla`;
+- the same `care_reminders_email` opt-out;
+- the transactional transport;
+- the `order_emails` ledger.
 
-- It reuses slice 07 whole: the same candidate query shape, the same `care_reminders_email`
-  opt-out, the transactional transport and the `order_emails` ledger.
-  - The template is `care.checkup_<months>m`, so each milestone sends once per Order.
-- **Timing:** `delivered_at + care_checkup_months` (default 12). It skips anyone with a
-  re-adjustment booked or attended in the previous `care_checkup_months`.
-- **Coverage** is owner decision 2: Premium only, every Mpillow, or Mbolster too.
-- **No offer**, and no price beyond *"the re-adjustment fee applies"* with a link to the
-  Services page.
+The selection rules:
 
-### If it is marketing: hand it to email marketing and close this slice
+- **Template:** `care.checkup_<months>m`, so each milestone sends once per Order.
+- **When:** the first run on or after `delivered_at + care_checkup_months` (default 12).
+- **Skip:** a Customer with a **Re-adjustment booking** booked or attended within the previous
+  `care_checkup_months`. Skipped Customers are counted, not emailed.
+- **Coverage:** owner decision 2 picks Premium only, every Mpillow, or Mbolster too. It is read
+  from `customer_purchase_lines` (slice 04). If slice 04 has not landed, use `classifyOrderLine`
+  directly.
 
-It becomes an automated flow in `PRD-email-marketing`:
+## Settings
 
-- sent only to `subscribed` Customers;
-- through the campaign transport;
-- with one-click unsubscribe.
+These are `site_settings` keys, edited on slice 07's Care reminders card:
 
-The CRM supplies its Segment, using slice 04's `bought` and `last_readjusted_at` filters.
-Nothing is built here.
+- `care_checkup_enabled` (default **false**);
+- `care_checkup_months` (12);
+- `care_checkup_covers`: `premium` | `all_pillows` | `pillows_and_bolsters`.
 
 ## Acceptance criteria
 
-- [ ] The decision is recorded in this file and in ADR 0027, with the date and who decided.
-- [ ] **Service route:** slice 07's tests, re-run with the check-up timing, pass. A Customer
-      re-adjusted within the period is skipped.
-- [ ] **Marketing route:** a line in `PRD-email-marketing` names this flow and its Segment, and
-      this slice is closed as *moved*.
+- [ ] vitest covers the timing and skip rules as a pure function: on time, already re-adjusted
+      within the period, opted out, and not delivered.
+- [ ] Each Order gets at most one email per milestone, through the `order_emails` unique key.
+- [ ] The rendered email contains no price other than "the re-adjustment fee applies", and no
+      other product.
+- [ ] The Care reminders card shows check-ups sent, skipped by reason, and bookings that
+      followed.
+- [ ] `./scripts/graphify update .` is run in the same commit.

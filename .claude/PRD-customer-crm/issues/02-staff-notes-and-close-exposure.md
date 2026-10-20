@@ -74,9 +74,10 @@ grant select (/* every column except internal_notes */) on public.orders to auth
   - each note shows the author's profile name and the date;
   - the author, or an Owner or Admin (`AdminContext.grantsAll`), can delete a note, and a
     deletion is soft;
-  - the card is behind `customers`.
+  - reading is behind `customers`; adding and deleting are behind `customers-edit`.
 - **Writes.** `POST /api/shop/customers/[id]/notes` and `DELETE …/notes/[noteId]`. Each calls
-  `requireAdmin("customers")` and takes the author from `getAdminContext` plus
+  `requireAdmin("customers-edit")` (slice 10; use `customers` if this slice lands first, and
+  slice 10's guard test moves it) and takes the author from `getAdminContext` plus
   `getWorkingAs`. Each writes `recordAdminAction` (`customer_note.create` / `.delete`), with the
   note id and no body.
 - **Fix the silent save** (PRD audit §1):
