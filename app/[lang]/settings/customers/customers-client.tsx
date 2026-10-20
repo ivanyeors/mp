@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { User, Search, Loader2 } from "lucide-react";
+import { User, Search, Loader2, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -67,7 +69,14 @@ function getCustomerName(customer: Customer): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CustomersClient({ initialData }: { initialData?: CustomersInitialData }) {
+export function CustomersClient({
+    initialData,
+    canImport = false,
+}: {
+    initialData?: CustomersInitialData;
+    /** Holds `customer-import`; Manager and Staff do not, unless a role grants it. */
+    canImport?: boolean;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -146,13 +155,21 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
                   <InfoTip label="About Customers">
                     <p>Browse and manage your customer accounts.</p>
                   </InfoTip>
                 </div>
+                {canImport && (
+                    <Button size="sm" variant="outline" className="self-start sm:self-auto" asChild>
+                        <Link href={to("/settings/customers/import")}>
+                            <Upload className="mr-1.5 h-4 w-4" />
+                            Import from Shopify
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             {/* Toolbar */}

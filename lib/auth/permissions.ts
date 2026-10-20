@@ -49,6 +49,8 @@ export const PERMISSION_CATALOG = [
   { key: "customers", label: "Customers", group: "Store", href: "/settings/customers", surface: "admin-panel" },
   // Seeing the Customers page is `customers`; every change on it is this key (CRM slice 10).
   { key: "customers-edit", label: "Customers: make changes (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers"] },
+  // Importing is a change, so it sits on `customers-edit` (migration slice 02, CRM slice 10).
+  { key: "customer-import", label: "Customer import (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers", "customers-edit"] },
   { key: "results", label: "Results", group: "Store", href: "/settings/results", surface: "admin-panel" },
   { key: "orders", label: "Orders", group: "Store", href: "/settings/orders", surface: "admin-panel" },
   { key: "returns", label: "Returns / RMA", group: "Store", href: "/settings/rma", surface: "admin-panel" },

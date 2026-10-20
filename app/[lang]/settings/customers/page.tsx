@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { listAdminCustomers } from "@/lib/ecommerce/admin/customers";
 import type { Customer } from "@/lib/types/ecommerce";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
@@ -20,7 +21,7 @@ export default async function SettingsCustomersPage({
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-    await requireAdminPage("customers", locale);
+    const ctx = await requireAdminPage("customers", locale);
 
     // Mirrors the client's default state: no search, page 1, LIMIT 20.
     const customers = await listAdminCustomers(
@@ -33,5 +34,10 @@ export default async function SettingsCustomersPage({
         ? { customers: { ...customers, rows: customers.rows as Customer[] } }
         : undefined;
 
-    return <CustomersClient initialData={initialData} />;
+    return (
+        <CustomersClient
+            initialData={initialData}
+            canImport={hasPermission(ctx, "customer-import")}
+        />
+    );
 }
