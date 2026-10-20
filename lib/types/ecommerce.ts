@@ -412,6 +412,10 @@ export interface Coupon {
   expires_at: string | null;
   applies_to: { product_ids?: string[]; category_ids?: string[] } | null;
   is_active: boolean;
+  /** Bound to this Customer (ADR 0028 g); null is a bearer code. */
+  customer_id: string | null;
+  /** Why the platform issued it; set only on a bound coupon. */
+  issued_for: "welcome_back" | null;
   created_at: string;
   updated_at: string;
 }

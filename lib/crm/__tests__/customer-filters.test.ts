@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CUSTOMER_FILTER_PARAMS,
   DEFAULT_CUSTOMER_FILTERS,
   applyCustomerFilters,
   customerFilterParams,
@@ -167,6 +168,13 @@ describe("customerFilterParams", () => {
   it("adds paging only when asked", () => {
     expect(customerFilterParams({ page: 2 }).has("page")).toBe(false);
     expect(customerFilterParams({ page: 2 }, { paging: true }).toString()).toBe("page=2&limit=20");
+  });
+});
+
+describe("CUSTOMER_FILTER_PARAMS", () => {
+  it("names every key the filters own, and not the page's tab (`view`, CRM slice 14)", () => {
+    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual(["account", "limit", "page", "search", "sort", "source", "tags"]);
+    expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
 });
 

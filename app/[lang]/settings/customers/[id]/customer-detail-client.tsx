@@ -48,6 +48,7 @@ import type { CustomerNote } from "@/lib/crm/note-rules";
 import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
 import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
 import { AccountCard, FromShopifyCard } from "./customer-account-cards";
+import { AftercareCard } from "./aftercare-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -746,6 +747,9 @@ export function CustomerDetailClient({
 
                     {/* Account status, for every Customer (migration slice 12) */}
                     <AccountCard customer={customer} />
+
+                    {/* Aftercare switches (CRM slice 13) */}
+                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>

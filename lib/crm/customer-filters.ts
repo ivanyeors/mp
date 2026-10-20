@@ -73,6 +73,9 @@ const PARAM_SCHEMAS = {
 type FilterKey = keyof typeof PARAM_SCHEMAS;
 const FILTER_KEYS = Object.keys(PARAM_SCHEMAS) as FilterKey[];
 
+/** Every URL key the list's filters own; any other key (`view`) is left alone. */
+export const CUSTOMER_FILTER_PARAMS: readonly FilterKey[] = FILTER_KEYS;
+
 export interface ParsedCustomerFilters {
   filters: CustomerFilters;
   /** Parameters that were present but invalid, and so not applied. */

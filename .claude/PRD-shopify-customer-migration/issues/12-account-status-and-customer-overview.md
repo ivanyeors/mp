@@ -235,5 +235,24 @@ back transaction (`psql -v ON_ERROR_STOP=1 -f …` on a database with the migrat
 - **Search is unchanged**: the unescaped `.or()` moved from `lib/ecommerce/admin/customers.ts:40`
   to `applyCustomerFilters`. CRM 04 replaces it.
 
+**After merging CRM 13, CRM 14 and Migration 05.**
+
+- The Customers page header and the *Import from Shopify* button now belong to CRM 14's
+  `customers-page-tabs.tsx`; the list tab (`CustomersClient`) holds the Migration card above its
+  filters, and no longer takes `canImport`. The header's tooltip carries the *signed up* / *no
+  account* wording. The list rewrites only its own URL keys (`CUSTOMER_FILTER_PARAMS`), so the
+  tabs' `?view=` survives.
+- The detail page shows the Account card, then CRM 13's Aftercare card, then Stats and From
+  Shopify.
+- `linkCustomerToAuthUser` runs Migration 05's `claimOnSignIn`, the guest-order link, then the
+  last-seen touch.
+- CRM 14's seam `countSignUps` (`lib/crm/telegram-update-sources.ts`) is filled: two `head: true`
+  counts on the overview, by `account_linked_at` in the window, and the same with
+  `from_shopify`. `created_by_import` rows are not excluded: the import never sets
+  `account_linked_at`, so such a row counts only on the day its owner first signs in, which is the
+  Claim the migration wants counted. New sign-ups and the Weekly summary's sign-ups line now post.
+  `lib/crm/__tests__/telegram-updates-job.test.ts` gained the overview fixture and a test of the
+  real count.
+
 **Left for ops.** Apply the migration before the code: the new code reads the views, and the old
 code keeps working with the new columns and trigger. Then run the Supabase security advisor.

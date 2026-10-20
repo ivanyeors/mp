@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { User, Search, Loader2, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { User, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,9 +32,9 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
-import { InfoTip } from "@/components/ui/info-tip";
 import { customerDisplayName, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import {
+    CUSTOMER_FILTER_PARAMS,
     DEFAULT_CUSTOMER_FILTERS,
     customerFilterParams,
     type AccountFilter,
@@ -119,15 +117,12 @@ export function CustomersClient({
     initialData,
     initialFilters = DEFAULT_CUSTOMER_FILTERS,
     migration = null,
-    canImport = false,
 }: {
     initialData?: CustomersInitialData;
     /** The filters the page's URL asked for; `initialData` is page 1 of them. */
     initialFilters?: ListFilters;
     /** The Migration card's numbers, or null when they could not be read. */
     migration?: MigrationSummary | null;
-    /** Holds `customer-import`; Manager and Staff do not, unless a role grants it. */
-    canImport?: boolean;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -176,10 +171,12 @@ export function CustomersClient({
     const filtered = account !== "all" || source !== "all" || Boolean(debouncedSearch) || tags.length > 0;
 
     // Keep the address bar in step without a server round trip, so the list's
-    // filters survive a reload and can be shared.
+    // filters survive a reload and can be shared. Only the filters' own keys
+    // are rewritten: `?view=` belongs to CustomersPageTabs.
     useEffect(() => {
         const url = new URL(window.location.href);
-        url.search = filtersQuery;
+        for (const key of CUSTOMER_FILTER_PARAMS) url.searchParams.delete(key);
+        new URLSearchParams(filtersQuery).forEach((value, key) => url.searchParams.set(key, value));
         if (url.href !== window.location.href) window.history.replaceState(null, "", url);
     }, [filtersQuery]);
 
@@ -252,29 +249,7 @@ export function CustomersClient({
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-                  <InfoTip label="About Customers">
-                    <p>Browse and manage your Customers.</p>
-                    <p>
-                        A Customer is <em>signed up</em> once they have signed in with their email at least
-                        once. Until then they have <em>no account</em>, only a record from checkout or
-                        the Shopify import.
-                    </p>
-                  </InfoTip>
-                </div>
-                {canImport && (
-                    <Button size="sm" variant="outline" className="self-start sm:self-auto" asChild>
-                        <Link href={to("/settings/customers/import")}>
-                            <Upload className="mr-1.5 h-4 w-4" />
-                            Import from Shopify
-                        </Link>
-                    </Button>
-                )}
-            </div>
-
+            {/* The page header and tabs are CustomersPageTabs'; this is the list tab. */}
             {migration && (
                 <MigrationCard
                     summary={migration}

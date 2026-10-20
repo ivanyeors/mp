@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { claimOnSignIn } from "@/lib/customer-migration/claim";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types/ecommerce";
 
@@ -120,6 +121,15 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
       .single();
     if (error) throw new Error(`Failed to create customer: ${error.message}`);
     customer = data as Customer;
+  }
+
+  // The Claim (ADR 0028 f), for every decision type: someone who signed in
+  // before it shipped, or whose Shopify row merged into an account they already
+  // had, claims on this sign-in. For anyone else it is one indexed no-op
+  // update. Only for a row this user owns, never one `already_linked` returned
+  // because another login holds the email. Never throws.
+  if (customer.auth_user_id === user.id) {
+    await claimOnSignIn(customer, { admin });
   }
 
   await associateGuestOrdersToCustomer(customer);
