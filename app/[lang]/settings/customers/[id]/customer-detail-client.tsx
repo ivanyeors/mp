@@ -220,7 +220,9 @@ export function CustomerDetailClient({
         try {
             const res = await fetch(`/api/shop/customers/${customerId}/addresses`);
             const json = await res.json();
-            setAddresses(json.addresses ?? json ?? []);
+            // The route answers `{ ok, rows }`; anything else (an error body)
+            // must not reach `addresses.map`.
+            setAddresses(res.ok && Array.isArray(json?.rows) ? json.rows : []);
         } catch {
             setAddresses([]);
         } finally {
