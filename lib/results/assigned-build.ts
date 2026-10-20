@@ -8,6 +8,7 @@ import {
   sumServiceLines,
   type ServiceLine,
 } from "@/lib/pricing/service-lines";
+import { shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import {
@@ -61,7 +62,7 @@ export type AssignedBuildRow = {
  * `_NoMissingBuildColumns` below is what keeps it honest instead.
  */
 export const ASSIGNED_BUILD_COLUMNS =
-  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, measured_by_type" as const;
+  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, measured_by_type, paired_build_id" as const;
 
 type TrimCol<S extends string> = S extends ` ${infer R}`
   ? TrimCol<R>
@@ -300,7 +301,10 @@ export async function loadAssignedBuild(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
+      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
+      shippingAmount = shipsWithAnchor(row)
+        ? 0
+        : calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       // Free shipping is earned by goods; tax is due on goods and services alike.
       taxAmount = computeTax(

@@ -1,8 +1,20 @@
 /**
  * Create + submit the 4 appointment templates on a WABA, with body-param counts
  * that exactly match lib/appointments/whatsapp.ts (day_before/morning_of/
- * confirmation = 4, cancelled = 2). Category UTILITY, language en. Idempotent-ish:
+ * confirmation = 4, cancelled = 5). Category UTILITY, language en. Idempotent-ish:
  * a duplicate name+lang just returns an error we print and skip.
+ *
+ * The day-before template carries the Confirm / Reschedule quick replies the
+ * webhook acts on. It is `appointment_day_before_v2` because the first
+ * `appointment_day_before` was approved without them: adding buttons to an
+ * approved template sends it back to review, so a new name keeps the old one
+ * sending until the new one is approved and WHATSAPP_TEMPLATE_DAY_BEFORE is
+ * switched over.
+ *
+ * `appointment_cancelled_v2` is the same story: the first took only the type
+ * and a rebook link, with nowhere to name the staffed line a guest can talk
+ * to. Until v2 is approved and WHATSAPP_TEMPLATE_CANCEL names it, the code
+ * keeps sending the first one's shape.
  *
  * After appointment_confirmation shows Approved, set WHATSAPP_TEMPLATE_CONFIRM=
  * appointment_confirmation to activate the immediate booking confirmation in
@@ -12,14 +24,17 @@
  */
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-type Def = { name: string; text: string; example: string[] };
+/** `buttons` are QUICK_REPLY labels; a tap arrives at the webhook as that text. */
+type Def = { name: string; text: string; example: string[]; buttons?: string[] };
 
 const TEMPLATES: Def[] = [
   {
-    name: "appointment_day_before",
+    name: "appointment_day_before_v2",
     // {{1}} name, {{2}} date, {{3}} time, {{4}} type
-    text: "Hi {{1}}, a reminder that your {{4}} appointment is tomorrow, {{2}} at {{3}}. See you then!",
+    text: "Hi {{1}}, a reminder that your {{4}} appointment is tomorrow, {{2}} at {{3}}. Tap Confirm if you can make it, or Reschedule to pick a new time.",
     example: ["Ivan", "6 Aug", "3:00 PM", "Chiropractic"],
+    // Labels must keep the words the webhook matches (parseInboundActions).
+    buttons: ["Confirm", "Reschedule"],
   },
   {
     name: "appointment_morning_of",
@@ -28,10 +43,11 @@ const TEMPLATES: Def[] = [
     example: ["Ivan", "6 Aug", "3:00 PM", "Mpillow Studio"],
   },
   {
-    name: "appointment_cancelled",
-    // {{1}} type, {{2}} rebook url — body must not END with a variable
-    text: "Your {{1}} appointment has been cancelled. Rebook anytime here: {{2}} — hope to see you soon.",
-    example: ["Chiropractic", "https://mpillow.com/book"],
+    name: "appointment_cancelled_v2",
+    // {{1}} name, {{2}} type, {{3}} date + time, {{4}} rebook url, {{5}} staffed
+    // line's number (WhatsApp makes it tappable) — body must not END with a variable
+    text: "Hi {{1}}, your {{2}} appointment on {{3}} has been cancelled.\n\nYou can rebook here: {{4}}\n\nIf you have any questions, please message our team on WhatsApp at {{5}}. Hope to see you soon!",
+    example: ["Ivan", "Customisation", "Tue 20 Oct 2026 at 17:00", "https://mpillow.com/book", "+65 8780 5311"],
   },
   {
     name: "appointment_confirmation",
@@ -58,6 +74,14 @@ async function main() {
       category: "UTILITY",
       components: [
         { type: "BODY", text: t.text, example: { body_text: [t.example] } },
+        ...(t.buttons?.length
+          ? [
+              {
+                type: "BUTTONS",
+                buttons: t.buttons.map((text) => ({ type: "QUICK_REPLY", text })),
+              },
+            ]
+          : []),
       ],
     };
     const res = await fetch(`${GRAPH}/${waba}/message_templates`, {
@@ -69,7 +93,14 @@ async function main() {
     if (res.ok) {
       console.log(`✓ ${t.name}: ${json?.status ?? "submitted"} (id ${json?.id ?? "?"})`);
     } else {
-      console.log(`✗ ${t.name}: ${json?.error?.code ?? res.status} — ${json?.error?.message ?? "failed"}`);
+      // Meta's `message` is a generic "Invalid parameter"; the user_title /
+      // user_msg pair names the rule broken (e.g. 2388024: this name already
+      // has English content — it was submitted before; look up its status).
+      const e = json?.error ?? {};
+      const why = [e.error_user_title, e.error_user_msg].filter(Boolean).join(": ");
+      console.log(
+        `✗ ${t.name}: ${e.code ?? res.status}${e.error_subcode ? `/${e.error_subcode}` : ""} — ${why || e.message || "failed"}`,
+      );
     }
   }
   console.log("\nUtility templates usually approve within minutes. Re-run the send test after they show Approved.");

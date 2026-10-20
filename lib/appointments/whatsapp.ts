@@ -1,5 +1,7 @@
 import { createHmac } from "node:crypto";
 import { secretMatches } from "@/lib/auth/secret";
+import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
+import { guestText, whenLabel } from "./messages";
 import { formatSlotLabelSgt, type SlotOffer } from "./slots";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -84,8 +86,13 @@ export async function sendDayBeforeTemplate(
   e164: string,
   params: DayBeforeParams,
 ): Promise<string | null> {
+  // The template, not this payload, carries the Confirm / Reschedule quick
+  // replies. Static quick replies need no send-time component; a tap comes back
+  // as a `button` message whose text the webhook matches. The original
+  // `appointment_day_before` was approved without buttons — see
+  // scripts/whatsapp-create-templates.ts.
   const name =
-    process.env.WHATSAPP_TEMPLATE_DAY_BEFORE?.trim() || "appointment_day_before";
+    process.env.WHATSAPP_TEMPLATE_DAY_BEFORE?.trim() || "appointment_day_before_v2";
   return sendPayload({
     messaging_product: "whatsapp",
     to: toWa(e164),
@@ -143,26 +150,35 @@ export async function sendMorningOfTemplate(
   });
 }
 
+export type CancelParams = {
+  guestName: string;
+  typeLabel: string;
+  startsAt: string;
+  bookingUrl: string;
+};
+
+/**
+ * Tell the guest their appointment is off, with a rebook link and the staffed
+ * line. Free text when the guest has messaged in the last 24h (the only time
+ * Meta allows it), else the approved template.
+ */
 export async function sendCancelMessage(
   e164: string,
-  opts: { bookingUrl: string; typeLabel: string; within24h: boolean },
+  params: CancelParams,
+  opts: { within24h: boolean },
 ): Promise<string | null> {
-  const text = [
-    `Your ${opts.typeLabel} appointment has been cancelled.`,
-    `You can rebook here: ${opts.bookingUrl}`,
-  ].join("\n");
+  if (opts.within24h) return sendText(e164, guestText.cancelled(params));
 
-  if (opts.within24h) {
-    return sendPayload({
-      messaging_product: "whatsapp",
-      to: toWa(e164),
-      type: "text",
-      text: { body: text },
-    });
-  }
-
+  // The first `appointment_cancelled` takes only {{1}} type and {{2}} rebook
+  // link, and has no room for the staffed line; v2 adds the guest, the time
+  // and that line. Keep sending the shape the configured name was approved
+  // with — a count mismatch is #132000 at send.
   const name =
-    process.env.WHATSAPP_TEMPLATE_CANCEL?.trim() || "appointment_cancelled";
+    process.env.WHATSAPP_TEMPLATE_CANCEL?.trim() || "appointment_cancelled_v2";
+  const values =
+    name === "appointment_cancelled"
+      ? [params.typeLabel, params.bookingUrl]
+      : [params.guestName, params.typeLabel, whenLabel(params.startsAt), params.bookingUrl, SUPPORT_WHATSAPP_DISPLAY];
   return sendPayload({
     messaging_product: "whatsapp",
     to: toWa(e164),
@@ -171,13 +187,7 @@ export async function sendCancelMessage(
       name,
       language: { code: "en" },
       components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: opts.typeLabel },
-            { type: "text", text: opts.bookingUrl },
-          ],
-        },
+        { type: "body", parameters: values.map((text) => ({ type: "text", text })) },
       ],
     },
   });
@@ -199,7 +209,7 @@ export async function sendSlotList(
     interactive: {
       type: "list",
       body: {
-        text: "Please pick a new appointment time:",
+        text: guestText.slotListBody(),
       },
       action: {
         button: "View times",
@@ -255,15 +265,50 @@ export type InboundWaAction =
   | { kind: "reschedule"; fromE164: string; messageId: string }
   | { kind: "slot"; fromE164: string; messageId: string; slotId: string }
   | { kind: "reject_slots"; fromE164: string; messageId: string }
+  | { kind: "cancel"; fromE164: string; messageId: string }
   | { kind: "unknown"; fromE164: string; messageId: string };
 
-/** Parse Cloud API webhook payload into actionable intents. */
-export function parseInboundActions(payload: unknown): InboundWaAction[] {
+/**
+ * Inbound types a person sends that this line cannot act on. They parse as
+ * `unknown`, which the webhook answers with the auto-reply. Reactions, system
+ * notices and the like are left out on purpose: replying to a thumbs-up
+ * reaction with "nobody reads this" is noise.
+ */
+const UNACTIONABLE_TYPES = new Set([
+  "image",
+  "audio",
+  "video",
+  "document",
+  "sticker",
+  "location",
+  "contacts",
+]);
+
+/**
+ * A whole message that means "cancel my appointment". Exact matches only, so
+ * "can I cancel and come Friday instead?" is chatter for the staffed line, not
+ * a cancellation.
+ */
+const CANCEL_WORDS = new Set(["cancel", "cancel appointment", "cancel booking", "cancel please", "please cancel"]);
+
+/**
+ * Parse Cloud API webhook payload into actionable intents.
+ *
+ * Meta delivers messages for every number on the WABA to one webhook. Pass the
+ * sender's `phoneNumberId` and messages addressed to any other number are
+ * ignored — otherwise a guest chatting to a staffed line on the same WABA would
+ * have "yes" read as a Confirm, and get the auto-reply.
+ */
+export function parseInboundActions(
+  payload: unknown,
+  phoneNumberId?: string,
+): InboundWaAction[] {
   const out: InboundWaAction[] = [];
   const root = payload as {
     entry?: Array<{
       changes?: Array<{
         value?: {
+          metadata?: { phone_number_id?: string };
           messages?: Array<{
             id?: string;
             from?: string;
@@ -283,6 +328,8 @@ export function parseInboundActions(payload: unknown): InboundWaAction[] {
 
   for (const entry of root.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      const to = change.value?.metadata?.phone_number_id;
+      if (phoneNumberId && to && to !== phoneNumberId) continue;
       for (const msg of change.value?.messages ?? []) {
         if (!msg.from || !msg.id) continue;
         const fromE164 = msg.from.startsWith("+") ? msg.from : `+${msg.from}`;
@@ -332,15 +379,18 @@ export function parseInboundActions(payload: unknown): InboundWaAction[] {
             out.push({ kind: "confirm", fromE164, messageId });
           } else if (body === "reschedule" || body === "no") {
             out.push({ kind: "reschedule", fromE164, messageId });
-          } else if (
-            body.includes("none of these") ||
-            body === "cancel" ||
-            body === "reject"
-          ) {
+          } else if (body.includes("none of these") || body === "reject") {
             out.push({ kind: "reject_slots", fromE164, messageId });
+          } else if (CANCEL_WORDS.has(body)) {
+            out.push({ kind: "cancel", fromE164, messageId });
           } else {
             out.push({ kind: "unknown", fromE164, messageId });
           }
+          continue;
+        }
+
+        if (msg.type && UNACTIONABLE_TYPES.has(msg.type)) {
+          out.push({ kind: "unknown", fromE164, messageId });
         }
       }
     }
@@ -348,10 +398,64 @@ export function parseInboundActions(payload: unknown): InboundWaAction[] {
   return out;
 }
 
-/** True if last outbound was within 24h (service window). */
-export function withinServiceWindow(lastOutboundAt: string | null | undefined): boolean {
-  if (!lastOutboundAt) return false;
-  const t = Date.parse(lastOutboundAt);
+/**
+ * True inside Meta's 24h customer service window, which the GUEST's last
+ * message opens — our own sends never do. Free text outside it is refused
+ * (#131047), so pass the guest's last inbound time, never our last outbound.
+ */
+export function withinServiceWindow(
+  lastInboundAt: string | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  if (!lastInboundAt) return false;
+  const t = Date.parse(lastInboundAt);
   if (!Number.isFinite(t)) return false;
-  return Date.now() - t < 24 * 60 * 60 * 1000;
+  return now - t < 24 * 60 * 60 * 1000;
+}
+
+export type FailedDelivery = { waId: string; recipient: string; reason: string };
+
+/**
+ * Sends Meta accepted and then could not deliver. The send call returns a
+ * message id either way; an undeliverable number, a template paused for
+ * quality or a closed service window only shows up later, as a `failed`
+ * status on the webhook.
+ */
+export function parseFailedDeliveries(
+  payload: unknown,
+  phoneNumberId?: string,
+): FailedDelivery[] {
+  const out: FailedDelivery[] = [];
+  const root = payload as {
+    entry?: Array<{
+      changes?: Array<{
+        value?: {
+          metadata?: { phone_number_id?: string };
+          statuses?: Array<{
+            id?: string;
+            status?: string;
+            recipient_id?: string;
+            errors?: Array<{ code?: number; title?: string; message?: string; error_data?: { details?: string } }>;
+          }>;
+        };
+      }>;
+    }>;
+  };
+  for (const entry of root.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      const to = change.value?.metadata?.phone_number_id;
+      if (phoneNumberId && to && to !== phoneNumberId) continue;
+      for (const st of change.value?.statuses ?? []) {
+        if (st.status !== "failed" || !st.id) continue;
+        const err = st.errors?.[0];
+        const detail = err?.error_data?.details ?? err?.message ?? err?.title ?? "no reason given";
+        out.push({
+          waId: st.id,
+          recipient: st.recipient_id ? `+${st.recipient_id.replace(/^\+/, "")}` : "",
+          reason: `WhatsApp delivery failed (${err?.code ?? "?"}): ${detail}`,
+        });
+      }
+    }
+  }
+  return out;
 }

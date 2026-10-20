@@ -8,17 +8,19 @@ const SPECIALISTS =
 
 type Props = {
   sizeLabel: string;
-  why: string;
   templateName: string | null;
   mixLines: MixLine[];
   /** When false, render nothing (incomplete / unresolved route). */
   reveal: boolean;
 };
 
-/** Completed-preview recommendation block (size + why + mix). */
+/**
+ * Completed-preview recommendation block (size + mix). No "why" line: the
+ * trace-built one named only the shoulder band, so it is withdrawn until a
+ * reason that covers the whole decision replaces it.
+ */
 export function RecommendationReveal({
   sizeLabel,
-  why,
   templateName,
   mixLines,
   reveal,
@@ -32,7 +34,6 @@ export function RecommendationReveal({
           {sizeLabel}
         </Badge>
       </div>
-      <p className="text-sm leading-snug text-white/95">{why}</p>
       {templateName ? (
         <div className="space-y-1 text-left text-xs text-white/85">
           <p className="font-medium text-white">{templateName}</p>

@@ -3,6 +3,13 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
+import {
+  cascadeEnding,
+  companionLockReason,
+  loadEndingPlan,
+  notifyCompanionRemoved,
+} from "@/lib/results/pair-ending";
+import { getPublicOrigin } from "@/lib/site-url";
 import { releaseHold } from "@/lib/authorization-hold";
 import {
   loadMpConfigResponseDetail,
@@ -48,7 +55,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   );
 }
 
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   // Staff-only: the only callers are the two Admin Panel Results clients. GET and
   // POST stay open because the guest configurator uses them.
   const denied = await requireAdmin("results");
@@ -64,9 +71,16 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   // card — nothing else references the payment intent once the row is gone.
   const { data: row } = await admin
     .from("mp_config_responses")
-    .select("payment_intent_id, status, order_id")
+    .select(
+      "id, payment_intent_id, status, order_id, paired_build_id, authorized_amount, customer_email, access_token, currency",
+    )
     .eq("id", parsedParams.data.id)
     .maybeSingle();
+  // A Paired build shares one hold (ADR 0026): deleting the Mbolster keeps it for
+  // the Mpillow, and deleting the Mpillow cancels the Mbolster with it.
+  const locked = row ? await companionLockReason(admin, row) : null;
+  if (locked) return NextResponse.json({ error: locked, code: "pair_paid" }, { status: 409 });
+  const plan = row ? await loadEndingPlan(admin, row) : null;
 
   if (row?.order_id) {
     return NextResponse.json(
@@ -75,7 +89,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     );
   }
 
-  if (row?.payment_intent_id && row.status !== "captured") {
+  if (row?.payment_intent_id && row.status !== "captured" && plan?.releaseHold) {
     try {
       await releaseHold(row.payment_intent_id);
     } catch (e) {
@@ -92,6 +106,10 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
 
   const { error } = await admin.from("mp_config_responses").delete().eq("id", parsedParams.data.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (plan) await cascadeEnding(admin, plan, "cancelled");
+  if (plan && row) {
+    await notifyCompanionRemoved(admin, { companion: row, partner: plan.partner, origin: getPublicOrigin(req) });
+  }
 
   await recordAdminAction({
     actor: await getAdminContext(),

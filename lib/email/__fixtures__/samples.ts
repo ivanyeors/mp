@@ -224,6 +224,23 @@ export function sampleHoldExpiredUnpaid(fixture: EmailFixture = "happy") {
   return { ...sampleHoldExpired(fixture), reason: "unpaid" as const };
 }
 
+/** A Paired build's Mbolster ended on its own while the Mpillow is still being built. */
+export function samplePairedMbolsterRemoved(fixture: EmailFixture = "happy") {
+  return {
+    origin: ORIGIN,
+    anchorId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
+    anchorReady: false,
+    amount: null,
+    currency: "SGD",
+  };
+}
+
+/** The same, once the Mpillow is assigned: this email is its "ready" email. */
+export function samplePairedMbolsterRemovedReady(fixture: EmailFixture = "happy") {
+  return { ...samplePairedMbolsterRemoved(fixture), anchorReady: true, amount: 428 };
+}
+
 export function sampleResultDeclined(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

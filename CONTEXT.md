@@ -50,6 +50,10 @@ A customisation submission with optional **Authorization hold** and operator ass
 A **Result** that has not entered the money path: `mp_config_responses.status` is null. Measurements typed into the configurator and autosaved, before any **Authorization hold** and before in-store finalization. The only state a guest may write — `/api/results/hold` writes `held`, and in-store finalization writes `held` via `buildInstoreReviewOnlyPatch`, so a non-null status means the submission is live and configurator writes are refused.
 _Avoid_: "unsaved" (a Draft Result is persisted); "unfinalised" (`is_final` records that the Telegram message was sent, not a lifecycle state); cart
 
+**Paired build**:
+An **Mpillow** **Result** (the *anchor*) and an **Mbolster** **Result** (the *companion*) bought together when the Rule graph's **Flow route** to Mbolster fires: the configurator's two-step stepper, where step 2 is the Mbolster configurator in paired mode (height only, then its own customisation page, Staff x-ray included) and can be skipped. Linked by `paired_build_id`, the anchor's id on both rows. The two share one **Authorization hold** and one checkout. Each **Result** is assigned on its own, but the shopper accepts them together into one **Order**, and may drop the Mbolster at that point. Shipping is charged once, on the anchor. Ending the anchor ends the pair; ending the companion leaves the anchor and its hold alone — until money has moved for the pair (a Balance payment paid, or the hold captured), after which the companion can no longer be dropped on its own (ADR 0026).
+_Avoid_: "bundle" (a storefront `product_type`, and a marketing claim the glossary forbids); two **Orders** for one hold; a companion accepted, released or charged shipping on its own
+
 **Result access token**:
 The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created (or at hold, for a Result that has none) and kept across re-submits, so an **Owner**'s retry never locks them out; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`).
 _Avoid_: Stripe checkout `session_id`; the **Result** id itself (an identifier, never a credential)
@@ -367,7 +371,7 @@ The engine's output persisted on the configurator response and copied to the **R
 _Avoid_: conflating with **Filling configuration** snapshot; treating it as binding on production
 
 **Evaluation trace**:
-The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to shoppers in plain language, to operators at assign, and replayable on the canvas.
+The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to operators at assign, and replayable on the canvas. Shoppers see no why line: band and match detail is lost once answers meet a **Combine node**, so a trace-built line named only the shoulder band and never what chose the template. It returns when a reason covering the whole decision replaces it.
 
 **Upsell card**:
 The consent surface on the completed preview when a **Flow route** fires: reason from the fired path, both prices, Upgrade / Keep. Accept carries shared answers over and collects only the missing target-flow steps; Decline keeps the same-flow fallback result. All routing resolves before the Stripe hold.

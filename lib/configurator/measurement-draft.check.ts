@@ -10,7 +10,12 @@ import {
   displayMeasurement,
   normalizeMeasurementDraft,
 } from "./measurement-draft";
-import { CM_PER_INCH, inchesToCm, roundCm } from "@/lib/rules-engine/units";
+import {
+  CM_PER_INCH,
+  HEAD_TO_BACK_MIN_CM,
+  inchesToCm,
+  roundCm,
+} from "@/lib/rules-engine/units";
 
 // Incomplete trailing decimal — keep invalid so Continue stays gated
 assert.equal(normalizeMeasurementDraft("in", "16."), null);
@@ -18,6 +23,11 @@ assert.equal(normalizeMeasurementDraft("cm", "42."), null);
 assert.equal(normalizeMeasurementDraft("in", ""), null);
 assert.equal(normalizeMeasurementDraft("cm", "abc"), null);
 assert.equal(normalizeMeasurementDraft("in", "0"), null);
+
+// Head-to-back passes its floor: 0 is a real answer, down to −3 in
+assert.equal(normalizeMeasurementDraft("in", "0", HEAD_TO_BACK_MIN_CM), "0");
+assert.equal(normalizeMeasurementDraft("in", "-3", HEAD_TO_BACK_MIN_CM), "-7.62");
+assert.equal(normalizeMeasurementDraft("in", "-3.01", HEAD_TO_BACK_MIN_CM), null);
 
 // Complete values → canonical cm
 assert.equal(normalizeMeasurementDraft("in", "16.5"), String(roundCm(inchesToCm(16.5))));
