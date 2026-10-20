@@ -93,7 +93,14 @@ async function main() {
     if (res.ok) {
       console.log(`✓ ${t.name}: ${json?.status ?? "submitted"} (id ${json?.id ?? "?"})`);
     } else {
-      console.log(`✗ ${t.name}: ${json?.error?.code ?? res.status} — ${json?.error?.message ?? "failed"}`);
+      // Meta's `message` is a generic "Invalid parameter"; the user_title /
+      // user_msg pair names the rule broken (e.g. 2388024: this name already
+      // has English content — it was submitted before; look up its status).
+      const e = json?.error ?? {};
+      const why = [e.error_user_title, e.error_user_msg].filter(Boolean).join(": ");
+      console.log(
+        `✗ ${t.name}: ${e.code ?? res.status}${e.error_subcode ? `/${e.error_subcode}` : ""} — ${why || e.message || "failed"}`,
+      );
     }
   }
   console.log("\nUtility templates usually approve within minutes. Re-run the send test after they show Approved.");
