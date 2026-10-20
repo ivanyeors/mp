@@ -1,4 +1,5 @@
 import { catalogDef, catalogKeys } from "./catalog";
+import { BOLSTER_LENGTHS, PILLOW_SIZES } from "./types";
 import type {
   RangeBand,
   RangeNode,
@@ -130,6 +131,7 @@ function sizeOnPathTo(
 const TERMINAL_TYPES = new Set([
   "size-output",
   "template-output",
+  "template-by-size",
   "tier-suggestion",
   "flow-route",
   "fallback",
@@ -279,6 +281,26 @@ export function validateForPublish(
       errors.push(
         err(n.id, "wrong-size-template", "Template output is not preceded by a Size output"),
       );
+    }
+  }
+
+  // Size-keyed Template outputs: each slot names a size this flow sells, and some
+  // Size output must exist to pick one — without it the node can never fire.
+  const flowSizes: readonly string[] = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
+  const hasSizeOutput = graph.nodes.some((n) => n.type === "size-output");
+  for (const n of graph.nodes) {
+    if (n.type !== "template-by-size") continue;
+    const slots = Object.entries(n.templates).filter(([, id]) => id);
+    if (slots.length === 0) {
+      errors.push(err(n.id, "template-by-size-empty", "Choose a template for at least one size"));
+    }
+    for (const [s] of slots) {
+      if (!flowSizes.includes(s)) {
+        errors.push(err(n.id, "template-by-size-bad-size", `"${s}" is not a ${flow} size`));
+      }
+    }
+    if (!hasSizeOutput) {
+      errors.push(err(n.id, "template-by-size-no-size", "No Size output in the graph to choose a template"));
     }
   }
 

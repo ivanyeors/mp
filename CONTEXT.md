@@ -357,11 +357,11 @@ Maps a numeric input to a named band via ordered ranges that must be contiguous 
 Branches on an enum/boolean input, one edge per value.
 
 **Combine node**:
-ANDs multiple branches (e.g. three measurement ranges must all match). Disjunction is expressed with parallel **Match** branches, not an OR node.
+ANDs multiple branches (e.g. three measurement ranges must all match) — or, set to **any**, fires on the first branch that does (e.g. "not stomach" = side, back or mixed). Use **any** for a disjunction that feeds an AND; parallel branches into a terminal still OR on their own (ADR 0027).
 
 **Terminal**:
-A leaf that resolves the evaluation: **Size output** (size or bolster length), **Template output** (a **Filling Template** scoped to the resolved size), **Tier suggestion** (advisory copy only — never changes the sold product), or **Flow route** (upsell/cross-sell to another flow via the **Upsell card**).
-_Avoid_: a Template output pointing across sizes; Tier suggestion mutating the held product or amount
+A leaf that resolves the evaluation: **Size output** (size or bolster length), **Template output** (a **Filling Template** scoped to the resolved size — either one size, or **by size**: one template per size, the resolved size picking the slot, so the branches before it need not split by size; with no slot for that size it has not fired, ADR 0027), **Tier suggestion** (advisory copy only — never changes the sold product), or **Flow route** (upsell/cross-sell to another flow via the **Upsell card**).
+_Avoid_: a Template output pointing across sizes; threading size through Combines only to reach per-size Template outputs (use one by size); Tier suggestion mutating the held product or amount
 
 **Fallback**:
 The per-graph default terminal when no path matches. Publish requires it reachable, and every **Flow route** terminal needs a same-flow fallback sibling so declining an upsell always lands on a sellable result.

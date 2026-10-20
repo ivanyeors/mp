@@ -39,13 +39,26 @@ export type NodeBase = {
 export type InputNode = NodeBase & { type: "input"; inputKey: string };
 export type RangeNode = NodeBase & { type: "range"; inputKey: string; bands: RangeBand[] };
 export type MatchNode = NodeBase & { type: "match"; inputKey: string };
-export type CombineNode = NodeBase & { type: "combine" };
+export type CombineNode = NodeBase & {
+  type: "combine";
+  /** "all" (default) needs every inbound branch; "any" fires on the first (ADR 0027). */
+  mode?: "all" | "any";
+};
 export type SizeOutputNode = NodeBase & { type: "size-output"; size: SizeOrLength };
 export type TemplateOutputNode = NodeBase & {
   type: "template-output";
   templateId: string;
   /** Size/length this template is scoped to (publish-validated against path). */
   size: SizeOrLength;
+};
+/**
+ * One Filling Template per size (length for Mbolster). The size the graph
+ * resolved picks the slot, so the branches before it need not split by size
+ * (ADR 0027). No slot for that size means it did not fire.
+ */
+export type TemplateBySizeNode = NodeBase & {
+  type: "template-by-size";
+  templates: Partial<Record<SizeOrLength, string>>;
 };
 export type TierSuggestionNode = NodeBase & {
   type: "tier-suggestion";
@@ -71,6 +84,7 @@ export type RuleNode =
   | CombineNode
   | SizeOutputNode
   | TemplateOutputNode
+  | TemplateBySizeNode
   | TierSuggestionNode
   | FlowRouteNode
   | FallbackNode;
