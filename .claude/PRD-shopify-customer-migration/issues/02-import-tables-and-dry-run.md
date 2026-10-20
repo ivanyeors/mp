@@ -164,16 +164,116 @@ vitest covers them without a database.
 
 ## Acceptance criteria
 
-- [ ] The migration applies cleanly. Both tables have RLS on, with no `authenticated` or `anon`
+- [x] The migration applies cleanly. Both tables have RLS on, with no `authenticated` or `anon`
       policy.
-- [ ] `customer-import` is in the catalog. A Manager or Staff session gets the denied page at
+- [x] `customer-import` is in the catalog. A Manager or Staff session gets the denied page at
       `/settings/customers/import` and does not see the button. Owner and Admin do.
-- [ ] vitest covers every normalisation rule and every plan outcome, including: BOM, a
+- [x] vitest covers every normalisation rule and every plan outcome, including: BOM, a
       leading `'`, an `018956` zip read back as `18956`, a duplicate email, a phone-only row, an
       existing claimed Customer (`merge`), and a re-run (`already_imported`).
-- [ ] A file missing a required column is refused in the browser before any server call.
-- [ ] Previewing a 5-row fixture shows counts that sum to the row count.
-- [ ] A 5,000-row fixture previews in chunks, with no call over 1 MB.
-- [ ] The preview makes **no** insert, update or delete, writes no file anywhere, and imports
+- [x] A file missing a required column is refused in the browser before any server call.
+- [x] Previewing a 5-row fixture shows counts that sum to the row count.
+- [x] A 5,000-row fixture previews in chunks, with no call over 1 MB.
+- [x] The preview makes **no** insert, update or delete, writes no file anywhere, and imports
       nothing from `supabase.auth.admin`.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [ ] `./scripts/graphify update .` is run in the same commit. — _not yet: the integrator
+      rebuilds the graph after merging the parallel slices_
+
+## Build notes
+
+**What was built.**
+
+- `lib/csv.ts`: `parseCsv` lifted from `lib/seo-metrics/csv-import.ts` (which re-exports it),
+  plus `csvCell` / `toCsv` for the download.
+- `lib/customer-migration/shopify-csv.ts`: `parseShopifyCustomersCsv` (header check; a raw row
+  holds only the columns the import reads, so `Accepts SMS Marketing`, `Tax Exempt` and any other
+  column are dropped at parse) and `normaliseShopifyRow`.
+- `lib/customer-migration/plan.ts`: `planCustomerRow`, plus the bulk helpers the server action
+  and the browser share (`normaliseRows`, `duplicateSkips`, `lookupKeys`, `planRows`,
+  `existingFromMatches`).
+- `lib/customer-migration/preview.ts`: the whole browser flow apart from the server action
+  (`runShopifyPreview`), chunking, the server's chunk check (`readPreviewChunk`), the counts
+  (`summarisePreview`), the skipped-rows CSV and `sha256Hex`. The page passes the action in, so
+  vitest drives the same flow.
+- `app/[lang]/settings/customers/import/`: `page.tsx` (`requireAdminPage("customer-import")`),
+  `import-client.tsx`, and `actions.ts` with `previewShopifyImport`.
+- `lib/auth/permissions.ts`: the `customer-import` entry, `requires: ["customers"]`.
+- Customers page: **Import from Shopify** in the header, rendered only when the page's
+  `requireAdminPage` context holds `customer-import`.
+
+**Migration.** `supabase/migrations/20261020100000_customer_import.sql`: both tables as
+specified, RLS on with no policy, `revoke all … from anon, authenticated`, and the read-only
+function `customer_import_preview_matches(text[], text[])` (`stable`, `security invoker`,
+executable by `service_role` only). Applied to a fresh Postgres 16 with every migration, once
+plain and once with Supabase's default grants to `anon` / `authenticated` in place. Verified:
+no policies; neither client role can select, insert, update or delete either table or run the
+function (`permission denied`), and the function's ACL has no PUBLIC entry; the service role
+reads both; the CHECKs refuse a bad source, hash, consent value and `rows_done > rows_total`;
+`shopify_customer_id` is unique; a batch with rows cannot be deleted; deleting the address nulls
+`created_address_id`; deleting the Customer removes its row. The migration re-applies cleanly.
+
+**Tests.**
+
+- `lib/customer-migration/__tests__/shopify-csv.test.ts`: the header check (required, optional,
+  dropped, BOM and `'` in headers, older unprefixed address columns), data minimisation, and
+  every normalisation rule.
+- `lib/customer-migration/__tests__/plan.test.ts`: every plan outcome, merge fills, duplicates
+  by email and by Shopify id, repairs only on written rows, and reading the function's rows.
+- `lib/customer-migration/__tests__/preview.test.ts`: refused header with no server call; the
+  5-row fixture's counts; the 5,000-row fixture in chunks of ≤ 250 rows and < 1 MB; a duplicate
+  split across two chunks; failures; the chunk check; the spreadsheet-safe download.
+- `app/[lang]/settings/customers/import/__tests__/preview-action.test.ts`: `customer-import`
+  on every chunk; one `rpc` and no other Supabase call; re-read keys; no PII in the answer;
+  a static guard that the page, action and `lib/customer-migration/*` hold no
+  insert/update/upsert/delete, no `auth.admin`, no Storage, Media or Drive import, no `fs`, no
+  `fetch`, and that the SQL function only reads.
+- `app/[lang]/settings/customers/import/__tests__/page-gate.test.tsx`: Manager, Fulfilment and
+  Viewer (their seeded role rows through `permissionsForRoleRow`) are sent to
+  `?denied=customer-import` and get no button; Owner and Admin get both.
+- `lib/__tests__/csv.test.ts`.
+- Fixtures are synthetic (`__tests__/fixtures.ts`): invented names, `example.com` emails.
+
+**Deviations, and why.**
+
+- **A read-only SQL function in the migration.** The preview must find Customers by
+  `lower(email)`, and stored emails are not reliably lowercase (Staff edit them). PostgREST
+  cannot filter on `lower(email)`, and 250 `ilike` filters would not fit a URL. One `stable`
+  function returns, per email, the Customer, which mergeable fields are already set, and whether
+  it is a Migrated customer, plus the Shopify ids already imported.
+- **`duplicate_customer_id_in_file`.** The "skip both, do not guess" rule is applied to the
+  other import key too. It also keeps slice 03 off the `shopify_customer_id` unique index.
+- **File-wide duplicates are applied in the browser.** The server sees one chunk, so it
+  finds duplicates within it; `runShopifyPreview` applies the file-wide rule over the server's
+  answers. **Slice 03 must carry this into the apply** (the browser holds the file-level fact),
+  or the SQL function will create the first copy and merge the second.
+- **The preview sends no Tags or Note.** It never reads them, and a Shopify note may hold a
+  health remark. The server also drops, on arrival, any field outside the preview's list.
+  Slice 03's apply will send them.
+- **Named counts.** Besides `zip_repaired` and `phone_dropped`, the counted repairs are
+  `address_incomplete`, `total_orders_invalid` and `total_spent_invalid`. A row with no address
+  fields at all is not counted.
+- **Address completeness** also needs a recipient (names, else Company) and a city (after the
+  SG fallback), because both are NOT NULL in `customer_addresses`, and an ISO-2 country.
+- **Phone** reuses `normalizePhone` (`lib/appointments/phone.ts`). It also accepts an SG
+  number written `65…` or `065…` without the `+`, and refuses a `+65` number that is not a real
+  SG number (6, 8 or 9). `Phone` goes to the Customer and `Default Address Phone` to the address,
+  with no fallback between them.
+- **Consent** is `yes` only for an explicit "yes" (any case). Anything else is `no`.
+- **Chunks** are capped at 512 KB as well as 250 rows, so a file with very long cells still
+  stays under 1 MB per call.
+- **Older exports.** The address columns also match their unprefixed names (`Address1`, `Zip`,
+  `Country Code`, …). The required columns are matched by their exact names only.
+- **Extra CHECKs** beyond the spec: non-negative counts and Shopify figures,
+  `rows_done ≤ rows_total`, a hex SHA-256, `skipped` a JSON object.
+- **Base commit.** The worktree started at `main` (`48c643f`), which has no PRD files; it was
+  fast-forwarded to the integration branch (`71ca599`) before any work.
+
+**For slice 03 and later.** `migrated_customers.exported_at` is NOT NULL, and the export's date
+is not in the CSV: the apply must take it from the operator, or from `file.lastModified`.
+`customer-import` becomes `requires: ["customers-edit"]` at the CRM slice 10 merge, and CRM 10's
+guard test (every server action under `app/[lang]/settings/customers/**` checks
+`customers-edit`) must accept `customer-import` for `previewShopifyImport`, which reads only.
+
+**Ops / owner.** Nothing is needed for this slice. Once merged, the owner can run the preview
+against a real export on **Customers → Import from Shopify**. Slice 04 records the header row it
+carries.
