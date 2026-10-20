@@ -6,24 +6,35 @@ HITL slices 01 + 08. Complete before relying on staging/prod automation.
 
 | Number | Role | Where it lives |
 |--------|------|----------------|
-| `+65 8809 7571` | **Utility sender.** Automated Cloud API line: sends appointment templates, receives Confirm / Reschedule button replies. | `WHATSAPP_PHONE_NUMBER_ID` |
+| `+1 555-334-8954` (today) | **Utility sender.** Automated Cloud API line: sends appointment templates, receives Confirm / Reschedule button replies. No person reads it. | `WHATSAPP_PHONE_NUMBER_ID` |
 | `+65 8780 5311` | **Staffed sales line.** What customers see and chat to. Never used by the Cloud API. | `NEXT_PUBLIC_SUPPORT_WHATSAPP` (`lib/contact.ts`) |
 
 These are separate on purpose — do not sync them. Publishing the utility number
 in customer-facing copy starts conversations nobody reads: the webhook only
-understands Confirm, Reschedule, and "none of these", and silently drops
-anything else.
+understands Confirm, Reschedule, and "none of these". Anything else a guest
+sends (text, photo, voice note) gets one auto-reply per 12 hours pointing at the
+sales line, and goes no further.
 
-## 0.5 The sandbox number trap
+The webhook acts only on messages addressed to `WHATSAPP_PHONE_NUMBER_ID`, so
+putting the sales line on the same WABA later cannot make the bot answer it.
+
+## 0.5 Prove the sender reaches guests
 
 Every new Meta app is provisioned a test number on the reserved `+1 555-…`
-prefix. It reports a verified name, GREEN quality and `CLOUD_API`, so every
-health signal reads fine — but it only ever delivers to up to five
-pre-registered test recipients. Real guests get nothing, and nothing errors.
+prefix, named "Test Number". It reports GREEN quality and `CLOUD_API`, so every
+health signal reads fine — but it only delivers to the short recipient list in
+WhatsApp → API Setup. Sends to anyone else fail with `#131030`.
 
-`scripts/whatsapp-preflight.ts` fails on it. Before trusting any reminder in
-staging or production, confirm the sender it prints is the real business number,
-not a `+1 555` line. Meta labels it "Test number" in WhatsApp → API Setup.
+A `+1 555` number is not automatically that test number: one can carry the
+business's own verified name and a normal messaging tier. Neither the prefix nor
+the tier settles it, and your own phone proves nothing, because it is almost
+certainly on the recipient list. The proof is a send to a phone that is **not**
+on that list:
+
+    npx tsx --env-file=.env.local scripts/whatsapp-test.ts +65XXXXXXXX
+
+`scripts/whatsapp-preflight.ts` blocks when the sender is named "Test Number" and
+warns on the `+1 555` prefix alone.
 
 A token that cannot reach any WABA by any route is usually the matching symptom:
 the temporary token on that same API Setup page expires in 24 hours and is not
@@ -50,7 +61,7 @@ Record exact names in env (defaults below):
 
 | Env | Default name | Purpose |
 |-----|--------------|---------|
-| `WHATSAPP_TEMPLATE_DAY_BEFORE` | `appointment_day_before` | Body: guest, date, time, type. Buttons: **Confirm** / **Reschedule** |
+| `WHATSAPP_TEMPLATE_DAY_BEFORE` | `appointment_day_before_v2` | Body: guest, date, time, type. Buttons: **Confirm** / **Reschedule** (the original `appointment_day_before` was approved without them) |
 | `WHATSAPP_TEMPLATE_MORNING_OF` | `appointment_morning_of` | Body: guest, date, time, venue. No buttons |
 | `WHATSAPP_TEMPLATE_CANCEL` | `appointment_cancelled` | Body: type, rebook URL (used outside 24h window) |
 
@@ -162,7 +173,7 @@ code names a number. To move it (e.g. to `+65 8809 7571`):
 
 1. Add and verify the number in the **same WABA** that owns the current one.
    Templates are approved per WABA, so staying in it carries all three across;
-   a new WABA means re-approving `appointment_day_before`,
+   a new WABA means re-approving `appointment_day_before_v2`,
    `appointment_morning_of`, and `appointment_cancelled` from scratch.
 2. Register it for Cloud API and set its 2FA PIN — **save the PIN**, it is
    required to re-register or move the number later:
@@ -192,7 +203,7 @@ Settings → Appointments → **WhatsApp** tab → **WhatsApp notifications** is
 kill switch (`appointments_whatsapp_enabled` in `site_settings`). Off silences
 all three send paths:
 
-- the booking route skips its immediate confirmation;
+- the booking route skips its immediate confirmation and short-notice reminder;
 - the daily cron returns `{ disabled: true }` without touching Calendar or Meta;
 - the inbound webhook acks without replying or mutating reminder rows.
 
@@ -203,4 +214,31 @@ change needed.
 
 - Remove or empty `WHATSAPP_ALLOWLIST` (ignored in production anyway).
 - Confirm coexistence still shows Cloud API messages in the phone app.
-- Monitor cron JSON `{ scanned, reminded, morning, skipped, errors }`.
+- Monitor cron JSON `{ scanned, reminded, morning, skipped, errors }`, and the
+  failures recorded on rows (section 10).
+
+## 10. When each message goes out
+
+The daily run fires at 09:00 SGT (`0 1 * * *` UTC; Hobby lands anywhere in that
+hour). It sends tomorrow's day-before and today's morning-of. Bookings it would
+miss are reminded by the booking path itself (`missedReminder` in
+`lib/appointments/state.ts`):
+
+| Booked | Gets |
+|--------|------|
+| 2+ days ahead | Confirmation (if `WHATSAPP_TEMPLATE_CONFIRM` is set), day-before at 09:00, morning-of if silent |
+| Tomorrow, before 09:00 | Confirmation, day-before at today's 09:00 run |
+| Tomorrow, 09:00 or later | Day-before immediately (with buttons), morning-of if silent |
+| Today | Morning-of immediately |
+| Straight in Google Calendar after the run | Morning-of on the day (catch-up) |
+
+A failed send writes `last_error` / `last_error_at` on the row and leaves its
+status alone. A day-before that failed leaves the row `pending`, and the next
+morning's run sends the morning-of instead. To see what failed:
+
+```sql
+select guest_name, starts_at, status, last_error, last_error_at
+from appointment_reminders
+where last_error is not null
+order by last_error_at desc;
+```

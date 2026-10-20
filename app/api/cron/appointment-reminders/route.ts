@@ -6,19 +6,20 @@ import {
   parseAppointmentSettings,
 } from "@/lib/appointments/settings";
 import { isPhoneAllowed, normalizePhone } from "@/lib/appointments/phone";
-import { listDayEvents, venueForEvent } from "@/lib/appointments/calendar";
+import {
+  listDayEvents,
+  venueForEvent,
+  type CalendarGuestEvent,
+} from "@/lib/appointments/calendar";
 import { syncGuestContact } from "@/lib/appointments/contacts";
 import { sweepUpcomingContacts } from "@/lib/appointments/contacts-sweep";
-import {
-  sendDayBeforeTemplate,
-  sendMorningOfTemplate,
-} from "@/lib/appointments/whatsapp";
-import { formatDateSgt, formatTimeSgt } from "@/lib/appointments/format";
-import { isMorningOfEligible, transitionReminder } from "@/lib/appointments/state";
+import { sendDayBeforeReminder, sendMorningOfReminder } from "@/lib/appointments/remind";
+import { isMorningOfEligible } from "@/lib/appointments/state";
 import {
   getReminderByEventId,
   updateReminder,
   upsertPendingReminder,
+  type ReminderRow,
 } from "@/lib/appointments/reminders-db";
 
 export const runtime = "nodejs";
@@ -33,7 +34,42 @@ function authorizeCron(req: Request): boolean {
   return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
-/** Daily 09:00 SGT: tomorrow day-before + today morning-of for silent guests. */
+/**
+ * The event's reminder row, created `pending` the first time a run sees it. An
+ * unusable phone is logged once as `skipped_invalid_phone`; a phone the non-prod
+ * allowlist blocks gets no row at all.
+ */
+async function prepareRow(
+  ev: CalendarGuestEvent,
+): Promise<{ row: ReminderRow; phone: string } | "skipped"> {
+  const phone = normalizePhone(ev.phone);
+  if (!phone) {
+    await upsertPendingReminder({
+      calendarEventId: ev.id,
+      phone: ev.phone || "invalid",
+      guestName: ev.guestName,
+      appointmentType: ev.appointmentType,
+      startsAt: ev.startsAt,
+    });
+    await updateReminder(ev.id, { status: "skipped_invalid_phone" }, "pending");
+    return "skipped";
+  }
+  if (!isPhoneAllowed(phone)) return "skipped";
+
+  const row = await upsertPendingReminder({
+    calendarEventId: ev.id,
+    phone,
+    guestName: ev.guestName,
+    appointmentType: ev.appointmentType,
+    startsAt: ev.startsAt,
+  });
+  return { row, phone };
+}
+
+/**
+ * Daily 09:00 SGT: tomorrow day-before + today morning-of for guests who are
+ * silent after the day-before or were never reached by one.
+ */
 export async function GET(req: Request) {
   if (!authorizeCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -85,32 +121,12 @@ export async function GET(req: Request) {
 
   for (const ev of tomorrow) {
     try {
-      const phone = normalizePhone(ev.phone);
-      if (!phone) {
-        await upsertPendingReminder({
-          calendarEventId: ev.id,
-          phone: ev.phone || "invalid",
-          guestName: ev.guestName,
-          appointmentType: ev.appointmentType,
-          startsAt: ev.startsAt,
-        });
-        await updateReminder(ev.id, { status: "skipped_invalid_phone" }, "pending");
+      const prepared = await prepareRow(ev);
+      if (prepared === "skipped") {
         summary.skipped += 1;
         continue;
       }
-
-      if (!isPhoneAllowed(phone)) {
-        summary.skipped += 1;
-        continue;
-      }
-
-      const row = await upsertPendingReminder({
-        calendarEventId: ev.id,
-        phone,
-        guestName: ev.guestName,
-        appointmentType: ev.appointmentType,
-        startsAt: ev.startsAt,
-      });
+      const { row, phone } = prepared;
 
       // Reschedule reconciliation: a move made directly in Google Calendar runs
       // no app code, so a non-pending row is now stale. Compare by parsed ms (GCal
@@ -126,43 +142,27 @@ export async function GET(req: Request) {
         Number.isFinite(rowMs) &&
         Math.abs(movedMs - rowMs) > 60_000;
 
-      let status = row.status;
-      if (status !== "pending") {
+      if (row.status !== "pending") {
         if (!movedInGcal) continue; // already processed for this time
         const rearmed = await updateReminder(
           ev.id,
           { status: "pending", starts_at: ev.startsAt },
-          status,
+          row.status,
         );
         if (!rearmed) continue; // race: another worker re-armed/advanced it
-        status = "pending";
       }
 
-      const t = transitionReminder("pending", { type: "day_before_sent" });
-      if (!t.ok) {
-        summary.errors.push(`${ev.id}: ${t.error}`);
-        continue;
-      }
-
-      const waId = await sendDayBeforeTemplate(phone, {
-        guestName: ev.guestName,
-        dateLabel: formatDateSgt(ev.startsAt),
-        timeLabel: formatTimeSgt(ev.startsAt),
-        typeLabel: ev.typeLabel,
-      });
-
-      const updated = await updateReminder(
-        ev.id,
+      // A failed send is recorded on the row, which stays `pending`, so the
+      // guest still gets the morning-of tomorrow.
+      const updated = await sendDayBeforeReminder(
         {
-          status: "reminded",
+          calendarEventId: ev.id,
           phone,
-          guest_name: ev.guestName,
-          starts_at: ev.startsAt,
-          day_before_wa_id: waId,
-          last_wa_id: waId,
-          last_outbound_at: now.toISOString(),
+          guestName: ev.guestName,
+          startsAt: ev.startsAt,
+          typeLabel: ev.typeLabel,
         },
-        "pending",
+        now,
       );
       if (!updated) {
         // Race: another worker won — treat as ok
@@ -185,7 +185,7 @@ export async function GET(req: Request) {
     }
   }
 
-  // --- Today: morning-of for silent reminded ---
+  // --- Today: morning-of for the silent and the never-reached ---
   let today;
   try {
     today = await listDayEvents(0, settings, now);
@@ -200,8 +200,18 @@ export async function GET(req: Request) {
 
   for (const ev of today) {
     try {
-      const row = await getReminderByEventId(ev.id);
-      if (!row || !isMorningOfEligible(row.status)) continue;
+      let row = await getReminderByEventId(ev.id);
+      if (!row) {
+        // Booked straight in Google Calendar after yesterday's run, so no run
+        // has seen it and it never had a day-before. Start its row now.
+        const prepared = await prepareRow(ev);
+        if (prepared === "skipped") {
+          summary.skipped += 1;
+          continue;
+        }
+        row = prepared.row;
+      }
+      if (!isMorningOfEligible(row.status)) continue;
 
       const phone = normalizePhone(row.phone) ?? normalizePhone(ev.phone);
       if (!phone || !isPhoneAllowed(phone)) {
@@ -209,28 +219,18 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const t = transitionReminder(row.status, { type: "morning_of_sent" });
-      if (!t.ok) continue;
-
-      const venue = venueForEvent(ev.location, settings.venue);
-      const waId = await sendMorningOfTemplate(phone, {
-        guestName: row.guest_name || ev.guestName,
-        dateLabel: formatDateSgt(ev.startsAt),
-        timeLabel: formatTimeSgt(ev.startsAt),
-        venue,
-      });
-
-      const updated = await updateReminder(
-        ev.id,
+      const sent = await sendMorningOfReminder(
         {
-          status: "morning_sent",
-          morning_wa_id: waId,
-          last_wa_id: waId,
-          last_outbound_at: now.toISOString(),
+          calendarEventId: ev.id,
+          phone,
+          guestName: row.guest_name || ev.guestName,
+          startsAt: ev.startsAt,
+          venue: venueForEvent(ev.location, settings.venue),
+          from: row.status,
         },
-        "reminded",
+        now,
       );
-      if (updated) summary.morning += 1;
+      if (sent) summary.morning += 1;
     } catch (e) {
       summary.errors.push(
         `${ev.id}: ${e instanceof Error ? e.message : "morning-of failed"}`,
@@ -248,6 +248,12 @@ export async function GET(req: Request) {
     contacts = await sweepUpcomingContacts(settings, { now });
   } catch (e) {
     contacts = { ok: false, error: e instanceof Error ? e.message : "contacts sweep failed" };
+  }
+
+  // Nothing keeps the JSON a cron returns; the log at least shows a failure for
+  // the hour Hobby retains it. The row-level record is last_error.
+  if (summary.errors.length) {
+    console.error("[cron/appointment-reminders]", summary.errors.join(" | "));
   }
 
   return NextResponse.json({ ...summary, contacts });
