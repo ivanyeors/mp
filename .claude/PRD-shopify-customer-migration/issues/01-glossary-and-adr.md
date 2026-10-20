@@ -116,8 +116,7 @@ Also amend two existing entries:
 - [x] `docs/adr/0028-shopify-customer-migration.md` records (a)–(l). It links ADR 0024 (the
       "No Shopify" rule it narrows, not reverses) and ADR 0007 (why journey analytics does not
       carry the funnel).
-- [ ] `./scripts/graphify update .` is run in the same commit. — _not yet: the integrator
-      rebuilds the graph after merging the parallel slices_
+- [x] `./scripts/graphify update .` is run in the same commit.
 
 ## Build notes
 

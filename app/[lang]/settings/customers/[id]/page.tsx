@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getAdminCustomer } from "@/lib/ecommerce/admin/customers";
 import type { Customer } from "@/lib/types/ecommerce";
 import {
@@ -17,6 +18,9 @@ export const runtime = "nodejs";
  *
  * A missing row is handed to the client as the same `{ error }` body the route
  * returns with its 404, so the screen behaves exactly as it does today.
+ *
+ * Seeing this page needs `customers`; its edit controls render only for
+ * `customers-edit` (CRM slice 10). The write routes refuse without it anyway.
  */
 export default async function CustomerDetailPage({
     params,
@@ -26,7 +30,7 @@ export default async function CustomerDetailPage({
     const { lang, id } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-    await requireAdminPage("customers", locale);
+    const ctx = await requireAdminPage("customers", locale);
 
     const customer = await getAdminCustomer(id);
 
@@ -36,5 +40,10 @@ export default async function CustomerDetailPage({
             : { error: customer.error },
     };
 
-    return <CustomerDetailClient initialData={initialData} />;
+    return (
+        <CustomerDetailClient
+            initialData={initialData}
+            canEdit={hasPermission(ctx, "customers-edit")}
+        />
+    );
 }

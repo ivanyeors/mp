@@ -128,8 +128,7 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
 - [x] `docs/adr/0027-customer-crm.md` records (a)–(m). It links ADR 0028 (the Customer overview
       and the "facts, not statuses" rule), ADR 0024 (the re-adjustment rule) and ADR 0006
       (cron chaining).
-- [ ] `./scripts/graphify update .` is run in the same commit. — _not yet: the integrator
-      rebuilds the graph after merging the parallel slices_
+- [x] `./scripts/graphify update .` is run in the same commit.
 
 ## Build notes
 

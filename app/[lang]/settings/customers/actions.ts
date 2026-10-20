@@ -4,10 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 
-async function requireAuth() {
-  await assertAdmin("customers");
-}
-
+/** Every action here changes a Customer, so each needs `customers-edit` (CRM slice 10). */
 export async function updateCustomer(
   id: string,
   data: {
@@ -19,7 +16,7 @@ export async function updateCustomer(
     notes?: string;
   },
 ) {
-  await requireAuth();
+  await assertAdmin("customers-edit");
   const admin = supabaseAdmin();
   const { data: row, error } = await admin
     .from("customers")

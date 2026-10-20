@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
 
   const { id } = await params;
