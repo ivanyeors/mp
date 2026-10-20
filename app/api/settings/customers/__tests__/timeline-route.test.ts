@@ -1,0 +1,300 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
+
+/**
+ * CRM 03: the Customer timeline route. One fixture Customer with an order and
+ * its emails, a guest Result matched by email in another case and padded, a
+ * Paired build, a booking, a return, a review and notes. Every event shows, in
+ * order, each kind only to a role holding its source's permission, and no
+ * Result of another Customer whose email merely contains this one's.
+ */
+
+const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
+
+vi.mock("@/lib/auth/user", () => ({
+  getAuthUser: () => Promise.resolve(h.identity),
+  getAuthIdentity: () => Promise.resolve(h.identity),
+}));
+vi.mock("@/lib/supabase/server", async () => {
+  const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
+  return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
+});
+
+const route = await import("../[id]/timeline/route");
+
+const MEI = "aaaaaaaa-0000-4000-8000-000000000001";
+const KIM = "aaaaaaaa-0000-4000-8000-000000000002";
+const NOBODY = "aaaaaaaa-0000-4000-8000-0000000000ff";
+const O1 = "0e000000-0000-4000-8000-000000000001";
+const O2 = "0e000000-0000-4000-8000-000000000002";
+const GUEST = "0f000000-0000-4000-8000-000000000001"; // guest Result, matched by email
+const ANCHOR = "0f000000-0000-4000-8000-000000000002"; // Paired build: the Mpillow
+const COMPANION = "0f000000-0000-4000-8000-000000000003"; // Paired build: the Mbolster
+const DECLINED = "0f000000-0000-4000-8000-000000000004";
+const CANCELLED = "0f000000-0000-4000-8000-000000000005";
+const DRAFT = "0f000000-0000-4000-8000-000000000006";
+const KIMS = "0f000000-0000-4000-8000-000000000007"; // xmei@x.test: someone else's
+const KIMS_SG = "0f000000-0000-4000-8000-000000000008"; // mei@x.test.sg: someone else's
+const BOOKING = "0b000000-0000-4000-8000-000000000001";
+const RMA = "0c000000-0000-4000-8000-000000000001";
+const REVIEW = "0d000000-0000-4000-8000-000000000001";
+const NOTE = "0a000000-0000-4000-8000-000000000001";
+const LEGACY_NOTE = "0a000000-0000-4000-8000-000000000002";
+
+const OWNER = "00000000-0000-4000-8000-0000000000b1";
+const NO_ORDERS = "00000000-0000-4000-8000-0000000000b2";
+const NO_RESULTS = "00000000-0000-4000-8000-0000000000b3";
+const CRM_ONLY = "00000000-0000-4000-8000-0000000000b4";
+const ORDERS_ONLY = "00000000-0000-4000-8000-0000000000b5";
+const JESS = "11111111-1111-4111-8111-111111111111";
+
+const t = (s: string) => `2026-${s}:00Z`;
+
+const result = (row: Record<string, unknown>) => ({
+  status: "assigned",
+  product_type: "pillow",
+  suggested_size: null,
+  suggested_tier: null,
+  suggested_length: null,
+  assigned_size: null,
+  assigned_tier: null,
+  assigned_length: null,
+  customer_id: null,
+  customer_email: null,
+  paired_build_id: null,
+  assigned_at: null,
+  topup_paid_at: null,
+  ...row,
+});
+
+beforeEach(() => {
+  h.db = {
+    admin_roles: [
+      { id: "r-owner", key: "owner", name: "Owner", grants_all: true, permissions: [] },
+      { id: "r-no-orders", key: "no-orders", name: "No orders", grants_all: false, permissions: ["customers", "results", "appointments", "returns"] },
+      { id: "r-no-results", key: "no-results", name: "No results", grants_all: false, permissions: ["customers", "orders", "appointments", "returns"] },
+      { id: "r-crm", key: "crm", name: "CRM", grants_all: false, permissions: ["customers"] },
+      { id: "r-orders", key: "orders-only", name: "Orders only", grants_all: false, permissions: ["orders"] },
+    ],
+    admin_users: [
+      { id: OWNER, email: "owner@x.test", role_id: "r-owner", is_active: true, auth_user_id: "auth-owner" },
+      { id: NO_ORDERS, email: "a@x.test", role_id: "r-no-orders", is_active: true, auth_user_id: "auth-a" },
+      { id: NO_RESULTS, email: "b@x.test", role_id: "r-no-results", is_active: true, auth_user_id: "auth-b" },
+      { id: CRM_ONLY, email: "c@x.test", role_id: "r-crm", is_active: true, auth_user_id: "auth-c" },
+      { id: ORDERS_ONLY, email: "d@x.test", role_id: "r-orders", is_active: true, auth_user_id: "auth-d" },
+    ],
+    mp_staff: [{ id: JESS, name: "Jess", admin_user_id: OWNER, archived_at: null }],
+    customers: [
+      { id: MEI, email: "mei@x.test", first_name: "Mei" },
+      { id: KIM, email: "kim@x.test", first_name: "Kim" },
+    ],
+    orders: [
+      {
+        id: O1, customer_id: MEI, order_number: "1001", status: "delivered", total: 480, currency: "SGD",
+        created_at: t("09-01T02:00"), paid_at: t("09-01T02:05"), shipped_at: t("09-03T03:00"),
+        delivered_at: t("09-05T04:00"), cancelled_at: null, refund_requested_at: null,
+      },
+      {
+        id: O2, customer_id: KIM, order_number: "1002", status: "confirmed", total: 90, currency: "SGD",
+        created_at: t("09-02T02:00"), paid_at: t("09-02T02:01"), shipped_at: null,
+        delivered_at: null, cancelled_at: null, refund_requested_at: null,
+      },
+    ],
+    order_emails: [
+      { id: "em-1", order_id: O1, template: "order_confirmation", status: "sent", created_at: t("09-01T02:06") },
+      { id: "em-2", order_id: O1, template: "shipping", status: "failed", created_at: t("09-03T03:01") },
+      { id: "em-3", order_id: O2, template: "order_confirmation", status: "sent", created_at: t("09-02T02:02") },
+    ],
+    mp_config_responses: [
+      // A guest Result: no customer_id, the email in another case and padded.
+      result({ id: GUEST, customer_email: "  MEI@X.Test ", assigned_size: "M", assigned_tier: "premium", created_at: t("08-20T01:00"), assigned_at: t("08-22T01:00") }),
+      // A Paired build: two Results, one entry per fact.
+      result({ id: ANCHOR, customer_id: MEI, customer_email: "mei@x.test", paired_build_id: ANCHOR, suggested_size: "L", suggested_tier: "basic", created_at: t("07-01T00:00"), assigned_at: t("07-02T00:00"), topup_paid_at: t("07-04T00:00") }),
+      result({ id: COMPANION, customer_id: MEI, customer_email: "mei@x.test", paired_build_id: ANCHOR, product_type: "bolster", assigned_length: "90", created_at: t("07-01T00:05"), assigned_at: t("07-03T00:00") }),
+      // Declined and cancelled: no time of their own, so only their created entry, with the status pill.
+      result({ id: DECLINED, customer_id: MEI, status: "declined", created_at: t("06-01T00:00") }),
+      result({ id: CANCELLED, customer_id: MEI, status: "cancelled", created_at: t("05-01T00:00") }),
+      result({ id: DRAFT, customer_id: MEI, status: null, created_at: t("09-15T00:00") }),
+      // Someone else's, with an email that merely contains Mei's, or that Mei's is a prefix of.
+      result({ id: KIMS, customer_id: KIM, customer_email: "xmei@x.test", created_at: t("09-12T00:00") }),
+      result({ id: KIMS_SG, customer_id: null, customer_email: "mei@x.test.sg", created_at: t("09-13T00:00") }),
+    ],
+    readjustment_bookings: [
+      {
+        id: BOOKING, customer_id: MEI, status: "attended", product_label: "Premium Mpillow M",
+        location_name: "Bukit Timah", start_at: t("09-20T02:00"), complimentary: true, created_at: t("09-10T02:00"),
+      },
+    ],
+    admin_audit_log: [
+      { id: "au-1", action: "result.cancel", entity_type: "mp_config_response", entity_id: CANCELLED, created_at: t("05-02T00:00") },
+      { id: "au-2", action: "readjustment.attended", entity_type: "readjustment_booking", entity_id: BOOKING, created_at: t("09-20T03:00") },
+      // Someone else's Result: never read.
+      { id: "au-3", action: "result.cancel", entity_type: "mp_config_response", entity_id: KIMS, created_at: t("09-14T00:00") },
+    ],
+    rma_requests: [
+      { id: RMA, order_id: O1, customer_id: MEI, resolution: "exchange", status: "approved", created_at: t("09-08T02:00") },
+    ],
+    rma_status_events: [
+      { id: "ev-1", rma_request_id: RMA, from_status: null, to_status: "requested", actor: "system", created_at: t("09-08T02:00") },
+      { id: "ev-2", rma_request_id: RMA, from_status: "requested", to_status: "approved", actor: "staff", created_at: t("09-09T02:00") },
+    ],
+    products: [{ id: "p-1", slug: "mpillow", content: { "en-US": { title: "Mpillow" } } }],
+    product_reviews: [
+      { id: REVIEW, product_id: "p-1", customer_id: MEI, rating: 5, status: "approved", created_at: t("09-06T02:00") },
+    ],
+    customer_notes: [
+      { id: NOTE, customer_id: MEI, body: "Prefers a firm fill.", author_profile_id: JESS, author_user_id: "auth-owner", created_at: t("09-30T02:00"), deleted_at: null },
+      { id: LEGACY_NOTE, customer_id: MEI, body: "old box", author_profile_id: null, author_user_id: null, created_at: t("04-01T00:00"), deleted_at: null },
+      { id: "gone", customer_id: MEI, body: "Deleted", author_profile_id: JESS, author_user_id: "auth-owner", created_at: t("09-25T00:00"), deleted_at: t("09-26T00:00") },
+    ],
+  };
+});
+
+const signIn = (memberId: string | null) => {
+  const m = h.db.admin_users.find((r) => r.id === memberId);
+  h.identity = m ? { id: m.auth_user_id as string, email: m.email as string } : null;
+};
+
+type Entry = { id: string; kind: string; group: string; summary: string; status?: string; detail?: string; ref: { href?: string } };
+
+const get = (id: string, query = "") =>
+  route.GET(new Request(`https://x.test/api/settings/customers/${id}/timeline${query}`), { params: Promise.resolve({ id }) });
+
+async function page(id = MEI, query = "") {
+  const res = await get(id, query);
+  expect(res.status).toBe(200);
+  return (await res.json()) as { entries: Entry[]; next: string | null; groups: { key: string }[]; unavailable: string[] };
+}
+
+/** Every event on Mei's timeline, newest first, for a role that holds every key. */
+const EVERYTHING = [
+  `note.added:${NOTE}`,
+  "readjustment.attended:au-2",
+  `readjustment.booked:${BOOKING}`,
+  "return.status_changed:ev-2",
+  `return.opened:${RMA}`,
+  `review.submitted:${REVIEW}`,
+  `order.delivered:${O1}`,
+  `order.shipped:${O1}`,
+  "order.email_sent:em-1",
+  `order.paid:${O1}`,
+  `order.placed:${O1}`,
+  `result.build_sent:${GUEST}`,
+  `result.created:${GUEST}`,
+  `result.balance_paid:${ANCHOR}`,
+  `result.build_sent:${ANCHOR}`,
+  `result.created:${ANCHOR}`,
+  `result.created:${DECLINED}`,
+  "result.cancelled:au-1",
+  `result.created:${CANCELLED}`,
+  `note.added:${LEGACY_NOTE}`,
+];
+
+describe("GET /api/settings/customers/[id]/timeline", () => {
+  it("shows every event of the fixture Customer, newest first", async () => {
+    signIn(OWNER);
+    const body = await page();
+    expect(body.entries.map((e) => e.id)).toEqual(EVERYTHING);
+    expect(body.next).toBeNull();
+    expect(body.unavailable).toEqual([]);
+    expect(body.groups.map((g) => g.key)).toEqual(["orders", "results", "readjustments", "returns", "reviews", "notes"]);
+  });
+
+  it("says what happened in one line, links what has a page, and keeps a note in full", async () => {
+    signIn(OWNER);
+    const byId = new Map((await page()).entries.map((e) => [e.id, e]));
+    expect(byId.get(`order.placed:${O1}`)).toMatchObject({ summary: "Order #1001 placed · $480.00", status: "delivered", ref: { href: `/settings/orders/${O1}` } });
+    expect(byId.get("order.email_sent:em-1")?.summary).toBe("Email sent: Order confirmed (order #1001)");
+    expect(byId.get(`result.created:${GUEST}`)).toMatchObject({ summary: "Result created: Mpillow M · Premium", status: "assigned", ref: { href: `/settings/results/${GUEST}` } });
+    expect(byId.get(`readjustment.booked:${BOOKING}`)).toMatchObject({ status: "attended", ref: { href: "/settings/appointments" } });
+    expect(byId.get(`readjustment.booked:${BOOKING}`)?.summary).toContain("Premium Mpillow M at Bukit Timah");
+    expect(byId.get("return.status_changed:ev-2")).toMatchObject({ summary: "Return approved by Staff", ref: { href: `/settings/rma/${RMA}` } });
+    expect(byId.get(`return.opened:${RMA}`)?.summary).toBe("Return opened on order #1001 (exchange)");
+    expect(byId.get(`review.submitted:${REVIEW}`)).toMatchObject({ summary: "Shop review: 5★ on Mpillow", status: "approved" });
+    expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
+    expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
+    // No customer email in any line.
+    for (const e of byId.values()) expect(e.summary.toLowerCase()).not.toContain("mei@x.test");
+  });
+
+  it("shows a Paired build as one entry per fact, with both statuses", async () => {
+    signIn(OWNER);
+    const pair = (await page()).entries.filter((e) => e.id.endsWith(ANCHOR) || e.id.endsWith(COMPANION));
+    expect(pair.map((e) => e.kind)).toEqual(["result.balance_paid", "result.build_sent", "result.created"]);
+    expect(pair[2]).toMatchObject({ summary: "Paired build created: Mpillow L · Basic + Mbolster 90", status: "assigned" });
+  });
+
+  it("invents no dates: a declined Result and a cancelled one carry their status, not a dated step", async () => {
+    signIn(OWNER);
+    const entries = (await page()).entries;
+    expect(entries.find((e) => e.id === `result.created:${DECLINED}`)?.status).toBe("declined");
+    expect(entries.filter((e) => e.id.endsWith(DECLINED))).toHaveLength(1);
+    // The cancel is dated by the audit entry Staff's cancel wrote, nothing else.
+    expect(entries.find((e) => e.id === "result.cancelled:au-1")?.summary).toBe("Cancelled by Staff: Mpillow");
+    expect(entries.some((e) => e.kind === "result.declined" || e.kind === "result.expired")).toBe(false);
+  });
+
+  it("never shows a Result of another Customer whose email merely contains this one's", async () => {
+    signIn(OWNER);
+    const ids = (await page()).entries.map((e) => e.id).join(" ");
+    for (const other of [KIMS, KIMS_SG, DRAFT, "au-3"]) expect(ids).not.toContain(other);
+    // Kim's own timeline has their Result, and none of Mei's.
+    const kim = (await page(KIM)).entries.map((e) => e.id);
+    expect(kim).toContain(`result.created:${KIMS}`);
+    expect(kim.join(" ")).not.toContain(GUEST);
+  });
+
+  it("hides every order and order-email entry from a role without orders", async () => {
+    signIn(NO_ORDERS);
+    const body = await page();
+    expect(body.entries.map((e) => e.id)).toEqual(EVERYTHING.filter((id) => !id.startsWith("order.")));
+    expect(body.groups.map((g) => g.key)).not.toContain("orders");
+  });
+
+  it("hides every Result entry from a role without results", async () => {
+    signIn(NO_RESULTS);
+    const body = await page();
+    expect(body.entries.map((e) => e.id)).toEqual(EVERYTHING.filter((id) => !id.startsWith("result.")));
+    expect(body.groups.map((g) => g.key)).not.toContain("results");
+  });
+
+  it("shows a customers-only role the Customer's own facts: reviews and notes", async () => {
+    signIn(CRM_ONLY);
+    const body = await page();
+    expect(body.entries.map((e) => e.kind)).toEqual(["note.added", "review.submitted", "note.added"]);
+    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "notes"]);
+  });
+
+  it("narrows to the kind groups asked for, among those the viewer may see", async () => {
+    signIn(OWNER);
+    expect((await page(MEI, "?kinds=returns,notes")).entries.map((e) => e.id)).toEqual(
+      EVERYTHING.filter((id) => id.startsWith("return.") || id.startsWith("note.")),
+    );
+    signIn(NO_ORDERS);
+    expect((await page(MEI, "?kinds=orders")).entries).toEqual([]);
+  });
+
+  it("pages through everything with the cursor, each entry once", async () => {
+    signIn(OWNER);
+    const seen: string[] = [];
+    let query = "?limit=3";
+    for (let guard = 0; guard < 30; guard++) {
+      const body = await page(MEI, query);
+      seen.push(...body.entries.map((e) => e.id));
+      if (!body.next) break;
+      query = `?limit=3&before=${encodeURIComponent(body.next)}`;
+    }
+    expect(seen).toEqual(EVERYTHING);
+  });
+
+  it("needs customers, a Customer that exists, and a cursor it wrote", async () => {
+    signIn(null);
+    expect((await get(MEI)).status).toBe(401);
+    signIn(ORDERS_ONLY);
+    expect((await get(MEI)).status).toBe(403);
+    signIn(OWNER);
+    expect((await get(NOBODY)).status).toBe(404);
+    expect((await get("not-a-uuid")).status).toBe(404);
+    expect((await get(MEI, "?before=garbage")).status).toBe(400);
+  });
+});

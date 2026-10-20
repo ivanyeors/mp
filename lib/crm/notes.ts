@@ -53,14 +53,23 @@ async function withAuthors(rows: NoteRow[]): Promise<CustomerNote[]> {
   }));
 }
 
-/** A Customer's notes, newest first, without the deleted ones. */
-export async function listCustomerNotes(customerId: string): Promise<CustomerNote[]> {
-  const { data, error } = await supabaseAdmin()
+/**
+ * A Customer's notes, newest first, without the deleted ones. With `page`, only
+ * the newest `limit` at or before `before`: the Customer timeline's bounded read.
+ */
+export async function listCustomerNotes(
+  customerId: string,
+  page?: { before: string | null; limit: number },
+): Promise<CustomerNote[]> {
+  let query = supabaseAdmin()
     .from("customer_notes")
     .select(NOTE_COLUMNS)
     .eq("customer_id", customerId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .is("deleted_at", null);
+  if (page?.before) query = query.lte("created_at", page.before);
+  query = query.order("created_at", { ascending: false });
+  if (page) query = query.limit(page.limit);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return withAuthors((data ?? []) as NoteRow[]);
 }
