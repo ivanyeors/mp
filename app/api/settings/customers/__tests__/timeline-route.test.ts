@@ -7,8 +7,8 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * Paired build, a booking, a return, a review and notes. Every event shows, in
  * order, each kind only to a role holding its source's permission, and no
  * Result of another Customer whose email merely contains this one's. Since the
- * merge with CRM 13 and migration 05, also aftercare switches and the account
- * (imported, Claimed, Welcome-back voucher).
+ * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
+ * account (imported, signed up, Claimed, Welcome-back voucher).
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -88,8 +88,9 @@ beforeEach(() => {
     ],
     mp_staff: [{ id: JESS, name: "Jess", admin_user_id: OWNER, archived_at: null }],
     customers: [
-      { id: MEI, email: "mei@x.test", first_name: "Mei" },
-      { id: KIM, email: "kim@x.test", first_name: "Kim" },
+      // Migration 12: when the current login was bound. Kim has no account.
+      { id: MEI, email: "mei@x.test", first_name: "Mei", account_linked_at: t("06-14T23:59") },
+      { id: KIM, email: "kim@x.test", first_name: "Kim", account_linked_at: null },
     ],
     orders: [
       {
@@ -207,6 +208,7 @@ const EVERYTHING = [
   // Same instant (one transaction): ties go by kind.
   `account.claimed:${MEI}`,
   `account.voucher_issued:${VOUCHER}`,
+  `account.signed_up:${MEI}`,
   `result.created:${DECLINED}`,
   "result.cancelled:au-1",
   `result.created:${CANCELLED}`,
@@ -243,6 +245,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get("aftercare.turned_off:2")?.summary).toBe("Aftercare email turned off by the customer");
     expect(byId.get(`account.imported:${MEI}`)?.summary).toBe("Imported from Shopify, matched to this Customer");
     expect(byId.get(`account.claimed:${MEI}`)?.summary).toBe("Claimed: first sign-in since the import");
+    expect(byId.get(`account.signed_up:${MEI}`)?.summary).toBe("Signed up: a login was linked to this Customer");
     // A coupon stores no time it was used: that is its pill. Its code is never shown.
     expect(byId.get(`account.voucher_issued:${VOUCHER}`)).toMatchObject({ summary: "Welcome-back voucher issued", status: "used" });
     for (const e of byId.values()) expect(JSON.stringify(e)).not.toContain("WB-SECRETCODE");

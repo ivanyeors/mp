@@ -14,8 +14,7 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
  * each fact: nothing is copied, so a new source needs no backfill.
  *
  * HOW TO ADD A SOURCE (still to come: CRM 06 follow-ups, 07 review requests,
- * 08 check-ups, 12 reviews; migration 07 consent, 08 campaign sends, 12 signed
- * up, in the Account group):
+ * 08 check-ups, 12 reviews; migration 07 consent, 08 campaign sends):
  *
  * 1. Write `sources/<name>.ts` exporting one `TimelineAdapter`:
  *    - `group`: one from `groups.ts`, or a new one added there (a new chip);

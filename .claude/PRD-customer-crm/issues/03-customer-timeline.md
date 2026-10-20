@@ -113,8 +113,9 @@ adapter.
 - Added after merging the integration branch, both on `customers`: `aftercare.ts` (CRM 13's
   `customer_preference_events`: each switch change, by the customer or the Staff profile, with
   a Staff note in full; the opt-in wording stays on the Aftercare card) and `account.ts`
-  (migration 02's *imported* `migrated_customers.imported_at`, migration 05's *Claimed*
-  `claimed_at` and *Welcome-back voucher issued* `coupons.created_at` for
+  (migration 02's *imported* `migrated_customers.imported_at`, migration 12's *signed up*
+  `customers.account_linked_at`, migration 05's *Claimed* `claimed_at` and *Welcome-back
+  voucher issued* `coupons.created_at` for
   `issued_for = 'welcome_back'`, whose used/expired/open state is a pill because a coupon stores
   no time of use; the code is never shown). New chips: Aftercare, Account.
 - `lib/results/owner.ts`: `isCustomersResult`, the one ownership rule. `authorizeResultAccess`
@@ -154,8 +155,8 @@ dot-for-any-char do not.
   event in order), summaries and links, a Paired build as one entry per fact, no invented dates,
   the containing-email Results of another Customer, roles without `orders`, without `results`
   and with `customers` only, the kind filter, paging through the route, and 401/403/404/400.
-  After the merge the fixture also has preference events, a Migrated customer with its Claim and
-  voucher, and another Customer's of each, which never show.
+  After the merges the fixture also has preference events, a signed-up Migrated customer with
+  its Claim and voucher, and another Customer's of each, which never show.
 - `lib/supabase/__tests__/fake-admin.ts` (shared test helper) gained `lt`/`lte`/`gt`/`gte`,
   `limit`, `filter(…, "imatch")` and `!inner` embeds with dotted filters. Existing behaviour is
   unchanged: an unaliased embed is read only with `!inner`.
@@ -200,16 +201,16 @@ dot-for-any-char do not.
   `rma_status_events` after the opening one (`from_status` not null), so opening is not shown
   twice.
 
-- **Not added**: migration 07 consent, 08 campaign sends and 12 signed up
-  (`account_linked_at`) are not on the branch yet; 12's fits the Account group as one more
-  stream. Migration 05's `customer_emails` (the per-Customer email ledger: the welcome-voucher
+- **Not added**: migration 07 consent and 08 campaign sends are not on the branch yet.
+  Migration 05's `customer_emails` (the per-Customer email ledger: the welcome-voucher
   email now, CRM 07 and 08's aftercare emails later) has no adapter yet. It fits the model as one
   stream like `order_emails`; it is left to CRM 07, the first slice that sends through it for
   the CRM, so its labels and gating are decided once.
 
-**Merge.** `claude/shopify-migration-plan-izv7fo` (CRM 13, CRM 14, migration 05) merged in. One
-conflict: the imports of `customer-detail-client.tsx`, where both `CustomerTimelineCard` and
-`AftercareCard` are kept; both cards render. `[id]/page.tsx` did not conflict and is unchanged
-by this slice.
+**Merges.** `claude/shopify-migration-plan-izv7fo` merged in three times as slices landed:
+CRM 13, CRM 14 and migration 05 (conflict: the imports of `customer-detail-client.tsx`; the
+Timeline and Aftercare imports both kept), then migration 03 (no conflict), then migration 12
+(conflict: the same import block; the Timeline, Account, From Shopify and Aftercare imports all
+kept). Every card renders. `[id]/page.tsx` never conflicted and is unchanged by this slice.
 
 **Left for ops or the owner.** Nothing. The integrator refreshes the graph.
