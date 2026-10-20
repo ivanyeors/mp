@@ -123,8 +123,34 @@ _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never le
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` carries the eight terms above with `_Avoid_` lines.
-- [ ] `docs/adr/0027-customer-crm.md` records (a)–(m). It links ADR 0028 (the Customer overview
+- [x] `CONTEXT.md` carries the eight terms above with `_Avoid_` lines.
+- [x] `docs/adr/0027-customer-crm.md` records (a)–(m). It links ADR 0028 (the Customer overview
       and the "facts, not statuses" rule), ADR 0024 (the re-adjustment rule) and ADR 0006
       (cron chaining).
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [ ] `./scripts/graphify update .` is run in the same commit. — _not yet: the integrator
+      rebuilds the graph after merging the parallel slices_
+
+## Build notes
+
+- **What was built.** A `## Customer CRM (ADR 0027)` section in `CONTEXT.md`, placed after
+  `## Reviews`, holding the eight terms in the file's `**Term**:` / `_Avoid_:` format. The new
+  `docs/adr/0027-customer-crm.md` (Status, Context, Decisions, Considered options, Consequences,
+  Related), whose (a)–(m) are the slice's text word for word. The only change is that (g) links
+  ADR 0006.
+- **Links.** ADR 0028 as `0028-shopify-customer-migration.md`, the filename migration slice 01's
+  acceptance criteria give it. That file is written in parallel and does not exist on this
+  branch yet. ADR 0024, 0006, 0023 and 0007 are linked by their real filenames. `docs/adr/` has
+  no index to update.
+- **Migrations and tests.** None. This is a docs slice. A scratch check confirmed each term is
+  defined once, inside the section, with an `_Avoid_` line, and that the ADR carries (a)–(m) and
+  the three required links.
+- **Deviations.**
+  - The entries use the file's `_Avoid_:` form, not the slice's `_Avoid_ —`. Lists are written
+    inline, because a list would swallow the `_Avoid_` line into its last item.
+  - **Aftercare message**'s `_Avoid_` line names the **Check-up reminder** as the one exception
+    to "not gated on Marketing consent". Without that, the entry would contradict ADR 0027 (h)
+    and the README's second hazard.
+  - **Review request** says "one message, by email and (when they opted in) WhatsApp", not "the
+    one email", to match slice 07 and the **Aftercare message** entry.
+- **Left for others.** The graph refresh (integrator). The migration PRD's terms, including
+  **Marketing consent**, which these entries refer to by name, come from migration slice 01.
