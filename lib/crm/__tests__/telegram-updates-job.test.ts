@@ -97,6 +97,18 @@ const CUSTOMERS: Row[] = [
 ];
 const PII = CUSTOMERS.flatMap((c) => [c.first_name, c.last_name, c.email, c.phone]) as string[];
 
+/**
+ * The same Customers in the overview (migration slice 12): Ana, from Shopify,
+ * signed up in that week; Wei Ling signed up on its last day; Raj before it;
+ * a fourth has no account.
+ */
+const OVERVIEW: Row[] = [
+  { id: "c1", from_shopify: true, account_linked_at: "2026-10-13T04:00:00.000Z" },
+  { id: "c2", from_shopify: false, account_linked_at: "2026-10-18T15:59:30.000Z" },
+  { id: "c3", from_shopify: false, account_linked_at: "2026-10-05T03:00:00.000Z" },
+  { id: "c4", from_shopify: true, account_linked_at: null },
+];
+
 let db: Db;
 let admin: SupabaseClient;
 let sent: string[];
@@ -114,7 +126,14 @@ const lastSent = () =>
   JSON.parse(String(db.tables.site_settings.find((r) => r.key === CRM_TELEGRAM_LAST_SENT_KEY)?.value ?? "{}"));
 
 beforeEach(() => {
-  db = { tables: { site_settings: [], customers: CUSTOMERS.map((c) => ({ ...c })) }, failSettingsRead: false };
+  db = {
+    tables: {
+      site_settings: [],
+      customers: CUSTOMERS.map((c) => ({ ...c })),
+      admin_customer_overview: OVERVIEW.map((c) => ({ ...c })),
+    },
+    failSettingsRead: false,
+  };
   admin = fakeAdmin(db);
   sent = [];
   sendStatus = "sent";
@@ -126,7 +145,7 @@ describe("Weekly summary", () => {
   it("posts on its day, counting the previous Monday to Sunday", async () => {
     const res = await run(MONDAY);
     expect(res).toMatchObject({ ok: true, weekly_summary: { status: "sent", period: "2026-W42" } });
-    expect(sent).toEqual(["This week: 2 new customers.\nOpen: https://mpillow.test/settings/customers"]);
+    expect(sent).toEqual(["This week: 2 new customers, 2 sign-ups.\nOpen: https://mpillow.test/settings/customers"]);
     expect(lastSent()).toEqual({ weekly_summary: "2026-W42" });
   });
 
@@ -171,14 +190,14 @@ describe("Weekly summary", () => {
       from: "2026-10-11T16:00:00.000Z",
       to: "2026-10-18T16:00:00.000Z",
     });
-    // Today only new Customers exists; sign-ups wait for migration slice 12.
-    expect(counts).toEqual({ newCustomers: 2 });
+    // New Customers, and sign-ups since migration slice 12.
+    expect(counts).toEqual({ newCustomers: 2, signUps: 2 });
     const withSlice07 = await realSources.loadWeeklySummaryCounts(
       admin,
       { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" },
       [...realSources.WEEKLY_SUMMARY_SOURCES, async () => ({ reviewRequests: { sent: 4, opened: 1 } })],
     );
-    expect(withSlice07).toEqual({ newCustomers: 2, reviewRequests: { sent: 4, opened: 1 } });
+    expect(withSlice07).toEqual({ newCustomers: 2, signUps: 2, reviewRequests: { sent: 4, opened: 1 } });
   });
 });
 
@@ -216,9 +235,21 @@ describe("the daily types", () => {
     expect(await run(TUESDAY)).toMatchObject({ google_reviews_to_match: { status: "sent" } });
   });
 
+  it("count sign-ups on account_linked_at, and how many came from Shopify (migration slice 12)", async () => {
+    const week = { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
+    expect(await realSources.countSignUps(admin, week)).toEqual({ total: 2, migrated: 1 });
+    // 18 October in Singapore: only Wei Ling, who is not from Shopify.
+    const day = { from: "2026-10-17T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
+    expect(await realSources.countSignUps(admin, day)).toEqual({ total: 1, migrated: 0 });
+    // A Customer with no account never counts.
+    expect(await realSources.countSignUps(admin, { from: "2000-01-01T00:00:00.000Z", to: "2100-01-01T00:00:00.000Z" })).toEqual({
+      total: 3,
+      migrated: 1,
+    });
+  });
+
   it("post nothing while their source is not built (the seams return null)", async () => {
     expect(await realSources.countGoogleReviewsToMatch(admin)).toBeNull();
-    expect(await realSources.countSignUps(admin, { from: "a", to: "b" })).toBeNull();
     expect(await run(TUESDAY)).toMatchObject({
       google_reviews_to_match: { status: "not_built" },
       new_sign_ups: { status: "not_built" },

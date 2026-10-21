@@ -19,7 +19,7 @@ export const AddressInputSchema = z.object({
   city: z.string().trim().min(1, "City is required").max(120),
   state: z.string().trim().max(120).optional(),
   postal_code: z.string().trim().min(1, "Postal code is required").max(20),
-  country: z.string().trim().length(2, "Use a 2-letter country code").default("MY"),
+  country: z.string().trim().length(2, "Use a 2-letter country code").default("SG"),
   phone: z.string().trim().max(40).optional(),
   is_default: z.boolean().optional().default(false),
 });

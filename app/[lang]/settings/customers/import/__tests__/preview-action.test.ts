@@ -125,27 +125,49 @@ describe("previewShopifyImport", () => {
   });
 });
 
-describe("the preview writes nothing", () => {
+describe("the preview writes nothing, and the import writes only through its SQL functions", () => {
   const ROOT = process.cwd();
   const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
   const libDir = join("lib", "customer-migration");
-  const sources = [
-    "app/[lang]/settings/customers/import/actions.ts",
+  const ACTIONS = "app/[lang]/settings/customers/import/actions.ts";
+  const readOnly = [
     "app/[lang]/settings/customers/import/import-client.tsx",
     "app/[lang]/settings/customers/import/page.tsx",
+    "app/[lang]/settings/customers/import/history.ts",
     ...readdirSync(join(ROOT, libDir))
       .filter((f) => /\.tsx?$/.test(f))
       .map((f) => join(libDir, f)),
   ];
 
-  it.each(sources)("%s has no insert, update, delete, upload, file write or auth admin call", (file) => {
-    const src = read(file);
-    expect(src).not.toMatch(/\.(insert|update|upsert|delete)\(/);
+  /** Not to Storage, not to Media, not to Drive, not to disk, not to another server, and no auth user. */
+  const neverStored = (src: string) => {
     expect(src).not.toMatch(/auth\.admin/);
-    // Not to Storage, not to Media, not to Drive.
     expect(src).not.toMatch(/\.storage\b|@\/lib\/(media|media-assets|google)\b/);
     expect(src).not.toMatch(/from ["'](node:)?fs["']|writeFile/);
     expect(src).not.toMatch(/\bfetch\(/);
+  };
+
+  it.each(readOnly)("%s has no insert, update, delete, upload, file write or auth admin call", (file) => {
+    const src = read(file);
+    expect(src).not.toMatch(/\.(insert|update|upsert|delete)\(/);
+    neverStored(src);
+  });
+
+  it("the actions insert the Import batch and nothing else; every other write is a SQL function", () => {
+    const src = read(ACTIONS);
+    neverStored(src);
+    expect(src.match(/\.(insert|update|upsert|delete)\(/g)).toEqual([".insert("]);
+    expect(src).toMatch(/\.from\("customer_import_batches"\)\s*\.insert\(/);
+    expect([...src.matchAll(/\.rpc\("([a-z_]+)"/g)].map((m) => m[1]).sort()).toEqual([
+      "customer_import_preview_matches",
+      "finish_shopify_import",
+      "import_shopify_customers",
+      "preview_shopify_import_undo",
+      "undo_shopify_import",
+    ]);
+    // The preview's own body reads only.
+    const preview = src.slice(src.indexOf("export async function previewShopifyImport"), src.indexOf("const UUID"));
+    expect(preview).not.toMatch(/\.(insert|update|upsert|delete)\(|\.from\(/);
   });
 
   it("customer_import_preview_matches only reads, and only the service role may run it", () => {

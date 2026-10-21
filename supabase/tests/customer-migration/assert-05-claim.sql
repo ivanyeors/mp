@@ -23,8 +23,9 @@ delete from customers where email like '%@assert05.test';
 delete from customer_import_batches where file_name = 'assert-05.csv';
 delete from site_settings where key like 'welcome\_voucher\_%';
 
-insert into customer_import_batches (id, source, file_name, file_sha256, rows_total)
-values ('05050505-0000-4000-8000-0000000000b0', 'shopify_customers_csv', 'assert-05.csv', repeat('a', 64), 5);
+-- exported_at is NOT NULL since slice 03 (20261020110000_customer_import_apply.sql).
+insert into customer_import_batches (id, source, file_name, file_sha256, rows_total, exported_at)
+values ('05050505-0000-4000-8000-0000000000b0', 'shopify_customers_csv', 'assert-05.csv', repeat('a', 64), 5, '2026-10-20');
 
 insert into customers (id, email, first_name) values
   ('05050505-0000-4000-8000-000000000001', 'race@assert05.test',  'Race'),

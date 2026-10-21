@@ -48,7 +48,7 @@ function emptyForm(): FormState {
     city: "",
     state: "",
     postal_code: "",
-    country: "MY",
+    country: "SG",
     phone: "",
     is_default: false,
   };

@@ -211,7 +211,7 @@ This uses slice 13's channel, with template `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW`
 ## Build notes
 
 Built on `claude/shopify-migration-plan-izv7fo` @ `e03159a` (CRM 13, CRM 14 and migration slice
-05 merged).
+05 merged), then merged with it again @ `005e4d6` (CRM 03, migrations 03 and 12).
 
 **What was built**
 
@@ -258,17 +258,17 @@ Built on `claude/shopify-migration-plan-izv7fo` @ `e03159a` (CRM 13, CRM 14 and 
   audited as `aftercare_settings.update`).
 - **Telegram**: `WEEKLY_SUMMARY_SOURCES` gains `reviewRequests`
   (`lib/aftercare/review-request-counts.ts`).
-- **The timeline adapter for slice 03**: `reviewRequestTimelineEntries` (pure) and
-  `loadReviewRequestTimeline(admin, customer, before, limit)`, in
-  `lib/aftercare/review-request-timeline.ts`. Entries are shaped like slice 03's `TimelineEntry`,
-  with kinds `review_request.sent` and `review_request.clicked`. Register it with the
-  `customers` permission.
+- **On the Customer timeline (slice 03)**: the pure `reviewRequestTimelineEntries`
+  (`lib/aftercare/review-request-timeline.ts`) and the adapter `reviewRequestsAdapter`
+  (`lib/crm/timeline/sources/review-requests.ts`), registered in `TIMELINE_ADAPTERS` under the
+  *Reviews* chip with the `customers` permission. Kinds `review_request.sent` (*Review
+  requested (email, WhatsApp)*, at the earlier send) and `review_request.clicked`.
 - **Small changes to shared helpers**: `dispatchCustomerEmail` takes an optional `replyTo` and
   an async `render`; `NOT_A_PURCHASE` is exported from `lib/readjustment/purchases.ts`; slice 13's
   transport check is exported as `aftercareWhatsAppTransportConfigured`.
 - **Env**: `AFTERCARE_EMAIL_ALLOWLIST` in `.env.example`.
 
-**Database check** (`mp_c07`, Postgres 16 with the Supabase stubs): all 160 migrations apply.
+**Database check** (`mp_c07`, Postgres 16 with the Supabase stubs): all 164 migrations apply.
 Checked in psql:
 
 - a second claim of the same Customer inserts nothing; three concurrent claims leave one row;
@@ -293,7 +293,14 @@ Checked in psql:
   the Weekly summary count.
 - `lib/aftercare/__tests__/review-request-copy.test.ts`: the email and the WhatsApp text carry
   the link and the support line, and no price, offer, incentive, other product or gating wording.
-- `lib/aftercare/__tests__/review-request-timeline.test.ts` and `lib/aftercare/__tests__/job.test.ts`.
+- `lib/aftercare/__tests__/review-request-timeline.test.ts` (the entries and the adapter) and
+  `lib/aftercare/__tests__/job.test.ts`.
+- Slice 03's `timeline-route.test.ts` fixture gains a review request, so the two entries are
+  checked merged, in order, paged, and shown to a `customers`-only role.
+- The shared `lib/supabase/__tests__/fake-admin.ts` now compares two ISO timestamps as
+  instants in `lt`/`lte`/`gt`/`gte`, as Postgres does. It compared them as strings, so a fixture
+  `…:00Z` sorted after the timeline's cursor `…:00.000000Z`, and paging dropped an entry tied at
+  the cursor's instant. The new entries moved a page boundary onto such a tie.
 - `app/r/review/__tests__/route.test.ts`, `app/api/settings/customers/__tests__/aftercare-route.test.ts`
   and `app/[lang]/settings/customers/__tests__/aftercare-settings-card-render.test.tsx`.
 - The existing guard test (`customers-write-guard.test.ts`) finds the new PUT and passes.
@@ -336,5 +343,3 @@ Checked in psql:
    `https://mpillow.com/r/review`. Confirm that path reaches this app before submitting the
    template. The email uses this app's public origin.
 5. On a preview deploy, set `AFTERCARE_EMAIL_ALLOWLIST` to test the email.
-6. Register `loadReviewRequestTimeline` in slice 03's adapter registry, with `customers`, once
-   both slices are merged.

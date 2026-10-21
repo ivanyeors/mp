@@ -371,15 +371,12 @@ describe("the Weekly summary on Telegram", () => {
   it("counts the week's requests and how many were opened, and adds no line in a week with none", async () => {
     const week = { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
     db.customers = [];
-    expect(await realSources.loadWeeklySummaryCounts(admin, week)).toEqual({ newCustomers: 0 });
+    expect((await realSources.loadWeeklySummaryCounts(admin, week)).reviewRequests).toBeUndefined();
     db.customer_review_requests = [
       { customer_id: "a", token_hash: "1", created_at: "2026-10-12T02:00:00.000Z", first_clicked_at: "2026-10-12T05:00:00.000Z" },
       { customer_id: "b", token_hash: "2", created_at: "2026-10-14T02:00:00.000Z", first_clicked_at: null },
       { customer_id: "c", token_hash: "3", created_at: "2026-10-19T02:00:00.000Z", first_clicked_at: null },
     ];
-    expect(await realSources.loadWeeklySummaryCounts(admin, week)).toEqual({
-      newCustomers: 0,
-      reviewRequests: { sent: 2, opened: 1 },
-    });
+    expect((await realSources.loadWeeklySummaryCounts(admin, week)).reviewRequests).toEqual({ sent: 2, opened: 1 });
   });
 });
