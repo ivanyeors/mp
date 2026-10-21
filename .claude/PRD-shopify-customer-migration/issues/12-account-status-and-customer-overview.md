@@ -134,10 +134,12 @@ into the funnel in user story 11 without a second card.
 - [x] The backfill gives every already-linked row a date, and no unlinked row one.
 - [x] `account_last_seen_at` is written at most once an hour per Customer, and a failing write
       does not break `/account`.
-- [ ] `admin_customer_overview` cannot be selected with the anon key or as an authenticated
+- [x] `admin_customer_overview` cannot be selected with the anon key or as an authenticated
       Customer. The Supabase security advisor reports nothing new.
-      — _not yet: the grant half is verified on Postgres 16 (both roles get `permission denied`);
-      the security advisor needs the Supabase project, and the MCP connection was down_
+      — _verified on production 2026-10-21: neither role holds SELECT on the view, which is
+      `security_invoker`. The advisor's three warnings are the ones it gave before the
+      migrations; its 13 new notes are informational "RLS enabled, no policy" on the new
+      server-only tables_
 - [x] The *from Shopify + no account* filter matches
       `migrated_customers join customers where auth_user_id is null`, counted by hand.
 - [x] The migration card's numbers match the same hand-counted queries.
@@ -255,5 +257,7 @@ back transaction (`psql -v ON_ERROR_STOP=1 -f …` on a database with the migrat
   `lib/crm/__tests__/telegram-updates-job.test.ts` gained the overview fixture and a test of the
   real count.
 
-**Left for ops.** Apply the migration before the code: the new code reads the views, and the old
-code keeps working with the new columns and trigger. Then run the Supabase security advisor.
+**Production (2026-10-21).** Shipped in #293. The code deployed first, then all 30 migrations of
+both PRDs, the order #293's audit set: this slice's migration on its own could go first, but
+CRM 02's column grants cannot. Production's schema and grants then matched a local build of the
+same migrations, and the Supabase security advisor reported no new warning (above).
