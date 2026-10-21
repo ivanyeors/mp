@@ -136,6 +136,8 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
 
   await touchCustomerLastSeen(customer, admin);
 
+  await touchAccountProviders(customer, user, admin);
+
   return customer;
 }
 
@@ -181,6 +183,62 @@ export async function touchCustomerLastSeen(
     return !error && (data?.length ?? 0) > 0;
   } catch {
     // The visit is a convenience for Staff; the account page must load.
+    return false;
+  }
+}
+
+// ─── Contact status: how they sign in (CRM slice 11) ────────────────────────
+
+/**
+ * The sign-in methods on a login, as `account_providers` stores them: each
+ * identity's provider (`email`, `google`), sorted and once each. Null when the
+ * user object carries no identities to read, so nothing is written from a
+ * session that cannot say.
+ */
+export function accountProvidersOf(user: Pick<User, "identities">): string[] | null {
+  if (!Array.isArray(user.identities)) return null;
+  const providers = user.identities
+    .map((i) => (typeof i?.provider === "string" ? i.provider.trim() : ""))
+    .filter(Boolean);
+  return [...new Set(providers)].sort();
+}
+
+/** A text array as a Postgres literal, for re-checking the stored value in a filter. */
+function pgTextArray(values: readonly string[]): string {
+  return `{${values.map((v) => `"${v.replace(/["\\]/g, "\\$&")}"`).join(",")}}`;
+}
+
+/**
+ * Records how the Customer signs in, from the signed-in user's own identities
+ * (no `auth.users` read, no `supabase.auth.admin` call). Writes only when the
+ * methods changed, by the same conditional update as `touchCustomerLastSeen`:
+ * the update re-checks the login and the value it read, so of two concurrent
+ * page loads the second matches no row. Linking Google from the Profile shows
+ * on the Customer page after their next account page load. Only for the row
+ * this login owns. Best-effort: a failure is swallowed. Returns whether it
+ * wrote.
+ */
+export async function touchAccountProviders(
+  customer: Pick<Customer, "id" | "auth_user_id" | "account_providers">,
+  user: Pick<User, "id" | "identities">,
+  admin: ReturnType<typeof supabaseAdmin> = supabaseAdmin(),
+): Promise<boolean> {
+  if (customer.auth_user_id !== user.id) return false;
+  const next = accountProvidersOf(user);
+  if (!next) return false;
+  const stored = customer.account_providers ?? [];
+  if (stored.length === next.length && stored.every((p, i) => p === next[i])) return false;
+  try {
+    const { data, error } = await admin
+      .from("customers")
+      .update({ account_providers: next })
+      .eq("id", customer.id)
+      .eq("auth_user_id", user.id)
+      .eq("account_providers", pgTextArray(stored))
+      .select("id");
+    return !error && (data?.length ?? 0) > 0;
+  } catch {
+    // How they sign in is a convenience for Staff; the account page must load.
     return false;
   }
 }
