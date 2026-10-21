@@ -15,6 +15,10 @@ import { escapeLikePattern } from "@/lib/supabase/like-pattern";
  * list's client writes its URL with `customerFilterParams`, so a filtered list
  * is a link (migration slice 12).
  *
+ * CRM slice 11 adds Contact status: Google linked or not, and the mobile on
+ * file. *Email verified* is the Account filter: an account is bound by the
+ * email they signed in with, so *Signed up* means exactly that.
+ *
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
  *
@@ -28,6 +32,13 @@ export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 
 export const SOURCE_FILTERS = ["all", "shopify", "platform"] as const;
 export type SourceFilter = (typeof SOURCE_FILTERS)[number];
+
+export const GOOGLE_FILTERS = ["all", "linked", "not-linked"] as const;
+export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
+
+/** *On file* is a valid number, *invalid* one that fails `isValidPhone`, *missing* none. */
+export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
+export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
@@ -68,6 +79,10 @@ export interface CustomerFilters {
   account: AccountFilter;
   /** *From Shopify* is a **Migrated customer**; *Platform* is every other Customer. */
   source: SourceFilter;
+  /** Signs in with Google (`account_providers`); *not linked* includes no account. */
+  google: GoogleFilter;
+  /** The mobile on file (`has_phone`, `phone_valid`). */
+  mobile: MobileFilter;
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
   last_order: LastOrderFilter | null;
@@ -84,6 +99,8 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   tags: [],
   account: "all",
   source: "all",
+  google: "all",
+  mobile: "all",
   bought: [],
   last_order: null,
   readjusted: null,
@@ -110,6 +127,8 @@ const PARAM_SCHEMAS = {
   tags: commaList,
   account: z.enum(ACCOUNT_FILTERS),
   source: z.enum(SOURCE_FILTERS),
+  google: z.enum(GOOGLE_FILTERS),
+  mobile: z.enum(MOBILE_FILTERS),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
@@ -225,6 +244,8 @@ export function customerFilterParams(
   if (f.tags.length) out.set("tags", f.tags.join(","));
   if (f.account !== "all") out.set("account", f.account);
   if (f.source !== "all") out.set("source", f.source);
+  if (f.google !== "all") out.set("google", f.google);
+  if (f.mobile !== "all") out.set("mobile", f.mobile);
   if (f.bought.length) out.set("bought", f.bought.join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
@@ -268,6 +289,8 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   tags: (v) => `Tags: ${v.join(", ")}`,
   account: (v) => (v === "signed-up" ? "Signed up" : "No account"),
   source: (v) => (v === "shopify" ? "From Shopify" : "Platform"),
+  google: (v) => (v === "linked" ? "Google linked" : "Google not linked"),
+  mobile: (v) => (v === "on-file" ? "Valid mobile on file" : v === "missing" ? "Mobile missing" : "Mobile invalid"),
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
@@ -294,9 +317,10 @@ export function describeCustomerFilters(filters: ChosenFilters): { key: Customer
 export interface CustomerListQuery {
   ilike(column: string, pattern: string): this;
   overlaps(column: string, value: string): this;
+  contains(column: string, value: string[]): this;
   eq(column: string, value: boolean): this;
   is(column: string, value: null): this;
-  not(column: string, operator: "is", value: null): this;
+  not(column: string, operator: "is" | "cs", value: string | null): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
@@ -345,6 +369,13 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+
+  if (filters.google === "linked") q = q.contains("account_providers", ["google"]);
+  if (filters.google === "not-linked") q = q.not("account_providers", "cs", "{google}");
+
+  if (filters.mobile === "on-file") q = q.eq("phone_valid", true);
+  if (filters.mobile === "missing") q = q.eq("has_phone", false);
+  if (filters.mobile === "invalid") q = q.eq("has_phone", true).eq("phone_valid", false);
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
   if (filters.last_order) {

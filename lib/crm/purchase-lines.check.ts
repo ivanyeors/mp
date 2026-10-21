@@ -31,6 +31,7 @@ import { execFileSync } from "node:child_process";
 import {
   applyCustomerFilters,
   parseCustomerFilters,
+  pgTextArray,
   type CustomerListQuery,
 } from "@/lib/crm/customer-filters";
 import { boughtClasses, isCountedOrder, purchaseLine, type PurchaseLine } from "@/lib/crm/purchase-lines";
@@ -94,6 +95,10 @@ class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} && ${lit(value)}::text[]`);
     return this;
   }
+  contains(column: string, value: string[]) {
+    this.where.push(`${column} @> ${lit(pgTextArray(value))}::text[]`);
+    return this;
+  }
   eq(column: string, value: boolean) {
     this.where.push(`${column} = ${lit(value)}`);
     return this;
@@ -102,8 +107,8 @@ class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} is null`);
     return this;
   }
-  not(column: string) {
-    this.where.push(`${column} is not null`);
+  not(column: string, operator: "is" | "cs", value: string | null) {
+    this.where.push(operator === "is" ? `${column} is not null` : `not (${column} @> ${lit(String(value))}::text[])`);
     return this;
   }
   gte(column: string, value: string | number) {

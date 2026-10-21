@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { User, Search, Loader2, SlidersHorizontal } from "lucide-react";
+import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,8 @@ import {
     type CustomerFilterParam,
     type CustomerListFilters,
     type CustomerSort,
+    type GoogleFilter,
+    type MobileFilter,
     type SourceFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
@@ -95,26 +97,69 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 /** The CRM filters that live in the Filters panel rather than the toolbar (CRM slice 04). */
 const PANEL_FILTERS: CustomerFilterKey[] = ["bought", "last_order", "readjusted", "min_spend", "tags"];
 
-/** The Account status: *Signed up* with its date, or a muted *No account*. */
+/**
+ * Contact status as small marks (CRM slice 11): how they sign in (an envelope
+ * for the emailed code, G for Google) and a phone when a valid number is on
+ * file. Each says what it means to a screen reader and on hover.
+ */
+function ContactMarks({ customer }: { customer: CustomerOverviewRow }) {
+    const providers = customer.account_providers ?? [];
+    const marks: { key: string; label: string; mark: ReactNode }[] = [];
+    if (providers.includes("email")) {
+        marks.push({ key: "email", label: "Signs in with an email code", mark: <Mail className="h-3.5 w-3.5" /> });
+    }
+    if (providers.includes("google")) {
+        marks.push({ key: "google", label: "Signs in with Google", mark: <span className="text-xs font-bold leading-none">G</span> });
+    }
+    if (customer.phone_valid) {
+        marks.push({ key: "mobile", label: "Valid number on file", mark: <Smartphone className="h-3.5 w-3.5" /> });
+    }
+    if (marks.length === 0) return null;
+    return (
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            {marks.map((m) => (
+                <span key={m.key} role="img" aria-label={m.label} title={m.label} className="inline-flex items-center">
+                    {m.mark}
+                </span>
+            ))}
+        </span>
+    );
+}
+
+/** The Account status: *Signed up* with its date, or a muted *No account*, then the Contact marks. */
 function AccountStatus({ customer, compact = false }: { customer: CustomerOverviewRow; compact?: boolean }) {
     if (!customer.has_account) {
         return compact ? (
-            <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
-                No account
-            </Badge>
+            <span className="inline-flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                    No account
+                </Badge>
+                <ContactMarks customer={customer} />
+            </span>
         ) : (
-            <span className="text-sm text-muted-foreground">No account</span>
+            <span className="text-sm text-muted-foreground">
+                No account
+                <span className="block">
+                    <ContactMarks customer={customer} />
+                </span>
+            </span>
         );
     }
     const since = formatAdminDateMY(customer.account_linked_at);
     return compact ? (
-        <Badge variant="secondary" className="text-xs font-normal">
-            Signed up {since}
-        </Badge>
+        <span className="inline-flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs font-normal">
+                Signed up {since}
+            </Badge>
+            <ContactMarks customer={customer} />
+        </span>
     ) : (
         <span className="text-sm">
             Signed up
             <span className="block text-xs text-muted-foreground">{since}</span>
+            <span className="block">
+                <ContactMarks customer={customer} />
+            </span>
         </span>
     );
 }
@@ -196,6 +241,8 @@ export function CustomersClient({
 
     const changeAccount = (value: string) => changeFilters({ account: value as AccountFilter });
     const changeSource = (value: string) => changeFilters({ source: value as SourceFilter });
+    const changeGoogle = (value: string) => changeFilters({ google: value as GoogleFilter });
+    const changeMobile = (value: string) => changeFilters({ mobile: value as MobileFilter });
     const changeSort = (value: string) => changeFilters({ sort: value as CustomerSort });
 
     // The summary's × and Clear all. Search is also the box's text.
@@ -287,8 +334,9 @@ export function CustomersClient({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All accounts</SelectItem>
-                        <SelectItem value="signed-up">Signed up</SelectItem>
-                        <SelectItem value="no-account">No account</SelectItem>
+                        {/* An account is bound by the email they signed in with (CRM 11). */}
+                        <SelectItem value="signed-up">Signed up · email verified</SelectItem>
+                        <SelectItem value="no-account">No account · email not verified</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -300,6 +348,29 @@ export function CustomersClient({
                         <SelectItem value="all">All sources</SelectItem>
                         <SelectItem value="shopify">From Shopify</SelectItem>
                         <SelectItem value="platform">Platform</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.google} onValueChange={changeGoogle}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Google">
+                        <SelectValue placeholder="Google" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any sign-in</SelectItem>
+                        <SelectItem value="linked">Google linked</SelectItem>
+                        <SelectItem value="not-linked">Google not linked</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.mobile} onValueChange={changeMobile}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Mobile">
+                        <SelectValue placeholder="Mobile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any mobile</SelectItem>
+                        <SelectItem value="on-file">Valid mobile on file</SelectItem>
+                        <SelectItem value="missing">Mobile missing</SelectItem>
+                        <SelectItem value="invalid">Mobile invalid</SelectItem>
                     </SelectContent>
                 </Select>
 

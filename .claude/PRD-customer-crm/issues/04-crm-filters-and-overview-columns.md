@@ -138,12 +138,18 @@ The README records it so it is not lost. It is fixed separately, outside the CRM
 - `20261020122100_customer_search_text_index.sql`: a trigram GIN index on the `search_text`
   expression over `customers`. The planner drops the view's other joins for a search, so the
   search is a filtered scan of `customers`.
-- `20261020200000_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
-  keeps all 18 columns and adds `paid_orders`, `first_paid_at`, `last_paid_at`, `bought`,
-  `last_readjusted_at` and `search_text`, aggregated in grouped subqueries.
-- DB check: all migrations apply in order (`db-check.sh`, 165). As `authenticated` and `anon`,
-  both views give *permission denied*; `service_role` reads them. Migration 12's
-  `assert-12-account-status.sql` still passes.
+- `20261020200100_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
+  keeps every earlier column: migration 12's 18, then CRM 11's `account_providers`,
+  `has_phone` and `phone_valid` from `20261020200000`. It adds `paid_orders`,
+  `first_paid_at`, `last_paid_at`, `bought`, `last_readjusted_at` and `search_text`, computed
+  in grouped subqueries. The file was first `20261020200000` and was renamed at the catch-up
+  merge, because CRM 11 had taken that minute.
+- DB check: all migrations apply in order (`db-check.sh`, 169 after the catch-up). As
+  `authenticated` and `anon`, both views give *permission denied*; `service_role` reads them.
+  Migration 12's `assert-12-account-status.sql` and CRM 11's `assert-11-contact-status.sql`
+  still pass.
+- **CRM 11's filters** (`google`, `mobile`) are in the one schema too, with summary labels. They
+  stay in the toolbar, where CRM 11 put them.
 
 **Tests.**
 

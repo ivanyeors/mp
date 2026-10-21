@@ -2,7 +2,9 @@
 -- ADR 0028 (k)).
 --
 -- `create or replace view admin_customer_overview` keeps every column the
--- last definition had, in order, and adds at the end:
+-- last definition had, in order (migration 12's, then CRM 11's
+-- account_providers, has_phone and phone_valid from 20261020200000), and adds
+-- at the end:
 --   paid_orders                  counted platform Orders: paid_at set, status not
 --                                pending, cancelled, refunded or payment_failed
 --                                (purchases.ts's NOT_A_PURCHASE)
@@ -47,6 +49,9 @@ select
   m.claimed_at,
   m.shopify_orders_count,
   m.shopify_amount_spent,
+  c.account_providers,
+  not public.is_blank_phone(c.phone) as has_phone,
+  public.is_valid_phone(c.phone)     as phone_valid,
   coalesce(po.paid_orders, 0)        as paid_orders,
   po.first_paid_at,
   po.last_paid_at,

@@ -56,7 +56,7 @@ describe("isCountedOrder", () => {
   it("excludes in SQL exactly the statuses purchases.ts excludes", () => {
     // Both views write the list out; it must be NOT_A_PURCHASE, in either.
     const dir = new URL("../../../supabase/migrations/", import.meta.url);
-    for (const file of ["20261020122000_customer_purchase_lines.sql", "20261020200000_customer_overview_crm_columns.sql"]) {
+    for (const file of ["20261020122000_customer_purchase_lines.sql", "20261020200100_customer_overview_crm_columns.sql"]) {
       const sql = readFileSync(new URL(file, dir), "utf8").replace(/--.*$/gm, "");
       const lists = [...sql.matchAll(/status not in \(([^)]*)\)/g)].map(([, l]) => l.replace(/[\s']/g, "").split(",").sort());
       expect(lists.length, file).toBeGreaterThan(0);

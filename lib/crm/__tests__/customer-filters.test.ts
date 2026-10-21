@@ -38,6 +38,7 @@ function recorder() {
   const q = {
     ilike: record("ilike"),
     overlaps: record("overlaps"),
+    contains: record("contains"),
     eq: record("eq"),
     is: record("is"),
     not: record("not"),
@@ -289,6 +290,46 @@ describe("applyCustomerFilters", () => {
   });
 });
 
+describe("Contact status filters (CRM slice 11)", () => {
+  it("maps Google linked and not linked to the sign-in methods", () => {
+    expect(query("google=linked").calls).toEqual([["contains", "account_providers", ["google"]], newest]);
+    // Not linked includes every Customer with no account, whose list is empty.
+    expect(query("google=not-linked").calls).toEqual([["not", "account_providers", "cs", "{google}"], newest]);
+  });
+
+  it("maps the three Mobile values to the two derived columns, so each Customer is in exactly one", () => {
+    expect(query("mobile=on-file").calls).toEqual([["eq", "phone_valid", true], newest]);
+    expect(query("mobile=missing").calls).toEqual([["eq", "has_phone", false], newest]);
+    expect(query("mobile=invalid").calls).toEqual([
+      ["eq", "has_phone", true],
+      ["eq", "phone_valid", false],
+      newest,
+    ]);
+  });
+
+  it("reads them from the URL, drops an unknown value, and writes them back", () => {
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams("google=linked&mobile=nope"));
+    expect(filters).toMatchObject({ google: "linked", mobile: "all" });
+    expect(ignored).toEqual(["mobile"]);
+    expect(customerFilterParams({ google: "not-linked", mobile: "invalid" }).toString()).toBe(
+      "google=not-linked&mobile=invalid",
+    );
+  });
+
+  it("has no Email filter of its own: email verified is Signed up", () => {
+    expect(CUSTOMER_FILTER_PARAMS).not.toContain("email");
+    expect(query("account=signed-up").calls).toEqual([["eq", "has_account", true], newest]);
+  });
+
+  it("labels them in the active-filter summary", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("google=not-linked&mobile=invalid"));
+    expect(describeCustomerFilters(filters)).toEqual([
+      { key: "google", label: "Google not linked" },
+      { key: "mobile", label: "Mobile invalid" },
+    ]);
+  });
+});
+
 describe("on the real Supabase query builder", () => {
   // No request is sent: the builder's URL is what PostgREST would receive.
   const builder = () =>
@@ -333,6 +374,8 @@ describe("customerFilterParams", () => {
       tags: ["vip", 'say "hi"'],
       account: "signed-up",
       source: "platform",
+      google: "linked",
+      mobile: "missing",
       bought: ["premium", "mbolster"],
       last_order: { when: "over", months: 18 },
       readjusted: "never",
@@ -360,9 +403,11 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
       "account",
       "bought",
+      "google",
       "last_order",
       "limit",
       "min_spend",
+      "mobile",
       "page",
       "readjusted",
       "search",
@@ -377,8 +422,10 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_KEYS].sort()).toEqual([
       "account",
       "bought",
+      "google",
       "last_order",
       "min_spend",
+      "mobile",
       "readjusted",
       "search",
       "source",
