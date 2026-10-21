@@ -8,6 +8,8 @@ demoable path through all layers.
   link them in the table below.
 - **Base:** start after `claude/shopify-migration-plan-izv7fo` merges. Every slice edits code
   that only exists on that branch.
+- **Owner decisions:** all 15 were taken on 2026-10-21 (PRD). Counsel and the accountant still
+  have questions in slice 08.
 
 ## Slices
 
@@ -15,10 +17,10 @@ demoable path through all layers.
 |---|-------|------|--------|------------|--------------|
 | [01](01-glossary-and-adr.md) | Glossary and ADR 0030: what a point is, and what it is not | AFK | **not started** | migration merge | underpins all |
 | [02](02-ledger-balance-and-staff.md) | The points ledger, the balance, the settings, and Staff adjustments | AFK | **not started** | 01 | 3, 10, 11, 12 |
-| [03](03-earning.md) | Earning: points written when an Order's return window closes | AFK | **not started** | 02 | 1, 2, 6 |
-| [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **not started** | 02 | 4, 5, 9, 13 |
+| [03](03-earning.md) | Earning: points written when an Order's return window closes | AFK | **not started** | 02 | 1, 2, 6, 14 |
+| [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **not started** | 02 | 4, 5, 9, 13, 14 |
 | [05](05-claim-bonus.md) | The Claim bonus replaces the voucher, for every customer-facing surface | AFK | **not started** | 02, 04 | 7 |
-| [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **not started** | 05; open decision 6 | 7, 12 |
+| [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **not started** | 05 | 7, 12 |
 | [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **not started** | 02, 03 | 8 |
 | [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **not started** | 03, 04, 05 | all |
 
@@ -58,15 +60,15 @@ graph TD
 2. **02.** It can merge and run in production with `points_enabled` off. Staff adjustments work
    from day one.
 3. **03 and 04 in parallel.** They touch different files: 03 touches Accept, the daily job and
-   `charge.refunded`. 04 touches checkout, the session-ending webhooks and the RMA refund.
+   `charge.refunded`. 04 touches checkout and the session-ending webhooks.
 4. **05,** once 04 has merged, because the bonus must be spendable before any email promises it.
 5. **08,** then the migration's waves. **06** and **07** follow, and both must land before the
    first reminder is due, 21 months after launch.
 
 **The import does not wait for points.** Migration slice 04 can import into production now.
-Anyone who claims before points launch gets the Claim bonus at their next sign-in inside the
-window (slice 05). That is the reason the voucher's "set the terms before the import" rule no
-longer applies.
+Anyone who claims before points launch gets the Claim bonus at their next sign-in, if the Claim
+fell inside their window (slice 05). That is the reason the voucher's "set the terms before the
+import" rule no longer applies.
 
 ## Hazards
 
@@ -87,14 +89,20 @@ Customer (slice 03). Spending points on Results needs its own PRD.
 **Fifth hazard.** 100 points = S$1 is a constant in code, never a setting. Making it editable
 would let one save devalue every balance.
 
+**Sixth hazard.** "Is this Customer a partner?" has one answer: `is_partner_customer`
+(slice 02). The earn job, checkout, the Claim and Staff adjustments all ask it. Do not write a
+second check.
+
 ## What the audit found, so it is not re-litigated
 
-- **Refunds already pay out cash only, up to what was captured.** A full refund of a
-  points-paid order already obeys "points used are not refunded". Only the RMA's per-line amount
-  changes (slice 04).
+- **Refunds need no change.** Every refund path already pays cash only, up to the cash not yet
+  refunded. That is exactly the owner's rule: points used are never refunded, and a partial
+  return treats them as spent on what was kept. Slice 04 pins this with tests and changes no
+  refund code.
 - **Discounts already stack.** Partner pricing is added to the coupon and sent to Stripe as one
   `amount_off`. Points join that sum. Do not add a second Stripe discount.
 - **GST is off.** Mellow Life is not GST-registered, and the owner ruled that GST does not count
   for points. Build nothing for it.
+- **Vouchers are gone.** A code-based incentive is an ordinary Discounts code (owner, decision 14).
 - **Nothing for Shopify.** No points for Shopify-era spend, and no Shopify app or integration
   (CLAUDE.md).

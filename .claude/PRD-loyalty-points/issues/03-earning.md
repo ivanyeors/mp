@@ -4,13 +4,13 @@
 **Type:** AFK
 **Status:** not started
 **Blocked by:** 02
-**User stories:** 1, 2, 6
+**User stories:** 1, 2, 6, 14
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:checkout`, `area:results`
 
 ## Goal
 
-Every Order paid after launch earns `floor(rate × base)` points, written once, 30 days after
-delivery, on the cash the customer kept (rules c–e, l). Shop, Result and paid Re-adjustment
+Every non-partner Order paid after launch earns `floor(rate × base)` points, written once, 30
+days after delivery, on the cash the customer kept (rules c–e, m). Shop, Result and paid Re-adjustment
 Orders all earn. Nothing in the Results money path changes, except that Accept now names the
 Customer.
 
@@ -29,6 +29,8 @@ Customer.
 
 - was paid on or after `points_launch_at`, while `points_enabled`;
 - is not `cancelled` or `payment_failed`;
+- has no `self_purchase_partner_id`, and its Customer is not a partner (`is_partner_customer`,
+  rule r);
 - had its window close: `delivered_at + 30 days ≤ now`, or `paid_at + 30 days` for an Order
   with service lines only;
 - has `base > 0` and no `earn` entry.
@@ -66,7 +68,8 @@ A refund before release needs nothing, because the base subtracts `amount_refund
       - an Order inside its window earns nothing yet;
       - the day after, it earns once;
       - a second run writes nothing;
-      - a cancelled Order, and one paid before launch, never earn.
+      - a cancelled Order, one paid before launch, a partner self-purchase and an Order by a
+        partner Customer never earn.
 - [ ] **Clawback.**
       - A refund after release claws back once per refund id, never below zero.
       - A replayed webhook writes nothing.

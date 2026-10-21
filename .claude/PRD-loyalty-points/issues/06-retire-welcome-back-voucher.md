@@ -3,15 +3,19 @@
 **Issue:** not filed
 **Type:** AFK
 **Status:** not started
-**Blocked by:** 05; open decision 6
+**Blocked by:** 05
 **User stories:** underpins 7, 12
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:admin`, `area:checkout`
 
 ## Goal
 
-After slice 05, nothing issues a Welcome-back voucher and no customer sees one. Remove what is
-left, so the code has one incentive, not a live one and a dead one. Staff surfaces show Claim
-bonus and points facts in place of voucher facts.
+The owner has deleted the voucher feature (decision 14). After slice 05, nothing issues a
+Welcome-back voucher and no customer sees one. Remove what is left, so the code has one
+incentive, not a live one and a dead one. Staff surfaces show Claim bonus and points facts in
+place of voucher facts.
+
+Coupons go back to being bearer codes only. Any future code-based incentive is an ordinary
+Discounts code, with no customer binding.
 
 ## Scope
 

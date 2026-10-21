@@ -15462,63 +15462,63 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/01-glossary-and-adr.md": {
-    "mtime": 1792582208.075613,
-    "seen": 1792582289.3144076,
-    "ast_hash": "ac0c1cbcf76a114deb3bb4179377df4b",
+    "mtime": 1792585640.222441,
+    "seen": 1792585707.0534403,
+    "ast_hash": "8a62bb7046985bece4020263a7ec144d",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/02-ledger-balance-and-staff.md": {
-    "mtime": 1792582208.111613,
-    "seen": 1792582289.3144143,
-    "ast_hash": "4fe08b1bca55bd093e74473d3abc4329",
+    "mtime": 1792585604.2584417,
+    "seen": 1792585707.0534453,
+    "ast_hash": "cf7d416f82b3faa0ce50bbb95971cfff",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/03-earning.md": {
-    "mtime": 1792582208.143613,
-    "seen": 1792582289.3144174,
-    "ast_hash": "170c19e4a4bea6a9efbd1c20f5d4b88f",
+    "mtime": 1792585604.4376483,
+    "seen": 1792585707.053448,
+    "ast_hash": "65eb8f22025fc6ec51489c0de8da15a2",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/04-spending-at-shop-checkout.md": {
-    "mtime": 1792582208.179613,
-    "seen": 1792582289.3144214,
-    "ast_hash": "ea7f708da22f452b1a3cf8b8bbb9d6ab",
+    "mtime": 1792585566.4974518,
+    "seen": 1792585707.053451,
+    "ast_hash": "5df2daa9aa6fad0d1652edf2395c04a4",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/05-claim-bonus.md": {
-    "mtime": 1792582208.2156131,
-    "seen": 1792582289.3144243,
-    "ast_hash": "f85949b799f9397df78083f3844fec3f",
+    "mtime": 1792585566.5744426,
+    "seen": 1792585707.0534537,
+    "ast_hash": "20260c0a01e8eae5898a2e6105a4a5bd",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/06-retire-welcome-back-voucher.md": {
-    "mtime": 1792582225.5876126,
-    "seen": 1792582289.3144274,
-    "ast_hash": "d938ec9c9f62f566b0f855a70ac8b2f7",
+    "mtime": 1792585604.5304418,
+    "seen": 1792585707.053456,
+    "ast_hash": "98feab58abe392efc63c7a37a3a8af1c",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/07-expiry-and-reminders.md": {
-    "mtime": 1792582208.2805698,
-    "seen": 1792582289.31443,
-    "ast_hash": "cd238c7c5b6c3280ab77daef90e8a810",
+    "mtime": 1792585566.666256,
+    "seen": 1792585707.0534585,
+    "ast_hash": "9792767eb964b3fd7207dd22c04c05ca",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md": {
-    "mtime": 1792582208.303613,
-    "seen": 1792582289.3144326,
-    "ast_hash": "3d425345428a5a1f49e760dba8ba0b69",
+    "mtime": 1792585617.1024415,
+    "seen": 1792585707.0534606,
+    "ast_hash": "624be96726cdd69fd1a0e36fb7133bf0",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/README.md": {
-    "mtime": 1792582208.327613,
-    "seen": 1792582289.3144665,
-    "ast_hash": "32af8440e0644a58dea91ce9f1395064",
+    "mtime": 1792585640.2761912,
+    "seen": 1792585707.0534632,
+    "ast_hash": "2f8131cb8eb5086c2fc1e38d0a544c6d",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
-    "mtime": 1792582076.4276161,
-    "seen": 1792582289.3144722,
-    "ast_hash": "1ac9d01d3c51aaf3f3a8f62c6fa009aa",
+    "mtime": 1792585525.7624435,
+    "seen": 1792585707.0534656,
+    "ast_hash": "6869793e54f2f375bdfcef7be6df926b",
     "semantic_hash": ""
   }
 }

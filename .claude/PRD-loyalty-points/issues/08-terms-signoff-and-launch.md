@@ -25,9 +25,11 @@ email, and a liability figure the accountant accepts. Only then may the migratio
   - pending for 30 days after delivery;
   - spent in S$1 steps, from S$5, up to half the products' price;
   - shop orders only, and not on custom pillows;
-  - points used are not refunded, and a returned item refunds its cash share;
-  - the Claim bonus;
-  - expiry 24 months after the last purchase, with three reminders;
+  - points used are not refunded. A return refunds cash, up to the cash paid on the order;
+  - the Claim bonus: S$10, for claiming within 3 months of our email;
+  - expiry 24 months after the last purchase, with three reminders to customers who agreed to
+    marketing email;
+  - partner accounts neither earn nor spend points;
   - points cannot be cashed out, transferred or bought;
   - changes come with 30 days' notice and never reduce an existing balance.
 - The copy is English, like every template today.
@@ -36,9 +38,9 @@ email, and a liability figure the accountant accepts. Only then may the migratio
 
 - **Under the Consumer Protection (Fair Trading) Act:** is the terms page clear on the two
   exclusions (custom pillows, no refund of points used)?
-- **Under the Spam Control Act:** are the Claim bonus email and the expiry reminders account
-  notices or commercial messages? Slice 07 has the one-condition switch for the reminders, and
-  `claimOnSignIn` takes the same gate for the bonus email.
+- **Under the Spam Control Act:** is the Claim bonus email an account notice or a commercial
+  message? If commercial, `claimOnSignIn` gates it on Marketing consent. The expiry reminders
+  already go only to customers who agreed (owner decision 9).
 - **Under the Payment Services Act:** do points stay a single-merchant loyalty scheme outside the
   e-money rules? The terms forbid buying, cashing out and transferring them.
 
@@ -49,17 +51,19 @@ email, and a liability figure the accountant accepts. Only then may the migratio
 - Agree which figure from the Settings → Points cost summary goes into the books, and how
   often.
 
-**Production settings.** The owner sets `points_launch_at`, `points_claim_bonus` and
-`points_claim_bonus_until`, then turns on `points_enabled`.
+**Production settings.** The owner checks the seeded defaults (1,000-point bonus, 3-month
+window), sets `points_launch_at`, then turns on `points_enabled`.
 
 **The live test, with a real card on production.**
 
 1. A Staff account buys a S$45 cover and pays in full.
-2. Staff add 2,000 points with a note.
-3. A second order uses S$20 of points.
+2. Staff add 1,000 points with a note.
+3. A second order, of two items, uses S$10 of points.
 4. Abandon a third Checkout with points and confirm they come back after it expires.
-5. Return one item through an RMA and confirm the refund is its cash share.
+5. Return one item of the second order through an RMA. Confirm the refund is cash only and no
+   points come back.
 6. Confirm every ledger entry on the Customer detail.
+7. Confirm that a partner's account shows no points control at checkout.
 
 ## Acceptance criteria
 

@@ -28,10 +28,14 @@ or spends. The demo: Staff add 500 points to a Customer with a note, and that cu
   - `expires_on`: `last_purchase_at` plus `points_expiry_months`, null when `available` is 0.
 - **`adjust_points(p_customer_id, p_points, p_note, p_profile_id)`.**
   - It writes an `adjust` entry.
-  - It refuses an empty note, and refuses a removal that would take the balance below zero.
-- **Settings.** The eight `points_*` keys in `site_settings`. Only `points_enabled = 'false'`
-  and the four defaults are seeded. The launch date and the Claim bonus are left blank for the
-  owner.
+  - It refuses an empty note, a removal that would take the balance below zero, and any
+    partner (rule r).
+- **`is_partner_customer(p_customer_id)`.** Rule (r) as one SQL function, so the earn job, the
+  Claim and the adjustment all ask the same question. TypeScript mirrors it for checkout, with a
+  parity test.
+- **Settings.** The eight `points_*` keys in `site_settings`. Every default from the PRD is
+  seeded, including `points_claim_bonus = 1000` and `points_claim_bonus_months = 3`, with
+  `points_enabled = 'false'`. Only `points_launch_at` is left blank for the owner.
 
 ## Surfaces
 
@@ -40,6 +44,7 @@ or spends. The demo: Staff add 500 points to a Customer with a note, and that cu
   - the latest 20 entries, each with its kind, points, dollars, Order link and note.
 
   **Adjust** needs `customers-edit`, a reason, and a confirmation. It writes `admin_audit_log`.
+  For a partner, the card says "Partner: points don't apply", with no Adjust button.
 - **Settings → Discounts → Points card** (`discounts` permission):
   - the eight settings, with server-side validation;
   - a cost summary from one view, `admin_points_summary`:
@@ -60,7 +65,10 @@ or spends. The demo: Staff add 500 points to a Customer with a note, and that cu
 - [ ] `update` and `delete` on `points_ledger` raise, for every role including the service role.
 - [ ] `anon` and `authenticated` can neither read the ledger nor execute either function (SQL
       assert, like `assert-grants.sql`).
-- [ ] An adjustment with no note, or one that would take the balance below zero, is refused.
+- [ ] An adjustment with no note, one that would take the balance below zero, or one for a
+      partner is refused.
+- [ ] `is_partner_customer` matches a partner by login and by email (case-insensitive). It does
+      not match a customer whose partner application was not approved.
 - [ ] Adjust is refused for a role without `customers-edit`. Its audit row names the Staff
       profile.
 - [ ] The Profile shows only the session's own balance, and nothing while `points_enabled` is off.
