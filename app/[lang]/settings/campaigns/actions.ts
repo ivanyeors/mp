@@ -1,0 +1,265 @@
+"use server";
+
+import { assertAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
+import { resolveSegment } from "@/lib/crm/segments";
+import {
+  CampaignDraftSchema,
+  MAX_TEST_RECIPIENTS,
+  type Campaign,
+  type CampaignDraftInput,
+} from "@/lib/email-campaigns/rules";
+import {
+  BATCH_SIZE,
+  campaignReadiness,
+  planWave,
+  renderCampaignPreview,
+  sendCampaignBatch,
+  sendCampaignTest,
+  type BatchResult,
+  type CampaignReadiness,
+  type WavePlanResult,
+} from "@/lib/email-campaigns/sender";
+import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
+import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
+import { getWorkingAs } from "@/lib/staff/working-as";
+import { supabaseAdmin } from "@/lib/supabase/server";
+
+/**
+ * Admin Panel → Email campaigns (PRD-email-marketing).
+ *
+ * Every action checks `campaigns`, a key of its own that Owner and Admin hold:
+ * Manager and Staff hold `customers` and must not email the whole list. The
+ * rules live in lib/email-campaigns; these only check the caller, parse the
+ * input and audit. No answer carries a customer's email: a wave is planned as
+ * ids, and each batch answers with counts.
+ */
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NOT_FOUND = { ok: false as const, error: "That campaign does not exist." };
+
+type Failure = { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+function parseDraft(input: CampaignDraftInput) {
+  const parsed = CampaignDraftSchema.safeParse(input);
+  if (parsed.success) return { ok: true as const, draft: parsed.data };
+  const fieldErrors: Record<string, string> = {};
+  for (const issue of parsed.error.issues) {
+    const key = issue.path.join(".") || "form";
+    fieldErrors[key] ??= issue.message;
+  }
+  return { ok: false as const, error: "Check the highlighted fields.", fieldErrors };
+}
+
+async function loadCampaign(id: string): Promise<Campaign | null> {
+  if (typeof id !== "string" || !UUID.test(id)) return null;
+  return getCampaign(supabaseAdmin(), id);
+}
+
+/** The audit's snapshot: what was sent and to whom, never a customer. */
+const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button">) => ({
+  name: c.name,
+  subject: c.subject,
+  audience: c.audience,
+  segment_id: c.segmentId,
+  button: c.button?.target ?? null,
+});
+
+/** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */
+export async function saveCampaign(
+  id: string | null,
+  input: CampaignDraftInput,
+): Promise<{ ok: true; id: string } | Failure> {
+  const ctx = await assertAdmin("campaigns");
+  const parsed = parseDraft(input);
+  if (!parsed.ok) return parsed;
+  const admin = supabaseAdmin();
+  const actor = { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId };
+
+  try {
+    if (!id) {
+      const workingAs = await getWorkingAs(ctx.memberId);
+      const newId = await createCampaign(admin, parsed.draft, workingAs?.id ?? null);
+      await recordAdminAction({ actor, action: "email_campaign.create", entityType: "email_campaign", entityId: newId, after: auditSnapshot(parsed.draft) });
+      return { ok: true, id: newId };
+    }
+    const before = await loadCampaign(id);
+    if (!before || before.archivedAt) return NOT_FOUND;
+    await updateCampaign(admin, id, parsed.draft, Boolean(before.lockedAt));
+    await recordAdminAction({
+      actor,
+      action: "email_campaign.update",
+      entityType: "email_campaign",
+      entityId: id,
+      before: auditSnapshot(before),
+      after: auditSnapshot(before.lockedAt ? { ...before, name: parsed.draft.name } : parsed.draft),
+    });
+    return { ok: true, id };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/** A copy of a campaign as a new draft, to change one that has started sending. */
+export async function duplicateCampaign(id: string): Promise<{ ok: true; id: string } | Failure> {
+  const ctx = await assertAdmin("campaigns");
+  const source = await loadCampaign(id);
+  if (!source) return NOT_FOUND;
+  const name = `Copy of ${source.name}`.slice(0, 80);
+  return saveCampaign(null, { ...source, name }).then(async (r) => {
+    if (r.ok) {
+      await recordAdminAction({
+        actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
+        action: "email_campaign.duplicate",
+        entityType: "email_campaign",
+        entityId: r.id,
+        before: { from: id },
+      });
+    }
+    return r;
+  });
+}
+
+export async function archiveCampaignAction(id: string): Promise<{ ok: true } | Failure> {
+  const ctx = await assertAdmin("campaigns");
+  const campaign = await loadCampaign(id);
+  if (!campaign) return NOT_FOUND;
+  try {
+    await archiveCampaign(supabaseAdmin(), id);
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+  await recordAdminAction({
+    actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
+    action: "email_campaign.archive",
+    entityType: "email_campaign",
+    entityId: id,
+    before: auditSnapshot(campaign),
+  });
+  return { ok: true };
+}
+
+/** The editor's live preview of the draft as typed. Saves nothing. */
+export async function previewCampaign(
+  input: CampaignDraftInput,
+): Promise<{ ok: true; subject: string; html: string; text: string } | Failure> {
+  const ctx = await assertAdmin("campaigns");
+  const parsed = parseDraft(input);
+  if (!parsed.ok) return parsed;
+  const workingAs = await getWorkingAs(ctx.memberId);
+  const rendered = renderCampaignPreview(parsed.draft, {
+    origin: campaignSenderSetup().origin,
+    firstName: workingAs?.name.split(/\s+/)[0] ?? null,
+  });
+  return { ok: true, ...rendered };
+}
+
+/** Every check a send must pass, for the page's status panel. Changes nothing. */
+export async function checkCampaignReadiness(id?: string): Promise<CampaignReadiness> {
+  await assertAdmin("campaigns");
+  return campaignReadiness(campaignSenderSetup(), { campaignId: id && UUID.test(id) ? id : undefined });
+}
+
+/** Sends the saved campaign to up to three addresses, with "[Test]" in the subject. Writes nothing to the ledger. */
+export async function sendCampaignTestAction(
+  id: string,
+  to: string[],
+): Promise<{ ok: true; sent: number; failed: { to: string; error: string }[] } | Failure> {
+  const ctx = await assertAdmin("campaigns");
+  const campaign = await loadCampaign(id);
+  if (!campaign || campaign.archivedAt) return NOT_FOUND;
+  if (!Array.isArray(to) || to.length > MAX_TEST_RECIPIENTS) {
+    return { ok: false, error: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
+  }
+  const workingAs = await getWorkingAs(ctx.memberId);
+  const result = await sendCampaignTest(
+    campaign,
+    { to: to.filter((t) => typeof t === "string"), firstName: workingAs?.name.split(/\s+/)[0] ?? null },
+    campaignSenderSetup(),
+  );
+  if ("refused" in result) return { ok: false, error: result.refused };
+  await recordAdminAction({
+    actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
+    action: "email_campaign.test",
+    entityType: "email_campaign",
+    entityId: id,
+    after: { sent: result.sent.length, failed: result.failed.length },
+  });
+  return { ok: true, sent: result.sent.length, failed: result.failed };
+}
+
+export type WaveRequest = { size: number; retryFailed?: boolean; resume?: boolean };
+
+export type WaveAnswer =
+  | ({ ok: true; started: boolean; batchSize: number } & WavePlanResult)
+  | Failure;
+
+/**
+ * Who a wave of `size` would go to now, with every check. With `start`, and
+ * when every check passes, it also fixes the campaign's content (the first
+ * wave locks it) and returns the ids the browser then sends a batch at a time.
+ */
+export async function planCampaignWave(id: string, req: WaveRequest, start = false): Promise<WaveAnswer> {
+  const ctx = await assertAdmin("campaigns");
+  const campaign = await loadCampaign(id);
+  if (!campaign || campaign.archivedAt) return NOT_FOUND;
+  const setup = campaignSenderSetup();
+  let result: WavePlanResult;
+  try {
+    result = await planWave(
+      campaign,
+      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume) },
+      setup,
+      campaign.segmentId ? () => resolveSegment(campaign.segmentId!) : undefined,
+    );
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+
+  const started = start && result.readiness.ready && result.customerIds.length > 0;
+  if (started) {
+    try {
+      await lockCampaign(setup.admin, id);
+    } catch (err) {
+      return { ok: false, error: message(err) };
+    }
+    await recordAdminAction({
+      actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
+      action: "email_campaign.wave_start",
+      entityType: "email_campaign",
+      entityId: id,
+      after: {
+        wave: result.wave,
+        size: result.customerIds.length,
+        eligible: result.plan.eligible,
+        retry_failed: Boolean(req.retryFailed),
+        resumed: Boolean(req.resume),
+      },
+    });
+  }
+  return { ok: true, started, batchSize: BATCH_SIZE, ...result, customerIds: started ? result.customerIds : [] };
+}
+
+/** One batch of a started wave. The browser calls it until the wave's ids run out, or it says stop. */
+export async function sendCampaignBatchAction(
+  id: string,
+  batch: { wave: string; customerIds: string[]; retryFailed?: boolean; failuresInARow?: number },
+): Promise<({ ok: true } & BatchResult) | Failure> {
+  await assertAdmin("campaigns");
+  const campaign = await loadCampaign(id);
+  if (!campaign) return NOT_FOUND;
+  const ids = Array.isArray(batch.customerIds) ? batch.customerIds.filter((c) => typeof c === "string" && UUID.test(c)) : [];
+  const result = await sendCampaignBatch(
+    campaign,
+    {
+      wave: String(batch.wave ?? ""),
+      customerIds: ids,
+      retryFailed: Boolean(batch.retryFailed),
+      failuresInARow: Math.max(0, Math.floor(Number(batch.failuresInARow) || 0)),
+    },
+    campaignSenderSetup(),
+  );
+  return { ok: true, ...result };
+}

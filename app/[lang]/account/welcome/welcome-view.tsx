@@ -51,7 +51,7 @@ export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePag
             You&apos;re signed in as <span className="break-all">{state.signedInEmail}</span>.
           </h1>
           <p className="text-sm text-muted-foreground">
-            Your voucher was sent to the email you shopped with. Sign in with that email to see it.
+            This link is for the account of the email you shopped with. Sign in with that email to see it.
           </p>
         </div>
         <div className="mt-8 space-y-3">

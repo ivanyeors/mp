@@ -422,3 +422,24 @@ export function sampleMigrationServiceNotice(fixture: EmailFixture = "happy") {
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }
+
+/** A campaign Staff wrote (PRD-email-marketing): a heading, a bullet list, a link, and the sign-in button. */
+export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    subject: pick(fixture, "Your Mpillow account is ready"),
+    preheader: pick(fixture, "Sign in with the email you shopped with."),
+    body: [
+      "Our online shop has moved from Shopify to our own site, and your account is waiting for you.",
+      "",
+      "## What your account does",
+      `- ${pick(fixture, "Saves your delivery addresses")}`,
+      "- Books a re-adjustment for your pillow",
+      "",
+      `Questions? Read more at ${ORIGIN}/en-US/faq or just reply to this email.`,
+    ].join("\n"),
+    greeting: true,
+    button: { label: "Sign in to your account", href: sampleClaimUrl("campaign:3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f") },
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}

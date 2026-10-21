@@ -23,6 +23,14 @@ slice is a thin, demoable path through all layers.
 | [10](10-cutover-and-shopify-wind-down.md) · [#274](https://github.com/ivanyeors/mp/issues/274) | Cutover: final delta import, Shopify notices, erasure | HITL | **not started** | 09 | 13 |
 | [11](11-optional-complimentary-readjustment.md) · [#275](https://github.com/ivanyeors/mp/issues/275) | *(optional)* One complimentary re-adjustment for Migrated customers | AFK | **owner decision** | 05 | 7 |
 
+**2026-10-21: the waves run from the Admin Panel.** Admin Panel → Email campaigns
+(`PRD-email-marketing`) sends a campaign the owner writes to *Imported from Shopify, not signed
+in yet*. It uses the same checks, ledger, Claim links, unsubscribe and pause rule as slice 08's
+script. Its first campaign is an offer-free invitation, because the voucher is deleted
+(`PRD-loyalty-points`). Slice 09's seed test, pilot and ramp run from that page. The script and
+its three templates stay, but the announcement and reminder promise the voucher, so they are not
+sent.
+
 ## Dependency graph
 
 ```mermaid

@@ -1,0 +1,27 @@
+{
+  "about": "Who may receive an email campaign Staff wrote (PRD-email-marketing). composedCampaignBlocker (lib/email-campaigns/rules.ts) and marketing_campaign_blocker() (20261021100000) must give each case's `expected`. `suppressedBy` adds a migration send of theirs with that status; `own` is this campaign's send to them.",
+  "cases": [
+    { "name": "imported: unclaimed, subscribed", "audience": "imported_not_signed_in", "customer": { "migrated": true, "claimed": false, "marketing_email": "subscribed" }, "expected": null },
+    { "name": "imported: not a Migrated customer", "audience": "imported_not_signed_in", "customer": { "migrated": false, "marketing_email": "subscribed" }, "expected": "not_migrated" },
+    { "name": "imported: already Claimed", "audience": "imported_not_signed_in", "customer": { "migrated": true, "claimed": true, "marketing_email": "subscribed" }, "expected": "claimed" },
+    { "name": "imported: Claimed and unsubscribed reads Claimed first", "audience": "imported_not_signed_in", "customer": { "migrated": true, "claimed": true, "marketing_email": "unsubscribed" }, "expected": "claimed" },
+    { "name": "imported: unsubscribed", "audience": "imported_not_signed_in", "customer": { "migrated": true, "marketing_email": "unsubscribed" }, "expected": "unsubscribed" },
+    { "name": "imported: never agreed", "audience": "imported_not_signed_in", "customer": { "migrated": true, "marketing_email": "not_subscribed" }, "expected": "not_subscribed" },
+    { "name": "imported: an announcement of theirs bounced", "audience": "imported_not_signed_in", "customer": { "migrated": true, "marketing_email": "subscribed", "suppressedBy": "bounced" }, "expected": "suppressed" },
+    { "name": "imported: a reminder of theirs drew a complaint", "audience": "imported_not_signed_in", "customer": { "migrated": true, "marketing_email": "subscribed", "suppressedBy": "complained" }, "expected": "suppressed" },
+    { "name": "imported: a migration email went out fine", "audience": "imported_not_signed_in", "customer": { "migrated": true, "marketing_email": "subscribed", "suppressedBy": "sent" }, "expected": null },
+    { "name": "subscribed: a Customer who signed up here", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed" }, "expected": null },
+    { "name": "subscribed: a Migrated customer who Claimed", "audience": "subscribed", "customer": { "migrated": true, "claimed": true, "marketing_email": "subscribed" }, "expected": null },
+    { "name": "subscribed: never agreed", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "not_subscribed" }, "expected": "not_subscribed" },
+    { "name": "subscribed: unsubscribed and bounced reads unsubscribed", "audience": "subscribed", "customer": { "migrated": true, "marketing_email": "unsubscribed", "suppressedBy": "bounced" }, "expected": "unsubscribed" },
+    { "name": "subscribed: this campaign sent", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "own": "sent" }, "expected": "already_sent" },
+    { "name": "subscribed: this campaign in flight", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "own": "pending" }, "expected": "already_sent" },
+    { "name": "subscribed: this campaign failed", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "own": "failed" }, "expected": "failed" },
+    { "name": "subscribed: this campaign failed, retrying", "audience": "subscribed", "retryFailed": true, "customer": { "migrated": false, "marketing_email": "subscribed", "own": "failed" }, "expected": null },
+    { "name": "subscribed: this campaign bounced", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "own": "bounced" }, "expected": "suppressed" },
+    { "name": "subscribed: retrying a failure after unsubscribing", "audience": "subscribed", "retryFailed": true, "customer": { "migrated": false, "marketing_email": "unsubscribed", "own": "failed" }, "expected": "unsubscribed" },
+    { "name": "segment: subscribed", "audience": "segment", "customer": { "migrated": false, "marketing_email": "subscribed" }, "expected": null },
+    { "name": "segment: an unclaimed Migrated customer", "audience": "segment", "customer": { "migrated": true, "claimed": false, "marketing_email": "subscribed" }, "expected": null },
+    { "name": "segment: never agreed", "audience": "segment", "customer": { "migrated": true, "marketing_email": "not_subscribed" }, "expected": "not_subscribed" }
+  ]
+}

@@ -1,0 +1,392 @@
+/**
+ * Email campaigns (PRD-email-marketing): what a Campaign is, who may receive
+ * it, and who a wave goes to. Pure; the reads and writes are in ./store.ts and
+ * the sends in ./sender.ts.
+ *
+ * A Campaign is an email Staff write in the Admin Panel and send in waves to
+ * one audience. Whatever the audience, only `subscribed` Customers receive it,
+ * nobody whose campaign email bounced or drew a complaint, and nobody twice.
+ *
+ * `composedCampaignBlocker` is the rule the plan uses.
+ * `marketing_campaign_blocker()` (20261021100000) is the same rule in SQL,
+ * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
+ * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
+ * holds the two equal.
+ */
+import { z } from "zod";
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
+
+export const CAMPAIGN_AUDIENCES = ["imported_not_signed_in", "subscribed", "segment"] as const;
+export type CampaignAudience = (typeof CAMPAIGN_AUDIENCES)[number];
+
+export const CAMPAIGN_AUDIENCE_LABEL: Record<CampaignAudience, string> = {
+  imported_not_signed_in: "Imported from Shopify, not signed in yet",
+  subscribed: "Everyone subscribed to marketing email",
+  segment: "A saved Segment",
+};
+
+export const CAMPAIGN_BUTTON_TARGETS = ["sign_in", "url"] as const;
+export type CampaignButtonTarget = (typeof CAMPAIGN_BUTTON_TARGETS)[number];
+
+/** The ledger's `template` for a Campaign: its sends are unique per Customer under this key. */
+export const campaignLedgerKey = (campaignId: string) => `campaign:${campaignId}`;
+
+/** A wave's label: what the ledger's check accepts. */
+export const WAVE_LABEL = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
+
+/** The most one wave holds, so a mistyped size cannot email the whole list. */
+export const MAX_WAVE_SIZE = 1000;
+/** The most addresses one test goes to. */
+export const MAX_TEST_RECIPIENTS = 3;
+
+export const CAMPAIGN_LIMITS = {
+  name: 80,
+  subject: 150,
+  preheader: 200,
+  body: 10000,
+  buttonLabel: 40,
+  buttonUrl: 500,
+} as const;
+
+const text = (max: number, empty: string) =>
+  z.string().trim().min(1, empty).max(max, `At most ${max} characters.`);
+
+/**
+ * What the editor saves. `button` is null for none; `segmentId` only with the
+ * Segment audience. Mirrors the table's checks, so a draft that parses saves.
+ */
+export const CampaignDraftSchema = z
+  .object({
+    name: text(CAMPAIGN_LIMITS.name, "Give the campaign a name."),
+    subject: text(CAMPAIGN_LIMITS.subject, "Write a subject."),
+    preheader: z
+      .string()
+      .trim()
+      .max(CAMPAIGN_LIMITS.preheader, `At most ${CAMPAIGN_LIMITS.preheader} characters.`)
+      .transform((v) => v || null)
+      .nullable()
+      .default(null),
+    body: z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`).refine((v) => v.trim().length > 0, "Write the email."),
+    greeting: z.boolean().default(true),
+    button: z
+      .object({
+        target: z.enum(CAMPAIGN_BUTTON_TARGETS),
+        label: text(CAMPAIGN_LIMITS.buttonLabel, "Give the button a label."),
+        url: z.string().trim().max(CAMPAIGN_LIMITS.buttonUrl).nullable().default(null),
+      })
+      .nullable()
+      .default(null)
+      .superRefine((b, ctx) => {
+        if (b?.target !== "url") return;
+        if (!b.url || !isHttpsUrl(b.url)) {
+          ctx.addIssue({ code: "custom", path: ["url"], message: "The button's link must be a full https:// address." });
+        }
+      }),
+    audience: z.enum(CAMPAIGN_AUDIENCES),
+    segmentId: z.string().uuid().nullable().default(null),
+  })
+  .superRefine((d, ctx) => {
+    if (d.audience === "segment" && !d.segmentId) {
+      ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
+    }
+  })
+  .transform((d) => ({
+    ...d,
+    segmentId: d.audience === "segment" ? d.segmentId : null,
+    button: d.button ? { ...d.button, url: d.button.target === "url" ? d.button.url : null } : null,
+  }));
+
+export type CampaignDraft = z.output<typeof CampaignDraftSchema>;
+export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
+
+export function isHttpsUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" && Boolean(u.hostname) && !/\s/.test(value);
+  } catch {
+    return false;
+  }
+}
+
+/** A Campaign as stored. */
+export interface Campaign extends CampaignDraft {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  /** The first wave was planned: content and audience are fixed. */
+  lockedAt: string | null;
+  archivedAt: string | null;
+  createdBy: string | null;
+}
+
+/** The one table row's columns, in its order. */
+export const CAMPAIGN_COLUMNS =
+  "id, name, subject, preheader, body, greeting, button_label, button_target, button_url, audience, segment_id, " +
+  "created_at, updated_at, locked_at, archived_at, creator:mp_staff!created_by_profile_id(name)";
+
+const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+
+/** Pure — one `email_campaigns` row, or null for a malformed one. */
+export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
+  const id = str(row.id);
+  const audience = str(row.audience);
+  if (!id || !audience || !(CAMPAIGN_AUDIENCES as readonly string[]).includes(audience)) return null;
+  const target = str(row.button_target);
+  const creator = Array.isArray(row.creator) ? row.creator[0] : row.creator;
+  return {
+    id,
+    name: str(row.name) ?? "",
+    subject: str(row.subject) ?? "",
+    preheader: str(row.preheader),
+    body: str(row.body) ?? "",
+    greeting: row.greeting !== false,
+    button:
+      target === "sign_in" || target === "url"
+        ? { target, label: str(row.button_label) ?? "", url: target === "url" ? str(row.button_url) : null }
+        : null,
+    audience: audience as CampaignAudience,
+    segmentId: str(row.segment_id),
+    createdAt: str(row.created_at) ?? "",
+    updatedAt: str(row.updated_at) ?? "",
+    lockedAt: str(row.locked_at),
+    archivedAt: str(row.archived_at),
+    createdBy: str((creator as { name?: unknown } | null | undefined)?.name),
+  };
+}
+
+/** Pure — the table's columns for a draft. */
+export function campaignRowFromDraft(d: CampaignDraft) {
+  return {
+    name: d.name,
+    subject: d.subject,
+    preheader: d.preheader,
+    body: d.body,
+    greeting: d.greeting,
+    button_label: d.button?.label ?? null,
+    button_target: d.button?.target ?? null,
+    button_url: d.button?.target === "url" ? d.button.url : null,
+    audience: d.audience,
+    segment_id: d.audience === "segment" ? d.segmentId : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The rule
+// ---------------------------------------------------------------------------
+
+export const CAMPAIGN_SEND_STATUSES = ["pending", "sent", "failed", "bounced", "complained"] as const;
+export type CampaignSendStatus = (typeof CAMPAIGN_SEND_STATUSES)[number];
+
+/** This Campaign's send to one Customer. */
+export interface OwnSend {
+  status: CampaignSendStatus;
+  wave: string;
+  sentAt: string;
+}
+
+/** One Customer as a Campaign's plan sees them (`marketing_campaign_candidates`). */
+export interface CampaignCandidate {
+  customerId: string;
+  email: string;
+  firstName: string | null;
+  marketingEmail: MarketingEmailState;
+  /** A `migrated_customers` row exists. */
+  migrated: boolean;
+  /** The Claim; null until then. */
+  claimedAt: string | null;
+  /** Orders here and on Shopify: a buyer has at least one. */
+  ordersCount: number;
+  /** The import, else the account's creation: newest first after buyers. */
+  since: string;
+  /** A campaign email of theirs bounced or drew a complaint. */
+  suppressed: boolean;
+  /** This Campaign's send to them, if any. */
+  own: OwnSend | null;
+}
+
+/** Why a Customer may not receive a Campaign now, in the order the rule checks. */
+export const CAMPAIGN_RULE_BLOCKERS = [
+  "not_migrated",
+  "claimed",
+  "unsubscribed",
+  "suppressed",
+  "not_subscribed",
+  "failed",
+  "already_sent",
+] as const;
+export type CampaignRuleBlocker = (typeof CAMPAIGN_RULE_BLOCKERS)[number];
+
+/** What the SQL claim can answer besides the rule's own reasons. */
+export type CampaignClaimBlocker = CampaignRuleBlocker | "unknown_campaign" | "campaign_archived" | "not_found";
+
+export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", string> = {
+  not_migrated: "not imported from Shopify",
+  claimed: "already signed in to their account",
+  unsubscribed: "unsubscribed",
+  suppressed: "an earlier campaign email bounced or was marked as spam",
+  not_subscribed: "never agreed to marketing email",
+  failed: "the send failed before (use Retry failed sends)",
+  already_sent: "already sent this campaign",
+  not_failed: "nothing of theirs failed",
+  unknown_campaign: "the campaign no longer exists",
+  campaign_archived: "the campaign is archived",
+  not_found: "the customer no longer exists",
+};
+
+/**
+ * Why `c` may not receive a Campaign for `audience` now, or null when they
+ * may. The same checks, in the same order, as `marketing_campaign_blocker()`.
+ * A Segment's membership is decided before this, when the wave is planned.
+ */
+export function composedCampaignBlocker(
+  audience: CampaignAudience,
+  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own">,
+  { retryFailed = false }: { retryFailed?: boolean } = {},
+): CampaignRuleBlocker | null {
+  if (audience === "imported_not_signed_in") {
+    if (!c.migrated) return "not_migrated";
+    if (c.claimedAt) return "claimed";
+  }
+  if (c.marketingEmail === "unsubscribed") return "unsubscribed";
+  if (c.suppressed) return "suppressed";
+  if (c.marketingEmail !== "subscribed") return "not_subscribed";
+  if (c.own?.status === "failed" && !retryFailed) return "failed";
+  if (c.own && c.own.status !== "failed") return "already_sent";
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// The plan
+// ---------------------------------------------------------------------------
+
+export const isBuyer = (c: Pick<CampaignCandidate, "ordersCount">) => c.ordersCount >= 1;
+
+/** Buyers first, then the newest, then the id, so two plans order one list the same way. */
+export function compareSendOrder(a: CampaignCandidate, b: CampaignCandidate): number {
+  const buyer = Number(isBuyer(b)) - Number(isBuyer(a));
+  if (buyer !== 0) return buyer;
+  const since = Date.parse(b.since) - Date.parse(a.since);
+  if (since !== 0 && Number.isFinite(since)) return since;
+  return a.customerId < b.customerId ? -1 : a.customerId > b.customerId ? 1 : 0;
+}
+
+export type PlanExclusion = CampaignRuleBlocker | "not_failed";
+
+export interface CampaignPlan {
+  /** Customers in the audience before the rule. */
+  considered: number;
+  /** Everyone the rule allows now, in send order. */
+  eligible: number;
+  /** Of `eligible`, those with an order here or on Shopify. */
+  eligibleBuyers: number;
+  /** Who this wave goes to: the first `size` of the eligible. */
+  selection: CampaignCandidate[];
+  /** Why the others are left out, by reason. */
+  excluded: Partial<Record<PlanExclusion, number>>;
+  /** Sends already handed to the provider for this Campaign. */
+  alreadySent: number;
+  /** This Campaign's failed sends, which a retry would send again. */
+  failed: number;
+}
+
+/** Pure — a wave of `size` from every candidate. A retry selects this Campaign's failed sends only. */
+export function planCampaignWave(
+  audience: CampaignAudience,
+  candidates: readonly CampaignCandidate[],
+  { size, retryFailed = false }: { size: number; retryFailed?: boolean },
+): CampaignPlan {
+  const excluded: Partial<Record<PlanExclusion, number>> = {};
+  const exclude = (why: PlanExclusion) => {
+    excluded[why] = (excluded[why] ?? 0) + 1;
+  };
+  const eligible: CampaignCandidate[] = [];
+  let alreadySent = 0;
+  let failed = 0;
+  for (const c of candidates) {
+    if (c.own && c.own.status !== "failed" && c.own.status !== "pending") alreadySent++;
+    if (c.own?.status === "failed") failed++;
+    const blocker = composedCampaignBlocker(audience, c, { retryFailed });
+    if (blocker) exclude(blocker);
+    else if (retryFailed && c.own?.status !== "failed") exclude("not_failed");
+    else eligible.push(c);
+  }
+  eligible.sort(compareSendOrder);
+  const n = Math.max(0, Math.min(MAX_WAVE_SIZE, Math.floor(size)));
+  return {
+    considered: candidates.length,
+    eligible: eligible.length,
+    eligibleBuyers: eligible.filter(isBuyer).length,
+    selection: eligible.slice(0, n),
+    excluded,
+    alreadySent,
+    failed,
+  };
+}
+
+/** Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has. */
+export function nextWaveLabel(existing: readonly string[]): string {
+  const taken = new Set(existing);
+  let n = existing.length + 1;
+  while (taken.has(`w${n}`)) n++;
+  return `w${n}`;
+}
+
+const isSendStatus = (v: unknown): v is CampaignSendStatus =>
+  typeof v === "string" && (CAMPAIGN_SEND_STATUSES as readonly string[]).includes(v);
+
+/** The view's columns, in its order. */
+export const CANDIDATE_COLUMNS =
+  "customer_id, email, first_name, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
+
+/** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
+export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
+  if (typeof row.customer_id !== "string" || typeof row.email !== "string") return null;
+  const sends = (row.campaign_sends && typeof row.campaign_sends === "object" ? row.campaign_sends : {}) as Record<
+    string,
+    { status?: unknown; wave?: unknown; sent_at?: unknown } | undefined
+  >;
+  const mine = sends[campaignId];
+  const own: OwnSend | null =
+    mine && isSendStatus(mine.status)
+      ? { status: mine.status, wave: typeof mine.wave === "string" ? mine.wave : "", sentAt: typeof mine.sent_at === "string" ? mine.sent_at : "" }
+      : null;
+  const consent = row.marketing_email;
+  const orders = Number(row.orders_count ?? 0);
+  return {
+    customerId: row.customer_id,
+    email: row.email,
+    firstName: typeof row.first_name === "string" && row.first_name.trim() ? row.first_name.trim() : null,
+    marketingEmail: consent === "subscribed" || consent === "unsubscribed" ? consent : "not_subscribed",
+    migrated: row.migrated === true,
+    claimedAt: typeof row.claimed_at === "string" ? row.claimed_at : null,
+    ordersCount: Number.isFinite(orders) ? orders : 0,
+    since: typeof row.since === "string" ? row.since : "",
+    suppressed: row.suppressed === true,
+    own,
+  };
+}
+
+/**
+ * The draft a new campaign starts from: the Shopify customers' invitation to
+ * their account, with no offer. Staff change any of it before sending.
+ */
+export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
+  name: "Your account is ready (Shopify customers)",
+  subject: "Your Mpillow account is ready",
+  preheader: "Sign in with the email you shopped with. There's no password to set.",
+  body: [
+    "Mpillow's online shop has moved from Shopify to our own site, and your account is ready. There's nothing to fill in and no password to set: sign in with the email you shopped with, and it's yours.",
+    "",
+    "## What your account does",
+    "- Saves your delivery addresses for a faster checkout",
+    "- Books a re-adjustment for your pillow",
+    "- Follows your orders and their delivery",
+    "- Starts a return from the order it belongs to",
+    "",
+    "Questions? Just reply to this email.",
+  ].join("\n"),
+  greeting: true,
+  button: { target: "sign_in", label: "Sign in to your account", url: null },
+  audience: "imported_not_signed_in",
+  segmentId: null,
+};

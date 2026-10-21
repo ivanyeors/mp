@@ -1,0 +1,234 @@
+import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } from "../rules";
+
+/**
+ * An in-memory stand-in for the service-role client, answering exactly what
+ * the campaign sender asks of Postgres:
+ *  - the views `marketing_campaign_candidates` (`select`, `eq`, `in`,
+ *    `order`, `range`) and `customer_campaign_wave_stats`, computed from the
+ *    tables;
+ *  - the RPCs `claim_marketing_campaign_send`, `finish_campaign_send` and
+ *    `mint_claim_link`.
+ *
+ * The claim mirrors the SQL (20261021100000): the wave check, the rule (here
+ * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
+ * `marketing_campaign_blocker`), and the unique (Customer, template) key.
+ * assert-01-email-campaigns.sql proves the real function.
+ */
+
+type Row = Record<string, unknown>;
+
+export interface FakeCustomer {
+  id: string;
+  email: string;
+  first_name?: string | null;
+  locale?: string;
+  marketing_email?: string;
+  total_orders?: number;
+  created_at?: string;
+}
+
+export interface FakeMigrated {
+  customer_id: string;
+  claimed_at?: string | null;
+  shopify_orders_count?: number;
+  imported_at: string;
+}
+
+export interface FakeSend {
+  id: string;
+  customer_id: string;
+  template: string;
+  campaign_id: string | null;
+  wave: string;
+  status: string;
+  provider_message_id: string | null;
+  sent_at: string;
+  attempts: number;
+  last_error: string | null;
+  bounced_at: string | null;
+  complained_at: string | null;
+}
+
+export interface FakeWorld {
+  customers: FakeCustomer[];
+  migrated: FakeMigrated[];
+  sends: FakeSend[];
+  campaigns: { id: string; audience: CampaignAudience; archived?: boolean }[];
+  claimLinks: { customer_id: string; token_hash: string; template: string }[];
+  /** Called inside each claim, before the rule runs: a test's chance to change the world. */
+  onClaim?: (customerId: string) => void;
+}
+
+export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [] });
+
+const suppressedIn = (sends: FakeSend[]) =>
+  sends.some((s) => s.status === "bounced" || s.status === "complained" || s.bounced_at || s.complained_at);
+
+function candidates(world: FakeWorld): Row[] {
+  return world.customers.map((c) => {
+    const m = world.migrated.find((x) => x.customer_id === c.id);
+    const sends = world.sends.filter((s) => s.customer_id === c.id);
+    const campaignSends: Row = {};
+    for (const s of sends) {
+      if (s.campaign_id) campaignSends[s.campaign_id] = { status: s.status, wave: s.wave, sent_at: s.sent_at };
+    }
+    return {
+      customer_id: c.id,
+      email: c.email,
+      first_name: c.first_name ?? null,
+      marketing_email: c.marketing_email ?? "not_subscribed",
+      migrated: Boolean(m),
+      claimed_at: m?.claimed_at ?? null,
+      orders_count: (m?.shopify_orders_count ?? 0) + (c.total_orders ?? 0),
+      since: m?.imported_at ?? c.created_at ?? "2026-01-01T00:00:00Z",
+      suppressed: suppressedIn(sends),
+      campaign_sends: campaignSends,
+    };
+  });
+}
+
+function waveStats(world: FakeWorld): Row[] {
+  const groups = new Map<string, FakeSend[]>();
+  for (const s of world.sends) {
+    const key = `${s.template}\u0000${s.wave}`;
+    groups.set(key, [...(groups.get(key) ?? []), s]);
+  }
+  return [...groups.values()].map((rows) => {
+    const handed = rows.filter((s) => ["sent", "bounced", "complained"].includes(s.status));
+    return {
+      template: rows[0].template,
+      wave: rows[0].wave,
+      handed: handed.length,
+      bounced: rows.filter((s) => s.bounced_at).length,
+      complained: rows.filter((s) => s.complained_at).length,
+      failed: rows.filter((s) => s.status === "failed").length,
+      pending: rows.filter((s) => s.status === "pending").length,
+      last_sent_at: handed.map((s) => s.sent_at).sort().at(-1) ?? null,
+    };
+  });
+}
+
+/** A chainable read over computed rows. */
+function query(rows: () => Row[]) {
+  const filters: ((r: Row) => boolean)[] = [];
+  let order: string | null = null;
+  let range: [number, number] | null = null;
+  const run = () => {
+    let out = rows().filter((r) => filters.every((f) => f(r)));
+    if (order) out = [...out].sort((a, b) => String(a[order!]).localeCompare(String(b[order!])));
+    if (range) out = out.slice(range[0], range[1] + 1);
+    return { data: out, error: null };
+  };
+  const q = {
+    select: () => q,
+    eq: (col: string, v: unknown) => (filters.push((r) => r[col] === v), q),
+    in: (col: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[col])), q),
+    order: (col: string) => ((order = col), q),
+    range: (from: number, to: number) => ((range = [from, to]), q),
+    then: (resolve: (v: ReturnType<typeof run>) => unknown, reject?: (e: unknown) => unknown) =>
+      Promise.resolve(run()).then(resolve, reject),
+  };
+  return q;
+}
+
+let sendSeq = 0;
+const WAVE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
+
+export function fakeCampaignsClient(world: FakeWorld) {
+  const rpcCalls: { name: string; args: Row }[] = [];
+
+  function claim(args: Row) {
+    const customerId = String(args.p_customer_id);
+    const campaignId = String(args.p_campaign_id);
+    const wave = String(args.p_wave);
+    const retry = args.p_retry_failed === true;
+    if (!WAVE.test(wave)) return { data: null, error: { message: "A wave is 1 to 32 letters" } };
+    world.onClaim?.(customerId);
+    const none = (blocker: string) => ({ data: [{ send_id: null, blocker, email: null, first_name: null, locale: null, unclaimed_migrated: null }], error: null });
+
+    const campaign = world.campaigns.find((c) => c.id === campaignId);
+    if (!campaign) return none("unknown_campaign");
+    if (campaign.archived) return none("campaign_archived");
+    const row = candidates(world).find((r) => r.customer_id === customerId);
+    if (!row) return none("not_found");
+    const key = campaignLedgerKey(campaignId);
+    const own = world.sends.find((s) => s.customer_id === customerId && s.template === key);
+    const blocker = composedCampaignBlocker(
+      campaign.audience,
+      {
+        migrated: row.migrated as boolean,
+        claimedAt: row.claimed_at as string | null,
+        marketingEmail: row.marketing_email as "subscribed",
+        suppressed: row.suppressed as boolean,
+        own: own ? { status: own.status as "sent", wave: own.wave, sentAt: own.sent_at } : null,
+      },
+      { retryFailed: retry },
+    );
+    if (blocker) return none(blocker);
+
+    let id: string;
+    if (retry) {
+      if (own?.status !== "failed") return none("already_sent");
+      Object.assign(own, { status: "pending", wave, attempts: own.attempts + 1, last_error: null, provider_message_id: null });
+      id = own.id;
+    } else {
+      if (own) return none("already_sent");
+      id = `send-${++sendSeq}`;
+      world.sends.push({
+        id,
+        customer_id: customerId,
+        template: key,
+        campaign_id: campaignId,
+        wave,
+        status: "pending",
+        provider_message_id: null,
+        sent_at: new Date().toISOString(),
+        attempts: 1,
+        last_error: null,
+        bounced_at: null,
+        complained_at: null,
+      });
+    }
+    const c = world.customers.find((x) => x.id === customerId)!;
+    return {
+      data: [
+        {
+          send_id: id,
+          blocker: null,
+          email: c.email,
+          first_name: c.first_name ?? null,
+          locale: c.locale ?? "en-US",
+          unclaimed_migrated: Boolean(row.migrated) && !row.claimed_at,
+        },
+      ],
+      error: null,
+    };
+  }
+
+  function finish(args: Row) {
+    const s = world.sends.find((x) => x.id === args.p_send_id);
+    if (!s || s.status !== "pending") return { data: false, error: null };
+    if (args.p_sent) Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null });
+    else Object.assign(s, { status: "failed", last_error: args.p_error ?? "unknown error" });
+    return { data: true, error: null };
+  }
+
+  return {
+    rpcCalls,
+    from(table: string) {
+      if (table === "marketing_campaign_candidates") return query(() => candidates(world));
+      if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
+      throw new Error(`fake: no table ${table}`);
+    },
+    async rpc(name: string, args: Row) {
+      rpcCalls.push({ name, args });
+      if (name === "claim_marketing_campaign_send") return claim(args);
+      if (name === "finish_campaign_send") return finish(args);
+      if (name === "mint_claim_link") {
+        world.claimLinks.push({ customer_id: String(args.p_customer_id), token_hash: String(args.p_token_hash), template: String(args.p_template) });
+        return { data: null, error: null };
+      }
+      throw new Error(`fake: no rpc ${name}`);
+    },
+  };
+}

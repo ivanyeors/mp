@@ -485,6 +485,20 @@ _Avoid_: linking automatically; treating a review-link click as proof of a revie
 What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number has written to our WhatsApp line, as recorded in `whatsapp_inbound`).
 _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting **Staff** tick "verified"
 
+## Email marketing (PRD-email-marketing)
+
+**Email campaign**:
+A marketing email **Staff** write in **Admin Panel** → Email campaigns (`email_campaigns`): a subject, an inbox preview line, a plain-text body and at most one button, sent to one **Audience** in **Waves**. Its sends are rows of the campaign ledger, `customer_campaign_sends`, under `campaign:<id>`, so no **Customer** gets the same campaign twice. Once its first Wave starts, its email and Audience are fixed; a changed email is a duplicate.
+_Avoid_: "newsletter" or "blast"; sending one through the transactional mailbox (never: campaign mail goes through its own Resend subdomain); putting a **Review request** or an **Aftercare message** in one
+
+**Audience**:
+Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
+_Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
+
+**Wave**:
+One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
+_Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
+
 ## Shipping (ADR 0020, ADR 0022)
 
 **Shipping method**:

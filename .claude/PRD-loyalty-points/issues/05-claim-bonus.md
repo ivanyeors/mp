@@ -77,9 +77,9 @@ slice 08).
   will not grant.
 - The Profile drops the voucher card (`app/[lang]/account/page.tsx:87-89`). Slice 02's Points
   card already shows the bonus.
-- The wrong-account copy "Your voucher was sent to the email you shopped with" (`:54`) becomes
-  "Sign in with the email you shopped with to see your points." It no longer claims anything
-  was sent.
+- The wrong-account copy (`:54`) already names no voucher: PRD-email-marketing changed it to
+  "This link is for the account of the email you shopped with. Sign in with that email to see
+  it." Leave it as is; the Points card is what shows the bonus.
 
 ## Acceptance criteria
 

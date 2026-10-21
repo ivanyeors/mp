@@ -179,18 +179,22 @@ async function attempt<T>(fn: () => Promise<T>): Promise<{ ok: true; value: T } 
   }
 }
 
+/** What the delivery checks read: the campaign transport, and the site its links point at. */
+export type DeliverySetup = Pick<
+  WaveSetup,
+  "transport" | "campaignFrom" | "campaignDomain" | "orderFrom" | "replyTo" | "origin" | "unsubscribeSecret" | "fetchImpl"
+>;
+
 /**
- * Every check a wave must pass before it sends anything. Runs in a dry run
- * too, so the human sees what an `apply` would refuse. Changes nothing: the
- * probes are a one-click POST with no link, and one with a link for a
- * Customer who does not exist.
+ * The checks every campaign email passes before anything is sent, whatever it
+ * says: the Resend transport, the From on the campaign subdomain, a support
+ * inbox for Reply-To, a public https site, and that site answering one-click
+ * unsubscribe for links signed here. Shared by the wave sender and the Email
+ * campaigns page (lib/email-campaigns/sender.ts). Changes nothing.
  */
-export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now: Date = new Date()): Promise<WavePreflight> {
+export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
   const checks: PreflightCheck[] = [];
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
-
-  add("wave", WAVE_PATTERN.test(req.wave), WAVE_PATTERN.test(req.wave) ? `wave ${req.wave}` : `"${req.wave}" is not a wave label (1 to 32 letters, digits, - or _)`);
-  add("limit", Number.isInteger(req.limit) && req.limit > 0, `at most ${req.limit} in the wave`);
 
   const t = setup.transport;
   add(
@@ -228,6 +232,23 @@ export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now:
     ? await probeUnsubscribeSecret(setup.origin, { secret: setup.unsubscribeSecret, fetchImpl: setup.fetchImpl })
     : ({ ready: false, reason: "not checked: the unsubscribe route is not ready" } as const);
   add("unsubscribe_secret", secret.ready, secret.ready ? "the site verifies links signed here" : secret.reason);
+  return checks;
+}
+
+/**
+ * Every check a wave must pass before it sends anything. Runs in a dry run
+ * too, so the human sees what an `apply` would refuse. Changes nothing: the
+ * probes are a one-click POST with no link, and one with a link for a
+ * Customer who does not exist.
+ */
+export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now: Date = new Date()): Promise<WavePreflight> {
+  const checks: PreflightCheck[] = [];
+  const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
+
+  add("wave", WAVE_PATTERN.test(req.wave), WAVE_PATTERN.test(req.wave) ? `wave ${req.wave}` : `"${req.wave}" is not a wave label (1 to 32 letters, digits, - or _)`);
+  add("limit", Number.isInteger(req.limit) && req.limit > 0, `at most ${req.limit} in the wave`);
+
+  checks.push(...(await campaignDeliveryChecks(setup)));
 
   if (req.template === "migration_service_notice") {
     const on = await attempt(() => readServiceNoticeEnabled(setup.admin));

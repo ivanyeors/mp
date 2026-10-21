@@ -1,0 +1,254 @@
+/**
+ * Email campaigns: every read and write (PRD-email-marketing;
+ * 20261021100000_email_campaigns.sql). The table, its views and its functions
+ * are service-role only, so the Admin Panel calls these after checking the
+ * `campaigns` permission. Each takes the client, so tests pass a fake.
+ */
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { finishCampaignSend, readCampaignWaveStats, type CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
+import {
+  CAMPAIGN_COLUMNS,
+  CANDIDATE_COLUMNS,
+  campaignFromRow,
+  campaignLedgerKey,
+  campaignRowFromDraft,
+  candidateFromRow,
+  type Campaign,
+  type CampaignCandidate,
+  type CampaignClaimBlocker,
+  type CampaignDraft,
+} from "./rules";
+
+export { finishCampaignSend };
+
+/** One Campaign's numbers (`email_campaign_stats`). */
+export interface CampaignStats {
+  handed: number;
+  bounced: number;
+  complained: number;
+  failed: number;
+  pending: number;
+  waves: number;
+  firstSentAt: string | null;
+  lastSentAt: string | null;
+  /** Claim links its emails carried that were opened. */
+  linkClicks: number;
+}
+
+export const NO_STATS: CampaignStats = {
+  handed: 0,
+  bounced: 0,
+  complained: 0,
+  failed: 0,
+  pending: 0,
+  waves: 0,
+  firstSentAt: null,
+  lastSentAt: null,
+  linkClicks: 0,
+};
+
+const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+/** Pure — one `email_campaign_stats` row. */
+export function statsFromRow(row: Record<string, unknown>): CampaignStats {
+  return {
+    handed: num(row.handed),
+    bounced: num(row.bounced),
+    complained: num(row.complained),
+    failed: num(row.failed),
+    pending: num(row.pending),
+    waves: num(row.waves),
+    firstSentAt: typeof row.first_sent_at === "string" ? row.first_sent_at : null,
+    lastSentAt: typeof row.last_sent_at === "string" ? row.last_sent_at : null,
+    linkClicks: num(row.link_clicks),
+  };
+}
+
+export interface CampaignListItem {
+  campaign: Campaign;
+  stats: CampaignStats;
+}
+
+/** Live Campaigns, newest first, with their numbers. Throws on a failed read. */
+export async function listCampaigns(admin: SupabaseClient): Promise<CampaignListItem[]> {
+  const [campaigns, stats] = await Promise.all([
+    admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).is("archived_at", null).order("created_at", { ascending: false }),
+    admin.from("email_campaign_stats").select("*"),
+  ]);
+  if (campaigns.error) throw new Error(`Could not read the campaigns: ${campaigns.error.message}`);
+  if (stats.error) throw new Error(`Could not read the campaigns' numbers: ${stats.error.message}`);
+  const byId = new Map(
+    ((stats.data ?? []) as Record<string, unknown>[]).map((r) => [String(r.campaign_id), statsFromRow(r)] as const),
+  );
+  return ((campaigns.data ?? []) as unknown as Record<string, unknown>[]).flatMap((row) => {
+    const campaign = campaignFromRow(row);
+    return campaign ? [{ campaign, stats: byId.get(campaign.id) ?? NO_STATS }] : [];
+  });
+}
+
+/** One Campaign, archived or not; null when there is none. */
+export async function getCampaign(admin: SupabaseClient, id: string): Promise<Campaign | null> {
+  const { data, error } = await admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw new Error(`Could not read the campaign: ${error.message}`);
+  return data ? campaignFromRow(data as unknown as Record<string, unknown>) : null;
+}
+
+export async function getCampaignStats(admin: SupabaseClient, id: string): Promise<CampaignStats> {
+  const { data, error } = await admin.from("email_campaign_stats").select("*").eq("campaign_id", id).maybeSingle();
+  if (error) throw new Error(`Could not read the campaign's numbers: ${error.message}`);
+  return data ? statsFromRow(data as Record<string, unknown>) : NO_STATS;
+}
+
+/** Saves a new Campaign; returns its id. */
+export async function createCampaign(
+  admin: SupabaseClient,
+  draft: CampaignDraft,
+  createdByProfileId: string | null,
+): Promise<string> {
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .insert({ ...campaignRowFromDraft(draft), created_by_profile_id: createdByProfileId })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`Could not save the campaign: ${error?.message ?? "no answer"}`);
+  return (data as { id: string }).id;
+}
+
+/**
+ * Saves a Campaign's draft. Once it is locked only the name can change, and
+ * the table's trigger refuses anything else, whatever the caller sends.
+ */
+export async function updateCampaign(admin: SupabaseClient, id: string, draft: CampaignDraft, locked: boolean): Promise<void> {
+  const row = locked ? { name: draft.name } : campaignRowFromDraft(draft);
+  const { error } = await admin.from("email_campaigns").update(row).eq("id", id).is("archived_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function archiveCampaign(admin: SupabaseClient, id: string): Promise<void> {
+  const { error } = await admin
+    .from("email_campaigns")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("archived_at", null);
+  if (error) throw new Error(`Could not archive the campaign: ${error.message}`);
+}
+
+/** Fixes the content: called when the first wave is planned. */
+export async function lockCampaign(admin: SupabaseClient, id: string): Promise<void> {
+  const { error } = await admin
+    .from("email_campaigns")
+    .update({ locked_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("locked_at", null);
+  if (error) throw new Error(`Could not lock the campaign: ${error.message}`);
+}
+
+/** PostgREST returns at most this many rows a request, so reads page. */
+const PAGE = 1000;
+/** Ids per `in (...)` filter, to keep the URL short. */
+const ID_CHUNK = 200;
+
+type CandidateQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
+
+async function readPaged(
+  admin: SupabaseClient,
+  campaignId: string,
+  scope: (q: CandidateQuery) => CandidateQuery,
+): Promise<CampaignCandidate[]> {
+  const out: CampaignCandidate[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await scope(admin.from("marketing_campaign_candidates").select(CANDIDATE_COLUMNS))
+      .order("customer_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(`Could not read the audience: ${error.message}`);
+    const rows = (data ?? []) as unknown as Record<string, unknown>[];
+    for (const row of rows) {
+      const c = candidateFromRow(row, campaignId);
+      if (c) out.push(c);
+    }
+    if (rows.length < PAGE) return out;
+  }
+}
+
+/**
+ * Everyone in a Campaign's audience, before the rule. The imported audience is
+ * every Migrated customer; the subscribed one is every Customer; a Segment is
+ * the ids `segmentIds` yields (lib/crm/segments.ts `resolveSegment`, which
+ * throws for a Segment that is archived or needs review).
+ */
+export async function readCampaignCandidates(
+  admin: SupabaseClient,
+  campaign: Pick<Campaign, "id" | "audience">,
+  segmentIds?: () => AsyncIterable<string[]>,
+): Promise<CampaignCandidate[]> {
+  if (campaign.audience === "imported_not_signed_in") {
+    return readPaged(admin, campaign.id, (q) => q.eq("migrated", true));
+  }
+  if (campaign.audience === "subscribed") return readPaged(admin, campaign.id, (q) => q);
+  if (!segmentIds) throw new Error("A Segment campaign needs its Segment's Customers");
+  const out: CampaignCandidate[] = [];
+  for await (const page of segmentIds()) {
+    for (let i = 0; i < page.length; i += ID_CHUNK) {
+      const ids = page.slice(i, i + ID_CHUNK);
+      out.push(...(await readPaged(admin, campaign.id, (q) => q.in("customer_id", ids))));
+    }
+  }
+  return out;
+}
+
+/** Every wave of every campaign email, for the pause rule, and this Campaign's own. */
+export async function readWaveStats(
+  admin: SupabaseClient,
+  campaignId: string,
+): Promise<{ all: CampaignWaveStats[]; own: CampaignWaveStats[] }> {
+  const all = await readCampaignWaveStats(admin);
+  const key = campaignLedgerKey(campaignId);
+  return { all, own: all.filter((s) => s.template === key) };
+}
+
+export type MarketingClaim =
+  | {
+      claimed: true;
+      sendId: string;
+      email: string;
+      firstName: string | null;
+      locale: string;
+      /** A Migrated customer who has not Claimed: their sign-in button is their own Claim link. */
+      unclaimedMigrated: boolean;
+    }
+  | { claimed: false; blocker: CampaignClaimBlocker };
+
+/** Pure — `claim_marketing_campaign_send`'s one row. */
+export function marketingClaimFromRow(data: unknown): MarketingClaim {
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
+  if (row && typeof row.send_id === "string" && typeof row.email === "string") {
+    return {
+      claimed: true,
+      sendId: row.send_id,
+      email: row.email,
+      firstName: typeof row.first_name === "string" && row.first_name.trim() ? row.first_name.trim() : null,
+      locale: typeof row.locale === "string" ? row.locale : "en-US",
+      unclaimedMigrated: row.unclaimed_migrated === true,
+    };
+  }
+  const blocker = typeof row?.blocker === "string" ? row.blocker : "already_sent";
+  return { claimed: false, blocker: blocker as CampaignClaimBlocker };
+}
+
+/**
+ * Claims one send: the rule, re-run in SQL now, then the `pending` row.
+ * Returns `{ error }` when the call itself fails.
+ */
+export async function claimMarketingCampaignSend(
+  admin: SupabaseClient,
+  p: { customerId: string; campaignId: string; wave: string; retryFailed?: boolean },
+): Promise<MarketingClaim | { error: string }> {
+  const { data, error } = await admin.rpc("claim_marketing_campaign_send", {
+    p_customer_id: p.customerId,
+    p_campaign_id: p.campaignId,
+    p_wave: p.wave,
+    p_retry_failed: Boolean(p.retryFailed),
+  });
+  if (error) return { error: error.message };
+  return marketingClaimFromRow(data);
+}

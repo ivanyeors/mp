@@ -72,9 +72,18 @@ import" rule no longer applies.
 
 ## Hazards
 
-**First hazard: this one decides a deploy, not just a build.** No migration campaign email may
-be sent before slices 04, 05 and 08 are live in production. The announcement promises points
-the customer can spend. Slice 05 makes the wave sender's preflight refuse otherwise.
+**First hazard: this one decides a deploy, not just a build.** No email that promises points
+may be sent before slices 04, 05 and 08 are live in production. Slice 05 makes the wave sender's
+preflight refuse otherwise. On 2026-10-21 the owner chose to send an offer-free invitation first,
+from Admin Panel → Email campaigns (`PRD-email-marketing`). It mentions no points.
+
+**Open for the owner, from that choice.** Each customer's Claim bonus window counts from the
+first campaign email we sent them (decision 11). That is now the offer-free invitation. So a
+customer who claims within 3 months of it gets the bonus at their next sign-in after launch,
+without ever having been offered it. If points launch more than 3 months after the invitation,
+nobody who claims after that gets it. Slice 05 must settle whether the window should start at
+the first email that *announces* points instead (`claim_bonus_window_end` would then read
+campaigns that mention points).
 
 **Second hazard.** The balance is never a column on `customers`. The customer can read their own
 row (ADR 0029 (d)), and a stored total drifts from its history. Read it with `points_balance`.

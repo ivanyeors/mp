@@ -57,9 +57,10 @@ describe("signed out", () => {
 describe("signed in as another Customer", () => {
   const html = page({ session: { customerId: "c-sam", email: "sam@x.test" }, token: TOKEN, tokenCustomer: jane });
 
-  it("says whose account this is and where the voucher went, with a switch that returns here", () => {
+  it("says whose account this is and which email the link is for, with a switch that returns here", () => {
     expect(html).toContain("sam@x.test");
-    expect(html).toContain("Your voucher was sent to the email you shopped with.");
+    expect(html).toContain("This link is for the account of the email you shopped with.");
+    expect(html).not.toMatch(/voucher/i);
     expect(html).toContain("Use another account");
     expect(html).toContain(
       `action="/auth/signout?next=${encodeURIComponent(`/en-US/account/welcome?c=${TOKEN}`)}"`,

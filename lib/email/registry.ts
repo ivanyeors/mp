@@ -13,6 +13,7 @@ import { renderWelcomeVoucherEmail } from "./account";
 import { renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { renderApplicationOutcomeEmail } from "./application";
 import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
+import { renderComposedCampaignEmail } from "./campaigns";
 import { renderContactEmail } from "./contact";
 import {
   renderMigrationAnnouncementEmail,
@@ -59,6 +60,7 @@ import {
   sampleBalanceDue,
   sampleBalanceDueFinish,
   sampleCheckup,
+  sampleComposedCampaign,
   sampleReadjustmentReschedule,
   sampleRestock,
   sampleReviewRequest,
@@ -87,6 +89,7 @@ export type EmailGroup =
   | "order"
   | "account"
   | "migration"
+  | "campaign"
   | "aftercare"
   | "rma"
   | "partner"
@@ -373,6 +376,19 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderMigrationServiceNoticeEmail(sampleMigrationServiceNotice(f)),
   },
 
+  // --- Campaign: written by Staff on Email campaigns (PRD-email-marketing) ---
+  // One renderer for every campaign Staff write: their subject, body and
+  // button in the shell, with the unsubscribe link. Sent through the campaign
+  // transport only, with List-Unsubscribe (lib/email-campaigns/sender.ts).
+  {
+    id: "campaign.composed",
+    label: "Email campaign (written in the Admin Panel)",
+    group: "campaign",
+    audience: "customer",
+    campaign: true,
+    render: (f) => renderComposedCampaignEmail(sampleComposedCampaign(f)),
+  },
+
   // --- Aftercare (PRD customer-crm slices 07, 08) ---
   {
     // Once per Customer, 14 days after delivery. The id is also its
@@ -524,6 +540,7 @@ export const EMAIL_GROUP_LABELS: Record<EmailGroup, string> = {
   order: "Orders",
   account: "Customer account",
   migration: "Shopify move (campaign)",
+  campaign: "Email campaigns",
   aftercare: "Aftercare",
   rma: "Returns",
   results: "Customisation",
