@@ -30,6 +30,10 @@ export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
 export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
 export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
+/** *Has an open follow-up* (CRM slice 06): the overview's `open_followups` above 0. */
+export const FOLLOW_UP_FILTERS = ["all", "open"] as const;
+export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
+
 /**
  * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
  * to nudge before the vouchers expire; *Used* is who redeemed one.
@@ -65,6 +69,8 @@ export interface CustomerFilters {
   mobile: MobileFilter;
   /** The Welcome-back voucher's state (`welcome_voucher_state`). */
   voucher: VoucherFilter;
+  /** `open`: only Customers with a Follow-up not done yet. */
+  followups: FollowUpFilter;
   /** *Email consent*: `marketing_email` on the overview. */
   consent: ConsentFilter;
   sort: CustomerSort;
@@ -80,6 +86,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   google: "all",
   mobile: "all",
   voucher: "all",
+  followups: "all",
   consent: "all",
   sort: "newest",
   page: 1,
@@ -103,6 +110,7 @@ const PARAM_SCHEMAS = {
   google: z.enum(GOOGLE_FILTERS),
   mobile: z.enum(MOBILE_FILTERS),
   voucher: z.enum(VOUCHER_FILTERS),
+  followups: z.enum(FOLLOW_UP_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
@@ -167,6 +175,7 @@ export function customerFilterParams(
   if (f.google !== "all") out.set("google", f.google);
   if (f.mobile !== "all") out.set("mobile", f.mobile);
   if (f.voucher !== "all") out.set("voucher", f.voucher);
+  if (f.followups !== "all") out.set("followups", f.followups);
   if (f.consent !== "all") out.set("consent", f.consent);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
@@ -183,6 +192,7 @@ export interface CustomerListQuery {
   contains(column: string, value: string[]): this;
   not(column: string, operator: "cs", value: string): this;
   eq(column: string, value: boolean | string): this;
+  gt(column: string, value: number): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -212,6 +222,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
   if (filters.mobile === "missing") q = q.eq("has_phone", false);
   if (filters.mobile === "invalid") q = q.eq("has_phone", true).eq("phone_valid", false);
 
+  if (filters.followups === "open") q = q.gt("open_followups", 0);
   if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
 
   switch (filters.sort) {

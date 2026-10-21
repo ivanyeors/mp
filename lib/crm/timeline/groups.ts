@@ -17,3 +17,5 @@ export const AFTERCARE_GROUP: TimelineGroup = { key: "aftercare", label: "Afterc
 export const MARKETING_GROUP: TimelineGroup = { key: "marketing", label: "Marketing" };
 /** The Customer's account: imported from Shopify, Claimed, the Welcome-back voucher (migration PRD). */
 export const ACCOUNT_GROUP: TimelineGroup = { key: "account", label: "Account" };
+/** Follow-ups (CRM 06): added, and done. */
+export const FOLLOW_UPS_GROUP: TimelineGroup = { key: "followups", label: "Follow-ups" };

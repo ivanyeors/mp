@@ -52,6 +52,7 @@ import { ContactCard, FromShopifyCard } from "./customer-account-cards";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
 import { MarketingConsentCard } from "./marketing-consent-card";
+import { CustomerFollowUpsCard } from "./customer-followups-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -150,7 +151,8 @@ export function CustomerDetailClient({
     /**
      * Holds `customers-edit` (CRM slice 10). Without it every edit control is
      * left out and the fields read as text; the write routes refuse regardless.
-     * The same flag lets the Notes card add and delete notes.
+     * The same flag lets the Notes card add and delete notes, and the
+     * Follow-ups card add, complete, reassign and delete follow-ups.
      */
     canEdit: boolean;
     /** Holds `customer-import`: the From Shopify card links its batch in the import history. */
@@ -893,6 +895,9 @@ export function CustomerDetailClient({
                         initialNotes={initialData ? initialData.notes : null}
                         viewer={{ ...viewer, canEdit }}
                     />
+
+                    {/* Follow-ups (CRM 06): dated to-dos, each assigned to a Staff profile */}
+                    <CustomerFollowUpsCard customerId={customer.id} canEdit={canEdit} />
                 </div>
             </div>
         </div>

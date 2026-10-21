@@ -178,12 +178,13 @@ Add a dated paragraph, in copy the owner approves:
   It started at `20261020200000`. Catch-up merges brought in CRM 11's redefinition at
   `…200000` and Migration 06's at `…200100`. The coordinator reserved `…200200` for CRM 06 and
   `…200300` for CRM 04, so this file moved past both. It now also carries CRM 11's
-  `account_providers`, `has_phone` and `phone_valid`, and Migration 06's
-  `claim_link_first_clicked_at` and `welcome_voucher_state`, with its `coupons` join.
-  - **For the integrator:** CRM 06 (`open_followups`) and CRM 04 have not merged yet. Whichever
-    of those lands after this slice must fold `marketing_email` and
-    `marketing_email_updated_at` in. If either lands first, this file must fold theirs in, and
-    it already sorts after both.
+  `account_providers`, `has_phone` and `phone_valid`; Migration 06's
+  `claim_link_first_clicked_at` and `welcome_voucher_state`, with its `coupons` join; and CRM 06's
+  `open_followups`, with its follow-ups join.
+  - **For the integrator:** CRM 04 (`…200300`) has not merged yet. If it lands after this
+    slice, its definition sorts before this one. This file must then fold CRM 04's columns in
+    before its own two, and its consent filter joins CRM 04's `customerFiltersSchema`, with a
+    summary label.
 
 All three are idempotent. `db-check.sh` applies every migration. The new
 `supabase/tests/customer-migration/assert-07-marketing-consent.sql` asserts all of the

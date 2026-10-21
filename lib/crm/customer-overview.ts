@@ -42,6 +42,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "phone_valid",
   "claim_link_first_clicked_at",
   "welcome_voucher_state",
+  "open_followups",
   "marketing_email",
   "marketing_email_updated_at",
 ] as const;
@@ -92,6 +93,8 @@ export interface CustomerOverviewRow {
    * `none`, `issued` (unused, still usable), `used` or `expired`.
    */
   welcome_voucher_state: WelcomeVoucherState;
+  /** Follow-ups not done yet (CRM slice 06); 0 when none. */
+  open_followups: number;
   /** **Marketing consent** (migration slice 07). */
   marketing_email: MarketingEmailState;
   /** When it was last set; null while `not_subscribed`. The export day for a Shopify one. */

@@ -43,6 +43,7 @@ import {
     type CustomerSort,
     type GoogleFilter,
     type MobileFilter,
+    type FollowUpFilter,
     type SourceFilter,
     type VoucherFilter,
 } from "@/lib/crm/customer-filters";
@@ -90,7 +91,7 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 
 /** The filters the list's URL holds; "from Shopify, no account" is one of them. */
 type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort"> &
-    Partial<Pick<CustomerFilters, "google" | "mobile" | "voucher" | "consent">>;
+    Partial<Pick<CustomerFilters, "google" | "mobile" | "voucher" | "followups" | "consent">>;
 
 /**
  * Contact status as small marks (CRM slice 11): how they sign in (an envelope
@@ -186,6 +187,7 @@ export function CustomersClient({
     const [google, setGoogle] = useState<GoogleFilter>(initialFilters.google ?? "all");
     const [mobile, setMobile] = useState<MobileFilter>(initialFilters.mobile ?? "all");
     const [voucher, setVoucher] = useState<VoucherFilter>(initialFilters.voucher ?? "all");
+    const [followups, setFollowups] = useState<FollowUpFilter>(initialFilters.followups ?? "all");
     // Email consent (migration slice 07).
     const [consent, setConsent] = useState<ConsentFilter>(initialFilters.consent ?? "all");
     const [sort, setSort] = useState<CustomerSort>(initialFilters.sort);
@@ -222,6 +224,7 @@ export function CustomersClient({
         google,
         mobile,
         voucher,
+        followups,
         consent,
         sort,
     }).toString();
@@ -231,6 +234,7 @@ export function CustomersClient({
         google !== "all" ||
         mobile !== "all" ||
         voucher !== "all" ||
+        followups !== "all" ||
         consent !== "all" ||
         Boolean(debouncedSearch) ||
         tags.length > 0;
@@ -263,6 +267,10 @@ export function CustomersClient({
     };
     const changeVoucher = (value: string) => {
         setVoucher(value as VoucherFilter);
+        setPage(1);
+    };
+    const changeFollowups = (value: string) => {
+        setFollowups(value as FollowUpFilter);
         setPage(1);
     };
     const changeConsent = (value: string) => {
@@ -409,6 +417,16 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
+                <Select value={followups} onValueChange={changeFollowups}>
+                    <SelectTrigger className="w-full sm:w-52" aria-label="Follow-ups">
+                        <SelectValue placeholder="Follow-ups" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any follow-ups</SelectItem>
+                        <SelectItem value="open">Has an open follow-up</SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Select value={consent} onValueChange={changeConsent}>
                     <SelectTrigger className="w-full sm:w-44" aria-label="Email consent">
                         <SelectValue placeholder="Email consent" />
@@ -483,6 +501,15 @@ export function CustomersClient({
                                             {customer.from_shopify && (
                                                 <Badge variant="outline" className="ml-2 text-xs font-normal">
                                                     Shopify
+                                                </Badge>
+                                            )}
+                                            {customer.open_followups > 0 && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-2 text-xs font-normal"
+                                                    title={`${customer.open_followups} open follow-up${customer.open_followups === 1 ? "" : "s"}`}
+                                                >
+                                                    {customer.open_followups} to follow up
                                                 </Badge>
                                             )}
                                             <span className="block text-xs text-muted-foreground mt-0.5 sm:hidden">
