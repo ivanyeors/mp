@@ -145,7 +145,7 @@ Add a dated paragraph, in copy the owner approves:
   session. Off is `unsubscribed`.
 - **Admin Panel.**
   - `admin_customer_overview` adds `marketing_email` and `marketing_email_updated_at`, in its
-    own file (`20261020200100_customer_overview_marketing_consent.sql`).
+    own file (`20261020200400_customer_overview_marketing_consent.sql`).
   - The Customers list gains an *Email consent* filter (`?consent=subscribed|not-subscribed|unsubscribed`,
     `lib/crm/customer-filters.ts`).
   - The Customer page gains a *Marketing email* card
@@ -174,10 +174,16 @@ Add a dated paragraph, in copy the owner approves:
 
 - `20261020120000_marketing_consent.sql`
 - `20261020120100_customer_import_marketing_consent.sql`
-- `20261020200100_customer_overview_marketing_consent.sql`, which carries every earlier column.
-  It was `20261020200000` until the catch-up merge brought in CRM 11's redefinition at that
-  same version. It moved to the next free one, and now also carries CRM 11's
-  `account_providers`, `has_phone` and `phone_valid`.
+- `20261020200400_customer_overview_marketing_consent.sql`, which carries every earlier column.
+  It started at `20261020200000`. Catch-up merges brought in CRM 11's redefinition at
+  `…200000` and Migration 06's at `…200100`. The coordinator reserved `…200200` for CRM 06 and
+  `…200300` for CRM 04, so this file moved past both. It now also carries CRM 11's
+  `account_providers`, `has_phone` and `phone_valid`, and Migration 06's
+  `claim_link_first_clicked_at` and `welcome_voucher_state`, with its `coupons` join.
+  - **For the integrator:** CRM 06 (`open_followups`) and CRM 04 have not merged yet. Whichever
+    of those lands after this slice must fold `marketing_email` and
+    `marketing_email_updated_at` in. If either lands first, this file must fold theirs in, and
+    it already sorts after both.
 
 All three are idempotent. `db-check.sh` applies every migration. The new
 `supabase/tests/customer-migration/assert-07-marketing-consent.sql` asserts all of the

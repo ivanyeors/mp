@@ -42,6 +42,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   account_providers: [],
   has_phone: false,
   phone_valid: false,
+  claim_link_first_clicked_at: null,
+  welcome_voucher_state: "none",
   marketing_email: "not_subscribed",
   marketing_email_updated_at: null,
   ...over,
@@ -54,6 +56,11 @@ const summary: MigrationSummary = {
   signedUp: 150,
   signedUpBeforeImport: 40,
   batchesApplied: 1,
+  clicked: 300,
+  vouchersIssued: 120,
+  vouchersUsed: 30,
+  voucherOrders: 31,
+  voucherRevenue: 4250.5,
 };
 
 const list = (rows: CustomerOverviewRow[], migration: MigrationSummary | null = null) =>
@@ -90,6 +97,7 @@ describe("Customers list", () => {
           tags: [],
           account: "no-account",
           source: "shopify",
+          voucher: "all",
           consent: "unsubscribed",
           sort: "signed-up",
         }}
@@ -114,7 +122,7 @@ describe("Customers list", () => {
 
 describe("Migration card", () => {
   it("reads N (created a, matched b) and s (s/N %), of which k had an account before import", () => {
-    expect(migrationCells(summary)).toEqual([
+    expect(migrationCells(summary).slice(0, 2)).toEqual([
       { label: "Imported", value: "1,200", detail: "created 900, matched 300" },
       { label: "Signed up", value: "150 (13%)", detail: "of which 40 already had an account before import" },
     ]);
@@ -162,6 +170,8 @@ const facts: MigratedCustomerFacts = {
   emailMarketingAtExport: "yes",
   exportedAt: "2026-10-20",
   batch: { id: "b1", fileName: "customers_export.csv", appliedAt: "2026-10-21T02:05:00Z", rolledBackAt: null },
+  claimLinkFirstClickedAt: null,
+  welcomeVoucher: null,
 };
 
 const detail = (c: Customer, migration?: { ok: true; facts: MigratedCustomerFacts | null } | { ok: false }, canImport = false) =>

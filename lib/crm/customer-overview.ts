@@ -14,6 +14,7 @@
  * this list agree.
  */
 
+import type { WelcomeVoucherState } from "@/lib/customer-migration/welcome-voucher";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /** Every column of `admin_customer_overview`, in the view's order. */
@@ -39,6 +40,8 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "account_providers",
   "has_phone",
   "phone_valid",
+  "claim_link_first_clicked_at",
+  "welcome_voucher_state",
   "marketing_email",
   "marketing_email_updated_at",
 ] as const;
@@ -82,6 +85,13 @@ export interface CustomerOverviewRow {
   has_phone: boolean;
   /** It passes `isValidPhone` (CRM 11: *Mobile: on file*; with `has_phone`, *invalid* when false). */
   phone_valid: boolean;
+  /** The first click of any of their **Claim links** (slice 06); null if none was opened. */
+  claim_link_first_clicked_at: string | null;
+  /**
+   * Their **Welcome-back voucher** (slice 06), by `welcome_voucher_state()`:
+   * `none`, `issued` (unused, still usable), `used` or `expired`.
+   */
+  welcome_voucher_state: WelcomeVoucherState;
   /** **Marketing consent** (migration slice 07). */
   marketing_email: MarketingEmailState;
   /** When it was last set; null while `not_subscribed`. The export day for a Shopify one. */

@@ -5,7 +5,9 @@ import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { readProfileAftercare } from "@/lib/aftercare/preferences";
+import { readWelcomeVoucher, usableWelcomeVoucherCard } from "@/lib/customer-migration/welcome-voucher";
 import { AccountSecurity } from "@/components/auth/account-security";
+import { WelcomeVoucherCard } from "@/components/account/welcome-voucher-card";
 import { AftercarePreferences } from "./aftercare-preferences";
 import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
 import { MarketingEmailPreference } from "./marketing-email-preference";
@@ -45,11 +47,18 @@ export default async function AccountProfilePage({
   // Read server-side by the session's own Customer (CRM slice 13), so the card
   // does not depend on the customer's column grants on `customers`. A failed
   // read hides the card rather than the whole Profile.
-  // Marketing consent (migration slice 07) is read the same way.
-  const [aftercare, marketingEmail] = await Promise.all([
-    readProfileAftercare(supabaseAdmin(), customer.id).catch(() => null),
-    readMarketingEmailState(supabaseAdmin(), customer.id).catch(() => null),
+  const admin = supabaseAdmin();
+  // The Welcome-back voucher (migration slice 06), while it is unused and
+  // unexpired, so a customer who claimed without the campaign email still
+  // finds it. Read after linkCustomerToAuthUser, whose Claim may have just
+  // issued it. A failed read only hides the card. Marketing consent (migration
+  // slice 07) is read the same way as the aftercare switches.
+  const [aftercare, voucher, marketingEmail] = await Promise.all([
+    readProfileAftercare(admin, customer.id).catch(() => null),
+    readWelcomeVoucher(admin, customer.id),
+    readMarketingEmailState(admin, customer.id).catch(() => null),
   ]);
+  const voucherCard = usableWelcomeVoucherCard(voucher);
 
   return (
     <div className="w-full max-w-3xl space-y-8">
@@ -74,6 +83,10 @@ export default async function AccountProfilePage({
           ) : null}
         </div>
       </div>
+
+      {voucherCard ? (
+        <WelcomeVoucherCard voucher={voucherCard} shopHref={withLocale("/shop", locale)} />
+      ) : null}
 
       <AccountSecurity googleLinked={googleLinked} />
 

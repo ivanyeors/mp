@@ -30,6 +30,13 @@ export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
 export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
 export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
+/**
+ * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
+ * to nudge before the vouchers expire; *Used* is who redeemed one.
+ */
+export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
+export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
+
 /** *Email consent* (migration slice 07): the Customer's **Marketing consent**. */
 export const CONSENT_FILTERS = ["all", "subscribed", "not-subscribed", "unsubscribed"] as const;
 export type ConsentFilter = (typeof CONSENT_FILTERS)[number];
@@ -56,6 +63,8 @@ export interface CustomerFilters {
   google: GoogleFilter;
   /** The mobile on file (`has_phone`, `phone_valid`). */
   mobile: MobileFilter;
+  /** The Welcome-back voucher's state (`welcome_voucher_state`). */
+  voucher: VoucherFilter;
   /** *Email consent*: `marketing_email` on the overview. */
   consent: ConsentFilter;
   sort: CustomerSort;
@@ -70,6 +79,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   source: "all",
   google: "all",
   mobile: "all",
+  voucher: "all",
   consent: "all",
   sort: "newest",
   page: 1,
@@ -92,6 +102,7 @@ const PARAM_SCHEMAS = {
   source: z.enum(SOURCE_FILTERS),
   google: z.enum(GOOGLE_FILTERS),
   mobile: z.enum(MOBILE_FILTERS),
+  voucher: z.enum(VOUCHER_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
@@ -155,6 +166,7 @@ export function customerFilterParams(
   if (f.source !== "all") out.set("source", f.source);
   if (f.google !== "all") out.set("google", f.google);
   if (f.mobile !== "all") out.set("mobile", f.mobile);
+  if (f.voucher !== "all") out.set("voucher", f.voucher);
   if (f.consent !== "all") out.set("consent", f.consent);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
@@ -191,6 +203,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+  if (filters.voucher !== "all") q = q.eq("welcome_voucher_state", filters.voucher);
 
   if (filters.google === "linked") q = q.contains("account_providers", ["google"]);
   if (filters.google === "not-linked") q = q.not("account_providers", "cs", "{google}");
