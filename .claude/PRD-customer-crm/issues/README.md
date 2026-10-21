@@ -12,11 +12,11 @@ demoable path through all layers.
 |---|-------|------|--------|------------|--------------|
 | [01](01-glossary-and-adr.md) · [#278](https://github.com/ivanyeors/mp/issues/278) | Glossary and ADR 0027: what the CRM is made of | AFK | **built** (`a9f1e95`) | none | underpins all |
 | [02](02-staff-notes-and-close-exposure.md) · [#279](https://github.com/ivanyeors/mp/issues/279) | Staff notes customers cannot read, and closing the live exposure | AFK | **built** (`5ebb85f`) | 01 | 1, 2, 10 |
-| [03](03-customer-timeline.md) · [#280](https://github.com/ivanyeors/mp/issues/280) | One timeline on the Customer detail, merged when it is read | AFK | **not started** | 02 | 3, 4 |
+| [03](03-customer-timeline.md) · [#280](https://github.com/ivanyeors/mp/issues/280) | One timeline on the Customer detail, merged when it is read | AFK | **built** (`54c44d4`) | 02 | 3, 4 |
 | [04](04-crm-filters-and-overview-columns.md) · [#281](https://github.com/ivanyeors/mp/issues/281) | CRM columns on the Customer overview, the filters that use them, and safe search | AFK | **not started** | 01; migration 12 | 5, 9 |
 | [05](05-saved-segments.md) · [#282](https://github.com/ivanyeors/mp/issues/282) | Saved Segments, shared by Staff, counted live | AFK | **not started** | 04 | 6, 16 |
 | [06](06-follow-ups.md) · [#283](https://github.com/ivanyeors/mp/issues/283) | Follow-ups assigned to Staff profiles | AFK | **not started** | 03, 10 | 7, 8 |
-| [07](07-review-request-after-delivery.md) · [#284](https://github.com/ivanyeors/mp/issues/284) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **not started** | 01, 13 | 11–15 |
+| [07](07-review-request-after-delivery.md) · [#284](https://github.com/ivanyeors/mp/issues/284) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **built** (`b2adc93`) | 01, 13 | 11–15 |
 | [08](08-checkup-reminder.md) · [#285](https://github.com/ivanyeors/mp/issues/285) | Check-up reminder: yearly, Premium Mpillow only, says the visit is paid, to customers who agreed | AFK | **not started** | 07, 13; migration 07 | 24 |
 | [09](09-signoff.md) · [#286](https://github.com/ivanyeors/mp/issues/286) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
 | [10](10-customers-view-permission.md) · [#287](https://github.com/ivanyeors/mp/issues/287) | A view-only Customers permission | AFK | **built** (`38a8880`) | 01 | 17, 18 |

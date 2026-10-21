@@ -8,6 +8,10 @@ import { getMigrationSummary } from "@/lib/customer-migration/overview";
 import { getSiteSettings } from "@/lib/site-settings";
 import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
 import { readTelegramUpdates } from "@/lib/crm/telegram-updates-server";
+import { readAftercareCard } from "@/lib/aftercare/card-server";
+import type { AftercareCardData } from "@/lib/aftercare/settings";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site-url";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -28,9 +32,10 @@ const LIMIT = 20;
  * in the URL (`?account=no-account&source=shopify`), so a filtered list is a
  * link: this page reads the same parameters and renders that list first.
  *
- * `?view=settings` opens the Settings tab (CRM slice 14), whose card is read
- * here too when the page opens on it. Seeing it needs `customers`; changing it
- * needs `customers-edit`, and the online Result switch also `results`.
+ * `?view=settings` opens the Settings tab (CRM slices 07 and 14), whose cards
+ * are read here too when the page opens on it. Seeing them needs `customers`;
+ * changing them needs `customers-edit`, and the online Result switch also
+ * `results`.
  */
 export default async function SettingsCustomersPage({
     params,
@@ -49,10 +54,11 @@ export default async function SettingsCustomersPage({
     const { filters } = parseCustomerFilters(searchParamsFromRecord(query));
     const first = { ...filters, page: 1, limit: LIMIT };
 
-    const [customers, migration, telegramUpdates] = await Promise.all([
+    const [customers, migration, telegramUpdates, aftercare] = await Promise.all([
         listAdminCustomers(customerFilterParams(first, { paging: true })),
         getMigrationSummary(),
         view === "settings" ? readTelegramUpdatesCard() : Promise.resolve(undefined),
+        view === "settings" ? readAftercareCardData() : Promise.resolve(undefined),
     ]);
 
     // On a read failure fall through to the client's own fetch rather than
@@ -68,6 +74,7 @@ export default async function SettingsCustomersPage({
             canEdit={canEdit}
             canEditOnlineResult={canEdit && hasPermission(ctx, "results")}
             telegramUpdates={telegramUpdates}
+            aftercare={aftercare}
             importHref={
                 hasPermission(ctx, "customer-import")
                     ? withLocale("/settings/customers/import", locale)
@@ -87,6 +94,15 @@ async function readTelegramUpdatesCard(): Promise<TelegramUpdatesCardData | unde
             getSiteSettings([...SLA_SETTING_KEYS]),
         ]);
         return { settings, heldReminderTelegram: parseSlaSettings(stored).remindTelegram };
+    } catch {
+        return undefined;
+    }
+}
+
+/** The Aftercare card's data, or undefined so the card fetches it and says why. */
+async function readAftercareCardData(): Promise<AftercareCardData | undefined> {
+    try {
+        return await readAftercareCard(supabaseAdmin(), { origin: getSiteOrigin() });
     } catch {
         return undefined;
     }

@@ -2,6 +2,7 @@
 
 **Issue:** [#284](https://github.com/ivanyeors/mp/issues/284) (parent #277)
 **Type:** AFK
+**Status:** built in `b2adc93` on `claude/shopify-migration-plan-izv7fo`
 **Blocked by:** 01, 13
 **User stories:** 11, 12, 13, 14, 15
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:email`, `area:admin`
@@ -191,18 +192,154 @@ This uses slice 13's channel, with template `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW`
 
 ## Acceptance criteria
 
-- [ ] vitest covers the timing rule as a pure function: too early, on day 14, past the maximum
+- [x] vitest covers the timing rule as a pure function: too early, on day 14, past the maximum
       age, not delivered, in-store handover, and across midnight SGT.
-- [ ] A Customer is asked at most once, across many Orders, both channels and concurrent runs.
+- [x] A Customer is asked at most once, across many Orders, both channels and concurrent runs.
       The primary key and the WhatsApp ledger prove this, not timing.
-- [ ] A Customer with an open return or a refund request is still asked. This is a test, so
+- [x] A Customer with an open return or a refund request is still asked. This is a test, so
       selective asking cannot creep in.
-- [ ] A Customer with email off and WhatsApp on gets WhatsApp only, and the reverse. With both
+- [x] A Customer with email off and WhatsApp on gets WhatsApp only, and the reverse. With both
       unavailable, they are skipped and counted.
-- [ ] The rendered email and the WhatsApp parameters contain the review link and the support
+- [x] The rendered email and the WhatsApp parameters contain the review link and the support
       line, and no price, offer or other product.
-- [ ] An invalid token redirects to the review URL and records nothing. A valid one records the
+- [x] An invalid token redirects to the review URL and records nothing. A valid one records the
       click once and counts every click.
-- [ ] With `review_requests_enabled = false` or an empty `google_review_url`, the job reports
+- [x] With `review_requests_enabled = false` or an empty `google_review_url`, the job reports
       candidates and sends nothing.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `claude/shopify-migration-plan-izv7fo` @ `e03159a` (CRM 13, CRM 14 and migration slice
+05 merged), then merged with it again @ `005e4d6` (CRM 03, migrations 03 and 12).
+
+**What was built**
+
+- **Migration** `supabase/migrations/20261020124000_customer_review_requests.sql`:
+  - `customer_review_requests`, exactly as specified, plus `check (click_count >= 0)` and indexes
+    on `created_at` and `first_clicked_at`. Server-only: RLS on, no policy, `revoke all` from
+    anon and authenticated;
+  - `record_review_request_click(token_hash)`: one statement that counts every click and stamps
+    the first. Executable by the service role only;
+  - a partial index on `orders.delivered_at` for the candidate scan;
+  - the four `site_settings` keys, seeded (`review_requests_enabled = 'false'`, 14, 60, and the
+    owner's Google link).
+- **The pure rules**, `lib/aftercare/review-request.ts`: the settings, the timing rule
+  (`reviewRequestTiming`, SGT calendar days), the database pre-filter (`dueWindow`), who is a
+  candidate (`selectReviewRequestCandidates`), the product label, the channel plan, and the run's
+  report. `REVIEW_ORDER_SELECT` names every column the order query reads; none is a refund
+  request, return, rating or note.
+- **The email side of the channel decision**, `lib/aftercare/channels.ts`
+  (`decideAftercareEmail`, the non-production allowlist). Shared with slice 08. The WhatsApp side
+  is slice 13's `decideAftercareWhatsApp`.
+- **The job**, `lib/aftercare/review-request-server.ts` (`planReviewRequests`,
+  `runReviewRequests`):
+  - claims the `customer_review_requests` row before anything is sent;
+  - sends the email through `dispatchCustomerEmail` (`customer_emails`, template
+    `aftercare.review_request`, `entity_id = customer_id`, Reply-To the support inbox);
+  - sends WhatsApp through `notifyAftercareWhatsApp` (`customer_whatsapp`, same key);
+  - retries earlier runs' failed emails first, then asks today's candidates, at most 100 a run.
+- **The daily chain**, `lib/aftercare/job.ts`: `runAftercareMessages`, chained onto
+  `app/api/cron/results-sla/route.ts`. Each message type is one entry in `AFTERCARE_RUNNERS` and
+  fails on its own. **Slice 08 adds `checkups` there**, its keys in `lib/aftercare/settings.ts`,
+  and a section in the card; `channels.ts` is already shared.
+- **The email**, `lib/email/aftercare.ts` (`renderReviewRequestEmail`), registered as
+  `aftercare.review_request` in a new `aftercare` group, with a no-first-name variant, fixtures,
+  and the group in the dev preview and the contact sheet.
+- **The link**, `lib/aftercare/review-link.ts` (a random 22-character token, its sha256) and the
+  redirect `app/r/review/route.ts`: always a 302, `noindex`, `no-store` and `no-referrer`. `/r/`
+  skips the locale proxy (`proxy.ts`), so it is one hop to Google.
+- **The Aftercare card**, `app/[lang]/settings/customers/aftercare-settings-card.tsx`, on the
+  Customers page's Settings tab beside the Telegram card. It shows the switch, the two day
+  counts, the Google link, the WhatsApp state, the last 30 days by channel, Google reviews linked
+  (a seam for slice 12), today's plan with every skip by reason, and open STOP requests
+  (`listOpenStopRequests`). Data: `lib/aftercare/card-server.ts`; route
+  `app/api/settings/customers/aftercare/route.ts` (GET `customers`, PUT `customers-edit`,
+  audited as `aftercare_settings.update`).
+- **Telegram**: `WEEKLY_SUMMARY_SOURCES` gains `reviewRequests`
+  (`lib/aftercare/review-request-counts.ts`).
+- **On the Customer timeline (slice 03)**: the pure `reviewRequestTimelineEntries`
+  (`lib/aftercare/review-request-timeline.ts`) and the adapter `reviewRequestsAdapter`
+  (`lib/crm/timeline/sources/review-requests.ts`), registered in `TIMELINE_ADAPTERS` under the
+  *Reviews* chip with the `customers` permission. Kinds `review_request.sent` (*Review
+  requested (email, WhatsApp)*, at the earlier send) and `review_request.clicked`.
+- **Small changes to shared helpers**: `dispatchCustomerEmail` takes an optional `replyTo` and
+  an async `render`; `NOT_A_PURCHASE` is exported from `lib/readjustment/purchases.ts`; slice 13's
+  transport check is exported as `aftercareWhatsAppTransportConfigured`.
+- **Env**: `AFTERCARE_EMAIL_ALLOWLIST` in `.env.example`.
+
+**Database check** (`mp_c07`, Postgres 16 with the Supabase stubs): all 164 migrations apply.
+Checked in psql:
+
+- a second claim of the same Customer inserts nothing; three concurrent claims leave one row;
+- an unknown token changes nothing; a valid one stamps `first_clicked_at` once and counts every
+  click, five concurrent clicks included;
+- `token_hash` is unique; a deleted Order nulls `order_id` and keeps the row; a deleted Customer
+  removes it;
+- anon and authenticated can neither read the table nor run the function; service_role can;
+- the four settings are seeded.
+
+**Tests added**
+
+- `lib/aftercare/__tests__/review-request.test.ts`: the timing rule (every case in the first
+  criterion), the pre-filter window, settings, candidates (one per Customer, asked-before, counted
+  Orders only), the guard that the job reads no return, refund, review or note data, the product
+  label, and both channel decisions.
+- `lib/aftercare/__tests__/review-request-job.test.ts`, with an in-memory database that enforces
+  the unique keys (`review-request-fake-db.ts`): channels per Customer; the open return, refund
+  request, one-star review and note; at most once across concurrent runs, re-runs, new Orders and
+  a lost claim; one token for both channels, stored only hashed; switched off, no link or an http
+  link; retries and the three-attempt limit; WhatsApp never retried; the allowlist; no template;
+  the Weekly summary count.
+- `lib/aftercare/__tests__/review-request-copy.test.ts`: the email and the WhatsApp text carry
+  the link and the support line, and no price, offer, incentive, other product or gating wording.
+- `lib/aftercare/__tests__/review-request-timeline.test.ts` (the entries and the adapter) and
+  `lib/aftercare/__tests__/job.test.ts`.
+- Slice 03's `timeline-route.test.ts` fixture gains a review request, so the two entries are
+  checked merged, in order, paged, and shown to a `customers`-only role.
+- The shared `lib/supabase/__tests__/fake-admin.ts` now compares two ISO timestamps as
+  instants in `lt`/`lte`/`gt`/`gte`, as Postgres does. It compared them as strings, so a fixture
+  `…:00Z` sorted after the timeline's cursor `…:00.000000Z`, and paging dropped an entry tied at
+  the cursor's instant. The new entries moved a page boundary onto such a tie.
+- `app/r/review/__tests__/route.test.ts`, `app/api/settings/customers/__tests__/aftercare-route.test.ts`
+  and `app/[lang]/settings/customers/__tests__/aftercare-settings-card-render.test.tsx`.
+- The existing guard test (`customers-write-guard.test.ts`) finds the new PUT and passes.
+
+**Deviations**
+
+- **A retried email carries a fresh link token.** Only the token's hash is stored, so a later
+  run cannot rebuild it. The run that wins the retry claim mints a new token and replaces the
+  hash. A WhatsApp button sent with the first token still reaches Google, but its click is no
+  longer recorded. A click is only a hint, and the case needs a failed email and a WhatsApp
+  opt-in together.
+- **A failed email is retried only while its Order is inside the timing window and the email
+  switch is still on.** Without that, a customer who switched email off and on again weeks later
+  would get a late request.
+- **Nothing is claimed for a Customer no channel can reach.** They stay a candidate, so turning a
+  channel on inside the window still reaches them. Each run counts them as skipped.
+- **The message names one Order:** the Customer's latest delivered Order that is due.
+- **"Skipped, by reason" on the card is today's dry run of the job,** not a stored history. That
+  needs no new table or settings key, and the card and the job cannot disagree.
+- **The Weekly summary** counts Customers asked in the week and how many of those opened the
+  link. It adds no line in a week with none, so it says nothing while the feature is off.
+- **Outside production, email needs `AFTERCARE_EMAIL_ALLOWLIST`, and an empty list allows
+  nobody.** `WHATSAPP_ALLOWLIST` works the other way: empty allows everyone. Production is
+  decided by `VERCEL_ENV` when it is set, because previews build with `NODE_ENV=production`.
+- **With no usable review link, the redirect goes to the home page,** never to an error page.
+- **The email's subject and opening sentence are new copy**: *"Would you review Mpillow on
+  Google?"* and *"Thank you for choosing Mpillow. Your Premium Mpillow (order …) was delivered
+  on …"*. The support line and the footer are word for word as the slice gives them.
+- **`docs/email-templates-preview.html` was not regenerated.** It already lacks migration slice
+  05's `account` group; `pnpm email:sheet` rebuilds it.
+
+**Left for ops or the owner**
+
+1. Apply the migration.
+2. Read the email (dev preview: `aftercare.review_request`) and the WhatsApp message against
+   Google's three rules, then switch review requests on in the Aftercare card.
+3. Make sure `SUPPORT_EMAIL` is the watched support inbox: it is the Reply-To, and replies asking
+   to stop are handled with Staff's switch.
+4. Slice 13's open question still applies: the approved WhatsApp button points at
+   `https://mpillow.com/r/review`. Confirm that path reaches this app before submitting the
+   template. The email uses this app's public origin.
+5. On a preview deploy, set `AFTERCARE_EMAIL_ALLOWLIST` to test the email.

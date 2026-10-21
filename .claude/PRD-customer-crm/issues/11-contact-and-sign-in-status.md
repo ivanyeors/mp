@@ -210,8 +210,9 @@ Notes on the card:
   `appointments`, and Results only with `results` (ADR 0027 (b)). With neither, the row is left
   out.
 - **Failed sends come from `appointment_reminders` only.** `customer_whatsapp`, slice 13's
-  aftercare ledger, keeps no failure time and has no sender until slice 07. Slice 07 can fold
-  its failures into `latestFailedSendAt`.
+  aftercare ledger, keeps no failure time. Slice 07, which merged while this slice was being
+  built, now sends through it. Folding its failures into `latestFailedSendAt` needs a
+  `failed_at`, which is a small follow-up.
 - **The aftercare switches stay in their own card,** directly under this one, not inside it.
   This card only reads facts. The switches change things under `customers-edit`, with a
   dialog, a required note and their own history. A card inside a card would not read better,
