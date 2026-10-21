@@ -334,11 +334,10 @@ body starts and ends with fixed text, and no two variables sit side by side:
 - [x] `sendTemplateMessage` sends a URL-button parameter when given one, and is unchanged when
       not.
 - [ ] Preflight passes with both templates approved. The category Meta gave each is
-      recorded here. — _not yet: HITL/ops. Submit with the script, wait for Meta, run
-      preflight, then record each category here. There are no Meta credentials in the build
-      environment._
-  - `aftercare_review_request`: category _not yet known_.
-  - `aftercare_checkup`: category _not yet known_.
+      recorded here. — _both approved, both Utility (preflight, 2026-10-21). Preflight still
+      warns that the two env vars are unset; tick this once it runs clean with them set._
+  - `aftercare_review_request`: **APPROVED**, category **UTILITY**.
+  - `aftercare_checkup`: **APPROVED**, category **UTILITY**.
 - [x] `./scripts/graphify update .` is run in the same commit.
 
 ## Build notes
@@ -540,9 +539,11 @@ All 155 migrations apply. Checked in psql:
 1. Apply the migration.
 2. Submit both templates:
    `npx tsx --env-file=.env.local scripts/whatsapp-create-templates.ts <WABA_ID> aftercare_review_request,aftercare_checkup`
+   — _done: both approved as Utility (2026-10-21)._
 3. Once Meta approves them, set `WHATSAPP_TEMPLATE_AFTERCARE_REVIEW=aftercare_review_request`
    and `WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP=aftercare_checkup`.
-4. Run `scripts/whatsapp-preflight.ts`, and record each template's category above.
+4. Run `scripts/whatsapp-preflight.ts`, and record each template's category above. — _recorded;
+   re-run once step 3 is done, to tick the box._
 5. Prove the sender reaches a phone that is not on the test list (OPS-CHECKLIST §0.5).
 6. Watch the support Reply-To inbox. Handle stop requests with the manual switch within 10
    business days.
