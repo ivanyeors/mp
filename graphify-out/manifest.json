@@ -16738,5 +16738,11 @@
     "seen": 1792546788.6894565,
     "ast_hash": "c2610207bc4439832418bf8bebba0a5e",
     "semantic_hash": ""
+  },
+  "lib/supabase/__tests__/migration-versions.test.ts": {
+    "mtime": 1792546879.6997492,
+    "seen": 1792547005.6761043,
+    "ast_hash": "5430c56e50cd027dbb146c593fe088a9",
+    "semantic_hash": ""
   }
 }
