@@ -17,7 +17,7 @@ demoable path through all layers.
 | [05](05-saved-segments.md) · [#282](https://github.com/ivanyeors/mp/issues/282) | Saved Segments, shared by Staff, counted live | AFK | **built** (`a031203`) | 04 | 6, 16 |
 | [06](06-follow-ups.md) · [#283](https://github.com/ivanyeors/mp/issues/283) | Follow-ups assigned to Staff profiles | AFK | **built** (`24e2246`) | 03, 10 | 7, 8 |
 | [07](07-review-request-after-delivery.md) · [#284](https://github.com/ivanyeors/mp/issues/284) | Review request: one message after delivery (email and WhatsApp), asking for a Google review | AFK | **built** (`b2adc93`) | 01, 13 | 11–15 |
-| [08](08-checkup-reminder.md) · [#285](https://github.com/ivanyeors/mp/issues/285) | Check-up reminder: yearly, Premium Mpillow only, says the visit is paid, to customers who agreed | AFK | **not started** | 07, 13; migration 07 | 24 |
+| [08](08-checkup-reminder.md) · [#285](https://github.com/ivanyeors/mp/issues/285) | Check-up reminder: yearly, Premium Mpillow only, says the visit is paid, to customers who agreed | AFK | **built** (`8ba8de7`) | 07, 13; migration 07 | 24 |
 | [09](09-signoff.md) · [#286](https://github.com/ivanyeors/mp/issues/286) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
 | [10](10-customers-view-permission.md) · [#287](https://github.com/ivanyeors/mp/issues/287) | A view-only Customers permission | AFK | **built** (`38a8880`) | 01 | 17, 18 |
 | [11](11-contact-and-sign-in-status.md) · [#288](https://github.com/ivanyeors/mp/issues/288) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **built** (`beca3a4`) | 01; migration 12 | 19, 20 |

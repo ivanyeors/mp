@@ -219,7 +219,7 @@ initiative widens this table's `template` check rather than adding another ledge
   - the overview keeps all 39 columns of the latest definition, CRM 12's
     `20261020200500` (see the catch-up note below), then `last_campaign_sent_at`;
   - the summary keeps all 11 columns from `20261020200100`, then its three new ones.
-- Both apply in order with `db-check.sh` (182 migrations after the catch-up), and both
+- Both apply in order with `db-check.sh` (183 migrations after the catch-up), and both
   re-apply idempotently.
 
 **Tests**
@@ -348,9 +348,14 @@ initiative widens this table's `template` check rather than adding another ledge
   Resend's log says whether it went. Setting it `sent` or `failed` is a manual fix.
 - Slice 09 runs the pilot and the waves.
 
-**After merging CRM 05 and CRM 12**
+**After merging CRM 05, CRM 12 and CRM 08**
 
 - **CRM 05 (Segments)** merged cleanly. Its `20261020131000` adds no view.
+- **CRM 08 (check-ups)** adds no view. Two conflicts, resolved by keeping both:
+  - `lib/crm/timeline/registry.ts`: `checkupsAdapter` and `campaignSendsAdapter` are both
+    imported and registered, and the "still to come" list is now empty;
+  - `lib/email/__fixtures__/samples.ts`: `sampleCheckup`, then the campaign fixtures.
+- `db-check.sh` applies 183 migrations after all three merges.
 - **CRM 12 (reviews)** redefined `admin_customer_overview` at `20261020200500`, which sorts before
   this slice's `20261020200700`. This slice's redefinition now carries CRM 12's seven review
   columns and their joins, then `last_campaign_sent_at`. `CUSTOMER_OVERVIEW_COLUMNS` lists them

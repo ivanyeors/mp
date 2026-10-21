@@ -51,7 +51,8 @@ vi.mock("@/lib/aftercare/card-server", async (orig) => {
     readAftercareCard: async (admin: Parameters<typeof real.readAftercareSettings>[0]) => ({
       settings: await real.readAftercareSettings(admin),
       reviewRequests: { today: { candidates: 2 }, last30: { asked: 0, opened: 0, email: 0, whatsapp: 0 }, googleReviewsLinked: 0 },
-      whatsapp: { senderConfigured: false, reviewTemplate: null },
+      checkups: { today: { candidates: 1 }, last90: { sent: 0, email: 0, whatsapp: 0, followedByBooking: 0 } },
+      whatsapp: { senderConfigured: false, reviewTemplate: null, checkupTemplate: null },
       openStopRequests: 0,
     }),
   };
@@ -97,12 +98,15 @@ beforeEach(() => {
       role("orders-only", ["orders"]),
     ],
     admin_users: [],
-    // As seeded by 20261020124000_customer_review_requests.sql.
+    // As seeded by 20261020124000_customer_review_requests.sql and
+    // 20261020133000_checkup_reminders.sql.
     site_settings: [
       { key: "review_requests_enabled", value: "false" },
       { key: "review_request_days_after", value: "14" },
       { key: "review_request_max_age_days", value: "60" },
       { key: "google_review_url", value: "https://g.page/r/CfdGhvgB1hwUEBM/review" },
+      { key: "checkup_reminders_enabled", value: "false" },
+      { key: "checkup_months", value: "12" },
     ],
     admin_audit_log: [],
   };
@@ -122,7 +126,9 @@ describe("GET: seeing the card needs customers", () => {
           maxAgeDays: 60,
           googleReviewUrl: "https://g.page/r/CfdGhvgB1hwUEBM/review",
         },
+        checkups: { enabled: false, months: 12 },
       },
+      checkups: { today: { candidates: 1 } },
       canEdit: false,
     });
   });
@@ -164,11 +170,28 @@ describe("PUT: changing it needs customers-edit", () => {
     signIn("owner");
     expect((await put({ google_review_url: "http://g.page/r/x/review" })).status).toBe(400);
     expect((await put({ review_request_days_after: 90 })).status).toBe(400);
-    expect((await put({ checkup_months: 12 })).status).toBe(400);
+    expect((await put({ checkup_cadence: 12 })).status).toBe(400);
     expect((await put({ review_request_days_after: 0 })).status).toBe(400);
     expect((await put({})).status).toBe(400);
     expect(stored("google_review_url")).toBe("https://g.page/r/CfdGhvgB1hwUEBM/review");
     expect(audits()).toEqual([]);
+  });
+
+  it("changes the Check-up reminder's switch and period on customers-edit only (CRM slice 08)", async () => {
+    signIn("crm-viewer");
+    expect((await put({ checkup_reminders_enabled: true })).status).toBe(403);
+    expect(stored("checkup_reminders_enabled")).toBe("false");
+
+    signIn("crm-editor");
+    const res = await put({ checkup_reminders_enabled: true, checkup_months: 18 });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ settings: { checkups: { enabled: true, months: 18 } } });
+    expect(stored("checkup_reminders_enabled")).toBe("true");
+    expect(stored("checkup_months")).toBe("18");
+    expect(audits()).toEqual(["aftercare_settings.update"]);
+
+    for (const months of [0, 37, 1.5]) expect((await put({ checkup_months: months })).status).toBe(400);
+    expect(stored("checkup_months")).toBe("18");
   });
 
   it("lets the link be cleared, which stops sending", async () => {

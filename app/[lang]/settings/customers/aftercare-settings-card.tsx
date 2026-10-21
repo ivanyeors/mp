@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  CHECKUP_EMAIL_SKIP_LABELS,
+  CHECKUP_LIMITS,
+  CHECKUP_SKIP_LABELS,
+  CHECKUP_WHATSAPP_SKIP_LABELS,
+  type CheckupReport,
+} from "@/lib/aftercare/checkup";
+import {
   EMAIL_SKIP_LABELS,
   REVIEW_REQUEST_LIMITS,
   WHATSAPP_SKIP_LABELS,
@@ -18,10 +25,10 @@ import {
 import type { AftercareCardData, AftercareSettingsPatch } from "@/lib/aftercare/settings";
 
 /**
- * Customers → Settings → Aftercare (CRM slice 07): the Review request's
- * settings, what went out in the last 30 days, today's plan with every skip
- * by reason, and open STOP requests on WhatsApp. CRM slice 08 adds the
- * check-up's settings and numbers here.
+ * Customers → Settings → Aftercare (CRM slices 07 and 08): for the Review
+ * request and the Check-up reminder, the settings, what went out recently,
+ * and today's plan with every skip by reason; and open STOP requests on
+ * WhatsApp.
  *
  * Everyone with `customers` sees it. Without `customers-edit` it is read-only;
  * the API refuses the same changes, so this only spares a button that would
@@ -89,16 +96,150 @@ export function AftercareSettingsCard({
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
         </p>
       ) : (
-        // Keyed by the saved settings, so the fields start again from what was saved.
-        <ReviewRequestSection
-          key={JSON.stringify(data.settings.reviewRequests)}
-          data={data}
-          canEdit={canEdit}
-          saving={saving}
-          onSave={save}
-        />
+        <>
+          {/* Keyed by the saved settings, so the fields start again from what was saved. */}
+          <ReviewRequestSection
+            key={JSON.stringify(data.settings.reviewRequests)}
+            data={data}
+            canEdit={canEdit}
+            saving={saving}
+            onSave={save}
+          />
+          <CheckupSection
+            key={JSON.stringify(data.settings.checkups)}
+            data={data}
+            canEdit={canEdit}
+            saving={saving}
+            onSave={save}
+          />
+        </>
       )}
     </Card>
+  );
+}
+
+/**
+ * The Check-up reminder (CRM slice 08): its switch and period, the fee it
+ * states today, what went out in the last 90 days and the bookings that
+ * followed, and today's plan with every skip by reason.
+ */
+function CheckupSection({
+  data,
+  canEdit,
+  saving,
+  onSave,
+}: {
+  data: AftercareCardData;
+  canEdit: boolean;
+  saving: boolean;
+  onSave: (patch: AftercareSettingsPatch) => Promise<void>;
+}) {
+  const s = data.settings.checkups;
+  const { today, last90 } = data.checkups;
+  const [months, setMonths] = useState(String(s.months));
+  const dirty = months !== String(s.months);
+
+  return (
+    <div className="space-y-4 border-t pt-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-0.5">
+          <Label htmlFor="aftercare-checkup-enabled">Check-up reminder</Label>
+          <p className="text-xs text-muted-foreground">
+            For a Premium Mpillow only: every {plural(s.months, "month")} after delivery, a reminder
+            that a re-adjustment keeps it fitted, which says it is a paid visit and states the fee.
+            Email goes only to customers with marketing consent; WhatsApp only to those who opted in.
+          </p>
+          <p className="text-xs text-muted-foreground">{checkupStatusLine(today)}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+          <Switch
+            id="aftercare-checkup-enabled"
+            checked={s.enabled}
+            disabled={!canEdit || saving}
+            onCheckedChange={(v) => void onSave({ checkup_reminders_enabled: v })}
+          />
+        </div>
+      </div>
+
+      <div className="flex min-w-0 items-end gap-3">
+        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[50%]">
+          <Label htmlFor="aftercare-checkup-months" className="text-xs">
+            Months after delivery, and between reminders
+          </Label>
+          <Input
+            id="aftercare-checkup-months"
+            type="number"
+            inputMode="numeric"
+            min={CHECKUP_LIMITS.months.min}
+            max={CHECKUP_LIMITS.months.max}
+            value={months}
+            disabled={!canEdit || saving}
+            onChange={(e) => setMonths(e.target.value)}
+          />
+        </div>
+        {canEdit ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!dirty || saving}
+            onClick={() => void onSave({ checkup_months: Number(months) })}
+          >
+            Save
+          </Button>
+        ) : null}
+      </div>
+
+      {s.months !== 12 ? (
+        <p className="text-xs text-muted-foreground">
+          Both messages call the re-adjustment &quot;yearly&quot;, and the WhatsApp wording is approved as
+          it is: keep 12 months unless the copy changes too.
+        </p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">{feeLine(today)}</p>
+      <p className="text-xs text-muted-foreground">{checkupWhatsAppLine(data)}</p>
+
+      <div className="space-y-1 border-t pt-3 text-xs">
+        <p className="font-medium">Last 90 days</p>
+        <p className="text-muted-foreground">
+          {plural(last90.sent, "check-up")} sent ({last90.email} by email, {last90.whatsapp} by
+          WhatsApp); {last90.followedByBooking} followed by a re-adjustment booking.
+        </p>
+      </div>
+
+      <div className="space-y-1 border-t pt-3 text-xs">
+        <p className="font-medium">Today</p>
+        <p className="text-muted-foreground">
+          {plural(today.candidates, "order")} due, {today.reachable} reachable.
+        </p>
+        <SkipList
+          title="Skipped"
+          items={Object.entries(today.skipped).map(([k, n]) => [
+            CHECKUP_SKIP_LABELS[k as keyof typeof CHECKUP_SKIP_LABELS],
+            n,
+          ])}
+        />
+        <SkipList
+          title="Email not sent"
+          items={Object.entries(today.emailSkipped).map(([k, n]) => [
+            CHECKUP_EMAIL_SKIP_LABELS[k as keyof typeof CHECKUP_EMAIL_SKIP_LABELS],
+            n ?? 0,
+          ])}
+        />
+        <SkipList
+          title="WhatsApp not sent"
+          items={Object.entries(today.whatsappSkipped).map(([k, n]) => [
+            CHECKUP_WHATSAPP_SKIP_LABELS[k as keyof typeof CHECKUP_WHATSAPP_SKIP_LABELS],
+            n ?? 0,
+          ])}
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Before switching this on, read the email and the WhatsApp message: one product the customer
+        owns, the fee stated plainly, and no discount, offer or other product.
+      </p>
+    </div>
   );
 }
 
@@ -264,6 +405,7 @@ async function fetchAftercareCard(): Promise<AftercareCardData> {
   return {
     settings: payload.settings,
     reviewRequests: payload.reviewRequests,
+    checkups: payload.checkups,
     whatsapp: payload.whatsapp,
     openStopRequests: payload.openStopRequests,
   };
@@ -288,6 +430,26 @@ function statusLine(today: ReviewRequestReport): string {
   if (today.blocked === "disabled") return "Off: nothing is sent. The numbers below are what would go today.";
   if (today.blocked === "no_review_url") return "No usable Google review link (https), so nothing is sent.";
   return "On: due customers are asked in the daily run, at about 10:00 SGT.";
+}
+
+/** Whether a check-up goes out today, and if not, why. */
+function checkupStatusLine(today: CheckupReport): string {
+  if (today.blocked === "disabled") return "Off: nothing is sent. The numbers below are what would go today.";
+  if (today.blocked === "no_fee") return "No re-adjustment fee to state, so nothing is sent today.";
+  return "On: due Premium Mpillow owners are reminded in the daily run, at about 10:00 SGT.";
+}
+
+function feeLine(today: CheckupReport): string {
+  if (today.fee) return `Fee stated: ${today.fee}, read from Costings → Service fees when each message goes.`;
+  return `Fee: none to state (${today.feeError ?? "unknown"}). Set the re-adjustment fee in Costings → Service fees.`;
+}
+
+function checkupWhatsAppLine(data: AftercareCardData): string {
+  if (!data.whatsapp.senderConfigured) return "WhatsApp: the sender is not set up, so check-ups go by email only.";
+  if (!data.whatsapp.checkupTemplate) {
+    return "WhatsApp: the template is not approved yet (WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP), so check-ups go by email only.";
+  }
+  return "WhatsApp: also sent to customers who opted in, unless they asked to stop.";
 }
 
 function whatsappLine(data: AftercareCardData): string {

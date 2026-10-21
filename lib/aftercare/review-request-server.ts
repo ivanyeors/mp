@@ -38,6 +38,7 @@ import {
   aftercareWhatsAppTransportConfigured,
   decideAftercareWhatsApp,
   notifyAftercareWhatsApp,
+  type AftercareWaTemplate,
 } from "@/lib/whatsapp/aftercare-notify";
 import { aftercareDateSgt, reviewRequestTemplateParams } from "@/lib/whatsapp/aftercare-templates";
 import { decideAftercareEmail, isAftercareEmailAllowed } from "./channels";
@@ -168,8 +169,15 @@ async function loadPillows(admin: SupabaseClient, orders: readonly ReviewOrderRo
   return byId;
 }
 
-/** WhatsApp's decision for one Customer, as notifyAftercareWhatsApp will make it. */
-async function decideWhatsApp(admin: SupabaseClient, customer: CustomerRow): Promise<ReviewWhatsAppDecision> {
+/**
+ * WhatsApp's decision for one Customer, as notifyAftercareWhatsApp will make
+ * it. Shared with the check-up (slice 08), which passes its own template.
+ */
+export async function decideAftercareWhatsAppFor(
+  admin: SupabaseClient,
+  customer: Pick<CustomerRow, "id" | "phone" | "aftercare_whatsapp">,
+  template: AftercareWaTemplate = REVIEW_REQUEST_TEMPLATE,
+): Promise<ReviewWhatsAppDecision> {
   if (!aftercareWhatsAppTransportConfigured()) return { send: false, skip: "transport_unconfigured" };
   // Only an opted-in Customer can have an open STOP; skip that read otherwise.
   const gate =
@@ -177,7 +185,7 @@ async function decideWhatsApp(admin: SupabaseClient, customer: CustomerRow): Pro
       ? await readWhatsAppGate(admin, customer.id)
       : { optedIn: false, phone: customer.phone, stopRequested: false };
   return decideAftercareWhatsApp({
-    templateName: aftercareTemplateName(REVIEW_REQUEST_TEMPLATE),
+    templateName: aftercareTemplateName(template),
     optedIn: gate?.optedIn ?? false,
     stopRequested: gate?.stopRequested ?? false,
     phone: gate?.phone ?? null,
@@ -234,7 +242,7 @@ export async function planReviewRequests(
       email: candidate.order.email?.trim() || customer.email,
       allowed: (to) => isAftercareEmailAllowed(to),
     });
-    const whatsapp = await decideWhatsApp(admin, customer);
+    const whatsapp = await decideAftercareWhatsAppFor(admin, customer);
     planned.push({ ...candidate, customer, plan: planReviewChannels(email, whatsapp) });
   }
 

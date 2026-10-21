@@ -20,14 +20,17 @@ describe("the daily Aftercare job", () => {
     expect(sla).toMatch(/await runAftercareMessages\(admin, \{ origin, now \}\)/);
   });
 
-  it("runs the Review request, and reports a failure without throwing", async () => {
-    expect(Object.keys(AFTERCARE_RUNNERS)).toEqual(["reviewRequests"]);
+  it("runs the Review request and the Check-up reminder, and reports each failure without throwing", async () => {
+    expect(Object.keys(AFTERCARE_RUNNERS)).toEqual(["reviewRequests", "checkups"]);
     const broken = {
       from: () => {
         throw new Error("db down");
       },
     } as unknown as SupabaseClient;
     const result = await runAftercareMessages(broken, { origin: "https://x.test", now: new Date() });
-    expect(result).toEqual({ reviewRequests: { ok: false, error: "db down" } });
+    expect(result).toEqual({
+      reviewRequests: { ok: false, error: "db down" },
+      checkups: { ok: false, error: "db down" },
+    });
   });
 });

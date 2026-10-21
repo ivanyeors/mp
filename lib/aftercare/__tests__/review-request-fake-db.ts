@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { likeMatch } from "@/lib/supabase/__tests__/fake-admin";
 
 /**
- * In-memory stand-in for the service-role client, for the Review request job
- * (CRM slice 07). It answers the PostgREST calls the job, the email ledger and
- * the WhatsApp channel make: eq / in / gte / lt / is / not-null filters, order,
- * limit, head counts, update, `upsert(..., { onConflict, ignoreDuplicates })`
- * with a real unique key, and `claim_customer_email` exactly as the migration
- * defines it.
+ * In-memory stand-in for the service-role client, for the Aftercare jobs (CRM
+ * slices 07 and 08). It answers the PostgREST calls the jobs, the email ledger
+ * and the WhatsApp channel make: eq / in / gte / lt / lte / like / is /
+ * not-null filters, order, limit, range, head counts, update,
+ * `upsert(..., { onConflict, ignoreDuplicates })` with a real unique key, and
+ * `claim_customer_email` exactly as the migration defines it.
  *
  * An `orders` row holds its `order_items` inline. A filter on
  * `order_items.<col>` keeps the matching lines and drops an order with none,
@@ -77,6 +78,7 @@ export function reviewFakeDb(db: ReviewFakeDb, opts: { failRpc?: boolean } = {})
       let head = false;
       let sort: { col: string; asc: boolean } | null = null;
       let limit: number | null = null;
+      let range: [number, number] | null = null;
       const list = () => (db[table] ??= []);
 
       const filtered = () => {
@@ -132,6 +134,7 @@ export function reviewFakeDb(db: ReviewFakeDb, opts: { failRpc?: boolean } = {})
           rows = [...rows].sort((a, b) => (String(a[col] ?? "") < String(b[col] ?? "") ? -1 : 1) * (asc ? 1 : -1));
         }
         if (limit !== null) rows = rows.slice(0, limit);
+        if (range) rows = rows.slice(range[0], range[1] + 1);
         return { data: head ? null : rows.map((r) => ({ ...r })), error: null, count: rows.length };
       };
 
@@ -156,6 +159,11 @@ export function reviewFakeDb(db: ReviewFakeDb, opts: { failRpc?: boolean } = {})
           );
           return b;
         },
+        lte: (col: string, v: string) =>
+          (filters.push((r) => r[col] != null && Date.parse(String(r[col])) <= Date.parse(v)), b),
+        like: (col: string, pattern: string) =>
+          (filters.push((r) => likeMatch(pattern.replaceAll("*", "%"), r[col], { caseSensitive: true })), b),
+        range: (from: number, to: number) => ((range = [from, to]), b),
         is: (col: string, v: null) => (filters.push((r) => (r[col] ?? null) === v), b),
         not: (col: string, operator: string, v: unknown) => {
           if (operator !== "is" || v !== null) throw new Error(`fake: not(${col}, ${operator})`);
