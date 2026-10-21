@@ -5,6 +5,8 @@ import {
   loadAdminOrderMpConfigLinks,
   loadAdminOrderTimeline,
 } from "@/lib/ecommerce/admin/order-detail";
+import { readOrderPoints, type OrderPointsRow } from "@/lib/points/order";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import OrderDetailPage, { type OrderDetailInitialData } from "./order-detail-client";
 
 export const runtime = "nodejs";
@@ -30,9 +32,17 @@ export default async function OrderDetailRoute({
     loadAdminOrderMpConfigLinks(id),
   ]);
 
+  const orderBody = order.status === 200 ? (order.body as OrderDetailInitialData["order"]) : null;
+  // What the order earns (PRD-loyalty-points slice 03). A failed read only
+  // leaves the line out.
+  const points = orderBody
+    ? await readOrderPoints(supabaseAdmin(), orderBody.row as unknown as OrderPointsRow).catch(() => null)
+    : null;
+
   const initialData: OrderDetailInitialData = {
     // The lib types the row structurally; the client narrows it to Order.
-    order: order.status === 200 ? (order.body as OrderDetailInitialData["order"]) : null,
+    order: orderBody,
+    pointsEarn: points?.earn ?? null,
     timeline:
       timeline.status === 200
         ? (timeline.body as OrderDetailInitialData["timeline"])

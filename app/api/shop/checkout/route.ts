@@ -25,6 +25,19 @@ import { validateCustomizationConfig } from "@/lib/shop/customization-inventory"
 import { quoteCustomization } from "@/lib/shop/customization-quote";
 import type { ComposedSellableKey } from "@/lib/results/composed-sellable";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
+import { readPointsBalance, readPointsSettings } from "@/lib/points/server";
+import type { PointsSettings } from "@/lib/points/settings";
+import {
+  POINTS_ACCOUNT_ERROR,
+  POINTS_DISABLED_ERROR,
+  POINTS_PARTNER_ERROR,
+  mayUseAccountValue,
+  releasePoints,
+  reservePoints,
+  reserveRefusalMessage,
+  validatePointsRequest,
+  withPointsLabel,
+} from "@/lib/points/spend";
 import type { BolsterVariant, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
 
@@ -68,6 +81,12 @@ const CheckoutSchema = z.object({
   coupon_code: z.string().optional(),
   /** Optional typed partner/referral code (attribution, #74). Never blocks. */
   referral_code: z.string().optional(),
+  /**
+   * Points to take off (ADR 0030 (h) to (j)). Any number: the server refuses
+   * an odd step, too few, too many for the order, or more than the balance,
+   * in words rather than as a schema error.
+   */
+  points: z.number().optional(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 
@@ -92,6 +111,7 @@ export async function POST(req: Request) {
 
   const { email, phone, shipping_address, shipping_method_id, coupon_code, referral_code, items } =
     parsed.data;
+  const pointsRequested = parsed.data.points != null && parsed.data.points !== 0;
 
   const admin = supabaseAdmin();
 
@@ -613,8 +633,9 @@ export async function POST(req: Request) {
   let discountLabel: string | null = appliedCouponCode;
   let selfPurchasePartnerId: string | null = null;
   let selfPurchaseUnits = 0;
+  // Read once: self-purchase pricing and the points refusal ask the same question.
+  const partnerCtx = !referralPartner || pointsRequested ? await getPartnerContext() : null;
   if (!referralPartner) {
-    const partnerCtx = await getPartnerContext();
     if (isPartnerActive(partnerCtx)) {
       const allowance = await loadSelfPurchaseAllowance(partnerCtx.partnerId);
       const commissionableLines = cart.items
@@ -638,6 +659,63 @@ export async function POST(req: Request) {
         selfPurchaseUnits = sp.discountedUnits;
       }
     }
+  }
+
+  // Points (ADR 0030 (h) to (k)): money off this shop Order, after the coupon
+  // and partner pricing, in the same Stripe amount_off. Free shipping and a
+  // coupon's minimum were judged on the subtotal above and do not move.
+  //   (h) only the signed-in Customer, checking out under their own account
+  //       email: the session and the email must resolve to one Customer;
+  //   (r) never a partner, by the same context self-purchase pricing reads
+  //       (and reserve_points asks is_partner_customer again);
+  //   (i) S$1 steps, at least the minimum, at most the share of the products
+  //       after the coupon, and no more than the balance.
+  // Reserved below, once the pending Order exists (rule j).
+  let pointsSpent = 0;
+  let pointsDiscount = 0;
+  let pointsCustomerId: string | null = null;
+  if (pointsRequested) {
+    const sessionCustomerId = await getCurrentCustomerId();
+    if (
+      !sessionCustomerId ||
+      !mayUseAccountValue(sessionCustomerId, {
+        sessionCustomerId,
+        emailCustomerId: existingCustomer?.id ?? null,
+      })
+    ) {
+      return NextResponse.json({ error: POINTS_ACCOUNT_ERROR }, { status: 400 });
+    }
+    if (partnerCtx?.status === "approved") {
+      return NextResponse.json({ error: POINTS_PARTNER_ERROR }, { status: 400 });
+    }
+
+    let settings: PointsSettings;
+    let available: number;
+    try {
+      settings = await readPointsSettings(admin);
+      available = (await readPointsBalance(admin, sessionCustomerId)).available;
+    } catch (err) {
+      console.error("[checkout] Could not read points:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: "We couldn't check your points. Please try again." }, { status: 500 });
+    }
+    if (!settings.enabled) {
+      return NextResponse.json({ error: POINTS_DISABLED_ERROR }, { status: 400 });
+    }
+
+    const check = validatePointsRequest(parsed.data.points, {
+      available,
+      productsAfterCoupon: subtotal - discountAmount,
+      minRedeem: settings.minRedeem,
+      maxShare: settings.maxShare,
+    });
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 400 });
+    }
+    pointsSpent = check.points;
+    pointsDiscount = check.discount;
+    pointsCustomerId = sessionCustomerId;
+    discountAmount = Math.round((discountAmount + pointsDiscount) * 100) / 100;
+    discountLabel = withPointsLabel(discountLabel);
   }
 
   // 10. Compute tax from the configurable region/rate table (keyed on the
@@ -683,6 +761,9 @@ export async function POST(req: Request) {
       // never triggers commission/milestone — it only tracks the allowance.
       self_purchase_partner_id: selfPurchasePartnerId,
       self_purchase_units: selfPurchaseUnits,
+      // Its share of discount_amount (ADR 0030). Written only when points are
+      // used, so an Order without them reads exactly as before.
+      ...(pointsSpent > 0 ? { points_spent: pointsSpent, points_discount: pointsDiscount } : {}),
       payment_method: "stripe",
       locale,
     })
@@ -754,6 +835,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create order items" }, { status: 500 });
   }
 
+  // Reserve the points (rule j): one SQL call takes the Customer's lock,
+  // re-reads the balance and writes the `spend`, so a second tab spending the
+  // same balance gets `insufficient` here. Before Stripe, so no Checkout ever
+  // opens on points that were not there.
+  if (pointsSpent > 0 && pointsCustomerId) {
+    const reserved = await reservePoints(admin, {
+      customerId: pointsCustomerId,
+      orderId: orderRow.id,
+      points: pointsSpent,
+    });
+    if (reserved !== "reserved") {
+      await abandonPendingOrder(admin, orderRow.id, { reserved: reserved === "error" });
+      return NextResponse.json(
+        { error: reserveRefusalMessage(reserved) },
+        { status: reserved === "error" ? 500 : 409 },
+      );
+    }
+  }
+
   // 14. Create Stripe Checkout Session
   const { getSiteOrigin } = await import("@/lib/site-url");
   const siteUrl = getSiteOrigin();
@@ -809,9 +909,9 @@ export async function POST(req: Request) {
       idempotencyKey: `checkout_${orderRow.id}`,
     });
   } catch (err) {
-    // Clean up orphaned order and items on Stripe failure
-    await admin.from("order_items").delete().eq("order_id", orderRow.id);
-    await admin.from("orders").delete().eq("id", orderRow.id);
+    // Clean up orphaned order and items on Stripe failure, giving back any
+    // points reserved for it first.
+    await abandonPendingOrder(admin, orderRow.id, { reserved: pointsSpent > 0 });
     const message = err instanceof Error ? err.message : "Failed to create payment session";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -831,4 +931,30 @@ export async function POST(req: Request) {
     checkout_url: stripeSession.url,
     order_number: orderRow.order_number,
   });
+}
+
+/**
+ * Removes a pending Order whose Checkout never opened, with its lines. When
+ * points may be reserved for it, `release_points` gives them back first; if
+ * that cannot be confirmed, the Order is cancelled rather than deleted, so the
+ * daily sweep still finds the reservation and gives it back. A deleted Order
+ * would leave the `spend` pointing at nothing.
+ */
+async function abandonPendingOrder(
+  admin: ReturnType<typeof supabaseAdmin>,
+  orderId: string,
+  opts: { reserved: boolean },
+) {
+  if (opts.reserved) {
+    const released = await releasePoints(admin, orderId);
+    if (!released.ok) {
+      await admin
+        .from("orders")
+        .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+        .eq("id", orderId);
+      return;
+    }
+  }
+  await admin.from("order_items").delete().eq("order_id", orderId);
+  await admin.from("orders").delete().eq("id", orderId);
 }

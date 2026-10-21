@@ -255,10 +255,15 @@ export interface Order {
   subtotal: number;
   shipping_amount: number;
   tax_amount: number;
+  /** Includes the points' dollars, when points were spent. */
   discount_amount: number;
   total: number;
   amount_captured?: number;
   amount_refunded?: number;
+  /** Points spent at checkout (PRD-loyalty-points slice 04); 0 for none. */
+  points_spent?: number;
+  /** Their dollars, `points_spent / 100`, also inside `discount_amount`. */
+  points_discount?: number;
   shipping_address: ShippingAddress;
   billing_address: ShippingAddress | null;
   shipping_method_id: string | null;

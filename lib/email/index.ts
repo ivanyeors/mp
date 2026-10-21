@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { readOrderPoints } from "@/lib/points/order";
 import type { EmailCopySpec } from "./copy";
 import { loadEmailCopy } from "./copy-store";
 import { ORDER_EMAIL_COPY, renderOrderEmail } from "./templates";
@@ -75,6 +76,11 @@ interface OrderRow {
   tax_amount: number;
   discount_amount: number;
   total: number;
+  customer_id?: string | null;
+  paid_at?: string | null;
+  amount_refunded?: number | null;
+  /** Points spent at checkout; their dollars are inside discount_amount. */
+  points_spent?: number | null;
   shipping_address?: {
     recipient?: string;
     line1?: string;
@@ -108,7 +114,11 @@ interface OrderRow {
 /** Convert a persisted order (with items) into the neutral email payload. */
 export function buildOrderEmailData(
   order: OrderRow,
-  extra?: { refundAmount?: number | null; trackingCheckpoint?: string | null }
+  extra?: {
+    refundAmount?: number | null;
+    trackingCheckpoint?: string | null;
+    pointsEarn?: OrderEmailData["pointsEarn"];
+  }
 ): OrderEmailData {
   const rawItems = order.items ?? order.order_items ?? [];
   const addr = order.shipping_address ?? null;
@@ -146,6 +156,8 @@ export function buildOrderEmailData(
     maxDays: order.shipping_max_days ?? null,
     trackingCheckpoint: extra?.trackingCheckpoint ?? null,
     refundAmount: extra?.refundAmount ?? null,
+    pointsSpent: Number(order.points_spent ?? 0),
+    pointsEarn: extra?.pointsEarn ?? null,
   };
 }
 
@@ -224,9 +236,10 @@ export async function dispatchOrderEmail(params: {
  * (order -> [{template, to, data}]) so it can be asserted directly in tests.
  */
 export function planOrderConfirmedEmails(
-  order: OrderRow
+  order: OrderRow,
+  pointsEarn: OrderEmailData["pointsEarn"] = null
 ): Array<{ template: EmailTemplateName; to: string; data: OrderEmailData }> {
-  const data = buildOrderEmailData(order);
+  const data = buildOrderEmailData(order, { pointsEarn });
   // A paid re-adjustment is an Order with only a Service fee line (ADR 0024):
   // nothing ships, so the order confirmation's delivery promises would be wrong.
   // The booking itself is confirmed by the calendar invite and WhatsApp; the
@@ -241,14 +254,51 @@ export function planOrderConfirmedEmails(
   ];
 }
 
+/**
+ * What a just-paid Order will earn, for its confirmation (PRD-loyalty-points
+ * slice 03), and whether its Customer has yet to sign in. Null while points
+ * are off, for an Order that earns nothing, or when it cannot be read: the
+ * email never waits on points.
+ */
+async function confirmationPoints(
+  admin: SupabaseClient,
+  orderId: string,
+  order: OrderRow
+): Promise<OrderEmailData["pointsEarn"]> {
+  if (!order.customer_id) return null;
+  try {
+    const [points, customer] = await Promise.all([
+      readOrderPoints(admin, {
+        id: orderId,
+        customer_id: order.customer_id,
+        // The row was read before the webhook stamped it paid.
+        paid_at: order.paid_at ?? new Date().toISOString(),
+        subtotal: Number(order.subtotal),
+        discount_amount: Number(order.discount_amount),
+        amount_refunded: order.amount_refunded ?? 0,
+        points_spent: order.points_spent ?? 0,
+      }),
+      admin.from("customers").select("auth_user_id").eq("id", order.customer_id).maybeSingle(),
+    ]);
+    if (points.earn?.kind !== "pending") return null;
+    const guest = !(customer.data as { auth_user_id: string | null } | null)?.auth_user_id;
+    return { points: points.earn.points, guest };
+  } catch (err) {
+    console.error(`[email] Points for the confirmation of order ${orderId} could not be read:`, err);
+    return null;
+  }
+}
+
 /** Send order-confirmation + payment-receipt emails (idempotent). */
 export async function sendOrderConfirmedEmails(
   orderId: string,
   order: OrderRow,
   admin?: SupabaseClient
 ): Promise<void> {
-  for (const plan of planOrderConfirmedEmails(order)) {
-    await dispatchOrderEmail({ orderId, ...plan, admin });
+  const client = admin ?? supabaseAdmin();
+  const pointsEarn = await confirmationPoints(client, orderId, order);
+  for (const plan of planOrderConfirmedEmails(order, pointsEarn)) {
+    await dispatchOrderEmail({ orderId, ...plan, admin: client });
   }
 }
 

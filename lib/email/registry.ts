@@ -56,6 +56,7 @@ import {
   sampleMigrationReminder,
   sampleMigrationServiceNotice,
   sampleOrder,
+  sampleOrderWithPoints,
   samplePairedMbolsterRemoved,
   samplePairedMbolsterRemovedReady,
   samplePartnerListing,
@@ -165,6 +166,9 @@ const SHIPMENT_EMAILS = new Set<EmailTemplateName>([
   "tracking_exception",
 ]);
 
+/** The order emails that show totals, so the points lines. */
+const POINTS_EMAILS = new Set<EmailTemplateName>(["order_confirmation", "payment_receipt"]);
+
 const orderCases: EmailCase[] = (
   Object.keys(ORDER_EMAIL_TEMPLATES) as EmailTemplateName[]
 ).flatMap((key): EmailCase[] => {
@@ -176,6 +180,19 @@ const orderCases: EmailCase[] = (
     copy: ORDER_EMAIL_COPY[key],
     render: (f, copy) => renderOrderEmail(key, sampleOrder(f), copy),
   };
+  if (POINTS_EMAILS.has(key)) {
+    // Points spent and, on the confirmation, what the order earns, for a
+    // guest: every points line and field shows (PRD-loyalty-points).
+    return [
+      base,
+      {
+        ...base,
+        id: `order.${key}_points`,
+        label: `${ORDER_LABELS[key]} — with points`,
+        render: (f, copy) => renderOrderEmail(key, sampleOrderWithPoints(f), copy),
+      },
+    ];
+  }
   if (!SHIPMENT_EMAILS.has(key)) return [base];
   // Same renderer with no tracking link: the button opens the order instead,
   // with its own editable label.

@@ -21,7 +21,7 @@ import type { Order } from "@/lib/types/ecommerce";
 export const CUSTOMER_ORDER_COLUMNS = [
   "id", "order_number", "customer_id", "email", "phone", "status", "currency",
   "subtotal", "shipping_amount", "tax_amount", "discount_amount", "total",
-  "amount_captured", "amount_refunded",
+  "amount_captured", "amount_refunded", "points_spent", "points_discount",
   "shipping_address", "billing_address", "shipping_method_id", "coupon_id", "coupon_code",
   "notes", "payment_method", "payment_reference", "paid_at",
   "tracking_number", "tracking_url", "shipping_courier", "shipping_tracking_status",

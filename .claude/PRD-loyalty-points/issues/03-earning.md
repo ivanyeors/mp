@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** built
 **Blocked by:** 02
 **User stories:** 1, 2, 6, 14
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:checkout`, `area:results`
@@ -58,22 +58,51 @@ A refund before release needs nothing, because the base subtracts `amount_refund
 
 ## Acceptance criteria
 
-- [ ] **The pure rule.** A vitest table for `pointsForOrder({ subtotal, discount, refunded })`
+- [x] **The pure rule.** A vitest table for `pointsForOrder({ subtotal, discount, refunded })`
       covers:
       - rounding down;
       - a points-paid Order earning on its cash only;
       - a fully refunded Order earning 0;
       - a service-only Order.
-- [ ] **Release.** A SQL assert covers:
+- [x] **Release.** A SQL assert covers:
       - an Order inside its window earns nothing yet;
       - the day after, it earns once;
       - a second run writes nothing;
       - a cancelled Order, one paid before launch, a partner self-purchase and an Order by a
         partner Customer never earn.
-- [ ] **Clawback.**
+- [x] **Clawback.**
       - A refund after release claws back once per refund id, never below zero.
       - A replayed webhook writes nothing.
-- [ ] **Guests.** A guest Result accepted with an email belongs to a Customer, and that
+- [x] **Guests.** A guest Result accepted with an email belongs to a Customer, and that
       Customer's balance shows the points after sign-in.
-- [ ] **Unchanged.** Every existing Accept, commission and webhook test passes.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] **Unchanged.** Every existing Accept, commission and webhook test passes.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `claude/admiring-ride-40h2o6` (`20261021130000_points_earning.sql`).
+
+- **SQL.** `release_earned_points(p_now)`: nothing while points are off; one `earn` per
+  `points_order_candidates` row whose `release_at` has passed, `on conflict do nothing`; the due
+  Orders are locked first, so a refund rollup in flight lands wholly before or after the earn.
+  `clawback_points_for_refund(p_order_id, p_refund_id, p_refund_amount)`: only for an Order with
+  an `earn`, under the per-Customer lock, once per refund id; it takes
+  `min(floor(rate × amount), the Order's net earned, available)` and notes any shortfall. One cap
+  beyond the spec: never more than the Order holds above `floor(rate × current base)`, so a
+  refund already in the base when the points were written takes nothing. Not gated on
+  `points_enabled`: it corrects an entry already written, as `adjust_points` does.
+- **Code.** `lib/points/earn.ts`: `pointsForOrder` (cents and ten-thousandths, so it rounds down
+  where SQL's numeric does), `runPointsEarn`, `clawbackPointsForRefund`; neither writer throws.
+- **Wiring.** The daily job (results-sla) runs `runPointsEarn` after Aftercare, with no third
+  cron. `charge.refunded` takes back points for each refund that delivery recorded, after the
+  rollup; a failure is logged, never fails the webhook. Accept resolves the Customer for a guest
+  Result with a real address (`findOrCreateCustomer`), best-effort, after capture.
+- **What the customer sees.** `lib/points/order.ts` reads one Order's points; the order detail
+  page and the Admin order page show "Earns 300 points (S$3.00), usable from 10 Dec 2026",
+  "Earned …" or "Points not earned: refunded". The order confirmation says "This order will earn
+  N points (S$x) once it has been delivered and kept for 30 days.", plus "Sign in with this email
+  to see and use them." for a Customer with no login; both lines are editable on Email templates.
+- **Tests.** `assert-03-earning.sql` (release, every never-earns case, three dblink races);
+  `earn.test.ts`; the daily-job test (`points-jobs.test.ts`); the Accept cases in
+  `exactly-once.test.ts`; `points-clawback.test.ts` for the webhook; `order.test.ts`;
+  `order-points.test.ts` for the email.

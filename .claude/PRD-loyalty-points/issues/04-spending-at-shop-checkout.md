@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** built
 **Blocked by:** 02
 **User stories:** 4, 5, 9, 13, 14
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:checkout`
@@ -74,22 +74,50 @@ refund code.
 
 ## Acceptance criteria
 
-- [ ] **The race.** Two concurrent `reserve_points` calls whose total exceeds the balance: one
+- [x] **The race.** Two concurrent `reserve_points` calls whose total exceeds the balance: one
       succeeds and one returns `insufficient`. This is asserted with two `dblink` sessions, like
       `supabase/tests/customer-migration/assert-05-claim.sql`, and mutation-checked by removing
       the lock.
-- [ ] **Who may spend.** Refused for a guest, a different signed-in Customer, the owner checking
+- [x] **Who may spend.** Refused for a guest, a different signed-in Customer, the owner checking
       out under another email, and a signed-in partner. Accepted for the owner's own email.
-- [ ] **Forged requests.** A request body with too many points, an odd step, below the minimum or
+- [x] **Forged requests.** A request body with too many points, an odd step, below the minimum or
       above the cap is refused by the server.
-- [ ] **Stripe totals.** The coupon and points add up to the Stripe `amount_off`, and the
+- [x] **Stripe totals.** The coupon and points add up to the Stripe `amount_off`, and the
       paid-time reconcile passes.
-- [ ] **Release.** An expired session gives the points back exactly once, a replayed webhook
+- [x] **Release.** An expired session gives the points back exactly once, a replayed webhook
       changes nothing, and a paid Order never gives them back.
-- [ ] **Refunds pinned.** Two S$50 items, S$20 of points, S$80 cash:
+- [x] **Refunds pinned.** Two S$50 items, S$20 of points, S$80 cash:
       - returning one through an RMA refunds S$50 cash;
       - returning the other then refunds the remaining S$30;
       - a full refund returns S$80;
       - no case writes a ledger entry.
-- [ ] **Coupons unchanged.** Every existing coupon and checkout test passes unchanged.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] **Coupons unchanged.** Every existing coupon and checkout test passes unchanged.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `claude/admiring-ride-40h2o6` (`20261021140000_points_spending.sql`).
+
+- **SQL.** `orders.points_spent` and `orders.points_discount` (not null, default 0, and a check
+  that they agree: `points_discount × 100 = points_spent`), readable by the customer.
+  `reserve_points` locks the Customer, then the Order, and answers `reserved` or why not
+  (`customer`, `disabled`, `partner`, `step`, `minimum`, `order`, `cap`, `insufficient`); a repeat
+  for the same Order writes nothing. `release_points` writes at most once and never for a paid
+  Order. `release_stale_point_reservations` as specified, except that it skips a pending Order
+  Stripe has already taken money for (`needs_attention`, or a `payment_pending` or
+  `total_mismatch` event) until Staff cancel it.
+- **Checkout.** A Points section of its own (not inside the summary, which re-renders),
+  unchecked to start because points used are not refunded, then at the maximum once ticked;
+  `/api/shop/points/allowance` works the allowance out from the session. The route checks the
+  account rule, partners, then the amount; adds the points to the discount ("CODE + Points");
+  reserves after the Order and its lines and before Stripe. A refused reservation deletes the
+  Order (409); on a Stripe error the points are released first, and if that cannot be confirmed
+  the Order is cancelled instead of deleted, so the sweep still finds it.
+- **Webhook and sweep.** `checkout.session.expired` and `async_payment_failed` release, replays
+  included; the daily job runs `releaseStalePointReservations` after the earn.
+- **Display.** "Points used (2,000) −S$20.00" is its own line under the coupon on the order
+  detail page, the Admin order page, the order confirmation and the payment receipt; the Discount
+  line shows the coupon alone.
+- **Tests.** `assert-04-spending.sql` (refusals, the dblink race, mutation-checked by removing
+  the lock; release; the sweep), `spend.test.ts`, `refunds-pinned.test.ts`, the checkout and
+  allowance route tests, `points-release.test.ts`.

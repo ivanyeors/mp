@@ -19,6 +19,7 @@ import {
   isResultCustomisedOrder,
 } from "@/lib/results/post-delivery-refund";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { orderEarnLine, pointsUsedRow, readOrderPoints } from "@/lib/points/order";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   evaluateEligibility,
@@ -98,10 +99,15 @@ export default async function AccountOrderDetailPage({
   // Per-item RMA eligibility (ADR 0011). Same pure rule set the server insert
   // uses; alreadyReturnedQty comes from open RMAs on this order (service role).
   const admin = supabaseAdmin();
-  const [alreadyReturned, settings] = await Promise.all([
+  // Points (PRD-loyalty-points slices 03, 04): what the order spent and what
+  // it earns. A failed read only leaves the lines out.
+  const [alreadyReturned, settings, points] = await Promise.all([
     openReturnedQtyByOrder(admin, order.id),
     getSiteSettings(["rma_return_window_days"]),
+    readOrderPoints(admin, order).catch(() => null),
   ]);
+  const pointsUsed = pointsUsedRow(Number(order.points_spent ?? 0));
+  const couponDiscount = Math.round((order.discount_amount - (pointsUsed?.dollars ?? 0)) * 100) / 100;
   const returnWindowDays =
     Number(settings.rma_return_window_days) || DEFAULT_RETURN_WINDOW_DAYS;
   const now = new Date();
@@ -263,10 +269,16 @@ export default async function AccountOrderDetailPage({
               <span>{formatOrderPrice(order.shipping_amount, order.currency)}</span>
             </div>
           ) : null}
-          {order.discount_amount > 0 ? (
+          {couponDiscount > 0 ? (
             <div className="flex justify-between text-green-600 dark:text-green-400">
               <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ""}</span>
-              <span>-{formatOrderPrice(order.discount_amount, order.currency)}</span>
+              <span>-{formatOrderPrice(couponDiscount, order.currency)}</span>
+            </div>
+          ) : null}
+          {pointsUsed ? (
+            <div className="flex justify-between text-green-600 dark:text-green-400">
+              <span>{pointsUsed.label}</span>
+              <span>-{formatOrderPrice(pointsUsed.dollars, order.currency)}</span>
             </div>
           ) : null}
           {order.tax_amount > 0 ? (
@@ -279,6 +291,7 @@ export default async function AccountOrderDetailPage({
             <span>Total</span>
             <span>{formatOrderPrice(order.total, order.currency)}</span>
           </div>
+          {points?.earn ? <p className="pt-1 text-muted-foreground">{orderEarnLine(points.earn)}</p> : null}
         </div>
       </section>
 

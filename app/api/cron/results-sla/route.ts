@@ -30,6 +30,8 @@ import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock"
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
+import { runPointsEarn } from "@/lib/points/earn";
+import { releaseStalePointReservations } from "@/lib/points/spend";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -525,6 +527,17 @@ export async function GET(req: Request) {
     aftercare = { ok: false, error: e instanceof Error ? e.message : "aftercare messages failed" };
   }
 
+  // Chain: earned points (PRD-loyalty-points slice 03, ADR 0030 d). One `earn`
+  // entry for each Order whose return window has closed; nothing while points
+  // are off. A manual re-run writes nothing twice. It never throws: a failure
+  // comes back as `{ error }` and tomorrow's run writes what today's missed.
+  const points = await runPointsEarn(admin, now);
+
+  // Chain: points reserved by a Checkout that was never paid (PRD-loyalty-points
+  // slice 04, ADR 0030 j). The webhook gives them back when Stripe says the
+  // session expired or failed; this catches what it missed. Never throws.
+  const pointsReservations = await releaseStalePointReservations(admin, now);
+
   // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
   // match, New sign-ups and the Weekly summary. Each goes at most once per
   // period by compare-and-set, so a manual re-run posts nothing twice. After
@@ -546,6 +559,8 @@ export async function GET(req: Request) {
     preOrderRestock,
     googleReviews,
     aftercare,
+    points,
+    pointsReservations,
     crmTelegram,
   });
 }

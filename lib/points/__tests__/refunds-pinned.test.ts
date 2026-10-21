@@ -1,0 +1,147 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Refunds do not change for points (PRD-loyalty-points slice 04; ADR 0030
+ * (l)): points used are never refunded. Every refund path already pays cash
+ * only, capped at the cash not yet refunded, so a return refunds cash first
+ * and the points stay spent on what was kept. These pin that behaviour
+ * through the real refund code: the RMA refund action and the Admin refund
+ * route.
+ *
+ * The Order: two S$50 items, S$20 of points, S$80 cash.
+ */
+
+const ORDER = "0b0b0b0b-0000-4000-8000-000000000001";
+
+const h = vi.hoisted(() => ({
+  order: {} as Record<string, unknown>,
+  rmaItems: [] as Array<{ quantity: number; order_items: { unit_price: number } }>,
+  tables: [] as string[],
+  writes: [] as string[],
+  refundPayment: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/auth/admin", () => ({
+  assertAdmin: async () => ({ userId: "staff-1" }),
+  requireAdmin: async () => null,
+}));
+vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn() }));
+vi.mock("@/lib/stripe/refunds", () => ({ refundPayment: h.refundPayment }));
+vi.mock("@/lib/ecommerce/orders", () => ({ addOrderTimelineEvent: vi.fn() }));
+vi.mock("@/lib/rma/transition", () => ({ applyRmaTransition: vi.fn() }));
+vi.mock("@/lib/site-settings", () => ({ getSiteSettings: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({
+  supabaseAdmin: () => ({
+    from(table: string) {
+      h.tables.push(table);
+      const b: Record<string, unknown> = {
+        select: () => b,
+        eq: () => b,
+        in: () => b,
+        update: () => (h.writes.push(`update:${table}`), b),
+        insert: () => (h.writes.push(`insert:${table}`), b),
+        upsert: () => (h.writes.push(`upsert:${table}`), b),
+        delete: () => (h.writes.push(`delete:${table}`), b),
+        maybeSingle: async () => ({
+          data:
+            table === "rma_requests"
+              ? { id: "rma", status: "received", resolution: "refund", orders: h.order, rma_request_items: h.rmaItems }
+              : null,
+          error: null,
+        }),
+        single: async () => ({ data: table === "orders" ? { ...h.order, items: [] } : null, error: null }),
+        then: (resolve: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(resolve),
+      };
+      return b;
+    },
+    rpc: async (fn: string) => {
+      h.writes.push(`rpc:${fn}`);
+      return { data: null, error: null };
+    },
+  }),
+}));
+
+const { issueRmaRefund } = await import("@/app/[lang]/settings/rma/actions");
+const { POST: adminRefund } = await import("@/app/api/shop/orders/[id]/refund/route");
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  h.tables = [];
+  h.writes = [];
+  h.refundPayment.mockResolvedValue({ id: "re_1" });
+  h.order = {
+    id: ORDER,
+    order_number: "MP-PTS",
+    payment_reference: "pi_points",
+    currency: "SGD",
+    status: "delivered",
+    subtotal: 100,
+    discount_amount: 20,
+    points_spent: 2000,
+    points_discount: 20,
+    total: 80,
+    amount_captured: 80,
+    amount_refunded: 0,
+    shipped_at: null,
+    delivered_at: null,
+    refund_request_status: null,
+  };
+});
+
+/** The charge.refunded webhook rolls the refund into amount_refunded. */
+const settle = (amount: number) => {
+  h.order.amount_refunded = Number(h.order.amount_refunded) + amount;
+};
+const refundedAmountArg = (call: number) => (h.refundPayment.mock.calls[call][0] as { amount?: number }).amount;
+
+describe("refunds with points used (rule l)", () => {
+  it("returning one item through an RMA refunds its S$50 in cash", async () => {
+    h.rmaItems = [{ quantity: 1, order_items: { unit_price: 50 } }];
+    expect(await issueRmaRefund("rma-1")).toEqual({ ok: true, amount: 50 });
+    expect(refundedAmountArg(0)).toBe(50);
+  });
+
+  it("returning the other then refunds the S$30 of cash left: the points stay spent", async () => {
+    h.rmaItems = [{ quantity: 1, order_items: { unit_price: 50 } }];
+    await issueRmaRefund("rma-1");
+    settle(50);
+    expect(await issueRmaRefund("rma-2")).toEqual({ ok: true, amount: 30 });
+    // The rest of the cash: a full refund of what is left, so Stripe is sent no amount.
+    expect(refundedAmountArg(1)).toBeUndefined();
+    settle(30);
+    await expect(issueRmaRefund("rma-3")).rejects.toThrow("Nothing left to refund on this order.");
+  });
+
+  it("a full refund returns the S$80 paid, not the S$100 the items cost", async () => {
+    const res = await adminRefund(
+      new Request(`https://x.test/api/shop/orders/${ORDER}/refund`, { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: ORDER }) },
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, amount: 80 });
+    expect(refundedAmountArg(0)).toBeUndefined();
+  });
+
+  it("no refund writes a points entry, or calls a points function", async () => {
+    h.rmaItems = [{ quantity: 2, order_items: { unit_price: 50 } }];
+    await issueRmaRefund("rma-1");
+    await adminRefund(
+      new Request(`https://x.test/api/shop/orders/${ORDER}/refund`, { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: ORDER }) },
+    );
+    expect(h.tables).not.toContain("points_ledger");
+    expect(h.writes.filter((w) => w.startsWith("rpc:"))).toEqual([]);
+
+    for (const file of [
+      "lib/ecommerce/admin-refund.ts",
+      "lib/rma/refund.ts",
+      "app/[lang]/settings/rma/actions.ts",
+      "app/api/shop/orders/[id]/refund/route.ts",
+    ]) {
+      expect(readFileSync(join(process.cwd(), file), "utf8"), file).not.toMatch(/points_ledger|release_points|spend_release|releasePoints/);
+    }
+  });
+});

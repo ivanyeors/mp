@@ -19,6 +19,8 @@ import {
   finalizeReadjustmentBooking,
 } from "@/lib/readjustment/checkout";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
+import { clawbackPointsForRefund } from "@/lib/points/earn";
+import { releasePoints } from "@/lib/points/spend";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -33,6 +35,40 @@ class CriticalWebhookError extends Error {
   constructor(message: string, public override cause?: unknown) {
     super(message);
     this.name = "CriticalWebhookError";
+  }
+}
+
+/**
+ * Gives back the points an unpaid Order reserved (ADR 0030 (j)). Not critical:
+ * the Order is already cancelled or failed by now, and the daily sweep
+ * releases any reservation on such an Order that this missed.
+ */
+async function releaseOrderPoints(admin: SupabaseClient, orderId: string) {
+  const released = await releasePoints(admin, orderId);
+  if (!released.ok) {
+    console.error(`[stripe/webhook] Points for order ${orderId} were not released; the daily sweep will: ${released.error}`);
+    return;
+  }
+  if (released.released) {
+    try {
+      await addOrderTimelineEvent(orderId, "points_released", "Points reserved at checkout returned", {});
+    } catch (err) {
+      console.error(`[stripe/webhook] Timeline event failed for ${orderId}:`, err);
+    }
+  }
+}
+
+/**
+ * Takes back the points each newly recorded refund's cash earned (ADR 0030
+ * (m)); once per refund id in SQL. Only refunds this delivery recorded: an
+ * older one was settled when it arrived, and if it came before the points
+ * were written it is already in their base. Never fails the webhook: the
+ * money has already moved, so a failure is logged.
+ */
+async function clawbackRefundPoints(admin: SupabaseClient, orderId: string, refunds: Stripe.Refund[]) {
+  for (const r of refunds) {
+    const clawback = await clawbackPointsForRefund(admin, { orderId, refundId: r.id, amount: r.amount / 100 });
+    if ("error" in clawback) console.error(`[stripe/webhook] Points not taken back for refund ${r.id}: ${clawback.error}`);
   }
 }
 
@@ -192,7 +228,7 @@ export async function POST(req: Request) {
         const { data: order } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
           )
           .eq("id", orderId)
           .single();
@@ -453,20 +489,27 @@ export async function POST(req: Request) {
           .eq("stripe_session_id", session.id)
           .maybeSingle();
 
+        if (!order) break;
+
         // Never clobber an order that got paid another way.
-        if (!order || order.status !== "pending") break;
+        if (order.status === "pending") {
+          await admin
+            .from("orders")
+            .update({ status: "payment_failed" })
+            .eq("id", order.id);
 
-        await admin
-          .from("orders")
-          .update({ status: "payment_failed" })
-          .eq("id", order.id);
+          await addOrderTimelineEvent(
+            order.id,
+            "payment_failed",
+            "Delayed payment method failed to settle",
+            { stripe_session_id: session.id }
+          );
+        }
 
-        await addOrderTimelineEvent(
-          order.id,
-          "payment_failed",
-          "Delayed payment method failed to settle",
-          { stripe_session_id: session.id }
-        );
+        // Points reserved for it come back (ADR 0030 (j)). Also on a replay,
+        // in case the first delivery failed here: release_points writes at
+        // most once, and never for a paid Order.
+        await releaseOrderPoints(admin, order.id);
 
         break;
       }
@@ -489,22 +532,29 @@ export async function POST(req: Request) {
           .eq("stripe_session_id", session.id)
           .single();
 
-        if (!order || order.status !== "pending") break;
+        if (!order) break;
 
-        await admin
-          .from("orders")
-          .update({
-            status: "cancelled",
-            cancelled_at: new Date().toISOString(),
-          })
-          .eq("id", order.id);
+        if (order.status === "pending") {
+          await admin
+            .from("orders")
+            .update({
+              status: "cancelled",
+              cancelled_at: new Date().toISOString(),
+            })
+            .eq("id", order.id);
 
-        await addOrderTimelineEvent(
-          order.id,
-          "session_expired",
-          "Stripe checkout session expired — order cancelled",
-          { stripe_session_id: session.id }
-        );
+          await addOrderTimelineEvent(
+            order.id,
+            "session_expired",
+            "Stripe checkout session expired — order cancelled",
+            { stripe_session_id: session.id }
+          );
+        }
+
+        // The Checkout lapsed unpaid: points reserved for it come back
+        // (ADR 0030 (j)). A replay writes nothing, and a paid Order never
+        // gives them back.
+        await releaseOrderPoints(admin, order.id);
 
         break;
       }
@@ -521,7 +571,7 @@ export async function POST(req: Request) {
         const { data: order } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
           )
           .eq("payment_reference", paymentIntentId)
           .single();
@@ -537,6 +587,7 @@ export async function POST(req: Request) {
         // late redelivery. Upgrade path: handle refund.* events directly.
         const refunds = (charge.refunds?.data ?? []).filter((r) => r.status === "succeeded");
         let newlyRecorded = 0;
+        const recordedNow: Stripe.Refund[] = [];
         for (const r of refunds) {
           const { recorded } = await recordLedgerEntry(admin, order.id, {
             type: "refund",
@@ -551,6 +602,7 @@ export async function POST(req: Request) {
           });
           if (recorded) {
             newlyRecorded++;
+            recordedNow.push(r);
             // If this refund was issued for an RMA (slice 06), settle it now that
             // the money has moved. Idempotent + best-effort: a redelivered event
             // no-ops (canTransition false) and RMA settlement never breaks money.
@@ -572,6 +624,10 @@ export async function POST(req: Request) {
         // manual action linked to the refund (slice 08).
         const state = await rollupOrderMoney(admin, order.id);
         const nowFullyRefunded = state.status === "refunded";
+
+        // After the rollup: the clawback reads amount_refunded to tell a
+        // refund already in the Order's earn base from a later one.
+        await clawbackRefundPoints(admin, order.id, recordedNow);
 
         await addOrderTimelineEvent(
           order.id,

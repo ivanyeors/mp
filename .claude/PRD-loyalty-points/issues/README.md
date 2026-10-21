@@ -17,8 +17,8 @@ demoable path through all layers.
 |---|-------|------|--------|------------|--------------|
 | [01](01-glossary-and-adr.md) | Glossary and ADR 0030: what a point is, and what it is not | AFK | **built** | migration merge | underpins all |
 | [02](02-ledger-balance-and-staff.md) | The points ledger, the balance, the settings, and Staff adjustments | AFK | **built** | 01 | 3, 10, 11, 12 |
-| [03](03-earning.md) | Earning: points written when an Order's return window closes | AFK | **not started** | 02 | 1, 2, 6, 14 |
-| [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **not started** | 02 | 4, 5, 9, 13, 14 |
+| [03](03-earning.md) | Earning: points written when an Order's return window closes | AFK | **built** | 02 | 1, 2, 6, 14 |
+| [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **built** | 02 | 4, 5, 9, 13, 14 |
 | [05](05-claim-bonus.md) | The Claim bonus replaces the voucher, for every customer-facing surface | AFK | **built** | 02, 04 | 7 |
 | [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **not started** | 05 | 7, 12 |
 | [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **not started** | 02, 03 | 8 |

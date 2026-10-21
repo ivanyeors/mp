@@ -9,6 +9,8 @@ import {
 } from "./components";
 import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy, type EmailCopySpec } from "./copy";
 import { money, negativeMoney } from "./format";
+import { pointsUsedRow } from "@/lib/points/order-lines";
+import { formatDollars, formatPointsCount, pointsToDollars } from "@/lib/points/value";
 import type {
   EmailTemplateName,
   OrderEmailAddress,
@@ -67,11 +69,16 @@ function totalsRows(
   ];
   if (data.shippingAmount > 0)
     rows.push({ label: "Shipping", value: money(data.shippingAmount, data.currency) });
-  if (data.discountAmount > 0)
+  // Points used are their own line, apart from the coupon; their dollars
+  // are inside discountAmount.
+  const used = pointsUsedRow(data.pointsSpent ?? 0);
+  const discount = Math.round((data.discountAmount - (used?.dollars ?? 0)) * 100) / 100;
+  if (discount > 0)
     rows.push({
       label: "Discount",
-      value: negativeMoney(data.discountAmount, data.currency),
+      value: negativeMoney(discount, data.currency),
     });
+  if (used) rows.push({ label: used.label, value: negativeMoney(used.dollars, data.currency) });
   if (data.taxAmount > 0)
     rows.push({ label: "Tax", value: money(data.taxAmount, data.currency) });
   rows.push({ label: "Total", value: money(data.total, data.currency), strong: true });
@@ -123,6 +130,12 @@ const ORDER_PLACEHOLDERS = {
   order_number: "The order number, e.g. MP-10428",
 };
 
+/** Only in the points lines of the order confirmation. */
+const POINTS_PLACEHOLDERS = {
+  points: "What the order earns, e.g. 300 points (points lines only)",
+  amount: "What they are worth, e.g. S$3.00 (points lines only)",
+};
+
 const TRACK_HINT = "The button when the courier gave a tracking link.";
 const ORDER_HINT = "The button when there is no tracking link: it opens the order instead.";
 
@@ -149,12 +162,24 @@ export const ORDER_EMAIL_COPY = {
     id: "order.order_confirmation",
     name: "Order confirmed",
     description: "Sent when a shop order is paid, with its items, totals and delivery address.",
-    placeholders: ORDER_PLACEHOLDERS,
+    placeholders: { ...ORDER_PLACEHOLDERS, ...POINTS_PLACEHOLDERS },
     fields: {
       subject: { label: "Subject", default: "Order {order_number} confirmed" },
       preheader: { label: "Inbox preview line", default: "Order {order_number} is confirmed." },
       heading: { label: "Heading", default: "Thanks for your order!" },
       intro: { label: "Message", default: "Hi {customer_name}, we've received order {order_number} and it's now confirmed." },
+      points_earn: {
+        label: "Points the order earns",
+        default: "This order will earn {points} ({amount}) once it has been delivered and kept for 30 days.",
+        optional: true,
+        hint: "Only while points are on and the order earns some.",
+      },
+      points_guest: {
+        label: "Points, for a guest",
+        default: "Sign in with this email to see and use them.",
+        optional: true,
+        hint: "Added after the line above when the customer checked out without signing in.",
+      },
       closing: { label: "Closing line", default: "We'll email you again when it ships.", optional: true },
       button: { label: "Button", default: "View your order" },
     },
@@ -237,7 +262,14 @@ function orderConfirmation(
   data: OrderEmailData,
   copy: CopyOf<"order_confirmation"> = defaultEmailCopy(ORDER_EMAIL_COPY.order_confirmation),
 ): RenderedEmail {
-  const t = filled(copy, orderValues(data));
+  const earn = data.pointsEarn && data.pointsEarn.points > 0 ? data.pointsEarn : null;
+  const t = filled(copy, {
+    ...orderValues(data),
+    points: earn ? formatPointsCount(earn.points) : null,
+    amount: earn ? formatDollars(pointsToDollars(earn.points)) : null,
+  });
+  // The points sentence, and for a guest the sign-in one, only when the order earns.
+  const pointsLine = earn && t.points_earn ? [t.points_earn, earn.guest ? t.points_guest : ""].filter(Boolean).join(" ") : "";
   const url = orderUrl(data.orderNumber);
   const text = [
     t.intro,
@@ -246,6 +278,7 @@ function orderConfirmation(
     itemsText(data),
     "",
     `${totalsText(data)}${addressBlockText(data) ? `\n${addressBlockText(data)}` : ""}`,
+    ...(pointsLine ? ["", pointsLine] : []),
     "",
     `${t.button}: ${url}`,
     ...(t.closing ? ["", t.closing] : []),
@@ -257,6 +290,7 @@ function orderConfirmation(
     bodyHtml: `${paragraph(t.intro)}
 ${itemsTableHtml(data)}
 ${addressBlockHtml(data)}
+${pointsLine ? paragraph(pointsLine) : ""}
 ${t.closing ? paragraph(t.closing, { muted: true }) : ""}`,
     cta: { href: url, label: t.button },
   });

@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** built (the end-to-end check waits on slice 04)
+**Status:** built
 **Blocked by:** 02, 04
 **User stories:** 7
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:account`, `area:email`
@@ -96,7 +96,7 @@ slice 08).
       today's sign-in.
 - [x] **Preflight.** It refuses the announcement while the bonus is 0, points are off, or
       spending has not launched.
-- [ ] **End to end.** Claim, then the Points card shows S$10, then a S$25 cover sheet takes S$10
+- [x] **End to end.** Claim, then the Points card shows S$10, then a S$25 cover sheet takes S$10
       off at checkout.
 - [x] `./scripts/graphify update .` is run in the same commit.
 
@@ -129,5 +129,5 @@ Built on `claude/admiring-ride-40h2o6` (`20261021150000_points_claim_bonus.sql`)
   points off, a bonus of 0, grants). `assert-06-welcome.sql` now claims with no voucher issued.
   `claim.test.ts`, `migration-emails.test.ts`, `wave-sender.test.ts`, the Email campaigns sender
   and rules tests, the welcome page and render tests, `claimBonusOffer` cases.
-- **Left for slice 04's merge:** the end-to-end check (Claim, then the Points card shows S$10,
-  then a S$25 cover sheet takes S$10 off at checkout).
+- **End to end:** `supabase/tests/loyalty-points/assert-05-claim-to-checkout.sql` (Claim, 1,000
+  available, a S$25 cover sheet reserves S$10, the balance is 0, a second sign-in grants nothing).
