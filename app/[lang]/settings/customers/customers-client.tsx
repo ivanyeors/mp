@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { User, Search, Loader2, Mail, Smartphone } from "lucide-react";
+import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Table,
     TableBody,
@@ -34,20 +35,25 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { customerDisplayName, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import {
+    CUSTOMER_FILTER_KEYS,
     CUSTOMER_FILTER_PARAMS,
     DEFAULT_CUSTOMER_FILTERS,
+    clearCustomerFilter,
+    clearCustomerFilters,
     customerFilterParams,
+    isCustomerFilterActive,
     type AccountFilter,
-    type ConsentFilter,
-    type CustomerFilters,
+    type CustomerFilterKey,
+    type CustomerFilterParam,
+    type CustomerListFilters,
     type CustomerSort,
+    type FollowUpFilter,
     type GoogleFilter,
     type MobileFilter,
-    type FollowUpFilter,
     type SourceFilter,
-    type VoucherFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
+import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
 import { MigrationCard } from "./migration-card";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -81,7 +87,7 @@ function formatSGD(amount: number): string {
     }).format(amount);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
     return formatAdminDateMY(dateStr);
 }
 
@@ -89,9 +95,20 @@ function getCustomerName(customer: CustomerOverviewRow): string {
     return customerDisplayName(customer) ?? "—";
 }
 
-/** The filters the list's URL holds; "from Shopify, no account" is one of them. */
-type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort"> &
-    Partial<Pick<CustomerFilters, "google" | "mobile" | "voucher" | "followups" | "consent">>;
+/**
+ * The filters that live in the Filters panel rather than the toolbar: CRM
+ * slice 04's, migration slice 06's Welcome-back voucher, and migration slice
+ * 07's Email consent.
+ */
+const PANEL_FILTERS: CustomerFilterKey[] = [
+    "bought",
+    "last_order",
+    "readjusted",
+    "min_spend",
+    "consent",
+    "voucher",
+    "tags",
+];
 
 /**
  * Contact status as small marks (CRM slice 11): how they sign in (an envelope
@@ -164,12 +181,15 @@ function AccountStatus({ customer, compact = false }: { customer: CustomerOvervi
 
 export function CustomersClient({
     initialData,
-    initialFilters = DEFAULT_CUSTOMER_FILTERS,
+    initialFilters,
+    ignoredFilters = [],
     migration = null,
 }: {
     initialData?: CustomersInitialData;
     /** The filters the page's URL asked for; `initialData` is page 1 of them. */
-    initialFilters?: ListFilters;
+    initialFilters?: Partial<CustomerListFilters>;
+    /** URL parameters the page dropped as invalid; the list says so. */
+    ignoredFilters?: readonly CustomerFilterParam[];
     /** The Migration card's numbers, or null when they could not be read. */
     migration?: MigrationSummary | null;
 }) {
@@ -178,22 +198,16 @@ export function CustomersClient({
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    // Filter state. Search, account, source and sort live in the URL too, so
-    // a filtered list can be shared (migration slice 12).
-    const [search, setSearch] = useState(initialFilters.search ?? "");
-    const [debouncedSearch, setDebouncedSearch] = useState(initialFilters.search ?? "");
-    const [account, setAccount] = useState<AccountFilter>(initialFilters.account);
-    const [source, setSource] = useState<SourceFilter>(initialFilters.source);
-    const [google, setGoogle] = useState<GoogleFilter>(initialFilters.google ?? "all");
-    const [mobile, setMobile] = useState<MobileFilter>(initialFilters.mobile ?? "all");
-    const [voucher, setVoucher] = useState<VoucherFilter>(initialFilters.voucher ?? "all");
-    const [followups, setFollowups] = useState<FollowUpFilter>(initialFilters.followups ?? "all");
-    // Email consent (migration slice 07).
-    const [consent, setConsent] = useState<ConsentFilter>(initialFilters.consent ?? "all");
-    const [sort, setSort] = useState<CustomerSort>(initialFilters.sort);
-    // Kept from the URL as given; the list has no tag control yet (CRM slice 04).
-    const [tags] = useState<string[]>(initialFilters.tags);
+    // Filter state: one object, read through the list's one schema
+    // (lib/crm/customer-filters.ts). All of it lives in the URL too, so a
+    // filtered list can be shared (migration slice 12, CRM slice 04). Search
+    // is typed into `search` and reaches `filters` once typing pauses.
+    // Paging is the list's own `page` state; any page or limit in here is unused.
+    const [filters, setFilters] = useState<CustomerListFilters>(() => ({ ...DEFAULT_CUSTOMER_FILTERS, ...initialFilters }));
+    const [search, setSearch] = useState(filters.search ?? "");
     const [page, setPage] = useState(1);
+    // Open when a link arrives with a panel filter set, so it shows its controls.
+    const [panelOpen, setPanelOpen] = useState(() => PANEL_FILTERS.some((k) => isCustomerFilterActive(filters, k)));
 
     // Data state
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
@@ -203,12 +217,20 @@ export function CustomersClient({
     // The RSC page already fetched page 1 — skip the mount fetch once.
     const hydratedFromServer = useRef(Boolean(initialData));
 
+    /** Every change to the filters starts again at page 1. */
+    const applyFilters = (next: (f: CustomerListFilters) => CustomerListFilters) => {
+        setFilters(next);
+        setPage(1);
+    };
+    const changeFilters = (patch: Partial<CustomerListFilters>) => applyFilters((f) => ({ ...f, ...patch }));
+
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            setDebouncedSearch(search);
+            const next = search.trim() || null;
+            setFilters((f) => (f.search === next ? f : { ...f, search: next }));
             setPage(1);
         }, 350);
         return () => {
@@ -216,28 +238,9 @@ export function CustomersClient({
         };
     }, [search]);
 
-    const filtersQuery = customerFilterParams({
-        search: debouncedSearch || null,
-        tags,
-        account,
-        source,
-        google,
-        mobile,
-        voucher,
-        followups,
-        consent,
-        sort,
-    }).toString();
-    const filtered =
-        account !== "all" ||
-        source !== "all" ||
-        google !== "all" ||
-        mobile !== "all" ||
-        voucher !== "all" ||
-        followups !== "all" ||
-        consent !== "all" ||
-        Boolean(debouncedSearch) ||
-        tags.length > 0;
+    const filtersQuery = customerFilterParams(filters).toString();
+    const panelCount = PANEL_FILTERS.filter((k) => isCustomerFilterActive(filters, k)).length;
+    const filtered = CUSTOMER_FILTER_KEYS.some((k) => isCustomerFilterActive(filters, k));
 
     // Keep the address bar in step without a server round trip, so the list's
     // filters survive a reload and can be shared. Only the filters' own keys
@@ -249,45 +252,25 @@ export function CustomersClient({
         if (url.href !== window.location.href) window.history.replaceState(null, "", url);
     }, [filtersQuery]);
 
-    const changeAccount = (value: string) => {
-        setAccount(value as AccountFilter);
-        setPage(1);
+    const changeAccount = (value: string) => changeFilters({ account: value as AccountFilter });
+    const changeSource = (value: string) => changeFilters({ source: value as SourceFilter });
+    const changeGoogle = (value: string) => changeFilters({ google: value as GoogleFilter });
+    const changeMobile = (value: string) => changeFilters({ mobile: value as MobileFilter });
+    const changeFollowups = (value: string) => changeFilters({ followups: value as FollowUpFilter });
+    const changeSort = (value: string) => changeFilters({ sort: value as CustomerSort });
+
+    // The summary's × and Clear all. Search is also the box's text.
+    const clearFilter = (key: CustomerFilterKey) => {
+        if (key === "search") setSearch("");
+        applyFilters((f) => clearCustomerFilter(f, key));
     };
-    const changeSource = (value: string) => {
-        setSource(value as SourceFilter);
-        setPage(1);
-    };
-    const changeGoogle = (value: string) => {
-        setGoogle(value as GoogleFilter);
-        setPage(1);
-    };
-    const changeMobile = (value: string) => {
-        setMobile(value as MobileFilter);
-        setPage(1);
-    };
-    const changeVoucher = (value: string) => {
-        setVoucher(value as VoucherFilter);
-        setPage(1);
-    };
-    const changeFollowups = (value: string) => {
-        setFollowups(value as FollowUpFilter);
-        setPage(1);
-    };
-    const changeConsent = (value: string) => {
-        setConsent(value as ConsentFilter);
-        setPage(1);
-    };
-    const changeSort = (value: string) => {
-        setSort(value as CustomerSort);
-        setPage(1);
+    const clearAll = () => {
+        setSearch("");
+        applyFilters(clearCustomerFilters);
     };
 
     // The Migration card's link: from Shopify, not signed up yet.
-    const showNotSignedUp = () => {
-        setAccount("no-account");
-        setSource("shopify");
-        setPage(1);
-    };
+    const showNotSignedUp = () => changeFilters({ account: "no-account", source: "shopify" });
     const notSignedUpHref = `${to("/settings/customers")}?${customerFilterParams({
         account: "no-account",
         source: "shopify",
@@ -359,7 +342,7 @@ export function CustomersClient({
                     />
                 </div>
 
-                <Select value={account} onValueChange={changeAccount}>
+                <Select value={filters.account} onValueChange={changeAccount}>
                     <SelectTrigger className="w-full sm:w-40" aria-label="Account">
                         <SelectValue placeholder="Account" />
                     </SelectTrigger>
@@ -371,7 +354,7 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
-                <Select value={source} onValueChange={changeSource}>
+                <Select value={filters.source} onValueChange={changeSource}>
                     <SelectTrigger className="w-full sm:w-40" aria-label="Source">
                         <SelectValue placeholder="Source" />
                     </SelectTrigger>
@@ -382,7 +365,7 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
-                <Select value={google} onValueChange={changeGoogle}>
+                <Select value={filters.google} onValueChange={changeGoogle}>
                     <SelectTrigger className="w-full sm:w-44" aria-label="Google">
                         <SelectValue placeholder="Google" />
                     </SelectTrigger>
@@ -393,7 +376,7 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
-                <Select value={mobile} onValueChange={changeMobile}>
+                <Select value={filters.mobile} onValueChange={changeMobile}>
                     <SelectTrigger className="w-full sm:w-44" aria-label="Mobile">
                         <SelectValue placeholder="Mobile" />
                     </SelectTrigger>
@@ -405,19 +388,7 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
-                {/* The Welcome-back voucher (migration slice 06): issued and unused is the list to nudge before it expires. */}
-                <Select value={voucher} onValueChange={changeVoucher}>
-                    <SelectTrigger className="w-full sm:w-44" aria-label="Voucher">
-                        <SelectValue placeholder="Voucher" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All vouchers</SelectItem>
-                        <SelectItem value="issued">Voucher issued, unused</SelectItem>
-                        <SelectItem value="used">Voucher used</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={followups} onValueChange={changeFollowups}>
+                <Select value={filters.followups} onValueChange={changeFollowups}>
                     <SelectTrigger className="w-full sm:w-52" aria-label="Follow-ups">
                         <SelectValue placeholder="Follow-ups" />
                     </SelectTrigger>
@@ -427,19 +398,7 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
-                <Select value={consent} onValueChange={changeConsent}>
-                    <SelectTrigger className="w-full sm:w-44" aria-label="Email consent">
-                        <SelectValue placeholder="Email consent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any email consent</SelectItem>
-                        <SelectItem value="subscribed">Subscribed</SelectItem>
-                        <SelectItem value="not-subscribed">Not subscribed</SelectItem>
-                        <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={sort} onValueChange={changeSort}>
+                <Select value={filters.sort} onValueChange={changeSort}>
                     <SelectTrigger className="w-full sm:w-48" aria-label="Sort">
                         <SelectValue placeholder="Sort" />
                     </SelectTrigger>
@@ -449,9 +408,39 @@ export function CustomersClient({
                         <SelectItem value="name-asc">Name A–Z</SelectItem>
                         <SelectItem value="name-desc">Name Z–A</SelectItem>
                         <SelectItem value="signed-up">Recently signed up</SelectItem>
+                        <SelectItem value="last-order">Last order</SelectItem>
+                        <SelectItem value="spend">Most spent</SelectItem>
                     </SelectContent>
                 </Select>
+
+                <Button
+                    type="button"
+                    variant={panelOpen ? "secondary" : "outline"}
+                    className="w-full sm:w-auto"
+                    aria-expanded={panelOpen}
+                    aria-controls="customer-filters-panel"
+                    onClick={() => setPanelOpen((o) => !o)}
+                >
+                    <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+                    Filters
+                    {panelCount > 0 && (
+                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">{panelCount}</Badge>
+                    )}
+                </Button>
             </div>
+
+            {panelOpen && (
+                <div id="customer-filters-panel">
+                    <CustomerFiltersPanel filters={filters} onChange={changeFilters} />
+                </div>
+            )}
+
+            <CustomerFilterSummary
+                filters={filters}
+                ignored={ignoredFilters}
+                onClear={clearFilter}
+                onClearAll={clearAll}
+            />
 
             {/* Content */}
             {loading ? (
@@ -481,6 +470,7 @@ export function CustomersClient({
                                 <TableHead className="px-4 text-right hidden md:table-cell">
                                     Total Spent
                                 </TableHead>
+                                <TableHead className="px-4 hidden lg:table-cell">Last order</TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell">Tags</TableHead>
                                 <TableHead className="px-4 hidden xl:table-cell">Joined</TableHead>
                             </TableRow>
@@ -531,6 +521,13 @@ export function CustomersClient({
                                         </TableCell>
                                         <TableCell className="px-4 text-right hidden md:table-cell text-sm font-medium">
                                             {formatSGD(customer.total_spent)}
+                                        </TableCell>
+                                        {/* Formatted in the viewer's timezone, which the server render cannot know. */}
+                                        <TableCell
+                                            className="px-4 hidden lg:table-cell text-sm text-muted-foreground whitespace-nowrap"
+                                            suppressHydrationWarning
+                                        >
+                                            {formatDate(customer.last_paid_at)}
                                         </TableCell>
                                         <TableCell className="px-4 hidden lg:table-cell">
                                             <div className="flex flex-wrap gap-1">

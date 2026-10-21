@@ -147,7 +147,7 @@ Add a dated paragraph, in copy the owner approves:
   - `admin_customer_overview` adds `marketing_email` and `marketing_email_updated_at`, in its
     own file (`20261020200400_customer_overview_marketing_consent.sql`).
   - The Customers list gains an *Email consent* filter (`?consent=subscribed|not-subscribed|unsubscribed`,
-    `lib/crm/customer-filters.ts`).
+    `lib/crm/customer-filters.ts`), in the Filters panel (see the migrations note below).
   - The Customer page gains a *Marketing email* card
     (`app/[lang]/settings/customers/[id]/marketing-consent-card.tsx`). It shows the state, its
     source, its date and the history, from `GET /api/shop/customers/[id]/marketing-consent`
@@ -179,12 +179,15 @@ Add a dated paragraph, in copy the owner approves:
   `…200000` and Migration 06's at `…200100`. The coordinator reserved `…200200` for CRM 06 and
   `…200300` for CRM 04, so this file moved past both. It now also carries CRM 11's
   `account_providers`, `has_phone` and `phone_valid`; Migration 06's
-  `claim_link_first_clicked_at` and `welcome_voucher_state`, with its `coupons` join; and CRM 06's
-  `open_followups`, with its follow-ups join.
-  - **For the integrator:** CRM 04 (`…200300`) has not merged yet. If it lands after this
-    slice, its definition sorts before this one. This file must then fold CRM 04's columns in
-    before its own two, and its consent filter joins CRM 04's `customerFiltersSchema`, with a
-    summary label.
+  `claim_link_first_clicked_at` and `welcome_voucher_state`, with its `coupons` join; CRM 06's
+  `open_followups`, with its follow-ups join; and CRM 04's `paid_orders`, `first_paid_at`,
+  `last_paid_at`, `bought`, `last_readjusted_at` and `search_text`, with its three joins.
+  That is 30 columns, then this slice's two.
+- **The *Email consent* filter after CRM 04.** It is a key of CRM 04's `customerFiltersSchema`.
+  Its summary chip reads *Email subscribed*, *Email not subscribed* or *Email unsubscribed*
+  (`CONSENT_LABELS`). It lives in CRM 04's Filters panel (`customer-filters-panel.tsx`), under
+  *Spent at least*: like the voucher filter there, it decides who a campaign may reach. A link
+  that carries it opens the panel.
 
 All three are idempotent. `db-check.sh` applies every migration. The new
 `supabase/tests/customer-migration/assert-07-marketing-consent.sql` asserts all of the
