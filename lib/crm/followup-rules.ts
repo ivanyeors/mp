@@ -15,11 +15,10 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
 
 export const FOLLOW_UP_TITLE_MAX = 200;
 
-/**
- * Dispatched on `window` after the Admin Panel adds, completes, reassigns or
- * deletes a follow-up, so the sidebar badge re-reads without a navigation.
- */
-export const FOLLOW_UPS_CHANGED_EVENT = "mp:followups-changed";
+// The sidebar badge's event, counts and label live in `followup-badge.ts`,
+// which imports nothing, so the sidebar on every Admin Panel page doesn't
+// carry zod and these rules.
+export { FOLLOW_UPS_CHANGED_EVENT, followUpBadge, type FollowUpCounts } from "@/lib/crm/followup-badge";
 
 /** The Follow-ups tab's lists (`?view=followups&scope=`). */
 export const FOLLOW_UP_SCOPES = ["mine", "all", "overdue"] as const;
@@ -177,19 +176,4 @@ export function describeDue(f: Pick<CustomerFollowUp, "doneAt" | "dueOn">, today
     case "upcoming":
       return `Due ${formatDueOn(f.dueOn)}`;
   }
-}
-
-/** The badge's counts for one profile. */
-export type FollowUpCounts = { dueToday: number; overdue: number };
-
-/** The sidebar badge: its number, or null to show nothing. */
-export function followUpBadge(counts: FollowUpCounts | null): { total: number; title: string; urgent: boolean } | null {
-  if (!counts) return null;
-  const total = counts.dueToday + counts.overdue;
-  if (total <= 0) return null;
-  const parts = [
-    counts.overdue > 0 ? `${counts.overdue} overdue` : null,
-    counts.dueToday > 0 ? `${counts.dueToday} due today` : null,
-  ].filter(Boolean);
-  return { total, title: `Your follow-ups: ${parts.join(", ")}`, urgent: counts.overdue > 0 };
 }

@@ -57,7 +57,7 @@ import {
   WorkingAsPicker,
   type WorkingAsState,
 } from "@/components/settings/working-as-picker";
-import { FOLLOW_UPS_CHANGED_EVENT, followUpBadge, type FollowUpCounts } from "@/lib/crm/followup-rules";
+import { FOLLOW_UPS_CHANGED_EVENT, followUpBadge, type FollowUpCounts } from "@/lib/crm/followup-badge";
 import {
   buildSettingsBreadcrumbs,
   findActiveHref,

@@ -4284,9 +4284,9 @@
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
-    "mtime": 1792547391.619993,
-    "seen": 1792547471.1400003,
-    "ast_hash": "b260c3d3480f02b0fd67a1066120e4c4",
+    "mtime": 1792553169.033091,
+    "seen": 1792553379.3995023,
+    "ast_hash": "3c0c04a7a6a92b5988b145a540e17b3b",
     "semantic_hash": ""
   },
   "components/settings/shopify-sales-section.tsx": {
@@ -15462,9 +15462,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/06-follow-ups.md": {
-    "mtime": 1792547391.6584077,
-    "seen": 1792547471.1424348,
-    "ast_hash": "e686b655f7f9e3a01cfe8ecfe7e80c76",
+    "mtime": 1792553434.172139,
+    "seen": 1792553475.1366806,
+    "ast_hash": "12b27955a73df9aa2daffa7c8d1da9f5",
     "semantic_hash": ""
   },
   ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md": {
@@ -16812,9 +16812,9 @@
     "semantic_hash": ""
   },
   "lib/crm/followup-rules.ts": {
-    "mtime": 1792547391.6248193,
-    "seen": 1792547471.1405957,
-    "ast_hash": "eef27bee56c57f047eee04e31ca5ea2b",
+    "mtime": 1792553169.0325875,
+    "seen": 1792553379.400114,
+    "ast_hash": "045f030ab680c1cd6797f4ff014bc952",
     "semantic_hash": ""
   },
   "lib/crm/followups.ts": {
@@ -17409,6 +17409,12 @@
     "mtime": 1792552678.6160939,
     "seen": 1792552741.4482126,
     "ast_hash": "836ef4eefdf5ddd05d338f204dab04bb",
+    "semantic_hash": ""
+  },
+  "lib/crm/followup-badge.ts": {
+    "mtime": 1792553161.538774,
+    "seen": 1792553379.4001117,
+    "ast_hash": "3fd093dc3e7fe3b80d9cc1ed93a45a18",
     "semantic_hash": ""
   }
 }

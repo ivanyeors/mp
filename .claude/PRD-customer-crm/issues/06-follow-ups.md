@@ -172,3 +172,5 @@ line.
 
 **For ops or the owner:** nothing. No env vars, no new cron, and nothing posts to Telegram
 except the weekly line.
+
+**At final integration:** the sidebar badge's event, counts and label moved to `lib/crm/followup-badge.ts`, which imports nothing (re-exported from `followup-rules.ts`). Importing `followup-rules` from the sidebar shipped zod with every Admin Panel page and put seven settings routes over the bundle budget.
