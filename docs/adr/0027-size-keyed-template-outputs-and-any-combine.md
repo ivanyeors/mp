@@ -7,7 +7,7 @@ existing graphs evaluate exactly as before.
 
 ## Context
 
-The Premium graph published on 2026-10-17 chose among 34 templates with 250 Combines and 1,240
+The Premium graph as published in v3 (2026-10-21) chose among 34 templates with 250 Combines and 1,240
 edges. Three nodes each fanned out 240 edges across a canvas 28,000 px tall — all of it drawn at
 once, on a phone too. The decision itself is a table of 60 values (size × neck length × head-to-back ×
 neck stack), with one rule on top: stomach sleepers take the neck stack one band lower.

@@ -4,7 +4,7 @@ import { equivalenceInputs, outcomeDiffs, streamlinePremiumGraph } from "../stre
 import type { RangeBand, RuleEdge, RuleGraphJson, RuleNode } from "../types";
 
 /**
- * The Premium graph as published in v2 (2026-10-17): one Combine per size ×
+ * The Premium graph's shape as published in v2 and v3 (October 2026): one Combine per size ×
  * neck length × head-to-back × neck-to-back × sleep position. Template ids per
  * size · neck length · head-to-back, for neck stack low / mid / high; stomach
  * sleepers take the stack one band lower.

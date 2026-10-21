@@ -15432,9 +15432,9 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/__tests__/streamline-premium.test.ts": {
-    "mtime": 1792502553.9786217,
-    "seen": 1792502884.6939888,
-    "ast_hash": "328f93a377ff02a256d906e081024433",
+    "mtime": 1792555307.631602,
+    "seen": 1792555359.4461637,
+    "ast_hash": "122d2adf444c8a3daeda985b82240e18",
     "semantic_hash": ""
   },
   "lib/rules-engine/__tests__/template-by-size.test.ts": {
@@ -15456,9 +15456,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0027-size-keyed-template-outputs-and-any-combine.md": {
-    "mtime": 1792502686.4146295,
-    "seen": 1792502884.6968403,
-    "ast_hash": "7c36ea02c0aa6fd7b637dcc2ca187a2b",
+    "mtime": 1792555301.4551923,
+    "seen": 1792555359.4478607,
+    "ast_hash": "ff66ed29f1378885f413b5c052580150",
     "semantic_hash": ""
   }
 }
