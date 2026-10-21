@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { migratedFactsFromRow, migrationSummaryFromRow, signedUpPercent } from "@/lib/customer-migration/overview";
+import {
+  migratedExtrasFromRows,
+  migratedFactsFromRow,
+  migrationSummaryFromRow,
+  percentOf,
+  signedUpPercent,
+} from "@/lib/customer-migration/overview";
 
 /** The Migration card's and the From Shopify card's read models (migration slice 12). */
 
@@ -13,8 +19,25 @@ describe("migrationSummaryFromRow", () => {
         signed_up: 3,
         signed_up_before_import: 1,
         batches_applied: "1",
+        clicked: "4",
+        vouchers_issued: "3",
+        vouchers_used: 1,
+        voucher_orders: "1",
+        voucher_revenue: "180.50",
       }),
-    ).toEqual({ imported: 5, created: 3, matched: 2, signedUp: 3, signedUpBeforeImport: 1, batchesApplied: 1 });
+    ).toEqual({
+      imported: 5,
+      created: 3,
+      matched: 2,
+      signedUp: 3,
+      signedUpBeforeImport: 1,
+      batchesApplied: 1,
+      clicked: 4,
+      vouchersIssued: 3,
+      vouchersUsed: 1,
+      voucherOrders: 1,
+      voucherRevenue: 180.5,
+    });
   });
 
   it("reads no row as zeros, so the card stays hidden", () => {
@@ -25,7 +48,55 @@ describe("migrationSummaryFromRow", () => {
       signedUp: 0,
       signedUpBeforeImport: 0,
       batchesApplied: 0,
+      clicked: 0,
+      vouchersIssued: 0,
+      vouchersUsed: 0,
+      voucherOrders: 0,
+      voucherRevenue: 0,
     });
+  });
+});
+
+describe("migratedExtrasFromRows (slice 06)", () => {
+  const voucher = {
+    code: "WB-ABCDEFGHJK",
+    discount_type: "fixed_amount" as const,
+    discount_value: "20.00",
+    currency: "SGD",
+    expires_at: "2026-12-20T00:00:00Z",
+  };
+
+  it("takes the first click and the state from the overview, and the code and expiry from the coupon", () => {
+    expect(
+      migratedExtrasFromRows(
+        { claim_link_first_clicked_at: "2026-10-22T01:00:00Z", welcome_voucher_state: "used" },
+        voucher,
+      ),
+    ).toEqual({
+      claimLinkFirstClickedAt: "2026-10-22T01:00:00Z",
+      welcomeVoucher: {
+        code: "WB-ABCDEFGHJK",
+        state: "used",
+        discountType: "fixed_amount",
+        value: 20,
+        currency: "SGD",
+        expiresAt: "2026-12-20T00:00:00Z",
+      },
+    });
+  });
+
+  it("shows no voucher without one, and no click when the link was never opened", () => {
+    expect(migratedExtrasFromRows({ claim_link_first_clicked_at: null, welcome_voucher_state: "none" }, null)).toEqual({
+      claimLinkFirstClickedAt: null,
+      welcomeVoucher: null,
+    });
+    // A failed overview read leaves the rows out rather than guessing a state.
+    expect(migratedExtrasFromRows(null, voucher).welcomeVoucher).toBeNull();
+  });
+
+  it("is a whole percent for the card's Clicked share, and 0 of nobody", () => {
+    expect(percentOf(1, 3)).toBe(33);
+    expect(percentOf(1, 0)).toBe(0);
   });
 });
 
@@ -60,6 +131,8 @@ describe("migratedFactsFromRow", () => {
       shopifyNote: null,
       emailMarketingAtExport: "no",
       batch: { id: "b1", fileName: "export.csv", appliedAt: null, rolledBackAt: null },
+      claimLinkFirstClickedAt: null,
+      welcomeVoucher: null,
     });
   });
 

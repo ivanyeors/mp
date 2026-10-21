@@ -1,5 +1,6 @@
 import { accountAdapter } from "@/lib/crm/timeline/sources/account";
 import { aftercareAdapter } from "@/lib/crm/timeline/sources/aftercare";
+import { claimLinksAdapter } from "@/lib/crm/timeline/sources/claim-links";
 import { followUpsAdapter } from "@/lib/crm/timeline/sources/followups";
 import { notesAdapter } from "@/lib/crm/timeline/sources/notes";
 import { orderEmailsAdapter, ordersAdapter } from "@/lib/crm/timeline/sources/orders";
@@ -46,6 +47,7 @@ export const TIMELINE_ADAPTERS: readonly TimelineAdapter[] = [
   reviewRequestsAdapter,
   aftercareAdapter,
   accountAdapter,
+  claimLinksAdapter,
   notesAdapter,
   followUpsAdapter,
 ];

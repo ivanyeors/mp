@@ -8,8 +8,9 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * order, each kind only to a role holding its source's permission, and no
  * Result of another Customer whose email merely contains this one's. Since the
  * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
- * account (imported, signed up, Claimed, Welcome-back voucher), and since CRM
- * 06 follow-ups (added, done).
+ * account (imported, signed up, Claimed, Welcome-back voucher), since
+ * migration 06 the Claim links a campaign email carried, by first click, and
+ * since CRM 06 follow-ups (added, done).
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -185,6 +186,13 @@ beforeEach(() => {
       { customer_id: MEI, created_by_import: false, imported_at: t("03-01T00:00"), claimed_at: t("06-15T00:00") },
       { customer_id: KIM, created_by_import: true, imported_at: t("03-01T00:00"), claimed_at: null },
     ],
+    // Migration 06: the announcement's link opened twice, the reminder's never;
+    // Kim's link is Kim's alone.
+    customer_claim_links: [
+      { id: 1, customer_id: MEI, token_hash: "h-1", template: "migration_announcement", created_at: t("06-10T00:00"), first_clicked_at: t("06-14T12:00"), click_count: 2 },
+      { id: 2, customer_id: MEI, token_hash: "h-2", template: "migration_reminder", created_at: t("06-12T00:00"), first_clicked_at: null, click_count: 0 },
+      { id: 3, customer_id: KIM, token_hash: "h-3", template: "migration_announcement", created_at: t("06-10T00:00"), first_clicked_at: t("06-11T00:00"), click_count: 1 },
+    ],
     coupons: [
       { id: VOUCHER, code: "WB-SECRETCODE", customer_id: MEI, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 1, expires_at: t("08-14T00:00"), created_at: t("06-15T00:00") },
       { id: "coupon-kim", code: "WB-KIMS", customer_id: KIM, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 0, expires_at: null, created_at: t("06-16T00:00") },
@@ -237,6 +245,7 @@ const EVERYTHING = [
   `account.claimed:${MEI}`,
   `account.voucher_issued:${VOUCHER}`,
   `account.signed_up:${MEI}`,
+  "claim_link.opened:1",
   `result.created:${DECLINED}`,
   "result.cancelled:au-1",
   `result.created:${CANCELLED}`,
@@ -286,6 +295,9 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`account.signed_up:${MEI}`)?.summary).toBe("Signed up: a login was linked to this Customer");
     // A coupon stores no time it was used: that is its pill. Its code is never shown.
     expect(byId.get(`account.voucher_issued:${VOUCHER}`)).toMatchObject({ summary: "Welcome-back voucher issued", status: "used" });
+    // Only the first click is dated; the count is in the line. The token is never read.
+    expect(byId.get("claim_link.opened:1")).toMatchObject({ summary: "Claim link opened (announcement email, 2 times)", group: "account" });
+    expect(JSON.stringify(byId.get("claim_link.opened:1"))).not.toContain("h-1");
     for (const e of byId.values()) expect(JSON.stringify(e)).not.toContain("WB-SECRETCODE");
     // No customer email in any line.
     for (const e of byId.values()) expect(e.summary.toLowerCase()).not.toContain("mei@x.test");
@@ -336,7 +348,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     signIn(CRM_ONLY);
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
-      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|account|follow_up)\./.test(id)),
+      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|account|claim_link|follow_up)\./.test(id)),
     );
     expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "account", "notes", "followups"]);
   });

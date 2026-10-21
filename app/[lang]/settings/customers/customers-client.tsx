@@ -44,6 +44,7 @@ import {
     type MobileFilter,
     type FollowUpFilter,
     type SourceFilter,
+    type VoucherFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
 import { MigrationCard } from "./migration-card";
@@ -89,7 +90,7 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 
 /** The filters the list's URL holds; "from Shopify, no account" is one of them. */
 type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort"> &
-    Partial<Pick<CustomerFilters, "google" | "mobile" | "followups">>;
+    Partial<Pick<CustomerFilters, "google" | "mobile" | "voucher" | "followups">>;
 
 /**
  * Contact status as small marks (CRM slice 11): how they sign in (an envelope
@@ -184,6 +185,7 @@ export function CustomersClient({
     const [source, setSource] = useState<SourceFilter>(initialFilters.source);
     const [google, setGoogle] = useState<GoogleFilter>(initialFilters.google ?? "all");
     const [mobile, setMobile] = useState<MobileFilter>(initialFilters.mobile ?? "all");
+    const [voucher, setVoucher] = useState<VoucherFilter>(initialFilters.voucher ?? "all");
     const [followups, setFollowups] = useState<FollowUpFilter>(initialFilters.followups ?? "all");
     const [sort, setSort] = useState<CustomerSort>(initialFilters.sort);
     // Kept from the URL as given; the list has no tag control yet (CRM slice 04).
@@ -218,6 +220,7 @@ export function CustomersClient({
         source,
         google,
         mobile,
+        voucher,
         followups,
         sort,
     }).toString();
@@ -226,6 +229,7 @@ export function CustomersClient({
         source !== "all" ||
         google !== "all" ||
         mobile !== "all" ||
+        voucher !== "all" ||
         followups !== "all" ||
         Boolean(debouncedSearch) ||
         tags.length > 0;
@@ -254,6 +258,10 @@ export function CustomersClient({
     };
     const changeMobile = (value: string) => {
         setMobile(value as MobileFilter);
+        setPage(1);
+    };
+    const changeVoucher = (value: string) => {
+        setVoucher(value as VoucherFilter);
         setPage(1);
     };
     const changeFollowups = (value: string) => {
@@ -385,6 +393,18 @@ export function CustomersClient({
                         <SelectItem value="on-file">Valid mobile on file</SelectItem>
                         <SelectItem value="missing">Mobile missing</SelectItem>
                         <SelectItem value="invalid">Mobile invalid</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {/* The Welcome-back voucher (migration slice 06): issued and unused is the list to nudge before it expires. */}
+                <Select value={voucher} onValueChange={changeVoucher}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Voucher">
+                        <SelectValue placeholder="Voucher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All vouchers</SelectItem>
+                        <SelectItem value="issued">Voucher issued, unused</SelectItem>
+                        <SelectItem value="used">Voucher used</SelectItem>
                     </SelectContent>
                 </Select>
 

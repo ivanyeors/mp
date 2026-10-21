@@ -14,6 +14,8 @@
  * this list agree.
  */
 
+import type { WelcomeVoucherState } from "@/lib/customer-migration/welcome-voucher";
+
 /** Every column of `admin_customer_overview`, in the view's order. */
 export const CUSTOMER_OVERVIEW_COLUMNS = [
   "id",
@@ -37,6 +39,8 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "account_providers",
   "has_phone",
   "phone_valid",
+  "claim_link_first_clicked_at",
+  "welcome_voucher_state",
   "open_followups",
 ] as const;
 
@@ -79,6 +83,13 @@ export interface CustomerOverviewRow {
   has_phone: boolean;
   /** It passes `isValidPhone` (CRM 11: *Mobile: on file*; with `has_phone`, *invalid* when false). */
   phone_valid: boolean;
+  /** The first click of any of their **Claim links** (slice 06); null if none was opened. */
+  claim_link_first_clicked_at: string | null;
+  /**
+   * Their **Welcome-back voucher** (slice 06), by `welcome_voucher_state()`:
+   * `none`, `issued` (unused, still usable), `used` or `expired`.
+   */
+  welcome_voucher_state: WelcomeVoucherState;
   /** Follow-ups not done yet (CRM slice 06); 0 when none. */
   open_followups: number;
 }

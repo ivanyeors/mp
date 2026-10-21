@@ -28,9 +28,17 @@ export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
 /** *On file* is a valid number, *invalid* one that fails `isValidPhone`, *missing* none. */
 export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
 export type MobileFilter = (typeof MOBILE_FILTERS)[number];
+
 /** *Has an open follow-up* (CRM slice 06): the overview's `open_followups` above 0. */
 export const FOLLOW_UP_FILTERS = ["all", "open"] as const;
 export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
+
+/**
+ * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
+ * to nudge before the vouchers expire; *Used* is who redeemed one.
+ */
+export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
+export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
 
 export const CUSTOMER_SORTS = ["newest", "oldest", "name-asc", "name-desc", "signed-up"] as const;
 export type CustomerSort = (typeof CUSTOMER_SORTS)[number];
@@ -48,6 +56,8 @@ export interface CustomerFilters {
   google: GoogleFilter;
   /** The mobile on file (`has_phone`, `phone_valid`). */
   mobile: MobileFilter;
+  /** The Welcome-back voucher's state (`welcome_voucher_state`). */
+  voucher: VoucherFilter;
   /** `open`: only Customers with a Follow-up not done yet. */
   followups: FollowUpFilter;
   sort: CustomerSort;
@@ -62,6 +72,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   source: "all",
   google: "all",
   mobile: "all",
+  voucher: "all",
   followups: "all",
   sort: "newest",
   page: 1,
@@ -84,6 +95,7 @@ const PARAM_SCHEMAS = {
   source: z.enum(SOURCE_FILTERS),
   google: z.enum(GOOGLE_FILTERS),
   mobile: z.enum(MOBILE_FILTERS),
+  voucher: z.enum(VOUCHER_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
@@ -147,6 +159,7 @@ export function customerFilterParams(
   if (f.source !== "all") out.set("source", f.source);
   if (f.google !== "all") out.set("google", f.google);
   if (f.mobile !== "all") out.set("mobile", f.mobile);
+  if (f.voucher !== "all") out.set("voucher", f.voucher);
   if (f.followups !== "all") out.set("followups", f.followups);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
@@ -162,7 +175,7 @@ export interface CustomerListQuery {
   overlaps(column: string, value: string[]): this;
   contains(column: string, value: string[]): this;
   not(column: string, operator: "cs", value: string): this;
-  eq(column: string, value: boolean): this;
+  eq(column: string, value: boolean | string): this;
   gt(column: string, value: number): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
@@ -184,6 +197,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+  if (filters.voucher !== "all") q = q.eq("welcome_voucher_state", filters.voucher);
 
   if (filters.google === "linked") q = q.contains("account_providers", ["google"]);
   if (filters.google === "not-linked") q = q.not("account_providers", "cs", "{google}");

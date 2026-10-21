@@ -125,9 +125,10 @@ line.
 - `20261020132000_customer_followups.sql`: the table, its two indexes and a check that
   `done_by_profile_id` is set only once the follow-up is done. RLS is on with no policy, and
   all access is revoked from `anon` and `authenticated`.
-- `20261020200100_customer_overview_open_followups.sql` redefines `admin_customer_overview` in a
+- `20261020200200_customer_overview_open_followups.sql` redefines `admin_customer_overview` in a
   file of its own, in the shared-views range.
-  - It runs after CRM 11's `20261020200000` and carries all its columns.
+  - It runs after CRM 11's `20261020200000` and migration 06's `20261020200100`, and carries
+    all their columns.
   - `open_followups` is a left join on a grouped count of open follow-ups, cast to `int`, so a
     Customer with none reads `0`.
 - `supabase/tests/crm/assert-06-followups.sql` checks the constraints, the cascade, that an
