@@ -113,7 +113,7 @@ export default async function EmailTemplatesPage({ params }: { params: Promise<{
                         <span className="block">Sign-in code emails: Supabase sends them, from the templates in its dashboard.</span>
                         <span className="block">Campaigns: each one is written on Email campaigns.</span>
                         <span className="block">Staff notices: support messages, review reminders and invitations to the Admin Panel.</span>
-                        <span className="block">The welcome-back voucher and the old Shopify-move emails: being retired.</span>
+                        <span className="block">The old Shopify-move emails: being retired.</span>
                     </CardDescription>
                 </CardHeader>
             </Card>

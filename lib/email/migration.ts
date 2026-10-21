@@ -23,8 +23,8 @@
 //
 // Each is campaign mail: it renders the footer's unsubscribe link
 // (`unsubscribeUrl`, the confirm page) and is sent with `List-Unsubscribe`.
-// The welcome-back voucher's own email (account.ts) is transactional and
-// carries neither.
+// The Claim bonus's own email (account.ts) is transactional and carries
+// neither.
 //
 // Every renderer is pure: the sender resolves the links and formats the terms.
 
@@ -55,12 +55,15 @@ export interface MigrationAnnouncementEmailData extends CampaignRecipient {
   /** The Claim link minted for this email. */
   claimUrl: string;
   bonus: CampaignBonusTerms;
+  /** The points terms, /[lang]/points (PRD-loyalty-points slice 08). */
+  termsUrl: string;
 }
 
 export interface MigrationReminderEmailData extends CampaignRecipient {
   /** A Claim link minted for this email (not the announcement's). */
   claimUrl: string;
   bonus: CampaignBonusTerms;
+  termsUrl: string;
 }
 
 export interface MigrationServiceNoticeEmailData extends CampaignRecipient {
@@ -97,6 +100,10 @@ export function claimBonusPhrase(b: Pick<CampaignBonusTerms, "points" | "amount"
 export const BONUS_TERMS =
   "Use them at checkout on any shop order, up to half the products' price. They can't be used on custom pillows, and points used are not refunded.";
 
+/** The link to the points terms, under BONUS_TERMS. */
+const TERMS_LINK = "How points work";
+const termsHtml = (termsUrl: string) => paragraphHtml(link({ href: termsUrl, label: TERMS_LINK }), { muted: true });
+
 /** What the account does: the welcome page's own list (app/[lang]/account/welcome). */
 const ACCOUNT_FEATURES = [
   "Saves your delivery addresses for a faster checkout",
@@ -121,6 +128,7 @@ export function renderMigrationAnnouncementEmail(p: MigrationAnnouncementEmailDa
     "Points for signing in",
     offer,
     BONUS_TERMS,
+    `${TERMS_LINK}: ${p.termsUrl}`,
     "",
     "What your account does",
     ...ACCOUNT_FEATURES.map((f) => `- ${f}`),
@@ -139,6 +147,7 @@ ${button({ href: p.claimUrl, label: "Sign in to your account" })}
 ${heading("Points for signing in", 2, { top: 24 })}
 ${paragraph(offer)}
 ${paragraph(BONUS_TERMS, { muted: true })}
+${termsHtml(p.termsUrl)}
 ${heading("What your account does", 2, { top: 12 })}
 ${bulletList(ACCOUNT_FEATURES)}`,
     footer: CAMPAIGN_CONSENT_NOTE,
@@ -159,6 +168,7 @@ export function renderMigrationReminderEmail(p: MigrationReminderEmailData): Ren
     "",
     body,
     BONUS_TERMS,
+    `${TERMS_LINK}: ${p.termsUrl}`,
     "",
     `Sign in to your account: ${p.claimUrl}`,
     "",
@@ -173,7 +183,8 @@ export function renderMigrationReminderEmail(p: MigrationReminderEmailData): Ren
     preheader: `Sign in to collect ${p.bonus.points}.`,
     bodyHtml: `${paragraph(greeting)}
 ${paragraph(body)}
-${paragraph(BONUS_TERMS, { muted: true })}`,
+${paragraph(BONUS_TERMS, { muted: true })}
+${termsHtml(p.termsUrl)}`,
     cta: { href: p.claimUrl, label: "Sign in to your account" },
     footer: `${once} ${CAMPAIGN_CONSENT_NOTE}`,
     unsubscribeUrl: p.unsubscribeUrl,

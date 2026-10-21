@@ -5,8 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import { percentOf, signedUpPercent, type MigrationSummary } from "@/lib/customer-migration/overview";
 import { formatCurrency } from "@/lib/i18n/currencies";
+import { formatPoints } from "@/lib/points/value";
 
-/** One figure on the card: slice 06 adds *Clicked*, *Voucher used* and *Revenue*; slice 08 adds *Emailed*, before *Clicked*. */
+/**
+ * One figure on the card: slice 06 adds *Clicked*; slice 08 adds *Emailed*,
+ * before it; PRD-loyalty-points slice 06 adds *Claim bonus*, *Points spent*
+ * and *Revenue*, what the Claim bonus drove.
+ */
 type MigrationCell = { label: string; value: string; detail: string };
 
 export function migrationCells(summary: MigrationSummary): MigrationCell[] {
@@ -34,14 +39,19 @@ export function migrationCells(summary: MigrationSummary): MigrationCell[] {
             detail: "opened their Claim link",
         },
         {
-            label: "Voucher used",
-            value: n(summary.vouchersUsed),
-            detail: `of ${n(summary.vouchersIssued)} welcome-back voucher${summary.vouchersIssued === 1 ? "" : "s"} issued`,
+            label: "Claim bonus",
+            value: `${n(summary.claimBonuses)} (${percentOf(summary.claimBonuses, summary.imported)}%)`,
+            detail: "got the sign-in bonus in points",
+        },
+        {
+            label: "Points spent",
+            value: formatPoints(summary.migratedPointsSpent),
+            detail: `on ${orders(summary.pointsOrders)}`,
         },
         {
             label: "Revenue",
-            value: formatCurrency(summary.voucherRevenue, "SGD"),
-            detail: `from ${orders(summary.voucherOrders)} that used a welcome-back voucher`,
+            value: formatCurrency(summary.pointsRevenue, "SGD"),
+            detail: `from ${orders(summary.pointsOrders)} that used points`,
         },
     ];
 }
@@ -86,7 +96,11 @@ export function MigrationCard({
                         </p>
                         <p>
                             <em>Clicked</em> counts those who opened the link in a campaign email.{" "}
-                            <em>Revenue</em> is the total of paid orders that used a welcome-back voucher.
+                            <em>Claim bonus</em> counts those whose sign-in added the bonus points.
+                        </p>
+                        <p>
+                            <em>Points spent</em> and <em>Revenue</em> count the paid orders of imported
+                            customers that used points.
                         </p>
                     </InfoTip>
                 </CardTitle>

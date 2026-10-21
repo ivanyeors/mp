@@ -134,7 +134,6 @@ beforeEach(() => {
         expires_at: null,
         applies_to: null,
         is_active: true,
-        customer_id: null,
       },
     ],
     customers: [
@@ -154,7 +153,7 @@ beforeEach(() => {
   };
 });
 
-function pay(email: string, opts: { points?: unknown; coupon?: string } = {}) {
+function pay(email: string, opts: { points?: unknown; coupon?: string; body?: Record<string, unknown> } = {}) {
   return checkout(
     new Request("https://x.test/api/shop/checkout", {
       method: "POST",
@@ -173,6 +172,7 @@ function pay(email: string, opts: { points?: unknown; coupon?: string } = {}) {
         ...(opts.points !== undefined ? { points: opts.points } : {}),
         // Two S$50 items: S$100 of products.
         items: [{ variant_id: VARIANT, quantity: 2 }],
+        ...opts.body,
       }),
     }),
   ).then(async (res) => ({ status: res.status, body: (await res.json()) as { error?: unknown; ok?: boolean } }));
@@ -284,6 +284,17 @@ describe("who may spend (rule h, rule r)", () => {
 
   it("refuses a guest, even one typing the owner's email", async () => {
     expect(await pay("wei.ling@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
+    refusedBeforeAnyWrite();
+  });
+
+  // Carried over from the retired bound coupon (slice 06): whose account it is
+  // comes from the session, never from the request.
+  it("ignores a Customer named in the body: a guest claiming to be the owner is refused", async () => {
+    const forged = { customer_id: OWNER, customerId: OWNER, session_customer_id: OWNER };
+    expect(await pay("wei.ling@example.com", { points: 1000, body: forged })).toEqual({
+      status: 400,
+      body: { error: POINTS_ACCOUNT_ERROR },
+    });
     refusedBeforeAnyWrite();
   });
 

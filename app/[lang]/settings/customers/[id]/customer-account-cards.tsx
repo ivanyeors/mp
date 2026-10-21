@@ -8,11 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import { formatAdminDateMY, formatAdminDateTimeMY } from "@/lib/format/admin-date";
 import type { Customer } from "@/lib/types/ecommerce";
-import type {
-    MigratedCustomerFacts,
-    MigratedCustomerResult,
-    MigratedCustomerVoucher,
-} from "@/lib/customer-migration/overview";
+import type { MigratedCustomerFacts, MigratedCustomerResult } from "@/lib/customer-migration/overview";
 import {
     describeMobile,
     describeSignIn,
@@ -28,36 +24,6 @@ import {
 
 function formatSGD(amount: number): string {
     return new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(amount);
-}
-
-const VOUCHER_STATE_LABEL: Record<MigratedCustomerVoucher["state"], string> = {
-    issued: "Issued, unused",
-    used: "Used",
-    expired: "Expired",
-};
-
-/** The Welcome-back voucher (migration slice 06): code, state and expiry. */
-function VoucherRow({ voucher }: { voucher: MigratedCustomerVoucher }) {
-    const worth =
-        voucher.discountType === "free_shipping"
-            ? "Free shipping"
-            : voucher.discountType === "percentage"
-              ? `${voucher.value}% off`
-              : `${formatSGD(voucher.value)} off`;
-    return (
-        <Row label="Welcome-back voucher">
-            <span className="flex flex-wrap items-center gap-2">
-                <span className="font-mono font-medium tracking-wide">{voucher.code}</span>
-                <Badge variant={voucher.state === "issued" ? "secondary" : "outline"} className="text-xs font-normal">
-                    {VOUCHER_STATE_LABEL[voucher.state]}
-                </Badge>
-            </span>
-            <span className="block text-xs text-muted-foreground">
-                {worth}
-                {voucher.expiresAt ? ` · valid until ${formatAdminDateMY(voucher.expiresAt)}` : ""}
-            </span>
-        </Row>
-    );
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -384,7 +350,10 @@ function FromShopifyFacts({
                     {facts.claimedAt && (
                         <Row label="Claim">Claimed on {formatAdminDateMY(facts.claimedAt)}</Row>
                     )}
-                    {facts.welcomeVoucher && <VoucherRow voucher={facts.welcomeVoucher} />}
+                    {/* PRD-loyalty-points: the bonus a Claim in its window adds; the Points card has the balance. */}
+                    {facts.claimBonusAt && (
+                        <Row label="Claim bonus">Granted on {formatAdminDateMY(facts.claimBonusAt)}</Row>
+                    )}
                 </dl>
             </CardContent>
         </Card>

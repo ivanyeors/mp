@@ -306,6 +306,8 @@ describe("--apply", () => {
 
     // The Claim bonus and its window, from Discounts → Points; no word of the old platform.
     expect(bea.text).toContain("Sign in within 3 months of this email and we'll add 1,000 points, S$10 off your next shop order.");
+    // The terms, in the Customer's language.
+    expect(bea.text).toContain(`How points work: ${ORIGIN}/zh-CN/points`);
     expect(`${bea.subject}\n${bea.text}\n${bea.html}`).not.toMatch(/shopify|moved|voucher/i);
     expect(bea.subject).toBe("Your Mpillow account is ready");
   });

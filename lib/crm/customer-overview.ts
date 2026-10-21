@@ -9,12 +9,13 @@
  *
  * To add a column, a later slice appends it to the view with
  * `create or replace view` (at the end: Postgres refuses a reorder) and to
- * `CUSTOMER_OVERVIEW_COLUMNS` and `CustomerOverviewRow` below.
+ * `CUSTOMER_OVERVIEW_COLUMNS` and `CustomerOverviewRow` below. Removing one
+ * is a rebuild: `drop view` and `create view` in one migration, with the
+ * views that read it (PRD-loyalty-points slice 06 did this).
  * `lib/crm/__tests__/customer-overview-view.test.ts` fails until the view and
  * this list agree.
  */
 
-import type { WelcomeVoucherState } from "@/lib/customer-migration/welcome-voucher";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /** Every column of `admin_customer_overview`, in the view's order. */
@@ -41,7 +42,8 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "has_phone",
   "phone_valid",
   "claim_link_first_clicked_at",
-  "welcome_voucher_state",
+  "points_available",
+  "claim_bonus_at",
   "open_followups",
   "paid_orders",
   "first_paid_at",
@@ -112,10 +114,13 @@ export interface CustomerOverviewRow {
   /** The first click of any of their **Claim links** (slice 06); null if none was opened. */
   claim_link_first_clicked_at: string | null;
   /**
-   * Their **Welcome-back voucher** (slice 06), by `welcome_voucher_state()`:
-   * `none`, `issued` (unused, still usable), `used` or `expired`.
+   * Their available **Points** (PRD-loyalty-points slice 06): the sum of the
+   * Points ledger, as `points_balance()` counts it; 0 with none. Pending
+   * points are not in it.
    */
-  welcome_voucher_state: WelcomeVoucherState;
+  points_available: number;
+  /** When their **Claim bonus** was granted; null without one. */
+  claim_bonus_at: string | null;
   /** Follow-ups not done yet (CRM slice 06); 0 when none. */
   open_followups: number;
   /**

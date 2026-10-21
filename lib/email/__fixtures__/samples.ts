@@ -306,34 +306,9 @@ export function sampleApplication(fixture: EmailFixture = "happy") {
   };
 }
 
-export function sampleWelcomeVoucher(fixture: EmailFixture = "happy") {
-  return {
-    firstName: pick(fixture, "Wei Ling"),
-    email: pick(fixture, "wei.ling@example.com"),
-    code: pick(fixture, "WB-7KQ4MZP2XH"),
-    discountType: "fixed_amount" as const,
-    value: 20,
-    currency: "SGD",
-    minOrderAmount: 50,
-    expiresOn: pick(fixture, "19 December 2026"),
-    shopUrl: `${ORIGIN}/en-US/shop`,
-  };
-}
-
-/** Free-shipping terms, no minimum, and a customer with no first name. */
-export function sampleWelcomeVoucherFreeShipping(fixture: EmailFixture = "happy") {
-  return {
-    ...sampleWelcomeVoucher(fixture),
-    firstName: null,
-    discountType: "free_shipping" as const,
-    value: 1,
-    minOrderAmount: null,
-  };
-}
-
 /** PRD-loyalty-points slice 05: the Claim bonus, 1,000 points. */
 export function sampleClaimBonus(fixture: EmailFixture = "happy") {
-  return { firstName: pick(fixture, "Wei Ling"), points: 1000, shopUrl: `${ORIGIN}/en-US/shop` };
+  return { firstName: pick(fixture, "Wei Ling"), points: 1000, shopUrl: `${ORIGIN}/en-US/shop`, termsUrl: `${ORIGIN}/en-US/points` };
 }
 
 /** CRM slice 07: the Review request, 14 days after delivery. */
@@ -408,6 +383,7 @@ export function sampleMigrationAnnouncement(fixture: EmailFixture = "happy") {
     email: pick(fixture, "wei.ling@example.com"),
     claimUrl: sampleClaimUrl("migration_announcement"),
     bonus: sampleCampaignBonus(fixture),
+    termsUrl: `${ORIGIN}/en-US/points`,
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }
@@ -423,6 +399,7 @@ export function sampleMigrationReminder(fixture: EmailFixture = "happy") {
     email: pick(fixture, "wei.ling@example.com"),
     claimUrl: sampleClaimUrl("migration_reminder"),
     bonus: sampleCampaignBonus(fixture),
+    termsUrl: `${ORIGIN}/en-US/points`,
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }

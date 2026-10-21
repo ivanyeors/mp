@@ -4,10 +4,11 @@ import type { Customer } from "@/lib/types/ecommerce";
 import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 
 /**
- * What the Claim link and the Welcome-back voucher add to the Customers page
- * (migration slice 06): the Migration card's Clicked, Voucher used and
- * Revenue; the list's Voucher filter; and the From Shopify card's first click
- * and voucher.
+ * What the Claim link and the Claim bonus add to the Customers page
+ * (migration slice 06; PRD-loyalty-points slice 06, which retired the
+ * Welcome-back voucher): the Migration card's Clicked, Claim bonus, Points
+ * spent and Revenue; the list's Points filter; and the From Shopify card's
+ * first click and Claim bonus.
  */
 
 vi.mock("next/navigation", () => ({
@@ -28,44 +29,58 @@ const summary: MigrationSummary = {
   signedUpBeforeImport: 40,
   batchesApplied: 1,
   clicked: 300,
-  vouchersIssued: 120,
-  vouchersUsed: 30,
-  voucherOrders: 31,
-  voucherRevenue: 4250.5,
+  claimBonuses: 120,
+  migratedPointsSpent: 31000,
+  pointsOrders: 31,
+  pointsRevenue: 4250.5,
   emailed: 960,
   emailsBounced: 12,
   emailsComplained: 1,
 };
 
 describe("Migration card", () => {
-  it("adds Clicked (of imported), Voucher used (of issued) and the Revenue of their paid orders", () => {
+  it("adds Clicked (of imported), the Claim bonus (of imported), the points spent and the Revenue of their paid orders", () => {
     const cells = migrationCells(summary);
     // Migration 08's Emailed sits before Clicked, in funnel order.
-    expect(cells.map((c) => c.label)).toEqual(["Imported", "Signed up", "Emailed", "Clicked", "Voucher used", "Revenue"]);
+    expect(cells.map((c) => c.label)).toEqual([
+      "Imported",
+      "Signed up",
+      "Emailed",
+      "Clicked",
+      "Claim bonus",
+      "Points spent",
+      "Revenue",
+    ]);
     const cell = (label: string) => cells.find((c) => c.label === label)!;
     expect(cell("Clicked")).toEqual({ label: "Clicked", value: "300 (25%)", detail: "opened their Claim link" });
-    expect(cell("Voucher used")).toEqual({ label: "Voucher used", value: "30", detail: "of 120 welcome-back vouchers issued" });
+    expect(cell("Claim bonus")).toEqual({ label: "Claim bonus", value: "120 (10%)", detail: "got the sign-in bonus in points" });
+    // A balance is always shown in points and dollars (ADR 0030 (b)).
+    expect(cell("Points spent")).toEqual({ label: "Points spent", value: "31,000 points (S$310.00)", detail: "on 31 paid orders" });
     expect(cell("Revenue").value).toMatch(/4,250\.50$/);
-    expect(cell("Revenue").detail).toBe("from 31 paid orders that used a welcome-back voucher");
+    expect(cell("Revenue").detail).toBe("from 31 paid orders that used points");
   });
 
-  it("reads one paid order and one voucher in the singular", () => {
-    const cells = migrationCells({ ...summary, vouchersIssued: 1, voucherOrders: 1 });
-    expect(cells.find((c) => c.label === "Voucher used")!.detail).toBe("of 1 welcome-back voucher issued");
-    expect(cells.find((c) => c.label === "Revenue")!.detail).toBe("from 1 paid order that used a welcome-back voucher");
+  it("reads one paid order in the singular", () => {
+    const cells = migrationCells({ ...summary, pointsOrders: 1 });
+    expect(cells.find((c) => c.label === "Points spent")!.detail).toBe("on 1 paid order");
+    expect(cells.find((c) => c.label === "Revenue")!.detail).toBe("from 1 paid order that used points");
+  });
+
+  it("says nothing of a voucher", () => {
+    expect(JSON.stringify(migrationCells(summary))).not.toMatch(/voucher/i);
   });
 });
 
-describe("Customers list: Voucher filter", () => {
-  it("offers Issued, unused and Used, with the URL's value", () => {
+describe("Customers list: Points filter", () => {
+  it("offers Has points and No points, with the URL's value", () => {
     const html = renderToString(
       <CustomersClient
         initialData={{ customers: { ok: true, rows: [], total: 0, page: 1, limit: 20 } }}
-        initialFilters={{ search: null, tags: [], account: "all", source: "shopify", voucher: "issued", sort: "newest" }}
+        initialFilters={{ search: null, tags: [], account: "all", source: "shopify", points: "has", sort: "newest" }}
       />,
     );
-    expect(html).toContain('aria-label="Voucher"');
-    expect(html).toContain("Voucher issued, unused");
+    expect(html).toContain('aria-label="Points"');
+    expect(html).toContain("Has points");
     expect(html).toContain("No customers match these filters.");
   });
 });
@@ -100,14 +115,7 @@ const facts: MigratedCustomerFacts = {
   exportedAt: "2026-10-20",
   batch: { id: "b1", fileName: "export.csv", appliedAt: "2026-10-21T02:05:00Z", rolledBackAt: null },
   claimLinkFirstClickedAt: "2026-10-22T01:30:00Z",
-  welcomeVoucher: {
-    code: "WB-ABCDEFGHJK",
-    state: "issued",
-    discountType: "fixed_amount",
-    value: 20,
-    currency: "SGD",
-    expiresAt: "2026-12-21T02:00:00Z",
-  },
+  claimBonusAt: "2026-11-03T02:00:00Z",
 };
 
 const detail = (f: MigratedCustomerFacts) =>
@@ -121,21 +129,18 @@ const detail = (f: MigratedCustomerFacts) =>
   );
 
 describe("From Shopify card", () => {
-  it("shows the Claim link's first click, and the voucher's code, state and expiry", () => {
+  it("shows the Claim link's first click, and when the Claim bonus was granted", () => {
     const html = detail(facts);
     expect(html).toContain("Claim link");
     expect(html).toContain("First opened");
     expect(html).toContain("22 Oct 2026");
-    expect(html).toContain("WB-ABCDEFGHJK");
-    expect(html).toContain("Issued, unused");
-    expect(html).toContain("21 Dec 2026");
-    expect(html).toContain("20.00 off");
+    expect(html).toContain("Claim bonus");
+    expect(html).toContain("Granted on <!-- -->3 Nov 2026");
+    expect(html).not.toMatch(/voucher/i);
   });
 
-  it("says the link was not opened, and shows each voucher state", () => {
+  it("says the link was not opened, and leaves the bonus row out without one", () => {
     expect(detail({ ...facts, claimLinkFirstClickedAt: null })).toContain("Not opened");
-    expect(detail({ ...facts, welcomeVoucher: { ...facts.welcomeVoucher!, state: "used" } })).toContain(">Used<");
-    expect(detail({ ...facts, welcomeVoucher: { ...facts.welcomeVoucher!, state: "expired" } })).toContain(">Expired<");
-    expect(detail({ ...facts, welcomeVoucher: null })).not.toContain("Welcome-back voucher");
+    expect(detail({ ...facts, claimBonusAt: null })).not.toContain("Claim bonus");
   });
 });

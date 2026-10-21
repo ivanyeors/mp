@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import { customerFilterParams, parseCustomerFilters } from "@/lib/crm/customer-filters";
 import type { CustomerOverviewRow, PurchaseClass } from "@/lib/crm/customer-overview";
-import { parseSegmentFilters, segmentParams } from "@/lib/crm/segment-rules";
+import { SEGMENT_FILTERS_VERSION, parseSegmentFilters, segmentParams } from "@/lib/crm/segment-rules";
 
 /**
  * CRM 05: Segments over the Customer overview, through the list's own filter
@@ -56,7 +56,8 @@ function overviewRow(n: number): Partial<CustomerOverviewRow> {
     account_providers: n % 4 === 0 ? ["email", "google"] : n % 2 === 0 ? ["email"] : [],
     has_phone: n % 5 !== 0,
     phone_valid: n % 5 !== 0 && n % 10 !== 1,
-    welcome_voucher_state: n % 6 === 0 ? "issued" : "none",
+    points_available: n % 6 === 0 ? 1000 : 0,
+    claim_bonus_at: n % 6 === 0 ? "2026-10-01T00:00:00Z" : null,
     marketing_email: n % 5 === 0 ? "subscribed" : n % 5 === 1 ? "unsubscribed" : "not_subscribed",
     open_followups: n % 8 === 0 ? 1 : 0,
     last_paid_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
@@ -121,7 +122,8 @@ describe("a Segment and the same filters in the URL", () => {
     "account=signed-up&google=linked",
     "google=not-linked&mobile=invalid",
     "mobile=missing",
-    "voucher=issued&followups=open",
+    "points=has&followups=open",
+    "points=none&source=shopify",
     "consent=subscribed&readjusted=never",
     "consent=not-subscribed",
     "bought=basic,accessory&min_spend=300",
@@ -168,7 +170,8 @@ describe("a Segment the schema no longer fully recognises", () => {
   it.each([
     [{ bought: "premium", region: "east" }, 1, ["region=east"]],
     [{ bought: "premium,pillowcase" }, 1, ["bought=premium,pillowcase"]],
-    [{ bought: "premium" }, 2, ["bought=premium"]],
+    [{ bought: "premium" }, 3, ["bought=premium"]],
+    [{ voucher: "issued" }, 1, ["voucher=issued"]],
   ])("%j (version %i) needs review, names %j, and is not counted", async (filters, version, ignored) => {
     stored(filters, version);
     const [row] = await listSegments({ now: NOW });
@@ -180,6 +183,40 @@ describe("a Segment the schema no longer fully recognises", () => {
     const first = resolveSegment(id, { now: NOW }).next();
     await expect(first).rejects.toBeInstanceOf(SegmentUnavailableError);
     await expect(resolveSegment(id).next()).rejects.toMatchObject({ reason: "needs_review", ignored: ["region=east"] });
+  });
+
+  // PRD-loyalty-points slice 06: a Segment saved with the retired voucher
+  // filter, at filters_version 1, still opens and returns the same Customers
+  // as its other filters do.
+  it("a version-1 Segment with voucher= opens and returns the same Customers, minus that filter", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    try {
+      const id = stored({ source: "shopify", voucher: "issued", bought: "premium" }, 1);
+      const list = await listIds("source=shopify&bought=premium");
+      expect(list.ids.length).toBeGreaterThan(0);
+      const [row] = await listSegments({ now: NOW });
+      expect(row).toMatchObject({
+        id,
+        needsReview: false,
+        ignored: [],
+        params: { source: "shopify", bought: "premium" },
+        count: list.total,
+      });
+      const { ids } = await resolveAll(id);
+      expect(new Set(ids)).toEqual(new Set(list.ids));
+      expect(ids).toHaveLength(list.ids.length);
+
+      // Updated, it is saved at the current version, without the voucher.
+      await updateSegment(id, { name: "Renamed" }, { now: NOW });
+      expect(h.db.customer_segments[0]).toMatchObject({ filters: { source: "shopify", voucher: "issued", bought: "premium" } });
+      await updateSegment(id, { params: { source: "shopify", bought: "premium" } }, { now: NOW });
+      expect(h.db.customer_segments[0]).toMatchObject({
+        filters: { source: "shopify", bought: "premium" },
+        filters_version: SEGMENT_FILTERS_VERSION,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("is resolved again once updated with filters the schema knows", async () => {

@@ -132,7 +132,7 @@ describe("saving a Segment", () => {
     expect(segment(row.id)).toMatchObject({
       name: "Premium, never re-adjusted",
       filters: { bought: "premium", readjusted: "never" },
-      filters_version: 1,
+      filters_version: 2,
       created_by_profile_id: WANG,
     });
     expect(h.db.admin_audit_log).toHaveLength(1);
@@ -141,7 +141,7 @@ describe("saving a Segment", () => {
       entity_type: "customer_segment",
       entity_id: row.id,
       actor_email: "clerk@x.test",
-      after: { name: "Premium, never re-adjusted", filters: { bought: "premium", readjusted: "never" }, filters_version: 1 },
+      after: { name: "Premium, never re-adjusted", filters: { bought: "premium", readjusted: "never" }, filters_version: 2 },
     });
     expect(JSON.stringify(h.db.admin_audit_log)).not.toContain(MEI_EMAIL);
     expect(JSON.stringify(h.db.admin_audit_log)).not.toContain('"c1"');
@@ -191,7 +191,7 @@ describe("changing a Segment", () => {
       action: "customer_segment.update",
       entity_id: S_OLD,
       before: { name: "Old region", filters: { bought: "premium", region: "east" }, filters_version: 1 },
-      after: { name: "Old region", filters: { bought: "premium" }, filters_version: 1 },
+      after: { name: "Old region", filters: { bought: "premium" }, filters_version: 2 },
     });
   });
 

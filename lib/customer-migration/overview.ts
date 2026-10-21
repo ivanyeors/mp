@@ -1,6 +1,4 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { WelcomeVoucherState } from "@/lib/customer-migration/welcome-voucher";
-import type { DiscountType } from "@/lib/types/ecommerce";
 
 /**
  * What the Admin Panel shows about the Shopify import (migration slice 12):
@@ -14,8 +12,9 @@ import type { DiscountType } from "@/lib/types/ecommerce";
 
 /**
  * Every column of `admin_customer_migration_summary`, in the view's order.
- * Slices 06 and 08 append their funnel columns (*Emailed*, *Clicked*, *Voucher
- * used*, *Revenue*) to the view and here; the view test keeps the two equal.
+ * Slices 06 and 08 appended their funnel columns (*Emailed*, *Clicked*); the
+ * Claim bonus and what points did replaced the voucher's in
+ * PRD-loyalty-points slice 06. The view test keeps the two equal.
  */
 export const MIGRATION_SUMMARY_COLUMNS = [
   "imported",
@@ -25,10 +24,10 @@ export const MIGRATION_SUMMARY_COLUMNS = [
   "signed_up_before_import",
   "batches_applied",
   "clicked",
-  "vouchers_issued",
-  "vouchers_used",
-  "voucher_orders",
-  "voucher_revenue",
+  "claim_bonuses",
+  "migrated_points_spent",
+  "points_orders",
+  "points_revenue",
   "emailed",
   "emails_bounced",
   "emails_complained",
@@ -49,14 +48,14 @@ export interface MigrationSummary {
   batchesApplied: number;
   /** Of `imported`, the ones who opened a **Claim link** (slice 06). */
   clicked: number;
-  /** Of `imported`, the ones holding a **Welcome-back voucher**. */
-  vouchersIssued: number;
-  /** Of those, redeemed. */
-  vouchersUsed: number;
-  /** Paid **Orders** whose coupon is a Welcome-back voucher. */
-  voucherOrders: number;
-  /** Their total, SGD. */
-  voucherRevenue: number;
+  /** Of `imported`, the ones granted the **Claim bonus**. */
+  claimBonuses: number;
+  /** **Points** they spent on paid **Orders**. */
+  migratedPointsSpent: number;
+  /** Their paid **Orders** that used points. */
+  pointsOrders: number;
+  /** Those Orders' total, SGD. */
+  pointsRevenue: number;
   /** Of `imported`, the ones a campaign email reached the provider for (slice 08). */
   emailed: number;
   /** Of `imported`, the ones with a hard bounce: left out of later waves. */
@@ -80,10 +79,10 @@ export function migrationSummaryFromRow(row: Partial<Record<(typeof MIGRATION_SU
     signedUpBeforeImport: count(row?.signed_up_before_import),
     batchesApplied: count(row?.batches_applied),
     clicked: count(row?.clicked),
-    vouchersIssued: count(row?.vouchers_issued),
-    vouchersUsed: count(row?.vouchers_used),
-    voucherOrders: count(row?.voucher_orders),
-    voucherRevenue: count(row?.voucher_revenue),
+    claimBonuses: count(row?.claim_bonuses),
+    migratedPointsSpent: count(row?.migrated_points_spent),
+    pointsOrders: count(row?.points_orders),
+    pointsRevenue: count(row?.points_revenue),
     emailed: count(row?.emailed),
     emailsBounced: count(row?.emails_bounced),
     emailsComplained: count(row?.emails_complained),
@@ -142,28 +141,17 @@ export interface MigratedCustomerFacts {
   } | null;
   /** The first click of any of their **Claim links** (slice 06); null if none was opened. */
   claimLinkFirstClickedAt: string | null;
-  /** Their **Welcome-back voucher** (slice 06); null when none was issued. */
-  welcomeVoucher: MigratedCustomerVoucher | null;
+  /** When their **Claim bonus** was granted (PRD-loyalty-points); null without one. */
+  claimBonusAt: string | null;
 }
 
-/** The Welcome-back voucher as the From Shopify card shows it. */
-export interface MigratedCustomerVoucher {
-  code: string;
-  /** From the Customer overview, so the card agrees with the list's Voucher filter. */
-  state: Exclude<WelcomeVoucherState, "none">;
-  discountType: DiscountType;
-  value: number;
-  currency: string;
-  expiresAt: string | null;
-}
-
-/** What slice 06 adds to the From Shopify card, read beside the migrated row. */
+/** What the From Shopify card reads from the Customer overview, beside the migrated row. */
 export interface MigratedCustomerExtras {
   claimLinkFirstClickedAt: string | null;
-  welcomeVoucher: MigratedCustomerVoucher | null;
+  claimBonusAt: string | null;
 }
 
-const NO_EXTRAS: MigratedCustomerExtras = { claimLinkFirstClickedAt: null, welcomeVoucher: null };
+const NO_EXTRAS: MigratedCustomerExtras = { claimLinkFirstClickedAt: null, claimBonusAt: null };
 
 type MigratedRow = {
   created_by_import: boolean;
@@ -205,38 +193,17 @@ export function migratedFactsFromRow(
       ? { id: b.id, fileName: b.file_name, appliedAt: b.applied_at, rolledBackAt: b.rolled_back_at }
       : { id: row.batch_id, fileName: "", appliedAt: null, rolledBackAt: null },
     claimLinkFirstClickedAt: extras.claimLinkFirstClickedAt,
-    welcomeVoucher: extras.welcomeVoucher,
+    claimBonusAt: extras.claimBonusAt,
   };
 }
 
-type OverviewExtrasRow = { claim_link_first_clicked_at: string | null; welcome_voucher_state: WelcomeVoucherState };
-type VoucherRow = {
-  code: string;
-  discount_type: DiscountType;
-  discount_value: number | string;
-  currency: string;
-  expires_at: string | null;
-};
+type OverviewExtrasRow = { claim_link_first_clicked_at: string | null; claim_bonus_at: string | null };
 
-/** Pure — the slice 06 facts from the overview row and the voucher row. */
-export function migratedExtrasFromRows(
-  overview: OverviewExtrasRow | null,
-  voucher: VoucherRow | null,
-): MigratedCustomerExtras {
-  const state = overview?.welcome_voucher_state ?? "none";
+/** Pure — the From Shopify card's facts from the Customer overview row. */
+export function migratedExtrasFromRow(overview: OverviewExtrasRow | null): MigratedCustomerExtras {
   return {
     claimLinkFirstClickedAt: overview?.claim_link_first_clicked_at ?? null,
-    welcomeVoucher:
-      voucher && state !== "none"
-        ? {
-            code: voucher.code,
-            state,
-            discountType: voucher.discount_type,
-            value: count(voucher.discount_value),
-            currency: voucher.currency,
-            expiresAt: voucher.expires_at,
-          }
-        : null,
+    claimBonusAt: overview?.claim_bonus_at ?? null,
   };
 }
 
@@ -246,29 +213,20 @@ export type MigratedCustomerResult = { ok: true; facts: MigratedCustomerFacts | 
 export async function getMigratedCustomer(customerId: string): Promise<MigratedCustomerResult> {
   try {
     const admin = supabaseAdmin();
-    const [migrated, overview, voucher] = await Promise.all([
+    const [migrated, overview] = await Promise.all([
       admin.from("migrated_customers").select(MIGRATED_SELECT).eq("customer_id", customerId).maybeSingle(),
-      // Slice 06: the Claim link's first click and the voucher's state, from
-      // the overview, so the card and the list's Voucher filter agree.
+      // The Claim link's first click and the Claim bonus, from the overview,
+      // so the card and the list agree.
       admin
         .from("admin_customer_overview")
-        .select("claim_link_first_clicked_at, welcome_voucher_state")
+        .select("claim_link_first_clicked_at, claim_bonus_at")
         .eq("id", customerId)
-        .maybeSingle(),
-      admin
-        .from("coupons")
-        .select("code, discount_type, discount_value, currency, expires_at")
-        .eq("customer_id", customerId)
-        .eq("issued_for", "welcome_back")
         .maybeSingle(),
     ]);
     if (migrated.error) return { ok: false };
     if (!migrated.data) return { ok: true, facts: null };
-    // A failed slice 06 read leaves those rows out of the card, not the card.
-    const extras = migratedExtrasFromRows(
-      overview.error ? null : (overview.data as OverviewExtrasRow | null),
-      voucher.error ? null : (voucher.data as VoucherRow | null),
-    );
+    // A failed overview read leaves those rows out of the card, not the card.
+    const extras = migratedExtrasFromRow(overview.error ? null : (overview.data as OverviewExtrasRow | null));
     return { ok: true, facts: migratedFactsFromRow(migrated.data as unknown as MigratedRow, extras) };
   } catch {
     return { ok: false };

@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/discounts.ts": {
-    "mtime": 1792585991.7698305,
-    "seen": 1792600217.002402,
-    "ast_hash": "2b03118fc0a890743452a8506bfdbdc8",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2569227,
+    "ast_hash": "df8e73315519c5dd2912c81128625210",
     "semantic_hash": ""
   },
   "lib/ecommerce/exchange-rates.ts": {
@@ -1632,9 +1632,9 @@
     "semantic_hash": ""
   },
   "lib/types/ecommerce.ts": {
-    "mtime": 1792597564.401892,
-    "seen": 1792600217.0034122,
-    "ast_hash": "4d85c8a79a66f9ab69188d01965262a8",
+    "mtime": 1792600222.9645932,
+    "seen": 1792600780.2578738,
+    "ast_hash": "ec5f509fbcd21545c0bc39dbd3c03b99",
     "semantic_hash": ""
   },
   "lib/types/landing-sections.ts": {
@@ -2052,9 +2052,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/page.tsx": {
-    "mtime": 1792585991.596898,
-    "seen": 1792600217.0006974,
-    "ast_hash": "ac2638212ce6718312dd84d0946b8121",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2551599,
+    "ast_hash": "396ec97065e303e315eb64e144b6a711",
     "semantic_hash": ""
   },
   "app/[lang]/settings/error.tsx": {
@@ -2766,9 +2766,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/route.ts": {
-    "mtime": 1792596859.674831,
-    "seen": 1792600217.0012019,
-    "ast_hash": "b24bef8111529e50b0665ef425ad6022",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2556841,
+    "ast_hash": "92317b8609148a903a10ba13069baf6f",
     "semantic_hash": ""
   },
   "app/api/shop/coupons/[id]/route.ts": {
@@ -2784,9 +2784,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/coupons/validate/route.ts": {
-    "mtime": 1792585991.6066191,
-    "seen": 1792600217.0012121,
-    "ast_hash": "7d03edb66d1c1be147bc8b31a09bef65",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2556925,
+    "ast_hash": "43f656419560310ed3150ccb12f1980d",
     "semantic_hash": ""
   },
   "app/api/shop/customers/[id]/addresses/route.ts": {
@@ -8154,9 +8154,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1792600001.8125982,
-    "seen": 1792600217.0047865,
-    "ast_hash": "72639634312a87461433652cadf4678b",
+    "mtime": 1792600222.9485931,
+    "seen": 1792600780.2594836,
+    "ast_hash": "182c09e25d936800b9959c5af9626b8e",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9114,9 +9114,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
-    "mtime": 1792585991.5941472,
-    "seen": 1792600217.0006523,
-    "ast_hash": "397cecb86ef8baa8f9b916114b2182e2",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.2551162,
+    "ast_hash": "54a0ef2e3532547c8087733fc9197314",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/[id]/discount-editor-client.tsx": {
@@ -9126,9 +9126,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/discounts-client.tsx": {
-    "mtime": 1792595403.6222248,
-    "seen": 1792600217.0006957,
-    "ast_hash": "9a25472b4487a72c957223de625b9c2b",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.2551582,
+    "ast_hash": "94fb02bda5a1a429f054fc5e461afd21",
     "semantic_hash": ""
   },
   "app/[lang]/settings/orders/[id]/order-detail-client.tsx": {
@@ -9186,9 +9186,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/admin/coupons.ts": {
-    "mtime": 1792585991.7698305,
-    "seen": 1792600217.0023859,
-    "ast_hash": "59a048c175701659d405a871af8d11b6",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2569091,
+    "ast_hash": "2dccd1a7c2671ea8cc339f6c79d3076f",
     "semantic_hash": ""
   },
   "lib/ecommerce/admin/customers.ts": {
@@ -9480,9 +9480,9 @@
     "semantic_hash": ""
   },
   "lib/email/__fixtures__/samples.ts": {
-    "mtime": 1792600001.8183284,
-    "seen": 1792600217.002442,
-    "ast_hash": "b548f0924d2333299e759f44e0a27bfc",
+    "mtime": 1792600567.3583093,
+    "seen": 1792600780.2569597,
+    "ast_hash": "07666146078b8bd60f81bb491daa60a4",
     "semantic_hash": ""
   },
   "lib/email/__tests__/contact-sheet.test.ts": {
@@ -9600,9 +9600,9 @@
     "semantic_hash": ""
   },
   "lib/email/registry.ts": {
-    "mtime": 1792600001.8183284,
-    "seen": 1792600217.0025265,
-    "ast_hash": "5ea8565fac21d7fa357e5881189223ff",
+    "mtime": 1792600551.8413515,
+    "seen": 1792600780.2570353,
+    "ast_hash": "dec9996f36c3fb2ced4f23e7111a4882",
     "semantic_hash": ""
   },
   "lib/email/results.ts": {
@@ -15983,18 +15983,6 @@
     "ast_hash": "f6726950654636db8f56ba1e258cd8ec",
     "semantic_hash": ""
   },
-  "app/api/shop/checkout/__tests__/bound-voucher.test.ts": {
-    "mtime": 1792585991.6066191,
-    "seen": 1792600217.0011966,
-    "ast_hash": "fdf522a7ac49a94063d03931bdd23e37",
-    "semantic_hash": ""
-  },
-  "app/api/shop/coupons/validate/__tests__/bound-voucher.test.ts": {
-    "mtime": 1792585991.6066191,
-    "seen": 1792600217.0012078,
-    "ast_hash": "713da8994a11ca0d2d7e90cfff7a0d3d",
-    "semantic_hash": ""
-  },
   "lib/auth/__tests__/customer-identity-claim.test.ts": {
     "mtime": 1792597034.1649864,
     "seen": 1792600217.0019872,
@@ -16002,39 +15990,33 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/claim.test.ts": {
-    "mtime": 1792596337.1965597,
-    "seen": 1792600217.0022225,
-    "ast_hash": "e03b93dbb276100ed07a8f125717597d",
+    "mtime": 1792600605.6407537,
+    "seen": 1792600780.2567875,
+    "ast_hash": "9651100c16c036c1eb399f62c91cf7f9",
     "semantic_hash": ""
   },
   "lib/customer-migration/claim.ts": {
-    "mtime": 1792596275.297703,
-    "seen": 1792600217.0022516,
-    "ast_hash": "5b0310be2a4eda42a2c1bafdee89c44a",
-    "semantic_hash": ""
-  },
-  "lib/ecommerce/__tests__/bound-coupon.test.ts": {
-    "mtime": 1792585991.7698305,
-    "seen": 1792600217.0023196,
-    "ast_hash": "1cf1b9f2bdd4fbdd32cccf6c0665fd7a",
+    "mtime": 1792600544.920491,
+    "seen": 1792600780.2568173,
+    "ast_hash": "aded7e27b89ef630548b58126da86d9f",
     "semantic_hash": ""
   },
   "lib/email/__tests__/customer-emails.test.ts": {
-    "mtime": 1792585991.7742462,
-    "seen": 1792600217.0024533,
-    "ast_hash": "2675bd3398dbcbe5f8100e024f7a1c8f",
+    "mtime": 1792600222.9645932,
+    "seen": 1792600780.25697,
+    "ast_hash": "48f94d2cee7bec16b71015f89419b71a",
     "semantic_hash": ""
   },
   "lib/email/account.ts": {
-    "mtime": 1792596196.3823204,
-    "seen": 1792600217.002489,
-    "ast_hash": "8ce317da4ad016948e4b9198746544ca",
+    "mtime": 1792600544.9200003,
+    "seen": 1792600780.2569985,
+    "ast_hash": "c9b9f7573ae6023e7a8c4047c2ce4c23",
     "semantic_hash": ""
   },
   "lib/email/customer-emails.ts": {
-    "mtime": 1792585991.7742462,
-    "seen": 1792600217.0025089,
-    "ast_hash": "5876aaf1c5170d4182d916617f38cdff",
+    "mtime": 1792600222.9645932,
+    "seen": 1792600780.2570183,
+    "ast_hash": "5e9fc50bef15e5a18e784c88fc719c18",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020112000_customer_emails.sql": {
@@ -16050,9 +16032,9 @@
     "semantic_hash": ""
   },
   "supabase/tests/customer-migration/assert-05-claim.sql": {
-    "mtime": 1792596101.5430927,
-    "seen": 1792600217.0040424,
-    "ast_hash": "2de7300f7aabd2274ba6d27e993cac31",
+    "mtime": 1792600222.9707806,
+    "seen": 1792600780.2587013,
+    "ast_hash": "22bef76ef49fb799849c882301811fbb",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import/__tests__/apply-actions.test.ts": {
@@ -16170,21 +16152,21 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/[id]/customer-account-cards.tsx": {
-    "mtime": 1792585991.5910296,
-    "seen": 1792600217.0006027,
-    "ast_hash": "73c403eaaf12e11d74d9173d4c969d7e",
+    "mtime": 1792600222.9485931,
+    "seen": 1792600780.2550666,
+    "ast_hash": "505fc510cc74c9120fe295176b3fce3b",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/__tests__/account-status-render.test.tsx": {
-    "mtime": 1792585991.5928495,
-    "seen": 1792600217.0006225,
-    "ast_hash": "f095af55c7911c27875f991a1287b2ed",
+    "mtime": 1792600222.9485931,
+    "seen": 1792600780.2550848,
+    "ast_hash": "60797e893a5c474a1a5876ad7e25e1b2",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/migration-card.tsx": {
-    "mtime": 1792585991.596898,
-    "seen": 1792600217.000676,
-    "ast_hash": "f1eafe6f3dd9171458adbd23cb1bffb7",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.2551405,
+    "ast_hash": "4611a6b2205105eaf611cb09fe128ee9",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/customer-last-seen.test.ts": {
@@ -16194,39 +16176,39 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-filters.test.ts": {
-    "mtime": 1792585991.7454216,
-    "seen": 1792600217.0021257,
-    "ast_hash": "5fbc4a6d5b5fa29e3eb49160a07a56a7",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2566748,
+    "ast_hash": "d0468da66d2a27a38faf161b9fa9322f",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-overview-view.test.ts": {
-    "mtime": 1792585991.7454216,
-    "seen": 1792600217.0021274,
-    "ast_hash": "0fcd560172b7ab197f385469dd95e73f",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2566767,
+    "ast_hash": "bdf57ba0d9fce07297039def6e80d9ef",
     "semantic_hash": ""
   },
   "lib/crm/customer-filters.ts": {
-    "mtime": 1792585991.7471313,
-    "seen": 1792600217.002155,
-    "ast_hash": "6d291d6855bc5250e703937bb879dae4",
+    "mtime": 1792600222.9620638,
+    "seen": 1792600780.2567062,
+    "ast_hash": "3982c9443d237a800b9223d6b5e4b3a6",
     "semantic_hash": ""
   },
   "lib/crm/customer-overview.ts": {
-    "mtime": 1792585991.7471313,
-    "seen": 1792600217.0021565,
-    "ast_hash": "a33063efd89100f61e778d81e6fff351",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2567081,
+    "ast_hash": "b945cea5595136ad3cdfeb7c5707edd4",
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/overview.test.ts": {
-    "mtime": 1792585991.7634108,
-    "seen": 1792600217.0022275,
-    "ast_hash": "083e40535b7ebcd39d366d475e2179cc",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2567933,
+    "ast_hash": "42181b97336824eb5556a9c03cf7f8eb",
     "semantic_hash": ""
   },
   "lib/customer-migration/overview.ts": {
-    "mtime": 1792585991.7686932,
-    "seen": 1792600217.002253,
-    "ast_hash": "f15106b4a71c29b988fdc7cef007cf50",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2568188,
+    "ast_hash": "bb37164fcb3002f0459df84905b752e6",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020111000_customer_account_status_and_overview.sql": {
@@ -16254,9 +16236,9 @@
     "semantic_hash": ""
   },
   "app/api/settings/customers/__tests__/timeline-route.test.ts": {
-    "mtime": 1792585991.6036832,
-    "seen": 1792600217.0011432,
-    "ast_hash": "45fa759407afb65cb036e037c687724d",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.255598,
+    "ast_hash": "6e39a006d5104aaa82e34861a0c3fca3",
     "semantic_hash": ""
   },
   "lib/crm/timeline/__tests__/load.test.ts": {
@@ -16278,9 +16260,9 @@
     "semantic_hash": ""
   },
   "lib/crm/timeline/groups.ts": {
-    "mtime": 1792585991.7567928,
-    "seen": 1792600217.002188,
-    "ast_hash": "f843eacf25415dc2b023ce0d86b3563f",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.256743,
+    "ast_hash": "a1d4390740a16dd4ae08fd2a85e17a2a",
     "semantic_hash": ""
   },
   "lib/crm/timeline/load.ts": {
@@ -16308,9 +16290,9 @@
     "semantic_hash": ""
   },
   "lib/crm/timeline/sources/account.ts": {
-    "mtime": 1792585991.758109,
-    "seen": 1792600217.0021946,
-    "ast_hash": "fd4cb172ab52d5a1869dcbbfda49d0fd",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2567513,
+    "ast_hash": "29347c6ac0c8cab6557f867c180ad950",
     "semantic_hash": ""
   },
   "lib/crm/timeline/sources/aftercare.ts": {
@@ -16440,9 +16422,9 @@
     "semantic_hash": ""
   },
   "lib/aftercare/__tests__/review-request-timeline.test.ts": {
-    "mtime": 1792585991.73576,
-    "seen": 1792600217.0018294,
-    "ast_hash": "ca4dcb6fc38d74287d7371523fcd0d09",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2563179,
+    "ast_hash": "5dcf99b9e294be9265a66fe73d2b997d",
     "semantic_hash": ""
   },
   "lib/aftercare/__tests__/review-request.test.ts": {
@@ -16524,9 +16506,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/__tests__/contact-card-render.test.tsx": {
-    "mtime": 1792585991.5941472,
-    "seen": 1792600217.0006313,
-    "ast_hash": "b843ca11f5549f339236d3ca6723ec4c",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.2550955,
+    "ast_hash": "a8d3b995e9b8e4d3313c0b44fc8da264",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/customer-account-providers.test.ts": {
@@ -16607,46 +16589,10 @@
     "ast_hash": "545dab7f4e1f962951a4dcd87894631a",
     "semantic_hash": ""
   },
-  "app/[lang]/settings/customers/__tests__/claim-and-voucher-render.test.tsx": {
-    "mtime": 1792585991.5941472,
-    "seen": 1792600217.000629,
-    "ast_hash": "95035cc1d426421a3dc15c2dd905f99d",
-    "semantic_hash": ""
-  },
-  "app/[lang]/settings/discounts/__tests__/bound-vouchers.test.tsx": {
-    "mtime": 1792585991.596898,
-    "seen": 1792600217.000693,
-    "ast_hash": "ef723f7a57d203f1e0d9502b1ca57a3b",
-    "semantic_hash": ""
-  },
-  "app/[lang]/settings/discounts/welcome-voucher-card.tsx": {
-    "mtime": 1792585991.596898,
-    "seen": 1792600217.0007007,
-    "ast_hash": "8f57053de5caa834613feb715bfe25a7",
-    "semantic_hash": ""
-  },
-  "app/api/settings/discounts/__tests__/welcome-voucher-route.test.ts": {
-    "mtime": 1792585991.6066191,
-    "seen": 1792600217.0011632,
-    "ast_hash": "8738204a58632aa3e5c026bf8708b668",
-    "semantic_hash": ""
-  },
-  "app/api/settings/discounts/welcome-voucher/route.ts": {
-    "mtime": 1792585991.6066191,
-    "seen": 1792600217.001168,
-    "ast_hash": "1e18af27c39e97aed23ad4d727d4bbeb",
-    "semantic_hash": ""
-  },
-  "components/account/welcome-voucher-card.tsx": {
-    "mtime": 1792585991.61236,
-    "seen": 1792600217.0014057,
-    "ast_hash": "b12d227406e5389d3d79aaee3c988ea6",
-    "semantic_hash": ""
-  },
   "lib/crm/timeline/sources/claim-links.ts": {
-    "mtime": 1792585991.7591994,
-    "seen": 1792600217.0022008,
-    "ast_hash": "9a5bad0cfc7cd88d5a953ef70c704b70",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.256758,
+    "ast_hash": "8a1ca54877b158490190075da934c240",
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/claim-link.test.ts": {
@@ -16656,15 +16602,9 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/welcome-page.test.ts": {
-    "mtime": 1792597081.1679955,
-    "seen": 1792600217.002238,
-    "ast_hash": "b76f2a5a5353275fb0f7a592c5aeb075",
-    "semantic_hash": ""
-  },
-  "lib/customer-migration/__tests__/welcome-voucher.test.ts": {
-    "mtime": 1792585991.765858,
-    "seen": 1792600217.0022395,
-    "ast_hash": "a66e50eb0262ad032de28fee1c71c528",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.256804,
+    "ast_hash": "c75add44b4cc4933baf4af05ff3e5b94",
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/welcome.test.ts": {
@@ -16685,22 +16625,10 @@
     "ast_hash": "29e15e20284a452a221accb67de70808",
     "semantic_hash": ""
   },
-  "lib/customer-migration/welcome-voucher-terms.ts": {
-    "mtime": 1792585991.7698305,
-    "seen": 1792600217.0022624,
-    "ast_hash": "5b66d2ce431096d0c0905a0dc2633002",
-    "semantic_hash": ""
-  },
-  "lib/customer-migration/welcome-voucher.ts": {
-    "mtime": 1792585991.7698305,
-    "seen": 1792600217.0022638,
-    "ast_hash": "72d54961155c6767f6be1b5899f6a7fa",
-    "semantic_hash": ""
-  },
   "lib/customer-migration/welcome.ts": {
-    "mtime": 1792585991.7698305,
-    "seen": 1792600217.0022647,
-    "ast_hash": "6f1d97fa47d7ce3519302d71b7546eb1",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2568297,
+    "ast_hash": "9c94bc6f97923f26dca2e353e5c57bdf",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020121000_customer_claim_links.sql": {
@@ -16722,9 +16650,9 @@
     "semantic_hash": ""
   },
   "supabase/tests/customer-migration/assert-06-welcome.sql": {
-    "mtime": 1792597019.1246665,
-    "seen": 1792600217.004044,
-    "ast_hash": "c3158b82e70ba2e5e1ca33ea0e9ddc23",
+    "mtime": 1792600222.9707806,
+    "seen": 1792600780.258703,
+    "ast_hash": "ae162f2da837b002d6eac99faf8e6885",
     "semantic_hash": ""
   },
   "lib/supabase/__tests__/migration-versions.test.ts": {
@@ -16836,15 +16764,15 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/__tests__/crm-filters-render.test.tsx": {
-    "mtime": 1792585991.5941472,
-    "seen": 1792600217.000634,
-    "ast_hash": "5691836453946d7985b4b7a4d1654e1e",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.2550983,
+    "ast_hash": "e8decc581f681d3e0c7d6f009d0d662d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customer-filters-panel.tsx": {
-    "mtime": 1792585991.5941472,
-    "seen": 1792600217.0006502,
-    "ast_hash": "08b300062ae39bf021fe5a40bd050b73",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.255114,
+    "ast_hash": "0168c68b6139ba8950ff2755e1f770e4",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/purchase-lines-fixture.ts": {
@@ -17034,9 +16962,9 @@
     "semantic_hash": ""
   },
   "app/api/settings/customers/__tests__/segments-routes.test.ts": {
-    "mtime": 1792585991.6036832,
-    "seen": 1792600217.0011392,
-    "ast_hash": "741ac1ab11157742c95eab3418e42c3e",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2555935,
+    "ast_hash": "7658ada133be660e02cfc86f5d323b67",
     "semantic_hash": ""
   },
   "app/api/settings/customers/segments/[segmentId]/route.ts": {
@@ -17052,21 +16980,21 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segment-rules.test.ts": {
-    "mtime": 1792585991.7471313,
-    "seen": 1792600217.0021453,
-    "ast_hash": "02c046d773e1df46a56efd20b2d1aa5a",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.256696,
+    "ast_hash": "9e29a8029598a7ddb3c742a54d0b9e19",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segments.test.ts": {
-    "mtime": 1792585991.7471313,
-    "seen": 1792600217.0021462,
-    "ast_hash": "3a8be35ae191b67b824a5d8014a44988",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2566981,
+    "ast_hash": "3c33cb93eca5180b8ecd7c81c2b00f72",
     "semantic_hash": ""
   },
   "lib/crm/segment-rules.ts": {
-    "mtime": 1792585991.750433,
-    "seen": 1792600217.0021765,
-    "ast_hash": "730fe17aededbcd0899d3161c2ffd069",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2567303,
+    "ast_hash": "e83f61189f09f629cc8678787973233f",
     "semantic_hash": ""
   },
   "lib/crm/segments.ts": {
@@ -17088,9 +17016,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/__tests__/reviews-render.test.tsx": {
-    "mtime": 1792585991.5941472,
-    "seen": 1792600217.0006406,
-    "ast_hash": "adcb7240d525d8ab0339634cd02eed27",
+    "mtime": 1792600222.9525933,
+    "seen": 1792600780.2551043,
+    "ast_hash": "4d84d32e42b559c1cd71df52a8d3341f",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/review-match-parts.tsx": {
@@ -17310,9 +17238,9 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/wave-sender.test.ts": {
-    "mtime": 1792596828.6002626,
-    "seen": 1792600217.0022364,
-    "ast_hash": "f75f3cda423cdf3520686a1d751a43ce",
+    "mtime": 1792600605.6402767,
+    "seen": 1792600780.2568026,
+    "ast_hash": "6c55d304e9ef7c867985ea86083e2101",
     "semantic_hash": ""
   },
   "lib/customer-migration/audience.ts": {
@@ -17328,15 +17256,15 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/campaign.ts": {
-    "mtime": 1792585991.765858,
-    "seen": 1792600217.0022488,
-    "ast_hash": "e39a89ab25ff6a2d4c3793b98ce64550",
+    "mtime": 1792600222.9627564,
+    "seen": 1792600780.2568142,
+    "ast_hash": "2d2ee90a0765b47fefa1eca20741ddae",
     "semantic_hash": ""
   },
   "lib/customer-migration/wave-sender.ts": {
-    "mtime": 1792596725.1796868,
-    "seen": 1792600217.0022595,
-    "ast_hash": "5cbc3b6dca50aadaed41b3691908a8d0",
+    "mtime": 1792600567.357843,
+    "seen": 1792600780.2568257,
+    "ast_hash": "b7f0177f057ac005bc120d27bb422013",
     "semantic_hash": ""
   },
   "lib/email/__tests__/campaign-transport.test.ts": {
@@ -17346,9 +17274,9 @@
     "semantic_hash": ""
   },
   "lib/email/__tests__/migration-emails.test.ts": {
-    "mtime": 1792596786.184742,
-    "seen": 1792600217.0024567,
-    "ast_hash": "9e9dd15c625c566c7c2a83416f254112",
+    "mtime": 1792600605.6395888,
+    "seen": 1792600780.2569733,
+    "ast_hash": "00d49112242798a214d1c555b7640240",
     "semantic_hash": ""
   },
   "lib/email/campaign-transport.ts": {
@@ -17358,9 +17286,9 @@
     "semantic_hash": ""
   },
   "lib/email/migration.ts": {
-    "mtime": 1792596500.1890082,
-    "seen": 1792600217.0025136,
-    "ast_hash": "791b6d4a240adc7eda7efd9c80c685c0",
+    "mtime": 1792600567.3571565,
+    "seen": 1792600780.2570248,
+    "ast_hash": "53256fdba9cf011ad425e3fd92306af1",
     "semantic_hash": ""
   },
   "lib/email/resend-webhook.ts": {
@@ -17478,9 +17406,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/06-retire-welcome-back-voucher.md": {
-    "mtime": 1792585604.5304418,
-    "seen": 1792600217.004255,
-    "ast_hash": "98feab58abe392efc63c7a37a3a8af1c",
+    "mtime": 1792600222.9485931,
+    "seen": 1792600780.2589371,
+    "ast_hash": "4ecd1697036923dbc4e170eb1c8d0b33",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/07-expiry-and-reminders.md": {
@@ -17490,15 +17418,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md": {
-    "mtime": 1792598518.7188916,
-    "seen": 1792600217.0042574,
-    "ast_hash": "82ce89ca8def07be89893ef005577996",
+    "mtime": 1792600626.232858,
+    "seen": 1792600780.2589405,
+    "ast_hash": "398967427b70bb0611f3fc0a79055761",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/README.md": {
-    "mtime": 1792600151.905133,
-    "seen": 1792600217.0042589,
-    "ast_hash": "91abcf703f009e662d665dba269cc3b5",
+    "mtime": 1792600231.8115087,
+    "seen": 1792600780.2589424,
+    "ast_hash": "ecab2a04fa7b42fb3ff7650c1ab8f929",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
@@ -17640,9 +17568,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/email-templates/page.tsx": {
-    "mtime": 1792588553.5783744,
-    "seen": 1792600217.0007117,
-    "ast_hash": "053c736d312494d0495e9e05f83ea460",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2551732,
+    "ast_hash": "bb0bef46b8ead27dd070c6597e852bfd",
     "semantic_hash": ""
   },
   "components/settings/emails-nav.tsx": {
@@ -17832,9 +17760,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/__tests__/points.test.ts": {
-    "mtime": 1792596844.8446705,
-    "seen": 1792600217.0012004,
-    "ast_hash": "9f19d37aed657842a32ca776f9c08b91",
+    "mtime": 1792600222.957254,
+    "seen": 1792600780.2556822,
+    "ast_hash": "c1ad5358652da860646207673d202ae9",
     "semantic_hash": ""
   },
   "app/api/shop/points/allowance/__tests__/allowance.test.ts": {
@@ -17886,9 +17814,9 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/spend.test.ts": {
-    "mtime": 1792596752.3806727,
-    "seen": 1792600217.002788,
-    "ast_hash": "2987ecb53b18d511dd94c95826d45c4b",
+    "mtime": 1792600222.9645932,
+    "seen": 1792600780.2572503,
+    "ast_hash": "c07e54dc37edb584ddd7a656163dad84",
     "semantic_hash": ""
   },
   "lib/points/earn.ts": {
@@ -17910,9 +17838,9 @@
     "semantic_hash": ""
   },
   "lib/points/spend.ts": {
-    "mtime": 1792596430.75668,
-    "seen": 1792600217.0028079,
-    "ast_hash": "d1b8f1a7639b5efcb02f974f627f29e3",
+    "mtime": 1792600222.9645932,
+    "seen": 1792600780.2572706,
+    "ast_hash": "cae19a84e0a3cace4171b38dd64f4271",
     "semantic_hash": ""
   },
   "supabase/migrations/20261021130000_points_earning.sql": {
@@ -17997,6 +17925,18 @@
     "mtime": 1792600001.821627,
     "seen": 1792600217.0040665,
     "ast_hash": "8d88d23a50281ebe0cce39e85c9a53ed",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/__tests__/claim-and-points-render.test.tsx": {
+    "mtime": 1792600222.9485931,
+    "seen": 1792600780.255092,
+    "ast_hash": "914fceb7d94917494a4e0d5bc3dab730",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261021160000_retire_welcome_voucher.sql": {
+    "mtime": 1792600222.9707806,
+    "seen": 1792600780.2586782,
+    "ast_hash": "85f61a5b534ef23cd904789a1dcc591f",
     "semantic_hash": ""
   }
 }

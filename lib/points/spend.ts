@@ -100,10 +100,9 @@ export function validatePointsRequest(requested: unknown, i: AllowanceInput): Po
  * Pure — whether this checkout may use value held by `ownerCustomerId`'s
  * account (rule h): the signed-in Customer is the owner, and the checkout
  * email resolves to that same Customer, so the Order and the value stay on
- * one row. A guest never may. Unlike a bound coupon, value with no owner is
- * nothing to use. This is the rule `mayUseBoundCoupon` (lib/ecommerce/
- * discounts.ts) applies to a Welcome-back voucher; slice 06 deletes that one
- * and leaves this.
+ * one row. A guest never may, and value with no owner is nothing to use.
+ * Coupons are bearer codes and bind to no account (ADR 0030, decision 14), so
+ * this is the platform's one account-binding rule.
  */
 export function mayUseAccountValue(
   ownerCustomerId: string | null | undefined,

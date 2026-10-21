@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
-import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
 
 export const runtime = "nodejs";
 
@@ -12,8 +11,8 @@ const ValidateCouponSchema = z.object({
   product_ids: z.array(z.string().uuid()).optional(),
   category_ids: z.array(z.string().uuid()).optional(),
   email: z.string().email().optional(),
-  // No customer_id: who is buying comes from the session, never the body
-  // (ADR 0029 g). A stale client still sending one has it stripped by zod.
+  // No customer_id: a coupon is a bearer code, and the per-customer limit
+  // counts by the email. A stale client still sending one has it stripped by zod.
   line_items: z
     .array(
       z.object({
@@ -53,7 +52,6 @@ export async function POST(req: Request) {
 
   const result = await validateCoupon(code, subtotal, product_ids, category_ids, {
     customerEmail: email,
-    getSessionCustomerId: getCurrentCustomerId,
     lineItems: line_items?.map((item) => ({
       productId: item.product_id,
       categoryId: item.category_id,

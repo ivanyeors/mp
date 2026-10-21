@@ -67,7 +67,7 @@ window), sets `points_launch_at`, then turns on `points_enabled`.
 
 ## Acceptance criteria
 
-- [ ] The terms page is live and linked from all four places.
+- [x] The terms page is built and linked from all four places (live once deployed).
 - [ ] Counsel's answers are recorded in ADR 0030, dated, and any gate they ask for is switched.
 - [ ] The accountant's treatment is recorded in ADR 0030.
 - [ ] The live test passes, and its Orders are refunded afterwards.
@@ -85,8 +85,10 @@ Built on `claude/admiring-ride-40h2o6`.
   "Points are coming soon. These are the rules that will apply." It names no old platform: the
   Claim bonus is "if you had an Mpillow account before our new website".
 - **Linked from:** the footer ("Points"), checkout's Points section ("How points work"), the
-  Profile's Points card and the welcome page's Claim bonus card. Not in the sitemap: it is
-  terms, not a landing page.
+  Profile's Points card, the welcome page's Claim bonus card, and every points email: the
+  sign-in bonus email, the new-website announcement and reminder, and the three expiry reminders
+  (all "How points work", in the customer's language). Not in the sitemap: it is terms, not a
+  landing page.
 - **Left for the owner:** counsel's three questions, the accountant's treatment, the production
   settings (launch date, then `points_enabled`), and the live test with a real card. Nothing here
   sends email or turns points on.

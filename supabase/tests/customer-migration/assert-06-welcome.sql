@@ -1,5 +1,9 @@
--- Migration slice 06: the Claim link, the voucher's state, and the surfaces
--- that count them (20261020121000, 20261020121100, 20261020200100).
+-- Migration slice 06: the Claim link, and the surfaces that count it
+-- (20261020121000, 20261020200100), as PRD-loyalty-points slice 06 rebuilt
+-- them (20261021160000): the Customer overview's points_available and
+-- claim_bonus_at, and the Migration card's claim_bonuses,
+-- migrated_points_spent, points_orders and points_revenue, in place of the
+-- retired voucher's columns. Nothing of the voucher is left.
 --
 -- Run against a database with every migration applied (a local Postgres with
 -- the Supabase roles, or a Supabase branch), as the owner role:
@@ -27,19 +31,67 @@ begin
       format('%s holds a privilege on customer_claim_links', r);
     assert not has_sequence_privilege(r, 'public.customer_claim_links_id_seq', 'usage,select,update'),
       format('%s holds a privilege on the claim links sequence', r);
-    assert not has_table_privilege(r, 'public.admin_welcome_voucher_summary', 'select'),
-      format('%s can select admin_welcome_voucher_summary', r);
     assert not has_function_privilege(r, 'public.open_claim_link(text, boolean)', 'execute'),
       format('%s can execute open_claim_link', r);
     assert not has_function_privilege(r, 'public.mint_claim_link(uuid, text, text)', 'execute'),
       format('%s can execute mint_claim_link', r);
-    assert not has_function_privilege(r, 'public.welcome_voucher_state(int, boolean, timestamptz)', 'execute'),
-      format('%s can execute welcome_voucher_state', r);
+    -- The two views, rebuilt: still nothing for the client roles, by table or by column.
+    assert not has_table_privilege(r, 'public.admin_customer_overview', 'select'),
+      format('%s can select admin_customer_overview', r);
+    assert not has_table_privilege(r, 'public.admin_customer_migration_summary', 'select'),
+      format('%s can select admin_customer_migration_summary', r);
+    assert not has_column_privilege(r, 'public.admin_customer_overview', 'points_available', 'select'),
+      format('%s can select admin_customer_overview.points_available', r);
+    assert not has_column_privilege(r, 'public.admin_customer_overview', 'claim_bonus_at', 'select'),
+      format('%s can select admin_customer_overview.claim_bonus_at', r);
   end loop;
   assert has_function_privilege('service_role', 'public.open_claim_link(text, boolean)', 'execute'),
     'service_role cannot execute open_claim_link';
   assert has_function_privilege('service_role', 'public.mint_claim_link(uuid, text, text)', 'execute'),
     'service_role cannot execute mint_claim_link';
+  assert has_table_privilege('service_role', 'public.admin_customer_overview', 'select'),
+    'service_role cannot select admin_customer_overview';
+  assert has_table_privilege('service_role', 'public.admin_customer_migration_summary', 'select'),
+    'service_role cannot select admin_customer_migration_summary';
+  assert (select reloptions @> array['security_invoker=true'] from pg_class where oid = 'public.admin_customer_overview'::regclass),
+    'admin_customer_overview no longer runs as the invoker';
+  assert (select reloptions @> array['security_invoker=true'] from pg_class where oid = 'public.admin_customer_migration_summary'::regclass),
+    'admin_customer_migration_summary no longer runs as the invoker';
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Nothing of the voucher is left (PRD-loyalty-points slice 06)
+-- ---------------------------------------------------------------------
+do $$
+begin
+  assert not exists (select 1 from pg_class where relnamespace = 'public'::regnamespace and relname ~ 'voucher'),
+    format('a voucher relation is left: %s',
+           (select string_agg(relname, ', ') from pg_class where relnamespace = 'public'::regnamespace and relname ~ 'voucher'));
+  assert not exists (select 1 from pg_proc where pronamespace = 'public'::regnamespace and proname ~ 'voucher'),
+    'a voucher function is left';
+  assert not exists (select 1 from public.site_settings where key ~ '^welcome'),
+    format('voucher settings are left: %s', (select string_agg(key, ', ') from public.site_settings where key ~ '^welcome'));
+  assert not exists (select 1 from information_schema.columns
+                      where table_schema = 'public' and table_name like 'admin\_customer\_%' and column_name ~ 'voucher'),
+    'a view still has a voucher column';
+  -- Coupons are bearer codes: nothing ties one to a Customer.
+  assert not exists (select 1 from information_schema.columns
+                      where table_schema = 'public' and table_name = 'coupons' and column_name ~ '^(customer_id|issued)'),
+    format('coupons still has %s', (select string_agg(column_name, ', ') from information_schema.columns
+                                     where table_schema = 'public' and table_name = 'coupons' and column_name ~ '^(customer_id|issued)'));
+  assert not exists (select 1 from pg_constraint
+                      where conrelid = 'public.coupons'::regclass and confrelid = 'public.customers'::regclass),
+    'coupons still references customers';
+  assert not exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'coupons'
+                      and (indexname ~ 'customer' or indexdef ~ 'customer')),
+    'a coupons index on a Customer is left';
+  -- The new columns, typed as the read model expects.
+  assert (select data_type from information_schema.columns
+           where table_name = 'admin_customer_overview' and column_name = 'points_available') = 'integer',
+    'points_available is not an integer';
+  assert (select data_type from information_schema.columns
+           where table_name = 'admin_customer_overview' and column_name = 'claim_bonus_at') = 'timestamp with time zone',
+    'claim_bonus_at is not a timestamptz';
 end $$;
 
 -- ---------------------------------------------------------------------
@@ -169,62 +221,46 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------
--- The voucher's state: one rule, in SQL and in TypeScript
+-- Points and the Claim bonus (PRD-loyalty-points slices 02 to 06)
 -- ---------------------------------------------------------------------
--- The same table as lib/customer-migration/__tests__/welcome-voucher.test.ts.
-do $$
-begin
-  assert public.welcome_voucher_state(null, null, null) is null, 'no voucher is not null';
-  assert public.welcome_voucher_state(0, true, now() + interval '1 day') = 'issued', 'unused, unexpired';
-  assert public.welcome_voucher_state(0, true, null) = 'issued', 'unused, no expiry';
-  assert public.welcome_voucher_state(1, true, now() + interval '1 day') = 'used', 'redeemed';
-  assert public.welcome_voucher_state(1, true, now() - interval '1 day') = 'used', 'redeemed, then past expiry';
-  assert public.welcome_voucher_state(0, true, now()) = 'expired', 'at its expiry';
-  assert public.welcome_voucher_state(0, false, now() + interval '1 day') = 'expired', 'switched off';
-end $$;
-
--- Jane claims through the real function. Since PRD-loyalty-points slice 05
--- the Claim issues no voucher, even with terms that would have: her voucher
--- below is one issued before then, which the views still count until slice 06
--- retires them.
-update public.site_settings set value = 'true' where key = 'welcome_voucher_enabled';
-insert into public.site_settings (key, value) values
-  ('welcome_voucher_type', 'fixed_amount'),
-  ('welcome_voucher_value', '20'),
-  ('welcome_voucher_min_order', '60'),
-  ('welcome_voucher_issue_until', '2099-12-31')
-on conflict (key) do update set value = excluded.value;
+-- Points on. Before any campaign email the Claim bonus window is open, so a
+-- Claim through the real function grants it.
+update public.site_settings set value = 'true' where key = 'points_enabled';
+update public.site_settings set value = '1000' where key = 'points_claim_bonus';
 
 do $$
 declare
   r record;
 begin
+  assert not exists (select 1 from public.customer_campaign_sends),
+    'this assert needs a database with no campaign sends: the Claim bonus window counts from the first one';
+  -- Jane and Kai claim and are granted the bonus; Mo was claimed above,
+  -- before points, so holds none until a sign-in.
   select * into r from public.claim_migrated_customer('c6000000-0000-4000-8000-000000000001');
-  assert r.claimed, format('Jane''s Claim did not claim: %s', r);
-  assert not exists (select 1 from public.coupons where customer_id = 'c6000000-0000-4000-8000-000000000001'),
-    'the Claim issued a voucher';
+  assert r.claimed and r.bonus_granted, format('Jane''s Claim: %s', r);
+  select * into r from public.claim_migrated_customer('c6000000-0000-4000-8000-000000000002');
+  assert r.claimed and r.bonus_granted, format('Kai''s Claim: %s', r);
+  -- Staff give Mo 500, and Pat (a platform Customer) 2,000.
+  perform public.adjust_points('c6000000-0000-4000-8000-000000000004', 500, 'Goodwill', null);
+  perform public.adjust_points('c6000000-0000-4000-8000-000000000005', 2000, 'Goodwill', null);
 end $$;
 
-insert into public.coupons (code, discount_type, discount_value, currency, usage_limit, usage_count, per_customer_limit, expires_at, customer_id, issued_for)
-values ('WB-M06JANE000', 'fixed_amount', 20, 'SGD', 1, 0, 1, now() + interval '60 days', 'c6000000-0000-4000-8000-000000000001', 'welcome_back');
-
--- Kai's voucher is used and paid for; Mo's expired; Lee has none.
-insert into public.coupons (code, discount_type, discount_value, currency, usage_limit, usage_count, per_customer_limit, expires_at, customer_id, issued_for)
+-- Kai spends his bonus on a paid shop order, and reserves 500 on one not paid
+-- yet; Pat spends 1,000 on a paid order. Lee has nothing.
+insert into public.orders (order_number, customer_id, email, subtotal, discount_amount, points_spent, points_discount, total, shipping_address, paid_at, status)
 values
-  ('WB-M06KAI0000', 'fixed_amount', 20, 'SGD', 1, 1, 1, now() + interval '30 days', 'c6000000-0000-4000-8000-000000000002', 'welcome_back'),
-  ('WB-M06MO00000', 'free_shipping', 1, 'SGD', 1, 0, 1, now() - interval '1 day', 'c6000000-0000-4000-8000-000000000004', 'welcome_back');
--- A bearer code on a paid order is not voucher revenue.
-insert into public.coupons (code, discount_type, discount_value, currency) values ('M06-BEARER', 'fixed_amount', 5, 'SGD');
+  ('M06-1', 'c6000000-0000-4000-8000-000000000002', 'm06-kai@x.test', 110, 10, 1000, 10, 100, '{}', now(), 'confirmed'),
+  -- Unpaid: not revenue, and not points spent.
+  ('M06-2', 'c6000000-0000-4000-8000-000000000002', 'm06-kai@x.test', 60, 5, 500, 5, 55, '{}', null, 'pending'),
+  -- Paid with points, by a platform Customer: not the Migration card's.
+  ('M06-3', 'c6000000-0000-4000-8000-000000000005', 'm06-pat-new@x.test', 50, 10, 1000, 10, 40, '{}', now(), 'confirmed'),
+  -- Paid without points: not the card's either.
+  ('M06-4', 'c6000000-0000-4000-8000-000000000001', 'm06-jane@x.test', 30, 0, 0, 0, 30, '{}', now(), 'confirmed');
 
-insert into public.orders (order_number, customer_id, email, subtotal, discount_amount, total, shipping_address, coupon_id, paid_at, status)
-values
-  ('M06-1', 'c6000000-0000-4000-8000-000000000002', 'm06-kai@x.test', 120, 20, 100, '{}',
-   (select id from public.coupons where code = 'WB-M06KAI0000'), now(), 'confirmed'),
-  -- Unpaid: not revenue.
-  ('M06-2', 'c6000000-0000-4000-8000-000000000002', 'm06-kai@x.test', 80, 20, 60, '{}',
-   (select id from public.coupons where code = 'WB-M06KAI0000'), null, 'pending'),
-  ('M06-3', 'c6000000-0000-4000-8000-000000000005', 'm06-pat-new@x.test', 50, 5, 45, '{}',
-   (select id from public.coupons where code = 'M06-BEARER'), now(), 'confirmed');
+insert into public.points_ledger (customer_id, kind, points, order_id)
+select o.customer_id, 'spend', -o.points_spent, o.id
+  from public.orders o
+ where o.order_number in ('M06-1', 'M06-3');
 
 -- ---------------------------------------------------------------------
 -- The Customer overview
@@ -237,26 +273,45 @@ begin
   assert o.claim_link_first_clicked_at = (select min(first_clicked_at) from public.customer_claim_links
                                            where customer_id = 'c6000000-0000-4000-8000-000000000001'),
     'claim_link_first_clicked_at is not the first click of any of the Customer''s links';
-  assert o.welcome_voucher_state = 'issued', format('Jane''s voucher reads %s', o.welcome_voucher_state);
-  assert (select welcome_voucher_state from public.admin_customer_overview where id = 'c6000000-0000-4000-8000-000000000002') = 'used',
-    'Kai''s used voucher';
-  assert (select welcome_voucher_state from public.admin_customer_overview where id = 'c6000000-0000-4000-8000-000000000004') = 'expired',
-    'Mo''s expired voucher';
-  assert (select welcome_voucher_state = 'none' and claim_link_first_clicked_at is null
-            from public.admin_customer_overview where id = 'c6000000-0000-4000-8000-000000000003'),
-    'Lee has no voucher and no click';
-  -- The Voucher filter: issued, unused.
-  assert (select array_agg(id) from public.admin_customer_overview where welcome_voucher_state = 'issued')
-         = (select array_agg(c.customer_id) from public.coupons c
-             where c.issued_for = 'welcome_back' and c.usage_count = 0 and c.is_active and c.expires_at > now()),
-    'the Issued, unused filter disagrees with coupons counted by hand';
+  assert (o.points_available, o.claim_bonus_at) = (1000, now()),
+    format('Jane reads %s points, bonus at %s', o.points_available, o.claim_bonus_at);
+  -- Kai spent his bonus: none available, the bonus still dated.
+  select * into o from public.admin_customer_overview where id = 'c6000000-0000-4000-8000-000000000002';
+  assert o.points_available = 0 and o.claim_bonus_at = now(),
+    format('Kai reads %s points, bonus at %s', o.points_available, o.claim_bonus_at);
+  -- Mo has points and no bonus; Lee has neither, and no click.
+  select * into o from public.admin_customer_overview where id = 'c6000000-0000-4000-8000-000000000004';
+  assert o.points_available = 500 and o.claim_bonus_at is null,
+    format('Mo reads %s points, bonus at %s', o.points_available, o.claim_bonus_at);
+  select * into o from public.admin_customer_overview where id = 'c6000000-0000-4000-8000-000000000003';
+  assert o.points_available = 0 and o.claim_bonus_at is null and o.claim_link_first_clicked_at is null,
+    format('Lee reads %s', o);
+
+  -- For every Customer: the balance is the ledger's sum, as points_balance()
+  -- counts it, and the bonus its one claim_bonus entry.
+  assert not exists (
+    select 1 from public.admin_customer_overview v
+     where v.points_available <> coalesce((select sum(l.points) from public.points_ledger l where l.customer_id = v.id), 0)
+        or v.points_available <> (select b.available from public.points_balance(v.id) b)
+        or v.claim_bonus_at is distinct from (select l.created_at from public.points_ledger l
+                                               where l.customer_id = v.id and l.kind = 'claim_bonus')),
+    'the overview disagrees with the Points ledger';
+
+  -- The Points filter: Has points, and No points, split every Customer.
+  assert (select array_agg(id order by id) from public.admin_customer_overview where points_available > 0)
+         = (select array_agg(customer_id order by customer_id)
+              from (select customer_id from public.points_ledger group by customer_id having sum(points) > 0) s),
+    'the Has points filter disagrees with the ledger counted by hand';
+  assert (select count(*) filter (where points_available > 0) + count(*) filter (where points_available <= 0)
+            from public.admin_customer_overview) = (select count(*) from public.customers),
+    'Has points and No points do not split every Customer';
   -- The view still has one row per Customer.
   assert (select count(*) from public.admin_customer_overview) = (select count(*) from public.customers),
     'the overview has a row per Customer no longer';
 end $$;
 
 -- ---------------------------------------------------------------------
--- The Migration card against migrated_customers and orders, by hand
+-- The Migration card against migrated_customers, the ledger and orders, by hand
 -- ---------------------------------------------------------------------
 do $$
 declare
@@ -267,45 +322,32 @@ begin
   select
     count(*) filter (where exists (select 1 from public.customer_claim_links l
                                     where l.customer_id = m.customer_id and l.first_clicked_at is not null)) as clicked,
-    count(*) filter (where exists (select 1 from public.coupons c
-                                    where c.customer_id = m.customer_id and c.issued_for = 'welcome_back')) as issued,
-    count(*) filter (where exists (select 1 from public.coupons c
-                                    where c.customer_id = m.customer_id and c.issued_for = 'welcome_back'
-                                      and c.usage_count > 0)) as used
+    count(*) filter (where exists (select 1 from public.points_ledger l
+                                    where l.customer_id = m.customer_id and l.kind = 'claim_bonus')) as bonuses
     into h
     from public.migrated_customers m;
-  assert (s.clicked, s.vouchers_issued, s.vouchers_used) = (h.clicked, h.issued, h.used),
+  assert (s.clicked, s.claim_bonuses) = (h.clicked, h.bonuses),
     format('Migration card %s, by hand %s', s, h);
-  assert (s.clicked, s.vouchers_issued, s.vouchers_used) = (2::bigint, 3::bigint, 1::bigint),
-    format('the fixtures should read clicked 2, issued 3, used 1: %s', s);
+  assert (s.clicked, s.claim_bonuses) = (2::bigint, 2::bigint),
+    format('the fixtures should read clicked 2, Claim bonuses 2: %s', s);
 
-  select count(*) as orders, coalesce(sum(o.total), 0) as revenue into h
+  select count(*) as orders, coalesce(sum(o.points_spent), 0) as spent, coalesce(sum(o.total), 0) as revenue into h
     from public.orders o
+    join public.migrated_customers m on m.customer_id = o.customer_id
    where o.paid_at is not null
-     and o.coupon_id in (select id from public.coupons where issued_for = 'welcome_back');
-  assert (s.voucher_orders, s.voucher_revenue) = (h.orders, h.revenue),
-    format('Revenue %s / %s, by hand %s', s.voucher_orders, s.voucher_revenue, h);
-  assert (s.voucher_orders, s.voucher_revenue) = (1::bigint, 100::numeric),
-    format('the fixtures should read one paid order of 100: %s / %s', s.voucher_orders, s.voucher_revenue);
+     and o.points_spent > 0;
+  assert (s.points_orders, s.migrated_points_spent, s.points_revenue) = (h.orders, h.spent, h.revenue),
+    format('Points %s / %s / %s, by hand %s', s.points_orders, s.migrated_points_spent, s.points_revenue, h);
+  assert (s.points_orders, s.migrated_points_spent, s.points_revenue) = (1::bigint, 1000::bigint, 100::numeric),
+    format('the fixtures should read one paid order, 1,000 points, 100: %s / %s / %s',
+           s.points_orders, s.migrated_points_spent, s.points_revenue);
 
-  -- Slice 12's columns are unchanged by the redefinition.
+  -- Slice 12's and slice 08's columns are unchanged by the rebuild.
   assert s.imported = (select count(*) from public.migrated_customers), 'imported moved';
-end $$;
-
--- ---------------------------------------------------------------------
--- The Discounts card
--- ---------------------------------------------------------------------
-do $$
-declare
-  v record;
-begin
-  select * into v from public.admin_welcome_voucher_summary;
-  assert (v.issued, v.redeemed, v.outstanding, v.expired, v.free_shipping) = (3::bigint, 1::bigint, 1::bigint, 1::bigint, 1::bigint),
-    format('voucher counts %s', v);
-  -- Jane's 20 is the live liability; Kai's 20 the realised cost; Mo's free
-  -- shipping is counted, never valued.
-  assert (v.value_issued, v.value_outstanding, v.value_redeemed) = (40::numeric, 20::numeric, 20::numeric),
-    format('voucher values %s', v);
+  assert s.signed_up = (select count(*) from public.migrated_customers m join public.customers c on c.id = m.customer_id
+                         where c.auth_user_id is not null), 'signed_up moved';
+  assert (s.emailed, s.emails_bounced, s.emails_complained) = (0::bigint, 0::bigint, 0::bigint),
+    format('nothing was emailed here: %s', s);
 end $$;
 
 -- ---------------------------------------------------------------------
@@ -319,6 +361,11 @@ begin
     'a deleted Customer''s links survived';
   assert not exists (select 1 from public.open_claim_link(repeat('c', 64), true)),
     'a deleted Customer''s token still opens';
+  -- Their Points go with them; the overview and the card follow.
+  assert not exists (select 1 from public.points_ledger where customer_id = 'c6000000-0000-4000-8000-000000000002'),
+    'a deleted Customer''s points survived';
+  assert (select claim_bonuses from public.admin_customer_migration_summary) = 1,
+    'the Migration card still counts a deleted Customer''s Claim bonus';
 end $$;
 
 select 'slice 06 welcome asserts ok';

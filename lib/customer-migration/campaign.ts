@@ -52,9 +52,9 @@ export const CAMPAIGN_TEMPLATE_LABEL: Record<CampaignTemplate, string> = {
 };
 
 /**
- * The templates that state the Welcome-back voucher. The service notice
- * carries no offer, voucher or promotion (PRD, legal points), so it is not
- * here.
+ * The templates that state the Claim bonus (PRD-loyalty-points slice 05). The
+ * service notice carries no offer or promotion (PRD, legal points), so it is
+ * not here.
  */
 export const OFFER_TEMPLATES: ReadonlySet<CampaignTemplate> = new Set(["migration_announcement", "migration_reminder"]);
 

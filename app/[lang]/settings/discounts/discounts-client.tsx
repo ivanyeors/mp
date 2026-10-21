@@ -7,8 +7,6 @@ import { Plus, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
     Table,
     TableBody,
@@ -21,7 +19,6 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
-import { WelcomeVoucherSettingsCard, type WelcomeVoucherCardData } from "./welcome-voucher-card";
 import { PointsSettingsCard } from "./points-settings-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,9 +34,6 @@ export type Coupon = {
     is_active: boolean;
     starts_at: string | null;
     expires_at: string | null;
-    /** Bound to one Customer (ADR 0029 (g)), such as a Welcome-back voucher; null is a bearer code. */
-    customer_id?: string | null;
-    issued_for?: "welcome_back" | null;
     created_at: string;
 };
 
@@ -102,21 +96,10 @@ function formatDateRange(starts_at: string | null, expires_at: string | null): s
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-/** The list's own request: bearer codes only, unless account-bound vouchers are shown. */
-function couponsUrl(showBound: boolean): string {
-    return `/api/shop/coupons?limit=100${showBound ? "&bound=show" : ""}`;
-}
-
 export function DiscountsClient({
     initialData,
-    initialShowBound = false,
-    welcomeVoucher,
 }: {
     initialData?: DiscountsInitialData;
-    /** `?bound=show`: the list includes account-bound vouchers. */
-    initialShowBound?: boolean;
-    /** The Welcome-back voucher card's data; undefined makes the card fetch it. */
-    welcomeVoucher?: WelcomeVoucherCardData;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -126,9 +109,6 @@ export function DiscountsClient({
     const [coupons, setCoupons] = useState<Coupon[]>(initialData?.coupons.rows ?? []);
     const [total, setTotal] = useState(initialData?.coupons.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
-    // Account-bound vouchers are hidden by default (migration slice 06): one
-    // per claimed Customer would bury the codes Staff manage.
-    const [showBound, setShowBound] = useState(initialShowBound);
 
     // The RSC page already fetched this list — skip the mount fetch once.
     const hydratedFromServer = useRef(Boolean(initialData));
@@ -136,7 +116,7 @@ export function DiscountsClient({
     const fetchCoupons = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(couponsUrl(showBound));
+            const res = await fetch("/api/shop/coupons?limit=100");
             const json = await res.json();
             setCoupons(json.rows ?? []);
             setTotal(json.total ?? 0);
@@ -146,16 +126,7 @@ export function DiscountsClient({
         } finally {
             setLoading(false);
         }
-    }, [showBound]);
-
-    // Kept in the URL so a reload shows the same list.
-    const changeShowBound = (value: boolean) => {
-        setShowBound(value);
-        const url = new URL(window.location.href);
-        if (value) url.searchParams.set("bound", "show");
-        else url.searchParams.delete("bound");
-        window.history.replaceState(null, "", url);
-    };
+    }, []);
 
     useEffect(() => {
         if (hydratedFromServer.current) {
@@ -184,19 +155,6 @@ export function DiscountsClient({
             </div>
 
             <PointsSettingsCard />
-
-            <WelcomeVoucherSettingsCard initialData={welcomeVoucher} />
-
-            <div className="flex items-center gap-2">
-                <Switch id="discounts-show-bound" checked={showBound} onCheckedChange={changeShowBound} />
-                <Label htmlFor="discounts-show-bound" className="text-sm font-normal">
-                    Show account-bound vouchers
-                </Label>
-                <InfoTip label="About account-bound vouchers">
-                    A voucher bound to one Customer, such as each welcome-back voucher. Only that Customer can use
-                    it, signed in and checking out with their own email. They are hidden unless shown here.
-                </InfoTip>
-            </div>
 
             {/* Content */}
             {loading ? (
@@ -246,13 +204,6 @@ export function DiscountsClient({
                                                 <span className="font-mono font-medium tracking-wide">
                                                     {coupon.code}
                                                 </span>
-                                                {coupon.customer_id && (
-                                                    <Badge variant="outline" className="ml-2 text-xs font-normal">
-                                                        {coupon.issued_for === "welcome_back"
-                                                            ? "Welcome-back"
-                                                            : "Account-bound"}
-                                                    </Badge>
-                                                )}
                                                 <div className="md:hidden">
                                                     <Badge variant={status.variant}>{status.label}</Badge>
                                                 </div>

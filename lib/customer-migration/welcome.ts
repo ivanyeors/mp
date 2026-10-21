@@ -10,7 +10,7 @@
  *   signed out, token unknown, malformed, or
  *     for a deleted Customer                  → exactly the same as no token
  *   signed in, as the token's Customer or
- *     with no (valid) token                   → signed_in: the voucher and the account
+ *     with no (valid) token                   → signed_in: the Claim bonus and the account
  *   signed in, as another Customer            → wrong_account: the switch link, no name
  *
  * An invalid token yields the same state as no token, field for field, so the

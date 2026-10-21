@@ -4,15 +4,15 @@ import { loadWelcomePage, type WelcomeDeps } from "@/lib/customer-migration/welc
 
 /**
  * What the welcome page loads (migration slice 06). The first sign-in through
- * the page shows the voucher on that same page load, because the Claim runs
- * inside `linkCustomerToAuthUser`, which is awaited before the voucher is
+ * the page shows the Claim bonus on that same page load, because the Claim
+ * runs inside `linkCustomerToAuthUser`, which is awaited before the bonus is
  * read. A signed-out visit counts a click; the signed-in return trip does not.
  */
 
 const TOKEN = "A".repeat(43);
 const user = (email: string) => ({ id: `auth-${email}`, email }) as User;
 
-/** A database where the voucher exists only once the Claim has run. */
+/** A database where the Claim bonus exists only once the Claim has run. */
 function world({ signedInAs = null as string | null } = {}) {
   const events: string[] = [];
   let claimed = false;

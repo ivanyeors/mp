@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  migratedExtrasFromRows,
+  migratedExtrasFromRow,
   migratedFactsFromRow,
   migrationSummaryFromRow,
   percentOf,
@@ -20,10 +20,10 @@ describe("migrationSummaryFromRow", () => {
         signed_up_before_import: 1,
         batches_applied: "1",
         clicked: "4",
-        vouchers_issued: "3",
-        vouchers_used: 1,
-        voucher_orders: "1",
-        voucher_revenue: "180.50",
+        claim_bonuses: "3",
+        migrated_points_spent: "1500",
+        points_orders: 1,
+        points_revenue: "180.50",
         emailed: "5",
         emails_bounced: "1",
         emails_complained: 0,
@@ -36,10 +36,10 @@ describe("migrationSummaryFromRow", () => {
       signedUpBeforeImport: 1,
       batchesApplied: 1,
       clicked: 4,
-      vouchersIssued: 3,
-      vouchersUsed: 1,
-      voucherOrders: 1,
-      voucherRevenue: 180.5,
+      claimBonuses: 3,
+      migratedPointsSpent: 1500,
+      pointsOrders: 1,
+      pointsRevenue: 180.5,
       emailed: 5,
       emailsBounced: 1,
       emailsComplained: 0,
@@ -55,10 +55,10 @@ describe("migrationSummaryFromRow", () => {
       signedUpBeforeImport: 0,
       batchesApplied: 0,
       clicked: 0,
-      vouchersIssued: 0,
-      vouchersUsed: 0,
-      voucherOrders: 0,
-      voucherRevenue: 0,
+      claimBonuses: 0,
+      migratedPointsSpent: 0,
+      pointsOrders: 0,
+      pointsRevenue: 0,
       emailed: 0,
       emailsBounced: 0,
       emailsComplained: 0,
@@ -66,41 +66,20 @@ describe("migrationSummaryFromRow", () => {
   });
 });
 
-describe("migratedExtrasFromRows (slice 06)", () => {
-  const voucher = {
-    code: "WB-ABCDEFGHJK",
-    discount_type: "fixed_amount" as const,
-    discount_value: "20.00",
-    currency: "SGD",
-    expires_at: "2026-12-20T00:00:00Z",
-  };
-
-  it("takes the first click and the state from the overview, and the code and expiry from the coupon", () => {
+describe("migratedExtrasFromRow (migration slice 06, PRD-loyalty-points slice 06)", () => {
+  it("takes the first click and the Claim bonus from the overview", () => {
     expect(
-      migratedExtrasFromRows(
-        { claim_link_first_clicked_at: "2026-10-22T01:00:00Z", welcome_voucher_state: "used" },
-        voucher,
-      ),
-    ).toEqual({
-      claimLinkFirstClickedAt: "2026-10-22T01:00:00Z",
-      welcomeVoucher: {
-        code: "WB-ABCDEFGHJK",
-        state: "used",
-        discountType: "fixed_amount",
-        value: 20,
-        currency: "SGD",
-        expiresAt: "2026-12-20T00:00:00Z",
-      },
-    });
+      migratedExtrasFromRow({ claim_link_first_clicked_at: "2026-10-22T01:00:00Z", claim_bonus_at: "2026-10-22T02:00:00Z" }),
+    ).toEqual({ claimLinkFirstClickedAt: "2026-10-22T01:00:00Z", claimBonusAt: "2026-10-22T02:00:00Z" });
   });
 
-  it("shows no voucher without one, and no click when the link was never opened", () => {
-    expect(migratedExtrasFromRows({ claim_link_first_clicked_at: null, welcome_voucher_state: "none" }, null)).toEqual({
+  it("shows no bonus without one, and no click when the link was never opened", () => {
+    expect(migratedExtrasFromRow({ claim_link_first_clicked_at: null, claim_bonus_at: null })).toEqual({
       claimLinkFirstClickedAt: null,
-      welcomeVoucher: null,
+      claimBonusAt: null,
     });
-    // A failed overview read leaves the rows out rather than guessing a state.
-    expect(migratedExtrasFromRows(null, voucher).welcomeVoucher).toBeNull();
+    // A failed overview read leaves the rows out rather than guessing.
+    expect(migratedExtrasFromRow(null)).toEqual({ claimLinkFirstClickedAt: null, claimBonusAt: null });
   });
 
   it("is a whole percent for the card's Clicked share, and 0 of nobody", () => {
@@ -141,7 +120,7 @@ describe("migratedFactsFromRow", () => {
       emailMarketingAtExport: "no",
       batch: { id: "b1", fileName: "export.csv", appliedAt: null, rolledBackAt: null },
       claimLinkFirstClickedAt: null,
-      welcomeVoucher: null,
+      claimBonusAt: null,
     });
   });
 

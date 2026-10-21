@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { mayUseBoundCoupon } from "@/lib/ecommerce/discounts";
 import {
   RESERVE_OUTCOMES,
   formatPointsUsed,
@@ -101,17 +100,19 @@ describe("whose points (rule h)", () => {
     expect(use(OWNER, OWNER)).toBe(true);
   });
 
-  it("is the bound-voucher rule, for value that always has an owner", () => {
-    for (const [session, email] of [
-      [OWNER, OWNER],
-      [OWNER, OTHER],
-      [OTHER, OWNER],
-      [null, OWNER],
-    ] as const) {
-      const holder = { sessionCustomerId: session, emailCustomerId: email };
-      expect(mayUseAccountValue(OWNER, holder)).toBe(mayUseBoundCoupon(OWNER, holder));
-    }
-    expect(mayUseAccountValue(null, { sessionCustomerId: null, emailCustomerId: null })).toBe(false);
+  // The account-binding table, carried over from the retired bound coupon
+  // (slice 06): the same rule, except that value with no owner is nothing.
+  it.each([
+    ["no owner, a guest", null, null, null, false],
+    ["no owner, signed in", null, OTHER, OTHER, false],
+    ["a guest", OWNER, null, OWNER, false],
+    ["a different signed-in Customer", OWNER, OTHER, OTHER, false],
+    ["a different Customer typing the owner's email", OWNER, OTHER, OWNER, false],
+    ["the owner, under a different email", OWNER, OWNER, OTHER, false],
+    ["the owner, under an email with no Customer", OWNER, OWNER, null, false],
+    ["the owner, with their own email", OWNER, OWNER, OWNER, true],
+  ] as const)("%s → %s", (_case, owner, sessionCustomerId, emailCustomerId, ok) => {
+    expect(mayUseAccountValue(owner, { sessionCustomerId, emailCustomerId })).toBe(ok);
   });
 });
 

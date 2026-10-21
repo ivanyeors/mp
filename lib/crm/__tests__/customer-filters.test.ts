@@ -297,24 +297,30 @@ describe("applyCustomerFilters", () => {
   });
 
   it("never applies a dropped value", () => {
-    expect(query("account=foo&source=bar&sort=baz&bought=qux&voucher=expired").calls).toEqual([newest]);
+    expect(query("account=foo&source=bar&sort=baz&bought=qux&points=lots").calls).toEqual([newest]);
   });
 
-  it("maps the Voucher filter to the overview's derived state (migration slice 06)", () => {
-    // Issued, unused: the list to nudge before the vouchers expire.
-    expect(query("voucher=issued").calls).toEqual([["eq", "welcome_voucher_state", "issued"], newest]);
-    expect(query("voucher=used&source=shopify").calls).toEqual([
+  it("maps the Points filter to the overview's available balance (PRD-loyalty-points slice 06)", () => {
+    // Has points: a balance above 0. No points: the rest, since a balance is never below 0.
+    expect(query("points=has").calls).toEqual([["gt", "points_available", 0], newest]);
+    expect(query("points=none&source=shopify").calls).toEqual([
       ["eq", "from_shopify", true],
-      ["eq", "welcome_voucher_state", "used"],
+      ["lte", "points_available", 0],
       newest,
     ]);
-    const { calls, ignored } = query("voucher=all");
+    const { calls, ignored } = query("points=all");
     expect(calls).toEqual([newest]);
     expect(ignored).toEqual([]);
   });
 
-  it("drops a voucher value the list does not offer, and names it", () => {
-    expect(query("voucher=none").ignored).toEqual(["voucher"]);
+  it("drops a points value the list does not offer, and names it", () => {
+    expect(query("points=pending").ignored).toEqual(["points"]);
+  });
+
+  it("no longer reads the retired voucher filter (slice 06): a link that carries one lists as without it", () => {
+    const { calls, ignored } = query("voucher=issued&source=shopify");
+    expect(calls).toEqual([["eq", "from_shopify", true], newest]);
+    expect(ignored).toEqual([]);
   });
 
   // Email consent (migration slice 07): the URL's words, the view's states.
@@ -383,15 +389,18 @@ describe("Contact status filters (CRM slice 11)", () => {
     expect(query("account=signed-up").calls).toEqual([["eq", "has_account", true], newest]);
   });
 
-  it("labels them, the Voucher filter and the Follow-ups filter in the active-filter summary", () => {
+  it("labels them, the Points filter and the Follow-ups filter in the active-filter summary", () => {
     const { filters } = parseCustomerFilters(
-      new URLSearchParams("google=not-linked&mobile=invalid&voucher=issued&followups=open"),
+      new URLSearchParams("google=not-linked&mobile=invalid&points=has&followups=open"),
     );
     expect(describeCustomerFilters(filters)).toEqual([
       { key: "google", label: "Google not linked" },
       { key: "mobile", label: "Mobile invalid" },
-      { key: "voucher", label: "Voucher issued, unused" },
+      { key: "points", label: "Has points" },
       { key: "followups", label: "Has an open follow-up" },
+    ]);
+    expect(describeCustomerFilters(parseCustomerFilters(new URLSearchParams("points=none")).filters)).toEqual([
+      { key: "points", label: "No points" },
     ]);
   });
 });
@@ -510,7 +519,7 @@ describe("customerFilterParams", () => {
       source: "platform",
       google: "linked",
       mobile: "missing",
-      voucher: "issued",
+      points: "has",
       followups: "open",
       consent: "unsubscribed",
       bought: ["premium", "mbolster"],
@@ -549,6 +558,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "min_spend",
       "mobile",
       "page",
+      "points",
       "rating",
       "readjusted",
       "search",
@@ -556,7 +566,6 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "sort",
       "source",
       "tags",
-      "voucher",
     ]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
@@ -572,13 +581,13 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "last_order",
       "min_spend",
       "mobile",
+      "points",
       "rating",
       "readjusted",
       "search",
       "shop_review",
       "source",
       "tags",
-      "voucher",
     ]);
   });
 });

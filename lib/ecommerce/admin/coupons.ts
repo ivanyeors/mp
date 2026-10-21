@@ -21,18 +21,9 @@ export type AdminCouponsListResult =
   | AdminCouponsListPayload
   | { ok: false; error: string };
 
-/**
- * `bound=show` lists account-bound vouchers too (`coupons.customer_id` set,
- * such as each Customer's Welcome-back voucher, ADR 0029 (g)). By default the
- * list holds bearer codes only: one voucher per claimed Customer would bury
- * the codes Staff actually manage (migration slice 06).
- */
-export const SHOW_BOUND_COUPONS_PARAM = "bound";
-
 export async function listAdminCoupons(
   searchParams: URLSearchParams,
 ): Promise<AdminCouponsListResult> {
-  const showBound = searchParams.get(SHOW_BOUND_COUPONS_PARAM) === "show";
   const active = searchParams.get("active");
   const page = parseInt(searchParams.get("page") ?? "1", 10);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
@@ -43,7 +34,6 @@ export async function listAdminCoupons(
 
   let query = admin.from("coupons").select("*", { count: "exact" });
 
-  if (!showBound) query = query.is("customer_id", null);
   if (active === "true") query = query.eq("is_active", true);
   if (active === "false") query = query.eq("is_active", false);
 

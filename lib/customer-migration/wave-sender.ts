@@ -307,9 +307,8 @@ export function renderCampaignEmail(
     });
   }
   if (!p.bonus) throw new Error(`${template} states the Claim bonus, and a sign-in would grant none`);
-  return template === "migration_reminder"
-    ? renderMigrationReminderEmail({ ...recipient, claimUrl: p.claimUrl, bonus: p.bonus })
-    : renderMigrationAnnouncementEmail({ ...recipient, claimUrl: p.claimUrl, bonus: p.bonus });
+  const offer = { ...recipient, claimUrl: p.claimUrl, bonus: p.bonus, termsUrl: `${p.origin}${withLocale("/points", p.locale)}` };
+  return template === "migration_reminder" ? renderMigrationReminderEmail(offer) : renderMigrationAnnouncementEmail(offer);
 }
 
 /**

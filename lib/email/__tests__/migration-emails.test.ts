@@ -64,6 +64,8 @@ describe("the announcement", () => {
     expect(text).toContain(BONUS_TERMS);
     expect(text).toMatch(/up to half the products' price/);
     expect(text).toMatch(/can't be used on custom pillows/);
+    expect(text).toContain(`How points work: ${data.termsUrl}`);
+    expect(html).toContain(`href="${data.termsUrl}"`);
   });
 
   it("says what the account does", () => {
@@ -88,6 +90,7 @@ describe("the reminder", () => {
     expect(text).toContain("within 3 months of our first email");
     expect(text).toContain(`Sign in to your account: ${data.claimUrl}`);
     expect(text).toContain("only reminder");
+    expect(text).toContain(`How points work: ${data.termsUrl}`);
     expect(text.split("\n").length).toBeLessThan(14);
   });
 });

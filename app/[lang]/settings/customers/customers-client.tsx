@@ -105,7 +105,7 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 
 /**
  * The filters that live in the Filters panel rather than the toolbar: CRM
- * slice 04's, migration slice 06's Welcome-back voucher, migration slice 07's
+ * slice 04's, Points (PRD-loyalty-points slice 06), migration slice 07's
  * Email consent, and CRM slice 12's reviews.
  */
 const PANEL_FILTERS: CustomerFilterKey[] = [
@@ -114,7 +114,7 @@ const PANEL_FILTERS: CustomerFilterKey[] = [
     "readjusted",
     "min_spend",
     "consent",
-    "voucher",
+    "points",
     "tags",
     "google_review",
     "shop_review",

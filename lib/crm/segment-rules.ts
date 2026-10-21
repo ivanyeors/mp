@@ -35,10 +35,38 @@ export const SEGMENT_NAME_MAX = 80;
 /**
  * The filter schema's shape a Segment is saved in (`filters_version`). A
  * change that renames or reshapes a parameter bumps it and adds the upgrade
- * from the old shape to `readSegmentFilters`; without one, a Segment of
+ * from the old shape to `SEGMENT_UPGRADES`; without one, a Segment of
  * another version needs review.
+ *
+ * 2 (PRD-loyalty-points slice 06): the Welcome-back voucher filter
+ * (`voucher`) is retired with the voucher, and *Points* (`points`) is new.
  */
-export const SEGMENT_FILTERS_VERSION = 1;
+export const SEGMENT_FILTERS_VERSION = 2;
+
+type StoredFilters = Record<string, unknown>;
+
+/**
+ * How a Segment saved at version N reads at N + 1, applied in turn up to
+ * `SEGMENT_FILTERS_VERSION` each time it is read. The row is rewritten at the
+ * current version only when Staff next update it.
+ */
+const SEGMENT_UPGRADES: Partial<Record<number, (stored: StoredFilters) => StoredFilters>> = {
+  // 1 → 2: drop the retired voucher filter. The rest of the Segment stands,
+  // so it returns the same Customers, less that one filter.
+  1: (stored) => Object.fromEntries(Object.entries(stored).filter(([key]) => key !== "voucher")),
+};
+
+/** `stored` upgraded from `version` to the current shape, or null when no upgrade leads there. */
+function upgradeStoredFilters(stored: StoredFilters, version: number): StoredFilters | null {
+  if (!Number.isInteger(version) || version > SEGMENT_FILTERS_VERSION) return null;
+  let entries = stored;
+  for (let v = version; v < SEGMENT_FILTERS_VERSION; v++) {
+    const upgrade = SEGMENT_UPGRADES[v];
+    if (!upgrade) return null;
+    entries = upgrade(entries);
+  }
+  return entries;
+}
 
 /** A Segment's filters as stored: the list's URL parameters that choose Customers. */
 export type SegmentParams = Partial<Record<CustomerFilterKey, string>>;
@@ -151,10 +179,14 @@ export interface SegmentFilterRead {
   needsReview: boolean;
 }
 
-/** A Segment's stored filters, read back through the list's schema. */
+/**
+ * A Segment's stored filters, upgraded from the version they were saved at
+ * and read back through the list's schema.
+ */
 export function readSegmentFilters(stored: unknown, version: number): SegmentFilterRead {
   const entries = isRecord(stored) ? stored : {};
-  if (!isRecord(stored) || version !== SEGMENT_FILTERS_VERSION) {
+  const upgraded = isRecord(stored) ? upgradeStoredFilters(stored, version) : null;
+  if (!upgraded) {
     // Another shape: no key can be trusted to mean what it meant.
     const ignored = Object.entries(entries).map(([k, v]) => entryLabel(k, v));
     return {
@@ -164,7 +196,18 @@ export function readSegmentFilters(stored: unknown, version: number): SegmentFil
       needsReview: true,
     };
   }
-  const { filters, refused } = readEntries(entries);
+  if (!Object.keys(upgraded).length && Object.keys(entries).length) {
+    // The upgrade dropped every filter it held (a Segment of the voucher
+    // alone): read as nothing, it would choose every Customer, so it waits
+    // for Staff instead, naming what it was.
+    return {
+      params: {},
+      filters: { ...DEFAULT_CUSTOMER_FILTERS },
+      ignored: Object.entries(entries).map(([k, v]) => entryLabel(k, v)),
+      needsReview: true,
+    };
+  }
+  const { filters, refused } = readEntries(upgraded);
   const params = segmentParams(filters);
   return {
     params,

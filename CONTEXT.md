@@ -350,10 +350,6 @@ _Avoid_: "invite" or "activation" — nothing is created in `auth.users` before 
 The per-customer link in a campaign email, `/account/welcome?c=<token>`. The token is opaque; only its hash is stored. It prefills the email on the welcome page and attributes the click.
 _Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
 
-**Welcome-back voucher**:
-Deleted by ADR 0030; PRD-loyalty-points slice 06 removes the code. The one `coupons` row issued to a **Migrated customer** at **Claim** (`issued_for = 'welcome_back'`). It is bound to that **Customer**: valid only while they are signed in and checking out with the account email. It is a shop-cart voucher, like every coupon today.
-_Avoid_: "store credit", "gift card" (none exist); describing it as usable on a customisation — **Results** price with no discount (`app/api/results/hold/route.ts:648`, `lib/results/paired-hold.ts:118`)
-
 **Marketing consent**:
 Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is appended to `customer_consent_events`.
 _Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked"

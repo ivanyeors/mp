@@ -8,7 +8,8 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * order, each kind only to a role holding its source's permission, and no
  * Result of another Customer whose email merely contains this one's. Since the
  * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
- * account (imported, signed up, Claimed, Welcome-back voucher), since
+ * account (imported, signed up, Claimed, the Claim bonus from the Points
+ * ledger since PRD-loyalty-points slice 06), since
  * migration 06 the Claim links a campaign email carried, by first click,
  * since CRM 06 follow-ups (added, done), since CRM 12 a Linked Google review
  * at its own date, and since migration 08 the campaign emails sent, bounced
@@ -47,7 +48,7 @@ const REVIEW = "0d000000-0000-4000-8000-000000000001";
 const G_REVIEW = "0d000000-0000-4000-8000-0000000000a1"; // a Linked Google review (CRM 12)
 const NOTE = "0a000000-0000-4000-8000-000000000001";
 const LEGACY_NOTE = "0a000000-0000-4000-8000-000000000002";
-const VOUCHER = "0c000000-0000-4000-8000-0000000000a1";
+const CLAIM_BONUS = "0c000000-0000-4000-8000-0000000000a1";
 
 const OWNER = "00000000-0000-4000-8000-0000000000b1";
 const NO_ORDERS = "00000000-0000-4000-8000-0000000000b2";
@@ -200,7 +201,7 @@ beforeEach(() => {
       { google_review_id: G_REVIEW, customer_id: MEI, how: "suggestion", linked_by_profile_id: JESS, linked_at: t("10-01T00:00") },
       { google_review_id: "g-kim", customer_id: KIM, how: "manual", linked_by_profile_id: null, linked_at: t("10-01T00:00") },
     ],
-    // Migration 02 and 05: imported, Claimed, and the voucher the Claim issued in the same transaction.
+    // Migration 02 and 05: imported, Claimed, and the Claim bonus the Claim granted in the same transaction.
     migrated_customers: [
       { customer_id: MEI, created_by_import: false, imported_at: t("03-01T00:00"), claimed_at: t("06-15T00:00") },
       { customer_id: KIM, created_by_import: true, imported_at: t("03-01T00:00"), claimed_at: null },
@@ -221,9 +222,12 @@ beforeEach(() => {
       { id: "cs-3", customer_id: MEI, template: "migration_service_notice", wave: "n1", status: "failed", provider_message_id: null, sent_at: t("06-13T00:00"), bounced_at: null, complained_at: null },
       { id: "cs-k", customer_id: KIM, template: "migration_announcement", wave: "w1", status: "complained", provider_message_id: "re_k", sent_at: t("06-10T00:06"), bounced_at: null, complained_at: t("06-10T09:00") },
     ],
-    coupons: [
-      { id: VOUCHER, code: "WB-SECRETCODE", customer_id: MEI, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 1, expires_at: t("08-14T00:00"), created_at: t("06-15T00:00") },
-      { id: "coupon-kim", code: "WB-KIMS", customer_id: KIM, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 0, expires_at: null, created_at: t("06-16T00:00") },
+    // PRD-loyalty-points: Mei's Claim bonus, and her spend, which is not an
+    // account event. Kim's bonus is Kim's alone.
+    points_ledger: [
+      { id: CLAIM_BONUS, customer_id: MEI, kind: "claim_bonus", points: 1000, order_id: null, note: "Claim bonus", created_at: t("06-15T00:00") },
+      { id: "pl-spend", customer_id: MEI, kind: "spend", points: -1000, order_id: O1, note: null, created_at: t("09-01T02:00") },
+      { id: "pl-kim", customer_id: KIM, kind: "claim_bonus", points: 1000, order_id: null, note: "Claim bonus", created_at: t("06-16T00:00") },
     ],
   };
 });
@@ -273,8 +277,8 @@ const EVERYTHING = [
   `result.build_sent:${ANCHOR}`,
   `result.created:${ANCHOR}`,
   // Same instant (one transaction): ties go by kind.
+  `account.claim_bonus:${CLAIM_BONUS}`,
   `account.claimed:${MEI}`,
-  `account.voucher_issued:${VOUCHER}`,
   `account.signed_up:${MEI}`,
   "claim_link.opened:1",
   "campaign_email.bounced:cs-2",
@@ -340,8 +344,10 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`account.imported:${MEI}`)?.summary).toBe("Imported from Shopify, matched to this Customer");
     expect(byId.get(`account.claimed:${MEI}`)?.summary).toBe("Claimed: first sign-in since the import");
     expect(byId.get(`account.signed_up:${MEI}`)?.summary).toBe("Signed up: a login was linked to this Customer");
-    // A coupon stores no time it was used: that is its pill. Its code is never shown.
-    expect(byId.get(`account.voucher_issued:${VOUCHER}`)).toMatchObject({ summary: "Welcome-back voucher issued", status: "used" });
+    // The Claim bonus, read from the Points ledger, in points and dollars.
+    expect(byId.get(`account.claim_bonus:${CLAIM_BONUS}`)).toMatchObject({ summary: "Claim bonus: 1,000 points (S$10.00)", group: "account" });
+    expect(byId.has("account.claim_bonus:pl-kim")).toBe(false);
+    expect([...byId.keys()].some((k) => k.includes("pl-spend"))).toBe(false);
     // Only the first click is dated; the count is in the line. The token is never read.
     expect(byId.get("claim_link.opened:1")).toMatchObject({ summary: "Claim link opened (announcement email, 2 times)", group: "account" });
     expect(JSON.stringify(byId.get("claim_link.opened:1"))).not.toContain("h-1");
@@ -354,7 +360,6 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get("campaign_email.sent:cs-2")).toMatchObject({ summary: "Campaign email sent: Account reminder (wave r1)", status: "bounced" });
     expect(byId.get("campaign_email.bounced:cs-2")?.summary).toBe("Campaign email bounced: Account reminder. Left out of later waves");
     expect([...byId.keys()].some((k) => k.endsWith("cs-3"))).toBe(false);
-    for (const e of byId.values()) expect(JSON.stringify(e)).not.toContain("WB-SECRETCODE");
     // No customer email in any line.
     for (const e of byId.values()) expect(e.summary.toLowerCase()).not.toContain("mei@x.test");
   });

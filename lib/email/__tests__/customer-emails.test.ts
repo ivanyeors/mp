@@ -46,7 +46,7 @@ function fakeAdmin(rpc: Rpc | (() => Rpc)) {
   return { admin, rpcCalls, updates };
 }
 
-const KEY = { customerId: "cust-1", template: "account.welcome_voucher", entityId: "cust-1" };
+const KEY = { customerId: "cust-1", template: "account.claim_bonus", entityId: "cust-1" };
 
 function transport(send: (e: OutgoingEmail) => Promise<{ id?: string }>): EmailTransport & { sent: OutgoingEmail[] } {
   const sent: OutgoingEmail[] = [];
@@ -69,7 +69,7 @@ describe("claimCustomerEmail", () => {
     expect(rpcCalls).toEqual([
       [
         "claim_customer_email",
-        { p_customer_id: "cust-1", p_template: "account.welcome_voucher", p_entity_id: "cust-1" },
+        { p_customer_id: "cust-1", p_template: "account.claim_bonus", p_entity_id: "cust-1" },
       ],
     ]);
   });

@@ -52,11 +52,12 @@ export const FOLLOW_UP_FILTERS = ["all", "open"] as const;
 export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
 
 /**
- * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
- * to nudge before the vouchers expire; *Used* is who redeemed one.
+ * **Points** (PRD-loyalty-points slice 06): *Has points* is an available
+ * balance above 0 (`points_available`, the sum of the Points ledger); *No
+ * points* is none. Pending points are not a balance (CONTEXT.md).
  */
-export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
-export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
+export const POINTS_FILTERS = ["all", "has", "none"] as const;
+export type PointsFilter = (typeof POINTS_FILTERS)[number];
 
 /**
  * The Google review (CRM slice 12), each Customer in exactly one: a **Linked
@@ -131,8 +132,8 @@ export interface CustomerFilters {
   google: GoogleFilter;
   /** The mobile on file (`has_phone`, `phone_valid`). */
   mobile: MobileFilter;
-  /** The Welcome-back voucher's state (`welcome_voucher_state`). */
-  voucher: VoucherFilter;
+  /** An available Points balance or none (`points_available`). */
+  points: PointsFilter;
   /** `open`: only Customers with a Follow-up not done yet. */
   followups: FollowUpFilter;
   /** *Email consent*: `marketing_email` on the overview. */
@@ -161,7 +162,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   source: "all",
   google: "all",
   mobile: "all",
-  voucher: "all",
+  points: "all",
   followups: "all",
   consent: "all",
   bought: [],
@@ -195,7 +196,7 @@ const PARAM_SCHEMAS = {
   source: z.enum(SOURCE_FILTERS),
   google: z.enum(GOOGLE_FILTERS),
   mobile: z.enum(MOBILE_FILTERS),
-  voucher: z.enum(VOUCHER_FILTERS),
+  points: z.enum(POINTS_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
@@ -318,7 +319,7 @@ export function customerFilterParams(
   if (f.source !== "all") out.set("source", f.source);
   if (f.google !== "all") out.set("google", f.google);
   if (f.mobile !== "all") out.set("mobile", f.mobile);
-  if (f.voucher !== "all") out.set("voucher", f.voucher);
+  if (f.points !== "all") out.set("points", f.points);
   if (f.followups !== "all") out.set("followups", f.followups);
   if (f.consent !== "all") out.set("consent", f.consent);
   if (f.bought.length) out.set("bought", f.bought.join(","));
@@ -371,6 +372,12 @@ export const RATING_LABELS: Record<RatingFilter, string> = {
   "3-down": "Rated 3★ and below",
 };
 
+/** How the *Points* filter's values read, in its control and its summary chip. */
+export const POINTS_LABELS: Record<Exclude<PointsFilter, "all">, string> = {
+  has: "Has points",
+  none: "No points",
+};
+
 /** How the *Email consent* filter's values read, in its control and its summary chip. */
 export const CONSENT_LABELS: Record<ConsentFilter, string> = {
   all: "any consent",
@@ -389,7 +396,7 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   source: (v) => (v === "shopify" ? "From Shopify" : "Platform"),
   google: (v) => (v === "linked" ? "Google linked" : "Google not linked"),
   mobile: (v) => (v === "on-file" ? "Valid mobile on file" : v === "missing" ? "Mobile missing" : "Mobile invalid"),
-  voucher: (v) => (v === "issued" ? "Voucher issued, unused" : "Voucher used"),
+  points: (v) => POINTS_LABELS[v as Exclude<PointsFilter, "all">],
   followups: () => "Has an open follow-up",
   consent: (v) => `Email ${CONSENT_LABELS[v]}`,
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
@@ -479,7 +486,9 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
-  if (filters.voucher !== "all") q = q.eq("welcome_voucher_state", filters.voucher);
+  // The ledger never takes a balance below 0, so these two split every Customer.
+  if (filters.points === "has") q = q.gt("points_available", 0);
+  if (filters.points === "none") q = q.lte("points_available", 0);
 
   if (filters.google === "linked") q = q.contains("account_providers", ["google"]);
   if (filters.google === "not-linked") q = q.not("account_providers", "cs", "{google}");

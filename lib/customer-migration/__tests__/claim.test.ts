@@ -158,6 +158,7 @@ describe("sendClaimBonusEmail", () => {
     expect(t.sent[0].subject).toBe("S$10 in points is in your Mpillow account");
     expect(t.sent[0].text).toContain("We've added 1,000 points to your account: S$10 off your next shop order.");
     expect(t.sent[0].text).toContain("https://custom.mpillow.com/en-US/shop");
+    expect(t.sent[0].text).toContain("How points work: https://custom.mpillow.com/en-US/points");
     expect(`${t.sent[0].subject} ${t.sent[0].text}`).not.toMatch(/shopify|moved|voucher/i);
     expect(updates).toEqual([expect.objectContaining({ status: "sent" })]);
   });

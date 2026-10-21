@@ -20,7 +20,7 @@ demoable path through all layers.
 | [03](03-earning.md) | Earning: points written when an Order's return window closes | AFK | **built** | 02 | 1, 2, 6, 14 |
 | [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **built** | 02 | 4, 5, 9, 13, 14 |
 | [05](05-claim-bonus.md) | The Claim bonus replaces the voucher, for every customer-facing surface | AFK | **built** | 02, 04 | 7 |
-| [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **not started** | 05 | 7, 12 |
+| [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **built** | 05 | 7, 12 |
 | [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **built** | 02, 03 | 8 |
 | [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **not started** | 03, 04, 05 | all |
 

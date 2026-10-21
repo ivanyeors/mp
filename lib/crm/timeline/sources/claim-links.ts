@@ -5,7 +5,7 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
 /**
  * Claim links opened (migration slice 06; `customer_claim_links`), under the
- * Account chip beside imported, Claimed and the voucher: *Claim link opened*
+ * Account chip beside imported, Claimed and the Claim bonus: *Claim link opened*
  * at a link's first click, one entry per campaign email that carried one.
  *
  * Only the first click is dated by itself; later opens are the count in the

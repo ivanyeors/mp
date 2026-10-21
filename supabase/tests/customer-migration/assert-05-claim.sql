@@ -1,7 +1,9 @@
 -- Slice 05 (PRD-shopify-customer-migration), as PRD-loyalty-points slice 05
 -- changed it: the Claim, the Claim bonus that replaced the Welcome-back
 -- voucher (ADR 0030 rules f, g), and the customer_emails ledger, asserted
--- against real Postgres (20261020112100, 20261021150000).
+-- against real Postgres (20261020112100, 20261021150000). Since slice 06
+-- (20261021160000) a coupon cannot be bound to a Customer at all, and no
+-- Claim writes one.
 --
 -- Run against a database with every migration applied (a throwaway local one,
 -- never production). It prints one line, `slice 05 claim ok`:
@@ -34,7 +36,19 @@ do $$
 begin
   assert not exists (select 1 from customer_campaign_sends),
     'this assert needs a database with no campaign sends: the window counts from the first one sent';
+  -- PRD-loyalty-points slice 06: coupons are bearer codes. Nothing in them
+  -- names a Customer, so no Claim can issue one to somebody.
+  assert not exists (select 1 from pg_constraint
+                      where conrelid = 'public.coupons'::regclass and confrelid = 'public.customers'::regclass),
+    'coupons still references customers';
+  assert not exists (select 1 from information_schema.columns
+                      where table_schema = 'public' and table_name = 'coupons' and column_name ~ '^(customer_id|issued)'),
+    'coupons still has a column binding it to a Customer';
 end $$;
+
+-- Every coupon there is now; the Claims below must add none.
+drop table if exists pg_temp.coupons_before_claims;
+create temp table coupons_before_claims as select id from coupons;
 
 insert into customer_import_batches (id, source, file_name, file_sha256, rows_total, exported_at)
 values ('05050505-0000-4000-8000-0000000000b0', 'shopify_customers_csv', 'assert-05.csv', repeat('a', 64), 9, '2026-10-20');
@@ -238,6 +252,14 @@ begin
   assert n = 0, 'ledger: sent is final';
 end $$;
 
+-- ------------------------------------------- the Claim issues nothing else
+do $$
+begin
+  assert not exists (select id from coupons except select id from coupons_before_claims),
+    format('the Claims wrote %s coupon(s): only the Claim bonus is granted',
+           (select count(*) from (select id from coupons except select id from coupons_before_claims) n));
+end $$;
+
 -- ------------------------------------------------------------------ grants
 do $$
 declare f text;
@@ -264,4 +286,5 @@ delete from partner_users where email like '%@assert05.test';
 delete from customer_import_batches where file_name = 'assert-05.csv';
 delete from site_settings where key = 'points_launch_at';
 update site_settings set value = 'false' where key = 'points_enabled';
+drop table if exists pg_temp.coupons_before_claims;
 select 'slice 05 claim ok';

@@ -112,7 +112,9 @@ export async function sendClaimBonusEmail(
     if (!data) return { sent: false, skipped: true };
     const points = Number((data as { points: number }).points);
     const locale = isSupportedLocale(customer.locale) ? customer.locale : DEFAULT_LOCALE;
-    const shopUrl = `${options.origin ?? getSiteOrigin()}${withLocale("/shop", locale)}`;
+    const origin = options.origin ?? getSiteOrigin();
+    const shopUrl = `${origin}${withLocale("/shop", locale)}`;
+    const termsUrl = `${origin}${withLocale("/points", locale)}`;
     const copy = await loadEmailCopy(CLAIM_BONUS_EMAIL_COPY, { admin });
 
     return await dispatchCustomerEmail({
@@ -120,7 +122,7 @@ export async function sendClaimBonusEmail(
       transport: options.transport,
       key: { customerId: customer.id, template: CLAIM_BONUS_EMAIL, entityId: customer.id },
       to: customer.email,
-      render: () => renderClaimBonusEmail({ firstName: customer.first_name?.trim() || null, points, shopUrl }, copy),
+      render: () => renderClaimBonusEmail({ firstName: customer.first_name?.trim() || null, points, shopUrl, termsUrl }, copy),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

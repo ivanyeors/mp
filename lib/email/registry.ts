@@ -9,7 +9,7 @@
 //
 // Every `render` must be PURE — no network, no DB.
 
-import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail, renderWelcomeVoucherEmail } from "./account";
+import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail } from "./account";
 import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
 import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
@@ -82,8 +82,6 @@ import {
   sampleResultUpdatedBalance,
   sampleResultUpdatedWithinHold,
   sampleRma,
-  sampleWelcomeVoucher,
-  sampleWelcomeVoucherFreeShipping,
   type EmailFixture,
 } from "./__fixtures__/samples";
 import type { EmailCopy, EmailCopySpec } from "./copy";
@@ -424,27 +422,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f), copy),
   },
 
-  // --- Customer account ---
-  {
-    // Sent once, at the Claim (PRD-shopify-customer-migration slice 05). The
-    // id is also its customer_emails.template (WELCOME_VOUCHER_EMAIL).
-    id: "account.welcome_voucher",
-    label: "Welcome-back voucher",
-    group: "account",
-    audience: "customer",
-    render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucher(f)),
-  },
-  {
-    // Same renderer, free-shipping terms and no first name: the "worth" line
-    // and the greeting are the two sentences that change.
-    id: "account.welcome_voucher_free_shipping",
-    label: "Welcome-back voucher — free shipping",
-    group: "account",
-    audience: "customer",
-    render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucherFreeShipping(f)),
-  },
-
-  // --- Account: the Claim bonus (PRD-loyalty-points slice 05) ---
+  // --- Customer account: the Claim bonus (PRD-loyalty-points slice 05) ---
   // Sent once, when a sign-in grants the bonus. The id is also its
   // customer_emails.template (CLAIM_BONUS_EMAIL).
   {
@@ -464,7 +442,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     // No name to probe, so the hostile fixture probes the button's link.
     render: (f, copy) =>
       renderClaimBonusEmail(
-        { ...sampleClaimBonus(f), firstName: null, ...(f === "hostile" ? { shopUrl: "javascript:alert(1)" } : {}) },
+        { ...sampleClaimBonus(f), firstName: null, ...(f === "hostile" ? { shopUrl: "javascript:alert(1)", termsUrl: "javascript:alert(2)" } : {}) },
         copyFor(CLAIM_BONUS_EMAIL_COPY, copy),
       ),
   },
