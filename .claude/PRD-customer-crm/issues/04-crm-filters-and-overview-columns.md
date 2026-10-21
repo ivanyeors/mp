@@ -82,11 +82,110 @@ The README records it so it is not lost. It is fixed separately, outside the CRM
 ## Acceptance criteria
 
 - [ ] The parity check passes: `classifyOrderLine` and `customer_purchase_lines` agree on every
-      fixture line and every development-database line.
-- [ ] vitest covers the filter schema (valid, invalid, dropped) and `applyCustomerFilters`,
+      fixture line and every development-database line. — _not yet: passes on all 38 fixture
+      lines against a local Postgres 16 with every migration applied; the development database
+      run is ops (`CRM_CHECK_DATABASE_URL=… npx tsx lib/crm/purchase-lines.check.ts`)_
+- [x] vitest covers the filter schema (valid, invalid, dropped) and `applyCustomerFilters`,
       using a recording query stub.
-- [ ] Searching `Tan, Mei`, `(test)` or `a%b` returns rows or an empty list, never an error.
-- [ ] `bought=premium&last_order=over:12&readjusted=never` matches a hand-written SQL query on
+- [x] Searching `Tan, Mei`, `(test)` or `a%b` returns rows or an empty list, never an error.
+- [x] `bought=premium&last_order=over:12&readjusted=never` matches a hand-written SQL query on
       fixtures.
-- [ ] The filtered list's URL, opened in a new tab, shows the same rows.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] The filtered list's URL, opened in a new tab, shows the same rows.
+- [ ] `./scripts/graphify update .` is run in the same commit. — _not yet: the integrator
+      rebuilds the graph after merging_
+
+## Build notes
+
+**What was built.**
+
+- `lib/crm/customer-filters.ts`: one zod schema, `customerFiltersSchema`, for the list's URL
+  parameters: `search`, `tags`, `account`, `source`, `bought` (comma list, any of),
+  `last_order` (`within:N` / `over:N`, 1–120 months), `readjusted` (`ever` / `never`),
+  `min_spend`, `sort` (adds `last-order` and `spend`), `page`, `limit`. `parseCustomerFilters`
+  reads a URL through it key by key and names each dropped key in `ignored`.
+  `applyCustomerFilters(query, filters, { now })` maps it onto the overview. `CustomerListQuery`
+  has no `or`, so no caller can send one: search is one `ilike` on `search_text`, escaped with
+  `escapeLikePattern`, and `tags` / `bought` are quoted array literals (`pgTextArray`), so a tag
+  with a brace or quote cannot break `ov.{…}` either. Also: `CUSTOMER_FILTER_KEYS` (the keys
+  that choose Customers, which a Segment saves), `describeCustomerFilters` (summary labels),
+  `clearCustomerFilter(s)` and `monthsBefore` (Postgres's month arithmetic, clamped).
+- **For slice 05:** a Segment stores `Object.fromEntries(customerFilterParams(filters))`, which
+  are the list's own parameters, and reads them back with `parseCustomerFilters(new
+  URLSearchParams(stored))` or `customerFiltersSchema`. A Segment and a link therefore go through
+  one schema and one mapping.
+- `lib/crm/purchase-lines.ts`: the TypeScript twin of the view (`purchaseLine`,
+  `isCountedOrder`, `purchaseClass`, `boughtClasses`), built on `classifyOrderLine`.
+  `NOT_A_PURCHASE` is now exported from `lib/readjustment/purchases.ts`. Nothing else changed
+  there.
+- `lib/crm/customer-overview.ts`: the six columns, plus `PURCHASE_CLASSES`.
+- `lib/supabase/like-pattern.ts`: `escapeLikePattern` moved here unchanged, and
+  `lib/auth/customer-identity.ts` re-exports it, so every importer still works. The list's
+  filters module is shared with the client, and importing `customer-identity` would have pulled
+  `supabaseAdmin` and the claim code into the browser bundle.
+- Customers list: `customer-filters-panel.tsx` has the *Filters* panel (Bought checkboxes, Last
+  order presets plus any value a link carries, Re-adjusted, Spent at least, Tags, each
+  validated through the schema) and the summary (one chip per active filter, each with ×, then
+  *Clear all*, which keeps the sort) with the *N filters ignored (keys)* note.
+  `customers-client.tsx` now holds one `filters` object instead of a state per filter. It adds
+  a *Filters* button with a count, the *Last order* and *Most spent* sorts, and a *Last order*
+  column (`lg` and up). `page.tsx` passes the parse's `ignored` through.
+
+**Migrations.**
+
+- `20261020122000_customer_purchase_lines.sql`: the `customer_purchase_lines` view. It is
+  `security_invoker`, revoked from anon and authenticated, and lists guest Orders' lines too, so
+  the check covers every line.
+- `20261020122100_customer_search_text_index.sql`: a trigram GIN index on the `search_text`
+  expression over `customers`. The planner drops the view's other joins for a search, so the
+  search is a filtered scan of `customers`.
+- `20261020200000_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
+  keeps all 18 columns and adds `paid_orders`, `first_paid_at`, `last_paid_at`, `bought`,
+  `last_readjusted_at` and `search_text`, aggregated in grouped subqueries.
+- DB check: all migrations apply in order (`db-check.sh`, 165). As `authenticated` and `anon`,
+  both views give *permission denied*; `service_role` reads them. Migration 12's
+  `assert-12-account-status.sql` still passes.
+
+**Tests.**
+
+- `lib/crm/__tests__/customer-filters.test.ts` (rewritten). It covers the schema (valid, every
+  invalid shape dropped and never queried, empty lists), Segment-style storage through the same
+  schema, every mapping on a recording stub, the search cases escaped and never `or`, and the
+  real supabase-js builder's URL (`search_text=ilike.%Tan, Mei%`, no `or=`). It also covers the
+  PRD's list as three plain filters, the URL round trip of every filter, the summary labels,
+  clearing, `monthsBefore` and `pgTextArray`.
+- `lib/crm/__tests__/purchase-lines.test.ts`: every fixture line means what its `expect` says,
+  the counted statuses equal `NOT_A_PURCHASE`, the SQL files' `status not in` lists equal
+  `NOT_A_PURCHASE`, and `bought` ordering.
+- `lib/crm/__tests__/purchase-lines-fixture.ts`: the shared fixture. It covers every precedence
+  branch, every `order_status`, guest Orders, the acceptance Customers and the search Customers.
+- `lib/crm/purchase-lines.check.ts`: the parity check. In one rolled-back transaction it
+  inserts the fixture, then compares TypeScript with the view on every line in the database,
+  checks the overview's new columns for the fixture Customers, and checks that the acceptance
+  URL (through `applyCustomerFilters`, read the way PostgREST reads it) equals a hand-written
+  query over the base tables. It also runs five searches. A mutated view (bolster precedence
+  swapped) fails it.
+- `lib/ecommerce/__tests__/admin-customers-list.test.ts`: `listAdminCustomers` reads through
+  the module, so search is an escaped `ilike` with no `or`, and a dropped value is never sent.
+- `app/[lang]/settings/customers/__tests__/crm-filters-render.test.tsx`: a link opens with its
+  panel, its summary and its count; the plain list has no summary; the ignored note; the Last
+  order column; the sorts.
+
+**Deviations.**
+
+- **Consent and voucher filters are not in the schema yet.** Their columns (`marketing_email`,
+  `welcome_voucher_state`) come from migration slices 07 and 06, which build in parallel. The
+  schema takes them as more `PARAM_SCHEMAS` keys, and the summary needs a label for each (the
+  types require one).
+- **The URL is written with `history.replaceState`, not `router.replace`.** This is migration
+  12's and CRM 14's existing mechanism. It avoids re-running the RSC page on every keystroke and
+  likewise adds no history entries.
+- **`bought` is *any of*** the values ticked (`&&`), like `tags`. A pillow whose Tier is unknown
+  (a Result with no `assigned_tier`, a pillow product variant with no pillow id) still counts in
+  `paid_orders`, but adds nothing to `bought`.
+- **A fully returned line still counts.** The view lists every goods line on a counted Order,
+  as specified. `buildPurchaseList` also skips lines with no units left after returns. The
+  slice did not ask for that, and `refunded` Orders are already excluded.
+- `min_spend` reads `customers.total_spent`, the platform-only figure the list already shows.
+
+**Left for ops.** Run the parity check against the development database (Supabase → Connect →
+direct connection string) and tick the first box.

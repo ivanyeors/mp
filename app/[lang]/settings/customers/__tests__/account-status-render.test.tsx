@@ -39,6 +39,12 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   claimed_at: null,
   shopify_orders_count: null,
   shopify_amount_spent: null,
+  paid_orders: 0,
+  first_paid_at: null,
+  last_paid_at: null,
+  bought: [],
+  last_readjusted_at: null,
+  search_text: "ana@x.test ana tan",
   ...over,
 });
 

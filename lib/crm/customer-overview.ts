@@ -34,12 +34,27 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "claimed_at",
   "shopify_orders_count",
   "shopify_amount_spent",
+  "paid_orders",
+  "first_paid_at",
+  "last_paid_at",
+  "bought",
+  "last_readjusted_at",
+  "search_text",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
 
 /** The `select` list for the view. */
 export const CUSTOMER_OVERVIEW_SELECT = CUSTOMER_OVERVIEW_COLUMNS.join(", ");
+
+/**
+ * What a Customer has bought, as the overview's `bought` lists it (CRM slice
+ * 04), in this order: a Premium or Basic Mpillow, an Mbolster, an accessory.
+ * Read from `customer_purchase_lines`, the SQL twin of `classifyOrderLine`
+ * (lib/crm/purchase-lines.ts).
+ */
+export const PURCHASE_CLASSES = ["premium", "basic", "mbolster", "accessory"] as const;
+export type PurchaseClass = (typeof PURCHASE_CLASSES)[number];
 
 /** One row of `admin_customer_overview`. */
 export interface CustomerOverviewRow {
@@ -69,6 +84,20 @@ export interface CustomerOverviewRow {
   claimed_at: string | null;
   shopify_orders_count: number | null;
   shopify_amount_spent: number | null;
+  /**
+   * Counted platform **Orders** (CRM slice 04): paid, and not pending,
+   * cancelled, refunded or payment-failed. Shopify-era orders are not here.
+   */
+  paid_orders: number;
+  /** The first and the latest counted Order's `paid_at`; null with none. */
+  first_paid_at: string | null;
+  last_paid_at: string | null;
+  /** What they bought on counted Orders, in `PURCHASE_CLASSES` order. */
+  bought: PurchaseClass[];
+  /** The latest attended **Re-adjustment booking**'s `start_at`. */
+  last_readjusted_at: string | null;
+  /** `lower(email first last)`: the list's search reads only this. */
+  search_text: string;
 }
 
 /** Display name, or null when the Customer has none. */

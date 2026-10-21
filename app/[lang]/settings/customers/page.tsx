@@ -25,8 +25,9 @@ const LIMIT = 20;
  * pagination and refreshes.
  *
  * The list reads the Customer overview (migration slice 12). Its filters live
- * in the URL (`?account=no-account&source=shopify`), so a filtered list is a
- * link: this page reads the same parameters and renders that list first.
+ * in the URL (`?account=no-account&source=shopify`, and CRM slice 04's
+ * `?bought=premium&last_order=over:12&readjusted=never`), so a filtered list is
+ * a link: this page reads the same parameters and renders that list first.
  *
  * `?view=settings` opens the Settings tab (CRM slice 14), whose card is read
  * here too when the page opens on it. Seeing it needs `customers`; changing it
@@ -45,8 +46,9 @@ export default async function SettingsCustomersPage({
     const ctx = await requireAdminPage("customers", locale);
     const view = parseCustomersView(query.view);
 
-    // The client's first state: the URL's filters, page 1, LIMIT 20.
-    const { filters } = parseCustomerFilters(searchParamsFromRecord(query));
+    // The client's first state: the URL's filters, page 1, LIMIT 20. A value
+    // the schema does not know is dropped here and named on the list.
+    const { filters, ignored } = parseCustomerFilters(searchParamsFromRecord(query));
     const first = { ...filters, page: 1, limit: LIMIT };
 
     const [customers, migration, telegramUpdates] = await Promise.all([
@@ -74,7 +76,12 @@ export default async function SettingsCustomersPage({
                     : undefined
             }
         >
-            <CustomersClient initialData={initialData} initialFilters={first} migration={migration} />
+            <CustomersClient
+                initialData={initialData}
+                initialFilters={first}
+                ignoredFilters={ignored}
+                migration={migration}
+            />
         </CustomersPageTabs>
     );
 }
