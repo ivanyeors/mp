@@ -75,8 +75,10 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let head = false;
       let inserted: Row | null = null;
       let embeds: Embed[] = [];
-      let sort: { col: string; asc: boolean } | null = null;
+      // Each `order` adds a key after the ones before it, as PostgREST's `order=a,b` does.
+      const sorts: { col: string; asc: boolean }[] = [];
       let limit: number | null = null;
+      let offset = 0;
       const embedded = (row: Row, e: Embed): Row | null => (db[e.table] ?? []).find((o) => o.id === row[e.fk]) ?? null;
       // `orders.customer_id` reads the embedded `orders` row.
       const value = (row: Row, col: string): unknown => {
@@ -99,11 +101,16 @@ export function fakeSupabaseAdmin(db: FakeDb) {
             );
         if (patch) for (const row of r) Object.assign(row, patch);
         if (removing) db[table] = (db[table] ?? []).filter((row) => !r.includes(row));
-        if (sort) {
-          const { col, asc } = sort;
-          r.sort((a, b) => (String(a[col] ?? "") < String(b[col] ?? "") ? -1 : 1) * (asc ? 1 : -1));
+        if (sorts.length) {
+          r.sort((a, b) => {
+            for (const { col, asc } of sorts) {
+              const [x, y] = [String(a[col] ?? ""), String(b[col] ?? "")];
+              if (x !== y) return (x < y ? -1 : 1) * (asc ? 1 : -1);
+            }
+            return 0;
+          });
         }
-        if (limit !== null) r = r.slice(0, limit);
+        if (limit !== null || offset > 0) r = r.slice(offset, limit === null ? undefined : offset + limit);
         return r;
       };
       const cmp = (col: string, test: (a: string, b: string) => boolean, val: unknown) => {
@@ -125,8 +132,10 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         },
         eq: (col: string, val: unknown) => (filters.push((r) => value(r, col) === val), q),
         in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(value(r, col))), q),
-        order: (col: string, opts?: { ascending?: boolean }) => ((sort = { col, asc: opts?.ascending !== false }), q),
+        order: (col: string, opts?: { ascending?: boolean }) => (sorts.push({ col, asc: opts?.ascending !== false }), q),
         limit: (n: number) => ((limit = n), q),
+        // Rows `from` to `to`, both inclusive, as PostgREST's Range header.
+        range: (from: number, to: number) => ((offset = from), (limit = to - from + 1), q),
         neq: (col: string, val: unknown) => (filters.push((r) => value(r, col) !== val), q),
         is: (col: string, val: null) => (filters.push((r) => (value(r, col) ?? null) === val), q),
         not: (col: string, _op: "is", val: null) => (filters.push((r) => (value(r, col) ?? null) !== val), q),

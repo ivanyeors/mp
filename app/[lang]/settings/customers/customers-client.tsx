@@ -53,6 +53,7 @@ import {
     type SourceFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
+import { reviewFacts } from "@/lib/crm/reviews";
 import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
 import { MigrationCard } from "./migration-card";
 
@@ -97,9 +98,36 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 
 /**
  * The filters that live in the Filters panel rather than the toolbar: CRM
- * slice 04's, and migration slice 06's Welcome-back voucher.
+ * slice 04's, migration slice 06's Welcome-back voucher, and CRM slice 12's
+ * reviews.
  */
-const PANEL_FILTERS: CustomerFilterKey[] = ["bought", "last_order", "readjusted", "min_spend", "voucher", "tags"];
+const PANEL_FILTERS: CustomerFilterKey[] = [
+    "bought",
+    "last_order",
+    "readjusted",
+    "min_spend",
+    "voucher",
+    "tags",
+    "google_review",
+    "shop_review",
+    "rating",
+];
+
+/**
+ * The Review column (CRM slice 12): the strongest fact first (*★5 Google*,
+ * *★4 shop (2)*, *Asked 3 Nov · clicked*, *Asked 3 Nov*), then the rest,
+ * muted. *—* with none. A Google review counts only once Staff have linked it.
+ */
+function ReviewCell({ customer }: { customer: CustomerOverviewRow }) {
+    const [first, ...rest] = reviewFacts(customer);
+    if (!first) return <span className="text-sm text-muted-foreground">—</span>;
+    return (
+        <span className="text-sm whitespace-nowrap">
+            {first}
+            {rest.length > 0 && <span className="block text-xs text-muted-foreground">{rest.join(" · ")}</span>}
+        </span>
+    );
+}
 
 /**
  * Contact status as small marks (CRM slice 11): how they sign in (an envelope
@@ -462,6 +490,7 @@ export function CustomersClient({
                                     Total Spent
                                 </TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell">Last order</TableHead>
+                                <TableHead className="px-4 hidden lg:table-cell">Review</TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell">Tags</TableHead>
                                 <TableHead className="px-4 hidden xl:table-cell">Joined</TableHead>
                             </TableRow>
@@ -519,6 +548,10 @@ export function CustomersClient({
                                             suppressHydrationWarning
                                         >
                                             {formatDate(customer.last_paid_at)}
+                                        </TableCell>
+                                        {/* Dates in Singapore time, so the server render and the browser agree. */}
+                                        <TableCell className="px-4 hidden lg:table-cell">
+                                            <ReviewCell customer={customer} />
                                         </TableCell>
                                         <TableCell className="px-4 hidden lg:table-cell">
                                             <div className="flex flex-wrap gap-1">

@@ -13,6 +13,7 @@ import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site-url";
 import { parseFollowUpScope } from "@/lib/crm/followup-rules";
+import { parseReviewTabScope } from "@/lib/crm/reviews";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -37,6 +38,10 @@ const LIMIT = 20;
  * `?view=followups` opens the Follow-ups tab (CRM slice 06), on the list
  * `?scope=` names (mine, all, overdue); the tab reads its own rows.
  *
+ * `?view=reviews` opens the Reviews tab (CRM slice 12: *Google reviews to
+ * match*, linked from the daily Telegram update), on `?scope=to-match` or
+ * `unlinked`; the tab reads its own rows.
+ *
  * `?view=settings` opens the Settings tab (CRM slices 07 and 14), whose cards
  * are read here too when the page opens on it. Seeing them needs `customers`;
  * changing them needs `customers-edit`, and the online Result switch also
@@ -54,6 +59,7 @@ export default async function SettingsCustomersPage({
 
     const ctx = await requireAdminPage("customers", locale);
     const view = parseCustomersView(query.view);
+    const scope = Array.isArray(query.scope) ? query.scope[0] : query.scope;
 
     // The client's first state: the URL's filters, page 1, LIMIT 20. A value
     // the schema does not know is dropped here and named on the list.
@@ -81,7 +87,8 @@ export default async function SettingsCustomersPage({
             canEditOnlineResult={canEdit && hasPermission(ctx, "results")}
             telegramUpdates={telegramUpdates}
             aftercare={aftercare}
-            followUpScope={parseFollowUpScope(Array.isArray(query.scope) ? query.scope[0] : query.scope)}
+            followUpScope={parseFollowUpScope(scope)}
+            reviewScope={parseReviewTabScope(scope)}
             importHref={
                 hasPermission(ctx, "customer-import")
                     ? withLocale("/settings/customers/import", locale)

@@ -213,9 +213,21 @@ describe("Weekly summary", () => {
       from: "2026-10-11T16:00:00.000Z",
       to: "2026-10-18T16:00:00.000Z",
     });
-    // New Customers, sign-ups since migration slice 12, follow-ups since CRM slice 06.
+    // New Customers, sign-ups since migration slice 12, follow-ups since CRM slice 06. No
+    // Google review was linked in the week (CRM slice 12), so it adds no line.
     const followUps = { done: 1, overdue: 2 };
     expect(counts).toEqual({ newCustomers: 2, signUps: 2, followUps });
+    db.tables.customer_google_reviews = [
+      { google_review_id: "g1", customer_id: "c1", linked_at: "2026-10-14T03:00:00.000Z" },
+      { google_review_id: "g2", customer_id: "c2", linked_at: "2026-10-18T16:00:00.000Z" },
+    ];
+    const withLinks = await realSources.loadWeeklySummaryCounts(admin, {
+      from: "2026-10-11T16:00:00.000Z",
+      to: "2026-10-18T16:00:00.000Z",
+    });
+    // One linked in the week; the other on the Monday after.
+    expect(withLinks).toEqual({ newCustomers: 2, signUps: 2, followUps, googleReviewsLinked: 1 });
+    db.tables.customer_google_reviews = [];
     const withSlice07 = await realSources.loadWeeklySummaryCounts(
       admin,
       { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" },
@@ -282,8 +294,9 @@ describe("the daily types", () => {
     });
   });
 
-  it("post nothing while their source is not built (the seams return null)", async () => {
-    expect(await realSources.countGoogleReviewsToMatch(admin)).toBeNull();
+  it("post nothing while a source is not built (a seam returns null)", async () => {
+    // Both seams are filled now (CRM slice 12, migration slice 12); the job keeps the contract.
+    // CRM slice 12's count is tested in lib/crm/__tests__/google-review-match-server.test.ts.
     expect(await run(TUESDAY)).toMatchObject({
       google_reviews_to_match: { status: "not_built" },
       new_sign_ups: { status: "not_built" },

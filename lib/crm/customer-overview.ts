@@ -48,6 +48,13 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "bought",
   "last_readjusted_at",
   "search_text",
+  "review_requested_at",
+  "review_link_clicked_at",
+  "google_review_rating",
+  "google_reviewed_at",
+  "shop_reviews_count",
+  "shop_review_avg_rating",
+  "review_rating",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -121,6 +128,23 @@ export interface CustomerOverviewRow {
   last_readjusted_at: string | null;
   /** `lower(email first last)`: the list's search reads only this. */
   search_text: string;
+  /**
+   * CRM slice 12: *asked on*, the earlier send of their **Review request**
+   * (email or WhatsApp); null when nothing went out.
+   */
+  review_requested_at: string | null;
+  /** The first click on their review link: a hint, never proof of a review. */
+  review_link_clicked_at: string | null;
+  /** Their **Linked Google review**'s stars (Staff-confirmed); null without one, or when Google gave none. */
+  google_review_rating: number | null;
+  /** That review's own date; set exactly when a Google review is linked. */
+  google_reviewed_at: string | null;
+  /** Their **Shop reviews**, whatever the moderation status; 0 when none. */
+  shop_reviews_count: number;
+  /** Their average shop rating, to one decimal; null with none. */
+  shop_review_avg_rating: number | null;
+  /** The Google rating when linked, else the shop average rounded: what the Rating filter reads. */
+  review_rating: number | null;
 }
 
 /** Display name, or null when the Customer has none. */

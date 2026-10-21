@@ -19,6 +19,12 @@ import { escapeLikePattern } from "@/lib/supabase/like-pattern";
  * file. *Email verified* is the Account filter: an account is bound by the
  * email they signed in with, so *Signed up* means exactly that.
  *
+ * CRM slice 12 adds reviews: the Google review (linked, asked but not
+ * linked, not asked), Shop reviews, and the rating, so a Segment such as
+ * *"reviewed us 5★ on Google"* is one link. Review data may choose any CRM
+ * list except who gets a Review request (README, sixth hazard): that job never
+ * reads these filters or their columns.
+ *
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
  *
@@ -50,6 +56,27 @@ export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
  */
 export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
 export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
+
+/**
+ * The Google review (CRM slice 12), each Customer in exactly one: a **Linked
+ * Google review** (`linked`); asked, with none linked (`asked`); neither
+ * (`not-asked`). Linking needs a Staff action, so *asked* also holds people
+ * who reviewed and are not matched yet.
+ */
+export const GOOGLE_REVIEW_FILTERS = ["all", "linked", "asked", "not-asked"] as const;
+export type GoogleReviewFilter = (typeof GOOGLE_REVIEW_FILTERS)[number];
+
+/** Left a **Shop review** or not (`shop_reviews_count`). */
+export const SHOP_REVIEW_FILTERS = ["all", "yes", "no"] as const;
+export type ShopReviewFilter = (typeof SHOP_REVIEW_FILTERS)[number];
+
+/**
+ * The rating the Review column shows (`review_rating`): the linked Google
+ * review's stars, else the shop average rounded. With *Google review: linked*
+ * it is the Google rating alone.
+ */
+export const RATING_FILTERS = ["5", "4-up", "3-down"] as const;
+export type RatingFilter = (typeof RATING_FILTERS)[number];
 
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
@@ -104,6 +131,12 @@ export interface CustomerFilters {
   readjusted: ReadjustedFilter | null;
   /** `total_spent` (platform Orders) at least this; null for no filter. */
   min_spend: number | null;
+  /** The Google review (CRM slice 12). */
+  google_review: GoogleReviewFilter;
+  /** Left a Shop review. */
+  shop_review: ShopReviewFilter;
+  /** The review rating; null for no filter. */
+  rating: RatingFilter | null;
   sort: CustomerSort;
   page: number;
   limit: number;
@@ -122,6 +155,9 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   last_order: null,
   readjusted: null,
   min_spend: null,
+  google_review: "all",
+  shop_review: "all",
+  rating: null,
   sort: "newest",
   page: 1,
   limit: 20,
@@ -173,6 +209,9 @@ const PARAM_SCHEMAS = {
     .regex(/^\d{1,7}(\.\d{1,2})?$/)
     .transform(Number)
     .pipe(z.number().positive()),
+  google_review: z.enum(GOOGLE_REVIEW_FILTERS),
+  shop_review: z.enum(SHOP_REVIEW_FILTERS),
+  rating: z.enum(RATING_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
   // An oversized limit is capped, as before, rather than dropped.
@@ -271,6 +310,9 @@ export function customerFilterParams(
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
   if (f.min_spend != null) out.set("min_spend", String(Math.round(f.min_spend * 100) / 100));
+  if (f.google_review !== "all") out.set("google_review", f.google_review);
+  if (f.shop_review !== "all") out.set("shop_review", f.shop_review);
+  if (f.rating) out.set("rating", f.rating);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
     out.set("page", String(f.page));
@@ -302,6 +344,18 @@ export const BOUGHT_LABELS: Record<BoughtFilter, string> = {
   accessory: "Accessories",
 };
 
+export const GOOGLE_REVIEW_LABELS: Record<Exclude<GoogleReviewFilter, "all">, string> = {
+  linked: "Google review linked",
+  asked: "Asked, no Google review linked",
+  "not-asked": "Not asked, no Google review",
+};
+
+export const RATING_LABELS: Record<RatingFilter, string> = {
+  "5": "Rated 5★",
+  "4-up": "Rated 4★ and up",
+  "3-down": "Rated 3★ and below",
+};
+
 const spend = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
 /** How each filter reads in the summary above the list. */
@@ -321,6 +375,9 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
       : `Last order over ${monthsLabel(v.months)} ago`,
   readjusted: (v) => (v === "ever" ? "Re-adjusted" : "Never re-adjusted"),
   min_spend: (v) => `Spent at least ${spend.format(v)}`,
+  google_review: (v) => GOOGLE_REVIEW_LABELS[v as Exclude<GoogleReviewFilter, "all">],
+  shop_review: (v) => (v === "yes" ? "Left a shop review" : "No shop review"),
+  rating: (v) => RATING_LABELS[v],
 };
 
 function monthsLabel(months: number): string {
@@ -341,12 +398,13 @@ export interface CustomerListQuery {
   ilike(column: string, pattern: string): this;
   overlaps(column: string, value: string): this;
   contains(column: string, value: string[]): this;
-  eq(column: string, value: boolean | string): this;
+  eq(column: string, value: boolean | string | number): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs", value: string | null): this;
   gt(column: string, value: number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
+  lte(column: string, value: number): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -412,6 +470,16 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.readjusted === "ever") q = q.not("last_readjusted_at", "is", null);
   if (filters.readjusted === "never") q = q.is("last_readjusted_at", null);
   if (filters.min_spend != null) q = q.gte("total_spent", filters.min_spend);
+
+  // CRM slice 12. Each Customer is in exactly one Google review value.
+  if (filters.google_review === "linked") q = q.not("google_reviewed_at", "is", null);
+  if (filters.google_review === "asked") q = q.not("review_requested_at", "is", null).is("google_reviewed_at", null);
+  if (filters.google_review === "not-asked") q = q.is("review_requested_at", null).is("google_reviewed_at", null);
+  if (filters.shop_review === "yes") q = q.gt("shop_reviews_count", 0);
+  if (filters.shop_review === "no") q = q.eq("shop_reviews_count", 0);
+  if (filters.rating === "5") q = q.eq("review_rating", 5);
+  if (filters.rating === "4-up") q = q.gte("review_rating", 4);
+  if (filters.rating === "3-down") q = q.lte("review_rating", 3);
 
   switch (filters.sort) {
     case "name-asc":

@@ -45,6 +45,7 @@ function recorder() {
     gt: record("gt"),
     gte: record("gte"),
     lt: record("lt"),
+    lte: record("lte"),
     order: record("order"),
   } as CustomerListQuery;
   return { q, calls };
@@ -360,6 +361,66 @@ describe("Contact status filters (CRM slice 11)", () => {
   });
 });
 
+describe("Review filters (CRM slice 12)", () => {
+  it("maps the Google review to the two derived dates, so each Customer is in exactly one value", () => {
+    expect(query("google_review=linked").calls).toEqual([["not", "google_reviewed_at", "is", null], newest]);
+    expect(query("google_review=asked").calls).toEqual([
+      ["not", "review_requested_at", "is", null],
+      ["is", "google_reviewed_at", null],
+      newest,
+    ]);
+    expect(query("google_review=not-asked").calls).toEqual([
+      ["is", "review_requested_at", null],
+      ["is", "google_reviewed_at", null],
+      newest,
+    ]);
+  });
+
+  it("maps Shop review yes and no to the count, and the three ratings to review_rating", () => {
+    expect(query("shop_review=yes").calls).toEqual([["gt", "shop_reviews_count", 0], newest]);
+    expect(query("shop_review=no").calls).toEqual([["eq", "shop_reviews_count", 0], newest]);
+    expect(query("rating=5").calls).toEqual([["eq", "review_rating", 5], newest]);
+    expect(query("rating=4-up").calls).toEqual([["gte", "review_rating", 4], newest]);
+    expect(query("rating=3-down").calls).toEqual([["lte", "review_rating", 3], newest]);
+  });
+
+  it("makes *reviewed us 5★ on Google* one link that reads back the same, for a Segment", () => {
+    const params = customerFilterParams({ google_review: "linked", rating: "5" });
+    expect(params.toString()).toBe("google_review=linked&rating=5");
+    const { filters, ignored } = parseCustomerFilters(params);
+    expect(ignored).toEqual([]);
+    expect(customerFiltersSchema.parse({ google_review: "linked", rating: "5" })).toEqual({
+      google_review: "linked",
+      rating: "5",
+    });
+    expect(describeCustomerFilters(filters)).toEqual([
+      { key: "google_review", label: "Google review linked" },
+      { key: "rating", label: "Rated 5★" },
+    ]);
+  });
+
+  it("drops an unknown value and names it, and labels the rest", () => {
+    const { filters, ignored } = parseCustomerFilters(
+      new URLSearchParams("google_review=maybe&shop_review=no&rating=4-up"),
+    );
+    expect(ignored).toEqual(["google_review"]);
+    expect(filters).toMatchObject({ google_review: "all", shop_review: "no", rating: "4-up" });
+    expect(describeCustomerFilters(filters)).toEqual([
+      { key: "shop_review", label: "No shop review" },
+      { key: "rating", label: "Rated 4★ and up" },
+    ]);
+    expect(describeCustomerFilters(parseCustomerFilters(new URLSearchParams("google_review=asked&rating=3-down")).filters)).toEqual([
+      { key: "google_review", label: "Asked, no Google review linked" },
+      { key: "rating", label: "Rated 3★ and below" },
+    ]);
+  });
+
+  it("clears each with Clear all", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("google_review=not-asked&shop_review=yes&rating=5"));
+    expect(clearCustomerFilters(filters)).toMatchObject({ google_review: "all", shop_review: "all", rating: null });
+  });
+});
+
 describe("on the real Supabase query builder", () => {
   // No request is sent: the builder's URL is what PostgREST would receive.
   const builder = () =>
@@ -386,6 +447,14 @@ describe("on the real Supabase query builder", () => {
 
   it("sends re-adjusted ever as not.is.null", () => {
     expect(urlOf("readjusted=ever").searchParams.get("last_readjusted_at")).toBe("not.is.null");
+  });
+
+  it("sends *reviewed us 5★ on Google* as two plain filters (CRM slice 12)", () => {
+    const url = urlOf("google_review=linked&rating=5");
+    expect(url.searchParams.get("google_reviewed_at")).toBe("not.is.null");
+    expect(url.searchParams.get("review_rating")).toBe("eq.5");
+    expect(urlOf("rating=3-down").searchParams.get("review_rating")).toBe("lte.3");
+    expect(url.searchParams.has("or")).toBe(false);
   });
 });
 
@@ -437,13 +506,16 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "bought",
       "followups",
       "google",
+      "google_review",
       "last_order",
       "limit",
       "min_spend",
       "mobile",
       "page",
+      "rating",
       "readjusted",
       "search",
+      "shop_review",
       "sort",
       "source",
       "tags",
@@ -458,11 +530,14 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "bought",
       "followups",
       "google",
+      "google_review",
       "last_order",
       "min_spend",
       "mobile",
+      "rating",
       "readjusted",
       "search",
+      "shop_review",
       "source",
       "tags",
       "voucher",

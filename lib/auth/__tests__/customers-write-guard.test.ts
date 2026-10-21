@@ -214,6 +214,10 @@ describe("Customers write paths check customers-edit", () => {
         "app/api/shop/customers/[id]/followups/route.ts POST",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts PATCH",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts DELETE",
+        // CRM 12: linking, unlinking and rejecting a Google review match.
+        "app/api/settings/customers/google-reviews/[reviewId]/link/route.ts POST",
+        "app/api/settings/customers/google-reviews/[reviewId]/link/route.ts DELETE",
+        "app/api/settings/customers/google-reviews/[reviewId]/rejections/route.ts POST",
       ]),
     );
     // GET handlers are reads: they stay on `customers` and are not listed.

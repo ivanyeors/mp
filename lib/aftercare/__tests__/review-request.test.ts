@@ -19,6 +19,7 @@ import {
   type ReviewOrderRow,
 } from "@/lib/aftercare/review-request";
 import { applyAftercareSettingsPatch, parseAftercareSettings } from "@/lib/aftercare/settings";
+import { codeOf, importClosure } from "@/lib/crm/__tests__/import-closure";
 
 /**
  * The Review request's pure rules (CRM slice 07): the timing, who is a
@@ -217,6 +218,44 @@ describe("who is a candidate", () => {
       expect(src, table).not.toMatch(new RegExp(`from\\(["']${table}["']\\)`));
     }
     expect(src).not.toMatch(/refund_request_status|returned_quantity|amount_refunded|internal_notes/);
+  });
+
+  /**
+   * CRM slice 12's check (README, sixth hazard): reviews now live on every
+   * Customer, so the request must never be steered by one. Everything the job
+   * runs, followed through its imports, never reads a review table, never
+   * embeds one in a select (a PostgREST join), never calls the matching
+   * function, and never reads the Customer overview, whose review columns
+   * (`google_review_rating`, `review_rating`, …) the CRM lists use.
+   */
+  it("reads no review data anywhere in the job: no join to product_reviews, google_reviews or customer_google_reviews", () => {
+    const reached = importClosure(["lib/aftercare/job.ts", "lib/aftercare/review-request-server.ts"]);
+    expect(reached).toEqual(expect.arrayContaining(["lib/aftercare/review-request.ts", "lib/aftercare/channels.ts"]));
+    const REVIEW_DATA = [
+      "product_reviews",
+      "google_reviews",
+      "customer_google_reviews",
+      "customer_google_review_rejections",
+      "admin_google_reviews_unlinked",
+      "google_review_match_candidates",
+      "admin_customer_overview",
+      "google_review_rating",
+      "google_reviewed_at",
+      "shop_reviews_count",
+      "shop_review_avg_rating",
+      "review_rating",
+    ];
+    for (const file of reached) {
+      const code = codeOf(file);
+      for (const name of REVIEW_DATA) {
+        // A table read, a join embedded in a select (`table(…)`, `alias:table!inner(…)`), an rpc, or a column.
+        expect(code, `${file} reads ${name}`).not.toMatch(new RegExp(`["'\`:,\\s]${name}\\b`));
+      }
+    }
+    // Nor does it reach the CRM's review code.
+    for (const file of ["lib/crm/review-match.ts", "lib/crm/google-review-match-server.ts", "lib/crm/google-review-links.ts", "lib/crm/reviews.ts"]) {
+      expect(reached).not.toContain(file);
+    }
   });
 });
 

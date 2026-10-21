@@ -52,6 +52,7 @@ import { ContactCard, FromShopifyCard } from "./customer-account-cards";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
+import { CustomerReviewsCard } from "./customer-reviews-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -765,6 +766,9 @@ export function CustomerDetailClient({
 
                     {/* Aftercare switches (CRM slice 13), beside the Contact card: they change things */}
                     <AftercareCard customerId={customer.id} canEdit={canEdit} />
+
+                    {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
+                    <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>

@@ -47,6 +47,13 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   bought: ["premium"],
   last_readjusted_at: null,
   search_text: "ana@x.test ana tan",
+  review_requested_at: null,
+  review_link_clicked_at: null,
+  google_review_rating: null,
+  google_reviewed_at: null,
+  shop_reviews_count: 0,
+  shop_review_avg_rating: null,
+  review_rating: null,
   ...over,
 });
 

@@ -2,6 +2,7 @@ import { accountAdapter } from "@/lib/crm/timeline/sources/account";
 import { aftercareAdapter } from "@/lib/crm/timeline/sources/aftercare";
 import { claimLinksAdapter } from "@/lib/crm/timeline/sources/claim-links";
 import { followUpsAdapter } from "@/lib/crm/timeline/sources/followups";
+import { googleReviewsAdapter } from "@/lib/crm/timeline/sources/google-reviews";
 import { notesAdapter } from "@/lib/crm/timeline/sources/notes";
 import { orderEmailsAdapter, ordersAdapter } from "@/lib/crm/timeline/sources/orders";
 import { readjustmentsAdapter } from "@/lib/crm/timeline/sources/readjustments";
@@ -16,7 +17,7 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
  * The timeline is merged when it is read from the tables that already record
  * each fact: nothing is copied, so a new source needs no backfill.
  *
- * HOW TO ADD A SOURCE (still to come: CRM 08 check-ups, 12 reviews;
+ * HOW TO ADD A SOURCE (still to come: CRM 08 check-ups;
  * migration 07 consent, 08 campaign sends):
  *
  * 1. Write `sources/<name>.ts` exporting one `TimelineAdapter`:
@@ -44,6 +45,8 @@ export const TIMELINE_ADAPTERS: readonly TimelineAdapter[] = [
   readjustmentsAdapter,
   returnsAdapter,
   reviewsAdapter,
+  // CRM 12: a Linked Google review, at its own date.
+  googleReviewsAdapter,
   reviewRequestsAdapter,
   aftercareAdapter,
   accountAdapter,

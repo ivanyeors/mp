@@ -50,7 +50,7 @@ vi.mock("@/lib/aftercare/card-server", async (orig) => {
     ...real,
     readAftercareCard: async (admin: Parameters<typeof real.readAftercareSettings>[0]) => ({
       settings: await real.readAftercareSettings(admin),
-      reviewRequests: { today: { candidates: 2 }, last30: { asked: 0, opened: 0, email: 0, whatsapp: 0 }, googleReviewsLinked: null },
+      reviewRequests: { today: { candidates: 2 }, last30: { asked: 0, opened: 0, email: 0, whatsapp: 0 }, googleReviewsLinked: 0 },
       whatsapp: { senderConfigured: false, reviewTemplate: null },
       openStopRequests: 0,
     }),

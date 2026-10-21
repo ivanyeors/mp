@@ -17,20 +17,28 @@ import {
 import {
     BOUGHT_FILTERS,
     BOUGHT_LABELS,
+    GOOGLE_REVIEW_FILTERS,
+    GOOGLE_REVIEW_LABELS,
+    RATING_FILTERS,
+    RATING_LABELS,
     customerFiltersSchema,
     describeCustomerFilters,
     type CustomerFilterKey,
     type CustomerFilterParam,
     type CustomerListFilters,
+    type GoogleReviewFilter,
     type LastOrderFilter,
+    type RatingFilter,
     type ReadjustedFilter,
+    type ShopReviewFilter,
     type VoucherFilter,
 } from "@/lib/crm/customer-filters";
 
 /**
  * The Customers list's CRM filters (CRM slice 04): what they bought, when
  * they last ordered, whether they have been re-adjusted, what they spent, and
- * tags; and the Welcome-back voucher (migration slice 06). Values go through
+ * tags; the Welcome-back voucher (migration slice 06); and reviews (CRM slice
+ * 12: the Google review, Shop reviews, the rating). Values go through
  * the list's one schema (lib/crm/customer-filters.ts), so a control can never
  * put into the URL what a link could not.
  */
@@ -183,6 +191,70 @@ export function CustomerFiltersPanel({
                 </div>
                 <TagsField tags={filters.tags} onChange={(tags) => onChange({ tags })} />
             </div>
+
+            {/* Reviews (CRM slice 12): a Google review counts once Staff have linked it. */}
+            <fieldset className="min-w-0 space-y-3 sm:col-span-2 lg:col-span-4">
+                <legend className="mb-1 text-sm font-medium">Reviews</legend>
+                <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-google-review`}>Google review</Label>
+                        <Select
+                            value={filters.google_review}
+                            onValueChange={(v) => onChange({ google_review: v as GoogleReviewFilter })}
+                        >
+                            <SelectTrigger id={`${id}-google-review`} className="w-full" aria-label="Google review">
+                                <SelectValue placeholder="Any" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Any</SelectItem>
+                                {GOOGLE_REVIEW_FILTERS.filter((v) => v !== "all").map((v) => (
+                                    <SelectItem key={v} value={v}>
+                                        {GOOGLE_REVIEW_LABELS[v]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-shop-review`}>Shop review</Label>
+                        <Select
+                            value={filters.shop_review}
+                            onValueChange={(v) => onChange({ shop_review: v as ShopReviewFilter })}
+                        >
+                            <SelectTrigger id={`${id}-shop-review`} className="w-full" aria-label="Shop review">
+                                <SelectValue placeholder="Any" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Any</SelectItem>
+                                <SelectItem value="yes">Left a shop review</SelectItem>
+                                <SelectItem value="no">No shop review</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-rating`}>Rating</Label>
+                        <Select
+                            value={filters.rating ?? "any"}
+                            onValueChange={(v) => onChange({ rating: v === "any" ? null : (v as RatingFilter) })}
+                        >
+                            <SelectTrigger id={`${id}-rating`} className="w-full" aria-label="Rating">
+                                <SelectValue placeholder="Any rating" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Any rating</SelectItem>
+                                {RATING_FILTERS.map((v) => (
+                                    <SelectItem key={v} value={v}>
+                                        {RATING_LABELS[v]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                    The rating is the linked Google review&apos;s, or else their shop reviews&apos; average.
+                </p>
+            </fieldset>
         </div>
     );
 }

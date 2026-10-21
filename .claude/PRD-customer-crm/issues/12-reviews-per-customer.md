@@ -131,17 +131,161 @@ linked. Shop reviews are already on it.
 
 ## Acceptance criteria
 
-- [ ] vitest covers `suggestGoogleReviewMatches`:
+- [x] vitest covers `suggestGoogleReviewMatches`:
       - full name, first name plus initial, and a unique first name;
       - a shared first name gives no suggestion;
       - an anonymous reviewer gives none;
       - a rejected pair is never re-suggested;
       - a click strengthens, and timing alone never suggests.
-- [ ] A Google review can be linked to at most one Customer. Linking a second time is refused
+- [x] A Google review can be linked to at most one Customer. Linking a second time is refused
       with the current link shown.
-- [ ] Nothing links a Google review without a Staff action. No code path inserts into
+- [x] Nothing links a Google review without a Staff action. No code path inserts into
       `customer_google_reviews` from the sync.
-- [ ] The Review column and filters match the tables, queried by hand on fixtures.
-- [ ] Slice 07's candidate query has no join to `product_reviews`, `google_reviews` or
+- [x] The Review column and filters match the tables, queried by hand on fixtures.
+- [x] Slice 07's candidate query has no join to `product_reviews`, `google_reviews` or
       `customer_google_reviews`. This is asserted in a check.
 - [ ] `./scripts/graphify update .` is run in the same commit.
+- [ ] The Google side works on real synced reviews: suggestions, *Link*, the Telegram line — _not
+      yet: HITL, needs the Google review sync live (`PRD-google-review-replies/OPS-CHECKLIST.md`,
+      steps 1–4)_
+
+## Build notes
+
+Built on `claude/shopify-migration-plan-izv7fo` @ `2c472f6` (CRM 03, 04, 06, 07, 10, 11, 13 and
+14 merged).
+
+**What was built**
+
+- **Matching, pure:** `lib/crm/review-match.ts`. `suggestGoogleReviewMatches(review,
+  candidates)` applies the windows (asked within 45 days, delivered within 90, a click within 3
+  strengthens), the three name rules, and the *never* rules (anonymous, rejected, already linked
+  elsewhere); at most three, each with its reason. `nameTokens` normalises case, accents, spacing
+  and punctuation. Full name matches in either order (*Tan Mei Ling* is *Mei Ling Tan*).
+- **Reads:** `lib/crm/google-review-match-server.ts`. *Google reviews to match*, the Reviews tab
+  (`readReviewTab`), the Customer's Reviews card (`readCustomerReviews`), the Telegram card's
+  link (`possibleCustomerMatchLink`, never throws), and the counts. Reads are paged past
+  PostgREST's 1000-row limit.
+- **Writes, the only ones:** `lib/crm/google-review-links.ts` (link, unlink, *Not them*), each one
+  SQL function, called only from three `customers-edit` routes, each audited with ids and no
+  review text:
+  - `POST|DELETE /api/settings/customers/google-reviews/[reviewId]/link` (409 with `current` on
+    a second link);
+  - `POST /api/settings/customers/google-reviews/[reviewId]/rejections`.
+- **Reads routes (`customers`):** `GET /api/settings/customers/google-reviews?scope=&page=` and
+  `GET /api/shop/customers/[id]/reviews`.
+- **Admin Panel:**
+  - Customers → **Reviews** tab (`?view=reviews`, `reviews-tab.tsx`): *To match* and *All
+    unlinked*, each review with its stars, name, date, excerpt and reply state, its suggestions
+    with *Link* / *Not them*, and *Find customer…* (the list's own search) to link by hand;
+  - the **Reviews card** on the Customer detail (`[id]/customer-reviews-card.tsx`): the linked
+    Google review in full with reply state and who linked it (*Unlink*), shop reviews with
+    product and status, the review request (asked on, by which channel, clicked or not), and
+    *Possible Google review: ★5 by "Jane T." on 3 Nov: Link? Not them?*;
+  - the **Review column** on the list (strongest fact first, the rest muted) and three filters in
+    the Filters panel: *Google review* (linked / asked, none linked / not asked), *Shop review*
+    (yes / no), *Rating* (5★ / 4★ and up / 3★ and below). Shared parts:
+    `review-match-parts.tsx`.
+- **Seams filled:** `countGoogleReviewsToMatch` (CRM 14), `WEEKLY_SUMMARY_SOURCES` gains
+  `googleReviewsLinked` (only in a week with any), `countLinkedGoogleReviewsOfRequested` (CRM 07's
+  Aftercare card, now *"…linked to a customer we asked, so far: N"*).
+- **Telegram:** `renderGoogleReviewCard(row, { possibleCustomerMatch })` adds *"👤 Possible
+  customer match: confirm in the Admin Panel: <link>"* while a suggestion exists, with no name.
+  The sync (first send and refreshes) and the Telegram handler's re-render compute it.
+- **Timeline:** `lib/crm/timeline/sources/google-reviews.ts`, kind `google_review.written`, under
+  the Reviews chip, at the review's own date once linked; stars and reply state, no text.
+
+**Migrations**
+
+- `20261020134000_customer_google_reviews.sql`: the two tables as specified (plus indexes on
+  `customer_id` and `linked_at`); `crm_name_tokens()` (the SQL twin of `nameTokens`);
+  `google_review_match_candidates(review ids, customer)`; `link_google_review()`,
+  `unlink_google_review()`, `reject_google_review_match()`; the view
+  `admin_google_reviews_unlinked`. All server-only: RLS on, no policy, revoked from anon and
+  authenticated; the functions run for the service role only.
+- `20261020200500_customer_overview_reviews.sql`: `admin_customer_overview` redefined with every
+  column of `20261020200300` plus `review_requested_at`, `review_link_clicked_at`,
+  `google_review_rating`, `google_reviewed_at`, `shop_reviews_count`, `shop_review_avg_rating`,
+  and `review_rating`.
+
+**Database check** (`mp_c12`, Postgres 16 with the Supabase stubs): every migration applies.
+With fixtures, in psql:
+
+- candidates: Jane asked 9 days before (her WhatsApp send, the earlier), the two Bobs delivered 20
+  days before a review signed "Bob", José matched across accents, Jane Old's 200-day-old delivery
+  and the anonymous review left out; one Customer's call returns the other candidates of the
+  same review;
+- `link_google_review` links once; a second call (another Customer) changes nothing and returns
+  the holder; a bad `how` and an unknown Customer are refused; linking a rejected pair clears the
+  rejection; unlinking records the pair as rejected, and a second unlink returns false; *Not
+  them* on a linked pair returns `linked`;
+- a deleted Google review takes its link with it; a deleted profile nulls `linked_by`; the only
+  trigger on `google_reviews` is `updated_at`;
+- anon and authenticated can read neither table nor the view, and can run none of the functions;
+  service_role can;
+- the overview's seven columns, and every Review filter as `applyCustomerFilters` sends it,
+  against the tables: *Google review* partitions all 7 fixture Customers; Nora (claimed, email
+  failed) is not asked; *rating=5* is Jane (Google 5) and Bob Lee (shop 4 and 5); *reviewed us 5★
+  on Google* is Jane alone.
+
+**Tests added**
+
+- `lib/crm/__tests__/review-match.test.ts`: every case of the first criterion, plus ordering, the
+  cap of three, either name order, and the separators matching the SQL.
+- `lib/crm/__tests__/google-review-match-server.test.ts`, with an in-memory stand-in for the SQL
+  (`google-review-fake.ts`): the to-match list and count, paging, link once and show the holder,
+  unlink and reject, the Telegram link naming nobody, the Reviews card before and after a link,
+  the counts and the Review column's facts.
+- `lib/crm/__tests__/google-review-links-guard.test.ts`: one SQL insert into
+  `customer_google_reviews`, inside `link_google_review`; no trigger writes it; the functions run
+  for the service role only; one app module calls it, imported only by `customers-edit` routes;
+  and nothing the sync, its webhook, either cron, the Telegram handler or the backfill script
+  imports reaches that module (`import-closure.ts`).
+- The sixth hazard's check, extended in `lib/aftercare/__tests__/review-request.test.ts`: every
+  file the review-request job reaches through its imports reads no review table, embeds none in a
+  select, calls no matching function, and never reads the Customer overview or its review
+  columns.
+- `app/api/settings/customers/__tests__/google-reviews-routes.test.ts`: permissions (see on
+  `customers`, change on `customers-edit`), 409 with the holder, audit with ids only, manual
+  links, *Not them*, unlink.
+- `app/[lang]/settings/customers/__tests__/reviews-render.test.tsx`: the column, the filters in the
+  panel, the tab, and the card with and without `customers-edit`.
+- Extended: the filters (`customer-filters.test.ts`), the Telegram job's weekly summary, the card
+  line (`cards.test.ts`), the sync (`google-sync.test.ts`), the timeline route fixture, the write
+  guard's list, and three list fixtures for the new overview columns.
+- The shared fake admin (`lib/supabase/__tests__/fake-admin.ts`) now applies every `order` as a
+  further sort key, as PostgREST does (it kept only the last), and supports `range`.
+
+**Deviations**
+
+- **`review_rating`, a seventh overview column.** The Rating filter must read one value; without
+  it, "4★ and up" would need an `.or()` across the Google and shop columns (ADR 0027 (d)). It is
+  the linked Google rating, else the shop average rounded, and it is what the column shows.
+- **A *5★* rating value**, beside *4★ and up* and *3★ and below*, so *"reviewed us 5★ on
+  Google"* is exactly one link (`google_review=linked&rating=5`).
+- **The *Google review* filter is a partition.** *Not asked* means neither asked nor linked, so
+  each Customer is in exactly one value.
+- **Shop reviews count whatever their moderation status**: the customer wrote them. The card
+  shows the status.
+- **What *Google reviews to match* counts.** The list (and the daily Telegram update) is the
+  unlinked reviews with at least one suggestion. Every other unlinked review (anonymous, never
+  asked, backlog) is on the tab's *All unlinked* list with *Find customer…*, and is not counted:
+  otherwise the update would post every day for years-old reviews nobody can match.
+- **A first name is unique among every candidate in the windows, rejected ones included**: a name
+  two people share stays ambiguous after Staff rule one out.
+- **Unlinking also records *Not them*** for that pair, so it is not suggested again; linking the
+  pair by hand later clears it.
+- **A Customer already linked to another review is not suggested** (one review per Google
+  account); they can still be linked by hand.
+- **Candidates come from SQL, prefiltered by a shared name token** (`crm_name_tokens`), so the
+  rows stay small without a name-blind 1000-row read; the pure function still decides, and every
+  rule it has needs a shared token.
+- **The Aftercare card's count is all-time**, and counts Customers (one review per Google
+  account), so its wording says *so far*.
+
+**Left for ops or the owner**
+
+1. Apply the two migrations.
+2. The Google side needs the Google review sync live (OPS-CHECKLIST steps 1–4). Until then the
+   tab lists nothing, the column shows *Asked* and *Clicked* only, and the daily update posts
+   nothing.
+3. Once reviews sync, check a few suggestions by hand before trusting the daily update.

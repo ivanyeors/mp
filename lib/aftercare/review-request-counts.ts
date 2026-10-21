@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { countLinkedReviewsOfAsked } from "@/lib/crm/google-review-match-server";
 import { REVIEW_REQUEST_TEMPLATE } from "./review-request";
 
 export type ReviewRequestWindow = { from: string; to: string };
@@ -60,12 +61,10 @@ export async function countReviewRequestSends(
 }
 
 /**
- * SEAM — CRM slice 12. Google reviews Staff linked to a Customer who was sent
- * a review request (`customer_google_reviews` joined to
- * `customer_review_requests`). Null until that table exists; the Aftercare card
- * says so. Slice 12 replaces the body with a `head: true` count.
+ * CRM slice 12. Customers we sent a Review request who have a **Linked Google
+ * review**: a `head: true` count on the Customer overview, where both are
+ * derived (`review_requested_at`, `google_reviewed_at`).
  */
-export async function countLinkedGoogleReviewsOfRequested(admin: SupabaseClient): Promise<number | null> {
-  void admin;
-  return null;
+export async function countLinkedGoogleReviewsOfRequested(admin: SupabaseClient): Promise<number> {
+  return countLinkedReviewsOfAsked(admin);
 }
