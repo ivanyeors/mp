@@ -215,6 +215,9 @@ describe("Customers write paths check customers-edit", () => {
         "app/api/shop/customers/[id]/followups/route.ts POST",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts PATCH",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts DELETE",
+        // CRM 05: saving a Segment, and updating, renaming or archiving one.
+        "app/api/settings/customers/segments/route.ts POST",
+        "app/api/settings/customers/segments/[segmentId]/route.ts PATCH",
       ]),
     );
     // GET handlers are reads: they stay on `customers` and are not listed.

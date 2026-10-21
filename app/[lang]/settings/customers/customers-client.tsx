@@ -53,8 +53,15 @@ import {
     type SourceFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
+import {
+    chosenSegmentFilters,
+    sameSegmentFilters,
+    segmentParams,
+    type CustomerSegment,
+} from "@/lib/crm/segment-rules";
 import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
 import { MigrationCard } from "./migration-card";
+import { SegmentsRow } from "./segments-row";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -184,6 +191,8 @@ export function CustomersClient({
     initialFilters,
     ignoredFilters = [],
     migration = null,
+    initialSegments,
+    canEdit = false,
 }: {
     initialData?: CustomersInitialData;
     /** The filters the page's URL asked for; `initialData` is page 1 of them. */
@@ -192,6 +201,10 @@ export function CustomersClient({
     ignoredFilters?: readonly CustomerFilterParam[];
     /** The Migration card's numbers, or null when they could not be read. */
     migration?: MigrationSummary | null;
+    /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
+    initialSegments?: CustomerSegment[];
+    /** `customers-edit`: saving, updating, renaming and archiving Segments. */
+    canEdit?: boolean;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -208,6 +221,13 @@ export function CustomersClient({
     const [page, setPage] = useState(1);
     // Open when a link arrives with a panel filter set, so it shows its controls.
     const [panelOpen, setPanelOpen] = useState(() => PANEL_FILTERS.some((k) => isCustomerFilterActive(filters, k)));
+    // The Segment chosen on this list (CRM slice 05): a Segment's own link
+    // opens with it chosen, so changing a filter offers *Update {name}*.
+    const [segmentId, setSegmentId] = useState<string | null>(() => {
+        const now = segmentParams(filters);
+        if (!Object.keys(now).length) return null;
+        return initialSegments?.find((s) => sameSegmentFilters(s.params, now))?.id ?? null;
+    });
 
     // Data state
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
@@ -266,7 +286,16 @@ export function CustomersClient({
     };
     const clearAll = () => {
         setSearch("");
+        setSegmentId(null);
         applyFilters(clearCustomerFilters);
+    };
+
+    // Choosing a Segment puts exactly its filters on the list, and in the URL;
+    // the list keeps its sort.
+    const chooseSegment = (segment: CustomerSegment) => {
+        setSearch(segment.params.search ?? "");
+        setSegmentId(segment.id);
+        applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
     };
 
     // The Migration card's link: from Shopify, not signed up yet.
@@ -329,6 +358,16 @@ export function CustomersClient({
                     onShowNotSignedUp={showNotSignedUp}
                 />
             )}
+
+            <SegmentsRow
+                initialSegments={initialSegments}
+                canEdit={canEdit}
+                params={segmentParams(filters)}
+                activeId={segmentId}
+                listPath={to("/settings/customers")}
+                onChoose={chooseSegment}
+                onSelect={setSegmentId}
+            />
 
             {/* Toolbar */}
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
