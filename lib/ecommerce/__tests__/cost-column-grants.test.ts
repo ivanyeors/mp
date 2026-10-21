@@ -60,10 +60,19 @@ const cases = [
   { table: "order_items", hidden: ["unit_cost", "total_cost"], roles: ["authenticated"] },
   // account_linked_at / account_last_seen_at (migration slice 12) are not
   // secret, but no customer surface reads them: Staff read them through the
-  // service role, so they stay ungranted until one does.
+  // service role, so they stay ungranted until one does. marketing_email
+  // (migration slice 07) is granted, because the customer is meant to read it;
+  // its source and date are Staff-facing provenance, and are not.
   {
     table: "customers",
-    hidden: ["notes", "tags", "account_linked_at", "account_last_seen_at"],
+    hidden: [
+      "notes",
+      "tags",
+      "account_linked_at",
+      "account_last_seen_at",
+      "marketing_email_source",
+      "marketing_email_updated_at",
+    ],
     roles: ["authenticated"],
   },
   { table: "orders", hidden: ["internal_notes"], roles: ["authenticated"] },

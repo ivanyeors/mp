@@ -14,6 +14,8 @@
  * this list agree.
  */
 
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
+
 /** Every column of `admin_customer_overview`, in the view's order. */
 export const CUSTOMER_OVERVIEW_COLUMNS = [
   "id",
@@ -34,6 +36,8 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "claimed_at",
   "shopify_orders_count",
   "shopify_amount_spent",
+  "marketing_email",
+  "marketing_email_updated_at",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -69,6 +73,10 @@ export interface CustomerOverviewRow {
   claimed_at: string | null;
   shopify_orders_count: number | null;
   shopify_amount_spent: number | null;
+  /** **Marketing consent** (migration slice 07). */
+  marketing_email: MarketingEmailState;
+  /** When it was last set; null while `not_subscribed`. The export day for a Shopify one. */
+  marketing_email_updated_at: string | null;
 }
 
 /** Display name, or null when the Customer has none. */

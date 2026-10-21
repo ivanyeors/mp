@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /**
  * The Customers list's URL parameters, and how they become a query on the
@@ -19,6 +20,16 @@ export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 export const SOURCE_FILTERS = ["all", "shopify", "platform"] as const;
 export type SourceFilter = (typeof SOURCE_FILTERS)[number];
 
+/** *Email consent* (migration slice 07): the Customer's **Marketing consent**. */
+export const CONSENT_FILTERS = ["all", "subscribed", "not-subscribed", "unsubscribed"] as const;
+export type ConsentFilter = (typeof CONSENT_FILTERS)[number];
+
+const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> = {
+  subscribed: "subscribed",
+  "not-subscribed": "not_subscribed",
+  unsubscribed: "unsubscribed",
+};
+
 export const CUSTOMER_SORTS = ["newest", "oldest", "name-asc", "name-desc", "signed-up"] as const;
 export type CustomerSort = (typeof CUSTOMER_SORTS)[number];
 
@@ -31,6 +42,8 @@ export interface CustomerFilters {
   account: AccountFilter;
   /** *From Shopify* is a **Migrated customer**; *Platform* is every other Customer. */
   source: SourceFilter;
+  /** *Email consent*: `marketing_email` on the overview. */
+  consent: ConsentFilter;
   sort: CustomerSort;
   page: number;
   limit: number;
@@ -41,6 +54,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   tags: [],
   account: "all",
   source: "all",
+  consent: "all",
   sort: "newest",
   page: 1,
   limit: 20,
@@ -60,6 +74,7 @@ const PARAM_SCHEMAS = {
   ),
   account: z.enum(ACCOUNT_FILTERS),
   source: z.enum(SOURCE_FILTERS),
+  consent: z.enum(CONSENT_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
   // An oversized limit is capped, as before, rather than dropped.
@@ -120,6 +135,7 @@ export function customerFilterParams(
   if (f.tags.length) out.set("tags", f.tags.join(","));
   if (f.account !== "all") out.set("account", f.account);
   if (f.source !== "all") out.set("source", f.source);
+  if (f.consent !== "all") out.set("consent", f.consent);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
     out.set("page", String(f.page));
@@ -132,7 +148,7 @@ export function customerFilterParams(
 export interface CustomerListQuery {
   or(filters: string): this;
   overlaps(column: string, value: string[]): this;
-  eq(column: string, value: boolean): this;
+  eq(column: string, value: boolean | string): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -153,6 +169,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+  if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
 
   switch (filters.sort) {
     case "name-asc":

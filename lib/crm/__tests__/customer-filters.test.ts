@@ -140,6 +140,32 @@ describe("applyCustomerFilters", () => {
   it("never applies a dropped value", () => {
     expect(query("account=foo&source=bar&sort=baz").calls).toEqual([newest]);
   });
+
+  // Email consent (migration slice 07): the URL's words, the view's states.
+  it.each([
+    ["subscribed", "subscribed"],
+    ["not-subscribed", "not_subscribed"],
+    ["unsubscribed", "unsubscribed"],
+  ])("maps consent=%s to marketing_email = %s", (param, state) => {
+    expect(query(`consent=${param}`).calls).toEqual([["eq", "marketing_email", state], newest]);
+  });
+
+  it("drops an unknown consent, and never passes the database's own spelling through", () => {
+    for (const bad of ["yes", "not_subscribed"]) {
+      const { calls, ignored } = query(`consent=${bad}`);
+      expect(calls).toEqual([newest]);
+      expect(ignored).toEqual(["consent"]);
+    }
+    expect(query("consent=all").calls).toEqual([newest]);
+  });
+
+  it("combines consent with From Shopify", () => {
+    expect(query("source=shopify&consent=subscribed").calls).toEqual([
+      ["eq", "from_shopify", true],
+      ["eq", "marketing_email", "subscribed"],
+      newest,
+    ]);
+  });
 });
 
 describe("customerFilterParams", () => {
@@ -157,6 +183,7 @@ describe("customerFilterParams", () => {
       tags: ["vip"],
       account: "signed-up",
       source: "platform",
+      consent: "unsubscribed",
       sort: "signed-up",
       page: 3,
       limit: 50,
@@ -173,7 +200,16 @@ describe("customerFilterParams", () => {
 
 describe("CUSTOMER_FILTER_PARAMS", () => {
   it("names every key the filters own, and not the page's tab (`view`, CRM slice 14)", () => {
-    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual(["account", "limit", "page", "search", "sort", "source", "tags"]);
+    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
+      "account",
+      "consent",
+      "limit",
+      "page",
+      "search",
+      "sort",
+      "source",
+      "tags",
+    ]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
 });

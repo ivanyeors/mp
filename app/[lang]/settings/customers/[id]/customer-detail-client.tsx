@@ -49,6 +49,7 @@ import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-ca
 import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
 import { AccountCard, FromShopifyCard } from "./customer-account-cards";
 import { AftercareCard } from "./aftercare-card";
+import { MarketingConsentCard } from "./marketing-consent-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -750,6 +751,9 @@ export function CustomerDetailClient({
 
                     {/* Aftercare switches (CRM slice 13) */}
                     <AftercareCard customerId={customer.id} canEdit={canEdit} />
+
+                    {/* Marketing consent, read-only but for a support unsubscribe (migration slice 07) */}
+                    <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>

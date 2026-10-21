@@ -7,6 +7,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { AccountSecurity } from "@/components/auth/account-security";
 import { AftercarePreferences } from "./aftercare-preferences";
+import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
+import { MarketingEmailPreference } from "./marketing-email-preference";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -43,7 +45,11 @@ export default async function AccountProfilePage({
   // Read server-side by the session's own Customer (CRM slice 13), so the card
   // does not depend on the customer's column grants on `customers`. A failed
   // read hides the card rather than the whole Profile.
-  const aftercare = await readProfileAftercare(supabaseAdmin(), customer.id).catch(() => null);
+  // Marketing consent (migration slice 07) is read the same way.
+  const [aftercare, marketingEmail] = await Promise.all([
+    readProfileAftercare(supabaseAdmin(), customer.id).catch(() => null),
+    readMarketingEmailState(supabaseAdmin(), customer.id).catch(() => null),
+  ]);
 
   return (
     <div className="w-full max-w-3xl space-y-8">
@@ -78,6 +84,8 @@ export default async function AccountProfilePage({
           phone={aftercare.phone}
         />
       ) : null}
+
+      {marketingEmail ? <MarketingEmailPreference state={marketingEmail} /> : null}
 
       <Separator />
 

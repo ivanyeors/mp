@@ -87,6 +87,12 @@ export interface EmailCase {
   label: string;
   group: EmailGroup;
   audience: "customer" | "partner" | "staff";
+  /**
+   * Campaign mail (migration slice 08 onwards): rendered with an unsubscribe
+   * link and sent with `List-Unsubscribe`. Every other entry is transactional
+   * and must carry neither (`__tests__/transactional-no-unsubscribe.test.ts`).
+   */
+  campaign?: true;
   /** Pure renderer bound to the shared fixtures. */
   render: (fixture: EmailFixture) => RenderedEmail;
 }

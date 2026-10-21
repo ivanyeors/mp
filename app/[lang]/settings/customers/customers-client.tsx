@@ -38,6 +38,7 @@ import {
     DEFAULT_CUSTOMER_FILTERS,
     customerFilterParams,
     type AccountFilter,
+    type ConsentFilter,
     type CustomerFilters,
     type CustomerSort,
     type SourceFilter,
@@ -85,7 +86,7 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 }
 
 /** The filters the list's URL holds; "from Shopify, no account" is one of them. */
-type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort">;
+type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "consent" | "sort">;
 
 /** The Account status: *Signed up* with its date, or a muted *No account*. */
 function AccountStatus({ customer, compact = false }: { customer: CustomerOverviewRow; compact?: boolean }) {
@@ -135,6 +136,8 @@ export function CustomersClient({
     const [debouncedSearch, setDebouncedSearch] = useState(initialFilters.search ?? "");
     const [account, setAccount] = useState<AccountFilter>(initialFilters.account);
     const [source, setSource] = useState<SourceFilter>(initialFilters.source);
+    // Email consent (migration slice 07).
+    const [consent, setConsent] = useState<ConsentFilter>(initialFilters.consent);
     const [sort, setSort] = useState<CustomerSort>(initialFilters.sort);
     // Kept from the URL as given; the list has no tag control yet (CRM slice 04).
     const [tags] = useState<string[]>(initialFilters.tags);
@@ -166,9 +169,11 @@ export function CustomersClient({
         tags,
         account,
         source,
+        consent,
         sort,
     }).toString();
-    const filtered = account !== "all" || source !== "all" || Boolean(debouncedSearch) || tags.length > 0;
+    const filtered =
+        account !== "all" || source !== "all" || consent !== "all" || Boolean(debouncedSearch) || tags.length > 0;
 
     // Keep the address bar in step without a server round trip, so the list's
     // filters survive a reload and can be shared. Only the filters' own keys
@@ -186,6 +191,10 @@ export function CustomersClient({
     };
     const changeSource = (value: string) => {
         setSource(value as SourceFilter);
+        setPage(1);
+    };
+    const changeConsent = (value: string) => {
+        setConsent(value as ConsentFilter);
         setPage(1);
     };
     const changeSort = (value: string) => {
@@ -289,6 +298,18 @@ export function CustomersClient({
                         <SelectItem value="all">All sources</SelectItem>
                         <SelectItem value="shopify">From Shopify</SelectItem>
                         <SelectItem value="platform">Platform</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={consent} onValueChange={changeConsent}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Email consent">
+                        <SelectValue placeholder="Email consent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any email consent</SelectItem>
+                        <SelectItem value="subscribed">Subscribed</SelectItem>
+                        <SelectItem value="not-subscribed">Not subscribed</SelectItem>
+                        <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
                     </SelectContent>
                 </Select>
 
