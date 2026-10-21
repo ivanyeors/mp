@@ -21,7 +21,8 @@ const balance = renderResultAssignedEmail(sampleResultAssignedBalance());
 describe("renderResultAssignedEmail", () => {
   it("keeps the Authorization hold voice unchanged", () => {
     expect(hold.subject).toBe("Your final build is ready");
-    expect(hold.text).toContain("Review and accept or decline:");
+    expect(hold.text).toContain("Accept or decline on the status page.");
+    expect(hold.text).toContain("Review your final build:");
     expect(hold.html).toContain("Review your final build");
     expect(hold.html).toContain(
       "Accept or decline on the status page. Accept captures payment; Decline releases your hold.",
@@ -67,7 +68,8 @@ describe("renderResultAssignedEmail", () => {
   it("asks an assisted customer to choose their finish, not to pay a total", () => {
     const finish = renderResultAssignedEmail(sampleResultAssignedFinish());
     expect(finish.subject).toBe("Your build is ready — choose your finish");
-    expect(finish.text).toContain("Choose your cover, case and shipping:");
+    expect(finish.text).toContain("Choose your cover, case and shipping to see your final price");
+    expect(finish.text).toContain("Choose your finish:");
     expect(finish.html).toContain("Choose your finish");
     expect(finish.html).toContain("From (before shipping)");
     expect(finish.html).toContain("6D Small");

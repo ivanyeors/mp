@@ -29,6 +29,7 @@ import {
   renderReferralEarnedEmail,
 } from "./partner";
 import {
+  RESULT_EMAIL_COPY,
   renderBalanceDueReminderEmail,
   renderHoldExpiredEmail,
   renderPairedMbolsterRemovedEmail,
@@ -209,7 +210,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Customisation under review",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultHeldEmail(sampleResultHeld(f)),
+    copy: RESULT_EMAIL_COPY.held,
+    render: (f, copy) => renderResultHeldEmail(sampleResultHeld(f), copyFor(RESULT_EMAIL_COPY.held, copy)),
   },
   {
     // Same renderer, no Authorization hold (Assisted customisation). Registered
@@ -220,7 +222,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Assisted submission received",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultHeldEmail(sampleResultHeldNoHold(f)),
+    copy: RESULT_EMAIL_COPY.held,
+    render: (f, copy) => renderResultHeldEmail(sampleResultHeldNoHold(f), copyFor(RESULT_EMAIL_COPY.held, copy)),
   },
   {
     // Same renderer, the unpaid voice: the build was finished and priced and
@@ -230,14 +233,34 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Hold expired — build never paid for",
     group: "results",
     audience: "customer",
-    render: (f) => renderHoldExpiredEmail(sampleHoldExpiredUnpaid(f)),
+    copy: RESULT_EMAIL_COPY.hold_expired,
+    render: (f, copy) => renderHoldExpiredEmail(sampleHoldExpiredUnpaid(f), copyFor(RESULT_EMAIL_COPY.hold_expired, copy)),
+  },
+  {
+    // Never paid for, and no link back: its own closing line.
+    id: "results.hold_expired_unpaid_no_link",
+    label: "Hold expired — never paid for, no link back",
+    group: "results",
+    audience: "customer",
+    copy: RESULT_EMAIL_COPY.hold_expired,
+    render: (f, copy) => renderHoldExpiredEmail({ ...sampleHoldExpiredUnpaid(f), accessToken: null }, copyFor(RESULT_EMAIL_COPY.hold_expired, copy)),
   },
   {
     id: "results.declined",
     label: "Order cancelled by customer",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultDeclinedEmail(sampleResultDeclined(f)),
+    copy: RESULT_EMAIL_COPY.declined,
+    render: (f, copy) => renderResultDeclinedEmail(sampleResultDeclined(f), copyFor(RESULT_EMAIL_COPY.declined, copy)),
+  },
+  {
+    // Same renderer with no way back to the status page: the restart line and button.
+    id: "results.declined_restart",
+    label: "Order cancelled — start again",
+    group: "results",
+    audience: "customer",
+    copy: RESULT_EMAIL_COPY.declined,
+    render: (f, copy) => renderResultDeclinedEmail({ ...sampleResultDeclined(f), accessToken: null }, copyFor(RESULT_EMAIL_COPY.declined, copy)),
   },
   {
     // Same renderer with no hold to release (Assisted / no-card): the money
@@ -247,14 +270,16 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Order cancelled — no card taken",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultDeclinedEmail(sampleResultDeclinedNoHold(f)),
+    copy: RESULT_EMAIL_COPY.declined,
+    render: (f, copy) => renderResultDeclinedEmail(sampleResultDeclinedNoHold(f), copyFor(RESULT_EMAIL_COPY.declined, copy)),
   },
   {
     id: "results.assigned",
     label: "Final build ready",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultAssignedEmail(sampleResultAssigned(f)),
+    copy: RESULT_EMAIL_COPY.assigned,
+    render: (f, copy) => renderResultAssignedEmail(sampleResultAssigned(f), copyFor(RESULT_EMAIL_COPY.assigned, copy)),
   },
   {
     // Same renderer, no Authorization hold (Assisted customisation): the whole
@@ -266,7 +291,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Final build ready — payment due",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultAssignedEmail(sampleResultAssignedBalance(f)),
+    copy: RESULT_EMAIL_COPY.assigned,
+    render: (f, copy) => renderResultAssignedEmail(sampleResultAssignedBalance(f), copyFor(RESULT_EMAIL_COPY.assigned, copy)),
   },
   {
     // Assisted customisation sent from the questionnaire (ADR 0017): fillings
@@ -275,7 +301,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Build ready — choose your finish",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultAssignedEmail(sampleResultAssignedFinish(f)),
+    copy: RESULT_EMAIL_COPY.assigned,
+    render: (f, copy) => renderResultAssignedEmail(sampleResultAssignedFinish(f), copyFor(RESULT_EMAIL_COPY.assigned, copy)),
   },
   {
     // Staff re-configured a build the customer already has, and the total grew
@@ -284,7 +311,17 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Build updated — balance due",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultUpdatedEmail(sampleResultUpdated(f)),
+    copy: RESULT_EMAIL_COPY.updated,
+    render: (f, copy) => renderResultUpdatedEmail(sampleResultUpdated(f), copyFor(RESULT_EMAIL_COPY.updated, copy)),
+  },
+  {
+    // Same renderer when the total did not change: its own preview line.
+    id: "results.updated_same_total",
+    label: "Build updated — same total",
+    group: "results",
+    audience: "customer",
+    copy: RESULT_EMAIL_COPY.updated,
+    render: (f, copy) => renderResultUpdatedEmail({ ...sampleResultUpdated(f), previousTotal: null }, copyFor(RESULT_EMAIL_COPY.updated, copy)),
   },
   {
     // Same renderer, hold still covers the new total — nothing extra to pay.
@@ -294,7 +331,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Build updated — hold covers it",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultUpdatedEmail(sampleResultUpdatedWithinHold(f)),
+    copy: RESULT_EMAIL_COPY.updated,
+    render: (f, copy) => renderResultUpdatedEmail(sampleResultUpdatedWithinHold(f), copyFor(RESULT_EMAIL_COPY.updated, copy)),
   },
   {
     // Same renderer, no Authorization hold (Assisted customisation).
@@ -302,28 +340,32 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Build updated — payment due",
     group: "results",
     audience: "customer",
-    render: (f) => renderResultUpdatedEmail(sampleResultUpdatedBalance(f)),
+    copy: RESULT_EMAIL_COPY.updated,
+    render: (f, copy) => renderResultUpdatedEmail(sampleResultUpdatedBalance(f), copyFor(RESULT_EMAIL_COPY.updated, copy)),
   },
   {
     id: "results.balance_due",
     label: "Build ready — payment due",
     group: "results",
     audience: "customer",
-    render: (f) => renderBalanceDueReminderEmail(sampleBalanceDue(f)),
+    copy: RESULT_EMAIL_COPY.balance_due,
+    render: (f, copy) => renderBalanceDueReminderEmail(sampleBalanceDue(f), copyFor(RESULT_EMAIL_COPY.balance_due, copy)),
   },
   {
     id: "results.balance_due_finish",
     label: "Build ready — finish reminder",
     group: "results",
     audience: "customer",
-    render: (f) => renderBalanceDueReminderEmail(sampleBalanceDueFinish(f)),
+    copy: RESULT_EMAIL_COPY.balance_due,
+    render: (f, copy) => renderBalanceDueReminderEmail(sampleBalanceDueFinish(f), copyFor(RESULT_EMAIL_COPY.balance_due, copy)),
   },
   {
     id: "results.hold_expired",
     label: "Hold expired",
     group: "results",
     audience: "customer",
-    render: (f) => renderHoldExpiredEmail(sampleHoldExpired(f)),
+    copy: RESULT_EMAIL_COPY.hold_expired,
+    render: (f, copy) => renderHoldExpiredEmail(sampleHoldExpired(f), copyFor(RESULT_EMAIL_COPY.hold_expired, copy)),
   },
   {
     // A Paired build (ADR 0026) whose Mbolster ended on its own. Never a "hold
@@ -332,7 +374,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Paired build — Mbolster removed",
     group: "results",
     audience: "customer",
-    render: (f) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemoved(f)),
+    copy: RESULT_EMAIL_COPY.paired_mbolster_removed,
+    render: (f, copy) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemoved(f), copyFor(RESULT_EMAIL_COPY.paired_mbolster_removed, copy)),
   },
   {
     // Same renderer once the Mpillow is assigned: it doubles as the Mpillow's
@@ -341,14 +384,16 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Paired build — Mbolster removed, Mpillow ready",
     group: "results",
     audience: "customer",
-    render: (f) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemovedReady(f)),
+    copy: RESULT_EMAIL_COPY.paired_mbolster_removed,
+    render: (f, copy) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemovedReady(f), copyFor(RESULT_EMAIL_COPY.paired_mbolster_removed, copy)),
   },
   {
     id: "results.restocked",
     label: "Pre-order restocked",
     group: "results",
     audience: "customer",
-    render: (f) => renderRestockEmail(sampleRestock(f)),
+    copy: RESULT_EMAIL_COPY.restocked,
+    render: (f, copy) => renderRestockEmail(sampleRestock(f), copyFor(RESULT_EMAIL_COPY.restocked, copy)),
   },
   {
     id: "readjustment.reschedule",

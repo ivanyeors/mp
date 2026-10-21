@@ -120,7 +120,9 @@ describe("request-payment", () => {
     // one. Two emails under the same subject with different totals is the
     // failure renderResultUpdatedEmail exists to prevent.
     expect(src).toMatch(/repriced === "updated" && !needsFinish\s*\?\s*renderResultUpdatedEmail/);
-    expect(src).toMatch(/:\s*renderResultAssignedEmail\(\{ \.\.\.spec, needsFinish \}\)/);
+    expect(src).toMatch(
+      /:\s*renderResultAssignedEmail\(\{ \.\.\.spec, needsFinish \}, await loadEmailCopy\(RESULT_EMAIL_COPY\.assigned\)\)/,
+    );
   });
 
   it("hands the customer's previous quote to the update template", () => {

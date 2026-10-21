@@ -6,7 +6,9 @@ import { releaseHold } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { renderHeldResultReminderEmail } from "@/lib/email/ops";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import {
+  RESULT_EMAIL_COPY,
   renderBalanceDueReminderEmail,
   renderHoldExpiredEmail,
 } from "@/lib/email/results";
@@ -72,10 +74,11 @@ async function sendCustomerExpiredEmail(opts: {
   productType: string | null;
   reason?: "unreviewed" | "unpaid";
 }) {
+  const copy = await loadEmailCopy(RESULT_EMAIL_COPY.hold_expired);
   await getEmailTransport().send({
     to: opts.to,
     from: getDefaultFromAddress(),
-    ...renderHoldExpiredEmail(opts),
+    ...renderHoldExpiredEmail(opts, copy),
   });
 }
 
@@ -285,21 +288,25 @@ export async function GET(req: Request) {
       );
       if (plan !== "remind") continue;
       try {
+        const copy = await loadEmailCopy(RESULT_EMAIL_COPY.balance_due);
         await getEmailTransport().send({
           to: row.customer_email,
           from: getDefaultFromAddress(),
-          ...renderBalanceDueReminderEmail({
-            origin,
-            resultId: row.id,
-            accessToken: row.access_token,
-            productType: row.product_type,
-            amount:
-              row.final_amount != null
-                ? Number(row.final_amount) + (companionFinal.get(row.id) ?? 0)
-                : null,
-            currency: row.currency ?? "SGD",
-            needsFinish: needsCustomerFinish(row),
-          }),
+          ...renderBalanceDueReminderEmail(
+            {
+              origin,
+              resultId: row.id,
+              accessToken: row.access_token,
+              productType: row.product_type,
+              amount:
+                row.final_amount != null
+                  ? Number(row.final_amount) + (companionFinal.get(row.id) ?? 0)
+                  : null,
+              currency: row.currency ?? "SGD",
+              needsFinish: needsCustomerFinish(row),
+            },
+            copy,
+          ),
         });
         // Its own clock and counter — `last_reminder_at` stays the operator SLA's,
         // so moving one cadence no longer drags the other with it.

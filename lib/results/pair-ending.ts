@@ -8,7 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
-import { renderPairedMbolsterRemovedEmail } from "@/lib/email/results";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import { RESULT_EMAIL_COPY, renderPairedMbolsterRemovedEmail } from "@/lib/email/results";
 import {
   endingPlan,
   isCompanion,
@@ -135,17 +136,21 @@ export async function notifyCompanionRemoved(
     amount = anchor?.final_amount == null ? null : Number(anchor.final_amount);
   }
   try {
+    const copy = await loadEmailCopy(RESULT_EMAIL_COPY.paired_mbolster_removed);
     await getEmailTransport().send({
       to: companion.customer_email,
       from: getDefaultFromAddress(),
-      ...renderPairedMbolsterRemovedEmail({
-        origin: opts.origin,
-        anchorId: partner.id,
-        accessToken: companion.access_token ?? null,
-        anchorReady: partner.status === "assigned",
-        amount,
-        currency: companion.currency ?? "SGD",
-      }),
+      ...renderPairedMbolsterRemovedEmail(
+        {
+          origin: opts.origin,
+          anchorId: partner.id,
+          accessToken: companion.access_token ?? null,
+          anchorReady: partner.status === "assigned",
+          amount,
+          currency: companion.currency ?? "SGD",
+        },
+        copy,
+      ),
     });
     return "sent";
   } catch (e) {

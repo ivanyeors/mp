@@ -75,7 +75,8 @@ vi.mock("@/lib/auth/admin", () => ({
 vi.mock("@/lib/authorization-hold", () => ({ createHoldCheckout: h.createHoldCheckout }));
 vi.mock("@/lib/email", () => ({ getEmailTransport: () => ({ send: h.sendEmail }) }));
 vi.mock("@/lib/email/transport", () => ({ getDefaultFromAddress: () => "from@x.test" }));
-vi.mock("@/lib/email/results", () => ({
+vi.mock("@/lib/email/results", async (orig) => ({
+  RESULT_EMAIL_COPY: (await orig<typeof import("@/lib/email/results")>()).RESULT_EMAIL_COPY,
   renderResultHeldEmail: () => ({ subject: "held", html: "", text: "" }),
 }));
 vi.mock("@/lib/discovery-source", () => ({
