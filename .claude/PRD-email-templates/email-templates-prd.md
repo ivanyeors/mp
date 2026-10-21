@@ -89,8 +89,12 @@ an edit can be recovered.
   - every customisation, aftercare, re-adjustment and partner send site.
 - **The registry** (`lib/email/registry.ts`). Each entry carries its email's `copy` spec, and
   `render(fixture, copy?)`. Entries that are versions of one email share a spec; they are the
-  editor's preview versions. The shipment emails gained "no tracking link" previews, so their
-  second button label shows.
+  editor's preview versions. Some versions had no preview, so one field never showed; each
+  gained one:
+  - "no tracking link" for the shipment emails;
+  - the check-up with no first name;
+  - a commission before delivery;
+  - a payout with no proof attached.
 - **Storage.** `email_template_copy` holds one row per edited email: `template_id`, `copy` (jsonb
   object), `updated_at` and `updated_by_profile_id`. It is server-only. A save whose words equal
   the originals deletes the row instead.
