@@ -1,0 +1,98 @@
+/**
+ * The points settings (PRD-loyalty-points slice 02): `site_settings` rows the
+ * owner edits on Settings → Discounts → Points. `points_settings()` in SQL
+ * reads the same keys with the same defaults.
+ */
+import { z } from "zod";
+
+export const POINTS_SETTING_KEYS = {
+  enabled: "points_enabled",
+  launchAt: "points_launch_at",
+  earnPerDollar: "points_earn_per_dollar",
+  minRedeem: "points_min_redeem",
+  maxShare: "points_max_share",
+  expiryMonths: "points_expiry_months",
+  claimBonus: "points_claim_bonus",
+  claimBonusMonths: "points_claim_bonus_months",
+} as const;
+
+export interface PointsSettings {
+  enabled: boolean;
+  /** ISO timestamp; null until the owner sets it. */
+  launchAt: string | null;
+  earnPerDollar: number;
+  minRedeem: number;
+  /** 0 to 1: the most of the products' price points may pay. */
+  maxShare: number;
+  expiryMonths: number;
+  claimBonus: number;
+  claimBonusMonths: number;
+}
+
+export const POINTS_DEFAULTS: PointsSettings = {
+  enabled: false,
+  launchAt: null,
+  earnPerDollar: 3,
+  minRedeem: 500,
+  maxShare: 0.5,
+  expiryMonths: 24,
+  claimBonus: 1000,
+  claimBonusMonths: 3,
+};
+
+const num = (v: string | undefined, ok: (n: number) => boolean, fallback: number) => {
+  const n = v == null || v.trim() === "" ? NaN : Number(v);
+  return Number.isFinite(n) && ok(n) ? n : fallback;
+};
+
+/** Pure — the settings from `site_settings` rows; a missing or malformed one reads as its default. */
+export function pointsSettingsFromRows(rows: readonly { key: string; value: string | null }[]): PointsSettings {
+  const get = (k: string) => rows.find((r) => r.key === k)?.value ?? undefined;
+  const launch = get(POINTS_SETTING_KEYS.launchAt)?.trim();
+  return {
+    enabled: get(POINTS_SETTING_KEYS.enabled)?.trim().toLowerCase() === "true",
+    launchAt: launch && /^\d{4}-\d{2}-\d{2}/.test(launch) && Number.isFinite(Date.parse(launch)) ? new Date(launch).toISOString() : null,
+    earnPerDollar: num(get(POINTS_SETTING_KEYS.earnPerDollar), (n) => n >= 0, POINTS_DEFAULTS.earnPerDollar),
+    minRedeem: num(get(POINTS_SETTING_KEYS.minRedeem), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.minRedeem),
+    maxShare: num(get(POINTS_SETTING_KEYS.maxShare), (n) => n >= 0 && n <= 1, POINTS_DEFAULTS.maxShare),
+    expiryMonths: num(get(POINTS_SETTING_KEYS.expiryMonths), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.expiryMonths),
+    claimBonus: num(get(POINTS_SETTING_KEYS.claimBonus), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.claimBonus),
+    claimBonusMonths: num(get(POINTS_SETTING_KEYS.claimBonusMonths), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.claimBonusMonths),
+  };
+}
+
+/** What the Settings card saves, checked on the server. */
+export const PointsSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    launchAt: z
+      .string()
+      .trim()
+      .nullable()
+      .transform((v) => (v ? v : null))
+      .refine((v) => v === null || (/^\d{4}-\d{2}-\d{2}/.test(v) && Number.isFinite(Date.parse(v))), "Pick a launch date and time."),
+    earnPerDollar: z.number().min(0, "At least 0.").max(20, "At most 20 points per S$1."),
+    minRedeem: z.number().int().min(100, "At least 100 points (S$1).").max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
+    maxShare: z.number().gt(0, "Above 0%.").max(1, "At most 100%."),
+    expiryMonths: z.number().int().min(1, "At least 1 month.").max(120, "At most 120 months."),
+    claimBonus: z.number().int().min(0).max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
+    claimBonusMonths: z.number().int().min(1, "At least 1 month.").max(24, "At most 24 months."),
+  })
+  .superRefine((s, ctx) => {
+    if (s.enabled && !s.launchAt) ctx.addIssue({ code: "custom", path: ["launchAt"], message: "Set the launch date before turning points on." });
+  });
+
+/** Pure — the `site_settings` rows for saved settings. An unset launch date deletes its row. */
+export function pointsSettingsToRows(s: PointsSettings): { upsert: { key: string; value: string }[]; remove: string[] } {
+  const upsert: { key: string; value: string }[] = [
+    { key: POINTS_SETTING_KEYS.enabled, value: s.enabled ? "true" : "false" },
+    { key: POINTS_SETTING_KEYS.earnPerDollar, value: String(s.earnPerDollar) },
+    { key: POINTS_SETTING_KEYS.minRedeem, value: String(s.minRedeem) },
+    { key: POINTS_SETTING_KEYS.maxShare, value: String(s.maxShare) },
+    { key: POINTS_SETTING_KEYS.expiryMonths, value: String(s.expiryMonths) },
+    { key: POINTS_SETTING_KEYS.claimBonus, value: String(s.claimBonus) },
+    { key: POINTS_SETTING_KEYS.claimBonusMonths, value: String(s.claimBonusMonths) },
+  ];
+  if (s.launchAt) upsert.push({ key: POINTS_SETTING_KEYS.launchAt, value: new Date(s.launchAt).toISOString() });
+  return { upsert, remove: s.launchAt ? [] : [POINTS_SETTING_KEYS.launchAt] };
+}

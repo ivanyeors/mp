@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** built
 **Blocked by:** 01
 **User stories:** 3, 10, 11, 12
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:account`
@@ -62,14 +62,38 @@ or spends. The demo: Staff add 500 points to a Customer with a note, and that cu
 
 ## Acceptance criteria
 
-- [ ] `update` and `delete` on `points_ledger` raise, for every role including the service role.
-- [ ] `anon` and `authenticated` can neither read the ledger nor execute either function (SQL
+- [x] `update` and `delete` on `points_ledger` raise, for every role including the service role.
+- [x] `anon` and `authenticated` can neither read the ledger nor execute either function (SQL
       assert, like `assert-grants.sql`).
-- [ ] An adjustment with no note, one that would take the balance below zero, or one for a
+- [x] An adjustment with no note, one that would take the balance below zero, or one for a
       partner is refused.
-- [ ] `is_partner_customer` matches a partner by login and by email (case-insensitive). It does
+- [x] `is_partner_customer` matches a partner by login and by email (case-insensitive). It does
       not match a customer whose partner application was not approved.
-- [ ] Adjust is refused for a role without `customers-edit`. Its audit row names the Staff
+- [x] Adjust is refused for a role without `customers-edit`. Its audit row names the Staff
       profile.
-- [ ] The Profile shows only the session's own balance, and nothing while `points_enabled` is off.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] The Profile shows only the session's own balance, and nothing while `points_enabled` is off.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `claude/admiring-ride-40h2o6` (`20261021120000_points_ledger.sql`).
+
+- **SQL.** `points_ledger` as specified, with a sign check per kind and a required note on
+  `adjust`; append-only by trigger for every role (cascades from a deleted Customer or Order
+  pass). `points_settings()` reads the eight keys with their defaults. `is_partner_customer()`
+  also matches a verified backup email, as `loadPartnerRow` does. `points_order_candidates` is
+  every Order that earns or will earn, with its points and `release_at`; it is the Customer's
+  pending points now and slice 03's release list. `points_balance()`, `adjust_points()` (row lock
+  on the Customer, the lock slice 04 takes too) and `admin_points_summary`.
+- **Code.** `lib/points/`: `value.ts` (100 points = S$1, "2,130 points (S$21.30)"), `settings.ts`
+  (defaults, parse, the Settings schema), `partner.ts` (rule r in TypeScript), `kinds.ts`,
+  `server.ts` (every read and write).
+- **Surfaces.** Customer detail → *Points* (`points-card.tsx`, `GET/POST
+  /api/shop/customers/[id]/points`); Discounts → *Points* (`points-settings-card.tsx`, `GET/PUT
+  /api/settings/discounts/points`); Profile → *Your points* (`components/account/points-card.tsx`),
+  only while points are on and never for a partner.
+- **Tests.** `supabase/tests/loyalty-points/assert-02-ledger.sql` (grants, append-only for the
+  service role too, signs, the partner cases, adjustments, candidates and the balance, the
+  summary); `partner-cases.json`, which `lib/points/__tests__/points.test.ts` also runs; the two
+  route tests; the Profile card render. The SQL window (30 days) is held to
+  `DEFAULT_RETURN_WINDOW_DAYS` by a test.

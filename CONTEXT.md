@@ -343,7 +343,7 @@ A **Customer** whose row was created or enriched from the Shopify customer expor
 _Avoid_: "imported account" or "migrated account" — no login moved, and Shopify credentials never leave Shopify; until it is **Claimed**, a Migrated customer is a row, not an account; writing Shopify-era figures into `customers.total_orders` / `total_spent` — those are platform-derived and recomputed by `updateCustomerStats`
 
 **Claim**:
-The first **Sign in**, after import, by the person who owns a **Migrated customer**'s email. `linkCustomerToAuthUser` binds `auth_user_id` as it would for any customer row. The Claim stamps `claimed_at` and issues the **Welcome-back voucher**, both in one transaction and both exactly once.
+The first **Sign in**, after import, by the person who owns a **Migrated customer**'s email. `linkCustomerToAuthUser` binds `auth_user_id` as it would for any customer row. The Claim stamps `claimed_at` and grants the **Claim bonus** (ADR 0030), both in one transaction and both exactly once.
 _Avoid_: "invite" or "activation" — nothing is created in `auth.users` before the person signs in, and no Supabase invite is sent
 
 **Claim link**:
@@ -351,8 +351,8 @@ The per-customer link in a campaign email, `/account/welcome?c=<token>`. The tok
 _Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
 
 **Welcome-back voucher**:
-The one `coupons` row issued to a **Migrated customer** at **Claim** (`issued_for = 'welcome_back'`). It is bound to that **Customer**: valid only while they are signed in and checking out with the account email. It is a shop-cart voucher, like every coupon today.
-_Avoid_: "store credit", "points", "gift card" (none exist); describing it as usable on a customisation — **Results** price with no discount (`app/api/results/hold/route.ts:648`, `lib/results/paired-hold.ts:118`)
+Deleted by ADR 0030; PRD-loyalty-points slice 06 removes the code. The one `coupons` row issued to a **Migrated customer** at **Claim** (`issued_for = 'welcome_back'`). It is bound to that **Customer**: valid only while they are signed in and checking out with the account email. It is a shop-cart voucher, like every coupon today.
+_Avoid_: "store credit", "gift card" (none exist); describing it as usable on a customisation — **Results** price with no discount (`app/api/results/hold/route.ts:648`, `lib/results/paired-hold.ts:118`)
 
 **Marketing consent**:
 Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is appended to `customer_consent_events`.
@@ -484,6 +484,28 @@ _Avoid_: linking automatically; treating a review-link click as proof of a revie
 **Contact status**:
 What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number has written to our WhatsApp line, as recorded in `whatsapp_inbound`).
 _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting **Staff** tick "verified"
+
+## Loyalty points (ADR 0030)
+
+**Points**:
+A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, and from a one-time **Claim bonus**. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
+_Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
+
+**Points ledger**:
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
+_Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
+
+**Pending points**:
+What a paid **Order** will earn once its return window closes, 30 days after delivery. They are computed from the Order and are not in the ledger until then.
+_Avoid_: letting pending points be spent, or counting them in the balance
+
+**Claim bonus**:
+1,000 points a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
+_Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
+
+**Points expiry**:
+The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**.
+_Avoid_: expiring points per batch, or describing expiry as fixed at earning time
 
 ## Email marketing (PRD-email-marketing)
 

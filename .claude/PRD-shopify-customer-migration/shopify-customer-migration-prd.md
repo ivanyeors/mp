@@ -209,6 +209,8 @@ when they do sign in.
 
 ## The incentive: options and recommendation
 
+*2026-10-21: the incentive is the **Claim bonus** in points (ADR 0030, `PRD-loyalty-points`); the Welcome-back voucher is deleted.*
+
 The question was "some sort of digital incentive". Here is what each candidate costs, measured
 against what the code already does:
 
@@ -438,7 +440,7 @@ predictions.
 ## Open decisions for the owner
 
 1. **Which legal entity operated the Shopify store?** This decides the PDPA basis.
-2. **Voucher terms:** value, minimum spend, expiry, scope (all shop products, or accessories
+2. *(2026-10-21: replaced by the Claim bonus terms, `PRD-loyalty-points` decisions 10 and 11.)* **Voucher terms:** value, minimum spend, expiry, scope (all shop products, or accessories
    only), and the date issuance stops.
 3. **Does the no-consent group get the one service notice, or nothing?**
 4. **Sending subdomain and Resend account.**

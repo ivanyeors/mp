@@ -1698,9 +1698,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/account/page.tsx": {
-    "mtime": 1792585991.5880883,
-    "seen": 1792586065.7342,
-    "ast_hash": "b29b328d230175c7a903a079efb373cd",
+    "mtime": 1792595470.9843328,
+    "seen": 1792595776.6676285,
+    "ast_hash": "6bfb84cf8f69520f68cf4bd6ec8af2a6",
     "semantic_hash": ""
   },
   "app/[lang]/account/results/page.tsx": {
@@ -8154,9 +8154,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1792588742.4513886,
-    "seen": 1792589821.40451,
-    "ast_hash": "7ad57bc386fe5c09eb7305e3b5abb32e",
+    "mtime": 1792594920.369107,
+    "seen": 1792595776.674257,
+    "ast_hash": "a012d046139fe9720ee8f5ab90a1f2a9",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9108,9 +9108,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/[id]/customer-detail-client.tsx": {
-    "mtime": 1792585991.5910296,
-    "seen": 1792586065.7344098,
-    "ast_hash": "0890f91a993149f13307cdc4316f67ef",
+    "mtime": 1792595341.55193,
+    "seen": 1792595776.667953,
+    "ast_hash": "7a48a67fee2525dafbfe2cefdfc27d9e",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
@@ -9126,9 +9126,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/discounts-client.tsx": {
-    "mtime": 1792585991.596898,
-    "seen": 1792586065.7345006,
-    "ast_hash": "bd6ef9a2fe42ca060bb2f794e0104b24",
+    "mtime": 1792595403.6222248,
+    "seen": 1792595776.6681204,
+    "ast_hash": "9a25472b4487a72c957223de625b9c2b",
     "semantic_hash": ""
   },
   "app/[lang]/settings/orders/[id]/order-detail-client.tsx": {
@@ -15600,15 +15600,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/README.md": {
-    "mtime": 1792588919.1780696,
-    "seen": 1792589821.4042985,
-    "ast_hash": "64061dcea6fe4450a94d508a4cba5a34",
+    "mtime": 1792594929.2814987,
+    "seen": 1792595776.674031,
+    "ast_hash": "8b24dcf963a6d1293f6c2bb49c1027b4",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md": {
-    "mtime": 1792585991.5844805,
-    "seen": 1792586065.738409,
-    "ast_hash": "600e5c6e9e7351b65de964cbd2b12f22",
+    "mtime": 1792594929.2804966,
+    "seen": 1792595776.6740327,
+    "ast_hash": "b166e0294be196d1a564e8e07df06023",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/__tests__/customer-detail-render.test.tsx": {
@@ -17412,9 +17412,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0029-shopify-customer-migration.md": {
-    "mtime": 1792585991.61236,
-    "seen": 1792586065.7386978,
-    "ast_hash": "61d60b65c1758a9f42e2967b7824db66",
+    "mtime": 1792594920.3660066,
+    "seen": 1792595776.6743515,
+    "ast_hash": "c48166c967cb111b93c110a947deaec7",
     "semantic_hash": ""
   },
   "lib/rules-engine/__tests__/streamline-premium.test.ts": {
@@ -17448,15 +17448,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/01-glossary-and-adr.md": {
-    "mtime": 1792585640.222441,
-    "seen": 1792586065.73805,
-    "ast_hash": "8a62bb7046985bece4020263a7ec144d",
+    "mtime": 1792595701.188644,
+    "seen": 1792595776.673552,
+    "ast_hash": "fd6a2d2cabba967164c86dec9fdd6756",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/02-ledger-balance-and-staff.md": {
-    "mtime": 1792585604.2584417,
-    "seen": 1792586065.7380521,
-    "ast_hash": "cf7d416f82b3faa0ce50bbb95971cfff",
+    "mtime": 1792595701.1891792,
+    "seen": 1792595776.6735544,
+    "ast_hash": "25e5c0f3ca17cc4958374704cb2f4e2e",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/03-earning.md": {
@@ -17496,15 +17496,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/README.md": {
-    "mtime": 1792588919.1777358,
-    "seen": 1792589821.4038928,
-    "ast_hash": "39654e98fe4d17d1afe1fe6f2dd28d19",
+    "mtime": 1792595701.1873238,
+    "seen": 1792595776.6735687,
+    "ast_hash": "23f40339987f7cfd51d156567d9c3357",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
-    "mtime": 1792585525.7624435,
-    "seen": 1792586065.738061,
-    "ast_hash": "6869793e54f2f375bdfcef7be6df926b",
+    "mtime": 1792595701.188073,
+    "seen": 1792595776.6735704,
+    "ast_hash": "c2edcb60b40c71f4e60cd71ca1c54f0f",
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/[id]/page.tsx": {
@@ -17691,6 +17691,114 @@
     "mtime": 1792589129.397005,
     "seen": 1792589821.4038186,
     "ast_hash": "3f1fd2a3251ace43b5b6c10965cca72b",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/[id]/points-card.tsx": {
+    "mtime": 1792595599.0629528,
+    "seen": 1792595776.6679778,
+    "ast_hash": "7f3e778deed92d3f1567c4e290af6b5f",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/discounts/points-settings-card.tsx": {
+    "mtime": 1792595400.1607034,
+    "seen": 1792595776.6681259,
+    "ast_hash": "88cdeb318190225d7f2a8e28cd02f1c1",
+    "semantic_hash": ""
+  },
+  "app/api/settings/discounts/points/__tests__/route.test.ts": {
+    "mtime": 1792595566.0902174,
+    "seen": 1792595776.6688335,
+    "ast_hash": "319725b20deb367e59d7bd743b12e974",
+    "semantic_hash": ""
+  },
+  "app/api/settings/discounts/points/route.ts": {
+    "mtime": 1792595375.281058,
+    "seen": 1792595776.6688356,
+    "ast_hash": "2576ccdf7201012118c9205385e15be2",
+    "semantic_hash": ""
+  },
+  "app/api/shop/customers/[id]/points/__tests__/route.test.ts": {
+    "mtime": 1792595566.0823007,
+    "seen": 1792595776.668902,
+    "ast_hash": "eb5969bc12229d9dada14eb0e13db8a2",
+    "semantic_hash": ""
+  },
+  "app/api/shop/customers/[id]/points/route.ts": {
+    "mtime": 1792595297.1290393,
+    "seen": 1792595776.668903,
+    "ast_hash": "065a87a6e014b0c694a803e3542c790e",
+    "semantic_hash": ""
+  },
+  "components/account/__tests__/points-card-render.test.tsx": {
+    "mtime": 1792595579.629528,
+    "seen": 1792595776.6690817,
+    "ast_hash": "6d6fb4fa476faaefeffcec3d2e6e8918",
+    "semantic_hash": ""
+  },
+  "components/account/points-card.tsx": {
+    "mtime": 1792595441.6040807,
+    "seen": 1792595776.669085,
+    "ast_hash": "39d4d9901e661e807c9b9a62320fbf89",
+    "semantic_hash": ""
+  },
+  "lib/points/__tests__/points.test.ts": {
+    "mtime": 1792595494.9206913,
+    "seen": 1792595776.6709251,
+    "ast_hash": "eff72cd355039f060303b557ef9d7fd5",
+    "semantic_hash": ""
+  },
+  "lib/points/kinds.ts": {
+    "mtime": 1792595341.550496,
+    "seen": 1792595776.6709266,
+    "ast_hash": "af0d7c5671ab10e99f16f0cae318c15a",
+    "semantic_hash": ""
+  },
+  "lib/points/partner.ts": {
+    "mtime": 1792595129.439887,
+    "seen": 1792595776.6709285,
+    "ast_hash": "5762f5e7aefcb6db1d1cbcb290b938cc",
+    "semantic_hash": ""
+  },
+  "lib/points/server.ts": {
+    "mtime": 1792595341.5495527,
+    "seen": 1792595776.67093,
+    "ast_hash": "8e25a8c329c6e8bcdd8069d4d50e6a3a",
+    "semantic_hash": ""
+  },
+  "lib/points/settings.ts": {
+    "mtime": 1792595269.282989,
+    "seen": 1792595776.6709309,
+    "ast_hash": "87dd2f11b5b97364737ea16b9653a31f",
+    "semantic_hash": ""
+  },
+  "lib/points/value.ts": {
+    "mtime": 1792595129.4344952,
+    "seen": 1792595776.6709325,
+    "ast_hash": "fadca94c4fa6e7e0346709ec5ef6dedd",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261021120000_points_ledger.sql": {
+    "mtime": 1792595020.6447122,
+    "seen": 1792595776.6731129,
+    "ast_hash": "77c31fea7ad126f5e2d8b438c5a9c202",
+    "semantic_hash": ""
+  },
+  "supabase/tests/loyalty-points/assert-02-ledger.sql": {
+    "mtime": 1792595540.261162,
+    "seen": 1792595776.6731818,
+    "ast_hash": "9a7de1394bd4a4d31706de22d0c53fa2",
+    "semantic_hash": ""
+  },
+  "supabase/tests/loyalty-points/partner-cases.json": {
+    "mtime": 1792595494.918201,
+    "seen": 1792595776.6731853,
+    "ast_hash": "4a2bdf3e15b70881ce395208694e14b8",
+    "semantic_hash": ""
+  },
+  "docs/adr/0030-loyalty-points.md": {
+    "mtime": 1792594905.080715,
+    "seen": 1792595776.6743534,
+    "ast_hash": "ca6e6fa8a8bf9933dd40c15d0d4567e9",
     "semantic_hash": ""
   }
 }

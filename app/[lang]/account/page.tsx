@@ -8,6 +8,8 @@ import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { readWelcomeVoucher, usableWelcomeVoucherCard } from "@/lib/customer-migration/welcome-voucher";
 import { AccountSecurity } from "@/components/auth/account-security";
 import { WelcomeVoucherCard } from "@/components/account/welcome-voucher-card";
+import { PointsCard } from "@/components/account/points-card";
+import { isPartnerCustomer, readPendingOrders, readPointsBalance, readPointsSettings } from "@/lib/points/server";
 import { AftercarePreferences } from "./aftercare-preferences";
 import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
 import { MarketingEmailPreference } from "./marketing-email-preference";
@@ -24,6 +26,22 @@ function initialsFrom(name: string, email: string): string {
     return parts[0]!.slice(0, 2).toUpperCase();
   }
   return (email.slice(0, 2) || "?").toUpperCase();
+}
+
+/**
+ * The session's own points (PRD-loyalty-points slice 02), only while points
+ * are on and the Customer is not a partner (rule r). Read with the service role, keyed by the Customer this session just
+ * linked, never by anything the request names. A failed read hides the card.
+ */
+async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId: string) {
+  try {
+    const settings = await readPointsSettings(admin);
+    if (!settings.enabled || (await isPartnerCustomer(admin, customerId))) return null;
+    const [balance, pending] = await Promise.all([readPointsBalance(admin, customerId), readPendingOrders(admin, customerId)]);
+    return { balance, pending };
+  } catch {
+    return null;
+  }
 }
 
 export default async function AccountProfilePage({
@@ -53,10 +71,11 @@ export default async function AccountProfilePage({
   // finds it. Read after linkCustomerToAuthUser, whose Claim may have just
   // issued it. A failed read only hides the card. Marketing consent (migration
   // slice 07) is read the same way as the aftercare switches.
-  const [aftercare, voucher, marketingEmail] = await Promise.all([
+  const [aftercare, voucher, marketingEmail, points] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),
     readWelcomeVoucher(admin, customer.id),
     readMarketingEmailState(admin, customer.id).catch(() => null),
+    readOwnPoints(admin, customer.id),
   ]);
   const voucherCard = usableWelcomeVoucherCard(voucher);
 
@@ -83,6 +102,15 @@ export default async function AccountProfilePage({
           ) : null}
         </div>
       </div>
+
+      {points ? (
+        <PointsCard
+          balance={points.balance}
+          pending={points.pending}
+          termsHref={withLocale("/points", locale)}
+          shopHref={withLocale("/shop", locale)}
+        />
+      ) : null}
 
       {voucherCard ? (
         <WelcomeVoucherCard voucher={voucherCard} shopHref={withLocale("/shop", locale)} />

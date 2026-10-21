@@ -22,6 +22,7 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { WelcomeVoucherSettingsCard, type WelcomeVoucherCardData } from "./welcome-voucher-card";
+import { PointsSettingsCard } from "./points-settings-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,8 @@ export function DiscountsClient({
                     </Link>
                 </Button>
             </div>
+
+            <PointsSettingsCard />
 
             <WelcomeVoucherSettingsCard initialData={welcomeVoucher} />
 

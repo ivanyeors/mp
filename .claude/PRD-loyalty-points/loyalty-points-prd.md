@@ -1,6 +1,6 @@
 # PRD — Loyalty points
 
-**Status:** specified, not started
+**Status:** being built on `claude/admiring-ride-40h2o6` (slices 01 and 02 built, 2026-10-21)
 **Builds on:** `PRD-shopify-customer-migration` and `PRD-customer-crm`, both on
 `claude/shopify-migration-plan-izv7fo` @ `c6155da3`. Every line reference below is to that
 branch. Start building once it merges.

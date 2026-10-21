@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** built
 **Blocked by:** the migration branch merging
 **User stories:** underpins all
 **Labels:** `documentation`, `enhancement`, `needs-triage`, `P2`, `area:checkout`
@@ -89,8 +89,16 @@ Record the owner's decisions 1–15 and rules (a)–(r) from the PRD, then these
 
 ## Acceptance criteria
 
-- [ ] CONTEXT.md has the five entries and the two changes above.
-- [ ] `docs/adr/0030-loyalty-points.md` records decisions 1–15, rules (a)–(r) and the rejected
+- [x] CONTEXT.md has the five entries and the two changes above.
+- [x] `docs/adr/0030-loyalty-points.md` records decisions 1–15, rules (a)–(r) and the rejected
       options.
-- [ ] ADR 0029, the migration PRD and its README carry the dated amendment.
-- [ ] `./scripts/graphify update .` is run in the same commit.
+- [x] ADR 0029, the migration PRD and its README carry the dated amendment.
+- [x] `./scripts/graphify update .` is run in the same commit.
+
+## Build notes
+
+Built on `claude/admiring-ride-40h2o6`. `docs/adr/0030-loyalty-points.md` records decisions
+1–15, rules (a)–(r) by section, and the rejected options. CONTEXT.md has the five entries; the
+**Claim** entry grants the Claim bonus, and the **Welcome-back voucher** entry says it is deleted.
+ADR 0029 (g), the migration PRD (*The incentive*, *Open decisions* 2) and its README carry the
+dated amendment.

@@ -6,8 +6,8 @@ demoable path through all layers.
 - **Triage label:** `needs-triage` (all slices)
 - **Tracker:** not filed yet. File the PRD as a parent issue and each slice as a sub-issue, then
   link them in the table below.
-- **Base:** start after `claude/shopify-migration-plan-izv7fo` merges. Every slice edits code
-  that only exists on that branch.
+- **Base:** the migration merged to main (#293). Building on `claude/admiring-ride-40h2o6`
+  (owner, 2026-10-21: "We shouldn't send anything at all yet. Build first").
 - **Owner decisions:** all 15 were taken on 2026-10-21 (PRD). Counsel and the accountant still
   have questions in slice 08.
 
@@ -15,8 +15,8 @@ demoable path through all layers.
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR 0030: what a point is, and what it is not | AFK | **not started** | migration merge | underpins all |
-| [02](02-ledger-balance-and-staff.md) | The points ledger, the balance, the settings, and Staff adjustments | AFK | **not started** | 01 | 3, 10, 11, 12 |
+| [01](01-glossary-and-adr.md) | Glossary and ADR 0030: what a point is, and what it is not | AFK | **built** | migration merge | underpins all |
+| [02](02-ledger-balance-and-staff.md) | The points ledger, the balance, the settings, and Staff adjustments | AFK | **built** | 01 | 3, 10, 11, 12 |
 | [03](03-earning.md) | Earning: points written when an Order's return window closes | AFK | **not started** | 02 | 1, 2, 6, 14 |
 | [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **not started** | 02 | 4, 5, 9, 13, 14 |
 | [05](05-claim-bonus.md) | The Claim bonus replaces the voucher, for every customer-facing surface | AFK | **not started** | 02, 04 | 7 |
