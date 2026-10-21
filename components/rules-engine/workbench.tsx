@@ -100,7 +100,7 @@ const PALETTE_GROUPS: {
       { type: "input", label: "Input", hint: "Read a measurement or answer" },
       { type: "range", label: "Range", hint: "Band a numeric input" },
       { type: "match", label: "Match", hint: "Branch on an enum" },
-      { type: "combine", label: "Combine", hint: "AND / join signals" },
+      { type: "combine", label: "Combine", hint: "All branches (AND) or any (OR)" },
     ],
   },
   {
@@ -108,6 +108,7 @@ const PALETTE_GROUPS: {
     items: [
       { type: "size-output", label: "Size", hint: "Emit a size / length" },
       { type: "template-output", label: "Template", hint: "Size + template id" },
+      { type: "template-by-size", label: "Template by size", hint: "One template per size" },
       { type: "tier-suggestion", label: "Tier", hint: "Premium / Basic cue" },
       { type: "fallback", label: "Fallback", hint: "Default when nothing fires" },
     ],
@@ -169,6 +170,8 @@ function defaultRule(type: RuleNode["type"], flow: RuleFlow): RuleNode {
       return { id, type, size };
     case "template-output":
       return { id, type, size, templateId: "" };
+    case "template-by-size":
+      return { id, type, templates: {} };
     case "tier-suggestion":
       return { id, type, tier: "premium" };
     case "flow-route":
@@ -1074,6 +1077,53 @@ function NodeEditor({
     );
   }
 
+  if (rule.type === "combine") {
+    return (
+      <div className="space-y-2">
+        <Label className="text-[10px]">Fires when</Label>
+        <select
+          disabled={disabled}
+          className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
+          value={rule.mode ?? "all"}
+          onChange={(e) =>
+            onChange({ ...rule, mode: e.target.value === "any" ? "any" : undefined })
+          }
+        >
+          <option value="all">Every branch fires (AND)</option>
+          <option value="any">Any branch fires (OR)</option>
+        </select>
+        <NodeNameField rule={rule} disabled={disabled} onChange={onChange} />
+      </div>
+    );
+  }
+
+  if (rule.type === "template-by-size") {
+    const sizes = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
+    return (
+      <div className="space-y-2">
+        <NodeNameField rule={rule} disabled={disabled} onChange={onChange} />
+        <p className="text-[10px] text-muted-foreground">
+          The size the graph chose picks the template. Leave a size empty to recommend none for it.
+        </p>
+        {sizes.map((s) => (
+          <div key={s} className="space-y-1">
+            <Label className="text-[10px]">{s}</Label>
+            <TemplateSelect
+              flow={flow}
+              locale={locale}
+              size={s}
+              templateId={rule.templates[s] ?? ""}
+              disabled={disabled}
+              onTemplate={(id) =>
+                onChange({ ...rule, templates: { ...rule.templates, [s]: id || undefined } })
+              }
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (rule.type === "tier-suggestion") {
     return (
       <div className="space-y-2">
@@ -1371,6 +1421,29 @@ function prettyKey(key: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** A label for nodes whose meaning is not their type: an OR, a template family. */
+function NodeNameField({
+  rule,
+  disabled,
+  onChange,
+}: {
+  rule: RuleNode;
+  disabled: boolean;
+  onChange: (rule: RuleNode) => void;
+}) {
+  return (
+    <>
+      <Label className="text-[10px]">Name (optional)</Label>
+      <Input
+        disabled={disabled}
+        className="h-8"
+        value={rule.label ?? ""}
+        onChange={(e) => onChange({ ...rule, label: e.target.value || undefined })}
+      />
+    </>
+  );
+}
+
 function TemplatePicker({
   flow,
   locale,
@@ -1389,6 +1462,50 @@ function TemplatePicker({
   onTemplate: (id: string) => void;
 }) {
   const sizes = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
+  return (
+    <div className="space-y-2">
+      <Label className="text-[10px]">Size scope</Label>
+      <select
+        disabled={disabled}
+        className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
+        value={size}
+        onChange={(e) => onSize(e.target.value as SizeOrLength)}
+      >
+        {sizes.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+      <Label className="text-[10px]">Filling Template</Label>
+      <TemplateSelect
+        flow={flow}
+        locale={locale}
+        size={size}
+        templateId={templateId}
+        disabled={disabled}
+        onTemplate={onTemplate}
+      />
+    </div>
+  );
+}
+
+/** Active Filling Templates serving one size, for a Template or a size slot. */
+function TemplateSelect({
+  flow,
+  locale,
+  size,
+  templateId,
+  disabled,
+  onTemplate,
+}: {
+  flow: RuleFlow;
+  locale: Locale;
+  size: SizeOrLength;
+  templateId: string;
+  disabled: boolean;
+  onTemplate: (id: string) => void;
+}) {
   const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -1424,20 +1541,6 @@ function TemplatePicker({
 
   return (
     <div className="space-y-2">
-      <Label className="text-[10px]">Size scope</Label>
-      <select
-        disabled={disabled}
-        className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
-        value={size}
-        onChange={(e) => onSize(e.target.value as SizeOrLength)}
-      >
-        {sizes.map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
-        ))}
-      </select>
-      <Label className="text-[10px]">Filling Template</Label>
       <select
         disabled={disabled}
         className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"

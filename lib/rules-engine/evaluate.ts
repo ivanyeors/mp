@@ -13,6 +13,7 @@ import type {
   RuleGraphJson,
   RuleNode,
   SizeOrLength,
+  TemplateBySizeNode,
   TemplateOutputNode,
   TierSuggestionNode,
   TraceStep,
@@ -124,6 +125,10 @@ export function evaluate(
     const n = nodes.get(targetId);
     if (!n) return;
     if (n.type === "combine") {
+      if (n.mode === "any") {
+        activate(targetId, "any");
+        return;
+      }
       const sat = (inboundSatisfied.get(targetId) ?? 0) + 1;
       inboundSatisfied.set(targetId, sat);
       const need = inboundCount.get(targetId) ?? 0;
@@ -165,6 +170,8 @@ export function evaluate(
   }
 
   const visitedEdges = new Set<string>();
+  /** Size-keyed Template outputs reached; resolved once the size is known. */
+  const bySizeReached: TemplateBySizeNode[] = [];
 
   // Head index instead of `queue.shift()`: shift is O(n) per pop on large graphs.
   let head = 0;
@@ -183,6 +190,7 @@ export function evaluate(
       fireTerminal(n);
       // Terminals may still have outgoing edges (e.g. size → template).
     }
+    if (n.type === "template-by-size") bySizeReached.push(n);
 
     const outs = adj.get(id) ?? [];
     for (const out of outs) {
@@ -228,6 +236,15 @@ export function evaluate(
       visitedEdges.add(out.edgeId);
       tryActivateTarget(out.target);
     }
+  }
+
+  // A size-keyed Template output fires only with a slot for the resolved size —
+  // otherwise it must not count, or it would keep the Fallback from answering.
+  for (const n of bySizeReached) {
+    const id = size ? n.templates[size] : undefined;
+    if (!id) continue;
+    firedTerminals.push({ nodeId: n.id, type: n.type });
+    templateId = id;
   }
 
   // If nothing terminal fired, walk Fallback if present and no path activated it.
