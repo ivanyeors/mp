@@ -172,6 +172,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   shop_reviews_count: 0,
   shop_review_avg_rating: null,
   review_rating: null,
+  last_campaign_sent_at: null,
   ...over,
 });
 

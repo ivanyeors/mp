@@ -149,3 +149,25 @@ describe("probeUnsubscribeRoute against this route", () => {
     expect((await probeUnsubscribeRoute("https://custom.mpillow.com", viaRoute)).ready).toBe(false);
   });
 });
+
+// Migration slice 08: the sender also checks the site verifies links signed
+// with the sender's own secret, by one-click POSTing a link for a Customer
+// who does not exist.
+describe("probeUnsubscribeSecret against this route", () => {
+  const viaRoute = (async (url: string, init: RequestInit) =>
+    route.POST(new Request(url, init))) as unknown as typeof fetch;
+
+  it("reads a matching secret as ready, and unsubscribes nobody", async () => {
+    const { probeUnsubscribeSecret } = await import("@/lib/marketing-consent/unsubscribe");
+    expect(await probeUnsubscribeSecret("https://custom.mpillow.com", { secret: SECRET, fetchImpl: viaRoute })).toEqual({ ready: true });
+    expect(own().marketing_email).toBe("subscribed");
+    expect(h.db.customer_consent_events).toEqual([]);
+  });
+
+  it("reads a different secret as not ready: every link it signed would be refused", async () => {
+    const { probeUnsubscribeSecret } = await import("@/lib/marketing-consent/unsubscribe");
+    const probe = await probeUnsubscribeSecret("https://custom.mpillow.com", { secret: "a-laptop-secret", fetchImpl: viaRoute });
+    expect(probe).toEqual({ ready: false, reason: expect.stringContaining("its UNSUBSCRIBE_SECRET is not this one") });
+    expect(h.rpcCalls).toBe(0);
+  });
+});

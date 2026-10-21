@@ -29,6 +29,9 @@ export const MIGRATION_SUMMARY_COLUMNS = [
   "vouchers_used",
   "voucher_orders",
   "voucher_revenue",
+  "emailed",
+  "emails_bounced",
+  "emails_complained",
 ] as const;
 
 export interface MigrationSummary {
@@ -54,6 +57,12 @@ export interface MigrationSummary {
   voucherOrders: number;
   /** Their total, SGD. */
   voucherRevenue: number;
+  /** Of `imported`, the ones a campaign email reached the provider for (slice 08). */
+  emailed: number;
+  /** Of `imported`, the ones with a hard bounce: left out of later waves. */
+  emailsBounced: number;
+  /** Of `imported`, the ones who marked one as spam: unsubscribed. */
+  emailsComplained: number;
 }
 
 const count = (v: unknown): number => {
@@ -75,6 +84,9 @@ export function migrationSummaryFromRow(row: Partial<Record<(typeof MIGRATION_SU
     vouchersUsed: count(row?.vouchers_used),
     voucherOrders: count(row?.voucher_orders),
     voucherRevenue: count(row?.voucher_revenue),
+    emailed: count(row?.emailed),
+    emailsBounced: count(row?.emails_bounced),
+    emailsComplained: count(row?.emails_complained),
   };
 }
 

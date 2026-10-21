@@ -24,6 +24,9 @@ describe("migrationSummaryFromRow", () => {
         vouchers_used: 1,
         voucher_orders: "1",
         voucher_revenue: "180.50",
+        emailed: "5",
+        emails_bounced: "1",
+        emails_complained: 0,
       }),
     ).toEqual({
       imported: 5,
@@ -37,6 +40,9 @@ describe("migrationSummaryFromRow", () => {
       vouchersUsed: 1,
       voucherOrders: 1,
       voucherRevenue: 180.5,
+      emailed: 5,
+      emailsBounced: 1,
+      emailsComplained: 0,
     });
   });
 
@@ -53,6 +59,9 @@ describe("migrationSummaryFromRow", () => {
       vouchersUsed: 0,
       voucherOrders: 0,
       voucherRevenue: 0,
+      emailed: 0,
+      emailsBounced: 0,
+      emailsComplained: 0,
     });
   });
 });

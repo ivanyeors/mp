@@ -58,6 +58,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "shop_reviews_count",
   "shop_review_avg_rating",
   "review_rating",
+  "last_campaign_sent_at",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -152,6 +153,11 @@ export interface CustomerOverviewRow {
   shop_review_avg_rating: number | null;
   /** The Google rating when linked, else the shop average rounded: what the Rating filter reads. */
   review_rating: number | null;
+  /**
+   * The latest campaign email the provider accepted for them (migration slice
+   * 08; sent, or since bounced or complained); null if the campaign never did.
+   */
+  last_campaign_sent_at: string | null;
 }
 
 /** Display name, or null when the Customer has none. */

@@ -362,3 +362,63 @@ export function sampleCheckup(fixture: EmailFixture = "happy") {
     supportWhatsAppUrl: "https://wa.me/6587805311",
   };
 }
+
+// Migration slice 08: the campaign emails. Each link is what the wave sender
+// builds for one Customer (a Claim link with the campaign's UTMs, and the
+// unsubscribe confirm page); the tokens here are made up.
+const CAMPAIGN_CUSTOMER = "0f8fad5b-d9cb-469f-a165-70867728950e";
+const sampleUnsubscribeUrl = `${ORIGIN}/en-US/unsubscribe?u=${CAMPAIGN_CUSTOMER}&t=Qm9vbGVhbi1zZWNyZXQtcHJldmlldy10b2tlbg`;
+const sampleClaimUrl = (template: string) =>
+  `${ORIGIN}/en-US/account/welcome?c=k3V9xQe2LmP0aRt7yUb4wZc8nDf1hJg6sKo5vXi2qEw&utm_source=shopify_migration&utm_medium=email&utm_campaign=${template}`;
+
+function sampleCampaignVoucher(fixture: EmailFixture) {
+  return {
+    kind: "fixed_amount" as const,
+    amount: pick(fixture, "SGD 20.00"),
+    minimumSpend: pick(fixture, "SGD 50.00"),
+    validDays: 60,
+    issueUntil: pick(fixture, "31 December 2026"),
+  };
+}
+
+export function sampleMigrationAnnouncement(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    claimUrl: sampleClaimUrl("migration_announcement"),
+    voucher: sampleCampaignVoucher(fixture),
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+/** Free-shipping terms, no minimum, and a customer with no first name. */
+export function sampleMigrationAnnouncementFreeShipping(fixture: EmailFixture = "happy") {
+  return {
+    ...sampleMigrationAnnouncement(fixture),
+    firstName: null,
+    voucher: { ...sampleCampaignVoucher(fixture), kind: "free_shipping" as const, amount: null, minimumSpend: null },
+  };
+}
+
+export function sampleMigrationReminder(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    claimUrl: sampleClaimUrl("migration_reminder"),
+    voucher: sampleCampaignVoucher(fixture),
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+export function sampleMigrationServiceNotice(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    signInUrl: sampleClaimUrl("migration_service_notice"),
+    siteHost: "custom.mpillow.com",
+    readjustmentUrl: `${ORIGIN}/en-US/appointments?type=readjustment`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
