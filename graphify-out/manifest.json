@@ -4026,9 +4026,9 @@
     "semantic_hash": ""
   },
   "components/rules-engine/rule-nodes.tsx": {
-    "mtime": 1791895456.4673624,
-    "seen": 1792484008.7112682,
-    "ast_hash": "79441d9d43013a35521cb13eabe48aa5",
+    "mtime": 1792556895.5678105,
+    "seen": 1792556957.3060098,
+    "ast_hash": "0e73f9aed77affc80ba167037105e2cc",
     "semantic_hash": ""
   },
   "components/rules-engine/tier-suggestion.tsx": {
@@ -4050,9 +4050,9 @@
     "semantic_hash": ""
   },
   "components/rules-engine/workbench.tsx": {
-    "mtime": 1791895456.4673624,
-    "seen": 1792484008.7112737,
-    "ast_hash": "4426779562a1829cbab2c838fc24e40f",
+    "mtime": 1792556895.5678105,
+    "seen": 1792556957.3060174,
+    "ast_hash": "6c3bb640339d3ede95a7ddfd76eb519b",
     "semantic_hash": ""
   },
   "components/sections/landing/credibility-section.tsx": {
@@ -5772,9 +5772,9 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/evaluate.ts": {
-    "mtime": 1791895456.666292,
-    "seen": 1792484008.7122996,
-    "ast_hash": "ccd2efa49ccabf3c60c65f3a77e6ebf4",
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.3074422,
+    "ast_hash": "21c7e7ddebcd5db771f7c8433a04504b",
     "semantic_hash": ""
   },
   "lib/rules-engine/fixtures.ts": {
@@ -5910,9 +5910,9 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/types.ts": {
-    "mtime": 1791895456.666292,
-    "seen": 1792484008.7123237,
-    "ast_hash": "f28fb30b106aa029897f1c898e33d05b",
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.3074734,
+    "ast_hash": "d884977e198dc3fbb04e26d8b91d813b",
     "semantic_hash": ""
   },
   "lib/rules-engine/units.ts": {
@@ -5922,9 +5922,9 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/validate.ts": {
-    "mtime": 1791895456.666292,
-    "seen": 1792484008.7123253,
-    "ast_hash": "9fcf924218528d86fae6b8ba8b041829",
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.3074756,
+    "ast_hash": "4f5ff5e50d72a44a6e337c4505b60e3c",
     "semantic_hash": ""
   },
   "lib/rules-engine/why.ts": {
@@ -8154,9 +8154,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1792556739.6892776,
-    "seen": 1792556827.370194,
-    "ast_hash": "7765e863fa9fd1e78f05e49803755b42",
+    "mtime": 1792556895.5678105,
+    "seen": 1792556957.309043,
+    "ast_hash": "f7009be774711efa520d0424c1bcc9d2",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9108,9 +9108,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/[id]/customer-detail-client.tsx": {
-    "mtime": 1792551560.5840275,
-    "seen": 1792551686.7496204,
-    "ast_hash": "dd314ca4d2287dddb1bbb16d09b62e58",
+    "mtime": 1792556895.5678105,
+    "seen": 1792556957.3051474,
+    "ast_hash": "0890f91a993149f13307cdc4316f67ef",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
@@ -17415,6 +17415,36 @@
     "mtime": 1792556739.695778,
     "seen": 1792556827.3702633,
     "ast_hash": "61d60b65c1758a9f42e2967b7824db66",
+    "semantic_hash": ""
+  },
+  "lib/rules-engine/__tests__/streamline-premium.test.ts": {
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.3074322,
+    "ast_hash": "122d2adf444c8a3daeda985b82240e18",
+    "semantic_hash": ""
+  },
+  "lib/rules-engine/__tests__/template-by-size.test.ts": {
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.3074343,
+    "ast_hash": "dd16f10c8b10f1235b3ce9a04fc3cdb3",
+    "semantic_hash": ""
+  },
+  "lib/rules-engine/streamline-premium.ts": {
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.307472,
+    "ast_hash": "a04a12098fc4b2cc7eb6bcb477899c5d",
+    "semantic_hash": ""
+  },
+  "scripts/streamline-premium-rule-graph.ts": {
+    "mtime": 1792556895.6798105,
+    "seen": 1792556957.3079238,
+    "ast_hash": "75c19883c43e4b14d64d2741e3dde47e",
+    "semantic_hash": ""
+  },
+  "docs/adr/0027-size-keyed-template-outputs-and-any-combine.md": {
+    "mtime": 1792556895.572805,
+    "seen": 1792556957.3091106,
+    "ast_hash": "ff66ed29f1378885f413b5c052580150",
     "semantic_hash": ""
   }
 }
