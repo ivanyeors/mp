@@ -72,7 +72,7 @@ a fact:
 - **Verified email:** they have signed in with it.
 - **Sign-in methods:** emailed code, Google.
 - **Valid mobile:** the number on file passes `isValidPhone`.
-- **Replied on WhatsApp:** the number answered an **Appointment reminder**.
+- **Replied on WhatsApp:** the number has written to our WhatsApp line (`whatsapp_inbound`; CRM 11).
 
 _Avoid_ — "verified mobile". Nothing verifies a phone number by code. Never let Staff tick
 "verified".

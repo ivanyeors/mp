@@ -4,8 +4,8 @@
 -- admin_customer_overview adds `marketing_email` and
 -- `marketing_email_updated_at`, at the end: the Customers list filters on the
 -- first (*Email consent*), and slice 08's audience reads both. Every column the
--- previous definition has is kept, in its order; Postgres refuses a drop or a
--- reorder. CUSTOMER_OVERVIEW_COLUMNS (lib/crm/customer-overview.ts) lists the
+-- previous definition has is kept, in its order, including CRM slice 11's
+-- contact status (20261020200000); Postgres refuses a drop or a reorder. CUSTOMER_OVERVIEW_COLUMNS (lib/crm/customer-overview.ts) lists the
 -- same columns, and lib/crm/__tests__/customer-overview-view.test.ts holds the
 -- two equal.
 --
@@ -36,6 +36,9 @@ select
   m.claimed_at,
   m.shopify_orders_count,
   m.shopify_amount_spent,
+  c.account_providers,
+  not public.is_blank_phone(c.phone) as has_phone,
+  public.is_valid_phone(c.phone)     as phone_valid,
   c.marketing_email,
   c.marketing_email_updated_at
 from public.customers c

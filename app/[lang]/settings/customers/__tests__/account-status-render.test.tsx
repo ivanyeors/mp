@@ -39,6 +39,9 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   claimed_at: null,
   shopify_orders_count: null,
   shopify_amount_spent: null,
+  account_providers: [],
+  has_phone: false,
+  phone_valid: false,
   marketing_email: "not_subscribed",
   marketing_email_updated_at: null,
   ...over,
@@ -144,6 +147,7 @@ const customer = (over: Partial<Customer>): Customer =>
     updated_at: "2026-09-01T00:00:00Z",
     account_linked_at: null,
     account_last_seen_at: null,
+    account_providers: [],
     ...over,
   }) as Customer;
 
@@ -170,7 +174,9 @@ const detail = (c: Customer, migration?: { ok: true; facts: MigratedCustomerFact
     />,
   );
 
-describe("Customer detail: Account card", () => {
+// CRM slice 11 grew the Account card into the Contact and sign-in card, which
+// keeps the sign-up date (as *Verified since*) and the last signed-in visit.
+describe("Customer detail: Contact and sign-in card (was the Account card)", () => {
   it("says when a signed-up Customer signed up, and their last signed-in visit", () => {
     const html = detail(
       customer({
@@ -179,7 +185,7 @@ describe("Customer detail: Account card", () => {
         account_last_seen_at: "2026-10-20T06:00:00Z",
       }),
     );
-    expect(html).toContain("Signed up on <!-- -->2 Oct 2026");
+    expect(html).toContain("Verified: signed in with it since <!-- -->2 Oct 2026");
     expect(html).toContain("Last signed-in visit");
     expect(html).toContain("20 Oct 2026");
     expect(html).toContain('aria-label="About the sign-up date"');

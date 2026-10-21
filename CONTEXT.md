@@ -482,7 +482,7 @@ A **Google review** that **Staff** have confirmed belongs to a **Customer**. Goo
 _Avoid_: linking automatically; treating a review-link click as proof of a review
 
 **Contact status**:
-What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number answered an **Appointment reminder**).
+What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number has written to our WhatsApp line, as recorded in `whatsapp_inbound`).
 _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting **Staff** tick "verified"
 
 ## Shipping (ADR 0020, ADR 0022)

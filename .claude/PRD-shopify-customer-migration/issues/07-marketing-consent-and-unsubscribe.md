@@ -145,7 +145,7 @@ Add a dated paragraph, in copy the owner approves:
   session. Off is `unsubscribed`.
 - **Admin Panel.**
   - `admin_customer_overview` adds `marketing_email` and `marketing_email_updated_at`, in its
-    own file (`20261020200000_customer_overview_marketing_consent.sql`).
+    own file (`20261020200100_customer_overview_marketing_consent.sql`).
   - The Customers list gains an *Email consent* filter (`?consent=subscribed|not-subscribed|unsubscribed`,
     `lib/crm/customer-filters.ts`).
   - The Customer page gains a *Marketing email* card
@@ -174,7 +174,10 @@ Add a dated paragraph, in copy the owner approves:
 
 - `20261020120000_marketing_consent.sql`
 - `20261020120100_customer_import_marketing_consent.sql`
-- `20261020200000_customer_overview_marketing_consent.sql`, which carries every earlier column.
+- `20261020200100_customer_overview_marketing_consent.sql`, which carries every earlier column.
+  It was `20261020200000` until the catch-up merge brought in CRM 11's redefinition at that
+  same version. It moved to the next free one, and now also carries CRM 11's
+  `account_providers`, `has_phone` and `phone_valid`.
 
 All three are idempotent. `db-check.sh` applies every migration. The new
 `supabase/tests/customer-migration/assert-07-marketing-consent.sql` asserts all of the

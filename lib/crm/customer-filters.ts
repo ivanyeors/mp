@@ -9,6 +9,9 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
  * here, so the RSC page and `GET /api/shop/customers` agree, and the list's
  * client writes its URL with `customerFilterParams`, so a filtered list is a
  * link (migration slice 12). CRM slice 04 adds its filters to this schema.
+ * CRM slice 11 adds Contact status: Google linked or not, and the mobile on
+ * file. *Email verified* is the Account filter: an account is bound by the
+ * email they signed in with, so *Signed up* means exactly that.
  *
  * Each parameter is read on its own: an unknown value (`account=foo`) is
  * dropped and named in `ignored`, never passed to the query.
@@ -19,6 +22,13 @@ export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 
 export const SOURCE_FILTERS = ["all", "shopify", "platform"] as const;
 export type SourceFilter = (typeof SOURCE_FILTERS)[number];
+
+export const GOOGLE_FILTERS = ["all", "linked", "not-linked"] as const;
+export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
+
+/** *On file* is a valid number, *invalid* one that fails `isValidPhone`, *missing* none. */
+export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
+export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
 /** *Email consent* (migration slice 07): the Customer's **Marketing consent**. */
 export const CONSENT_FILTERS = ["all", "subscribed", "not-subscribed", "unsubscribed"] as const;
@@ -42,6 +52,10 @@ export interface CustomerFilters {
   account: AccountFilter;
   /** *From Shopify* is a **Migrated customer**; *Platform* is every other Customer. */
   source: SourceFilter;
+  /** Signs in with Google (`account_providers`); *not linked* includes no account. */
+  google: GoogleFilter;
+  /** The mobile on file (`has_phone`, `phone_valid`). */
+  mobile: MobileFilter;
   /** *Email consent*: `marketing_email` on the overview. */
   consent: ConsentFilter;
   sort: CustomerSort;
@@ -54,6 +68,8 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   tags: [],
   account: "all",
   source: "all",
+  google: "all",
+  mobile: "all",
   consent: "all",
   sort: "newest",
   page: 1,
@@ -74,6 +90,8 @@ const PARAM_SCHEMAS = {
   ),
   account: z.enum(ACCOUNT_FILTERS),
   source: z.enum(SOURCE_FILTERS),
+  google: z.enum(GOOGLE_FILTERS),
+  mobile: z.enum(MOBILE_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
@@ -135,6 +153,8 @@ export function customerFilterParams(
   if (f.tags.length) out.set("tags", f.tags.join(","));
   if (f.account !== "all") out.set("account", f.account);
   if (f.source !== "all") out.set("source", f.source);
+  if (f.google !== "all") out.set("google", f.google);
+  if (f.mobile !== "all") out.set("mobile", f.mobile);
   if (f.consent !== "all") out.set("consent", f.consent);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
@@ -148,6 +168,8 @@ export function customerFilterParams(
 export interface CustomerListQuery {
   or(filters: string): this;
   overlaps(column: string, value: string[]): this;
+  contains(column: string, value: string[]): this;
+  not(column: string, operator: "cs", value: string): this;
   eq(column: string, value: boolean | string): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
@@ -169,6 +191,14 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+
+  if (filters.google === "linked") q = q.contains("account_providers", ["google"]);
+  if (filters.google === "not-linked") q = q.not("account_providers", "cs", "{google}");
+
+  if (filters.mobile === "on-file") q = q.eq("phone_valid", true);
+  if (filters.mobile === "missing") q = q.eq("has_phone", false);
+  if (filters.mobile === "invalid") q = q.eq("has_phone", true).eq("phone_valid", false);
+
   if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
 
   switch (filters.sort) {
