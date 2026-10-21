@@ -2,7 +2,7 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { hashClaimToken } from "@/lib/customer-migration/claim-link";
 import {
   formatWaveReport,
@@ -98,12 +98,12 @@ function fakeTransport(opts: { name?: string; failFor?: Set<string>; failAll?: b
 }
 
 let world: CampaignWorld;
-let sleep: ReturnType<typeof vi.fn>;
+let sleep: Mock<(ms: number) => Promise<void>>;
 
 beforeEach(() => {
   world = emptyWorld();
   seed(world);
-  sleep = vi.fn(async () => undefined);
+  sleep = vi.fn<(ms: number) => Promise<void>>(async () => undefined);
 });
 
 function setup(over: Partial<WaveSetup> = {}): WaveSetup & { sent: OutgoingEmail[] } {
