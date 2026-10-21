@@ -1,0 +1,487 @@
+/**
+ * The wave sender (PRD-shopify-customer-migration slice 08; ADR 0029 i).
+ *
+ * A human runs every wave (scripts/customer-migration-send.ts). It is a dry
+ * run unless `apply`: it prints the checks, the eligible count and the
+ * selection, and sends nothing.
+ *
+ * **Before it sends anything** it refuses, sending nothing, unless:
+ *  - the transport is Resend, built from CAMPAIGN_RESEND_API_KEY
+ *    (`getCampaignTransport`), never the Gmail mailbox that sends order email;
+ *  - CAMPAIGN_EMAIL_FROM is on the campaign subdomain, CAMPAIGN_EMAIL_DOMAIN;
+ *  - the target site answers `POST /api/email/unsubscribe` (README, first
+ *    hazard: no campaign email before one-click unsubscribe is live), and
+ *    verifies links signed with this machine's UNSUBSCRIBE_SECRET;
+ *  - an offer template's voucher would be issued by a sign-in now (the email
+ *    promises one), and owner decision 3 allows the service notice;
+ *  - the most recent wave holds no pause condition (bounces over 2%,
+ *    complaints over 0.1%), or the human passes `resume`.
+ *
+ * **What it sends.** The audience comes from `selectCampaignAudience`. Each
+ * person is claimed in the ledger BEFORE the send (`claim_campaign_send`),
+ * which re-checks them in SQL at that moment; the unique key makes a second
+ * or concurrent run skip anyone already claimed. Each email gets its own
+ * Claim link (`mintClaimLink`), the footer's unsubscribe link, and
+ * `List-Unsubscribe` with `List-Unsubscribe-Post` (RFC 8058). Reply-To is the
+ * support inbox. About two messages a second; it stops after five failures
+ * in a row. A failed send is marked `failed`, and retried only with
+ * `retryFailed`.
+ */
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
+import { checkCampaignFrom, emailAddressOf } from "@/lib/email/campaign-transport";
+import { formatSgDate, money } from "@/lib/email/format";
+import {
+  renderMigrationAnnouncementEmail,
+  renderMigrationReminderEmail,
+  renderMigrationServiceNoticeEmail,
+  type CampaignVoucherTerms,
+} from "@/lib/email/migration";
+import type { EmailTransport, RenderedEmail } from "@/lib/email/types";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
+import {
+  listUnsubscribeHeaders,
+  probeUnsubscribeRoute,
+  probeUnsubscribeSecret,
+  unsubscribeLinks,
+  UNSUBSCRIBE_ROUTE,
+} from "@/lib/marketing-consent/unsubscribe";
+import { selectCampaignAudience, isBuyer, type AudienceExclusion, type CampaignAudience } from "./audience";
+import {
+  CAMPAIGN_BLOCKER_LABEL,
+  CAMPAIGN_TEMPLATE_LABEL,
+  OFFER_TEMPLATES,
+  WAVE_PATTERN,
+  type CampaignTemplate,
+} from "./campaign";
+import {
+  claimCampaignSend,
+  finishCampaignSend,
+  readCampaignWaveStats,
+  readServiceNoticeEnabled,
+  wavePause,
+  type CampaignWaveStats,
+} from "./campaign-ledger";
+import { mintClaimLink } from "./claim-link";
+import { readWelcomeVoucherTerms, welcomeVoucherIssuing, type WelcomeVoucherTerms } from "./welcome-voucher-terms";
+
+/** About two messages a second. */
+export const THROTTLE_MS = 500;
+/** Stop the wave after this many failures in a row. */
+export const MAX_CONSECUTIVE_FAILURES = 5;
+
+export interface WaveRequest {
+  template: CampaignTemplate;
+  /** The wave's label, e.g. `pilot` or `w1`. */
+  wave: string;
+  /** The most the wave holds. */
+  limit: number;
+  /** Leave out subscribers who never bought. */
+  buyersOnly?: boolean;
+  /** Re-claim this wave's failed sends, and nobody else. */
+  retryFailed?: boolean;
+  /** Send. Without it, a dry run. */
+  apply?: boolean;
+  /** Run although the latest wave holds a pause condition. */
+  resume?: boolean;
+}
+
+export interface WaveSetup {
+  admin: SupabaseClient;
+  /** `getCampaignTransport()`: null without CAMPAIGN_RESEND_API_KEY. */
+  transport: EmailTransport | null;
+  /** CAMPAIGN_EMAIL_FROM. */
+  campaignFrom: string | undefined;
+  /** CAMPAIGN_EMAIL_DOMAIN: the sending subdomain. */
+  campaignDomain: string | undefined;
+  /** The mailbox order email is sent from, which campaign mail must not share. */
+  orderFrom: string | null;
+  /** The support inbox: Reply-To, and the `mailto:` unsubscribe. */
+  replyTo: string | null;
+  /** The site every link points at, and whose unsubscribe route is probed. */
+  origin: string;
+  /** UNSUBSCRIBE_SECRET on this machine: it signs every link sent. */
+  unsubscribeSecret: string | undefined;
+  fetchImpl?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => Date;
+}
+
+export interface PreflightCheck {
+  key: string;
+  ok: boolean;
+  detail: string;
+}
+
+export interface WavePreflight {
+  checks: PreflightCheck[];
+  /** Every check passed. */
+  ready: boolean;
+  /** The voucher as the offer templates state it; null when none would be issued. */
+  voucher: CampaignVoucherTerms | null;
+  stats: CampaignWaveStats[];
+}
+
+export type WaveSendOutcome =
+  | { customerId: string; email: string; outcome: "sent"; providerMessageId: string | null; ledgerUpdated: boolean }
+  | { customerId: string; email: string; outcome: "failed"; error: string }
+  | { customerId: string; email: string; outcome: "skipped"; reason: string };
+
+export interface WaveReport {
+  request: WaveRequest;
+  preflight: WavePreflight;
+  audience: CampaignAudience | null;
+  /** Error reading the audience, if it could not be read. */
+  audienceError: string | null;
+  /** True when it sent (apply, and every check passed). */
+  ran: boolean;
+  claimed: number;
+  sent: number;
+  failed: number;
+  skipped: Partial<Record<string, number>>;
+  /** Why it stopped before the end of the selection. */
+  stopped: string | null;
+  results: WaveSendOutcome[];
+}
+
+/** `we***@example.com`: enough to recognise in a terminal, not a mailing list. */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 1) return "***";
+  return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`;
+}
+
+/**
+ * Pure — the voucher as an offer email states it. Null when the terms are
+ * incomplete; the caller has checked `welcomeVoucherIssuing` first.
+ */
+export function campaignVoucherTerms(terms: WelcomeVoucherTerms): CampaignVoucherTerms | null {
+  if (!terms.type || !terms.issueUntil) return null;
+  if (terms.type === "fixed_amount" && !(terms.value != null && terms.value > 0)) return null;
+  return {
+    kind: terms.type,
+    amount: terms.type === "fixed_amount" ? money(terms.value!, "SGD") : null,
+    minimumSpend: terms.minOrder ? money(terms.minOrder, "SGD") : null,
+    validDays: terms.validDays,
+    // The last Singapore day, as a date.
+    issueUntil: formatSgDate(`${terms.issueUntil}T00:00:00+08:00`),
+  };
+}
+
+const isLocalHost = (host: string) => host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+
+async function attempt<T>(fn: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
+  try {
+    return { ok: true, value: await fn() };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * Every check a wave must pass before it sends anything. Runs in a dry run
+ * too, so the human sees what an `apply` would refuse. Changes nothing: the
+ * probes are a one-click POST with no link, and one with a link for a
+ * Customer who does not exist.
+ */
+export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now: Date = new Date()): Promise<WavePreflight> {
+  const checks: PreflightCheck[] = [];
+  const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
+
+  add("wave", WAVE_PATTERN.test(req.wave), WAVE_PATTERN.test(req.wave) ? `wave ${req.wave}` : `"${req.wave}" is not a wave label (1 to 32 letters, digits, - or _)`);
+  add("limit", Number.isInteger(req.limit) && req.limit > 0, `at most ${req.limit} in the wave`);
+
+  const t = setup.transport;
+  add(
+    "transport",
+    t?.name === "resend",
+    !t
+      ? "CAMPAIGN_RESEND_API_KEY is not set (owner decision 4)"
+      : t.name === "resend"
+        ? "Resend, from CAMPAIGN_RESEND_API_KEY"
+        : `the transport is ${t.name}: campaign mail goes through Resend only, never the order mailbox`,
+  );
+
+  const from = checkCampaignFrom({ from: setup.campaignFrom, domain: setup.campaignDomain, orderFrom: setup.orderFrom });
+  add("from", from.ok, from.ok ? `${from.from}, on ${from.domain}` : from.reason);
+
+  const replyTo = emailAddressOf(setup.replyTo);
+  add(
+    "reply_to",
+    Boolean(replyTo && !replyTo.endsWith("@resend.dev")),
+    replyTo && !replyTo.endsWith("@resend.dev") ? `replies go to ${replyTo}` : "no support inbox for Reply-To: set SUPPORT_EMAIL",
+  );
+
+  let site: URL | null = null;
+  try {
+    site = new URL(setup.origin);
+  } catch {
+    site = null;
+  }
+  const siteOk = Boolean(site && site.protocol === "https:" && !isLocalHost(site.hostname));
+  add("site", siteOk, siteOk ? `links point at ${site!.origin}` : `${setup.origin} is not a public https site`);
+
+  const route = await probeUnsubscribeRoute(setup.origin, setup.fetchImpl);
+  add("unsubscribe_route", route.ready, route.ready ? `${setup.origin}${UNSUBSCRIBE_ROUTE} answers one-click unsubscribe` : route.reason);
+  const secret = route.ready
+    ? await probeUnsubscribeSecret(setup.origin, { secret: setup.unsubscribeSecret, fetchImpl: setup.fetchImpl })
+    : ({ ready: false, reason: "not checked: the unsubscribe route is not ready" } as const);
+  add("unsubscribe_secret", secret.ready, secret.ready ? "the site verifies links signed here" : secret.reason);
+
+  if (req.template === "migration_service_notice") {
+    const on = await attempt(() => readServiceNoticeEnabled(setup.admin));
+    add(
+      "service_notice",
+      on.ok && on.value,
+      !on.ok
+        ? on.error
+        : on.value
+          ? "owner decision 3: the no-consent group gets the service notice"
+          : "owner decision 3 is not answered (migration_service_notice_enabled is not 'true'): the no-consent group gets nothing",
+    );
+  }
+
+  let voucher: CampaignVoucherTerms | null = null;
+  if (OFFER_TEMPLATES.has(req.template)) {
+    const read = await attempt(() => readWelcomeVoucherTerms(setup.admin));
+    if (!read.ok) add("voucher", false, read.error);
+    else {
+      const issuing = welcomeVoucherIssuing(read.value, now);
+      voucher = issuing.issuing ? campaignVoucherTerms(read.value.terms) : null;
+      add(
+        "voucher",
+        voucher !== null,
+        voucher
+          ? `a sign-in issues the welcome-back voucher until ${voucher.issueUntil}`
+          : `this email promises a voucher, and a sign-in now would issue none (${issuing.issuing ? "incomplete terms" : issuing.reason}): set the terms in Discounts`,
+      );
+    }
+  }
+
+  let stats: CampaignWaveStats[] = [];
+  const read = await attempt(() => readCampaignWaveStats(setup.admin));
+  if (!read.ok) add("pause", false, read.error);
+  else {
+    stats = read.value;
+    const pause = wavePause(stats);
+    add(
+      "pause",
+      !pause.paused || Boolean(req.resume),
+      pause.paused
+        ? `wave ${pause.wave} (${pause.template}): ${pause.reason}; ${req.resume ? "resumed with --resume" : "investigate that segment, then --resume"}`
+        : "no wave holds a pause condition",
+    );
+  }
+
+  return { checks, ready: checks.every((c) => c.ok), voucher, stats };
+}
+
+/** Pure — one campaign email for one recipient. */
+export function renderCampaignEmail(
+  template: CampaignTemplate,
+  p: {
+    firstName: string | null;
+    email: string;
+    claimUrl: string;
+    unsubscribeUrl: string;
+    voucher: CampaignVoucherTerms | null;
+    origin: string;
+    locale: Locale;
+  },
+): RenderedEmail {
+  const recipient = { firstName: p.firstName, email: p.email, unsubscribeUrl: p.unsubscribeUrl };
+  if (template === "migration_service_notice") {
+    return renderMigrationServiceNoticeEmail({
+      ...recipient,
+      signInUrl: p.claimUrl,
+      siteHost: new URL(p.origin).host,
+      readjustmentUrl: `${p.origin}${withLocale("/appointments", p.locale)}?type=readjustment`,
+      supportWhatsAppDisplay: SUPPORT_WHATSAPP_DISPLAY,
+      supportWhatsAppUrl: SUPPORT_WHATSAPP_URL,
+    });
+  }
+  if (!p.voucher) throw new Error(`${template} states the voucher, and there are no voucher terms`);
+  return template === "migration_reminder"
+    ? renderMigrationReminderEmail({ ...recipient, claimUrl: p.claimUrl, voucher: p.voucher })
+    : renderMigrationAnnouncementEmail({ ...recipient, claimUrl: p.claimUrl, voucher: p.voucher });
+}
+
+/**
+ * One wave: the checks, the audience, and (with `apply`, when every check
+ * passed) the sends. Never throws for one recipient: their outcome is in the
+ * report.
+ */
+export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promise<WaveReport> {
+  const now = (setup.now ?? (() => new Date()))();
+  const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const preflight = await campaignPreflight(req, setup, now);
+
+  const report: WaveReport = {
+    request: req,
+    preflight,
+    audience: null,
+    audienceError: null,
+    ran: false,
+    claimed: 0,
+    sent: 0,
+    failed: 0,
+    skipped: {},
+    stopped: null,
+    results: [],
+  };
+
+  const audience = await attempt(() =>
+    selectCampaignAudience(
+      setup.admin,
+      req.template,
+      { wave: req.wave, limit: req.limit, buyersOnly: req.buyersOnly, retryFailed: req.retryFailed },
+      now,
+    ),
+  );
+  if (!audience.ok) {
+    report.audienceError = audience.error;
+    return report;
+  }
+  report.audience = audience.value;
+  if (!req.apply || !preflight.ready) return report;
+
+  report.ran = true;
+  const transport = setup.transport!;
+  const from = setup.campaignFrom!.trim();
+  const replyTo = emailAddressOf(setup.replyTo)!;
+  const origin = setup.origin.replace(/\/$/, "");
+  let consecutive = 0;
+
+  for (const candidate of audience.value.selection) {
+    if (consecutive >= MAX_CONSECUTIVE_FAILURES) {
+      report.stopped = `${MAX_CONSECUTIVE_FAILURES} sends in a row failed`;
+      break;
+    }
+    const masked = maskEmail(candidate.email);
+    const claim = await claimCampaignSend(setup.admin, {
+      customerId: candidate.customerId,
+      template: req.template,
+      wave: req.wave,
+      retryFailed: req.retryFailed,
+    });
+    if ("error" in claim) {
+      report.failed++;
+      consecutive++;
+      report.results.push({ customerId: candidate.customerId, email: masked, outcome: "failed", error: `claim: ${claim.error}` });
+      continue;
+    }
+    if (!claim.claimed) {
+      report.skipped[claim.blocker] = (report.skipped[claim.blocker] ?? 0) + 1;
+      report.results.push({ customerId: candidate.customerId, email: masked, outcome: "skipped", reason: claim.blocker });
+      continue;
+    }
+
+    report.claimed++;
+    const locale: Locale = isSupportedLocale(claim.locale) ? claim.locale : DEFAULT_LOCALE;
+    try {
+      const unsubscribe = unsubscribeLinks(candidate.customerId, { origin, locale, secret: setup.unsubscribeSecret });
+      if (!unsubscribe) throw new Error("no unsubscribe link could be signed");
+      const link = await mintClaimLink(setup.admin, { customerId: candidate.customerId, template: req.template, locale, origin });
+      const rendered = renderCampaignEmail(req.template, {
+        firstName: claim.firstName,
+        email: claim.email,
+        claimUrl: link.url,
+        unsubscribeUrl: unsubscribe.pageUrl,
+        voucher: preflight.voucher,
+        origin,
+        locale,
+      });
+      const result = await transport.send({
+        ...rendered,
+        to: claim.email,
+        from,
+        replyTo,
+        headers: listUnsubscribeHeaders(unsubscribe, { mailto: replyTo }),
+      });
+      const ledgerUpdated = await finishCampaignSend(setup.admin, {
+        sendId: claim.sendId,
+        sent: true,
+        providerMessageId: result.id ?? null,
+      });
+      report.sent++;
+      consecutive = 0;
+      report.results.push({
+        customerId: candidate.customerId,
+        email: maskEmail(claim.email),
+        outcome: "sent",
+        providerMessageId: result.id ?? null,
+        ledgerUpdated,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await finishCampaignSend(setup.admin, { sendId: claim.sendId, sent: false, error: message });
+      report.failed++;
+      consecutive++;
+      report.results.push({ customerId: candidate.customerId, email: maskEmail(claim.email), outcome: "failed", error: message });
+    }
+    await sleep(THROTTLE_MS);
+  }
+  return report;
+}
+
+const EXCLUSION_LABEL: Record<AudienceExclusion, string> = {
+  ...CAMPAIGN_BLOCKER_LABEL,
+  not_a_buyer: "never bought (--buyers-only)",
+  not_failed: "nothing of theirs failed in this wave (--retry-failed)",
+};
+
+/** Pure — the report as the script prints it. Emails are masked. */
+export function formatWaveReport(report: WaveReport): string[] {
+  const { request: req, preflight, audience } = report;
+  const lines: string[] = [];
+  const mode = req.apply ? "SEND" : "DRY RUN (nothing is sent; add --apply to send)";
+  lines.push(`${CAMPAIGN_TEMPLATE_LABEL[req.template]} (${req.template}), wave ${req.wave}: ${mode}`);
+  lines.push("");
+  lines.push("Checks:");
+  for (const c of preflight.checks) lines.push(`  ${c.ok ? "ok  " : "FAIL"} ${c.key}: ${c.detail}`);
+
+  if (preflight.stats.length > 0) {
+    lines.push("");
+    lines.push("Waves so far (handed / bounced / complained / failed / pending):");
+    for (const s of preflight.stats) {
+      lines.push(`  ${s.template} ${s.wave}: ${s.handed} / ${s.bounced} / ${s.complained} / ${s.failed} / ${s.pending}`);
+    }
+  }
+
+  lines.push("");
+  if (report.audienceError) {
+    lines.push(`Could not read the audience: ${report.audienceError}`);
+  } else if (audience) {
+    lines.push(`Migrated customers: ${audience.considered}`);
+    lines.push(`Eligible now: ${audience.eligible.length} (${audience.eligibleBuyers} bought on Shopify)`);
+    for (const [why, count] of Object.entries(audience.excluded)) {
+      lines.push(`  not eligible, ${EXCLUSION_LABEL[why as AudienceExclusion] ?? why}: ${count}`);
+    }
+    lines.push(
+      req.retryFailed
+        ? `Retrying up to ${audience.room} failed send(s) of wave ${req.wave}.`
+        : `Wave ${req.wave} already holds ${audience.alreadyInWave} of ${req.limit}; room for ${audience.room}.`,
+    );
+    lines.push(`Selection (${audience.selection.length}, buyers first, then most recent import):`);
+    for (const c of audience.selection) {
+      lines.push(`  ${c.customerId}  ${maskEmail(c.email).padEnd(28)} ${isBuyer(c) ? "buyer" : "no orders"}  imported ${c.importedAt.slice(0, 10)}`);
+    }
+  }
+
+  lines.push("");
+  if (!req.apply) lines.push(preflight.ready ? "Every check passes: --apply would send." : "An --apply would refuse: a check fails.");
+  else if (!report.ran) lines.push("REFUSED: nothing was sent, because a check failed or the audience could not be read.");
+  else {
+    lines.push(`Sent ${report.sent}, failed ${report.failed}, skipped ${report.results.filter((r) => r.outcome === "skipped").length}.`);
+    for (const [why, count] of Object.entries(report.skipped)) lines.push(`  skipped, ${why}: ${count}`);
+    for (const r of report.results) {
+      if (r.outcome === "failed") lines.push(`  failed ${r.customerId} ${r.email}: ${r.error}`);
+      if (r.outcome === "sent" && !r.ledgerUpdated) {
+        lines.push(`  sent ${r.customerId} ${r.email}, but the ledger kept it pending: it will not be sent again`);
+      }
+    }
+    if (report.stopped) lines.push(`STOPPED: ${report.stopped}. Check the transport, then run again (the ledger skips who was sent).`);
+  }
+  return lines;
+}

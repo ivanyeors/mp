@@ -9,9 +9,16 @@
 //
 // Every `render` must be PURE — no network, no DB.
 
+import { renderWelcomeVoucherEmail } from "./account";
+import { renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { renderApplicationOutcomeEmail } from "./application";
 import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderContactEmail } from "./contact";
+import {
+  renderMigrationAnnouncementEmail,
+  renderMigrationReminderEmail,
+  renderMigrationServiceNoticeEmail,
+} from "./migration";
 import { renderHeldResultReminderEmail, renderPartnerListingUpdatedEmail } from "./ops";
 import {
   renderMilestoneEmail,
@@ -41,14 +48,21 @@ import {
   sampleHeldReminder,
   sampleHoldExpired,
   sampleHoldExpiredUnpaid,
+  sampleMigrationAnnouncement,
+  sampleMigrationAnnouncementFreeShipping,
+  sampleMigrationReminder,
+  sampleMigrationServiceNotice,
   sampleOrder,
   samplePairedMbolsterRemoved,
   samplePairedMbolsterRemovedReady,
   samplePartnerListing,
   sampleBalanceDue,
   sampleBalanceDueFinish,
+  sampleCheckup,
   sampleReadjustmentReschedule,
   sampleRestock,
+  sampleReviewRequest,
+  sampleReviewRequestNoName,
   sampleResultAssigned,
   sampleResultAssignedBalance,
   sampleResultAssignedFinish,
@@ -60,6 +74,8 @@ import {
   sampleResultUpdatedBalance,
   sampleResultUpdatedWithinHold,
   sampleRma,
+  sampleWelcomeVoucher,
+  sampleWelcomeVoucherFreeShipping,
   type EmailFixture,
 } from "./__fixtures__/samples";
 import type { EmailTemplateName, RenderedEmail } from "./types";
@@ -69,6 +85,9 @@ export type { EmailFixture };
 
 export type EmailGroup =
   | "order"
+  | "account"
+  | "migration"
+  | "aftercare"
   | "rma"
   | "partner"
   | "application"
@@ -83,6 +102,12 @@ export interface EmailCase {
   label: string;
   group: EmailGroup;
   audience: "customer" | "partner" | "staff";
+  /**
+   * Campaign mail (migration slice 08 onwards): rendered with an unsubscribe
+   * link and sent with `List-Unsubscribe`. Every other entry is transactional
+   * and must carry neither (`__tests__/transactional-no-unsubscribe.test.ts`).
+   */
+  campaign?: true;
   /** Pure renderer bound to the shared fixtures. */
   render: (fixture: EmailFixture) => RenderedEmail;
 }
@@ -286,6 +311,98 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f)),
   },
 
+  // --- Customer account ---
+  {
+    // Sent once, at the Claim (PRD-shopify-customer-migration slice 05). The
+    // id is also its customer_emails.template (WELCOME_VOUCHER_EMAIL).
+    id: "account.welcome_voucher",
+    label: "Welcome-back voucher",
+    group: "account",
+    audience: "customer",
+    render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucher(f)),
+  },
+  {
+    // Same renderer, free-shipping terms and no first name: the "worth" line
+    // and the greeting are the two sentences that change.
+    id: "account.welcome_voucher_free_shipping",
+    label: "Welcome-back voucher — free shipping",
+    group: "account",
+    audience: "customer",
+    render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucherFreeShipping(f)),
+  },
+
+  // --- Campaign: the Shopify customer migration (slice 08) ---
+  // Campaign mail: rendered with the unsubscribe link, sent with
+  // List-Unsubscribe, through the campaign transport only. Each id is the
+  // CAMPAIGN_EMAIL_IDS entry (lib/customer-migration/campaign.ts) of its
+  // customer_campaign_sends.template.
+  {
+    id: "migration.announcement",
+    label: "Shopify move: account ready",
+    group: "migration",
+    audience: "customer",
+    campaign: true,
+    render: (f) => renderMigrationAnnouncementEmail(sampleMigrationAnnouncement(f)),
+  },
+  {
+    // Same renderer, free-shipping terms, no minimum and no first name: the
+    // offer line and the greeting are the sentences that change.
+    id: "migration.announcement_free_shipping",
+    label: "Shopify move: account ready — free shipping",
+    group: "migration",
+    audience: "customer",
+    campaign: true,
+    render: (f) => renderMigrationAnnouncementEmail(sampleMigrationAnnouncementFreeShipping(f)),
+  },
+  {
+    id: "migration.reminder",
+    label: "Shopify move: voucher reminder",
+    group: "migration",
+    audience: "customer",
+    campaign: true,
+    render: (f) => renderMigrationReminderEmail(sampleMigrationReminder(f)),
+  },
+  {
+    // To customers who never agreed to marketing, once, and only if owner
+    // decision 3 says so. No offer, voucher or promotion.
+    id: "migration.service_notice",
+    label: "Shopify move: service notice",
+    group: "migration",
+    audience: "customer",
+    campaign: true,
+    render: (f) => renderMigrationServiceNoticeEmail(sampleMigrationServiceNotice(f)),
+  },
+
+  // --- Aftercare (PRD customer-crm slices 07, 08) ---
+  {
+    // Once per Customer, 14 days after delivery. The id is also its
+    // customer_emails.template (REVIEW_REQUEST_TEMPLATE).
+    id: "aftercare.review_request",
+    label: "Review request",
+    group: "aftercare",
+    audience: "customer",
+    render: (f) => renderReviewRequestEmail(sampleReviewRequest(f)),
+  },
+  {
+    // Same renderer with no first name on file: the greeting is the one line
+    // that changes.
+    id: "aftercare.review_request_no_name",
+    label: "Review request — no first name",
+    group: "aftercare",
+    audience: "customer",
+    render: (f) => renderReviewRequestEmail(sampleReviewRequestNoName(f)),
+  },
+  {
+    // Yearly, Premium Mpillow only, stating the fee from Costings; email needs
+    // Marketing consent. Its customer_emails.template is the milestone,
+    // `aftercare.checkup_<n>m` (checkupTemplate), with the Order as entity.
+    id: "aftercare.checkup",
+    label: "Check-up reminder",
+    group: "aftercare",
+    audience: "customer",
+    render: (f) => renderCheckupEmail(sampleCheckup(f)),
+  },
+
   // --- Partner programme ---
   {
     id: "partner.referral_earned",
@@ -405,6 +522,9 @@ export function getEmailCase(id: string): EmailCase | undefined {
 
 export const EMAIL_GROUP_LABELS: Record<EmailGroup, string> = {
   order: "Orders",
+  account: "Customer account",
+  migration: "Shopify move (campaign)",
+  aftercare: "Aftercare",
   rma: "Returns",
   results: "Customisation",
   partner: "Partner programme",

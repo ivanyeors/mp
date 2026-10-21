@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
 /**
- * The two anonymous coupon validators answer "is it valid, what does it take
- * off, is shipping free" and nothing else (#169). The coupon row carries usage
+ * The anonymous coupon validator answers "is it valid, what does it take off,
+ * is shipping free" and nothing else (#169). The coupon row carries usage
  * limits, scope and the stored code, none of which a shopper needs.
  */
 
@@ -15,7 +15,6 @@ vi.mock("@/lib/supabase/server", async () => {
 });
 
 const { POST } = await import("@/app/api/shop/coupons/validate/route");
-const { validateCouponCode } = await import("@/app/[lang]/shop/checkout/actions");
 
 const coupon = {
   id: "coupon-staff10",
@@ -73,17 +72,5 @@ describe("POST /api/shop/coupons/validate", () => {
     const json = await (await post({ code: "STAFF%", subtotal: 100 })).json();
     expect(json.valid).toBe(false);
     expect(json).not.toHaveProperty("coupon");
-  });
-});
-
-describe("validateCouponCode server action", () => {
-  it("has no `coupon` key on a valid code", async () => {
-    const result = await validateCouponCode("staff10", 100);
-    expect(result).toMatchObject({ valid: true, discount_amount: 10, free_shipping: false });
-    expect(result).not.toHaveProperty("coupon");
-  });
-
-  it("rejects a wildcard code", async () => {
-    expect((await validateCouponCode("%", 100)).valid).toBe(false);
   });
 });

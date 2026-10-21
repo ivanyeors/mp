@@ -49,3 +49,5 @@ of that decision and folds the other two lists in.
   expand phase and dropped once the new columns are the only ones read.
 - View-only access is not modelled here; it is the next PRD. It is a second key per page
   (`<page>:read`), not a level column, so the subset rule and the matrix stay boolean.
+- Amended by ADR 0028 (i): Customers splits the other way. `customers` stays the page key and now
+  means seeing it; a tab-level `customers-edit` (`requires: ["customers"]`) grants every change.

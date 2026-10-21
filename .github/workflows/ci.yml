@@ -48,8 +48,14 @@ jobs:
       # `pnpm typecheck` runs `next typegen` first: next-env.d.ts and
       # .next/types/** are gitignored build artefacts that tsconfig.json
       # includes, so a fresh checkout has no route types without it.
+      #
+      # tsc needs about 2.3 GB for the whole program, past Node's default
+      # ~2 GB heap on this runner, which ends in "JavaScript heap out of
+      # memory". `--extendedDiagnostics` reports "Memory used" when it grows.
       - name: Typecheck
         run: pnpm typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
   test:
     runs-on: ubuntu-latest
@@ -101,8 +107,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `next build` type-checks the same program, so it needs the same heap
+      # as the Typecheck step above.
       - name: Build
         run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       # Reads .next/ from the step above. Fails the job if any route's
       # first-load JS exceeds scripts/bundle-budget.json.

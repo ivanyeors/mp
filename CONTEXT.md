@@ -285,7 +285,7 @@ A named set of **Permissions** (`admin_roles`). **Owner** and **Admin** are buil
 _Avoid_: treating the role name as the authority — code checks **Permissions**, never role names; per-member exceptions (a one-off access pattern is a new custom role)
 
 **Permission**:
-One entry in the code catalog (`lib/auth/permissions.ts`): an **Admin Panel** page (one sidebar entry, its URL and every API behind it) or a **Telegram action**. A **Role** either has it or does not; there is no per-member override and, in v1, no view-only level. Some pages require another (Page Builder, Blogs, Partners and Products pick images, so they require Media); ticking one ticks its requirements.
+One entry in the code catalog (`lib/auth/permissions.ts`): an **Admin Panel** page (one sidebar entry, its URL and every API behind it) or a **Telegram action**. A **Role** either has it or does not; there is no per-member override, and no view-only level except on Customers, where `customers` is seeing the page and `customers-edit` is making changes (ADR 0028 i). Some pages require another (Page Builder, Blogs, Partners and Products pick images, so they require Media); ticking one ticks its requirements.
 _Avoid_: "scope"; a key that gates several pages (the catalog is one key per page); hiding a page in the sidebar as the only protection — its URL and APIs refuse too
 
 **Owner**:
@@ -317,7 +317,7 @@ A **Customisation session** a **Staff** member originates with an **Assist link*
 _Avoid_: **Staff assist mode** (a shared in-store device with **Staff** at the controls and extra editors on the preview, gated on the `results` permission — the assisted customer is not **Staff**, is not in the room, and sees none of that chrome); **Partner-assisted customisation** (the partner's device, launched from **Partner Hub**, an **Authorization hold** taken up front, a **Referral** stamped for **Commission**); "staff assist" as shorthand for this in commit messages, code, or copy — it names the other thing; calling the unpaid submission an **Order**
 
 **Customer**:
-A shopper account identity after Sign in when the session is not **Staff**. Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
+A shopper's record (`customers` row), created at checkout, at **Sign in**, or by the Shopify import. It **has an account** once a **Sign in** is bound to it (`auth_user_id`). Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
 _Avoid_: conflating with **Customer preference** (cover/case choices only)
 
 **Order**:
@@ -330,11 +330,41 @@ _Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-sto
 
 **Shopify order mirror**:
 Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Distinct from `shopify_sales_queue` (ops inventory commit). Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only.
-_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input.
+_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
 
 **Others**:
 Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
 _Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
+
+## Shopify customer migration (ADR 0029)
+
+**Migrated customer**:
+A **Customer** whose row was created or enriched from the Shopify customer export. It carries one `migrated_customers` row: Shopify customer id, Shopify-era order count and spend, Shopify tags and note, the consent snapshot, the **Import batch** and `claimed_at`. Readable by the service role only.
+_Avoid_: "imported account" or "migrated account" — no login moved, and Shopify credentials never leave Shopify; until it is **Claimed**, a Migrated customer is a row, not an account; writing Shopify-era figures into `customers.total_orders` / `total_spent` — those are platform-derived and recomputed by `updateCustomerStats`
+
+**Claim**:
+The first **Sign in**, after import, by the person who owns a **Migrated customer**'s email. `linkCustomerToAuthUser` binds `auth_user_id` as it would for any customer row. The Claim stamps `claimed_at` and issues the **Welcome-back voucher**, both in one transaction and both exactly once.
+_Avoid_: "invite" or "activation" — nothing is created in `auth.users` before the person signs in, and no Supabase invite is sent
+
+**Claim link**:
+The per-customer link in a campaign email, `/account/welcome?c=<token>`. The token is opaque; only its hash is stored. It prefills the email on the welcome page and attributes the click.
+_Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
+
+**Welcome-back voucher**:
+The one `coupons` row issued to a **Migrated customer** at **Claim** (`issued_for = 'welcome_back'`). It is bound to that **Customer**: valid only while they are signed in and checking out with the account email. It is a shop-cart voucher, like every coupon today.
+_Avoid_: "store credit", "points", "gift card" (none exist); describing it as usable on a customisation — **Results** price with no discount (`app/api/results/hold/route.ts:648`, `lib/results/paired-hold.ts:118`)
+
+**Marketing consent**:
+Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is appended to `customer_consent_events`.
+_Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked"
+
+**Import batch**:
+One import that wrote to the database, run from **Admin Panel** → Customers → Import from Shopify. It records the file's name and SHA-256, the counts by outcome, the **Staff** who ran it, and when. It is the unit of reconciliation, of resume, and of undo.
+_Avoid_: "upload" — the file itself is never uploaded or stored; the browser reads it and sends rows
+
+**Account status**:
+Whether a **Customer** row is bound to a login: *Signed up* (since `account_linked_at`) or *No account*. It is derived from `auth_user_id` in the Customer overview (`admin_customer_overview`), never stored as text. It applies to every **Customer**, not only Migrated ones. For a **Migrated customer**, *Signed up* and **Claimed** usually coincide. They differ when the person already had an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their next **Sign in**.
+_Avoid_: "registered", "member" (a **Member** is **Staff**) or "active" for this; reading *Signed up* as **Claimed**
 
 ## Rules Engine (recommendations)
 
@@ -420,6 +450,40 @@ _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freeb
 **Telegram operator**:
 Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards** only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action can act. The old **Review manager** maps to both Telegram actions, **Shop moderator** to moderating **Shop reviews** only.
 _Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
+
+## Customer CRM (ADR 0028)
+
+**Customer note**:
+A dated, authored remark by **Staff** about a **Customer**, in `customer_notes`. Only the service role can read it. Notes are never edited; a correction is a new note.
+_Avoid_: `customers.notes` — the **Customer** can read their own row (`0037_customer_auth.sql:14-18`), so that column is retired
+
+**Customer timeline**:
+Everything that happened with a **Customer**, newest first, merged when it is read from the tables that already record it: **Orders**, **Results**, **Re-adjustment bookings**, **Returns**, reviews, emails, **Customer notes** and **Follow-ups**. Each kind is shown only to **Staff** holding that source's **Permission**.
+_Avoid_: "activity log" or "events table" — nothing is copied
+
+**Segment**:
+A named, saved set of Customers-list filters, shared by all **Staff** with `customers` and counted live. A **Segment** and the same filters in the URL always return the same **Customers**.
+_Avoid_: "list" (a Segment is a query, not a frozen set of people); "audience" (that is email marketing's word for a Segment narrowed by consent)
+
+**Follow-up**:
+A dated to-do about one **Customer**, assigned to a **Staff profile**, and done or not done.
+_Avoid_: "task" or "ticket" (it is not a support queue); assigning it to a **Member** or a login — a person works as a profile
+
+**Aftercare message**:
+A service message, by email and WhatsApp, about something the **Customer** bought. There are two: the **Review request**, once per Customer, 14 days after delivery; and the **Check-up reminder**, yearly, stating that the visit is paid and its fee. Email uses the transactional transport and is on unless switched off (`aftercare_email`). WhatsApp is off until the customer opts in (`aftercare_whatsapp`). Every change is recorded with who made it and how. Neither ever carries an offer.
+_Avoid_: calling it marketing, or gating it on **Marketing consent** (migration PRD) — the one exception is the **Check-up reminder**, which offers a paid visit and so goes only to customers who agreed (ADR 0028 h); anything promotional belongs to `PRD-email-marketing`; an email about the free re-adjustment window (there is none, owner, 2026-10-20)
+
+**Review request**:
+The one message, by email and (when they opted in) WhatsApp, that asks a **Customer** for a **Google review**, with an unconditional *"need anything else? message us"* line. It goes once per Customer, ever, to every eligible Customer alike.
+_Avoid_: choosing who is asked by satisfaction, returns or ratings, or offering anything for a review — both break Google's review policy
+
+**Linked Google review**:
+A **Google review** that **Staff** have confirmed belongs to a **Customer**. Google never says who wrote a review, so the code only suggests a match, from the name and the timing of a **Review request**.
+_Avoid_: linking automatically; treating a review-link click as proof of a review
+
+**Contact status**:
+What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number has written to our WhatsApp line, as recorded in `whatsapp_inbound`).
+_Avoid_: "verified mobile" — nothing verifies a phone number by code; letting **Staff** tick "verified"
 
 ## Shipping (ADR 0020, ADR 0022)
 

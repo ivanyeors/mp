@@ -524,6 +524,8 @@ export function footer(opts: {
   note?: string;
   links?: ReadonlyArray<FooterLink> | false;
   socials?: ReadonlyArray<FooterLink> | false;
+  /** Campaign mail only: the Customer's unsubscribe page (migration slice 07). */
+  unsubscribeUrl?: string;
 }): string {
   const year = new Date().getFullYear();
   const parts: string[] = [];
@@ -582,6 +584,23 @@ export function footer(opts: {
         margin: "0 0 12px",
         "text-align": "center",
       })}">${rendered}</p>`,
+    );
+  }
+
+  // The unsubscribe facility the Spam Control Act asks of marketing email,
+  // beside the List-Unsubscribe header. Underlined, so it reads as a link in
+  // muted footer text. A rejected URL drops the line rather than show a dead one.
+  const unsubscribe = opts.unsubscribeUrl ? safeUrl(opts.unsubscribeUrl) : "";
+  if (unsubscribe) {
+    parts.push(
+      `<p class="mp-muted" style="${typeStyle("small", {
+        color: LIGHT.mutedFg,
+        margin: "0 0 12px",
+        "text-align": "center",
+      })}">Don&rsquo;t want these emails? <a class="mp-muted" href="${unsubscribe}" style="${css({
+        color: LIGHT.mutedFg,
+        "text-decoration": "underline",
+      })}">Unsubscribe</a></p>`,
     );
   }
 

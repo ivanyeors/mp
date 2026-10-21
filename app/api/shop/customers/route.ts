@@ -13,7 +13,8 @@ const CreateCustomerSchema = z.object({
   phone: z.string().trim().optional(),
   locale: z.string().optional().default("en-US"),
   tags: z.array(z.string()).optional().default([]),
-  notes: z.string().optional(),
+  // No `notes`: they are Customer notes now (customer_notes), and
+  // customers.notes is never written (ADR 0028 (a)).
 });
 
 export async function GET(req: Request) {
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

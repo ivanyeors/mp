@@ -28,6 +28,7 @@ import {
   type ReminderRow,
 } from "@/lib/appointments/reminders-db";
 import {
+  askBeforeCancel,
   parseFailedDeliveries,
   parseInboundActions,
   sendSlotList,
@@ -35,6 +36,10 @@ import {
   verifyWebhookChallenge,
   verifyWhatsAppSignature,
 } from "@/lib/appointments/whatsapp";
+import {
+  latestAftercareSentAt,
+  recordAftercareDeliveryFailure,
+} from "@/lib/whatsapp/aftercare-notify";
 
 /** One auto-reply per phone per window, however many messages it sends. */
 const AUTO_REPLY_COOLDOWN_MS = 12 * 60 * 60 * 1000;
@@ -90,6 +95,13 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("[whatsapp/webhook] record failure", e instanceof Error ? e.message : e);
     }
+    // An aftercare send (CRM slice 13) fails the same way, including a 131050
+    // "turned off marketing messages", which its ledger records by name.
+    try {
+      await recordAftercareDeliveryFailure(f.waId, f.reason);
+    } catch (e) {
+      console.error("[whatsapp/webhook] record aftercare failure", e instanceof Error ? e.message : e);
+    }
   }
 
   const actions = parseInboundActions(payload, phoneNumberId);
@@ -143,6 +155,17 @@ async function handleAction(
   settings: AppointmentSettings,
 ): Promise<string> {
   const from = action.fromE164;
+
+  // A request to stop aftercare messages (CRM slice 13). Answered before the
+  // reminder lookup, every time, with no cooldown, and nothing is switched
+  // off: the inbound row (kind `stop`) is what Staff see as an open request,
+  // and it pauses aftercare WhatsApp until a later preference change. An open
+  // appointment reminder for this number is left exactly as it was.
+  if (action.kind === "stop") {
+    await sendText(from, guestText.stopReply());
+    return "stop: replied";
+  }
+
   const row = await getOpenReminderByPhone(from);
 
   if (action.kind === "unknown") {
@@ -179,6 +202,28 @@ async function handleAction(
   if (action.kind === "reject_slots" && row.status !== "offering_slots") {
     await sendText(from, guestText.stillOn(row.starts_at));
     return "reject_slots: no list open";
+  }
+
+  // A bare "cancel" right after an aftercare message most likely means "stop
+  // these", not "cancel my re-adjustment": ask instead (CRM slice 13). If the
+  // aftercare lookup itself fails, ask too — a question is recoverable, a
+  // cancelled booking less so.
+  if (action.kind === "cancel" && action.bare) {
+    let ask: boolean;
+    try {
+      ask = askBeforeCancel({
+        bare: true,
+        lastAftercareSentAt: await latestAftercareSentAt(from),
+        reminderLastOutboundAt: row.last_outbound_at,
+      });
+    } catch (e) {
+      console.error("[whatsapp/webhook] aftercare lookup", e instanceof Error ? e.message : e);
+      ask = true;
+    }
+    if (ask) {
+      await sendText(from, guestText.cancelQuestion(row.starts_at));
+      return "cancel: asked first (aftercare since the reminder)";
+    }
   }
   return cancelByGuest(row, settings);
 }

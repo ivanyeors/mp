@@ -81,6 +81,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     // normal locale handling.
     pathname === "/dev" ||
     pathname.startsWith("/dev/") ||
+    // Short redirects (app/r): the review link is one hop to Google, with no
+    // locale bounce or cookie (CRM slice 07).
+    pathname.startsWith("/r/") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.includes(".")

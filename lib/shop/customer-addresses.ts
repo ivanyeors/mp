@@ -19,7 +19,7 @@ export const AddressInputSchema = z.object({
   city: z.string().trim().min(1, "City is required").max(120),
   state: z.string().trim().max(120).optional(),
   postal_code: z.string().trim().min(1, "Postal code is required").max(20),
-  country: z.string().trim().length(2, "Use a 2-letter country code").default("MY"),
+  country: z.string().trim().length(2, "Use a 2-letter country code").default("SG"),
   phone: z.string().trim().max(40).optional(),
   is_default: z.boolean().optional().default(false),
 });
@@ -34,6 +34,8 @@ export async function getCurrentCustomerId(): Promise<string | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Granted columns only, never `*`: notes and tags are Staff-only
+  // (20261020101000_customer_notes_and_column_grants.sql).
   const { data } = await supabase
     .from("customers")
     .select("id")

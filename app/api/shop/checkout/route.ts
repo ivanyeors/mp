@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { findCustomerByEmail, findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
+import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
 import { getPartnerByReferralCode } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
@@ -512,6 +513,9 @@ export async function POST(req: Request) {
     const couponResult = await validateCoupon(coupon_code, subtotal, productIds, categoryIds, {
       customerEmail: normalizedEmail,
       customerId: existingCustomer?.id,
+      // A Welcome-back voucher is bound to its Customer: checked against the
+      // session here, as at the preview (ADR 0029 g).
+      getSessionCustomerId: getCurrentCustomerId,
       lineItems,
     });
     if (!couponResult.valid) {

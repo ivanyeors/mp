@@ -217,6 +217,16 @@ describe("Google review card", () => {
     const card = renderGoogleReviewCard(row({ last_error: "Google Business Profile 403: quota" }));
     expect(card.text).toContain("❌ Last attempt failed: Google Business Profile 403: quota");
   });
+
+  it("gains one line with a link when a customer may have written it, and names nobody (CRM slice 12)", () => {
+    const url = "https://mpillow.test/settings/customers?view=reviews";
+    const card = renderGoogleReviewCard(row(), { possibleCustomerMatch: url });
+    const added = card.text.split("\n").filter((l) => !renderGoogleReviewCard(row()).text.split("\n").includes(l));
+    expect(added).toEqual([`👤 Possible customer match: confirm in the Admin Panel: ${url}`]);
+    // The buttons are unchanged, and without a suggestion there is no line.
+    expect(card.replyMarkup).toEqual(renderGoogleReviewCard(row()).replyMarkup);
+    expect(renderGoogleReviewCard(row(), { possibleCustomerMatch: null }).text).not.toContain("Possible customer match");
+  });
 });
 
 describe("shop review card", () => {
