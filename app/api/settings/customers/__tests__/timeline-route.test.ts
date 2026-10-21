@@ -157,6 +157,12 @@ beforeEach(() => {
       { id: 2, customer_id: MEI, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-25T00:00") },
       { id: 3, customer_id: KIM, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-26T00:00") },
     ],
+    // Migration 07: Shopify's yes, dated the export day (before the import), then the link.
+    customer_consent_events: [
+      { id: 1, customer_id: MEI, channel: "email", from_state: "not_subscribed", to_state: "subscribed", source: "shopify_import", created_at: t("02-27T16:00") },
+      { id: 2, customer_id: MEI, channel: "email", from_state: "subscribed", to_state: "unsubscribed", source: "unsubscribe_link", created_at: t("09-28T01:00") },
+      { id: 3, customer_id: KIM, channel: "email", from_state: "not_subscribed", to_state: "subscribed", source: "account", created_at: t("09-27T00:00") },
+    ],
     // CRM 07: asked for a Google review once, by both channels, and the link opened twice.
     customer_review_requests: [
       { customer_id: MEI, order_id: O1, token_hash: "h-mei", created_at: t("09-15T02:00"), first_clicked_at: t("09-16T03:00"), click_count: 2 },
@@ -198,6 +204,7 @@ async function page(id = MEI, query = "") {
 /** Every event on Mei's timeline, newest first, for a role that holds every key. */
 const EVERYTHING = [
   `note.added:${NOTE}`,
+  "consent.unsubscribed:2",
   "aftercare.turned_on:1",
   "readjustment.attended:au-2",
   `review_request.clicked:${MEI}`,
@@ -226,6 +233,7 @@ const EVERYTHING = [
   `result.created:${CANCELLED}`,
   `note.added:${LEGACY_NOTE}`,
   `account.imported:${MEI}`,
+  "consent.subscribed:1",
 ];
 
 describe("GET /api/settings/customers/[id]/timeline", () => {
@@ -236,7 +244,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.next).toBeNull();
     expect(body.unavailable).toEqual([]);
     expect(body.groups.map((g) => g.key)).toEqual([
-      "orders", "results", "readjustments", "returns", "reviews", "aftercare", "account", "notes",
+      "orders", "results", "readjustments", "returns", "reviews", "aftercare", "marketing", "account", "notes",
     ]);
   });
 
@@ -257,6 +265,11 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
     expect(byId.get("aftercare.turned_on:1")).toMatchObject({ summary: "Aftercare WhatsApp turned on by Jess", detail: "Agreed on the phone." });
     expect(byId.get("aftercare.turned_off:2")?.summary).toBe("Aftercare email turned off by the customer");
+    expect(byId.get("consent.subscribed:1")?.summary).toBe("Subscribed to marketing email from the Shopify export");
+    expect(byId.get("consent.unsubscribed:2")?.summary).toBe(
+      "Unsubscribed from marketing email by the unsubscribe link in an email",
+    );
+    expect(byId.has("consent.subscribed:3")).toBe(false);
     expect(byId.get(`account.imported:${MEI}`)?.summary).toBe("Imported from Shopify, matched to this Customer");
     expect(byId.get(`account.claimed:${MEI}`)?.summary).toBe("Claimed: first sign-in since the import");
     expect(byId.get(`account.signed_up:${MEI}`)?.summary).toBe("Signed up: a login was linked to this Customer");
@@ -308,13 +321,13 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.groups.map((g) => g.key)).not.toContain("results");
   });
 
-  it("shows a customers-only role the Customer's own facts: reviews, review requests, aftercare, account and notes", async () => {
+  it("shows a customers-only role the Customer's own facts: reviews, review requests, aftercare, consent, account and notes", async () => {
     signIn(CRM_ONLY);
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
-      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|account)\./.test(id)),
+      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|consent|account)\./.test(id)),
     );
-    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "account", "notes"]);
+    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "marketing", "account", "notes"]);
   });
 
   it("narrows to the kind groups asked for, among those the viewer may see", async () => {

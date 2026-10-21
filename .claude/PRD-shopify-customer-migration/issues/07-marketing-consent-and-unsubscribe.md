@@ -160,6 +160,12 @@ Add a dated paragraph, in copy the owner approves:
     transport owns (From, To, Subject, …).
   - `renderEmailShell({ unsubscribeUrl })` renders a footer *Unsubscribe* link.
   - `EmailCase.campaign` marks campaign entries in the registry.
+- **Customer timeline** (CRM 03, added after the catch-up merge). `lib/crm/timeline/sources/consent.ts`
+  is the consent adapter: one bounded `readStream` over `customer_consent_events.created_at`,
+  gated on `customers`. Kinds are `consent.subscribed` and `consent.unsubscribed`, each with its
+  source ("…from the Shopify export", "…by the unsubscribe link in an email"). It has a new
+  *Marketing* chip (`MARKETING_GROUP`), which slice 08's campaign sends can join. It is tested
+  through `app/api/settings/customers/__tests__/timeline-route.test.ts`.
 - **Privacy policy.** The dated "moved from Shopify" paragraph is drafted in
   `app/[lang]/privacy-policy/page.tsx`. It stays hidden while `SHOPIFY_MOVE_DATE` is `null`.
 - **Env.** `UNSUBSCRIBE_SECRET` is documented in `.env.example`.

@@ -13,5 +13,7 @@ export const RETURNS_GROUP: TimelineGroup = { key: "returns", label: "Returns" }
 export const REVIEWS_GROUP: TimelineGroup = { key: "reviews", label: "Reviews" };
 export const NOTES_GROUP: TimelineGroup = { key: "notes", label: "Notes" };
 export const AFTERCARE_GROUP: TimelineGroup = { key: "aftercare", label: "Aftercare" };
+/** Marketing consent (migration 07); campaign sends (migration 08) join it. */
+export const MARKETING_GROUP: TimelineGroup = { key: "marketing", label: "Marketing" };
 /** The Customer's account: imported from Shopify, Claimed, the Welcome-back voucher (migration PRD). */
 export const ACCOUNT_GROUP: TimelineGroup = { key: "account", label: "Account" };
