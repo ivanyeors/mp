@@ -12,9 +12,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Customers → Settings → Aftercare (CRM slice 07): the Review request's
- * settings, its numbers, and open STOP requests on WhatsApp. Slice 08 adds the
- * check-up's settings to the same card.
+ * Customers → Settings → Aftercare (CRM slices 07 and 08): the Review
+ * request's and the Check-up reminder's settings, their numbers, and open STOP
+ * requests on WhatsApp.
  *
  * Seeing it needs `customers`. Changing it needs `customers-edit` (slice 10).
  * Each value is its own `site_settings` key, which the daily job reads.

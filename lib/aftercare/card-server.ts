@@ -1,13 +1,16 @@
 /**
- * The Aftercare card's numbers (Customers → Settings, CRM slice 07). Counts
- * and settings only. Today's numbers are a dry run of the daily job, so the
- * card and the job can never disagree about who is due or why someone is
+ * The Aftercare card's numbers (Customers → Settings, CRM slices 07 and 08).
+ * Counts and settings only. Today's numbers are a dry run of the daily job, so
+ * the card and the job can never disagree about who is due or why someone is
  * skipped.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { listOpenStopRequests } from "@/lib/aftercare/preferences";
 import { aftercareTemplateName, aftercareWhatsAppTransportConfigured } from "@/lib/whatsapp/aftercare-notify";
+import { checkupTemplate } from "./checkup";
+import { countCheckupSends } from "./checkup-counts";
+import { runCheckups } from "./checkup-server";
 import { REVIEW_REQUEST_TEMPLATE } from "./review-request";
 import {
   countLinkedGoogleReviewsOfRequested,
@@ -35,14 +38,17 @@ export async function readAftercareCard(
   opts: { origin: string; now?: Date },
 ): Promise<AftercareCardData> {
   const now = opts.now ?? new Date();
-  const last30 = { from: new Date(now.getTime() - 30 * DAY_MS).toISOString(), to: now.toISOString() };
-  const [settings, today, asked, sends, googleReviewsLinked, stops] = await Promise.all([
+  const since = (days: number) => ({ from: new Date(now.getTime() - days * DAY_MS).toISOString(), to: now.toISOString() });
+  const [settings, today, asked, sends, googleReviewsLinked, stops, checkupsToday, checkupsLast90] = await Promise.all([
     readAftercareSettings(admin),
     runReviewRequests(admin, { origin: opts.origin, now, dryRun: true }),
-    countReviewRequests(admin, last30),
-    countReviewRequestSends(admin, last30),
+    countReviewRequests(admin, since(30)),
+    countReviewRequestSends(admin, since(30)),
     countLinkedGoogleReviewsOfRequested(admin),
     listOpenStopRequests(admin),
+    runCheckups(admin, { origin: opts.origin, now, dryRun: true }),
+    // Longer than the review request's 30: a booking follows a check-up by weeks.
+    countCheckupSends(admin, since(90)),
   ]);
   return {
     settings,
@@ -51,9 +57,11 @@ export async function readAftercareCard(
       last30: { asked: asked.sent, opened: asked.opened, email: sends.email, whatsapp: sends.whatsapp },
       googleReviewsLinked,
     },
+    checkups: { today: checkupsToday, last90: checkupsLast90 },
     whatsapp: {
       senderConfigured: aftercareWhatsAppTransportConfigured(),
       reviewTemplate: aftercareTemplateName(REVIEW_REQUEST_TEMPLATE),
+      checkupTemplate: aftercareTemplateName(checkupTemplate(settings.checkups.months)),
     },
     openStopRequests: stops.length,
   };

@@ -1,7 +1,8 @@
 /**
  * In-memory stand-in for `supabaseAdmin()` that answers the query the code
  * actually builds. `ilike` is real SQL ILIKE (backslash escapes, `%`, `_`, and
- * PostgREST's rewrite of every `*` to `%`) and
+ * PostgREST's rewrite of every `*` to `%`), `like` the same but case-sensitive,
+ * and
  * `eq` is exact, so a wildcard in user input matches here exactly as it would in
  * Postgres — tests fail for the real reason, not because a call shape changed.
  * Same technique as lib/auth/__tests__/partner.test.ts.
@@ -33,7 +34,7 @@ function instant(value: string): string | null {
 
 const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-export function likeMatch(pattern: string, value: unknown): boolean {
+export function likeMatch(pattern: string, value: unknown, opts: { caseSensitive?: boolean } = {}): boolean {
   if (typeof value !== "string") return false;
   let re = "";
   for (let i = 0; i < pattern.length; i++) {
@@ -43,7 +44,7 @@ export function likeMatch(pattern: string, value: unknown): boolean {
     else if (c === "_") re += ".";
     else re += reEscape(c);
   }
-  return new RegExp(`^${re}$`, "is").test(value);
+  return new RegExp(`^${re}$`, opts.caseSensitive ? "s" : "is").test(value);
 }
 
 type Embed = { alias: string; table: string; fk: string; inner: boolean };
@@ -145,6 +146,8 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         },
         ilike: (col: string, pattern: string) =>
           (filters.push((r) => likeMatch(pattern.replaceAll("*", "%"), value(r, col))), q),
+        like: (col: string, pattern: string) =>
+          (filters.push((r) => likeMatch(pattern.replaceAll("*", "%"), value(r, col), { caseSensitive: true })), q),
         update: (p: Row) => ((patch = p), q),
         delete: () => ((removing = true), q),
         insert: (row: Row) => {

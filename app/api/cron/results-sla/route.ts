@@ -505,11 +505,12 @@ export async function GET(req: Request) {
     googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
   }
 
-  // Chain: Aftercare messages (PRD customer-crm slice 07; slice 08 adds the
-  // check-up to the same job): the Review request, 14 days after delivery.
-  // Every send is claimed in a ledger first, so a manual re-run asks nobody
-  // twice. Off until review_requests_enabled is switched on; until then it
-  // only counts.
+  // Chain: Aftercare messages (PRD customer-crm slices 07 and 08): the Review
+  // request, 14 days after delivery, and the yearly Check-up reminder for a
+  // Premium Mpillow. Every send is claimed in a ledger first, so a manual
+  // re-run messages nobody twice. Each is off until its switch is turned on
+  // (review_requests_enabled, checkup_reminders_enabled); until then it only
+  // counts.
   let aftercare: Awaited<ReturnType<typeof runAftercareMessages>> | { ok: false; error: string };
   try {
     aftercare = await runAftercareMessages(admin, { origin, now });
