@@ -11,7 +11,7 @@ const h = vi.hoisted(() => ({ calls: [] as unknown[][], table: "" }));
 
 vi.mock("@/lib/supabase/server", () => {
   const builder: Record<string, (...args: unknown[]) => unknown> = {};
-  for (const method of ["select", "ilike", "overlaps", "contains", "eq", "is", "not", "gte", "lt", "order", "or"]) {
+  for (const method of ["select", "ilike", "overlaps", "contains", "eq", "is", "not", "gt", "gte", "lt", "order", "or"]) {
     builder[method] = (...args: unknown[]) => {
       h.calls.push([method, ...args]);
       return builder;

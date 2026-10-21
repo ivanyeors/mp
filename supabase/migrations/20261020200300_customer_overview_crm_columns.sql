@@ -3,10 +3,11 @@
 --
 -- `create or replace view admin_customer_overview` keeps every column the
 -- last definition had, in order: migration 12's; CRM 11's account_providers,
--- has_phone and phone_valid (20261020200000); and migration slice 06's
+-- has_phone and phone_valid (20261020200000); migration slice 06's
 -- claim_link_first_clicked_at and welcome_voucher_state (20261020200100,
 -- which also redefined admin_customer_migration_summary; that view is not
--- touched here). It adds at the end:
+-- touched here); and CRM 06's open_followups (20261020200200). It adds at the
+-- end:
 --   paid_orders                  counted platform Orders: paid_at set, status not
 --                                pending, cancelled, refunded or payment_failed
 --                                (purchases.ts's NOT_A_PURCHASE)
@@ -61,6 +62,8 @@ select
     where cl.customer_id = c.id)                               as claim_link_first_clicked_at,
   coalesce(public.welcome_voucher_state(v.usage_count, v.is_active, v.expires_at), 'none')
                                                               as welcome_voucher_state,
+  -- CRM 06 (20261020200200): Follow-ups not done yet.
+  coalesce(f.open_followups, 0)::int as open_followups,
   -- CRM slice 04: what they bought, when, and whether they were re-adjusted.
   coalesce(po.paid_orders, 0)        as paid_orders,
   po.first_paid_at,
@@ -72,6 +75,12 @@ from public.customers c
 left join public.migrated_customers m on m.customer_id = c.id
 -- At most one: coupons_one_per_customer_purpose (20261020112100).
 left join public.coupons v on v.customer_id = c.id and v.issued_for = 'welcome_back'
+left join (
+  select customer_id, count(*) as open_followups
+  from public.customer_followups
+  where done_at is null
+  group by customer_id
+) f on f.customer_id = c.id
 left join (
   select o.customer_id,
          count(*)::int  as paid_orders,

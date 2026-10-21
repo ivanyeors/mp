@@ -138,24 +138,26 @@ The README records it so it is not lost. It is fixed separately, outside the CRM
 - `20261020122100_customer_search_text_index.sql`: a trigram GIN index on the `search_text`
   expression over `customers`. The planner drops the view's other joins for a search, so the
   search is a filtered scan of `customers`.
-- `20261020200200_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
+- `20261020200300_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
   keeps every earlier column:
   - migration 12's 18;
   - CRM 11's `account_providers`, `has_phone` and `phone_valid` (`20261020200000`);
   - migration slice 06's `claim_link_first_clicked_at` and `welcome_voucher_state`
-    (`20261020200100`).
+    (`20261020200100`);
+  - CRM 06's `open_followups` (`20261020200200`).
 
   It adds `paid_orders`, `first_paid_at`, `last_paid_at`, `bought`, `last_readjusted_at` and
   `search_text`, computed in grouped subqueries. Migration 06's `admin_customer_migration_summary`
   is left as that slice defined it. The file was first `20261020200000`, and was renamed at each
-  catch-up merge to stay after CRM 11's and migration 06's redefinitions.
-- DB check: all migrations apply in order (`db-check.sh`, 172 after the last catch-up). As
+  catch-up merge to stay after CRM 11's, migration 06's and CRM 06's redefinitions.
+- DB check: all migrations apply in order (`db-check.sh`, 174 after the last catch-up). As
   `authenticated` and `anon`, both views give *permission denied*; `service_role` reads them.
   Every `supabase/tests/customer-migration/assert-*.sql` and `supabase/tests/customer-crm/assert-*.sql`
   still passes.
-- **CRM 11's filters** (`google`, `mobile`) and **migration 06's** `voucher` are in the one schema
-  too, each with a summary label. Google and Mobile stay in the toolbar, where CRM 11 put them.
-  Voucher moved into the Filters panel, which opens when a link carries it.
+- **CRM 11's filters** (`google`, `mobile`), **migration 06's** `voucher` and **CRM 06's**
+  `followups` are in the one schema too, each with a summary label. Google, Mobile and
+  Follow-ups stay in the toolbar, where their slices put them. Voucher moved into the Filters
+  panel, which opens when a link carries it.
 
 **Tests.**
 

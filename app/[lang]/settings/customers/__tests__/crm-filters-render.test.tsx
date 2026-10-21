@@ -40,6 +40,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   phone_valid: false,
   claim_link_first_clicked_at: null,
   welcome_voucher_state: "none",
+  open_followups: 0,
   paid_orders: 1,
   first_paid_at: "2025-03-04T02:00:00Z",
   last_paid_at: "2025-03-04T02:00:00Z",

@@ -8,8 +8,9 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * order, each kind only to a role holding its source's permission, and no
  * Result of another Customer whose email merely contains this one's. Since the
  * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
- * account (imported, signed up, Claimed, Welcome-back voucher), and since
- * migration 06 the Claim links a campaign email carried, by first click.
+ * account (imported, signed up, Claimed, Welcome-back voucher), since
+ * migration 06 the Claim links a campaign email carried, by first click, and
+ * since CRM 06 follow-ups (added, done).
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -51,6 +52,9 @@ const NO_RESULTS = "00000000-0000-4000-8000-0000000000b3";
 const CRM_ONLY = "00000000-0000-4000-8000-0000000000b4";
 const ORDERS_ONLY = "00000000-0000-4000-8000-0000000000b5";
 const JESS = "11111111-1111-4111-8111-111111111111";
+const KAI = "11111111-1111-4111-8111-222222222222";
+const FOLLOW_UP = "0e000000-0000-4000-8000-0000000000f1";
+const OPEN_FOLLOW_UP = "0e000000-0000-4000-8000-0000000000f2";
 
 const t = (s: string) => `2026-${s}:00Z`;
 
@@ -87,7 +91,10 @@ beforeEach(() => {
       { id: CRM_ONLY, email: "c@x.test", role_id: "r-crm", is_active: true, auth_user_id: "auth-c" },
       { id: ORDERS_ONLY, email: "d@x.test", role_id: "r-orders", is_active: true, auth_user_id: "auth-d" },
     ],
-    mp_staff: [{ id: JESS, name: "Jess", admin_user_id: OWNER, archived_at: null }],
+    mp_staff: [
+      { id: JESS, name: "Jess", admin_user_id: OWNER, archived_at: null },
+      { id: KAI, name: "Kai", admin_user_id: OWNER, archived_at: null },
+    ],
     customers: [
       // Migration 12: when the current login was bound. Kim has no account.
       { id: MEI, email: "mei@x.test", first_name: "Mei", account_linked_at: t("06-14T23:59") },
@@ -153,6 +160,12 @@ beforeEach(() => {
       { id: "gone", customer_id: MEI, body: "Deleted", author_profile_id: JESS, author_user_id: "auth-owner", created_at: t("09-25T00:00"), deleted_at: t("09-26T00:00") },
     ],
     // CRM 13: every switch change is an event.
+    // CRM 06: one follow-up added and done, one still open, and one of Kim's.
+    customer_followups: [
+      { id: FOLLOW_UP, customer_id: MEI, title: "Call about her second pillow", due_on: "2026-09-29", assigned_to_profile_id: JESS, created_by_profile_id: KAI, created_at: t("09-27T02:00"), done_at: t("09-29T03:00"), done_by_profile_id: JESS },
+      { id: OPEN_FOLLOW_UP, customer_id: MEI, title: "Send the fill sample", due_on: "2026-10-30", assigned_to_profile_id: KAI, created_by_profile_id: null, created_at: t("09-28T02:00"), done_at: null, done_by_profile_id: null },
+      { id: "fu-kim", customer_id: KIM, title: "Kim's", due_on: "2026-10-30", assigned_to_profile_id: KAI, created_by_profile_id: null, created_at: t("09-28T03:00"), done_at: null, done_by_profile_id: null },
+    ],
     customer_preference_events: [
       { id: 1, customer_id: MEI, preference: "aftercare_whatsapp", to_value: true, source: "staff", changed_by_profile_id: JESS, note: "Agreed on the phone.", wording: null, created_at: t("09-25T05:00") },
       { id: 2, customer_id: MEI, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-25T00:00") },
@@ -206,6 +219,9 @@ async function page(id = MEI, query = "") {
 /** Every event on Mei's timeline, newest first, for a role that holds every key. */
 const EVERYTHING = [
   `note.added:${NOTE}`,
+  `follow_up.done:${FOLLOW_UP}`,
+  `follow_up.added:${OPEN_FOLLOW_UP}`,
+  `follow_up.added:${FOLLOW_UP}`,
   "aftercare.turned_on:1",
   "readjustment.attended:au-2",
   `review_request.clicked:${MEI}`,
@@ -245,7 +261,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.next).toBeNull();
     expect(body.unavailable).toEqual([]);
     expect(body.groups.map((g) => g.key)).toEqual([
-      "orders", "results", "readjustments", "returns", "reviews", "aftercare", "account", "notes",
+      "orders", "results", "readjustments", "returns", "reviews", "aftercare", "account", "notes", "followups",
     ]);
   });
 
@@ -264,6 +280,14 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`review_request.clicked:${MEI}`)?.summary).toBe("Review link clicked (2 times)");
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
     expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
+    expect(byId.get(`follow_up.added:${FOLLOW_UP}`)).toMatchObject({
+      summary: "Follow-up for Jess, due 29 Sept 2026, added by Kai",
+      status: "done",
+      detail: "Call about her second pillow",
+    });
+    expect(byId.get(`follow_up.added:${OPEN_FOLLOW_UP}`)).toMatchObject({ summary: "Follow-up for Kai, due 30 Oct 2026", status: "open" });
+    expect(byId.get(`follow_up.done:${FOLLOW_UP}`)).toMatchObject({ summary: "Follow-up done by Jess", detail: "Call about her second pillow" });
+    expect(byId.get(`follow_up.added:${FOLLOW_UP}`)?.ref.href).toBeUndefined();
     expect(byId.get("aftercare.turned_on:1")).toMatchObject({ summary: "Aftercare WhatsApp turned on by Jess", detail: "Agreed on the phone." });
     expect(byId.get("aftercare.turned_off:2")?.summary).toBe("Aftercare email turned off by the customer");
     expect(byId.get(`account.imported:${MEI}`)?.summary).toBe("Imported from Shopify, matched to this Customer");
@@ -324,9 +348,9 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     signIn(CRM_ONLY);
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
-      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|account|claim_link)\./.test(id)),
+      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|account|claim_link|follow_up)\./.test(id)),
     );
-    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "account", "notes"]);
+    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "account", "notes", "followups"]);
   });
 
   it("narrows to the kind groups asked for, among those the viewer may see", async () => {

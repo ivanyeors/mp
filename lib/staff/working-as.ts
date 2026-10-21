@@ -56,3 +56,17 @@ export async function getWorkingAs(memberId: string): Promise<WorkingAsProfile |
   }
   return validWorkingAs(memberId, value);
 }
+
+/**
+ * The profile the person at the device is: the one chosen under "Working as",
+ * or the login's only profile when it has just one (a personal login never
+ * sees the picker). Null on a shared login where nobody has chosen. Used to
+ * name who wrote a Customer note or a Follow-up, and whose *Mine* list and
+ * sidebar badge to show. Attribution only, never a guard.
+ */
+export async function actingProfile(memberId: string): Promise<WorkingAsProfile | null> {
+  const chosen = await getWorkingAs(memberId);
+  if (chosen) return chosen;
+  const profiles = await memberProfiles(memberId);
+  return profiles.length === 1 ? { id: profiles[0]!.id, name: profiles[0]!.name } : null;
+}

@@ -40,6 +40,10 @@ export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
 export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
 export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
+/** *Has an open follow-up* (CRM slice 06): the overview's `open_followups` above 0. */
+export const FOLLOW_UP_FILTERS = ["all", "open"] as const;
+export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
+
 /**
  * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
  * to nudge before the vouchers expire; *Used* is who redeemed one.
@@ -92,6 +96,8 @@ export interface CustomerFilters {
   mobile: MobileFilter;
   /** The Welcome-back voucher's state (`welcome_voucher_state`). */
   voucher: VoucherFilter;
+  /** `open`: only Customers with a Follow-up not done yet. */
+  followups: FollowUpFilter;
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
   last_order: LastOrderFilter | null;
@@ -111,6 +117,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   google: "all",
   mobile: "all",
   voucher: "all",
+  followups: "all",
   bought: [],
   last_order: null,
   readjusted: null,
@@ -140,6 +147,7 @@ const PARAM_SCHEMAS = {
   google: z.enum(GOOGLE_FILTERS),
   mobile: z.enum(MOBILE_FILTERS),
   voucher: z.enum(VOUCHER_FILTERS),
+  followups: z.enum(FOLLOW_UP_FILTERS),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
@@ -258,6 +266,7 @@ export function customerFilterParams(
   if (f.google !== "all") out.set("google", f.google);
   if (f.mobile !== "all") out.set("mobile", f.mobile);
   if (f.voucher !== "all") out.set("voucher", f.voucher);
+  if (f.followups !== "all") out.set("followups", f.followups);
   if (f.bought.length) out.set("bought", f.bought.join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
@@ -304,6 +313,7 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   google: (v) => (v === "linked" ? "Google linked" : "Google not linked"),
   mobile: (v) => (v === "on-file" ? "Valid mobile on file" : v === "missing" ? "Mobile missing" : "Mobile invalid"),
   voucher: (v) => (v === "issued" ? "Voucher issued, unused" : "Voucher used"),
+  followups: () => "Has an open follow-up",
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
@@ -334,6 +344,7 @@ export interface CustomerListQuery {
   eq(column: string, value: boolean | string): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs", value: string | null): this;
+  gt(column: string, value: number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
@@ -390,6 +401,8 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.mobile === "on-file") q = q.eq("phone_valid", true);
   if (filters.mobile === "missing") q = q.eq("has_phone", false);
   if (filters.mobile === "invalid") q = q.eq("has_phone", true).eq("phone_valid", false);
+
+  if (filters.followups === "open") q = q.gt("open_followups", 0);
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
   if (filters.last_order) {

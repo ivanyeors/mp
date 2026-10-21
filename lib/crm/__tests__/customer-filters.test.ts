@@ -42,6 +42,7 @@ function recorder() {
     eq: record("eq"),
     is: record("is"),
     not: record("not"),
+    gt: record("gt"),
     gte: record("gte"),
     lt: record("lt"),
     order: record("order"),
@@ -305,6 +306,14 @@ describe("applyCustomerFilters", () => {
   it("drops a voucher value the list does not offer, and names it", () => {
     expect(query("voucher=none").ignored).toEqual(["voucher"]);
   });
+
+  it("maps has an open follow-up (CRM slice 06) to open_followups above 0", () => {
+    expect(query("followups=open").calls).toEqual([["gt", "open_followups", 0], newest]);
+    expect(query("followups=all").calls).toEqual([newest]);
+    const dropped = query("followups=overdue");
+    expect(dropped.calls).toEqual([newest]);
+    expect(dropped.ignored).toEqual(["followups"]);
+  });
 });
 
 describe("Contact status filters (CRM slice 11)", () => {
@@ -338,12 +347,15 @@ describe("Contact status filters (CRM slice 11)", () => {
     expect(query("account=signed-up").calls).toEqual([["eq", "has_account", true], newest]);
   });
 
-  it("labels them, and the Voucher filter, in the active-filter summary", () => {
-    const { filters } = parseCustomerFilters(new URLSearchParams("google=not-linked&mobile=invalid&voucher=issued"));
+  it("labels them, the Voucher filter and the Follow-ups filter in the active-filter summary", () => {
+    const { filters } = parseCustomerFilters(
+      new URLSearchParams("google=not-linked&mobile=invalid&voucher=issued&followups=open"),
+    );
     expect(describeCustomerFilters(filters)).toEqual([
       { key: "google", label: "Google not linked" },
       { key: "mobile", label: "Mobile invalid" },
       { key: "voucher", label: "Voucher issued, unused" },
+      { key: "followups", label: "Has an open follow-up" },
     ]);
   });
 });
@@ -395,6 +407,7 @@ describe("customerFilterParams", () => {
       google: "linked",
       mobile: "missing",
       voucher: "issued",
+      followups: "open",
       bought: ["premium", "mbolster"],
       last_order: { when: "over", months: 18 },
       readjusted: "never",
@@ -422,6 +435,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
       "account",
       "bought",
+      "followups",
       "google",
       "last_order",
       "limit",
@@ -442,6 +456,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_KEYS].sort()).toEqual([
       "account",
       "bought",
+      "followups",
       "google",
       "last_order",
       "min_spend",

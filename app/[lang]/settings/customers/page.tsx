@@ -12,6 +12,7 @@ import { readAftercareCard } from "@/lib/aftercare/card-server";
 import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site-url";
+import { parseFollowUpScope } from "@/lib/crm/followup-rules";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -32,6 +33,9 @@ const LIMIT = 20;
  * in the URL (`?account=no-account&source=shopify`, and CRM slice 04's
  * `?bought=premium&last_order=over:12&readjusted=never`), so a filtered list is
  * a link: this page reads the same parameters and renders that list first.
+ *
+ * `?view=followups` opens the Follow-ups tab (CRM slice 06), on the list
+ * `?scope=` names (mine, all, overdue); the tab reads its own rows.
  *
  * `?view=settings` opens the Settings tab (CRM slices 07 and 14), whose cards
  * are read here too when the page opens on it. Seeing them needs `customers`;
@@ -77,6 +81,7 @@ export default async function SettingsCustomersPage({
             canEditOnlineResult={canEdit && hasPermission(ctx, "results")}
             telegramUpdates={telegramUpdates}
             aftercare={aftercare}
+            followUpScope={parseFollowUpScope(Array.isArray(query.scope) ? query.scope[0] : query.scope)}
             importHref={
                 hasPermission(ctx, "customer-import")
                     ? withLocale("/settings/customers/import", locale)

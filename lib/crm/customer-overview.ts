@@ -41,6 +41,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "phone_valid",
   "claim_link_first_clicked_at",
   "welcome_voucher_state",
+  "open_followups",
   "paid_orders",
   "first_paid_at",
   "last_paid_at",
@@ -104,6 +105,8 @@ export interface CustomerOverviewRow {
    * `none`, `issued` (unused, still usable), `used` or `expired`.
    */
   welcome_voucher_state: WelcomeVoucherState;
+  /** Follow-ups not done yet (CRM slice 06); 0 when none. */
+  open_followups: number;
   /**
    * Counted platform **Orders** (CRM slice 04): paid, and not pending,
    * cancelled, refunded or payment-failed. Shopify-era orders are not here.

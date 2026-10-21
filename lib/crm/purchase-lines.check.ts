@@ -111,6 +111,10 @@ class SqlFilter implements CustomerListQuery {
     this.where.push(operator === "is" ? `${column} is not null` : `not (${column} @> ${lit(String(value))}::text[])`);
     return this;
   }
+  gt(column: string, value: number) {
+    this.where.push(`${column} > ${lit(value)}`);
+    return this;
+  }
   gte(column: string, value: string | number) {
     this.where.push(`${column} >= ${lit(value)}`);
     return this;

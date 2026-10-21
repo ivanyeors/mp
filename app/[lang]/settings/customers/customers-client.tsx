@@ -47,6 +47,7 @@ import {
     type CustomerFilterParam,
     type CustomerListFilters,
     type CustomerSort,
+    type FollowUpFilter,
     type GoogleFilter,
     type MobileFilter,
     type SourceFilter,
@@ -246,6 +247,7 @@ export function CustomersClient({
     const changeSource = (value: string) => changeFilters({ source: value as SourceFilter });
     const changeGoogle = (value: string) => changeFilters({ google: value as GoogleFilter });
     const changeMobile = (value: string) => changeFilters({ mobile: value as MobileFilter });
+    const changeFollowups = (value: string) => changeFilters({ followups: value as FollowUpFilter });
     const changeSort = (value: string) => changeFilters({ sort: value as CustomerSort });
 
     // The summary's × and Clear all. Search is also the box's text.
@@ -377,6 +379,16 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
+                <Select value={filters.followups} onValueChange={changeFollowups}>
+                    <SelectTrigger className="w-full sm:w-52" aria-label="Follow-ups">
+                        <SelectValue placeholder="Follow-ups" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any follow-ups</SelectItem>
+                        <SelectItem value="open">Has an open follow-up</SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Select value={filters.sort} onValueChange={changeSort}>
                     <SelectTrigger className="w-full sm:w-48" aria-label="Sort">
                         <SelectValue placeholder="Sort" />
@@ -470,6 +482,15 @@ export function CustomersClient({
                                             {customer.from_shopify && (
                                                 <Badge variant="outline" className="ml-2 text-xs font-normal">
                                                     Shopify
+                                                </Badge>
+                                            )}
+                                            {customer.open_followups > 0 && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-2 text-xs font-normal"
+                                                    title={`${customer.open_followups} open follow-up${customer.open_followups === 1 ? "" : "s"}`}
+                                                >
+                                                    {customer.open_followups} to follow up
                                                 </Badge>
                                             )}
                                             <span className="block text-xs text-muted-foreground mt-0.5 sm:hidden">
