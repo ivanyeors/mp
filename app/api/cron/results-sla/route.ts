@@ -27,6 +27,7 @@ import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
+import { runAftercareMessages } from "@/lib/aftercare/job";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -504,6 +505,18 @@ export async function GET(req: Request) {
     googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
   }
 
+  // Chain: Aftercare messages (PRD customer-crm slice 07; slice 08 adds the
+  // check-up to the same job): the Review request, 14 days after delivery.
+  // Every send is claimed in a ledger first, so a manual re-run asks nobody
+  // twice. Off until review_requests_enabled is switched on; until then it
+  // only counts.
+  let aftercare: Awaited<ReturnType<typeof runAftercareMessages>> | { ok: false; error: string };
+  try {
+    aftercare = await runAftercareMessages(admin, { origin, now });
+  } catch (e) {
+    aftercare = { ok: false, error: e instanceof Error ? e.message : "aftercare messages failed" };
+  }
+
   // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
   // match, New sign-ups and the Weekly summary. Each goes at most once per
   // period by compare-and-set, so a manual re-run posts nothing twice. After
@@ -524,6 +537,7 @@ export async function GET(req: Request) {
     gscIngest,
     preOrderRestock,
     googleReviews,
+    aftercare,
     crmTelegram,
   });
 }
