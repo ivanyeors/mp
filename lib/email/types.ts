@@ -30,6 +30,12 @@ export interface OutgoingEmail extends RenderedEmail {
   from: string;
   /** Optional Reply-To header (e.g. the customer's address on a contact form). */
   replyTo?: string;
+  /**
+   * Extra message headers, such as `List-Unsubscribe` on a campaign email
+   * (migration slice 07). Transactional mail sets none. A name the transport
+   * owns (From, To, Subject, ...) or a value with a line break is refused.
+   */
+  headers?: Record<string, string>;
 }
 
 export interface TransportResult {

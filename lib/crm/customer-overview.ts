@@ -15,6 +15,7 @@
  */
 
 import type { WelcomeVoucherState } from "@/lib/customer-migration/welcome-voucher";
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /** Every column of `admin_customer_overview`, in the view's order. */
 export const CUSTOMER_OVERVIEW_COLUMNS = [
@@ -48,6 +49,8 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "bought",
   "last_readjusted_at",
   "search_text",
+  "marketing_email",
+  "marketing_email_updated_at",
   "review_requested_at",
   "review_link_clicked_at",
   "google_review_rating",
@@ -128,6 +131,10 @@ export interface CustomerOverviewRow {
   last_readjusted_at: string | null;
   /** `lower(email first last)`: the list's search reads only this. */
   search_text: string;
+  /** **Marketing consent** (migration slice 07). */
+  marketing_email: MarketingEmailState;
+  /** When it was last set; null while `not_subscribed`. The export day for a Shopify one. */
+  marketing_email_updated_at: string | null;
   /**
    * CRM slice 12: *asked on*, the earlier send of their **Review request**
    * (email or WhatsApp); null when nothing went out.

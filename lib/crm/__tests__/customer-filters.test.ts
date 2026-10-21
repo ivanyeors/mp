@@ -172,6 +172,15 @@ describe("applyCustomerFilters", () => {
     expect(query("").calls).toEqual([newest]);
   });
 
+  it("with order: false applies the same filters and leaves the order to the caller (a Segment's count and resolve)", () => {
+    const url = "bought=premium&last_order=over:12&readjusted=never&sort=spend";
+    const { filters } = parseCustomerFilters(new URLSearchParams(url));
+    const { q, calls } = recorder();
+    applyCustomerFilters(q, filters, { now: NOW, order: false });
+    expect(calls).toEqual(query(url).calls.filter(([method]) => method !== "order"));
+    expect(calls.length).toBe(3);
+  });
+
   it("maps From Shopify + No account to the two derived columns", () => {
     // The list that matters during the migration: migrated_customers join
     // customers where auth_user_id is null.
@@ -306,6 +315,32 @@ describe("applyCustomerFilters", () => {
 
   it("drops a voucher value the list does not offer, and names it", () => {
     expect(query("voucher=none").ignored).toEqual(["voucher"]);
+  });
+
+  // Email consent (migration slice 07): the URL's words, the view's states.
+  it.each([
+    ["subscribed", "subscribed"],
+    ["not-subscribed", "not_subscribed"],
+    ["unsubscribed", "unsubscribed"],
+  ])("maps consent=%s to marketing_email = %s", (param, state) => {
+    expect(query(`consent=${param}`).calls).toEqual([["eq", "marketing_email", state], newest]);
+  });
+
+  it("drops an unknown consent, and never passes the database's own spelling through", () => {
+    for (const bad of ["yes", "not_subscribed"]) {
+      const { calls, ignored } = query(`consent=${bad}`);
+      expect(calls).toEqual([newest]);
+      expect(ignored).toEqual(["consent"]);
+    }
+    expect(query("consent=all").calls).toEqual([newest]);
+  });
+
+  it("combines consent with From Shopify", () => {
+    expect(query("source=shopify&consent=subscribed").calls).toEqual([
+      ["eq", "from_shopify", true],
+      ["eq", "marketing_email", "subscribed"],
+      newest,
+    ]);
   });
 
   it("maps has an open follow-up (CRM slice 06) to open_followups above 0", () => {
@@ -477,6 +512,7 @@ describe("customerFilterParams", () => {
       mobile: "missing",
       voucher: "issued",
       followups: "open",
+      consent: "unsubscribed",
       bought: ["premium", "mbolster"],
       last_order: { when: "over", months: 18 },
       readjusted: "never",
@@ -504,6 +540,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
       "account",
       "bought",
+      "consent",
       "followups",
       "google",
       "google_review",
@@ -528,6 +565,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_KEYS].sort()).toEqual([
       "account",
       "bought",
+      "consent",
       "followups",
       "google",
       "google_review",
@@ -567,6 +605,16 @@ describe("the active-filter summary", () => {
     expect(label("last_order=within:1")).toBe("Last order within a month");
     expect(label("last_order=within:6")).toBe("Last order within 6 months");
     expect(label("last_order=over:24")).toBe("Last order over 2 years ago");
+  });
+
+  it("labels Email consent (migration slice 07), and clears it with its ×", () => {
+    const label = (search: string) => describeCustomerFilters(parseCustomerFilters(new URLSearchParams(search)).filters)[0].label;
+    expect(label("consent=subscribed")).toBe("Email subscribed");
+    expect(label("consent=not-subscribed")).toBe("Email not subscribed");
+    expect(label("consent=unsubscribed")).toBe("Email unsubscribed");
+    const withConsent = parseCustomerFilters(new URLSearchParams("consent=unsubscribed&source=shopify")).filters;
+    expect(describeCustomerFilters(withConsent).map((f) => f.key)).toEqual(["source", "consent"]);
+    expect(clearCustomerFilter(withConsent, "consent")).toMatchObject({ consent: "all", source: "shopify" });
   });
 
   it("clears one filter with its ×, and every filter but the sort with Clear all", () => {

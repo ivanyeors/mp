@@ -62,6 +62,12 @@ export interface EmailShellOptions {
   audience?: EmailAudience;
   /** <html lang>. Default "en". */
   lang?: string;
+  /**
+   * Campaign mail only (migration slice 07): the Customer's unsubscribe page
+   * (`unsubscribeLinks(...).pageUrl`), rendered as a footer link. Order,
+   * Result and aftercare email never pass it: they are transactional.
+   */
+  unsubscribeUrl?: string;
 }
 
 /**
@@ -250,7 +256,7 @@ ${ctaHtml}
         </tr>
         <tr>
           <td style="padding:20px 8px 0;">
-${footer({ origin, note: opts.footer, links, socials })}
+${footer({ origin, note: opts.footer, links, socials, unsubscribeUrl: opts.unsubscribeUrl })}
           </td>
         </tr>
       </table>

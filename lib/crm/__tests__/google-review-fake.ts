@@ -70,7 +70,7 @@ export function fakeReviewsAdmin(db: FakeDb, opts: { now?: () => string } = {}) 
         const rows = (db.match_candidates ?? [])
           .filter((c) => !linkOf(c.google_review_id))
           .filter((c) => !ids || ids.includes(c.google_review_id as string))
-          .map((c) => ({
+          .map((c): Row => ({
             ...c,
             rejected: rejections().some((x) => x.google_review_id === c.google_review_id && x.customer_id === c.customer_id),
             linked_elsewhere: links().some((l) => l.customer_id === c.customer_id),

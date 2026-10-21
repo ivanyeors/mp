@@ -4,9 +4,10 @@
 -- last definition had, in order: migration 12's; CRM 11's account_providers,
 -- has_phone and phone_valid (20261020200000); migration slice 06's
 -- claim_link_first_clicked_at and welcome_voucher_state (20261020200100);
--- CRM 06's open_followups (20261020200200); and CRM 04's paid_orders,
+-- CRM 06's open_followups (20261020200200); CRM 04's paid_orders,
 -- first_paid_at, last_paid_at, bought, last_readjusted_at and search_text
--- (20261020200300). It adds at the end:
+-- (20261020200300); and migration slice 07's marketing_email and
+-- marketing_email_updated_at (20261020200400). It adds at the end:
 --   review_requested_at     "Asked on": the earlier sent_at of the email and
 --                           the WhatsApp ledger rows for
 --                           aftercare.review_request (CRM slice 07). A claimed
@@ -74,6 +75,9 @@ select
   coalesce(pl.bought, '{}'::text[])  as bought,
   rb.last_readjusted_at,
   lower(c.email || ' ' || coalesce(c.first_name, '') || ' ' || coalesce(c.last_name, '')) as search_text,
+  -- Migration 07 (20261020200400): Marketing consent.
+  c.marketing_email,
+  c.marketing_email_updated_at,
   -- CRM slice 12: reviews.
   rq.asked_at                        as review_requested_at,
   rr.first_clicked_at                as review_link_clicked_at,

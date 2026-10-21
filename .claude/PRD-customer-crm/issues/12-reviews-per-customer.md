@@ -152,7 +152,7 @@ linked. Shop reviews are already on it.
 ## Build notes
 
 Built on `claude/shopify-migration-plan-izv7fo` @ `2c472f6` (CRM 03, 04, 06, 07, 10, 11, 13 and
-14 merged).
+14 merged), then merged with it again @ `d9c6368` (CRM 05 and migration slice 07).
 
 **What was built**
 
@@ -203,7 +203,8 @@ Built on `claude/shopify-migration-plan-izv7fo` @ `2c472f6` (CRM 03, 04, 06, 07,
   `admin_google_reviews_unlinked`. All server-only: RLS on, no policy, revoked from anon and
   authenticated; the functions run for the service role only.
 - `20261020200500_customer_overview_reviews.sql`: `admin_customer_overview` redefined with every
-  column of `20261020200300` plus `review_requested_at`, `review_link_clicked_at`,
+  column of `20261020200400` (migration slice 07's `marketing_email` and
+  `marketing_email_updated_at` included) plus `review_requested_at`, `review_link_clicked_at`,
   `google_review_rating`, `google_reviewed_at`, `shop_reviews_count`, `shop_review_avg_rating`,
   and `review_rating`.
 
@@ -253,7 +254,7 @@ With fixtures, in psql:
   line (`cards.test.ts`), the sync (`google-sync.test.ts`), the timeline route fixture, the write
   guard's list, and three list fixtures for the new overview columns.
 - The shared fake admin (`lib/supabase/__tests__/fake-admin.ts`) now applies every `order` as a
-  further sort key, as PostgREST does (it kept only the last), and supports `range`.
+  further sort key, as PostgREST does (it kept only the last); `range` is CRM 05's.
 
 **Deviations**
 

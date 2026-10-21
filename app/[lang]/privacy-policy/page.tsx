@@ -9,6 +9,22 @@ import {
 
 const EFFECTIVE_DATE = "5 July 2026";
 
+/**
+ * Customer accounts moved from Shopify (PRD-shopify-customer-migration slice
+ * 07). A dated paragraph in copy the owner approves: hidden until the owner
+ * sets the day the accounts moved here (slice 04 records it) and approves the
+ * wording below. Move EFFECTIVE_DATE with it: section 13 promises a revised
+ * date. Slice 10 drops the Shopify-as-processor sentence at cutover.
+ */
+const SHOPIFY_MOVE_DATE: string | null = null;
+
+function shopifyMoveNotice(date: string): string[] {
+  return [
+    `On ${date}, we moved customer accounts from our previous Shopify store to this website. For each Shopify customer with an email address, we moved their name, email address, phone number and default delivery address; the number and total value of their Shopify orders; the notes and tags our staff kept; and whether they had agreed to receive marketing email. We did not move passwords or payment details, and Shopify orders are not shown in your account.`,
+    "Shopify continues to process this data on our behalf until we close our Shopify store.",
+  ];
+}
+
 type PolicySection = {
   title: string;
   intro?: string[];
@@ -95,6 +111,7 @@ const SECTIONS: PolicySection[] = [
     ],
     outro: [
       "We require service providers to handle personal data only for the purposes we specify and to apply appropriate safeguards.",
+      ...(SHOPIFY_MOVE_DATE ? shopifyMoveNotice(SHOPIFY_MOVE_DATE) : []),
     ],
   },
   {

@@ -210,10 +210,14 @@ describe("Customers write paths check customers-edit", () => {
         "app/api/shop/customers/[id]/addresses/route.ts POST",
         "app/api/shop/customers/[id]/notes/route.ts POST",
         "app/api/shop/customers/[id]/notes/[noteId]/route.ts DELETE",
+        "app/api/shop/customers/[id]/marketing-consent/route.ts POST",
         // CRM 06: creating, completing, reassigning and deleting follow-ups.
         "app/api/shop/customers/[id]/followups/route.ts POST",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts PATCH",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts DELETE",
+        // CRM 05: saving a Segment, and updating, renaming or archiving one.
+        "app/api/settings/customers/segments/route.ts POST",
+        "app/api/settings/customers/segments/[segmentId]/route.ts PATCH",
         // CRM 12: linking, unlinking and rejecting a Google review match.
         "app/api/settings/customers/google-reviews/[reviewId]/link/route.ts POST",
         "app/api/settings/customers/google-reviews/[reviewId]/link/route.ts DELETE",

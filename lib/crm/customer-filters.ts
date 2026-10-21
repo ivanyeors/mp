@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PURCHASE_CLASSES, type PurchaseClass } from "@/lib/crm/customer-overview";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /**
  * The Customers list's URL parameters, and how they become a query on the
@@ -77,6 +78,15 @@ export type ShopReviewFilter = (typeof SHOP_REVIEW_FILTERS)[number];
  */
 export const RATING_FILTERS = ["5", "4-up", "3-down"] as const;
 export type RatingFilter = (typeof RATING_FILTERS)[number];
+/** *Email consent* (migration slice 07): the Customer's **Marketing consent**. */
+export const CONSENT_FILTERS = ["all", "subscribed", "not-subscribed", "unsubscribed"] as const;
+export type ConsentFilter = (typeof CONSENT_FILTERS)[number];
+
+const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> = {
+  subscribed: "subscribed",
+  "not-subscribed": "not_subscribed",
+  unsubscribed: "unsubscribed",
+};
 
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
@@ -125,6 +135,8 @@ export interface CustomerFilters {
   voucher: VoucherFilter;
   /** `open`: only Customers with a Follow-up not done yet. */
   followups: FollowUpFilter;
+  /** *Email consent*: `marketing_email` on the overview. */
+  consent: ConsentFilter;
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
   last_order: LastOrderFilter | null;
@@ -151,6 +163,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   mobile: "all",
   voucher: "all",
   followups: "all",
+  consent: "all",
   bought: [],
   last_order: null,
   readjusted: null,
@@ -184,6 +197,7 @@ const PARAM_SCHEMAS = {
   mobile: z.enum(MOBILE_FILTERS),
   voucher: z.enum(VOUCHER_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
+  consent: z.enum(CONSENT_FILTERS),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
@@ -306,6 +320,7 @@ export function customerFilterParams(
   if (f.mobile !== "all") out.set("mobile", f.mobile);
   if (f.voucher !== "all") out.set("voucher", f.voucher);
   if (f.followups !== "all") out.set("followups", f.followups);
+  if (f.consent !== "all") out.set("consent", f.consent);
   if (f.bought.length) out.set("bought", f.bought.join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
@@ -356,6 +371,14 @@ export const RATING_LABELS: Record<RatingFilter, string> = {
   "3-down": "Rated 3★ and below",
 };
 
+/** How the *Email consent* filter's values read, in its control and its summary chip. */
+export const CONSENT_LABELS: Record<ConsentFilter, string> = {
+  all: "any consent",
+  subscribed: "subscribed",
+  "not-subscribed": "not subscribed",
+  unsubscribed: "unsubscribed",
+};
+
 const spend = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
 /** How each filter reads in the summary above the list. */
@@ -368,6 +391,7 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   mobile: (v) => (v === "on-file" ? "Valid mobile on file" : v === "missing" ? "Mobile missing" : "Mobile invalid"),
   voucher: (v) => (v === "issued" ? "Voucher issued, unused" : "Voucher used"),
   followups: () => "Has an open follow-up",
+  consent: (v) => `Email ${CONSENT_LABELS[v]}`,
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
@@ -401,7 +425,7 @@ export interface CustomerListQuery {
   eq(column: string, value: boolean | string | number): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs", value: string | null): this;
-  gt(column: string, value: number): this;
+  gt(column: string, value: string | number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
   lte(column: string, value: number): this;
@@ -436,11 +460,15 @@ export function monthsBefore(now: Date, months: number): Date {
  * Applies the filters and the sort to a query on `admin_customer_overview`.
  * Paging is the caller's (`range`). Pure: it only calls the query's methods,
  * and *Last order* counts back from `now`.
+ *
+ * `order: false` applies the filters only and leaves the order to the caller:
+ * a Segment's count needs none, and `resolveSegment` (lib/crm/segments.ts)
+ * pages by `id` so a long run is stable (CRM slice 05).
  */
 export function applyCustomerFilters<Q extends CustomerListQuery>(
   query: Q,
   filters: CustomerFilters,
-  { now = new Date() }: { now?: Date } = {},
+  { now = new Date(), order = true }: { now?: Date; order?: boolean } = {},
 ): Q {
   let q = query;
 
@@ -461,6 +489,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.mobile === "invalid") q = q.eq("has_phone", true).eq("phone_valid", false);
 
   if (filters.followups === "open") q = q.gt("open_followups", 0);
+  if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
   if (filters.last_order) {
@@ -480,6 +509,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.rating === "5") q = q.eq("review_rating", 5);
   if (filters.rating === "4-up") q = q.gte("review_rating", 4);
   if (filters.rating === "3-down") q = q.lte("review_rating", 3);
+  if (!order) return q;
 
   switch (filters.sort) {
     case "name-asc":

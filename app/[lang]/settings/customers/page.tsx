@@ -14,6 +14,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site-url";
 import { parseFollowUpScope } from "@/lib/crm/followup-rules";
 import { parseReviewTabScope } from "@/lib/crm/reviews";
+import { listSegments } from "@/lib/crm/segments";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -34,6 +35,10 @@ const LIMIT = 20;
  * in the URL (`?account=no-account&source=shopify`, and CRM slice 04's
  * `?bought=premium&last_order=over:12&readjusted=never`), so a filtered list is
  * a link: this page reads the same parameters and renders that list first.
+ *
+ * The saved Segments (CRM slice 05) are read here with their live counts, and
+ * sit above the list. Choosing one writes its filters into the URL, so a
+ * Segment's link opens this same page.
  *
  * `?view=followups` opens the Follow-ups tab (CRM slice 06), on the list
  * `?scope=` names (mine, all, overdue); the tab reads its own rows.
@@ -66,9 +71,11 @@ export default async function SettingsCustomersPage({
     const { filters, ignored } = parseCustomerFilters(searchParamsFromRecord(query));
     const first = { ...filters, page: 1, limit: LIMIT };
 
-    const [customers, migration, telegramUpdates, aftercare] = await Promise.all([
+    const [customers, migration, segments, telegramUpdates, aftercare] = await Promise.all([
         listAdminCustomers(customerFilterParams(first, { paging: true })),
         getMigrationSummary(),
+        // The Segments row (CRM slice 05), with live counts; on a failure the row fetches them.
+        listSegments().catch(() => undefined),
         view === "settings" ? readTelegramUpdatesCard() : Promise.resolve(undefined),
         view === "settings" ? readAftercareCardData() : Promise.resolve(undefined),
     ]);
@@ -100,6 +107,8 @@ export default async function SettingsCustomersPage({
                 initialFilters={first}
                 ignoredFilters={ignored}
                 migration={migration}
+                initialSegments={segments}
+                canEdit={canEdit}
             />
         </CustomersPageTabs>
     );

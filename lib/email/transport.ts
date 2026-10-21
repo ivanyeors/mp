@@ -44,6 +44,7 @@ export class ResendTransport implements EmailTransport {
         subject: email.subject,
         html: email.html,
         text: email.text,
+        ...(email.headers ? { headers: Object.fromEntries(extraHeaders(email.headers)) } : {}),
       }),
     });
 
@@ -122,14 +123,42 @@ function encodeHeaderValue(value: string): string {
   return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
 }
 
-/** Build a base64url-encoded MIME message for the Gmail API. */
-function buildRawMessage(email: OutgoingEmail): string {
+/** Headers every transport writes itself; `OutgoingEmail.headers` cannot set them. */
+const OWNED_HEADERS = new Set([
+  "from",
+  "to",
+  "cc",
+  "bcc",
+  "reply-to",
+  "subject",
+  "mime-version",
+  "content-type",
+  "content-transfer-encoding",
+]);
+
+/**
+ * `OutgoingEmail.headers` as checked (name, value) pairs. Throws on a name that
+ * is not a plain header token, one the transport owns, or a value carrying a
+ * line break: any of those could rewrite the message (header injection).
+ */
+export function extraHeaders(headers: Record<string, string> | undefined): Array<[string, string]> {
+  return Object.entries(headers ?? {}).map(([name, value]) => {
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(name)) throw new Error(`Invalid email header name: ${name}`);
+    if (OWNED_HEADERS.has(name.toLowerCase())) throw new Error(`The transport sets ${name} itself`);
+    if (/[\r\n]/.test(value)) throw new Error(`Email header ${name} has a line break in its value`);
+    return [name, value];
+  });
+}
+
+/** Build a base64url-encoded MIME message for the Gmail API. Exported for tests. */
+export function buildRawMessage(email: OutgoingEmail): string {
   const boundary = `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
   const headers = [
     `From: ${email.from}`,
     `To: ${email.to}`,
     ...(email.replyTo ? [`Reply-To: ${email.replyTo}`] : []),
     `Subject: ${encodeHeaderValue(email.subject)}`,
+    ...extraHeaders(email.headers).map(([name, value]) => `${name}: ${encodeHeaderValue(value)}`),
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
