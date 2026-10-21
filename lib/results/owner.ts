@@ -1,7 +1,7 @@
 /**
  * Whose Result is this? The one rule the storefront's access gate
  * (`authorizeResultAccess`, lib/results/access.ts) and the Customer timeline
- * (CRM slice 03, ADR 0027) share, so the timeline never shows Staff a Result on
+ * (CRM slice 03, ADR 0028) share, so the timeline never shows Staff a Result on
  * a Customer whose own login could not open it.
  *
  * A Result is a Customer's when its `customer_id` is theirs, or when its

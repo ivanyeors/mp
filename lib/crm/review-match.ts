@@ -1,6 +1,6 @@
 /**
  * Suggesting which Customer wrote a Google review (PRD customer-crm slice 12,
- * ADR 0027 (k)). Pure: the candidates come from
+ * ADR 0028 (k)). Pure: the candidates come from
  * `google_review_match_candidates()` (20261020134000) through
  * ./google-review-match-server, and this decides.
  *

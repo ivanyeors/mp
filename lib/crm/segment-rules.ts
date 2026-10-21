@@ -18,7 +18,7 @@ import {
  * `customerFilterParams` writes them. It reads them back through the list's
  * one schema (`customerFiltersSchema`), so a Segment and the same filters in
  * the URL go through one parse and one mapping (`applyCustomerFilters`) and
- * return the same Customers (ADR 0027 (c)).
+ * return the same Customers (ADR 0028 (c)).
  *
  * Filters are checked both ways:
  *

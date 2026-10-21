@@ -1,6 +1,6 @@
 /**
  * What an import would do with each row of a Shopify customer export
- * (PRD-shopify-customer-migration, slice 02; ADR 0028 c, e).
+ * (PRD-shopify-customer-migration, slice 02; ADR 0029 c, e).
  *
  * Pure: the Admin Panel preview runs it on the server against live rows, and
  * vitest runs it against fixtures. The preview is a forecast. Slice 03's SQL

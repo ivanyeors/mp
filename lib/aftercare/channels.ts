@@ -1,5 +1,5 @@
 /**
- * The email side of an Aftercare message's channel decision (ADR 0027 f, l),
+ * The email side of an Aftercare message's channel decision (ADR 0028 f, l),
  * shared by every Aftercare message: the review request (CRM slice 07) and the
  * check-up (slice 08). Pure, so the daily job and the Aftercare card decide the
  * same way. The WhatsApp side is `decideAftercareWhatsApp`

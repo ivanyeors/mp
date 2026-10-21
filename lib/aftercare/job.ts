@@ -1,5 +1,5 @@
 /**
- * The daily Aftercare job (PRD customer-crm slices 07 and 08, ADR 0027 f, g),
+ * The daily Aftercare job (PRD customer-crm slices 07 and 08, ADR 0028 f, g),
  * chained onto the `results-sla` cron: there is no third cron (README, fourth
  * hazard).
  *

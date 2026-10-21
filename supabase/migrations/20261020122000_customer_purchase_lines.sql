@@ -1,4 +1,4 @@
--- What each Customer bought, in SQL (CRM PRD slice 04; ADR 0027, ADR 0028 (k)).
+-- What each Customer bought, in SQL (CRM PRD slice 04; ADR 0028, ADR 0029 (k)).
 --
 -- customer_purchase_lines: one row per goods line on a counted Order, saying
 -- what the line was: product_type pillow | bolster | accessory, and tier

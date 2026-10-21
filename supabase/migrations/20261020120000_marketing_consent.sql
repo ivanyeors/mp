@@ -1,5 +1,5 @@
 -- Marketing consent with provenance (PRD-shopify-customer-migration, slice 07;
--- ADR 0028 h, i).
+-- ADR 0029 h, i).
 --
 -- 1. Three columns on customers: the state (`subscribed | not_subscribed |
 --    unsubscribed`), and the source and time of the change that set it. A

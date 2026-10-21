@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
 /**
- * A coupon bound to a Customer (the Welcome-back voucher, ADR 0028 g) is valid
+ * A coupon bound to a Customer (the Welcome-back voucher, ADR 0029 g) is valid
  * only for that Customer, signed in, checking out with their own email. A
  * coupon with no owner is a bearer code, unchanged.
  */

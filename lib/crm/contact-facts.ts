@@ -148,7 +148,7 @@ const CANDIDATE_LIMIT = 200;
  * last digits (a superset; ponytail: `like '%…'` cannot use their phone index,
  * fine while each holds months, not years, of rows) and narrowed with
  * `phonesMatch`. Bookings and Results are each read only when the viewer holds
- * their own permission (ADR 0027 (b)). Throws when a read fails.
+ * their own permission (ADR 0028 (b)). Throws when a read fails.
  */
 export async function readContactFacts(
   admin: SupabaseClient,

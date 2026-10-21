@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
 /**
- * Checkout is the authoritative check for a Welcome-back voucher (ADR 0028 g).
+ * Checkout is the authoritative check for a Welcome-back voucher (ADR 0029 g).
  * Real handler and real validateCoupon; only the tables and the session are
  * faked. A refused voucher stops checkout with its error. An accepted one lets
  * it carry on to the shipping method, which this fake leaves out on purpose so

@@ -11,7 +11,7 @@
 
 Open a **Customer** and see everything that has happened with them, newest first, on one
 timeline. It is built from the tables that already record the history, with no copy and no
-backfill (ADR 0027 b).
+backfill (ADR 0028 b).
 
 ## Shape
 

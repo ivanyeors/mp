@@ -1,6 +1,6 @@
 /**
  * The Review request on the Customer timeline (CRM slice 07, through slice
- * 03's read-time merge, ADR 0027 b). Two entries at most, since a Customer is
+ * 03's read-time merge, ADR 0028 b). Two entries at most, since a Customer is
  * asked once: *Review requested (email, WhatsApp)*, then *Review link clicked*.
  *
  * Pure. The adapter that reads the rows is

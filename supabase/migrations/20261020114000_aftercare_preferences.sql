@@ -1,5 +1,5 @@
 -- Aftercare preferences and the aftercare WhatsApp ledger (PRD customer-crm
--- slice 13, ADR 0027 decisions f, h and l).
+-- slice 13, ADR 0028 decisions f, h and l).
 --
 -- Two switches per Customer: email is on by default (a service message with an
 -- opt-out), WhatsApp is off until the customer opts in (Meta's rule, and the

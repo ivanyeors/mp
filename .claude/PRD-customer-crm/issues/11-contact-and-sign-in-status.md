@@ -59,7 +59,7 @@ alter table customers
 - No `supabase.auth.admin.*` call, and no `auth.users` join.
 - A Customer who links Google from their Profile (`AccountSecurity` on `/account`) shows
   *Google* after their next account page load.
-- **No "verified" flags are stored and none is typed by Staff** (ADR 0027 j). Each status
+- **No "verified" flags are stored and none is typed by Staff** (ADR 0028 j). Each status
   below is derived from a fact.
 
 ## What Staff see
@@ -207,7 +207,7 @@ Notes on the card:
   accepts Singapore landlines (6…) and well-formed overseas E.164. The row says *Valid Singapore
   mobile*, *Valid Singapore landline* or *Valid overseas number*. All three count as *on file*.
 - **Other numbers seen respect each source's permission.** Bookings are read only with
-  `appointments`, and Results only with `results` (ADR 0027 (b)). With neither, the row is left
+  `appointments`, and Results only with `results` (ADR 0028 (b)). With neither, the row is left
   out.
 - **Failed sends come from `appointment_reminders` only.** `customer_whatsapp`, slice 13's
   aftercare ledger, keeps no failure time. Slice 07, which merged while this slice was being
@@ -228,6 +228,6 @@ Notes on the card:
 accounts on deploy. Any account it misses is filled on that person's next account page load.
 
 **Open: the glossary.** `CONTEXT.md`'s **Contact status** entry still says *Replied on WhatsApp
-(the number answered an Appointment reminder)*. ADR 0027 (j) and this slice derive it from any
+(the number answered an Appointment reminder)*. ADR 0028 (j) and this slice derive it from any
 `whatsapp_inbound` message. The entry was not edited here, because this slice's criteria do not
 call for it. A one-line fix is worth making.

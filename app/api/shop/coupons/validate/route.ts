@@ -13,7 +13,7 @@ const ValidateCouponSchema = z.object({
   category_ids: z.array(z.string().uuid()).optional(),
   email: z.string().email().optional(),
   // No customer_id: who is buying comes from the session, never the body
-  // (ADR 0028 g). A stale client still sending one has it stripped by zod.
+  // (ADR 0029 g). A stale client still sending one has it stripped by zod.
   line_items: z
     .array(
       z.object({

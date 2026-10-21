@@ -285,7 +285,7 @@ A named set of **Permissions** (`admin_roles`). **Owner** and **Admin** are buil
 _Avoid_: treating the role name as the authority — code checks **Permissions**, never role names; per-member exceptions (a one-off access pattern is a new custom role)
 
 **Permission**:
-One entry in the code catalog (`lib/auth/permissions.ts`): an **Admin Panel** page (one sidebar entry, its URL and every API behind it) or a **Telegram action**. A **Role** either has it or does not; there is no per-member override, and no view-only level except on Customers, where `customers` is seeing the page and `customers-edit` is making changes (ADR 0027 i). Some pages require another (Page Builder, Blogs, Partners and Products pick images, so they require Media); ticking one ticks its requirements.
+One entry in the code catalog (`lib/auth/permissions.ts`): an **Admin Panel** page (one sidebar entry, its URL and every API behind it) or a **Telegram action**. A **Role** either has it or does not; there is no per-member override, and no view-only level except on Customers, where `customers` is seeing the page and `customers-edit` is making changes (ADR 0028 i). Some pages require another (Page Builder, Blogs, Partners and Products pick images, so they require Media); ticking one ticks its requirements.
 _Avoid_: "scope"; a key that gates several pages (the catalog is one key per page); hiding a page in the sidebar as the only protection — its URL and APIs refuse too
 
 **Owner**:
@@ -330,13 +330,13 @@ _Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-sto
 
 **Shopify order mirror**:
 Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Distinct from `shopify_sales_queue` (ops inventory commit). Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only.
-_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0028); their orders stay unlinked.
+_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
 
 **Others**:
 Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
 _Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
 
-## Shopify customer migration (ADR 0028)
+## Shopify customer migration (ADR 0029)
 
 **Migrated customer**:
 A **Customer** whose row was created or enriched from the Shopify customer export. It carries one `migrated_customers` row: Shopify customer id, Shopify-era order count and spend, Shopify tags and note, the consent snapshot, the **Import batch** and `claimed_at`. Readable by the service role only.
@@ -451,7 +451,7 @@ _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freeb
 Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards** only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action can act. The old **Review manager** maps to both Telegram actions, **Shop moderator** to moderating **Shop reviews** only.
 _Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
 
-## Customer CRM (ADR 0027)
+## Customer CRM (ADR 0028)
 
 **Customer note**:
 A dated, authored remark by **Staff** about a **Customer**, in `customer_notes`. Only the service role can read it. Notes are never edited; a correction is a new note.
@@ -471,7 +471,7 @@ _Avoid_: "task" or "ticket" (it is not a support queue); assigning it to a **Mem
 
 **Aftercare message**:
 A service message, by email and WhatsApp, about something the **Customer** bought. There are two: the **Review request**, once per Customer, 14 days after delivery; and the **Check-up reminder**, yearly, stating that the visit is paid and its fee. Email uses the transactional transport and is on unless switched off (`aftercare_email`). WhatsApp is off until the customer opts in (`aftercare_whatsapp`). Every change is recorded with who made it and how. Neither ever carries an offer.
-_Avoid_: calling it marketing, or gating it on **Marketing consent** (migration PRD) — the one exception is the **Check-up reminder**, which offers a paid visit and so goes only to customers who agreed (ADR 0027 h); anything promotional belongs to `PRD-email-marketing`; an email about the free re-adjustment window (there is none, owner, 2026-10-20)
+_Avoid_: calling it marketing, or gating it on **Marketing consent** (migration PRD) — the one exception is the **Check-up reminder**, which offers a paid visit and so goes only to customers who agreed (ADR 0028 h); anything promotional belongs to `PRD-email-marketing`; an email about the free re-adjustment window (there is none, owner, 2026-10-20)
 
 **Review request**:
 The one message, by email and (when they opted in) WhatsApp, that asks a **Customer** for a **Google review**, with an unconditional *"need anything else? message us"* line. It goes once per Customer, ever, to every eligible Customer alike.

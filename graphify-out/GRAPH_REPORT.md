@@ -1,7 +1,7 @@
 # Graph Report - mp  (2026-10-21)
 
 ## Corpus Check
-- 2708 files · ~6,722,156 words
+- 2708 files · ~6,722,263 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 34 file(s) not represented in the graph (top: .glb 12, .css 10, (none) 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `660348eb`
+- Built from commit: `10063e8d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -310,7 +310,7 @@
 - order-mirror-ingest.ts
 - order-margins.ts
 - customer-privacy.check.ts
-- 0027-customer-crm.md
+- 0028-customer-crm.md
 - review-requests.ts
 - public.undo_shopify_import
 - followups-routes.test.ts
@@ -930,7 +930,7 @@ Nodes (33): dynamic, FinishSchema, runtime, ADR-0017, dynamic, PILLOW_SIZES, POS
 
 ### Community 14 - "createSupabaseServerClient"
 Cohesion: 0.15
-Nodes (22): POST(), runtime, ADR-0028, ValidateCouponSchema, POST(), runtime, AddressActionResult, clearDefaults() (+14 more)
+Nodes (22): POST(), runtime, ADR-0029, ValidateCouponSchema, POST(), runtime, AddressActionResult, clearDefaults() (+14 more)
 
 ### Community 15 - "unpromoted/route.ts"
 Cohesion: 0.06
@@ -1010,7 +1010,7 @@ Nodes (33): ACCOUNT_GROUP, AFTERCARE_GROUP, FOLLOW_UPS_GROUP, MARKETING_GROUP, N
 
 ### Community 34 - "checkup-server.ts"
 Cohesion: 0.05
-Nodes (76): Build notes, Scope, AftercareEmailDecision, AftercareEmailSkip, isAftercareEmailAllowed(), isProductionDeploy(), ADR-0027, addMonths() (+68 more)
+Nodes (76): Build notes, Scope, AftercareEmailDecision, AftercareEmailSkip, isAftercareEmailAllowed(), isProductionDeploy(), ADR-0028, addMonths() (+68 more)
 
 ### Community 35 - "expanded-node.check.ts"
 Cohesion: 0.04
@@ -1034,7 +1034,7 @@ Nodes (166): DELETE(), LabelsSchema, PATCH(), PatchCategorySchema, RouteContext,
 
 ### Community 40 - "welcome-voucher.ts"
 Cohesion: 0.08
-Nodes (34): jane, page(), TOKEN, ADR-0028, Schema, Eligibility (pure inputs), ClaimLinkCustomer, NOW (+26 more)
+Nodes (34): jane, page(), TOKEN, ADR-0029, Schema, Eligibility (pure inputs), ClaimLinkCustomer, NOW (+26 more)
 
 ### Community 41 - "costings/page.tsx"
 Cohesion: 0.03
@@ -1118,7 +1118,7 @@ Nodes (32): accept(), assign(), assignBolster(), assignPillow(), asStaff(), Body
 
 ### Community 61 - "PRD-customer-crm/issues/README.md"
 Cohesion: 0.05
-Nodes (30): 01 — Glossary and ADR 0027: what the CRM is made of, Acceptance criteria, ADR 0027 — decisions to record, Build notes, CONTEXT.md entries, Goal, 02 — Staff notes customers cannot read, and closing the live exposure, Acceptance criteria (+22 more)
+Nodes (30): 01 — Glossary and ADR 0028: what the CRM is made of, Acceptance criteria, ADR 0028 — decisions to record, Build notes, CONTEXT.md entries, Goal, 02 — Staff notes customers cannot read, and closing the live exposure, Acceptance criteria (+22 more)
 
 ### Community 62 - "ingest-gsc.ts"
 Cohesion: 0.10
@@ -1262,7 +1262,7 @@ Nodes (23): MessagesSlice, optionalString(), optionalStringArray(), requireStrin
 
 ### Community 97 - "merge.test.ts"
 Cohesion: 0.13
-Nodes (24): dynamic, GET(), runtime, ADR-0027, decodeCursor(), encodeCursor(), loadTimeline(), TIMELINE_PAGE_SIZE (+16 more)
+Nodes (24): dynamic, GET(), runtime, ADR-0028, decodeCursor(), encodeCursor(), loadTimeline(), TIMELINE_PAGE_SIZE (+16 more)
 
 ### Community 98 - "commissions"
 Cohesion: 0.18
@@ -1594,7 +1594,7 @@ Nodes (23): analytics, appointments, apptSheet, auditLog, calendar, card, config
 
 ### Community 189 - "apply.ts"
 Cohesion: 0.07
-Nodes (51): auditCounts(), finishShopifyImport(), NO_BATCH, previewShopifyImportUndo(), StartImportResponse, startShopifyImport(), ADR-0028, UndoResponse (+43 more)
+Nodes (51): auditCounts(), finishShopifyImport(), NO_BATCH, previewShopifyImportUndo(), StartImportResponse, startShopifyImport(), ADR-0029, UndoResponse (+43 more)
 
 ### Community 190 - "slice-04.check.ts"
 Cohesion: 0.07
@@ -1854,7 +1854,7 @@ Nodes (14): Can a pillow help with tech neck?, Can children get tech neck?, Can 
 
 ### Community 256 - "fake-admin.ts"
 Cohesion: 0.06
-Nodes (27): h, TERMS, h, ADR-0028, h, ADR-0028, coupon, h (+19 more)
+Nodes (27): h, TERMS, h, ADR-0029, h, ADR-0029, coupon, h (+19 more)
 
 ### Community 257 - "XS: $340-$360"
 Cohesion: 0.25
@@ -1870,7 +1870,7 @@ Nodes (11): run(), admin(), ENV_KEYS, h, NOW, order(), premiumLine(), Row (+3 mo
 
 ### Community 261 - "unsubscribe.ts"
 Cohesion: 0.11
-Nodes (28): dynamic, field(), GET(), pageUrl(), POST(), readForm(), runtime, ADR-0028 (+20 more)
+Nodes (28): dynamic, field(), GET(), pageUrl(), POST(), readForm(), runtime, ADR-0029 (+20 more)
 
 ### Community 262 - "sql-agreement.test.ts"
 Cohesion: 0.10
@@ -2022,15 +2022,15 @@ Nodes (9): adjustedProductRevenue(), ComputedOrderMargin, computeOrderMargin(), 
 
 ### Community 300 - "customer-privacy.check.ts"
 Cohesion: 0.12
-Nodes (18): cases, dir, sql, ADR-0027, CUSTOMER_ORDER_COLUMNS, CUSTOMER_ORDER_ITEM_COLUMNS, CustomerOrder, ORDER_WITH_ITEMS (+10 more)
+Nodes (18): cases, dir, sql, ADR-0028, CUSTOMER_ORDER_COLUMNS, CUSTOMER_ORDER_ITEM_COLUMNS, CustomerOrder, ORDER_WITH_ITEMS (+10 more)
 
-### Community 301 - "0027-customer-crm.md"
+### Community 301 - "0028-customer-crm.md"
 Cohesion: 0.13
 Nodes (11): Analytics reads DB channel facts; Shopify Admin API is ingest-only, Consequences, Considered options, Decision, Consequences, Considered options, Decision, First-party journey analytics: DB source of truth, Prospect-default transition graph (+3 more)
 
 ### Community 302 - "review-requests.ts"
 Cohesion: 0.14
-Nodes (15): CHANNEL_LABEL, ms(), REVIEW_REQUEST_TIMELINE_KINDS, reviewRequestTimelineEntries(), ReviewRequestTimelineRows, ADR-0027, reviewFakeDb, Row (+7 more)
+Nodes (15): CHANNEL_LABEL, ms(), REVIEW_REQUEST_TIMELINE_KINDS, reviewRequestTimelineEntries(), ReviewRequestTimelineRows, ADR-0028, reviewFakeDb, Row (+7 more)
 
 ### Community 303 - "public.undo_shopify_import"
 Cohesion: 0.15
@@ -2422,7 +2422,7 @@ Nodes (4): Acceptance criteria, Blocked by, Slice 04 — Direct image upload →
 
 ### Community 402 - "shop/checkout/route.ts"
 Cohesion: 0.04
-Nodes (74): CheckoutItemSchema, CheckoutSchema, CustomizationConfigRow, POST(), runtime, ShippingAddressSchema, ADR-0020, ADR-0028 (+66 more)
+Nodes (74): CheckoutItemSchema, CheckoutSchema, CustomizationConfigRow, POST(), runtime, ShippingAddressSchema, ADR-0020, ADR-0029 (+66 more)
 
 ### Community 403 - "Slice 06 — Paste Drive link → preview → import image Asset"
 Cohesion: 0.40
@@ -2798,7 +2798,7 @@ Nodes (22): GET(), PATCH(), runtime, ToggleSchema, activate(), CATEGORY_SUFFIX, 
 
 ### Community 513 - "checkups.ts"
 Cohesion: 0.22
-Nodes (11): milestoneOfTemplate(), CHANNEL_LABEL, CHECKUP_TIMELINE_KINDS, CheckupSendRow, checkupTimelineEntries(), milestoneLabel(), ms(), ADR-0027 (+3 more)
+Nodes (11): milestoneOfTemplate(), CHANNEL_LABEL, CHECKUP_TIMELINE_KINDS, CheckupSendRow, checkupTimelineEntries(), milestoneLabel(), ms(), ADR-0028 (+3 more)
 
 ### Community 514 - "PRD: In-store Counter Payments — take the card at the fitting, not by email"
 Cohesion: 0.20
@@ -2830,11 +2830,11 @@ Nodes (12): permissionForHref(), linkFor(), TimelinePageResult, customer, ShownT
 
 ### Community 525 - "Mpillow (mp)"
 Cohesion: 0.18
-Nodes (10): Configure (settings), Customer CRM (ADR 0027), Example dialogue, Learn-more slide-in section recipes (approved), Mpillow (mp), Partner portal, Relationships, Reviews (PRD-google-review-replies) (+2 more)
+Nodes (10): Configure (settings), Customer CRM (ADR 0028), Example dialogue, Learn-more slide-in section recipes (approved), Mpillow (mp), Partner portal, Relationships, Reviews (PRD-google-review-replies) (+2 more)
 
 ### Community 526 - "PRD-shopify-customer-migration/issues/README.md"
 Cohesion: 0.05
-Nodes (29): 01 — Glossary and ADR 0028: what moves, what never moves, and what a Claim is, Acceptance criteria, ADR 0028 — decisions to record, Build notes, Goal, 04 — Export from Shopify, rehearse, then import into production from the Admin Panel, Acceptance criteria, Goal (+21 more)
+Nodes (29): 01 — Glossary and ADR 0029: what moves, what never moves, and what a Claim is, Acceptance criteria, ADR 0029 — decisions to record, Build notes, Goal, 04 — Export from Shopify, rehearse, then import into production from the Admin Panel, Acceptance criteria, Goal (+21 more)
 
 ### Community 527 - "single-select-option-rows.check.ts"
 Cohesion: 0.25
@@ -3074,7 +3074,7 @@ Nodes (12): h, Row, h, dynamic, maxDuration, POST(), runtime, h (+4 more)
 
 ### Community 589 - "customer-overview-view.test.ts"
 Cohesion: 0.22
-Nodes (8): CUSTOMER_OVERVIEW_COLUMNS, definitions(), dir, files, selectList(), ADR-0028, VIEWS, MIGRATION_SUMMARY_COLUMNS
+Nodes (8): CUSTOMER_OVERVIEW_COLUMNS, definitions(), dir, files, selectList(), ADR-0029, VIEWS, MIGRATION_SUMMARY_COLUMNS
 
 ### Community 590 - "Page: About Mellow Life Pte Ltd"
 Cohesion: 0.67
@@ -3186,7 +3186,7 @@ Nodes (8): editor, editorCode, read(), readCode(), ROOT, sectionFiles, shell, tr
 
 ### Community 631 - "google-review-links-guard.test.ts"
 Cohesion: 0.33
-Nodes (7): APP_FILES, sourceFiles(), ADR-0027, codeOf(), importClosure(), resolveFile(), specifiers()
+Nodes (7): APP_FILES, sourceFiles(), ADR-0028, codeOf(), importClosure(), resolveFile(), specifiers()
 
 ### Community 634 - "webhook/__tests__/route.test.ts"
 Cohesion: 0.29
@@ -3230,7 +3230,7 @@ Nodes (9): 03 — Measurement fee priced through one helper on every Result surf
 
 ### Community 647 - "PRD — Shopify customer migration and account onboarding"
 Cohesion: 0.08
-Nodes (25): 1. There is no password to migrate, 3. Five traps in the customer schema, 4. The platform holds no Shopify customer data, and needs no API to get it, 5. A coupon engine exists, but every code is a bearer code, and only the shop cart takes one, 7. The Admin Panel can host the import, within two limits, and shows no account state, Consent and sending, Decisions (ADR 0028 records these), Legal points for the owner to confirm (not legal advice) (+17 more)
+Nodes (25): 1. There is no password to migrate, 3. Five traps in the customer schema, 4. The platform holds no Shopify customer data, and needs no API to get it, 5. A coupon engine exists, but every code is a bearer code, and only the shop cart takes one, 7. The Admin Panel can host the import, within two limits, and shows no account state, Consent and sending, Decisions (ADR 0029 records these), Legal points for the owner to confirm (not legal advice) (+17 more)
 
 ### Community 648 - "UI Debug Agent (Senior Frontend Manager + Senior QA Designer Manager)"
 Cohesion: 0.25
@@ -3382,7 +3382,7 @@ Nodes (22): Am I charged when I submit the configurator?, Can I be measured if I
 
 ### Community 715 - "sources/account.ts"
 Cohesion: 0.29
-Nodes (5): accountAdapter, LinkedRow, MigratedRow, ADR-0028, VoucherRow
+Nodes (5): accountAdapter, LinkedRow, MigratedRow, ADR-0029, VoucherRow
 
 ### Community 716 - "assert-08-campaign-sends.sql"
 Cohesion: 0.33

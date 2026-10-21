@@ -46,7 +46,7 @@ Every change records who made it, how, and when.
 
 ## Two channels, two defaults
 
-- **Email: on by default.** A service message with an opt-out (ADR 0027 f). The check-up email
+- **Email: on by default.** A service message with an opt-out (ADR 0028 f). The check-up email
   also needs **Marketing consent**, because Singapore treats a paid visit as direct marketing
   (slice 08).
 - **WhatsApp: off until the customer opts in.**

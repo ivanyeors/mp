@@ -1,5 +1,5 @@
 /**
- * Campaign emails (PRD-shopify-customer-migration slice 08; ADR 0028 i): the
+ * Campaign emails (PRD-shopify-customer-migration slice 08; ADR 0029 i): the
  * three templates, and who may receive each, as one pure rule.
  *
  * | Template                   | Who                                                                 |

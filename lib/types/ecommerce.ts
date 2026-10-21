@@ -145,7 +145,7 @@ export interface Customer {
   /** Staff-only: the customer's own key is not granted it. */
   tags: string[];
   /**
-   * Retired (ADR 0027 (a)): moved into `customer_notes`, and never written.
+   * Retired (ADR 0028 (a)): moved into `customer_notes`, and never written.
    * Staff-only, like `tags`. Dropped by a later migration.
    */
   notes: string | null;
@@ -428,7 +428,7 @@ export interface Coupon {
   expires_at: string | null;
   applies_to: { product_ids?: string[]; category_ids?: string[] } | null;
   is_active: boolean;
-  /** Bound to this Customer (ADR 0028 g); null is a bearer code. */
+  /** Bound to this Customer (ADR 0029 g); null is a bearer code. */
   customer_id: string | null;
   /** Why the platform issued it; set only on a bound coupon. */
   issued_for: "welcome_back" | null;

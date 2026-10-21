@@ -8,7 +8,7 @@ review ask, no saved lists and no follow-through. This record decides what the C
 Panel → Customers is made of: **Customer notes**, one **Customer timeline**, saved **Segments**,
 **Follow-ups**, two **Aftercare messages**, **Linked Google reviews** and a derived **Contact
 status**. It builds on the Customer overview (`admin_customer_overview`) and the *facts, not
-statuses* rule of [ADR 0028 — Shopify customer migration](0028-shopify-customer-migration.md)
+statuses* rule of [ADR 0029 — Shopify customer migration](0029-shopify-customer-migration.md)
 (its decisions k and l), and the CRM's own tables follow them: events and timestamps, not stored
 statuses; staff-only data off `customers`; append-only events keyed by `customer_id`.
 
@@ -158,7 +158,7 @@ Four facts about today's code shape the rest:
 
 ## Related
 
-- [ADR 0028 — Shopify customer migration](0028-shopify-customer-migration.md): the Customer
+- [ADR 0029 — Shopify customer migration](0029-shopify-customer-migration.md): the Customer
   overview the CRM's columns and filters extend, and the *facts, not statuses* rule (k, l).
 - [ADR 0024 — Services are priced in Costings](0024-services-priced-in-costings.md): the
   re-adjustment rule and the fee the check-up states.

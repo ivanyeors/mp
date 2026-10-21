@@ -2,7 +2,7 @@
 // Campaign emails: the Shopify customer migration (slice 08)
 // ============================================================
 //
-// Three campaign emails (PRD-shopify-customer-migration slice 08; ADR 0028 i),
+// Three campaign emails (PRD-shopify-customer-migration slice 08; ADR 0029 i),
 // sent in waves by the wave sender (lib/customer-migration/wave-sender.ts),
 // never by the transactional transport:
 //

@@ -16,7 +16,7 @@ import { reviewsAdapter } from "@/lib/crm/timeline/sources/reviews";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
 /**
- * Every source on the Customer timeline (ADR 0027 (b)), in filter-chip order.
+ * Every source on the Customer timeline (ADR 0028 (b)), in filter-chip order.
  * The timeline is merged when it is read from the tables that already record
  * each fact: nothing is copied, so a new source needs no backfill.
  *

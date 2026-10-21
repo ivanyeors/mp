@@ -1,7 +1,7 @@
 import type { TimelineBatch, TimelineCursor, TimelineEntry } from "@/lib/crm/timeline/types";
 
 /**
- * The pure half of the Customer timeline (ADR 0027 (b)): the adapters read,
+ * The pure half of the Customer timeline (ADR 0028 (b)): the adapters read,
  * this orders. No I/O.
  *
  * Order: newest first, then `kind`, then `ref.id`, then the entry's own `id`,

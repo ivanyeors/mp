@@ -1,4 +1,4 @@
--- Review requests (PRD-customer-crm slice 07, ADR 0027 f, g, k): one message
+-- Review requests (PRD-customer-crm slice 07, ADR 0028 f, g, k): one message
 -- per Customer, ever, 14 days after an Order is delivered, asking for a Google
 -- review.
 --

@@ -70,7 +70,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /**
- * The Contact and sign-in card (CRM slice 11; ADR 0027 (j)): for any Customer,
+ * The Contact and sign-in card (CRM slice 11; ADR 0028 (j)): for any Customer,
  * whether their email and mobile are "linked up", each line derived from a
  * fact and none of it typed by Staff. It replaces migration slice 12's Account
  * card and keeps what it held: the sign-up date and the last signed-in visit.
@@ -273,7 +273,7 @@ function OtherNumbers({ numbers }: { numbers: OtherNumber[] }) {
 /**
  * The From Shopify card (migration slice 12), only for a Migrated customer:
  * the Shopify-era facts kept beside the Customer in `migrated_customers`
- * (ADR 0028 (d)). Shopify orders stay unlinked, so their count and spend are
+ * (ADR 0029 (d)). Shopify orders stay unlinked, so their count and spend are
  * shown apart from the platform's.
  */
 export function FromShopifyCard({

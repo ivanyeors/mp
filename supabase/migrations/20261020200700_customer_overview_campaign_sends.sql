@@ -1,5 +1,5 @@
 -- The Customer overview and the Migration card learn what the campaign sent
--- (PRD-shopify-customer-migration slice 08; ADR 0028 k).
+-- (PRD-shopify-customer-migration slice 08; ADR 0029 k).
 --
 -- admin_customer_overview adds `last_campaign_sent_at`, at the end: the
 -- latest campaign email the provider accepted for this Customer (sent, or

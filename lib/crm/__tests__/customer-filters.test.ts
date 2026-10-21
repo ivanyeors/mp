@@ -26,7 +26,7 @@ import {
 
 type Call = [method: string, ...args: unknown[]];
 
-/** Records every call. It has no `or`: the mapping has no way to send one (ADR 0027 (d)). */
+/** Records every call. It has no `or`: the mapping has no way to send one (ADR 0028 (d)). */
 function recorder() {
   const calls: Call[] = [];
   const record =
@@ -232,7 +232,7 @@ describe("applyCustomerFilters", () => {
     ]);
   });
 
-  describe("search (ADR 0027 (d))", () => {
+  describe("search (ADR 0028 (d))", () => {
     it("is one ilike on search_text", () => {
       expect(query("search=mei").calls).toEqual([["ilike", "search_text", "%mei%"], newest]);
     });

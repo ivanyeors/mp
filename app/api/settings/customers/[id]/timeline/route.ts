@@ -12,7 +12,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
  * GET /api/settings/customers/[id]/timeline?before=…&kinds=…&limit=…
  *
- * One page of the Customer timeline (CRM slice 03, ADR 0027 (b)), newest first.
+ * One page of the Customer timeline (CRM slice 03, ADR 0028 (b)), newest first.
  * Seeing it needs `customers`; each source then needs its own permission
  * (`orders`, `results`, `appointments`, `returns`), and a source the viewer
  * does not hold is never read.

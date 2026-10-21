@@ -160,6 +160,6 @@ scope and no order link: it reads a file the owner exports by hand.
 - `customer-import` requires `customers` for now. Once the CRM adds `customers-edit`, it requires
   that instead, because importing is a change.
 - Every per-customer event table this initiative adds is append-only and carries `customer_id` and
-  a timestamp, so the CRM timeline (ADR 0027) can merge it when it is read, with no backfill.
+  a timestamp, so the CRM timeline (ADR 0028) can merge it when it is read, with no backfill.
 - No campaign email is sent before one-click unsubscribe is live in production. The wave sender
   refuses to run while the unsubscribe route is absent, and refuses the Gmail transport.

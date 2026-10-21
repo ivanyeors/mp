@@ -139,7 +139,7 @@ export function reviewRequestTemplateParams(input: {
 /**
  * `aftercare_checkup`'s parameters, in the template's order (slice 08). Throws
  * without a fee: the check-up states the fee, and if Costings cannot give one,
- * nothing is sent (ADR 0027, Consequences).
+ * nothing is sent (ADR 0028, Consequences).
  */
 export function checkupTemplateParams(input: {
   firstName: string | null | undefined;

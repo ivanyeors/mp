@@ -30,7 +30,7 @@ create unique index customer_segments_live_name
 ```
 
 - RLS is service-role only. This is not `site_settings`, which anyone can read
-  (ADR 0027 c).
+  (ADR 0028 c).
 - **Filters are checked on the way in and on the way out.** Saving parses them with slice
   04's schema and refuses anything it drops. Loading parses them again.
   - When the schema has since changed, so that a filter key no longer exists, the Segment shows

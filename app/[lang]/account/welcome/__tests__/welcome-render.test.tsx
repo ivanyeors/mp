@@ -110,7 +110,7 @@ describe("signed in", () => {
 });
 
 describe("a Claim link never creates a session", () => {
-  // Proof of the email is always the Sign in itself (ADR 0028, decision 7).
+  // Proof of the email is always the Sign in itself (ADR 0029, decision 7).
   const files = [
     "app/[lang]/account/welcome/page.tsx",
     "app/[lang]/account/welcome/welcome-view.tsx",

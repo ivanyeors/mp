@@ -2,7 +2,7 @@
 // Aftercare emails (PRD customer-crm slices 07 and 08)
 // ============================================================
 //
-// Service messages about something the customer bought (ADR 0027 f). They go
+// Service messages about something the customer bought (ADR 0028 f). They go
 // through the transactional transport, carry no offer, no price (but the
 // check-up's own fee) and no other product, and end with the aftercare footer: how to stop them, in the
 // account or by replying (lib/aftercare/state.ts, AFTERCARE_EMAIL_FOOTER).

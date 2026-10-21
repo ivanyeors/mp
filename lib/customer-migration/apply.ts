@@ -1,7 +1,7 @@
 /**
  * Applying a Shopify customer import from the Admin Panel, end to end, apart
  * from the server actions it calls (PRD-shopify-customer-migration, slice 03;
- * ADR 0028 e).
+ * ADR 0029 e).
  *
  * Pure: the page passes the actions in, so vitest drives the same flow with
  * fakes, and the server action shares the chunk check and the row builder.

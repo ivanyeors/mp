@@ -1,4 +1,4 @@
--- Saved Segments (ADR 0027 (c), PRD-customer-crm slice 05).
+-- Saved Segments (ADR 0028 (c), PRD-customer-crm slice 05).
 --
 -- A Segment is a named, saved set of Customers-list filters, shared by every
 -- Staff member with `customers` and counted live (CONTEXT.md). It is a query,

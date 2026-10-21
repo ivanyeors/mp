@@ -514,7 +514,7 @@ export async function POST(req: Request) {
       customerEmail: normalizedEmail,
       customerId: existingCustomer?.id,
       // A Welcome-back voucher is bound to its Customer: checked against the
-      // session here, as at the preview (ADR 0028 g).
+      // session here, as at the preview (ADR 0029 g).
       getSessionCustomerId: getCurrentCustomerId,
       lineItems,
     });

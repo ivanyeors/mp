@@ -129,7 +129,7 @@ export type CrmTelegramRunSummary =
 
 /**
  * The daily job, chained onto the `results-sla` cron (about 10:00 SGT, ±1 hour
- * on Vercel Hobby). No third cron: ADR 0027 g, README fourth hazard.
+ * on Vercel Hobby). No third cron: ADR 0028 g, README fourth hazard.
  *
  * Each scheduled type goes at most once per period. It is counted first; a
  * type with nothing to send claims nothing, and one with something claims its

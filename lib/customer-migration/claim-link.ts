@@ -1,5 +1,5 @@
 /**
- * The Claim link (ADR 0028, decision 7; PRD-shopify-customer-migration slice 06).
+ * The Claim link (ADR 0029, decision 7; PRD-shopify-customer-migration slice 06).
  *
  * `/account/welcome?c=<token>` in a campaign email. The token prefills the
  * welcome page's sign-in form with its Customer's email and attributes the

@@ -112,7 +112,7 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
     customer = data as Customer;
   }
 
-  // The Claim (ADR 0028 f), for every decision type: someone who signed in
+  // The Claim (ADR 0029 f), for every decision type: someone who signed in
   // before it shipped, or whose Shopify row merged into an account they already
   // had, claims on this sign-in. For anyone else it is one indexed no-op
   // update. Only for a row this user owns, never one `already_linked` returned

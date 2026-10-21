@@ -1,4 +1,4 @@
--- Follow-ups assigned to Staff profiles (ADR 0027 (e), PRD-customer-crm slice 06).
+-- Follow-ups assigned to Staff profiles (ADR 0028 (e), PRD-customer-crm slice 06).
 --
 -- A Follow-up is a dated to-do about one Customer, assigned to a Staff profile
 -- (mp_staff), and done or not done. Never to a Member or a login: on a shared
@@ -7,7 +7,7 @@
 -- authorisation: every Staff member with `customers` sees every follow-up, and
 -- creating, completing, reassigning and deleting need `customers-edit`.
 --
--- Facts, not statuses (ADR 0028 k): *open* is `done_at is null`, *overdue* is
+-- Facts, not statuses (ADR 0029 k): *open* is `done_at is null`, *overdue* is
 -- an open one whose `due_on` is before today in Singapore. Neither is stored,
 -- so neither can drift.
 --

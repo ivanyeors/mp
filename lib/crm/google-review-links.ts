@@ -1,5 +1,5 @@
 /**
- * Linking a Google review to a Customer (PRD customer-crm slice 12, ADR 0027
+ * Linking a Google review to a Customer (PRD customer-crm slice 12, ADR 0028
  * (k)): the only writes to `customer_google_reviews` and
  * `customer_google_review_rejections`, each one SQL function
  * (20261020134000_customer_google_reviews.sql).

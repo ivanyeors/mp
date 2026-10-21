@@ -1,4 +1,4 @@
--- Contact and sign-in status (PRD customer-crm slice 11; ADR 0027 (j)).
+-- Contact and sign-in status (PRD customer-crm slice 11; ADR 0028 (j)).
 --
 -- Every part of a Customer's Contact status is derived from a fact, never a
 -- flag Staff set. This migration adds the one fact the platform did not keep,

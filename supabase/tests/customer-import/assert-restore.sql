@@ -1,7 +1,7 @@
 -- Slice 03: an undo that nothing has touched since restores the prior state.
 -- Every table the import writes is compared row for row with a snapshot taken
 -- before the import. The only difference allowed is the one the design keeps:
--- a merged Customer's null names and phone stay filled (ADR 0028 e). A batch
+-- a merged Customer's null names and phone stay filled (ADR 0029 e). A batch
 -- of creates only must therefore restore everything, to the byte. Rolled back.
 
 begin;

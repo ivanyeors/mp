@@ -23,7 +23,7 @@ export type AdminCouponsListResult =
 
 /**
  * `bound=show` lists account-bound vouchers too (`coupons.customer_id` set,
- * such as each Customer's Welcome-back voucher, ADR 0028 (g)). By default the
+ * such as each Customer's Welcome-back voucher, ADR 0029 (g)). By default the
  * list holds bearer codes only: one voucher per claimed Customer would bury
  * the codes Staff actually manage (migration slice 06).
  */

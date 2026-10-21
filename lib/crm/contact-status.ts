@@ -1,7 +1,7 @@
 import { isValidPhone, normalizePhone } from "@/lib/appointments/phone";
 
 /**
- * Contact status (PRD customer-crm slice 11; ADR 0027 (j)): what is known
+ * Contact status (PRD customer-crm slice 11; ADR 0028 (j)): what is known
  * about how to reach a **Customer**, each part derived from a fact and never
  * from a box Staff tick.
  *

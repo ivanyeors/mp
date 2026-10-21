@@ -31,7 +31,7 @@ create index on customer_followups (customer_id, created_at desc);
 ```
 
 - RLS is service-role only.
-- **Assignment is to a Staff profile, never a Member** (ADR 0027 e). "Working as" decides whose
+- **Assignment is to a Staff profile, never a Member** (ADR 0028 e). "Working as" decides whose
   *mine* list you see (`lib/staff/working-as.ts`). It is attribution, not authorisation.
 - **An archived profile keeps its open follow-ups.** They show under *All* with an *Assignee
   archived* chip and a *Reassign* action. They are never silently dropped.

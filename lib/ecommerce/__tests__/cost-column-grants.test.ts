@@ -8,7 +8,7 @@ import { CUSTOMER_ORDER_COLUMNS, CUSTOMER_ORDER_ITEM_COLUMNS } from "@/lib/shop/
  *
  * - product_variants and order_items: the cost columns
  *   (20260915170000_hide_variant_cost_price.sql);
- * - customers and orders: Staff notes and tags (ADR 0027 (a),
+ * - customers and orders: Staff notes and tags (ADR 0028 (a),
  *   20261020101000_customer_notes_and_column_grants.sql).
  *
  * Postgres only honours that if the table-level SELECT grant is revoked, and

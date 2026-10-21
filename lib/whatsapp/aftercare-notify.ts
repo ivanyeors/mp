@@ -1,5 +1,5 @@
 /**
- * The aftercare WhatsApp channel (PRD customer-crm slice 13, ADR 0027 f, h, l),
+ * The aftercare WhatsApp channel (PRD customer-crm slice 13, ADR 0028 f, h, l),
  * used by the review request (slice 07) and the check-up (slice 08). It mirrors
  * the partner notifications (./partner-notify.ts).
  *

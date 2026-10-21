@@ -1,4 +1,4 @@
-# 01 — Glossary and ADR 0028: what moves, what never moves, and what a Claim is
+# 01 — Glossary and ADR 0029: what moves, what never moves, and what a Claim is
 
 **Issue:** [#265](https://github.com/ivanyeors/mp/issues/265) (parent #264)
 **Type:** AFK
@@ -72,9 +72,9 @@ Also amend two existing entries:
   created at checkout, at Sign in, or by the Shopify import. It **has an account** once a Sign in
   is bound to it (`auth_user_id`)."* Keep the Profile line.
 - **Shopify order mirror**'s `_Avoid_` line gains: *Shopify customers are imported once (ADR
-  0028); their orders stay unlinked.*
+  0029); their orders stay unlinked.*
 
-## ADR 0028 — decisions to record
+## ADR 0029 — decisions to record
 
 - **(a) The source is the owner's Admin CSV export, imported from the Admin Panel.** No Admin API
   customer access, no new scope, no protected-customer-data approval. Record the header row the
@@ -113,22 +113,22 @@ Also amend two existing entries:
 
 - [x] `CONTEXT.md` carries the seven terms above with `_Avoid_` lines, the rewritten
       **Customer** entry, and the amended **Shopify order mirror** line.
-- [x] `docs/adr/0028-shopify-customer-migration.md` records (a)–(l). It links ADR 0024 (the
+- [x] `docs/adr/0029-shopify-customer-migration.md` records (a)–(l). It links ADR 0024 (the
       "No Shopify" rule it narrows, not reverses) and ADR 0007 (why journey analytics does not
       carry the funnel).
 - [x] `./scripts/graphify update .` is run in the same commit.
 
 ## Build notes
 
-- **Built.** `CONTEXT.md` gains a section, *Shopify customer migration (ADR 0028)*, right after
+- **Built.** `CONTEXT.md` gains a section, *Shopify customer migration (ADR 0029)*, right after
   the Language section and next to the **Customer** and **Shopify order mirror** entries it builds
   on. It holds the seven terms in the house format (`**Term**:`, a definition, then one `_Avoid_:`
   line). The **Customer** entry is rewritten as specified, with its Profile line kept. The
-  **Shopify order mirror** `_Avoid_` line gains the ADR 0028 sentence.
-  `docs/adr/0028-shopify-customer-migration.md` records (a)–(l) under the same letters, so the
-  other slices' references ("ADR 0028 d", "k, l") resolve. It also has Context, Considered options
+  **Shopify order mirror** `_Avoid_` line gains the ADR 0029 sentence.
+  `docs/adr/0029-shopify-customer-migration.md` records (a)–(l) under the same letters, so the
+  other slices' references ("ADR 0029 d", "k, l") resolve. It also has Context, Considered options
   and Consequences sections, and links ADR 0024 and ADR 0007.
-- **ADR 0024** gains one Consequences line, *"Narrowed by ADR 0028: …"*. This follows the
+- **ADR 0024** gains one Consequences line, *"Narrowed by ADR 0029: …"*. This follows the
   precedent of ADR 0001's *"Amended by ADR 0024"* line. There is no ADR index in the repo
   (`docs/adr/` has no README, and no other file lists the ADRs), so there was nothing else to
   link from.
@@ -143,8 +143,8 @@ Also amend two existing entries:
   - (a) asks for the header row the first real file carried. No real file exists yet, so the ADR
     records the PRD's *expected* header, clearly labelled, and says slice 04 replaces it (slice 04
     step 3 already asks for this).
-- **Left for others.** Slice 04 records the real header in ADR 0028 (a). The ADR's Consequences
-  mention ADR 0027 (the CRM, written in parallel) in plain text, with no link, so nothing breaks
+- **Left for others.** Slice 04 records the real header in ADR 0029 (a). The ADR's Consequences
+  mention ADR 0028 (the CRM, written in parallel) in plain text, with no link, so nothing breaks
   if that number moves. The **Visitor** entry's `_Avoid_` still glosses Customer as "shopper
   Sign-in identity", which the new **Customer** entry makes slightly narrow. It was left alone as
   out of scope.

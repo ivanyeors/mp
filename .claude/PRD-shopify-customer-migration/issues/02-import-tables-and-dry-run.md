@@ -58,7 +58,7 @@ create index on migrated_customers (batch_id);
 Both tables are server-only, as the newest tables are (`20261019152211`, `20261020024120`):
 RLS is enabled with **no** policy, and `revoke all … from anon, authenticated`
 (`20260917033807_security_advisor_hardening.sql:43-72`). The service role bypasses RLS. There is
-deliberately no `authenticated` access (ADR 0028 d). The batch records who ran it by
+deliberately no `authenticated` access (ADR 0029 d). The batch records who ran it by
 `run_by_user_id` and `run_by_profile_id`. It never stores a customer's email or name.
 (`admin_audit_log` does store the Staff member's own `actor_email`, `lib/auth/audit.ts:40`; that
 is Staff data, not customer PII.)

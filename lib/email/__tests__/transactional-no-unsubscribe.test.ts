@@ -14,7 +14,7 @@ import { sampleOrder } from "../__fixtures__/samples";
 /**
  * Campaign mail carries an unsubscribe link and `List-Unsubscribe`; order,
  * Result and aftercare mail carries neither, because it is transactional
- * (migration slice 07; ADR 0028 i). The transports pass extra headers through,
+ * (migration slice 07; ADR 0029 i). The transports pass extra headers through,
  * and refuse one that could rewrite the message.
  */
 

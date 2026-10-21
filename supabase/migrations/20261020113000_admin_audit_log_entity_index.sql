@@ -1,4 +1,4 @@
--- Customer timeline (PRD-customer-crm slice 03, ADR 0027 (b)).
+-- Customer timeline (PRD-customer-crm slice 03, ADR 0028 (b)).
 --
 -- The timeline is merged when it is read, and two of its facts live only in
 -- admin_audit_log: a Staff cancel of a Result (`result.cancel` on

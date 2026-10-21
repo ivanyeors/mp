@@ -28,7 +28,7 @@ export type AdminCustomersListResult =
  * slice 12), filtered and sorted from the list's URL parameters
  * (lib/crm/customer-filters.ts). An invalid parameter is dropped there, and
  * search is one escaped `ilike` on `search_text`, never an `.or()` (CRM
- * slice 04; ADR 0027 (d)).
+ * slice 04; ADR 0028 (d)).
  */
 export async function listAdminCustomers(
   searchParams: URLSearchParams,

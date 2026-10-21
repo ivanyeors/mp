@@ -1,5 +1,5 @@
--- The CRM's columns on the Customer overview (CRM PRD slice 04; ADR 0027,
--- ADR 0028 (k)).
+-- The CRM's columns on the Customer overview (CRM PRD slice 04; ADR 0028,
+-- ADR 0029 (k)).
 --
 -- `create or replace view admin_customer_overview` keeps every column the
 -- last definition had, in order: migration 12's; CRM 11's account_providers,
@@ -19,7 +19,7 @@
 --   last_readjusted_at           latest start_at of an attended Re-adjustment
 --                                booking
 --   search_text                  lower(email first last): the list's search is
---                                one escaped ilike on it (ADR 0027 (d)), served
+--                                one escaped ilike on it (ADR 0028 (d)), served
 --                                by idx_customers_search_text_trgm
 --                                (20261020122100), whose expression it must
 --                                stay

@@ -1,5 +1,5 @@
 -- Shopify customer import: the Import batch and the Migrated customer
--- (PRD-shopify-customer-migration, slice 02; ADR 0028).
+-- (PRD-shopify-customer-migration, slice 02; ADR 0029).
 --
 -- customer_import_batches: one row per import that writes (slice 03). It names
 -- the file as the browser picked it and its SHA-256, the counts by outcome, the
@@ -9,7 +9,7 @@
 -- migrated_customers: the Shopify-era facts about a Customer the import created
 -- or enriched, kept beside `customers` rather than on it. A signed-in Customer
 -- can read every column of their own `customers` row (0037_customer_auth.sql),
--- and Shopify notes and tags are Staff-facing (ADR 0028 d). Shopify totals stay
+-- and Shopify notes and tags are Staff-facing (ADR 0029 d). Shopify totals stay
 -- here too: `customers.total_*` are platform figures that updateCustomerStats
 -- recomputes.
 --

@@ -20,7 +20,7 @@ shared folder that should not be. The owner can run every step from a browser.
    Saving it again strips the leading zero from Singapore postal codes.
 3. **Record the header row in this issue**, with no data rows. The import page shows it after
    picking the file. If it differs from the PRD's expected columns, update `shopify-csv.ts` and
-   ADR 0028 (a) before going on.
+   ADR 0029 (a) before going on.
 4. **Preview.** Paste the outcome counts, skip reasons and repair counts here (counts only).
    Check the buyers vs subscribers split against what Shopify's customer list shows.
 5. **Rehearse** on a deployment whose Supabase is a branch or a staging project, never

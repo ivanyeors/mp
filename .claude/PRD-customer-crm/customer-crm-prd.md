@@ -3,7 +3,7 @@
 **Status:** specified, not started
 **Issue:** [#277](https://github.com/ivanyeors/mp/issues/277), with each slice a sub-issue (#278–#291)
 **Audited:** 2026-10-20 against `main` @ `48c643f`: every code reference re-checked after the paired-build and WhatsApp merges (#258–#262), plus research on Meta's template rules, Singapore's Spam Control Act and PDPA, and Google's review policy.
-**ADR:** `docs/adr/0027-customer-crm.md` (to be written by slice 01)
+**ADR:** `docs/adr/0028-customer-crm.md` (to be written by slice 01)
 **Builds on:** `PRD-shopify-customer-migration`, slice 12 (`admin_customer_overview`) and its
 *Toward a simple CRM* section, which this PRD replaces as the source of truth.
 **Hands off to:** `PRD-email-marketing` (placeholder) for anything promotional.
@@ -218,7 +218,7 @@ roles.
   - **Follow-ups**, open first, each with its assignee and due date;
   - **Timeline**: everything that happened, newest first, filterable by kind.
 
-## Decisions (ADR 0027 records these)
+## Decisions (ADR 0028 records these)
 
 1. **Staff notes live in `customer_notes`, which only the service role can read.**
    - `customers.notes` stops being written, and its text moves into a first note.
@@ -281,7 +281,7 @@ roles.
     online Result to review, Google reviews to match, new sign-ups, and a weekly summary.
     - The CRM's own types carry counts, Staff names and links only.
     - The online Result notice already exists, and keeps its content. Only its switch is new.
-14. **The CRM's own tables follow the migration PRD's rules** (ADR 0028 k, l):
+14. **The CRM's own tables follow the migration PRD's rules** (ADR 0029 k, l):
    - facts, not statuses;
    - staff-only data off `customers`;
    - append-only events, each keyed by `customer_id` with a timestamp.

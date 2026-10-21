@@ -5,7 +5,7 @@ import { codeOf, importClosure } from "./import-closure";
 
 /**
  * No code path links a Google review to a Customer without a Staff action
- * (CRM README, seventh hazard; ADR 0027 (k)). Google gives a review a display
+ * (CRM README, seventh hazard; ADR 0028 (k)). Google gives a review a display
  * name and never an email, and a name is not an identity.
  *
  *  - In SQL, the one statement that inserts into `customer_google_reviews` is

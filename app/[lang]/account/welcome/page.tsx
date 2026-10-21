@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /**
  * Where a campaign email's Claim link lands (PRD-shopify-customer-migration
- * slice 06; ADR 0028 decision 7). The token only chooses whose email to
+ * slice 06; ADR 0029 decision 7). The token only chooses whose email to
  * prefill and records the click: it never signs anyone in. The account shell
  * leaves this page bare, as it does the sign-in page, so a signed-out visitor
  * is not redirected away from it.

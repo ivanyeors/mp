@@ -3,7 +3,7 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
 /**
  * The coupon preview resolves who is buying from the session, never from the
- * request body (ADR 0028 g). It used to take `customer_id` from the body.
+ * request body (ADR 0029 g). It used to take `customer_id` from the body.
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, session: null as string | null }));

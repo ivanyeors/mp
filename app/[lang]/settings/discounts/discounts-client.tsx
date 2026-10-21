@@ -36,7 +36,7 @@ export type Coupon = {
     is_active: boolean;
     starts_at: string | null;
     expires_at: string | null;
-    /** Bound to one Customer (ADR 0028 (g)), such as a Welcome-back voucher; null is a bearer code. */
+    /** Bound to one Customer (ADR 0029 (g)), such as a Welcome-back voucher; null is a bearer code. */
     customer_id?: string | null;
     issued_for?: "welcome_back" | null;
     created_at: string;

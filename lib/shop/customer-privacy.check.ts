@@ -1,5 +1,5 @@
 /**
- * CRM 02 privacy check (ADR 0027 (a)): a signed-in customer's own key cannot
+ * CRM 02 privacy check (ADR 0028 (a)): a signed-in customer's own key cannot
  * read Staff notes, tags or order notes, and every account path still reads
  * what it needs.
  *

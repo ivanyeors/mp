@@ -1,4 +1,4 @@
--- Reviews on the Customer overview (CRM PRD slice 12; ADR 0027 (k)).
+-- Reviews on the Customer overview (CRM PRD slice 12; ADR 0028 (k)).
 --
 -- `create or replace view admin_customer_overview` keeps every column the
 -- last definition had, in order: migration 12's; CRM 11's account_providers,

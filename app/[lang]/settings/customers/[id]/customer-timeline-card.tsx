@@ -67,7 +67,7 @@ type View =
     | { status: "ready"; page: TimelinePage; filter: string };
 
 /**
- * The Customer timeline (CONTEXT.md; ADR 0027 (b)): everything that happened
+ * The Customer timeline (CONTEXT.md; ADR 0028 (b)): everything that happened
  * with this Customer, newest first, merged on the server from the tables that
  * record it. Each kind group shows only to Staff holding its source's
  * permission, so the chips are whatever the server says this viewer may see.

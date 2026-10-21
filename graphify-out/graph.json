@@ -102709,17 +102709,6 @@
       "source_location": "L373"
     },
     {
-      "id": "lib_types_ecommerce_ts_docref_adr_0027",
-      "label": "ADR-0027",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "ecommerce.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0027",
-      "source_file": "lib/types/ecommerce.ts",
-      "source_location": "L148"
-    },
-    {
       "id": "lib_types_ecommerce_ts_docref_adr_0028",
       "label": "ADR-0028",
       "_origin": "ast",
@@ -102727,6 +102716,17 @@
       "community_name": "ecommerce.ts",
       "file_type": "concept",
       "norm_label": "adr-0028",
+      "source_file": "lib/types/ecommerce.ts",
+      "source_location": "L148"
+    },
+    {
+      "id": "lib_types_ecommerce_ts_docref_adr_0029",
+      "label": "ADR-0029",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "ecommerce.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0029",
       "source_file": "lib/types/ecommerce.ts",
       "source_location": "L431"
     },
@@ -104855,13 +104855,13 @@
       "source_location": "L63"
     },
     {
-      "id": "lib_customer_migration_claim_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_claim_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 103,
       "community_name": "claim.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/claim.ts",
       "source_location": "L2"
     },
@@ -105684,14 +105684,14 @@
       "source_location": "L16"
     },
     {
-      "id": "context_shopify_customer_migration_adr_0028",
-      "label": "Shopify customer migration (ADR 0028)",
+      "id": "context_shopify_customer_migration_adr_0029",
+      "label": "Shopify customer migration (ADR 0029)",
       "_origin": "ast",
       "community": 106,
       "community_name": "stripe/webhook/route.ts",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "shopify customer migration (adr 0028)",
+      "norm_label": "shopify customer migration (adr 0029)",
       "source_file": "CONTEXT.md",
       "source_location": "L339"
     },
@@ -107909,13 +107909,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_results_owner_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_results_owner_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 113,
       "community_name": "sources/results.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/results/owner.ts",
       "source_location": "L4"
     },
@@ -109647,13 +109647,13 @@
       "source_location": "L1"
     },
     {
-      "id": "app_lang_settings_customers_id_customer_timeline_card_tsx_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "app_lang_settings_customers_id_customer_timeline_card_tsx_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 117,
       "community_name": "withLocale",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "app/[lang]/settings/customers/[id]/customer-timeline-card.tsx",
       "source_location": "L70"
     },
@@ -111902,13 +111902,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_crm_telegram_updates_server_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_telegram_updates_server_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 128,
       "community_name": "telegram-updates-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/telegram-updates-server.ts",
       "source_location": "L132"
     },
@@ -113654,13 +113654,13 @@
       "source_location": "L17"
     },
     {
-      "id": "lib_email_tests_transactional_no_unsubscribe_test_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_email_tests_transactional_no_unsubscribe_test_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 133,
       "community_name": "email/index.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/email/__tests__/transactional-no-unsubscribe.test.ts",
       "source_location": "L17"
     },
@@ -114693,14 +114693,14 @@
       "source_location": "L414"
     },
     {
-      "id": "claude_prd_customer_crm_customer_crm_prd_decisions_adr_0027_records_these",
-      "label": "Decisions (ADR 0027 records these)",
+      "id": "claude_prd_customer_crm_customer_crm_prd_decisions_adr_0028_records_these",
+      "label": "Decisions (ADR 0028 records these)",
       "_origin": "ast",
       "community": 138,
       "community_name": "The parts",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "decisions (adr 0027 records these)",
+      "norm_label": "decisions (adr 0028 records these)",
       "source_file": ".claude/PRD-customer-crm/customer-crm-prd.md",
       "source_location": "L221"
     },
@@ -114970,13 +114970,13 @@
       "source_location": "L4"
     },
     {
-      "id": "app_api_shop_coupons_validate_route_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_api_shop_coupons_validate_route_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 14,
       "community_name": "createSupabaseServerClient",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/api/shop/coupons/validate/route.ts",
       "source_location": "L16"
     },
@@ -116062,13 +116062,13 @@
       "source_location": "L24"
     },
     {
-      "id": "lib_customer_migration_claim_link_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_claim_link_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 149,
       "community_name": "claim-link.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/claim-link.ts",
       "source_location": "L2"
     },
@@ -123508,17 +123508,6 @@
       "source_location": "L31"
     },
     {
-      "id": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0027",
-      "label": "ADR-0027",
-      "_origin": "ast",
-      "community": 179,
-      "community_name": "Card",
-      "file_type": "concept",
-      "norm_label": "adr-0027",
-      "source_file": "app/[lang]/settings/customers/[id]/customer-account-cards.tsx",
-      "source_location": "L73"
-    },
-    {
       "id": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0028",
       "label": "ADR-0028",
       "_origin": "ast",
@@ -123527,49 +123516,60 @@
       "file_type": "concept",
       "norm_label": "adr-0028",
       "source_file": "app/[lang]/settings/customers/[id]/customer-account-cards.tsx",
-      "source_location": "L276"
+      "source_location": "L73"
     },
     {
-      "id": "app_lang_settings_customers_id_customer_notes_card_tsx_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 179,
       "community_name": "Card",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0029",
+      "source_file": "app/[lang]/settings/customers/[id]/customer-account-cards.tsx",
+      "source_location": "L276"
+    },
+    {
+      "id": "app_lang_settings_customers_id_customer_notes_card_tsx_docref_adr_0028",
+      "label": "ADR-0028",
+      "_origin": "ast",
+      "community": 179,
+      "community_name": "Card",
+      "file_type": "concept",
+      "norm_label": "adr-0028",
       "source_file": "app/[lang]/settings/customers/[id]/customer-notes-card.tsx",
       "source_location": "L26"
     },
     {
-      "id": "app_lang_settings_customers_id_page_tsx_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "app_lang_settings_customers_id_page_tsx_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 179,
       "community_name": "Card",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "app/[lang]/settings/customers/[id]/page.tsx",
       "source_location": "L73"
     },
     {
-      "id": "lib_crm_contact_status_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_contact_status_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 179,
       "community_name": "Card",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/contact-status.ts",
       "source_location": "L4"
     },
     {
-      "id": "lib_crm_tests_contact_status_test_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_tests_contact_status_test_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 179,
       "community_name": "Card",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/__tests__/contact-status.test.ts",
       "source_location": "L14"
     },
@@ -125214,24 +125214,24 @@
       "source_location": "L1"
     },
     {
-      "id": "app_lang_settings_customers_import_actions_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_lang_settings_customers_import_actions_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 189,
       "community_name": "apply.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/[lang]/settings/customers/import/actions.ts",
       "source_location": "L35"
     },
     {
-      "id": "lib_customer_migration_apply_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_apply_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 189,
       "community_name": "apply.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/apply.ts",
       "source_location": "L4"
     },
@@ -125918,13 +125918,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_customer_migration_plan_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_plan_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 191,
       "community_name": "plan.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/plan.ts",
       "source_location": "L3"
     },
@@ -129759,13 +129759,13 @@
       "source_location": "L34"
     },
     {
-      "id": "lib_crm_segment_rules_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_segment_rules_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 203,
       "community_name": "segment-rules.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/segment-rules.ts",
       "source_location": "L21"
     },
@@ -137563,35 +137563,35 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_aftercare_review_request_server_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_review_request_server_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 228,
       "community_name": "review-request-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/review-request-server.ts",
       "source_location": "L2"
     },
     {
-      "id": "lib_aftercare_review_request_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_review_request_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 228,
       "community_name": "review-request-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/review-request.ts",
       "source_location": "L2"
     },
     {
-      "id": "lib_whatsapp_aftercare_notify_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_whatsapp_aftercare_notify_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 228,
       "community_name": "review-request-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/whatsapp/aftercare-notify.ts",
       "source_location": "L2"
     },
@@ -138526,13 +138526,13 @@
       "source_location": "L1"
     },
     {
-      "id": "app_lang_settings_customers_id_customer_followups_card_tsx_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "app_lang_settings_customers_id_customer_followups_card_tsx_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 23,
       "community_name": "Select",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "app/[lang]/settings/customers/[id]/customer-followups-card.tsx",
       "source_location": "L32"
     },
@@ -141209,13 +141209,13 @@
       "source_location": "L38"
     },
     {
-      "id": "lib_crm_telegram_updates_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_telegram_updates_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 241,
       "community_name": "telegram-updates.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/telegram-updates.ts",
       "source_location": "L5"
     },
@@ -142422,13 +142422,13 @@
       "source_location": "L51"
     },
     {
-      "id": "lib_customer_migration_shopify_csv_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_shopify_csv_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 248,
       "community_name": "shopify-csv.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/shopify-csv.ts",
       "source_location": "L4"
     },
@@ -144677,35 +144677,35 @@
       "source_location": "L1"
     },
     {
-      "id": "app_api_shop_checkout_tests_bound_voucher_test_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_api_shop_checkout_tests_bound_voucher_test_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 256,
       "community_name": "fake-admin.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/api/shop/checkout/__tests__/bound-voucher.test.ts",
       "source_location": "L5"
     },
     {
-      "id": "app_api_shop_coupons_validate_tests_bound_voucher_test_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_api_shop_coupons_validate_tests_bound_voucher_test_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 256,
       "community_name": "fake-admin.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/api/shop/coupons/validate/__tests__/bound-voucher.test.ts",
       "source_location": "L6"
     },
     {
-      "id": "lib_ecommerce_tests_bound_coupon_test_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_ecommerce_tests_bound_coupon_test_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 256,
       "community_name": "fake-admin.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/ecommerce/__tests__/bound-coupon.test.ts",
       "source_location": "L5"
     },
@@ -145441,13 +145441,13 @@
       "source_location": "L26"
     },
     {
-      "id": "app_api_email_unsubscribe_route_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_api_email_unsubscribe_route_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 261,
       "community_name": "unsubscribe.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/api/email/unsubscribe/route.ts",
       "source_location": "L36"
     },
@@ -145485,13 +145485,13 @@
       "source_location": "L17"
     },
     {
-      "id": "lib_marketing_consent_unsubscribe_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_marketing_consent_unsubscribe_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 261,
       "community_name": "unsubscribe.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/marketing-consent/unsubscribe.ts",
       "source_location": "L2"
     },
@@ -147021,10 +147021,10 @@
       "node_kind": "heading",
       "norm_label": "6. email sends one message at a time, with no consent, unsubscribe or suppression",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L109"
+      "source_location": "L110"
     },
     {
-      "id": "docs_adr_0028_shopify_customer_migration_considered_options",
+      "id": "docs_adr_0029_shopify_customer_migration_considered_options",
       "label": "Considered options",
       "_origin": "ast",
       "community": 268,
@@ -147032,7 +147032,7 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "considered options",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L104"
     },
     {
@@ -148148,13 +148148,13 @@
       "source_location": "L81"
     },
     {
-      "id": "lib_email_migration_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_email_migration_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 273,
       "community_name": "migration.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/email/migration.ts",
       "source_location": "L5"
     },
@@ -151973,24 +151973,24 @@
       "source_location": "L20"
     },
     {
-      "id": "lib_crm_customer_overview_ts_docref_adr_0028",
+      "id": "lib_crm_customer_overview_ts_docref_adr_0029",
+      "label": "ADR-0029",
+      "_origin": "ast",
+      "community": 294,
+      "community_name": "customer-overview.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0029",
+      "source_file": "lib/crm/customer-overview.ts",
+      "source_location": "L2"
+    },
+    {
+      "id": "lib_ecommerce_admin_customers_ts_docref_adr_0028",
       "label": "ADR-0028",
       "_origin": "ast",
       "community": 294,
       "community_name": "customer-overview.ts",
       "file_type": "concept",
       "norm_label": "adr-0028",
-      "source_file": "lib/crm/customer-overview.ts",
-      "source_location": "L2"
-    },
-    {
-      "id": "lib_ecommerce_admin_customers_ts_docref_adr_0027",
-      "label": "ADR-0027",
-      "_origin": "ast",
-      "community": 294,
-      "community_name": "customer-overview.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0027",
       "source_file": "lib/ecommerce/admin/customers.ts",
       "source_location": "L31"
     },
@@ -153383,24 +153383,24 @@
       "source_location": "L39"
     },
     {
-      "id": "lib_ecommerce_tests_cost_column_grants_test_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_ecommerce_tests_cost_column_grants_test_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 300,
       "community_name": "customer-privacy.check.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/ecommerce/__tests__/cost-column-grants.test.ts",
       "source_location": "L11"
     },
     {
-      "id": "lib_shop_customer_privacy_check_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_shop_customer_privacy_check_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 300,
       "community_name": "customer-privacy.check.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/shop/customer-privacy.check.ts",
       "source_location": "L2"
     },
@@ -153409,7 +153409,7 @@
       "label": "0006-analytics-db-channel-facts.md",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "0006-analytics-db-channel-facts.md",
@@ -153421,7 +153421,7 @@
       "label": "Analytics reads DB channel facts; Shopify Admin API is ingest-only",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "analytics reads db channel facts; shopify admin api is ingest-only",
@@ -153433,7 +153433,7 @@
       "label": "Consequences",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "consequences",
@@ -153445,7 +153445,7 @@
       "label": "Considered options",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "considered options",
@@ -153457,7 +153457,7 @@
       "label": "Decision",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "decision",
@@ -153469,7 +153469,7 @@
       "label": "0007-first-party-journey-analytics.md",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "0007-first-party-journey-analytics.md",
@@ -153481,7 +153481,7 @@
       "label": "Consequences",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "consequences",
@@ -153493,7 +153493,7 @@
       "label": "Considered options",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "considered options",
@@ -153505,7 +153505,7 @@
       "label": "Decision",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "decision",
@@ -153517,7 +153517,7 @@
       "label": "First-party journey analytics: DB source of truth, Prospect-default transition graph",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "first-party journey analytics: db source of truth, prospect-default transition graph",
@@ -153529,7 +153529,7 @@
       "label": "0023-rbac-roles-are-data-permissions-are-code.md",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "0023-rbac-roles-are-data-permissions-are-code.md",
@@ -153541,7 +153541,7 @@
       "label": "Admin Panel RBAC: roles are data, permissions are code",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "admin panel rbac: roles are data, permissions are code",
@@ -153553,7 +153553,7 @@
       "label": "Consequences",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "consequences",
@@ -153565,7 +153565,7 @@
       "label": "Decisions",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "decisions",
@@ -153577,7 +153577,7 @@
       "label": "0024-services-priced-in-costings.md",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "0024-services-priced-in-costings.md",
@@ -153585,27 +153585,27 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_adr_0027_customer_crm",
-      "label": "0027-customer-crm.md",
+      "id": "docs_adr_0028_customer_crm",
+      "label": "0028-customer-crm.md",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "page",
-      "norm_label": "0027-customer-crm.md",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "norm_label": "0028-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L1"
     },
     {
-      "id": "docs_adr_0028_shopify_customer_migration",
-      "label": "0028-shopify-customer-migration.md",
+      "id": "docs_adr_0029_shopify_customer_migration",
+      "label": "0029-shopify-customer-migration.md",
       "_origin": "ast",
       "community": 301,
-      "community_name": "0027-customer-crm.md",
+      "community_name": "0028-customer-crm.md",
       "file_type": "document",
       "node_kind": "page",
-      "norm_label": "0028-shopify-customer-migration.md",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "norm_label": "0029-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L1"
     },
     {
@@ -153719,13 +153719,13 @@
       "source_location": "L21"
     },
     {
-      "id": "lib_aftercare_review_request_timeline_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_review_request_timeline_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 302,
       "community_name": "review-requests.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/review-request-timeline.ts",
       "source_location": "L3"
     },
@@ -155089,13 +155089,13 @@
       "source_location": "L26"
     },
     {
-      "id": "app_lang_settings_discounts_discounts_client_tsx_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_lang_settings_discounts_discounts_client_tsx_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 31,
       "community_name": "discount-editor-client.tsx",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/[lang]/settings/discounts/discounts-client.tsx",
       "source_location": "L39"
     },
@@ -158720,13 +158720,13 @@
       "source_location": "L24"
     },
     {
-      "id": "lib_crm_timeline_registry_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_timeline_registry_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 33,
       "community_name": "timeline/registry.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/timeline/registry.ts",
       "source_location": "L19"
     },
@@ -159628,24 +159628,24 @@
       "source_location": "L117"
     },
     {
-      "id": "lib_aftercare_channels_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_channels_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 34,
       "community_name": "checkup-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/channels.ts",
       "source_location": "L2"
     },
     {
-      "id": "lib_aftercare_checkup_server_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_checkup_server_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 34,
       "community_name": "checkup-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/checkup-server.ts",
       "source_location": "L2"
     },
@@ -159661,13 +159661,13 @@
       "source_location": "L91"
     },
     {
-      "id": "lib_aftercare_checkup_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_checkup_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 34,
       "community_name": "checkup-server.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/checkup.ts",
       "source_location": "L2"
     },
@@ -161663,24 +161663,24 @@
       "source_location": "L1"
     },
     {
-      "id": "app_api_shop_customers_route_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "app_api_shop_customers_route_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 353,
       "community_name": "customers/[id]/route.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "app/api/shop/customers/route.ts",
       "source_location": "L17"
     },
     {
-      "id": "lib_crm_notes_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_notes_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 353,
       "community_name": "customers/[id]/route.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/notes.ts",
       "source_location": "L7"
     },
@@ -165646,13 +165646,13 @@
       "source_location": "L44"
     },
     {
-      "id": "lib_crm_followups_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_followups_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 369,
       "community_name": "requireAdmin",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/followups.ts",
       "source_location": "L14"
     },
@@ -166939,13 +166939,13 @@
       "source_location": "L74"
     },
     {
-      "id": "lib_aftercare_job_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_job_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 372,
       "community_name": "@supabase/supabase-js",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/job.ts",
       "source_location": "L2"
     },
@@ -167846,13 +167846,13 @@
       "source_location": "L3"
     },
     {
-      "id": "lib_email_aftercare_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_email_aftercare_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 375,
       "community_name": "renderEmailShell",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/email/aftercare.ts",
       "source_location": "L5"
     },
@@ -169523,13 +169523,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_customer_migration_campaign_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_campaign_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 389,
       "community_name": "wave-sender.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/campaign.ts",
       "source_location": "L2"
     },
@@ -169545,13 +169545,13 @@
       "source_location": "L28"
     },
     {
-      "id": "lib_customer_migration_wave_sender_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_customer_migration_wave_sender_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 389,
       "community_name": "wave-sender.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/customer-migration/wave-sender.ts",
       "source_location": "L2"
     },
@@ -169567,35 +169567,35 @@
       "source_location": "L25"
     },
     {
-      "id": "lib_email_campaign_transport_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_email_campaign_transport_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 389,
       "community_name": "wave-sender.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/email/campaign-transport.ts",
       "source_location": "L5"
     },
     {
-      "id": "lib_email_tests_campaign_transport_test_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_email_tests_campaign_transport_test_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 389,
       "community_name": "wave-sender.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/email/__tests__/campaign-transport.test.ts",
       "source_location": "L13"
     },
     {
-      "id": "lib_marketing_consent_state_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_marketing_consent_state_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 389,
       "community_name": "wave-sender.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/marketing-consent/state.ts",
       "source_location": "L5"
     },
@@ -170744,13 +170744,13 @@
       "source_location": "L10"
     },
     {
-      "id": "lib_ecommerce_admin_coupons_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_ecommerce_admin_coupons_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 39,
       "community_name": "supabaseAdmin",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/ecommerce/admin/coupons.ts",
       "source_location": "L26"
     },
@@ -171871,13 +171871,13 @@
       "source_location": "L128"
     },
     {
-      "id": "app_lang_account_welcome_tests_welcome_render_test_tsx_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_lang_account_welcome_tests_welcome_render_test_tsx_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 40,
       "community_name": "welcome-voucher.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/[lang]/account/welcome/__tests__/welcome-render.test.tsx",
       "source_location": "L113"
     },
@@ -172411,13 +172411,13 @@
       "source_location": "L562"
     },
     {
-      "id": "app_api_shop_checkout_route_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_api_shop_checkout_route_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 402,
       "community_name": "shop/checkout/route.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/api/shop/checkout/route.ts",
       "source_location": "L517"
     },
@@ -177531,24 +177531,24 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_crm_review_match_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_review_match_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 455,
       "community_name": "review-match.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/review-match.ts",
       "source_location": "L3"
     },
     {
-      "id": "lib_crm_tests_review_match_test_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_tests_review_match_test_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 455,
       "community_name": "review-match.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/__tests__/review-match.test.ts",
       "source_location": "L12"
     },
@@ -180806,13 +180806,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_ecommerce_discounts_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_ecommerce_discounts_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 49,
       "community_name": "discounts.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/ecommerce/discounts.ts",
       "source_location": "L40"
     },
@@ -182523,13 +182523,13 @@
       "source_location": "L17"
     },
     {
-      "id": "lib_aftercare_checkup_timeline_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_checkup_timeline_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 513,
       "community_name": "checkups.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/checkup-timeline.ts",
       "source_location": "L3"
     },
@@ -183013,13 +183013,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_crm_timeline_types_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_timeline_types_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 524,
       "community_name": "timeline/types.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/timeline/types.ts",
       "source_location": "L4"
     },
@@ -183048,14 +183048,14 @@
       "source_location": "L650"
     },
     {
-      "id": "context_customer_crm_adr_0027",
-      "label": "Customer CRM (ADR 0027)",
+      "id": "context_customer_crm_adr_0028",
+      "label": "Customer CRM (ADR 0028)",
       "_origin": "ast",
       "community": 525,
       "community_name": "Mpillow (mp)",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "customer crm (adr 0027)",
+      "norm_label": "customer crm (adr 0028)",
       "source_file": "CONTEXT.md",
       "source_location": "L454"
     },
@@ -183168,14 +183168,14 @@
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
-      "label": "01 \u2014 Glossary and ADR 0028: what moves, what never moves, and what a Claim is",
+      "id": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
+      "label": "01 \u2014 Glossary and ADR 0029: what moves, what never moves, and what a Claim is",
       "_origin": "ast",
       "community": 526,
       "community_name": "PRD-shopify-customer-migration/issues/README.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "01 \u2014 glossary and adr 0028: what moves, what never moves, and what a claim is",
+      "norm_label": "01 \u2014 glossary and adr 0029: what moves, what never moves, and what a claim is",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/01-glossary-and-adr.md",
       "source_location": "L1"
     },
@@ -183192,14 +183192,14 @@
       "source_location": "L112"
     },
     {
-      "id": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
-      "label": "ADR 0028 \u2014 decisions to record",
+      "id": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0029_decisions_to_record",
+      "label": "ADR 0029 \u2014 decisions to record",
       "_origin": "ast",
       "community": 526,
       "community_name": "PRD-shopify-customer-migration/issues/README.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "adr 0028 \u2014 decisions to record",
+      "norm_label": "adr 0029 \u2014 decisions to record",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/01-glossary-and-adr.md",
       "source_location": "L77"
     },
@@ -183967,13 +183967,13 @@
       "source_location": "L4"
     },
     {
-      "id": "lib_crm_contact_facts_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_contact_facts_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 53,
       "community_name": "normalizePhone",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/contact-facts.ts",
       "source_location": "L151"
     },
@@ -186025,13 +186025,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_whatsapp_aftercare_templates_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_whatsapp_aftercare_templates_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 543,
       "community_name": "whatsapp.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/whatsapp/aftercare-templates.ts",
       "source_location": "L142"
     },
@@ -186560,7 +186560,7 @@
       "source_location": "L20"
     },
     {
-      "id": "docs_adr_0027_customer_crm_consequences",
+      "id": "docs_adr_0028_customer_crm_consequences",
       "label": "Consequences",
       "_origin": "ast",
       "community": 545,
@@ -186568,11 +186568,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "consequences",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L121"
     },
     {
-      "id": "docs_adr_0027_customer_crm_considered_options",
+      "id": "docs_adr_0028_customer_crm_considered_options",
       "label": "Considered options",
       "_origin": "ast",
       "community": 545,
@@ -186580,11 +186580,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "considered options",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L87"
     },
     {
-      "id": "docs_adr_0027_customer_crm_context",
+      "id": "docs_adr_0028_customer_crm_context",
       "label": "Context",
       "_origin": "ast",
       "community": 545,
@@ -186592,11 +186592,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "context",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L15"
     },
     {
-      "id": "docs_adr_0027_customer_crm_decisions",
+      "id": "docs_adr_0028_customer_crm_decisions",
       "label": "Decisions",
       "_origin": "ast",
       "community": 545,
@@ -186604,11 +186604,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "decisions",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L41"
     },
     {
-      "id": "docs_adr_0027_customer_crm_related",
+      "id": "docs_adr_0028_customer_crm_related",
       "label": "Related",
       "_origin": "ast",
       "community": 545,
@@ -186616,11 +186616,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "related",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L159"
     },
     {
-      "id": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "id": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
       "label": "The Customer CRM reads the facts the platform already records, and sends no marketing",
       "_origin": "ast",
       "community": 545,
@@ -186628,11 +186628,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "the customer crm reads the facts the platform already records, and sends no marketing",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L1"
     },
     {
-      "id": "docs_adr_0028_shopify_customer_migration_consequences",
+      "id": "docs_adr_0029_shopify_customer_migration_consequences",
       "label": "Consequences",
       "_origin": "ast",
       "community": 545,
@@ -186640,11 +186640,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "consequences",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L138"
     },
     {
-      "id": "docs_adr_0028_shopify_customer_migration_decisions",
+      "id": "docs_adr_0029_shopify_customer_migration_decisions",
       "label": "Decisions",
       "_origin": "ast",
       "community": 545,
@@ -186652,11 +186652,11 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "decisions",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L38"
     },
     {
-      "id": "docs_adr_0028_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
+      "id": "docs_adr_0029_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
       "label": "Shopify customers are imported as Customer rows, never as accounts, and claimed by signing in",
       "_origin": "ast",
       "community": 545,
@@ -186664,7 +186664,7 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "shopify customers are imported as customer rows, never as accounts, and claimed by signing in",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L1"
     },
     {
@@ -187294,13 +187294,13 @@
       "source_location": "L56"
     },
     {
-      "id": "app_lang_account_welcome_page_tsx_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "app_lang_account_welcome_page_tsx_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 547,
       "community_name": "linkCustomerToAuthUser",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "app/[lang]/account/welcome/page.tsx",
       "source_location": "L33"
     },
@@ -187327,24 +187327,24 @@
       "source_location": "L39"
     },
     {
-      "id": "components_account_welcome_voucher_card_tsx_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "components_account_welcome_voucher_card_tsx_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 547,
       "community_name": "linkCustomerToAuthUser",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "components/account/welcome-voucher-card.tsx",
       "source_location": "L12"
     },
     {
-      "id": "lib_auth_customer_identity_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_auth_customer_identity_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 547,
       "community_name": "linkCustomerToAuthUser",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/auth/customer-identity.ts",
       "source_location": "L115"
     },
@@ -187382,10 +187382,10 @@
       "node_kind": "heading",
       "norm_label": "2. the claim mechanism already exists",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L35"
+      "source_location": "L36"
     },
     {
-      "id": "docs_adr_0028_shopify_customer_migration_context",
+      "id": "docs_adr_0029_shopify_customer_migration_context",
       "label": "Context",
       "_origin": "ast",
       "community": 547,
@@ -187393,7 +187393,7 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "context",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L17"
     },
     {
@@ -190700,13 +190700,13 @@
       "source_location": "L20"
     },
     {
-      "id": "lib_crm_tests_customer_overview_view_test_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_crm_tests_customer_overview_view_test_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 589,
       "community_name": "customer-overview-view.test.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/crm/__tests__/customer-overview-view.test.ts",
       "source_location": "L8"
     },
@@ -193712,14 +193712,14 @@
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
-      "label": "01 \u2014 Glossary and ADR 0027: what the CRM is made of",
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
+      "label": "01 \u2014 Glossary and ADR 0028: what the CRM is made of",
       "_origin": "ast",
       "community": 61,
       "community_name": "PRD-customer-crm/issues/README.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "01 \u2014 glossary and adr 0027: what the crm is made of",
+      "norm_label": "01 \u2014 glossary and adr 0028: what the crm is made of",
       "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
       "source_location": "L1"
     },
@@ -193736,14 +193736,14 @@
       "source_location": "L125"
     },
     {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0027_decisions_to_record",
-      "label": "ADR 0027 \u2014 decisions to record",
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
+      "label": "ADR 0028 \u2014 decisions to record",
       "_origin": "ast",
       "community": 61,
       "community_name": "PRD-customer-crm/issues/README.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "adr 0027 \u2014 decisions to record",
+      "norm_label": "adr 0028 \u2014 decisions to record",
       "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
       "source_location": "L80"
     },
@@ -196243,13 +196243,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_crm_tests_google_review_links_guard_test_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_tests_google_review_links_guard_test_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 631,
       "community_name": "google-review-links-guard.test.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/__tests__/google-review-links-guard.test.ts",
       "source_location": "L8"
     },
@@ -197114,24 +197114,24 @@
       "source_location": "L19"
     },
     {
-      "id": "lib_crm_google_review_links_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_google_review_links_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 64,
       "community_name": "crm/reviews.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/google-review-links.ts",
       "source_location": "L2"
     },
     {
-      "id": "lib_crm_reviews_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_reviews_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 64,
       "community_name": "crm/reviews.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/reviews.ts",
       "source_location": "L12"
     },
@@ -198014,7 +198014,7 @@
       "node_kind": "heading",
       "norm_label": "1. there is no password to migrate",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L28"
+      "source_location": "L29"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_3_five_traps_in_the_customer_schema",
@@ -198026,7 +198026,7 @@
       "node_kind": "heading",
       "norm_label": "3. five traps in the customer schema",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L54"
+      "source_location": "L55"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_4_the_platform_holds_no_shopify_customer_data_and_needs_no_api_to_get_it",
@@ -198038,7 +198038,7 @@
       "node_kind": "heading",
       "norm_label": "4. the platform holds no shopify customer data, and needs no api to get it",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L64"
+      "source_location": "L65"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_5_a_coupon_engine_exists_but_every_code_is_a_bearer_code_and_only_the_shop_cart_takes_one",
@@ -198050,7 +198050,7 @@
       "node_kind": "heading",
       "norm_label": "5. a coupon engine exists, but every code is a bearer code, and only the shop cart takes one",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L88"
+      "source_location": "L89"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_7_the_admin_panel_can_host_the_import_within_two_limits_and_shows_no_account_state",
@@ -198062,7 +198062,7 @@
       "node_kind": "heading",
       "norm_label": "7. the admin panel can host the import, within two limits, and shows no account state",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L126"
+      "source_location": "L127"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_consent_and_sending",
@@ -198074,19 +198074,19 @@
       "node_kind": "heading",
       "norm_label": "consent and sending",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L235"
+      "source_location": "L236"
     },
     {
-      "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_decisions_adr_0028_records_these",
-      "label": "Decisions (ADR 0028 records these)",
+      "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_decisions_adr_0029_records_these",
+      "label": "Decisions (ADR 0029 records these)",
       "_origin": "ast",
       "community": 647,
       "community_name": "PRD \u2014 Shopify customer migration and account onboarding",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "decisions (adr 0028 records these)",
+      "norm_label": "decisions (adr 0029 records these)",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L174"
+      "source_location": "L175"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_legal_points_for_the_owner_to_confirm_not_legal_advice",
@@ -198098,7 +198098,7 @@
       "node_kind": "heading",
       "norm_label": "legal points for the owner to confirm (not legal advice)",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L249"
+      "source_location": "L250"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_non_goals",
@@ -198110,7 +198110,7 @@
       "node_kind": "heading",
       "norm_label": "non-goals",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L317"
+      "source_location": "L318"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_open_decisions_for_the_owner",
@@ -198122,7 +198122,7 @@
       "node_kind": "heading",
       "norm_label": "open decisions for the owner",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L437"
+      "source_location": "L438"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_prd_shopify_customer_migration_and_account_onboarding",
@@ -198146,7 +198146,7 @@
       "node_kind": "heading",
       "norm_label": "problem statement",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L11"
+      "source_location": "L12"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_protecting_the_mailbox_that_sends_order_emails",
@@ -198158,7 +198158,7 @@
       "node_kind": "heading",
       "norm_label": "protecting the mailbox that sends order emails",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L262"
+      "source_location": "L263"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_risks",
@@ -198170,19 +198170,19 @@
       "node_kind": "heading",
       "norm_label": "risks",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L334"
+      "source_location": "L335"
     },
     {
-      "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_rules_that_keep_it_crm_shaped_adr_0028_k_l",
-      "label": "Rules that keep it CRM-shaped (ADR 0028 k, l)",
+      "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_rules_that_keep_it_crm_shaped_adr_0029_k_l",
+      "label": "Rules that keep it CRM-shaped (ADR 0029 k, l)",
       "_origin": "ast",
       "community": 647,
       "community_name": "PRD \u2014 Shopify customer migration and account onboarding",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "rules that keep it crm-shaped (adr 0028 k, l)",
+      "norm_label": "rules that keep it crm-shaped (adr 0029 k, l)",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L390"
+      "source_location": "L391"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_solution",
@@ -198194,7 +198194,7 @@
       "node_kind": "heading",
       "norm_label": "solution",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L142"
+      "source_location": "L143"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_success_criteria",
@@ -198206,7 +198206,7 @@
       "node_kind": "heading",
       "norm_label": "success criteria",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L355"
+      "source_location": "L356"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_the_customer_s_path_three_taps_no_form",
@@ -198218,7 +198218,7 @@
       "node_kind": "heading",
       "norm_label": "the customer's path: three taps, no form",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L152"
+      "source_location": "L153"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_the_incentive_options_and_recommendation",
@@ -198230,7 +198230,7 @@
       "node_kind": "heading",
       "norm_label": "the incentive: options and recommendation",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L209"
+      "source_location": "L210"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_toward_a_simple_crm",
@@ -198242,7 +198242,7 @@
       "node_kind": "heading",
       "norm_label": "toward a simple crm",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L371"
+      "source_location": "L372"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_user_stories",
@@ -198254,7 +198254,7 @@
       "node_kind": "heading",
       "norm_label": "user stories",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L279"
+      "source_location": "L280"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_what_the_audit_found_before_designing_anything",
@@ -198266,7 +198266,7 @@
       "node_kind": "heading",
       "norm_label": "what the audit found, before designing anything",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L23"
+      "source_location": "L24"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_what_the_crm_adds_next_not_in_this_initiative",
@@ -198278,7 +198278,7 @@
       "node_kind": "heading",
       "norm_label": "what the crm adds next (not in this initiative)",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L402"
+      "source_location": "L403"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_what_this_initiative_already_lays_down",
@@ -198290,7 +198290,7 @@
       "node_kind": "heading",
       "norm_label": "what this initiative already lays down",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L379"
+      "source_location": "L380"
     },
     {
       "id": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_who_receives_what",
@@ -198302,7 +198302,7 @@
       "node_kind": "heading",
       "norm_label": "who receives what",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L237"
+      "source_location": "L238"
     },
     {
       "id": "cursor_marketing_page_ui_debug",
@@ -199635,13 +199635,13 @@
       "source_location": "L58"
     },
     {
-      "id": "lib_crm_customer_filters_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_customer_filters_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 66,
       "community_name": "customer-filters.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/customer-filters.ts",
       "source_location": "L32"
     },
@@ -206355,13 +206355,13 @@
       "source_location": "L44"
     },
     {
-      "id": "lib_crm_timeline_sources_account_ts_docref_adr_0028",
-      "label": "ADR-0028",
+      "id": "lib_crm_timeline_sources_account_ts_docref_adr_0029",
+      "label": "ADR-0029",
       "_origin": "ast",
       "community": 715,
       "community_name": "sources/account.ts",
       "file_type": "concept",
-      "norm_label": "adr-0028",
+      "norm_label": "adr-0029",
       "source_file": "lib/crm/timeline/sources/account.ts",
       "source_location": "L8"
     },
@@ -213233,13 +213233,13 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_aftercare_state_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_aftercare_state_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 76,
       "community_name": "aftercare/state.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/aftercare/state.ts",
       "source_location": "L2"
     },
@@ -224065,13 +224065,13 @@
       "source_location": "L54"
     },
     {
-      "id": "lib_crm_tests_customer_filters_test_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_tests_customer_filters_test_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 88,
       "community_name": "applyCustomerFilters",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/__tests__/customer-filters.test.ts",
       "source_location": "L29"
     },
@@ -226865,13 +226865,13 @@
       "source_location": "L207"
     },
     {
-      "id": "lib_crm_segments_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_segments_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 93,
       "community_name": "segments.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/segments.ts",
       "source_location": "L11"
     },
@@ -228108,24 +228108,24 @@
       "source_location": "L1"
     },
     {
-      "id": "app_api_settings_customers_id_timeline_route_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "app_api_settings_customers_id_timeline_route_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 97,
       "community_name": "merge.test.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "app/api/settings/customers/[id]/timeline/route.ts",
       "source_location": "L15"
     },
     {
-      "id": "lib_crm_timeline_merge_ts_docref_adr_0027",
-      "label": "ADR-0027",
+      "id": "lib_crm_timeline_merge_ts_docref_adr_0028",
+      "label": "ADR-0028",
       "_origin": "ast",
       "community": 97,
       "community_name": "merge.test.ts",
       "file_type": "concept",
-      "norm_label": "adr-0027",
+      "norm_label": "adr-0028",
       "source_file": "lib/crm/timeline/merge.ts",
       "source_location": "L4"
     },
@@ -621798,7 +621798,7 @@
     },
     {
       "source": "app_api_email_unsubscribe_route",
-      "target": "app_api_email_unsubscribe_route_ts_docref_adr_0028",
+      "target": "app_api_email_unsubscribe_route_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622205,7 +622205,7 @@
     },
     {
       "source": "app_api_settings_customers_id_timeline_route",
-      "target": "app_api_settings_customers_id_timeline_route_ts_docref_adr_0027",
+      "target": "app_api_settings_customers_id_timeline_route_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622227,7 +622227,7 @@
     },
     {
       "source": "app_api_shop_checkout_route",
-      "target": "app_api_shop_checkout_route_ts_docref_adr_0028",
+      "target": "app_api_shop_checkout_route_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622249,7 +622249,7 @@
     },
     {
       "source": "app_api_shop_checkout_tests_bound_voucher_test",
-      "target": "app_api_shop_checkout_tests_bound_voucher_test_ts_docref_adr_0028",
+      "target": "app_api_shop_checkout_tests_bound_voucher_test_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622260,7 +622260,7 @@
     },
     {
       "source": "app_api_shop_coupons_validate_route",
-      "target": "app_api_shop_coupons_validate_route_ts_docref_adr_0028",
+      "target": "app_api_shop_coupons_validate_route_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622271,7 +622271,7 @@
     },
     {
       "source": "app_api_shop_coupons_validate_tests_bound_voucher_test",
-      "target": "app_api_shop_coupons_validate_tests_bound_voucher_test_ts_docref_adr_0028",
+      "target": "app_api_shop_coupons_validate_tests_bound_voucher_test_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622282,7 +622282,7 @@
     },
     {
       "source": "app_api_shop_customers_route",
-      "target": "app_api_shop_customers_route_ts_docref_adr_0027",
+      "target": "app_api_shop_customers_route_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622370,7 +622370,7 @@
     },
     {
       "source": "app_lang_account_welcome_page",
-      "target": "app_lang_account_welcome_page_tsx_docref_adr_0028",
+      "target": "app_lang_account_welcome_page_tsx_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622381,7 +622381,7 @@
     },
     {
       "source": "app_lang_account_welcome_tests_welcome_render_test",
-      "target": "app_lang_account_welcome_tests_welcome_render_test_tsx_docref_adr_0028",
+      "target": "app_lang_account_welcome_tests_welcome_render_test_tsx_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622645,7 +622645,7 @@
     },
     {
       "source": "app_lang_settings_customers_id_customer_account_cards",
-      "target": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0028",
+      "target": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622656,7 +622656,7 @@
     },
     {
       "source": "app_lang_settings_customers_id_customer_account_cards",
-      "target": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0027",
+      "target": "app_lang_settings_customers_id_customer_account_cards_tsx_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622667,7 +622667,7 @@
     },
     {
       "source": "app_lang_settings_customers_id_customer_followups_card",
-      "target": "app_lang_settings_customers_id_customer_followups_card_tsx_docref_adr_0027",
+      "target": "app_lang_settings_customers_id_customer_followups_card_tsx_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622678,7 +622678,7 @@
     },
     {
       "source": "app_lang_settings_customers_id_customer_notes_card",
-      "target": "app_lang_settings_customers_id_customer_notes_card_tsx_docref_adr_0027",
+      "target": "app_lang_settings_customers_id_customer_notes_card_tsx_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622689,7 +622689,7 @@
     },
     {
       "source": "app_lang_settings_customers_id_customer_timeline_card",
-      "target": "app_lang_settings_customers_id_customer_timeline_card_tsx_docref_adr_0027",
+      "target": "app_lang_settings_customers_id_customer_timeline_card_tsx_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622700,7 +622700,7 @@
     },
     {
       "source": "app_lang_settings_customers_id_page",
-      "target": "app_lang_settings_customers_id_page_tsx_docref_adr_0027",
+      "target": "app_lang_settings_customers_id_page_tsx_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622711,7 +622711,7 @@
     },
     {
       "source": "app_lang_settings_customers_import_actions",
-      "target": "app_lang_settings_customers_import_actions_ts_docref_adr_0028",
+      "target": "app_lang_settings_customers_import_actions_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -622722,7 +622722,7 @@
     },
     {
       "source": "app_lang_settings_discounts_discounts_client",
-      "target": "app_lang_settings_discounts_discounts_client_tsx_docref_adr_0028",
+      "target": "app_lang_settings_discounts_discounts_client_tsx_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623030,7 +623030,7 @@
     },
     {
       "source": "components_account_welcome_voucher_card",
-      "target": "components_account_welcome_voucher_card_tsx_docref_adr_0028",
+      "target": "components_account_welcome_voucher_card_tsx_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623360,7 +623360,7 @@
     },
     {
       "source": "lib_aftercare_channels",
-      "target": "lib_aftercare_channels_ts_docref_adr_0027",
+      "target": "lib_aftercare_channels_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623371,7 +623371,7 @@
     },
     {
       "source": "lib_aftercare_checkup",
-      "target": "lib_aftercare_checkup_ts_docref_adr_0027",
+      "target": "lib_aftercare_checkup_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623393,7 +623393,7 @@
     },
     {
       "source": "lib_aftercare_checkup_server",
-      "target": "lib_aftercare_checkup_server_ts_docref_adr_0027",
+      "target": "lib_aftercare_checkup_server_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623404,7 +623404,7 @@
     },
     {
       "source": "lib_aftercare_checkup_timeline",
-      "target": "lib_aftercare_checkup_timeline_ts_docref_adr_0027",
+      "target": "lib_aftercare_checkup_timeline_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623415,7 +623415,7 @@
     },
     {
       "source": "lib_aftercare_job",
-      "target": "lib_aftercare_job_ts_docref_adr_0027",
+      "target": "lib_aftercare_job_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623426,7 +623426,7 @@
     },
     {
       "source": "lib_aftercare_review_request",
-      "target": "lib_aftercare_review_request_ts_docref_adr_0027",
+      "target": "lib_aftercare_review_request_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623437,7 +623437,7 @@
     },
     {
       "source": "lib_aftercare_review_request_server",
-      "target": "lib_aftercare_review_request_server_ts_docref_adr_0027",
+      "target": "lib_aftercare_review_request_server_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623448,7 +623448,7 @@
     },
     {
       "source": "lib_aftercare_review_request_timeline",
-      "target": "lib_aftercare_review_request_timeline_ts_docref_adr_0027",
+      "target": "lib_aftercare_review_request_timeline_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623459,7 +623459,7 @@
     },
     {
       "source": "lib_aftercare_state",
-      "target": "lib_aftercare_state_ts_docref_adr_0027",
+      "target": "lib_aftercare_state_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623580,7 +623580,7 @@
     },
     {
       "source": "lib_auth_customer_identity",
-      "target": "lib_auth_customer_identity_ts_docref_adr_0028",
+      "target": "lib_auth_customer_identity_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623833,7 +623833,7 @@
     },
     {
       "source": "lib_crm_contact_facts",
-      "target": "lib_crm_contact_facts_ts_docref_adr_0027",
+      "target": "lib_crm_contact_facts_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623844,7 +623844,7 @@
     },
     {
       "source": "lib_crm_contact_status",
-      "target": "lib_crm_contact_status_ts_docref_adr_0027",
+      "target": "lib_crm_contact_status_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623855,7 +623855,7 @@
     },
     {
       "source": "lib_crm_customer_filters",
-      "target": "lib_crm_customer_filters_ts_docref_adr_0027",
+      "target": "lib_crm_customer_filters_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623866,7 +623866,7 @@
     },
     {
       "source": "lib_crm_customer_overview",
-      "target": "lib_crm_customer_overview_ts_docref_adr_0028",
+      "target": "lib_crm_customer_overview_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623877,7 +623877,7 @@
     },
     {
       "source": "lib_crm_followups",
-      "target": "lib_crm_followups_ts_docref_adr_0027",
+      "target": "lib_crm_followups_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623888,7 +623888,7 @@
     },
     {
       "source": "lib_crm_google_review_links",
-      "target": "lib_crm_google_review_links_ts_docref_adr_0027",
+      "target": "lib_crm_google_review_links_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623899,7 +623899,7 @@
     },
     {
       "source": "lib_crm_notes",
-      "target": "lib_crm_notes_ts_docref_adr_0027",
+      "target": "lib_crm_notes_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623910,7 +623910,7 @@
     },
     {
       "source": "lib_crm_review_match",
-      "target": "lib_crm_review_match_ts_docref_adr_0027",
+      "target": "lib_crm_review_match_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623921,7 +623921,7 @@
     },
     {
       "source": "lib_crm_reviews",
-      "target": "lib_crm_reviews_ts_docref_adr_0027",
+      "target": "lib_crm_reviews_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623932,7 +623932,7 @@
     },
     {
       "source": "lib_crm_segment_rules",
-      "target": "lib_crm_segment_rules_ts_docref_adr_0027",
+      "target": "lib_crm_segment_rules_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623943,7 +623943,7 @@
     },
     {
       "source": "lib_crm_segments",
-      "target": "lib_crm_segments_ts_docref_adr_0027",
+      "target": "lib_crm_segments_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623954,7 +623954,7 @@
     },
     {
       "source": "lib_crm_telegram_updates",
-      "target": "lib_crm_telegram_updates_ts_docref_adr_0027",
+      "target": "lib_crm_telegram_updates_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623965,7 +623965,7 @@
     },
     {
       "source": "lib_crm_telegram_updates_server",
-      "target": "lib_crm_telegram_updates_server_ts_docref_adr_0027",
+      "target": "lib_crm_telegram_updates_server_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623976,7 +623976,7 @@
     },
     {
       "source": "lib_crm_tests_contact_status_test",
-      "target": "lib_crm_tests_contact_status_test_ts_docref_adr_0027",
+      "target": "lib_crm_tests_contact_status_test_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623987,7 +623987,7 @@
     },
     {
       "source": "lib_crm_tests_customer_filters_test",
-      "target": "lib_crm_tests_customer_filters_test_ts_docref_adr_0027",
+      "target": "lib_crm_tests_customer_filters_test_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -623998,7 +623998,7 @@
     },
     {
       "source": "lib_crm_tests_customer_overview_view_test",
-      "target": "lib_crm_tests_customer_overview_view_test_ts_docref_adr_0028",
+      "target": "lib_crm_tests_customer_overview_view_test_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624009,7 +624009,7 @@
     },
     {
       "source": "lib_crm_tests_google_review_links_guard_test",
-      "target": "lib_crm_tests_google_review_links_guard_test_ts_docref_adr_0027",
+      "target": "lib_crm_tests_google_review_links_guard_test_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624020,7 +624020,7 @@
     },
     {
       "source": "lib_crm_tests_review_match_test",
-      "target": "lib_crm_tests_review_match_test_ts_docref_adr_0027",
+      "target": "lib_crm_tests_review_match_test_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624031,7 +624031,7 @@
     },
     {
       "source": "lib_crm_timeline_merge",
-      "target": "lib_crm_timeline_merge_ts_docref_adr_0027",
+      "target": "lib_crm_timeline_merge_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624042,7 +624042,7 @@
     },
     {
       "source": "lib_crm_timeline_registry",
-      "target": "lib_crm_timeline_registry_ts_docref_adr_0027",
+      "target": "lib_crm_timeline_registry_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624053,7 +624053,7 @@
     },
     {
       "source": "lib_crm_timeline_sources_account",
-      "target": "lib_crm_timeline_sources_account_ts_docref_adr_0028",
+      "target": "lib_crm_timeline_sources_account_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624064,7 +624064,7 @@
     },
     {
       "source": "lib_crm_timeline_types",
-      "target": "lib_crm_timeline_types_ts_docref_adr_0027",
+      "target": "lib_crm_timeline_types_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624086,7 +624086,7 @@
     },
     {
       "source": "lib_customer_migration_apply",
-      "target": "lib_customer_migration_apply_ts_docref_adr_0028",
+      "target": "lib_customer_migration_apply_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624097,7 +624097,7 @@
     },
     {
       "source": "lib_customer_migration_campaign",
-      "target": "lib_customer_migration_campaign_ts_docref_adr_0028",
+      "target": "lib_customer_migration_campaign_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624108,7 +624108,7 @@
     },
     {
       "source": "lib_customer_migration_claim",
-      "target": "lib_customer_migration_claim_ts_docref_adr_0028",
+      "target": "lib_customer_migration_claim_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624119,7 +624119,7 @@
     },
     {
       "source": "lib_customer_migration_claim_link",
-      "target": "lib_customer_migration_claim_link_ts_docref_adr_0028",
+      "target": "lib_customer_migration_claim_link_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624130,7 +624130,7 @@
     },
     {
       "source": "lib_customer_migration_plan",
-      "target": "lib_customer_migration_plan_ts_docref_adr_0028",
+      "target": "lib_customer_migration_plan_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624141,7 +624141,7 @@
     },
     {
       "source": "lib_customer_migration_shopify_csv",
-      "target": "lib_customer_migration_shopify_csv_ts_docref_adr_0028",
+      "target": "lib_customer_migration_shopify_csv_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624163,7 +624163,7 @@
     },
     {
       "source": "lib_customer_migration_wave_sender",
-      "target": "lib_customer_migration_wave_sender_ts_docref_adr_0028",
+      "target": "lib_customer_migration_wave_sender_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624185,7 +624185,7 @@
     },
     {
       "source": "lib_ecommerce_admin_coupons",
-      "target": "lib_ecommerce_admin_coupons_ts_docref_adr_0028",
+      "target": "lib_ecommerce_admin_coupons_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624196,7 +624196,7 @@
     },
     {
       "source": "lib_ecommerce_admin_customers",
-      "target": "lib_ecommerce_admin_customers_ts_docref_adr_0027",
+      "target": "lib_ecommerce_admin_customers_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624207,7 +624207,7 @@
     },
     {
       "source": "lib_ecommerce_discounts",
-      "target": "lib_ecommerce_discounts_ts_docref_adr_0028",
+      "target": "lib_ecommerce_discounts_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624218,7 +624218,7 @@
     },
     {
       "source": "lib_ecommerce_tests_bound_coupon_test",
-      "target": "lib_ecommerce_tests_bound_coupon_test_ts_docref_adr_0028",
+      "target": "lib_ecommerce_tests_bound_coupon_test_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624229,7 +624229,7 @@
     },
     {
       "source": "lib_ecommerce_tests_cost_column_grants_test",
-      "target": "lib_ecommerce_tests_cost_column_grants_test_ts_docref_adr_0027",
+      "target": "lib_ecommerce_tests_cost_column_grants_test_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624240,7 +624240,7 @@
     },
     {
       "source": "lib_email_aftercare",
-      "target": "lib_email_aftercare_ts_docref_adr_0027",
+      "target": "lib_email_aftercare_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624251,7 +624251,7 @@
     },
     {
       "source": "lib_email_campaign_transport",
-      "target": "lib_email_campaign_transport_ts_docref_adr_0028",
+      "target": "lib_email_campaign_transport_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624284,7 +624284,7 @@
     },
     {
       "source": "lib_email_migration",
-      "target": "lib_email_migration_ts_docref_adr_0028",
+      "target": "lib_email_migration_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624383,7 +624383,7 @@
     },
     {
       "source": "lib_email_tests_campaign_transport_test",
-      "target": "lib_email_tests_campaign_transport_test_ts_docref_adr_0028",
+      "target": "lib_email_tests_campaign_transport_test_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624405,7 +624405,7 @@
     },
     {
       "source": "lib_email_tests_transactional_no_unsubscribe_test",
-      "target": "lib_email_tests_transactional_no_unsubscribe_test_ts_docref_adr_0028",
+      "target": "lib_email_tests_transactional_no_unsubscribe_test_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624482,7 +624482,7 @@
     },
     {
       "source": "lib_marketing_consent_state",
-      "target": "lib_marketing_consent_state_ts_docref_adr_0028",
+      "target": "lib_marketing_consent_state_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624504,7 +624504,7 @@
     },
     {
       "source": "lib_marketing_consent_unsubscribe",
-      "target": "lib_marketing_consent_unsubscribe_ts_docref_adr_0028",
+      "target": "lib_marketing_consent_unsubscribe_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -624878,7 +624878,7 @@
     },
     {
       "source": "lib_results_owner",
-      "target": "lib_results_owner_ts_docref_adr_0027",
+      "target": "lib_results_owner_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -625131,7 +625131,7 @@
     },
     {
       "source": "lib_shop_customer_privacy_check",
-      "target": "lib_shop_customer_privacy_check_ts_docref_adr_0027",
+      "target": "lib_shop_customer_privacy_check_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -625494,7 +625494,7 @@
     },
     {
       "source": "lib_types_ecommerce",
-      "target": "lib_types_ecommerce_ts_docref_adr_0027",
+      "target": "lib_types_ecommerce_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -625516,7 +625516,7 @@
     },
     {
       "source": "lib_types_ecommerce",
-      "target": "lib_types_ecommerce_ts_docref_adr_0028",
+      "target": "lib_types_ecommerce_ts_docref_adr_0029",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -625538,7 +625538,7 @@
     },
     {
       "source": "lib_whatsapp_aftercare_notify",
-      "target": "lib_whatsapp_aftercare_notify_ts_docref_adr_0027",
+      "target": "lib_whatsapp_aftercare_notify_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -625549,7 +625549,7 @@
     },
     {
       "source": "lib_whatsapp_aftercare_templates",
-      "target": "lib_whatsapp_aftercare_templates_ts_docref_adr_0027",
+      "target": "lib_whatsapp_aftercare_templates_ts_docref_adr_0028",
       "relation": "cites",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -657801,7 +657801,7 @@
     },
     {
       "source": "claude_prd_customer_crm_customer_crm_prd_prd_customer_crm_notes_timeline_aftercare_messages_reviews_segments_follow_ups",
-      "target": "claude_prd_customer_crm_customer_crm_prd_decisions_adr_0027_records_these",
+      "target": "claude_prd_customer_crm_customer_crm_prd_decisions_adr_0028_records_these",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -658098,7 +658098,7 @@
     },
     {
       "source": "claude_prd_customer_crm_issues_01_glossary_and_adr",
-      "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
+      "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -658108,7 +658108,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
+      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
       "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_goal",
       "relation": "contains",
       "_origin": "ast",
@@ -658119,7 +658119,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
+      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
       "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_acceptance_criteria",
       "relation": "contains",
       "_origin": "ast",
@@ -658130,7 +658130,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
+      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
       "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_build_notes",
       "relation": "contains",
       "_origin": "ast",
@@ -658141,7 +658141,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
+      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
       "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_context_md_entries",
       "relation": "contains",
       "_origin": "ast",
@@ -658152,8 +658152,8 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0027_what_the_crm_is_made_of",
-      "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0027_decisions_to_record",
+      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
+      "target": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -677216,7 +677216,7 @@
     },
     {
       "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr",
-      "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
+      "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -677226,7 +677226,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
       "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_goal",
       "relation": "contains",
       "_origin": "ast",
@@ -677237,7 +677237,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
       "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_acceptance_criteria",
       "relation": "contains",
       "_origin": "ast",
@@ -677248,7 +677248,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
       "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_build_notes",
       "relation": "contains",
       "_origin": "ast",
@@ -677259,7 +677259,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
       "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_context_md_entries",
       "relation": "contains",
       "_origin": "ast",
@@ -677270,8 +677270,8 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_moves_what_never_moves_and_what_a_claim_is",
-      "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_01_glossary_and_adr_0029_what_moves_what_never_moves_and_what_a_claim_is",
+      "target": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0029_decisions_to_record",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -678245,7 +678245,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L237",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -678256,7 +678256,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L249",
+      "source_location": "L250",
       "weight": 1.0
     },
     {
@@ -678267,7 +678267,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L262",
+      "source_location": "L263",
       "weight": 1.0
     },
     {
@@ -678278,7 +678278,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L11",
+      "source_location": "L12",
       "weight": 1.0
     },
     {
@@ -678289,7 +678289,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L142",
+      "source_location": "L143",
       "weight": 1.0
     },
     {
@@ -678300,18 +678300,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L209",
-      "weight": 1.0
-    },
-    {
-      "source": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_prd_shopify_customer_migration_and_account_onboarding",
-      "target": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_what_the_audit_found_before_designing_anything",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L23",
+      "source_location": "L210",
       "weight": 1.0
     },
     {
@@ -678322,7 +678311,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L235",
+      "source_location": "L236",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_prd_shopify_customer_migration_and_account_onboarding",
+      "target": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_what_the_audit_found_before_designing_anything",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -678333,7 +678333,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L279",
+      "source_location": "L280",
       "weight": 1.0
     },
     {
@@ -678344,7 +678344,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L317",
+      "source_location": "L318",
       "weight": 1.0
     },
     {
@@ -678355,7 +678355,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L334",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -678366,7 +678366,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L355",
+      "source_location": "L356",
       "weight": 1.0
     },
     {
@@ -678377,7 +678377,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L371",
+      "source_location": "L372",
       "weight": 1.0
     },
     {
@@ -678388,7 +678388,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L437",
+      "source_location": "L438",
       "weight": 1.0
     },
     {
@@ -678399,18 +678399,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L152",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
       "source": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_solution",
-      "target": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_decisions_adr_0028_records_these",
+      "target": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_decisions_adr_0029_records_these",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L174",
+      "source_location": "L175",
       "weight": 1.0
     },
     {
@@ -678421,18 +678421,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L379",
+      "source_location": "L380",
       "weight": 1.0
     },
     {
       "source": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_toward_a_simple_crm",
-      "target": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_rules_that_keep_it_crm_shaped_adr_0028_k_l",
+      "target": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_rules_that_keep_it_crm_shaped_adr_0029_k_l",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L390",
+      "source_location": "L391",
       "weight": 1.0
     },
     {
@@ -678443,7 +678443,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L402",
+      "source_location": "L403",
       "weight": 1.0
     },
     {
@@ -678454,7 +678454,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L109",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -678465,7 +678465,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L126",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -678476,7 +678476,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L28",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -678487,7 +678487,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L35",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -678498,7 +678498,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L54",
+      "source_location": "L55",
       "weight": 1.0
     },
     {
@@ -678509,7 +678509,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L64",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -678520,7 +678520,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L88",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -701438,7 +701438,7 @@
     },
     {
       "source": "context_mpillow_mp",
-      "target": "context_shopify_customer_migration_adr_0028",
+      "target": "context_shopify_customer_migration_adr_0029",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -701482,7 +701482,7 @@
     },
     {
       "source": "context_mpillow_mp",
-      "target": "context_customer_crm_adr_0027",
+      "target": "context_customer_crm_adr_0028",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -707817,123 +707817,123 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm",
-      "target": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "source": "docs_adr_0028_customer_crm",
+      "target": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L1",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
-      "target": "docs_adr_0027_customer_crm_consequences",
+      "source": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "target": "docs_adr_0028_customer_crm_consequences",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L121",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
-      "target": "docs_adr_0027_customer_crm_context",
+      "source": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "target": "docs_adr_0028_customer_crm_context",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L15",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
-      "target": "docs_adr_0027_customer_crm_related",
+      "source": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "target": "docs_adr_0028_customer_crm_related",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L159",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
-      "target": "docs_adr_0027_customer_crm_decisions",
+      "source": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "target": "docs_adr_0028_customer_crm_decisions",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L41",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
-      "target": "docs_adr_0027_customer_crm_considered_options",
+      "source": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "target": "docs_adr_0028_customer_crm_considered_options",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L87",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration",
-      "target": "docs_adr_0028_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
+      "source": "docs_adr_0029_shopify_customer_migration",
+      "target": "docs_adr_0029_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L1",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
-      "target": "docs_adr_0028_shopify_customer_migration_considered_options",
+      "source": "docs_adr_0029_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
+      "target": "docs_adr_0029_shopify_customer_migration_considered_options",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L104",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
-      "target": "docs_adr_0028_shopify_customer_migration_consequences",
+      "source": "docs_adr_0029_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
+      "target": "docs_adr_0029_shopify_customer_migration_consequences",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L138",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
-      "target": "docs_adr_0028_shopify_customer_migration_context",
+      "source": "docs_adr_0029_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
+      "target": "docs_adr_0029_shopify_customer_migration_context",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L17",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
-      "target": "docs_adr_0028_shopify_customer_migration_decisions",
+      "source": "docs_adr_0029_shopify_customer_migration_shopify_customers_are_imported_as_customer_rows_never_as_accounts_and_claimed_by_signing_in",
+      "target": "docs_adr_0029_shopify_customer_migration_decisions",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L38",
       "weight": 1.0
     },
@@ -803691,7 +803691,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L376",
+      "source_location": "L377",
       "weight": 1.0
     },
     {
@@ -803702,7 +803702,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L399",
+      "source_location": "L400",
       "weight": 1.0
     },
     {
@@ -803717,79 +803717,79 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm",
-      "target": "docs_adr_0028_shopify_customer_migration",
+      "source": "docs_adr_0028_customer_crm",
+      "target": "docs_adr_0029_shopify_customer_migration",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L11",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm",
+      "source": "docs_adr_0028_customer_crm",
       "target": "docs_adr_0024_services_priced_in_costings",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L144",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm",
+      "source": "docs_adr_0028_customer_crm",
       "target": "docs_adr_0007_first_party_journey_analytics",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L153",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm",
+      "source": "docs_adr_0028_customer_crm",
       "target": "docs_adr_0023_rbac_roles_are_data_permissions_are_code",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L167",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm",
+      "source": "docs_adr_0028_customer_crm",
       "target": "docs_adr_0006_analytics_db_channel_facts",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L61",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration",
+      "source": "docs_adr_0029_shopify_customer_migration",
       "target": "docs_adr_0007_first_party_journey_analytics",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L129",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration",
+      "source": "docs_adr_0029_shopify_customer_migration",
       "target": "docs_adr_0024_services_priced_in_costings",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L13",
       "weight": 1.0
     },
@@ -810418,7 +810418,7 @@
       "confidence_score": 0.95,
       "context": "LoginForm",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L51",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -810574,7 +810574,7 @@
       "confidence_score": 0.95,
       "context": "OutgoingEmail",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L112",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -812350,7 +812350,7 @@
       "confidence_score": 0.95,
       "context": "associateGuestOrdersToCustomer",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L41",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -814274,7 +814274,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_customer_crm_prd_decisions_adr_0027_records_these",
+      "source": "claude_prd_customer_crm_customer_crm_prd_decisions_adr_0028_records_these",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
@@ -814310,7 +814310,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0027_decisions_to_record",
+      "source": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
@@ -814694,7 +814694,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0029_decisions_to_record",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
@@ -814954,7 +814954,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -814966,7 +814966,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L139",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -814978,11 +814978,11 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L338",
+      "source_location": "L339",
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_rules_that_keep_it_crm_shaped_adr_0028_k_l",
+      "source": "claude_prd_shopify_customer_migration_shopify_customer_migration_prd_rules_that_keep_it_crm_shaped_adr_0029_k_l",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
@@ -814990,7 +814990,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L394",
+      "source_location": "L395",
       "weight": 1.0
     },
     {
@@ -815006,7 +815006,7 @@
       "weight": 1.0
     },
     {
-      "source": "context_customer_crm_adr_0027",
+      "source": "context_customer_crm_adr_0028",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
@@ -815042,98 +815042,98 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_consequences",
+      "source": "docs_adr_0028_customer_crm_consequences",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L123",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_considered_options",
+      "source": "docs_adr_0028_customer_crm_considered_options",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L92",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_context",
+      "source": "docs_adr_0028_customer_crm_context",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L28",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_decisions",
+      "source": "docs_adr_0028_customer_crm_decisions",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L68",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
+      "source": "docs_adr_0028_customer_crm_the_customer_crm_reads_the_facts_the_platform_already_records_and_sends_no_marketing",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L13",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_consequences",
+      "source": "docs_adr_0029_shopify_customer_migration_consequences",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L160",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_context",
+      "source": "docs_adr_0029_shopify_customer_migration_context",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L21",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_decisions",
+      "source": "docs_adr_0029_shopify_customer_migration_decisions",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "customers",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L46",
       "weight": 1.0
     },
@@ -815242,18 +815242,18 @@
       "confidence_score": 0.95,
       "context": "decideCustomerLink",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L40",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_context",
+      "source": "docs_adr_0029_shopify_customer_migration_context",
       "target": "lib_auth_customer_identity_decidecustomerlink",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "decideCustomerLink",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L22",
       "weight": 1.0
     },
@@ -815558,14 +815558,14 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_considered_options",
+      "source": "docs_adr_0028_customer_crm_considered_options",
       "target": "lib_email_index_dispatchorderemail",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "dispatchOrderEmail",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L106",
       "weight": 1.0
     },
@@ -815938,7 +815938,7 @@
       "confidence_score": 0.95,
       "context": "evaluateReadjustment",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L218",
+      "source_location": "L219",
       "weight": 1.0
     },
     {
@@ -816082,7 +816082,7 @@
       "confidence_score": 0.95,
       "context": "findOrCreateCustomer",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L171",
+      "source_location": "L172",
       "weight": 1.0
     },
     {
@@ -818462,7 +818462,7 @@
       "weight": 1.0
     },
     {
-      "source": "context_customer_crm_adr_0027",
+      "source": "context_customer_crm_adr_0028",
       "target": "lib_appointments_phone_isvalidphone",
       "relation": "references",
       "_origin": "ast",
@@ -818930,7 +818930,7 @@
       "weight": 1.0
     },
     {
-      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
+      "source": "claude_prd_shopify_customer_migration_issues_01_glossary_and_adr_adr_0029_decisions_to_record",
       "target": "lib_auth_customer_identity_linkcustomertoauthuser",
       "relation": "references",
       "_origin": "ast",
@@ -819070,7 +819070,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L37",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -819082,7 +819082,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -819094,7 +819094,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L345",
+      "source_location": "L346",
       "weight": 1.0
     },
     {
@@ -819106,11 +819106,11 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L361",
+      "source_location": "L362",
       "weight": 1.0
     },
     {
-      "source": "context_shopify_customer_migration_adr_0028",
+      "source": "context_shopify_customer_migration_adr_0029",
       "target": "lib_auth_customer_identity_linkcustomertoauthuser",
       "relation": "references",
       "_origin": "ast",
@@ -819122,38 +819122,38 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_consequences",
+      "source": "docs_adr_0029_shopify_customer_migration_consequences",
       "target": "lib_auth_customer_identity_linkcustomertoauthuser",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L159",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_context",
+      "source": "docs_adr_0029_shopify_customer_migration_context",
       "target": "lib_auth_customer_identity_linkcustomertoauthuser",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L21",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_decisions",
+      "source": "docs_adr_0029_shopify_customer_migration_decisions",
       "target": "lib_auth_customer_identity_linkcustomertoauthuser",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L60",
       "weight": 1.0
     },
@@ -819202,18 +819202,18 @@
       "confidence_score": 0.95,
       "context": "linkVisitToPaidOrder",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L123",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_considered_options",
+      "source": "docs_adr_0029_shopify_customer_migration_considered_options",
       "target": "lib_analytics_journey_identity_linkvisittopaidorder",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "linkVisitToPaidOrder",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L131",
       "weight": 1.0
     },
@@ -820054,18 +820054,18 @@
       "confidence_score": 0.95,
       "context": "mergeVisitorIdentity",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L122",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_considered_options",
+      "source": "docs_adr_0029_shopify_customer_migration_considered_options",
       "target": "lib_analytics_journey_identity_mergevisitoridentity",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "mergeVisitorIdentity",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L130",
       "weight": 1.0
     },
@@ -821306,26 +821306,26 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_consequences",
+      "source": "docs_adr_0028_customer_crm_consequences",
       "target": "app_api_results_tests_paired_build_e2e_test_orders",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "orders",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L123",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_context",
+      "source": "docs_adr_0028_customer_crm_context",
       "target": "app_api_results_tests_paired_build_e2e_test_orders",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "orders",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L20",
       "weight": 1.0
     },
@@ -824378,14 +824378,14 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0027_customer_crm_consequences",
+      "source": "docs_adr_0028_customer_crm_consequences",
       "target": "lib_crm_segments_resolvesegment",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "resolveSegment",
-      "source_file": "docs/adr/0027-customer-crm.md",
+      "source_file": "docs/adr/0028-customer-crm.md",
       "source_location": "L134",
       "weight": 1.0
     },
@@ -826642,11 +826642,11 @@
       "confidence_score": 0.95,
       "context": "updateCustomerStats",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L58",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
-      "source": "context_shopify_customer_migration_adr_0028",
+      "source": "context_shopify_customer_migration_adr_0029",
       "target": "lib_ecommerce_customers_updatecustomerstats",
       "relation": "references",
       "_origin": "ast",
@@ -826658,26 +826658,26 @@
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_considered_options",
+      "source": "docs_adr_0029_shopify_customer_migration_considered_options",
       "target": "lib_ecommerce_customers_updatecustomerstats",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "updateCustomerStats",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L117",
       "weight": 1.0
     },
     {
-      "source": "docs_adr_0028_shopify_customer_migration_context",
+      "source": "docs_adr_0029_shopify_customer_migration_context",
       "target": "lib_ecommerce_customers_updatecustomerstats",
       "relation": "references",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "context": "updateCustomerStats",
-      "source_file": "docs/adr/0028-shopify-customer-migration.md",
+      "source_file": "docs/adr/0029-shopify-customer-migration.md",
       "source_location": "L27",
       "weight": 1.0
     },
@@ -826906,7 +826906,7 @@
       "confidence_score": 0.95,
       "context": "validateCoupon",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L94",
+      "source_location": "L95",
       "weight": 1.0
     },
     {
@@ -826918,7 +826918,7 @@
       "confidence_score": 0.95,
       "context": "validateCoupon",
       "source_file": ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md",
-      "source_location": "L216",
+      "source_location": "L217",
       "weight": 1.0
     },
     {
@@ -827545,5 +827545,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "660348eb4d8cbecfb0e3b76845832c399995bb55"
+  "built_at_commit": "10063e8def826cd552c45a074b5b06eeef281e46"
 }

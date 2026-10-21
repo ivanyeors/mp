@@ -5,7 +5,7 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
 /**
  * The Customer's account on the timeline (`customers`), from the Shopify
- * customer migration (ADR 0028):
+ * customer migration (ADR 0029):
  *
  * - imported, as a **Migrated customer** (`migrated_customers.imported_at`,
  *   migration slice 02);

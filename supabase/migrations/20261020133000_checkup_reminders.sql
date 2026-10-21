@@ -1,4 +1,4 @@
--- Check-up reminders (PRD-customer-crm slice 08, ADR 0027 f, g, h): a yearly
+-- Check-up reminders (PRD-customer-crm slice 08, ADR 0028 f, g, h): a yearly
 -- "time for a re-adjustment" for a Premium Mpillow, which says plainly that the
 -- visit is paid and states the fee.
 --

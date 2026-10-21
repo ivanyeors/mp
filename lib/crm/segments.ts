@@ -8,7 +8,7 @@ import {
 } from "@/lib/crm/segment-rules";
 
 /**
- * Segments (CONTEXT.md; ADR 0027 (c)): named Customers-list filters in
+ * Segments (CONTEXT.md; ADR 0028 (c)): named Customers-list filters in
  * `customer_segments`, shared by every Staff member with `customers` and
  * counted live. Only the service role can read the table, so every read and
  * write goes through here from an Admin Panel route that has already checked

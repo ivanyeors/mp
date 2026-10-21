@@ -1,5 +1,5 @@
 /**
- * Aftercare preferences (PRD customer-crm slice 13, ADR 0027 decision l): the
+ * Aftercare preferences (PRD customer-crm slice 13, ADR 0028 decision l): the
  * types, the approved copy and the pure rules. No IO, so the Profile, the Admin
  * Panel card and the server share one definition. The reads and the one write
  * path are in ./preferences.

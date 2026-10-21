@@ -3,8 +3,9 @@
 **Status:** specified, not started
 **Issue:** [#264](https://github.com/ivanyeors/mp/issues/264), with each slice a sub-issue (#265–#276)
 **Audited:** 2026-10-20 against `main` @ `48c643f`: every code reference re-checked after the paired-build and WhatsApp merges (#258–#262), plus research on Meta's template rules, Singapore's Spam Control Act and PDPA, and Google's review policy.
-**ADR:** `docs/adr/0028-shopify-customer-migration.md` (to be written by slice 01; 0026 went to
-the paired build and 0027 to the CRM, so take the next free number if either moves)
+**ADR:** `docs/adr/0029-shopify-customer-migration.md` (to be written by slice 01; 0026 went to
+the paired build, 0027 to the Rules engine and 0028 to the CRM, so take the next free number if
+either moves)
 **Owner decisions still open:** see [Open decisions](#open-decisions-for-the-owner) — slice 04
 cannot run until 1, 2 and 7 are answered.
 
@@ -171,7 +172,7 @@ the same row and issues the same voucher. Buying as a guest with that email atta
 **Order** to the imported row too (`findOrCreateCustomer` finds it), so their history is waiting
 when they do sign in.
 
-### Decisions (ADR 0028 records these)
+### Decisions (ADR 0029 records these)
 
 1. **The source is the owner's Shopify CSV export, not the Shopify Admin API.** This adds no
    scopes and no Shopify code. The batch records the file's hash.
@@ -344,7 +345,7 @@ goes last, in smaller waves.
 | A voucher is used by someone other than its owner | Certain with today's bearer coupons | Decision 8: session check at preview and at checkout. |
 | A Claim is processed twice and issues two vouchers | `linkCustomerToAuthUser` runs on every account page | Decision 6: one transaction plus a unique index on `(customer_id, issued_for)`. |
 | A customer signs in before the claim code ships | Harmless | The claim runs on any later `linkCustomerToAuthUser` call, so they claim on their next page load. |
-| Concurrent checkouts both pass the coupon's `usage_limit` | Exists today for all coupons (no reservation) | For a one-person voucher, this needs the same person to pay twice at once. Accepted; recorded in ADR 0028. |
+| Concurrent checkouts both pass the coupon's `usage_limit` | Exists today for all coupons (no reservation) | For a one-person voucher, this needs the same person to pay twice at once. Accepted; recorded in ADR 0029. |
 | The export lands in git like `info/GET-from-shopify.md` did | That file is the precedent for Shopify exports in this repo | The import happens in the browser, so the file never needs to be near the repo. Slice 04's steps keep it out of shared folders, and slice 10 destroys it. |
 | The import runs against production before rehearsal | Possible | Slice 04 makes rehearsal on a Supabase branch a precondition. |
 | Someone with Customers access bulk-imports or undoes by mistake | Manager and Staff both hold `customers` | A separate `customer-import` key, held by Owner and Admin only. A preview before every import and every undo, a typed confirmation, and an audit row for each. |
@@ -387,7 +388,7 @@ everything in this section past the table below.
 | Whether we may email them, with proof | `marketing_email` and `customer_consent_events`, unsubscribe | 07 |
 | What we sent, and what happened | `customer_campaign_sends`, Claim link clicks, bounces and complaints | 06, 08 |
 
-### Rules that keep it CRM-shaped (ADR 0028 k, l)
+### Rules that keep it CRM-shaped (ADR 0029 k, l)
 
 1. **Facts, not statuses.** Store events and timestamps. Derive *Signed up*, *Voucher used* or
    *Lapsed* in the overview view, where they cannot drift.

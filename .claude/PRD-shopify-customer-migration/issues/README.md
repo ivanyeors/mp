@@ -10,7 +10,7 @@ slice is a thin, demoable path through all layers.
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| [01](01-glossary-and-adr.md) · [#265](https://github.com/ivanyeors/mp/issues/265) | Glossary and ADR 0028: what moves, what never moves, and what a Claim is | AFK | **built** (`11ae402`) | none | underpins all |
+| [01](01-glossary-and-adr.md) · [#265](https://github.com/ivanyeors/mp/issues/265) | Glossary and ADR 0029: what moves, what never moves, and what a Claim is | AFK | **built** (`11ae402`) | none | underpins all |
 | [02](02-import-tables-and-dry-run.md) · [#266](https://github.com/ivanyeors/mp/issues/266) | Import tables, and an Admin Panel upload that previews and never writes | AFK | **built** (`a143d5c`) | 01 | 9, 15 |
 | [03](03-import-apply-and-rollback.md) · [#267](https://github.com/ivanyeors/mp/issues/267) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **built** (`e15f787`) | 02 | 9, 10, 13, 15 |
 | [12](12-account-status-and-customer-overview.md) · [#276](https://github.com/ivanyeors/mp/issues/276) | Account status on every Customer, and the Customer overview | AFK | **built** (`a49f8d6`) | 02 | 8, 14 |
@@ -27,7 +27,7 @@ slice is a thin, demoable path through all layers.
 
 ```mermaid
 graph TD
-  s01[01 Glossary + ADR 0028]
+  s01[01 Glossary + ADR 0029]
   s02[02 Import tables + admin preview]
   s03[03 Admin import / resume / undo]
   s12[12 Account status + Customer overview]

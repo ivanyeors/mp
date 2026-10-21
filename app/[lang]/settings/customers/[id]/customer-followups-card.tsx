@@ -29,7 +29,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
 }
 
 /**
- * Follow-ups on the Customer detail (CRM slice 06; ADR 0027 (e)): dated to-dos
+ * Follow-ups on the Customer detail (CRM slice 06; ADR 0028 (e)): dated to-dos
  * about this Customer, each assigned to a **Staff profile**. Open ones first,
  * by due date, with their assignee and *Done*; then the done ones.
  *

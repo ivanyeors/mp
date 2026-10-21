@@ -1,5 +1,5 @@
 /**
- * The Claim (ADR 0028 f; PRD-shopify-customer-migration slice 05).
+ * The Claim (ADR 0029 f; PRD-shopify-customer-migration slice 05).
  *
  * A Migrated customer's first sign-in after import. `linkCustomerToAuthUser`
  * binds the login as it would for any Customer, then calls `claimOnSignIn`,

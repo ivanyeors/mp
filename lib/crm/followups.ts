@@ -11,7 +11,7 @@ import {
 } from "@/lib/crm/followup-rules";
 
 /**
- * Follow-ups (CONTEXT.md; ADR 0027 (e)): a dated to-do about one Customer,
+ * Follow-ups (CONTEXT.md; ADR 0028 (e)): a dated to-do about one Customer,
  * assigned to a **Staff profile**, in `customer_followups`. Only the service
  * role can read the table, so every read and write goes through here from an
  * Admin Panel route that has already checked the caller: `customers` to see

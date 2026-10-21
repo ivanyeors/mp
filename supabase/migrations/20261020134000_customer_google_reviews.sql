@@ -1,4 +1,4 @@
--- Reviews on every Customer (PRD customer-crm slice 12; ADR 0027 (k)): Google
+-- Reviews on every Customer (PRD customer-crm slice 12; ADR 0028 (k)): Google
 -- reviews that Staff link to a Customer.
 --
 -- Google gives a review only a display name, a photo and an anonymous flag,

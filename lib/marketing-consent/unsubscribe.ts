@@ -1,5 +1,5 @@
 /**
- * One-click unsubscribe (PRD-shopify-customer-migration slice 07; ADR 0028 i;
+ * One-click unsubscribe (PRD-shopify-customer-migration slice 07; ADR 0029 i;
  * RFC 8058). Server only: the token is an HMAC of the Customer id.
  *
  * - **The token** is `HMAC-SHA256(customer_id, UNSUBSCRIBE_SECRET)`, base64url.

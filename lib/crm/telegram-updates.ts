@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Telegram updates: four types, each with its own switch (PRD customer-crm
- * slice 14, ADR 0027 m). This file is pure — the settings shape, the periods
+ * slice 14, ADR 0028 m). This file is pure — the settings shape, the periods
  * the scheduled types are counted over, and the one renderer per type — so the
  * Customers page card, the hold route, the daily job and *Send test* all read
  * the same wording.

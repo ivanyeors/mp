@@ -1,7 +1,7 @@
 /**
  * The owner's Shopify customer export (Shopify admin → Customers → Export →
  * All customers → Plain CSV file), read in the browser and read again on the
- * server (PRD-shopify-customer-migration, slice 02; ADR 0028 a).
+ * server (PRD-shopify-customer-migration, slice 02; ADR 0029 a).
  *
  * Pure: no Node or Supabase imports, so the Admin Panel page and the server
  * action run the same code.

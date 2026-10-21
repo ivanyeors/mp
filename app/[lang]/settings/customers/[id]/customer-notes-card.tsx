@@ -23,7 +23,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
 }
 
 /**
- * Customer notes (ADR 0027 (a)): Staff-only, newest first, each with its author
+ * Customer notes (ADR 0028 (a)): Staff-only, newest first, each with its author
  * and date. Never edited — a correction is a new note — and deleted only by the
  * author or an Owner or Admin. The customer cannot read them.
  */

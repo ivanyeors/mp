@@ -9,7 +9,7 @@ import {
 } from "@/lib/crm/review-match";
 
 /**
- * Suggesting who wrote a Google review (CRM slice 12, ADR 0027 (k)): a name is
+ * Suggesting who wrote a Google review (CRM slice 12, ADR 0028 (k)): a name is
  * not an identity, so the strongest a name can do is suggest, and timing alone
  * never does.
  */

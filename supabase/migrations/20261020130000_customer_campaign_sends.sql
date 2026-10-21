@@ -1,5 +1,5 @@
 -- Campaign emails: the send ledger (PRD-shopify-customer-migration slice 08;
--- ADR 0028 i, k, l).
+-- ADR 0029 i, k, l).
 --
 -- customer_campaign_sends: one row per (Customer, campaign template), ever.
 -- The unique key is the whole of "cannot double-send": the wave sender

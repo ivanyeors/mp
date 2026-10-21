@@ -1,4 +1,4 @@
--- The Customers list's search (CRM PRD slice 04; ADR 0027 (d)).
+-- The Customers list's search (CRM PRD slice 04; ADR 0028 (d)).
 --
 -- Search is one escaped `ilike` on the Customer overview's `search_text`,
 -- never typed text in a PostgREST `.or()`. search_text is this exact

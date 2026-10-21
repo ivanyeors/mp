@@ -1,5 +1,5 @@
 -- The Customer overview gains Marketing consent (PRD-shopify-customer-migration,
--- slice 07; ADR 0028 k).
+-- slice 07; ADR 0029 k).
 --
 -- admin_customer_overview adds `marketing_email` and
 -- `marketing_email_updated_at`, at the end: the Customers list filters on the

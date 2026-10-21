@@ -2,7 +2,7 @@
 // The campaign transport — never the mailbox that sends order emails
 // ============================================================
 //
-// Campaign mail (PRD-shopify-customer-migration slice 08; ADR 0028 i) goes
+// Campaign mail (PRD-shopify-customer-migration slice 08; ADR 0029 i) goes
 // through Resend, from its own sending subdomain, so its bounces and
 // complaints cannot touch the deliverability of order and Result emails, and
 // a Workspace mailbox's daily cap never applies to it.

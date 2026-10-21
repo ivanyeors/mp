@@ -235,7 +235,7 @@ functions run end to end.
     not write.
   - **A later slice whose import writes per-customer rows must add its table to the exclusion
     in `customer_import_undo_plan`.** Slice 07's consent events are the likely one.
-- **A Claimed merged row is kept** (ADR 0028 e: "never a row that has been Claimed"). The slice
+- **A Claimed merged row is kept** (ADR 0029 e: "never a row that has been Claimed"). The slice
   unlinks every merged row. This matters only once slice 05 stamps `claimed_at`. A merged
   Customer whose login predates the import is still unlinked.
 - **One live batch per file.** A partial unique index on `file_sha256 where rolled_back_at is

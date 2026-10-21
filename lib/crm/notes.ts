@@ -4,7 +4,7 @@ import { actingProfile } from "@/lib/staff/working-as";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 
 /**
- * Customer notes (CONTEXT.md; ADR 0027 (a)): dated, authored remarks by Staff
+ * Customer notes (CONTEXT.md; ADR 0028 (a)): dated, authored remarks by Staff
  * about a Customer, in `customer_notes`. Only the service role can read the
  * table, so every read and write goes through here from an Admin Panel route
  * or page that has already checked the caller.

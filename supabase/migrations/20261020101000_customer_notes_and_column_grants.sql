@@ -1,4 +1,4 @@
--- Staff notes customers cannot read (ADR 0027 (a), PRD-customer-crm slice 02).
+-- Staff notes customers cannot read (ADR 0028 (a), PRD-customer-crm slice 02).
 --
 -- DEPLOY ORDER: apply only AFTER the code that ships with it is live. Older
 -- code reads `orders` with `select *` as the signed-in customer

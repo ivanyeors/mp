@@ -1,5 +1,5 @@
 -- The Claim, and the account-bound Welcome-back voucher
--- (PRD-shopify-customer-migration slice 05; ADR 0028 f, g).
+-- (PRD-shopify-customer-migration slice 05; ADR 0029 f, g).
 --
 -- coupons.customer_id binds a coupon to one Customer. validateCoupon accepts a
 -- bound coupon only for that Customer, signed in and checking out with their

@@ -9,7 +9,7 @@ import type { WelcomeVoucherCardData } from "@/lib/customer-migration/welcome-vo
 /**
  * The Welcome-back voucher card (PRD-shopify-customer-migration slice 06), on
  * the welcome page and the Profile while the voucher is unused and unexpired.
- * The voucher is bound to this account (ADR 0028 (g)), so the card says so:
+ * The voucher is bound to this account (ADR 0029 (g)), so the card says so:
  * a forwarded code is refused at checkout.
  */
 export function WelcomeVoucherCard({

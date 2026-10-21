@@ -1,5 +1,5 @@
 /**
- * The Customer overview (migration slice 12; ADR 0028 (k)): the one read model
+ * The Customer overview (migration slice 12; ADR 0029 (k)): the one read model
  * the Admin Panel lists Customers from, `admin_customer_overview`.
  *
  * Statuses are derived in the view from stored facts, never stored as text:

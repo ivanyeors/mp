@@ -1,5 +1,5 @@
 /**
- * The Review request job (PRD customer-crm slice 07, ADR 0027 f, g, k): the
+ * The Review request job (PRD customer-crm slice 07, ADR 0028 f, g, k): the
  * IO around the pure rules in ./review-request. It runs daily, chained onto
  * `results-sla` through ./job, and the Aftercare card runs its planning half
  * as a dry run to show today's numbers.

@@ -1,5 +1,5 @@
 -- Account status on every Customer, and the Customer overview
--- (PRD-shopify-customer-migration, slice 12; ADR 0028 (k), (l)).
+-- (PRD-shopify-customer-migration, slice 12; ADR 0029 (k), (l)).
 --
 -- 1. Two facts on customers, both timestamps, never a status:
 --    - account_linked_at: when the current login was bound to the row. Set by

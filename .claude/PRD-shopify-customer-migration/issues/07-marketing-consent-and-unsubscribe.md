@@ -226,7 +226,7 @@ following, and slice 02/03/05/12's SQL asserts still pass against the full schem
 
 **Deviations.**
 
-- **Undo takes back the import's consent.** The slice is silent here. ADR 0028 (e) says undo
+- **Undo takes back the import's consent.** The slice is silent here. ADR 0029 (e) says undo
   "reverts nothing on `customers`" for a merged row. The existing
   `supabase/tests/customer-import/assert-restore.sql` holds that an untouched undo restores the
   prior state, and keeping the consent failed it. A wrong file must not leave anyone subscribed

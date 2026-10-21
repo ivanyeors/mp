@@ -1,5 +1,5 @@
 -- The Welcome-back voucher's state, and what the vouchers cost
--- (PRD-shopify-customer-migration slice 06; ADR 0028 (k)).
+-- (PRD-shopify-customer-migration slice 06; ADR 0029 (k)).
 --
 -- welcome_voucher_state(usage_count, is_active, expires_at) is the one rule for
 -- a voucher's state, derived from the coupon's own facts and never stored:

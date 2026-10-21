@@ -56,7 +56,7 @@ switching it on.
 
 ## Who gets it
 
-The job runs daily, chained onto `results-sla` (ADR 0027 g).
+The job runs daily, chained onto `results-sla` (ADR 0028 g).
 
 1. **Candidates.** Counted **Orders**, meaning `paid_at` is set and the status is not one of
    `lib/readjustment/purchases.ts:30`'s exclusions. Each must also:
@@ -145,7 +145,7 @@ is previewable like the rest, with a pure render.
 - **No** offer, price, or other product.
 - **Transport:** the transactional one, through `getEmailTransport()` (`lib/email/index.ts:33`),
   which wraps `getDefaultTransport()` and lets tests swap it. This is a service message (ADR
-  0027 f).
+  0028 f).
 - **Registry:** `EmailGroup` is a closed union (`lib/email/registry.ts:70-78`), so add an
   `aftercare` group. Each template needs a fixture in `lib/email/__fixtures__/samples.ts`;
   `__tests__/registry-coverage.test.ts` fails the build without one.

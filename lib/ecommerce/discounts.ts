@@ -37,7 +37,7 @@ export const BOUND_COUPON_ERROR =
 
 /**
  * Pure — whether this checkout may use a coupon bound to `couponCustomerId`
- * (ADR 0028 g). Both must hold: the signed-in Customer is its owner, and the
+ * (ADR 0029 g). Both must hold: the signed-in Customer is its owner, and the
  * checkout email resolves to that same Customer, so the Order, the
  * per-customer count and the voucher stay on one row. A guest never may. A
  * coupon with no owner is a bearer code and always may.

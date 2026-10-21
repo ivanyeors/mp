@@ -1,5 +1,5 @@
 -- Shopify customer import: apply, reconcile and undo an Import batch
--- (PRD-shopify-customer-migration, slice 03; ADR 0028 b, c, e).
+-- (PRD-shopify-customer-migration, slice 03; ADR 0029 b, c, e).
 --
 -- The Admin Panel page (Customers → Import from Shopify) reads the export in
 -- the browser and sends it a chunk of 100 rows at a time. Every write goes
@@ -23,10 +23,10 @@
 --    added, and nothing on `customers` is reverted. Both share one plan,
 --    customer_import_undo_plan.
 --
--- The import creates Customers, never auth users (ADR 0028 b). A merge fills
+-- The import creates Customers, never auth users (ADR 0029 b). A merge fills
 -- only null names and phone, and never touches email, auth_user_id, tags,
--- notes or total_* (ADR 0028 c). Shopify tags, note, totals and consent go to
--- migrated_customers only (ADR 0028 d).
+-- notes or total_* (ADR 0029 c). Shopify tags, note, totals and consent go to
+-- migrated_customers only (ADR 0029 d).
 --
 -- Every function is executable by the service role only. The definer ones run
 -- as the owner, so they are revoked from anon and authenticated explicitly, as

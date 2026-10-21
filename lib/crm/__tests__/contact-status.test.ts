@@ -11,7 +11,7 @@ import {
 } from "@/lib/crm/contact-status";
 
 /**
- * Contact status (CRM slice 11; ADR 0027 (j)): every part derived from a fact.
+ * Contact status (CRM slice 11; ADR 0028 (j)): every part derived from a fact.
  */
 
 describe("sign-in methods", () => {

@@ -2,7 +2,7 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
 
 /**
  * **Marketing consent** (CONTEXT.md; PRD-shopify-customer-migration slice 07,
- * ADR 0028 h): whether a Customer agreed to marketing email, with the source
+ * ADR 0029 h): whether a Customer agreed to marketing email, with the source
  * and time of the change that set it. Pure, so the Profile, the unsubscribe
  * page, the Customer page and the Customers list share one vocabulary.
  *

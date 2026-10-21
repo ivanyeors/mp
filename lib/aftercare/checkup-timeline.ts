@@ -1,6 +1,6 @@
 /**
  * Check-up reminders on the Customer timeline (CRM slice 08, through slice 03's
- * read-time merge, ADR 0027 b): one entry per Order and milestone, *Check-up
+ * read-time merge, ADR 0028 b): one entry per Order and milestone, *Check-up
  * reminder sent (email, WhatsApp)*, at the earlier send. It links to the Order.
  *
  * Pure. The adapter that reads the two ledgers is

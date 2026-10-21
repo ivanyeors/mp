@@ -9,7 +9,7 @@
  *  - the **Review request** (CRM slice 07): exactly for *asked on*; its first
  *    click is a hint, because mail scanners prefetch links;
  *  - a **Google review**: never by itself. A **Linked Google review** is one
- *    Staff confirmed (ADR 0027 (k)).
+ *    Staff confirmed (ADR 0028 (k)).
  */
 
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";

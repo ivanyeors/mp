@@ -1,5 +1,5 @@
 /**
- * The wave sender (PRD-shopify-customer-migration slice 08; ADR 0028 i).
+ * The wave sender (PRD-shopify-customer-migration slice 08; ADR 0029 i).
  *
  * A human runs every wave (scripts/customer-migration-send.ts). It is a dry
  * run unless `apply`: it prints the checks, the eligible count and the

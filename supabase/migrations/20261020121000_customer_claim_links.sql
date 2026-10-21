@@ -1,4 +1,4 @@
--- The Claim link (PRD-shopify-customer-migration slice 06; ADR 0028 decision 7).
+-- The Claim link (PRD-shopify-customer-migration slice 06; ADR 0029 decision 7).
 --
 -- A Claim link is `/account/welcome?c=<token>` in a campaign email. It
 -- prefills the welcome page's sign-in form and attributes the click. It never

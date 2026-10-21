@@ -1,5 +1,5 @@
 -- The Customer overview gains Contact status (PRD customer-crm slice 11;
--- ADR 0027 (j)): the sign-in methods, and whether a mobile is on file and
+-- ADR 0028 (j)): the sign-in methods, and whether a mobile is on file and
 -- valid, for the list's Account column and its Google and Mobile filters.
 --
 -- Every column of the previous definition, in its order, then the new ones at

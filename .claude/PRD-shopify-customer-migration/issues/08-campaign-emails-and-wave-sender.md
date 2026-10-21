@@ -293,7 +293,7 @@ initiative widens this table's `template` check rather than adding another ledge
   claim and the provider's answer, and `pending` is it. A crash leaves the row `pending`, and a
   pending row is never sent again, because it may have gone.
 - **Additional columns:** `attempts`, `last_error`, `bounced_at` and `complained_at`, with checks
-  that a bounced or complained row is dated. ADR 0028 (k) says to store facts and timestamps,
+  that a bounced or complained row is dated. ADR 0029 (k) says to store facts and timestamps,
   and the timeline needs a stored time for each fact. There is also a unique index on
   `provider_message_id`, which the webhook finds sends by.
 - **A wave holds at most `--limit` people.** "Running the same `--apply` twice sends nothing"

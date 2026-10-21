@@ -70,7 +70,7 @@ export default async function CustomerDetailPage({
 /**
  * WhatsApp and the other numbers seen (CRM slice 11). Numbers from bookings
  * and from Results are each read only with that source's own permission
- * (ADR 0027 (b)). A failed read says so on the card and never fails the page.
+ * (ADR 0028 (b)). A failed read says so on the card and never fails the page.
  */
 async function readContact(row: Customer, ctx: AdminContext): Promise<ContactFactsResult> {
     try {

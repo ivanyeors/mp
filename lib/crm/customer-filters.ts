@@ -29,7 +29,7 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
  *
- * No typed text reaches a PostgREST `.or()` (ADR 0027 (d)): search is one
+ * No typed text reaches a PostgREST `.or()` (ADR 0028 (d)): search is one
  * `ilike` on `search_text` with its wildcards escaped, typed lists go in as
  * quoted array literals, and `CustomerListQuery` has no `or` at all.
  */
@@ -473,7 +473,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   let q = query;
 
   // One escaped ilike on one column: `Tan, Mei`, `(test)` and `a%b` are text,
-  // never filter syntax or wildcards (ADR 0027 (d)).
+  // never filter syntax or wildcards (ADR 0028 (d)).
   if (filters.search) q = q.ilike("search_text", `%${escapeLikePattern(filters.search)}%`);
   if (filters.tags.length) q = q.overlaps("tags", pgTextArray(filters.tags));
 

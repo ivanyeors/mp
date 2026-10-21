@@ -32,7 +32,7 @@ import { readUndoCounts, type UndoCounts } from "@/lib/customer-migration/batche
 
 /**
  * Customers → Import from Shopify (PRD-shopify-customer-migration, slices 02
- * and 03; ADR 0028).
+ * and 03; ADR 0029).
  *
  * Every action checks `customer-import`, never `customers`, which Manager and
  * Staff also hold; `customer-import` requires `customers-edit`. The browser

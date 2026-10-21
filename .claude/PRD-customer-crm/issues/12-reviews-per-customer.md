@@ -23,7 +23,7 @@ answer:
 | Review request (slice 07), `customer_review_requests` | `customer_id` | exact for *asked on*; `first_clicked_at` is a **hint**, because mail scanners prefetch links |
 | Google reviews, `google_reviews` (`20261002060000_google_review_replies.sql:40`) | **none** | Google gives a review only a display name, a photo and an anonymous flag (`lib/google/business-profile.ts:28`), never an email. A link is a **suggestion** that Staff confirm. |
 
-**A name is not an identity**, so a Google review is never linked automatically (ADR 0027 k).
+**A name is not an identity**, so a Google review is never linked automatically (ADR 0028 k).
 Two customers can share a name. A display name like *"Jane T."* or a nickname may match nobody,
 or match the wrong person.
 
@@ -260,7 +260,7 @@ With fixtures, in psql:
 **Deviations**
 
 - **`review_rating`, a seventh overview column.** The Rating filter must read one value; without
-  it, "4★ and up" would need an `.or()` across the Google and shop columns (ADR 0027 (d)). It is
+  it, "4★ and up" would need an `.or()` across the Google and shop columns (ADR 0028 (d)). It is
   the linked Google rating, else the shop average rounded, and it is what the column shows.
 - **A *5★* rating value**, beside *4★ and up* and *3★ and below*, so *"reviewed us 5★ on
   Google"* is exactly one link (`google_review=linked&rating=5`).

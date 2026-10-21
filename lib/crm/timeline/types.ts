@@ -1,7 +1,7 @@
 import type { Permission } from "@/lib/auth/permissions";
 
 /**
- * The Customer timeline's shapes (CONTEXT.md; ADR 0027 (b)). Type-only and free
+ * The Customer timeline's shapes (CONTEXT.md; ADR 0028 (b)). Type-only and free
  * of server imports, so the Admin Panel's browser code shares them.
  */
 

@@ -5,7 +5,7 @@ import { MIGRATION_SUMMARY_COLUMNS } from "@/lib/customer-migration/overview";
 
 /**
  * The Customer overview is one SQL view and one TypeScript column list
- * (migration slice 12; ADR 0028 (k)). Later slices extend the view with
+ * (migration slice 12; ADR 0029 (k)). Later slices extend the view with
  * `create or replace view`, adding columns at the end, and add the same column
  * to the list. This keeps the two equal, and keeps the view server-only:
  * security_invoker, no `*`, and no grant to anon or authenticated.

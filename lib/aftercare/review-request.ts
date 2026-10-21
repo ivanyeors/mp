@@ -1,5 +1,5 @@
 /**
- * The Review request (PRD customer-crm slice 07, ADR 0027 f, k): one message
+ * The Review request (PRD customer-crm slice 07, ADR 0028 f, k): one message
  * per Customer, ever, 14 days after an Order is delivered, asking for a Google
  * review. This file is the pure part — settings, the timing rule, who is a
  * candidate, and each channel's decision — so the daily job and the Aftercare

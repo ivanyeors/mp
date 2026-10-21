@@ -14,7 +14,7 @@ const CreateCustomerSchema = z.object({
   locale: z.string().optional().default("en-US"),
   tags: z.array(z.string()).optional().default([]),
   // No `notes`: they are Customer notes now (customer_notes), and
-  // customers.notes is never written (ADR 0027 (a)).
+  // customers.notes is never written (ADR 0028 (a)).
 });
 
 export async function GET(req: Request) {

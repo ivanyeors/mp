@@ -1,6 +1,6 @@
 -- The Customer overview and the Migration card learn what the Claim link and
 -- the Welcome-back voucher make knowable (PRD-shopify-customer-migration
--- slice 06; ADR 0028 (k)).
+-- slice 06; ADR 0029 (k)).
 --
 -- Both views are redefined in full, with every column the previous definition
 -- had, in the same order, and the new ones at the end (Postgres refuses a

@@ -172,7 +172,7 @@ follows. The server is unchanged: `normalizeRolePermissions` still closes a save
   once it does. The cascade then unticks `customer-import` along with `customers-edit`.
 - Not edited, and now stale: `CONTEXT.md` → **Permission** says "in v1, no view-only level", and
   ADR 0023's last consequence says view-only would be a `<page>:read` key. Slice 01 (glossary and
-  ADR 0027 (i)) owns both.
+  ADR 0028 (i)) owns both.
 - The assignee picker filter ("profiles whose Member holds `customers-edit`") belongs to CRM 06,
   which has not been built yet.
 

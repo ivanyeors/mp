@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
  * opens the `List-Unsubscribe` URL in a browser lands on the confirm page.
  *
  * Unsubscribing stops marketing email only. Order, Result and aftercare email
- * is transactional and continues (ADR 0028 i).
+ * is transactional and continues (ADR 0029 i).
  */
 
 async function readForm(req: Request): Promise<FormData | null> {

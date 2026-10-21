@@ -1,5 +1,5 @@
 -- Shopify customer import: Marketing consent at import, and an undo that
--- reads past it (PRD-shopify-customer-migration, slice 07; ADR 0028 e, h).
+-- reads past it (PRD-shopify-customer-migration, slice 07; ADR 0029 e, h).
 --
 -- Replaces three functions of 20261020110000_customer_import_apply.sql, which
 -- stays as it was. Everything else about them is unchanged.
@@ -243,7 +243,7 @@ begin
             v_batch.exported_at
           );
 
-          -- Consent moves with its provenance (ADR 0028 h), by the backfill's
+          -- Consent moves with its provenance (ADR 0029 h), by the backfill's
           -- rule: only an explicit yes, only for someone nobody has asked.
           perform public.apply_shopify_email_consent(
             v_customer,

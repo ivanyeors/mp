@@ -59,7 +59,7 @@ and `applyCustomerFilters(query, filters)`.
   - `sort` (adding *last order* and *spend*).
 - **Search.** Search becomes one `ilike` on `search_text`, with the pattern escaped by
   `escapeLikePattern` (`lib/auth/customer-identity.ts:31-33`).
-  - No typed text goes into `.or()` anymore (ADR 0027 d).
+  - No typed text goes into `.or()` anymore (ADR 0028 d).
   - This fixes the unescaped interpolation at `lib/ecommerce/admin/customers.ts:40`, where a
     search for `Tan, Mei` returns a 500 today.
 - **Invalid parameters.** An unknown value, such as `bought=foo`, is dropped and the list shows
