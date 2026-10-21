@@ -50,10 +50,12 @@ it would go to, and sends it in waves.
    links opened, on the list and on its page. Each send, bounce and complaint is also on the
    **Customer timeline**.
 
-A new campaign opens on a ready-written invitation for the Shopify customers: *"Your Mpillow
-account is ready"*. It has the sign-in button and audience *Imported from Shopify, not signed in
-yet*, and carries **no offer**. The Welcome-back voucher is deleted, and points are not built
-(`PRD-loyalty-points`), so nothing is promised that a sign-in would not deliver.
+A new campaign opens on a ready-written invitation, *"Our new website is here, with points waiting
+for you"*, with the button *Sign in and collect your points* and the audience *Imported from
+Shopify, not signed in yet*. It says the site is new and never names Shopify or a move (owner,
+2026-10-21). It offers the **Claim bonus**: 1,000 points, S$10 off a shop order, for signing in
+within 3 months of the email (`PRD-loyalty-points`, decisions 10 and 11). Points are not built
+yet, so read that plan's first hazard before sending it.
 
 ## Rules it keeps
 

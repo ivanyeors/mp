@@ -115,7 +115,7 @@ describe("sendCampaignBatch", () => {
     const ann = sent[0];
     expect(ann.from).toBe("Mpillow <hello@hello.mpillow.com>");
     expect(ann.replyTo).toBe("support@mpillow.com");
-    expect(ann.subject).toBe("Your Mpillow account is ready");
+    expect(ann.subject).toBe(FIRST_CAMPAIGN_DRAFT.subject);
     expect(ann.html).toContain("Hi Ann,");
     const token = unsubscribeToken(ANN, SECRET)!;
     expect(ann.headers?.["List-Unsubscribe"]).toContain(`${ORIGIN}/api/email/unsubscribe?u=${ANN}&t=${token}`);
@@ -292,7 +292,7 @@ describe("sendCampaignTest", () => {
     const { s, sent, admin } = setup();
     const r = await sendCampaignTest(campaign(), { to: ["Me <me@mpillow.com>", "me@mpillow.com", "ops@mpillow.com"], firstName: "Ivan" }, s);
     expect(r).toEqual({ sent: ["me@mpillow.com", "ops@mpillow.com"], failed: [] });
-    expect(sent[0].subject).toBe("[Test] Your Mpillow account is ready");
+    expect(sent[0].subject).toBe(`[Test] ${FIRST_CAMPAIGN_DRAFT.subject}`);
     expect(sent[0].html).toContain("Hi Ivan,");
     expect(sent[0].headers?.["List-Unsubscribe"]).toContain(`u=${PROBE_CUSTOMER_ID}`);
     expect(sent[0].html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);

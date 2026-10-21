@@ -427,10 +427,10 @@ export function sampleMigrationServiceNotice(fixture: EmailFixture = "happy") {
 export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
   return {
     firstName: pick(fixture, "Wei Ling"),
-    subject: pick(fixture, "Your Mpillow account is ready"),
-    preheader: pick(fixture, "Sign in with the email you shopped with."),
+    subject: pick(fixture, "Our new website is here, with points waiting for you"),
+    preheader: pick(fixture, "Sign in within 3 months to collect 1,000 points."),
     body: [
-      "Our online shop has moved from Shopify to our own site, and your account is waiting for you.",
+      "We have a new website, and your Mpillow account is ready on it.",
       "",
       "## What your account does",
       `- ${pick(fixture, "Saves your delivery addresses")}`,
@@ -439,7 +439,7 @@ export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
       `Questions? Read more at ${ORIGIN}/en-US/faq or just reply to this email.`,
     ].join("\n"),
     greeting: true,
-    button: { label: "Sign in to your account", href: sampleClaimUrl("campaign:3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f") },
+    button: { label: "Sign in and collect your points", href: sampleClaimUrl("campaign:3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f") },
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }

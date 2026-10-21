@@ -74,16 +74,16 @@ import" rule no longer applies.
 
 **First hazard: this one decides a deploy, not just a build.** No email that promises points
 may be sent before slices 04, 05 and 08 are live in production. Slice 05 makes the wave sender's
-preflight refuse otherwise. On 2026-10-21 the owner chose to send an offer-free invitation first,
-from Admin Panel → Email campaigns (`PRD-email-marketing`). It mentions no points.
+preflight refuse otherwise.
 
-**Open for the owner, from that choice.** Each customer's Claim bonus window counts from the
-first campaign email we sent them (decision 11). That is now the offer-free invitation. So a
-customer who claims within 3 months of it gets the bonus at their next sign-in after launch,
-without ever having been offered it. If points launch more than 3 months after the invitation,
-nobody who claims after that gets it. Slice 05 must settle whether the window should start at
-the first email that *announces* points instead (`claim_bonus_window_end` would then read
-campaigns that mention points).
+On 2026-10-21 the owner had the first campaign promise the points. Admin Panel → Email campaigns
+(`PRD-email-marketing`) now drafts it: *"Sign in within 3 months of this email and we'll add
+1,000 points to your account"*. Its 3 months are decision 11's window, counted from this email,
+so the window question is settled. The hazard stands: the page does not check whether points
+are live. Sent before they are, it promises points a customer cannot see or spend. A customer
+who signs in then gets the bonus at their next sign-in after launch (slice 05). Either send it
+once slices 04, 05 and 08 are live, or change its words to say the points arrive when points
+launch.
 
 **Second hazard.** The balance is never a column on `customers`. The customer can read their own
 row (ADR 0029 (d)), and a stored total drifts from its history. Read it with `points_balance`.

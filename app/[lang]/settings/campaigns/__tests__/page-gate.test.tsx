@@ -105,7 +105,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("the editor", () => {
-  it("opens a new campaign on the Shopify customers' invitation, with no offer in it", async () => {
+  it("opens a new campaign on the invitation to the new website, with the points for signing in and no word of Shopify", async () => {
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { CampaignEditor } = await import("../campaign-editor");
     const { FIRST_CAMPAIGN_DRAFT } = await import("@/lib/email-campaigns/rules");
@@ -113,9 +113,12 @@ describe("the editor", () => {
       <CampaignEditor campaign={null} draft={FIRST_CAMPAIGN_DRAFT} stats={null} segments={[]} staffEmail="owner@mpillow.com" />,
     );
     expect(html).toContain("New campaign");
-    expect(html).toContain("Your Mpillow account is ready");
+    expect(html).toContain("Our new website is here, with points waiting for you");
+    expect(html).toContain("Sign in within 3 months of this email and we&#x27;ll add 1,000 points");
     expect(html).toContain("Imported from Shopify, not signed in yet");
-    expect(html).not.toMatch(/voucher|points|% off|discount/i);
+    // The audience name is for Staff; the email itself never names the old platform.
+    expect(html.replace("Imported from Shopify, not signed in yet", "")).not.toMatch(/shopify|moved|migrat/i);
+    expect(html).not.toMatch(/voucher/i);
     // Nothing to test or send until it is saved.
     expect(html).not.toContain("Send a test");
   });

@@ -367,15 +367,21 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
 }
 
 /**
- * The draft a new campaign starts from: the Shopify customers' invitation to
- * their account, with no offer. Staff change any of it before sending.
+ * The draft a new campaign starts from: the imported customers' invitation to
+ * the new website, with the Claim bonus (PRD-loyalty-points: 1,000 points,
+ * S$10 off a shop order, for signing in within 3 months of this email). It
+ * names no old platform (owner, 2026-10-21). Staff change any of it before
+ * sending.
  */
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
-  name: "Your account is ready (Shopify customers)",
-  subject: "Your Mpillow account is ready",
-  preheader: "Sign in with the email you shopped with. There's no password to set.",
+  name: "New website: sign in for points",
+  subject: "Our new website is here, with points waiting for you",
+  preheader: "Sign in within 3 months to collect 1,000 points, worth S$10 off your next order.",
   body: [
-    "Mpillow's online shop has moved from Shopify to our own site, and your account is ready. There's nothing to fill in and no password to set: sign in with the email you shopped with, and it's yours.",
+    "We have a new website, and your Mpillow account is ready on it. There's nothing to fill in and no password to set: sign in with this email address, and it's yours.",
+    "",
+    "## Points for signing in",
+    "Sign in within 3 months of this email and we'll add 1,000 points to your account. That's S$10 off your next shop order, taken off at checkout.",
     "",
     "## What your account does",
     "- Saves your delivery addresses for a faster checkout",
@@ -386,7 +392,7 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
     "Questions? Just reply to this email.",
   ].join("\n"),
   greeting: true,
-  button: { target: "sign_in", label: "Sign in to your account", url: null },
+  button: { target: "sign_in", label: "Sign in and collect your points", url: null },
   audience: "imported_not_signed_in",
   segmentId: null,
 };
