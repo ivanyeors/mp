@@ -225579,7 +225579,7 @@
       "node_kind": "heading",
       "norm_label": "build notes",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L147"
+      "source_location": "L149"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_12_account_status_and_customer_overview_schema",
@@ -230437,6 +230437,18 @@
       "type": "external"
     },
     {
+      "id": "lib_rules_engine_index_validateforpublish",
+      "label": "lib_rules_engine_index_validateforpublish",
+      "_origin": "semantic",
+      "community": 27,
+      "community_name": "rules-engine/index.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "lib_rules_engine_index_validateforpublish",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "pil",
       "label": "pil",
       "_origin": "semantic",
@@ -231261,17 +231273,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "yaml",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "lib_rules_engine_index_validateforpublish",
-      "label": "lib_rules_engine_index_validateforpublish",
-      "community": 27,
-      "community_name": "rules-engine/index.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "lib_rules_engine_index_validateforpublish",
       "source_file": "",
       "type": "external"
     }
@@ -679745,7 +679746,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L147",
+      "source_location": "L149",
       "weight": 1.0
     },
     {
@@ -812005,7 +812006,7 @@
       "confidence_score": 0.95,
       "context": "CustomerOverviewRow",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L152",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -812017,7 +812018,7 @@
       "confidence_score": 0.95,
       "context": "CustomersClient",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L242",
+      "source_location": "L244",
       "weight": 1.0
     },
     {
@@ -814045,7 +814046,7 @@
       "confidence_score": 0.95,
       "context": "applyCustomerFilters",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L154",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -815485,7 +815486,7 @@
       "confidence_score": 0.95,
       "context": "claimOnSignIn",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L248",
+      "source_location": "L250",
       "weight": 1.0
     },
     {
@@ -815797,7 +815798,7 @@
       "confidence_score": 0.95,
       "context": "countSignUps",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L250",
+      "source_location": "L252",
       "weight": 1.0
     },
     {
@@ -816205,7 +816206,7 @@
       "confidence_score": 0.95,
       "context": "customerFilterParams",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L155",
+      "source_location": "L157",
       "weight": 1.0
     },
     {
@@ -818761,7 +818762,7 @@
       "confidence_score": 0.95,
       "context": "getAdminCustomer",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L159",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -819109,7 +819110,7 @@
       "confidence_score": 0.95,
       "context": "getMigratedCustomer",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L167",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -819121,7 +819122,7 @@
       "confidence_score": 0.95,
       "context": "getMigrationSummary",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L166",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -820729,7 +820730,7 @@
       "confidence_score": 0.95,
       "context": "lastSeenIsStale",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L161",
+      "source_location": "L163",
       "weight": 1.0
     },
     {
@@ -821029,7 +821030,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L162",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -821317,7 +821318,7 @@
       "confidence_score": 0.95,
       "context": "listAdminCustomers",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L158",
+      "source_location": "L160",
       "weight": 1.0
     },
     {
@@ -822625,7 +822626,7 @@
       "confidence_score": 0.95,
       "context": "now()",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L188",
+      "source_location": "L190",
       "weight": 1.0
     },
     {
@@ -822889,7 +822890,7 @@
       "confidence_score": 0.95,
       "context": "or",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L155",
+      "source_location": "L157",
       "weight": 1.0
     },
     {
@@ -823525,7 +823526,7 @@
       "confidence_score": 0.95,
       "context": "parseCustomerFilters",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L154",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -828553,7 +828554,7 @@
       "confidence_score": 0.95,
       "context": "touchCustomerLastSeen",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/12-account-status-and-customer-overview.md",
-      "source_location": "L161",
+      "source_location": "L163",
       "weight": 1.0
     },
     {
@@ -829564,5 +829565,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "1571dacb29bdb44c3a508b85bd2af36bfe9a80d6"
+  "built_at_commit": "38c2b56ecf477da63e71cebc95dbb9ff05ac17bd"
 }
