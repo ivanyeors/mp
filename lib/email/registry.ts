@@ -10,9 +10,9 @@
 // Every `render` must be PURE — no network, no DB.
 
 import { renderWelcomeVoucherEmail } from "./account";
-import { renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
-import { renderApplicationOutcomeEmail } from "./application";
-import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
+import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
+import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
+import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderComposedCampaignEmail } from "./campaigns";
 import { renderContactEmail } from "./contact";
 import {
@@ -22,6 +22,7 @@ import {
 } from "./migration";
 import { renderHeldResultReminderEmail, renderPartnerListingUpdatedEmail } from "./ops";
 import {
+  PARTNER_EMAIL_COPY,
   renderMilestoneEmail,
   renderPayoutEmail,
   renderReacceptEmail,
@@ -39,8 +40,8 @@ import {
 } from "./results";
 import { money } from "./format";
 import { getSiteOrigin } from "@/lib/site-url";
-import { renderReadjustmentRescheduleEmail } from "./readjustment";
-import { RMA_EMAIL_TEMPLATES } from "./rma";
+import { READJUSTMENT_RESCHEDULE_EMAIL_COPY, renderReadjustmentRescheduleEmail } from "./readjustment";
+import { RMA_EMAIL_COPY, RMA_EMAIL_TEMPLATES, renderRmaEmail } from "./rma";
 import { ORDER_EMAIL_COPY, ORDER_EMAIL_TEMPLATES, renderOrderEmail } from "./templates";
 import {
   sampleApplication,
@@ -126,6 +127,13 @@ export interface EmailCase {
   render: (fixture: EmailFixture, copy?: EmailCopy) => RenderedEmail;
 }
 
+/**
+ * A preview's copy typed as `spec`'s own fields: the entry pairs the
+ * renderer with its spec, so the editor's copy is that spec's.
+ */
+const copyFor = <S extends EmailCopySpec>(_spec: S, copy?: EmailCopy) =>
+  copy as EmailCopy<keyof S["fields"] & string> | undefined;
+
 const ORDER_LABELS: Record<EmailTemplateName, string> = {
   order_confirmation: "Order confirmed",
   payment_receipt: "Payment receipt",
@@ -187,7 +195,8 @@ const rmaCases: EmailCase[] = (
   label: RMA_LABELS[key],
   group: "rma",
   audience: "customer",
-  render: (f) => RMA_EMAIL_TEMPLATES[key](sampleRma(f)),
+  copy: RMA_EMAIL_COPY[key],
+  render: (f, copy) => renderRmaEmail(key, sampleRma(f), copy),
 }));
 
 export const EMAIL_REGISTRY: readonly EmailCase[] = [
@@ -346,7 +355,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Re-adjustment paid — new time needed",
     group: "results",
     audience: "customer",
-    render: (f) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f)),
+    copy: READJUSTMENT_RESCHEDULE_EMAIL_COPY,
+    render: (f, copy) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f), copy),
   },
 
   // --- Customer account ---
@@ -432,7 +442,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Review request",
     group: "aftercare",
     audience: "customer",
-    render: (f) => renderReviewRequestEmail(sampleReviewRequest(f)),
+    copy: REVIEW_REQUEST_EMAIL_COPY,
+    render: (f, copy) => renderReviewRequestEmail(sampleReviewRequest(f), copy),
   },
   {
     // Same renderer with no first name on file: the greeting is the one line
@@ -441,7 +452,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Review request — no first name",
     group: "aftercare",
     audience: "customer",
-    render: (f) => renderReviewRequestEmail(sampleReviewRequestNoName(f)),
+    copy: REVIEW_REQUEST_EMAIL_COPY,
+    render: (f, copy) => renderReviewRequestEmail(sampleReviewRequestNoName(f), copy),
   },
   {
     // Yearly, Premium Mpillow only, stating the fee from Costings; email needs
@@ -451,7 +463,17 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Check-up reminder",
     group: "aftercare",
     audience: "customer",
-    render: (f) => renderCheckupEmail(sampleCheckup(f)),
+    copy: CHECKUP_EMAIL_COPY,
+    render: (f, copy) => renderCheckupEmail(sampleCheckup(f), copy),
+  },
+  {
+    // Same renderer with no first name on file: the greeting changes.
+    id: "aftercare.checkup_no_name",
+    label: "Check-up reminder — no first name",
+    group: "aftercare",
+    audience: "customer",
+    copy: CHECKUP_EMAIL_COPY,
+    render: (f, copy) => renderCheckupEmail({ ...sampleCheckup(f), firstName: null }, copy),
   },
 
   // --- Partner programme ---
@@ -460,49 +482,88 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Commission earned",
     group: "partner",
     audience: "partner",
-    render: (f) =>
-      renderReferralEarnedEmail({
-        money: f === "hostile" ? HOSTILE : money(48, "SGD"),
-        releaseAtIso: "2026-09-04T02:00:00.000Z",
-      }),
+    copy: PARTNER_EMAIL_COPY.referral_earned,
+    render: (f, copy) =>
+      renderReferralEarnedEmail(
+        {
+          money: f === "hostile" ? HOSTILE : money(48, "SGD"),
+          releaseAtIso: "2026-09-04T02:00:00.000Z",
+        },
+        copyFor(PARTNER_EMAIL_COPY.referral_earned, copy),
+      ),
+  },
+  {
+    // The usual case: a shop order not yet delivered has no release date.
+    id: "partner.referral_earned_undated",
+    label: "Commission earned — order not yet delivered",
+    group: "partner",
+    audience: "partner",
+    copy: PARTNER_EMAIL_COPY.referral_earned,
+    render: (f, copy) =>
+      renderReferralEarnedEmail({ money: f === "hostile" ? HOSTILE : money(48, "SGD"), releaseAtIso: null }, copyFor(PARTNER_EMAIL_COPY.referral_earned, copy)),
   },
   {
     id: "partner.milestone_reached",
     label: "Milestone reached",
     group: "partner",
     audience: "partner",
-    render: (f) =>
-      renderMilestoneEmail({
-        tier: 2,
-        bonus: money(75, "SGD"),
-        perk: f === "hostile" ? `<img src=x onerror=alert(1)>` : "Priority support",
-      }),
+    copy: PARTNER_EMAIL_COPY.milestone_reached,
+    render: (f, copy) =>
+      renderMilestoneEmail(
+        {
+          tier: 2,
+          bonus: money(75, "SGD"),
+          perk: f === "hostile" ? `<img src=x onerror=alert(1)>` : "Priority support",
+        },
+        copyFor(PARTNER_EMAIL_COPY.milestone_reached, copy),
+      ),
   },
   {
     id: "partner.payout_made",
     label: "Payout sent",
     group: "partner",
     audience: "partner",
-    render: (f) =>
-      renderPayoutEmail({
-        money: f === "hostile" ? HOSTILE : money(240, "SGD"),
-        paidOn: f === "hostile" ? HOSTILE : "1 August 2026",
-        // Externally-sourced signed URL landing in an href.
-        proofUrl:
-          f === "hostile"
-            ? "javascript:alert(1)"
-            : "https://storage.mpillow.com/proofs/payout-9912.png?sig=abc",
-      }),
+    copy: PARTNER_EMAIL_COPY.payout_made,
+    render: (f, copy) =>
+      renderPayoutEmail(
+        {
+          money: f === "hostile" ? HOSTILE : money(240, "SGD"),
+          paidOn: f === "hostile" ? HOSTILE : "1 August 2026",
+          // Externally-sourced signed URL landing in an href.
+          proofUrl:
+            f === "hostile"
+              ? "javascript:alert(1)"
+              : "https://storage.mpillow.com/proofs/payout-9912.png?sig=abc",
+        },
+        copyFor(PARTNER_EMAIL_COPY.payout_made, copy),
+      ),
+  },
+  {
+    // No proof of payment attached: the button opens the Partner Hub instead.
+    id: "partner.payout_made_no_proof",
+    label: "Payout sent — no proof attached",
+    group: "partner",
+    audience: "partner",
+    copy: PARTNER_EMAIL_COPY.payout_made,
+    render: (f, copy) =>
+      renderPayoutEmail(
+        { money: f === "hostile" ? HOSTILE : money(240, "SGD"), paidOn: f === "hostile" ? HOSTILE : "1 August 2026", proofUrl: null },
+        copyFor(PARTNER_EMAIL_COPY.payout_made, copy),
+      ),
   },
   {
     id: "partner.reaccept_terms",
     label: "Agreement re-accepted",
     group: "partner",
     audience: "partner",
-    render: (f) =>
-      renderReacceptEmail({
-        agreementVersion: f === "hostile" ? `<script>alert(1)</script>` : "2026-07-28",
-      }),
+    copy: PARTNER_EMAIL_COPY.reaccept_terms,
+    render: (f, copy) =>
+      renderReacceptEmail(
+        {
+          agreementVersion: f === "hostile" ? `<script>alert(1)</script>` : "2026-07-28",
+        },
+        copyFor(PARTNER_EMAIL_COPY.reaccept_terms, copy),
+      ),
   },
 
   // --- Partner application outcome ---
@@ -511,14 +572,16 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Application approved",
     group: "application",
     audience: "partner",
-    render: (f) => renderApplicationOutcomeEmail("approved", sampleApplication(f)),
+    copy: APPLICATION_EMAIL_COPY.approved,
+    render: (f, copy) => renderApplicationOutcomeEmail("approved", sampleApplication(f), copy),
   },
   {
     id: "application.rejected",
     label: "Application rejected",
     group: "application",
     audience: "partner",
-    render: (f) => renderApplicationOutcomeEmail("rejected", sampleApplication(f)),
+    copy: APPLICATION_EMAIL_COPY.rejected,
+    render: (f, copy) => renderApplicationOutcomeEmail("rejected", sampleApplication(f), copy),
   },
 
   // --- Identity ---
@@ -527,7 +590,8 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Backup email verification code",
     group: "auth",
     audience: "partner",
-    render: (f) => renderBackupEmailOtpEmail({ code: f === "hostile" ? HOSTILE : "418320" }),
+    copy: AUTH_EMAIL_COPY.backup_email_otp,
+    render: (f, copy) => renderBackupEmailOtpEmail({ code: f === "hostile" ? HOSTILE : "418320" }, copyFor(AUTH_EMAIL_COPY.backup_email_otp, copy)),
   },
   {
     id: "auth.admin_invite",

@@ -22,7 +22,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
-import { renderCheckupEmail } from "@/lib/email/aftercare";
+import { CHECKUP_EMAIL_COPY, renderCheckupEmail } from "@/lib/email/aftercare";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import { getSupportInbox } from "@/lib/email/contact";
 import { CUSTOMER_EMAIL_MAX_ATTEMPTS, dispatchCustomerEmail } from "@/lib/email/customer-emails";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -318,18 +319,23 @@ export function checkupBookingUrl(origin: string, orderItemId: string): string {
   return `${origin.replace(/\/$/, "")}${path}?type=readjustment&item=${encodeURIComponent(orderItemId)}`;
 }
 
-function renderFor(origin: string, item: PlannedCheckup, fee: string) {
-  return renderCheckupEmail({
-    firstName: item.customer.first_name,
-    product: CHECKUP_PRODUCT,
-    orderNumber: item.order.order_number,
-    deliveredOn: aftercareDateSgt(item.order.delivered_at!),
-    fee,
-    bookingUrl: checkupBookingUrl(origin, item.orderItemId),
-    accountUrl: aftercareAccountUrl(origin),
-    supportWhatsAppDisplay: SUPPORT_WHATSAPP_DISPLAY,
-    supportWhatsAppUrl: SUPPORT_WHATSAPP_URL,
-  });
+async function renderFor(origin: string, item: PlannedCheckup, fee: string) {
+  // The words Staff saved on Email templates, or the defaults (never throws).
+  const copy = await loadEmailCopy(CHECKUP_EMAIL_COPY);
+  return renderCheckupEmail(
+    {
+      firstName: item.customer.first_name,
+      product: CHECKUP_PRODUCT,
+      orderNumber: item.order.order_number,
+      deliveredOn: aftercareDateSgt(item.order.delivered_at!),
+      fee,
+      bookingUrl: checkupBookingUrl(origin, item.orderItemId),
+      accountUrl: aftercareAccountUrl(origin),
+      supportWhatsAppDisplay: SUPPORT_WHATSAPP_DISPLAY,
+      supportWhatsAppUrl: SUPPORT_WHATSAPP_URL,
+    },
+    copy,
+  );
 }
 
 function sendEmail(admin: SupabaseClient, item: PlannedCheckup, to: string, ctx: { origin: string; fee: string }) {

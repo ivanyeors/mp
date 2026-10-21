@@ -129,19 +129,21 @@ describe("renderRmaEmail", () => {
     // already said "your return", producing "your return was approved for your
     // return on order MP-1001".
     for (const t of LIFECYCLE) {
-      const sentence = renderRmaEmail(t, DATA).text.split("\n").filter(Boolean)[1];
+      // The plain text opens with the message, greeting and sentence in one line.
+      const sentence = renderRmaEmail(t, DATA).text.split("\n").filter(Boolean)[0];
+      expect(sentence).toMatch(/^Hi Ada Lovelace, /);
       expect(sentence.toLowerCase().match(/your return/g)?.length ?? 0).toBeLessThan(2);
     }
   });
 
   it("keeps the HTML sentence and the plain-text sentence in step", () => {
-    // One `sentence` feeds both renderings; this catches the two drifting the
+    // One `intro` feeds both renderings; this catches the two drifting the
     // way the shipping email's did.
     for (const t of LIFECYCLE.slice(1)) {
       const r = renderRmaEmail(t, DATA);
-      const sentence = r.text.split("\n").filter(Boolean)[1];
-      const inBody = escapeHtml(sentence.replace(/^./, (c) => c.toLowerCase()));
-      expect(r.html).toContain(inBody);
+      const sentence = r.text.split("\n").filter(Boolean)[0];
+      expect(sentence).toMatch(/^Hi Ada Lovelace, .*MP-1001/);
+      expect(r.html).toContain(`>${escapeHtml(sentence)}</p>`);
     }
   });
 });

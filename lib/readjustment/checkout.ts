@@ -14,7 +14,8 @@ import { upsertPendingReminder } from "@/lib/appointments/reminders-db";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import { toStripeAmountCents } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
-import { renderReadjustmentRescheduleEmail } from "@/lib/email/readjustment";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import { READJUSTMENT_RESCHEDULE_EMAIL_COPY, renderReadjustmentRescheduleEmail } from "@/lib/email/readjustment";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { getLocation } from "@/lib/locations";
 import { getStripe } from "@/lib/stripe/client";
@@ -210,18 +211,23 @@ export async function finalizeReadjustmentBooking(
       ].join("\n"),
     );
     try {
+      // The words Staff saved on Email templates, or the defaults (never throws).
+      const copy = await loadEmailCopy(READJUSTMENT_RESCHEDULE_EMAIL_COPY);
       await getEmailTransport().send({
         to: booking.email,
         from: getDefaultFromAddress(),
-        ...renderReadjustmentRescheduleEmail({
-          guestName: booking.guest_name,
-          productLabel: booking.product_label,
-          wanted: when(booking.start_at),
-          locationName: booking.location_name,
-          amount: Number(booking.fee_amount),
-          currency: "SGD",
-          orderNumber: feeOrderNumber,
-        }),
+        ...renderReadjustmentRescheduleEmail(
+          {
+            guestName: booking.guest_name,
+            productLabel: booking.product_label,
+            wanted: when(booking.start_at),
+            locationName: booking.location_name,
+            amount: Number(booking.fee_amount),
+            currency: "SGD",
+            orderNumber: feeOrderNumber,
+          },
+          copy,
+        ),
       });
     } catch (e) {
       console.error("[readjustment] reschedule email failed", e);

@@ -28,7 +28,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPhoneAllowed } from "@/lib/appointments/phone";
 import { readWhatsAppGate } from "@/lib/aftercare/preferences";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
-import { renderReviewRequestEmail } from "@/lib/email/aftercare";
+import { REVIEW_REQUEST_EMAIL_COPY, renderReviewRequestEmail } from "@/lib/email/aftercare";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import { getSupportInbox } from "@/lib/email/contact";
 import { CUSTOMER_EMAIL_MAX_ATTEMPTS, dispatchCustomerEmail } from "@/lib/email/customer-emails";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -259,20 +260,25 @@ export function aftercareAccountUrl(origin: string): string {
   return `${origin.replace(/\/$/, "")}${withLocale("/account/login", DEFAULT_LOCALE)}?next=${encodeURIComponent(account)}`;
 }
 
-function renderFor(
+async function renderFor(
   origin: string,
   input: { firstName: string | null; order: ReviewOrderRow; product: string; token: string },
 ) {
-  return renderReviewRequestEmail({
-    firstName: input.firstName,
-    product: input.product,
-    orderNumber: input.order.order_number,
-    deliveredOn: aftercareDateSgt(input.order.delivered_at!),
-    reviewUrl: reviewLinkUrl(origin, input.token),
-    accountUrl: aftercareAccountUrl(origin),
-    supportWhatsAppDisplay: SUPPORT_WHATSAPP_DISPLAY,
-    supportWhatsAppUrl: SUPPORT_WHATSAPP_URL,
-  });
+  // The words Staff saved on Email templates, or the defaults (never throws).
+  const copy = await loadEmailCopy(REVIEW_REQUEST_EMAIL_COPY);
+  return renderReviewRequestEmail(
+    {
+      firstName: input.firstName,
+      product: input.product,
+      orderNumber: input.order.order_number,
+      deliveredOn: aftercareDateSgt(input.order.delivered_at!),
+      reviewUrl: reviewLinkUrl(origin, input.token),
+      accountUrl: aftercareAccountUrl(origin),
+      supportWhatsAppDisplay: SUPPORT_WHATSAPP_DISPLAY,
+      supportWhatsAppUrl: SUPPORT_WHATSAPP_URL,
+    },
+    copy,
+  );
 }
 
 /** Ask one Customer: claim the row, then send on each planned channel. */

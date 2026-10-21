@@ -9,31 +9,67 @@
 
 import { renderEmailShell } from "./base";
 import { codeBlock, infoList, paragraph } from "./components";
+import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy } from "./copy";
 import type { RenderedEmail } from "./types";
 
-/** Backup-email verification code for a Partner account. */
-export function renderBackupEmailOtpEmail(p: {
-  code: string;
-  expiresInMinutes?: number;
-}): RenderedEmail {
-  const minutes = p.expiresInMinutes ?? 10;
-  const subject = "Verify your backup email";
-  const text = `Your Mpillow Partner backup-email verification code is: ${p.code}
+// ------------------------------------------------------------
+// The words of the partner's verification email (PRD-email-templates)
+// ------------------------------------------------------------
+//
+// The code is data and stays in code. The Admin Panel invite below is Staff
+// mail and is not editable.
 
-It expires in ${minutes} minutes. If you didn't request this, ignore this email.`;
+export const AUTH_EMAIL_COPY = {
+  backup_email_otp: defineEmailCopy({
+    id: "auth.backup_email_otp",
+    name: "Backup email verification code",
+    description: "Sent when a partner adds a backup email address, with the code that verifies it.",
+    placeholders: { minutes: "How many minutes the code works for, e.g. 10" },
+    fields: {
+      subject: { label: "Subject", default: "Verify your backup email" },
+      preheader: { label: "Inbox preview line", default: "Your verification code expires in {minutes} minutes." },
+      heading: { label: "Heading", default: "Verify your backup email" },
+      intro: { label: "Above the code", default: "Your Mpillow Partner backup-email verification code is:" },
+      expiry: { label: "Under the code", default: "Expires in {minutes} minutes" },
+      closing: { label: "Closing line", default: "If you didn't request this, you can safely ignore this email." },
+    },
+  }),
+};
+
+type BackupEmailOtpCopy = EmailCopy<keyof typeof AUTH_EMAIL_COPY.backup_email_otp.fields>;
+
+/** Fill every field of `copy` from `values`. */
+function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
+  const out = {} as EmailCopy<K>;
+  for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
+  return out;
+}
+
+/** Backup-email verification code for a Partner account. */
+export function renderBackupEmailOtpEmail(
+  p: {
+    code: string;
+    expiresInMinutes?: number;
+  },
+  copy: BackupEmailOtpCopy = defaultEmailCopy(AUTH_EMAIL_COPY.backup_email_otp),
+): RenderedEmail {
+  const minutes = p.expiresInMinutes ?? 10;
+  const t = filled(copy, { minutes });
+  const text = `${t.intro} ${p.code}
+${t.expiry}
+
+${t.closing}`;
 
   const html = renderEmailShell({
-    title: "Verify your backup email",
-    preheader: `Your verification code expires in ${minutes} minutes.`,
+    title: t.heading,
+    preheader: t.preheader,
     audience: "partner",
-    bodyHtml: `${paragraph("Your Mpillow Partner backup-email verification code is:")}
-${codeBlock(p.code, { caption: `Expires in ${minutes} minutes` })}
-${paragraph("If you didn't request this, you can safely ignore this email.", {
-      muted: true,
-    })}`,
+    bodyHtml: `${paragraph(t.intro)}
+${codeBlock(p.code, { caption: t.expiry })}
+${paragraph(t.closing, { muted: true })}`,
   });
 
-  return { subject, text, html };
+  return { subject: t.subject, text, html };
 }
 
 /**
