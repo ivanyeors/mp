@@ -49,8 +49,10 @@ type Pending = { preference: AftercarePreference; value: boolean };
  *
  * Its own fetch, like the orders and addresses panels beside it, unless the
  * page hands it `initialView`.
- * ponytail: slice 11's Contact and sign-in card is not built yet; when it is,
- * these two switches move into it.
+ *
+ * It sits directly under slice 11's Contact and sign-in card rather than
+ * inside it (CRM 11 build notes): that card only reads facts, and these
+ * switches change things, with a dialog, a note and a history of their own.
  */
 export function AftercareCard({
     customerId,

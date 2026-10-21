@@ -48,7 +48,8 @@ import type { CustomerNote } from "@/lib/crm/note-rules";
 import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
 import { CustomerTimelineCard } from "./customer-timeline-card";
 import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
-import { AccountCard, FromShopifyCard } from "./customer-account-cards";
+import { ContactCard, FromShopifyCard } from "./customer-account-cards";
+import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -120,6 +121,8 @@ export type CustomerDetailInitialData = {
     notes: CustomerNote[] | null;
     /** What the Shopify import holds for them (migration slice 12): the From Shopify card. */
     migration?: MigratedCustomerResult;
+    /** WhatsApp and the other numbers seen, matched by phone on the server (CRM slice 11). */
+    contact?: ContactFactsResult;
 };
 
 const emptyAddress: AddressFormState = {
@@ -749,10 +752,16 @@ export function CustomerDetailClient({
                         </CardContent>
                     </Card>
 
-                    {/* Account status, for every Customer (migration slice 12) */}
-                    <AccountCard customer={customer} />
+                    {/* Contact status, for every Customer (CRM slice 11; migration slice 12's Account card) */}
+                    <ContactCard
+                        customer={customer}
+                        createdByImport={
+                            initialData?.migration?.ok ? initialData.migration.facts?.createdByImport : null
+                        }
+                        contact={initialData?.contact}
+                    />
 
-                    {/* Aftercare switches (CRM slice 13) */}
+                    {/* Aftercare switches (CRM slice 13), beside the Contact card: they change things */}
                     <AftercareCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
