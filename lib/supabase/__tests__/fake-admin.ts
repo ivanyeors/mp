@@ -9,10 +9,27 @@
  * A to-one embed in the select list (`role:admin_roles(...)`) is resolved
  * through the `<alias>_id` column, or the column named by a `!column` hint
  * (`member:admin_users!admin_user_id(...)`), as PostgREST does through the
- * foreign key.
+ * foreign key. An `!inner` embed (`orders!inner(...)`, keyed by the singular
+ * table name's `_id` column when it has no alias) drops rows it does not match,
+ * and a filter on `orders.customer_id` reads the embedded row, as PostgREST's
+ * embedded filters do.
+ *
+ * `lt`/`lte`/`gt`/`gte` compare two ISO timestamps as instants, to the
+ * microsecond, as Postgres compares timestamptz: `…:00Z` and `…:00.000000Z`
+ * are the same time. Anything else compares as strings.
+ * `filter(col, "imatch", re)` is a case-insensitive regex match.
  */
 type Row = Record<string, unknown>;
 export type FakeDb = Record<string, Row[]>;
+
+/** An ISO timestamp as a sortable UTC string with six fraction digits, or null. */
+function instant(value: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})$/.exec(value);
+  if (!m) return null;
+  const ms = Date.parse(`${m[1]}${m[3]}`);
+  if (Number.isNaN(ms)) return null;
+  return `${new Date(ms).toISOString().slice(0, 19)}.${(m[2] ?? "").padEnd(6, "0").slice(0, 6)}Z`;
+}
 
 const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -29,6 +46,26 @@ export function likeMatch(pattern: string, value: unknown): boolean {
   return new RegExp(`^${re}$`, "is").test(value);
 }
 
+type Embed = { alias: string; table: string; fk: string; inner: boolean };
+
+/**
+ * `alias:table(...)`, `alias:table!fk(...)` and `[alias:]table!inner(...)`. An
+ * unaliased embed is read only with `!inner`, so a select that never relied on
+ * one keeps returning the rows it always did.
+ */
+function parseEmbeds(cols: string): Embed[] {
+  const out: Embed[] = [];
+  for (const m of cols.matchAll(/(?:(\w+):)?(\w+)((?:!\w+)*)\(/g)) {
+    const [, alias, table, mods] = m;
+    const hints = mods.split("!").filter(Boolean);
+    const inner = hints.includes("inner");
+    if (!alias && !inner) continue;
+    const fk = hints.find((h) => h !== "inner") ?? (alias ? `${alias}_id` : `${table.replace(/s$/, "")}_id`);
+    out.push({ alias: alias ?? table, table, fk, inner });
+  }
+  return out;
+}
+
 export function fakeSupabaseAdmin(db: FakeDb) {
   return {
     from(table: string) {
@@ -37,40 +74,77 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let removing = false;
       let head = false;
       let inserted: Row | null = null;
-      let embeds: Array<[alias: string, table: string, fk: string]> = [];
+      let embeds: Embed[] = [];
       let sort: { col: string; asc: boolean } | null = null;
+      let limit: number | null = null;
+      const embedded = (row: Row, e: Embed): Row | null => (db[e.table] ?? []).find((o) => o.id === row[e.fk]) ?? null;
+      // `orders.customer_id` reads the embedded `orders` row.
+      const value = (row: Row, col: string): unknown => {
+        const dot = col.indexOf(".");
+        if (dot < 0) return row[col];
+        const e = embeds.find((x) => x.alias === col.slice(0, dot));
+        return e ? embedded(row, e)?.[col.slice(dot + 1)] : undefined;
+      };
       const out = (row: Row): Row => {
         if (!embeds.length) return row;
         const copy = { ...row };
-        for (const [alias, other, fk] of embeds) {
-          copy[alias] = (db[other] ?? []).find((o) => o.id === row[fk]) ?? null;
-        }
+        for (const e of embeds) copy[e.alias] = embedded(row, e);
         return copy;
       };
       const rows = () => {
-        const r = inserted ? [inserted] : (db[table] ??= []).filter((row) => filters.every((f) => f(row)));
+        let r = inserted
+          ? [inserted]
+          : (db[table] ??= []).filter(
+              (row) => filters.every((f) => f(row)) && embeds.every((e) => !e.inner || embedded(row, e) !== null),
+            );
         if (patch) for (const row of r) Object.assign(row, patch);
         if (removing) db[table] = (db[table] ?? []).filter((row) => !r.includes(row));
         if (sort) {
           const { col, asc } = sort;
           r.sort((a, b) => (String(a[col] ?? "") < String(b[col] ?? "") ? -1 : 1) * (asc ? 1 : -1));
         }
+        if (limit !== null) r = r.slice(0, limit);
         return r;
+      };
+      const cmp = (col: string, test: (a: string, b: string) => boolean, val: unknown) => {
+        filters.push((r) => {
+          const v = value(r, col);
+          if (v == null) return false;
+          const [a, b] = [String(v), String(val)];
+          const ta = instant(a);
+          const tb = instant(b);
+          return ta !== null && tb !== null ? test(ta, tb) : test(a, b);
+        });
+        return q;
       };
       const q = {
         select: (cols?: string, opts?: { head?: boolean }) => {
           head = Boolean(opts?.head);
-          embeds = [...(cols ?? "").matchAll(/(\w+):(\w+)(?:!(\w+))?\(/g)].map((m) => [m[1], m[2], m[3] ?? `${m[1]}_id`]);
+          embeds = parseEmbeds(cols ?? "");
           return q;
         },
-        eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
-        in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(r[col])), q),
+        eq: (col: string, val: unknown) => (filters.push((r) => value(r, col) === val), q),
+        in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(value(r, col))), q),
         order: (col: string, opts?: { ascending?: boolean }) => ((sort = { col, asc: opts?.ascending !== false }), q),
-        neq: (col: string, val: unknown) => (filters.push((r) => r[col] !== val), q),
-        is: (col: string, val: null) => (filters.push((r) => (r[col] ?? null) === val), q),
-        not: (col: string, _op: "is", val: null) => (filters.push((r) => (r[col] ?? null) !== val), q),
+        limit: (n: number) => ((limit = n), q),
+        neq: (col: string, val: unknown) => (filters.push((r) => value(r, col) !== val), q),
+        is: (col: string, val: null) => (filters.push((r) => (value(r, col) ?? null) === val), q),
+        not: (col: string, _op: "is", val: null) => (filters.push((r) => (value(r, col) ?? null) !== val), q),
+        lt: (col: string, val: unknown) => cmp(col, (a, b) => a < b, val),
+        lte: (col: string, val: unknown) => cmp(col, (a, b) => a <= b, val),
+        gt: (col: string, val: unknown) => cmp(col, (a, b) => a > b, val),
+        gte: (col: string, val: unknown) => cmp(col, (a, b) => a >= b, val),
+        filter: (col: string, op: string, val: string) => {
+          if (op !== "imatch" && op !== "match") throw new Error(`fake-admin: filter "${op}" is not supported`);
+          const re = new RegExp(val, op === "imatch" ? "i" : "");
+          filters.push((r) => {
+            const v = value(r, col);
+            return typeof v === "string" && re.test(v);
+          });
+          return q;
+        },
         ilike: (col: string, pattern: string) =>
-          (filters.push((r) => likeMatch(pattern.replaceAll("*", "%"), r[col])), q),
+          (filters.push((r) => likeMatch(pattern.replaceAll("*", "%"), value(r, col))), q),
         update: (p: Row) => ((patch = p), q),
         delete: () => ((removing = true), q),
         insert: (row: Row) => {

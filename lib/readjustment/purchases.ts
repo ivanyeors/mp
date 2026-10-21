@@ -27,9 +27,11 @@ import {
 } from "@/lib/pricing/service-prices";
 
 /**
- * Orders that were never paid for, or whose money went back, hold nothing to re-adjust.
- * `customer_purchase_lines` and the Customer overview count Orders by the same
- * rule in SQL (CRM slice 04; lib/crm/purchase-lines.check.ts keeps them equal).
+ * Orders that were never paid for, or whose money went back, hold nothing to
+ * re-adjust. A counted Order is one with `paid_at` set and a status outside
+ * this set; the review request (CRM slice 07) uses the same rule, and
+ * `customer_purchase_lines` and the Customer overview count Orders by it in
+ * SQL (CRM slice 04; lib/crm/purchase-lines.check.ts keeps them equal).
  */
 export const NOT_A_PURCHASE: ReadonlySet<string> = new Set(["pending", "cancelled", "refunded", "payment_failed"]);
 
