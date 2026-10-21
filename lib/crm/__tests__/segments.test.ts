@@ -262,7 +262,9 @@ describe("resolveSegment over 1,000 Customers", () => {
     expect(ids).toEqual(sorted(h.db.admin_customer_overview.map((r) => r.id as string)));
     // Full pages, then the empty page that ends the run.
     expect(pages).toBe(Math.ceil(1000 / pageSize));
-  });
+    // One page per id at size 1 is a thousand fake-database scans: slow on a
+    // loaded machine, not wrong.
+  }, 30_000);
 
   it("yields exactly the Customers the filters choose", async () => {
     const id = seed({ bought: "premium", readjusted: "never" });

@@ -138,6 +138,10 @@ describe("choosing a Segment", () => {
       last_order: null,
       readjusted: "never",
       min_spend: null,
+      // CRM slice 12's review filters.
+      google_review: "all",
+      shop_review: "all",
+      rating: null,
     });
   });
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countReviewRequests } from "@/lib/aftercare/review-request-counts";
+import { countGoogleReviewsLinked, countReviewsToMatch } from "@/lib/crm/google-review-match-server";
 import { sgtDay, type CountWindow, type SignUpCounts, type WeeklySummaryCounts } from "@/lib/crm/telegram-updates";
 
 /**
@@ -7,31 +8,26 @@ import { sgtDay, type CountWindow, type SignUpCounts, type WeeklySummaryCounts }
  *
  * Every function here returns a count and never a row: nothing that names a
  * customer leaves this file, so nothing that names one can reach the Staff
- * group (README, third hazard). Each query uses `head: true`.
+ * group (README, third hazard). Each query uses `head: true`, except the
+ * Google reviews to match, which are counted after their suggestions are
+ * computed (CRM slice 12) and leave as a number.
  *
- * One source does not exist yet. Its function is the seam the owning slice
- * fills, and until then returns `null`, which the job reports as `not_built`
- * and posts nothing for:
- *
- *  - {@link countGoogleReviewsToMatch} — CRM slice 12 (`customer_google_reviews`).
- *
- * {@link countSignUps} was the other seam; migration slice 12 filled it
- * (`account_linked_at` on the Customer overview). It also feeds the Weekly
- * summary's sign-ups line.
+ * Both seams are filled: {@link countGoogleReviewsToMatch} by CRM slice 12,
+ * and {@link countSignUps} by migration slice 12 (`account_linked_at` on the
+ * Customer overview), which also feeds the Weekly summary's sign-ups line. A
+ * seam's `null` ("not built") stays in the types for the job's contract.
  */
 
 /**
- * SEAM — CRM slice 12. The reviews waiting in its *Google reviews to match*
- * list: `google_reviews` rows with no `customer_google_reviews` link.
- *
- * Returns null until that table exists. Slice 12 replaces the body with its
- * own count, and the Daily *Google reviews to match* update starts posting
- * with no other change. Until the Google review sync is live the count is zero,
- * so nothing posts either way.
+ * CRM slice 12. The reviews waiting in *Google reviews to match* on Customers
+ * → Reviews: unlinked Google reviews with at least one suggested Customer.
+ * Reviews with no suggestion (anonymous, or from someone we never asked) are
+ * on that tab's *All unlinked* list and are not counted, so the daily update
+ * asks only for what Staff can act on. Until the Google review sync is live
+ * the count is zero, so nothing posts.
  */
 export async function countGoogleReviewsToMatch(admin: SupabaseClient): Promise<number | null> {
-  void admin;
-  return null;
+  return countReviewsToMatch(admin);
 }
 
 /**
@@ -106,7 +102,8 @@ export async function countFollowUps(
  *
  *  - CRM slice 07's `reviewRequests` (`customer_review_requests`: asked in the
  *    week, and how many of those have `first_clicked_at` set) is in;
- *  - CRM slice 12 adds `googleReviewsLinked` (`customer_google_reviews.linked_at`);
+ *  - CRM slice 12's `googleReviewsLinked` (`customer_google_reviews.linked_at`
+ *    in the week) is in;
  *  - CRM slice 06 added `followUps` ({@link countFollowUps}).
  */
 export type WeeklySummarySource = (
@@ -128,6 +125,12 @@ export const WEEKLY_SUMMARY_SOURCES: readonly WeeklySummarySource[] = [
   },
   // CRM slice 06: follow-ups done in the week, and overdue as it closed.
   async (admin, week) => ({ followUps: await countFollowUps(admin, week) }),
+  // CRM slice 12: Google reviews Staff linked to a Customer in the week. No
+  // line in a week with none, such as before the Google review sync is live.
+  async (admin, week) => {
+    const googleReviewsLinked = await countGoogleReviewsLinked(admin, week);
+    return googleReviewsLinked > 0 ? { googleReviewsLinked } : {};
+  },
 ];
 
 /** Every source's counts for `week`, merged. */

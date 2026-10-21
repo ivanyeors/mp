@@ -97,8 +97,8 @@ export type AftercareCardData = {
     today: ReviewRequestReport;
     /** Customers asked in the last 30 days, how many of them opened the link, and the sends by channel. */
     last30: { asked: number; opened: number; email: number; whatsapp: number };
-    /** Google reviews linked to a Customer who was asked. Null until CRM slice 12 builds the links. */
-    googleReviewsLinked: number | null;
+    /** Customers we asked who have a Linked Google review, so far (CRM slice 12). */
+    googleReviewsLinked: number;
   };
   whatsapp: {
     /** The utility sender is set up (WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_TOKEN). */

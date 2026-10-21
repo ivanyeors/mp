@@ -111,7 +111,8 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let head = false;
       let inserted: Row | null = null;
       let embeds: Embed[] = [];
-      let sort: { col: string; asc: boolean } | null = null;
+      // Each `order` adds a key after the ones before it, as PostgREST's `order=a,b` does.
+      const sorts: { col: string; asc: boolean }[] = [];
       let limit: number | null = null;
       let range: [number, number] | null = null;
       const embedded = (row: Row, e: Embed): Row | null => (db[e.table] ?? []).find((o) => o.id === row[e.fk]) ?? null;
@@ -136,9 +137,16 @@ export function fakeSupabaseAdmin(db: FakeDb) {
             );
         if (patch) for (const row of r) Object.assign(row, patch);
         if (removing) db[table] = (db[table] ?? []).filter((row) => !r.includes(row));
-        if (sort) {
-          const { col, asc } = sort;
-          r.sort((a, b) => (String(a[col] ?? "") < String(b[col] ?? "") ? -1 : 1) * (asc ? 1 : -1));
+        if (sorts.length) {
+          r.sort((a, b) => {
+            for (const s of sorts) {
+              const x = String(a[s.col] ?? "");
+              const y = String(b[s.col] ?? "");
+              if (x < y) return s.asc ? -1 : 1;
+              if (x > y) return s.asc ? 1 : -1;
+            }
+            return 0;
+          });
         }
         if (limit !== null) r = r.slice(0, limit);
         return r;
@@ -164,7 +172,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         },
         eq: (col: string, val: unknown) => (filters.push((r) => value(r, col) === val), q),
         in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(value(r, col))), q),
-        order: (col: string, opts?: { ascending?: boolean }) => ((sort = { col, asc: opts?.ascending !== false }), q),
+        order: (col: string, opts?: { ascending?: boolean }) => (sorts.push({ col, asc: opts?.ascending !== false }), q),
         limit: (n: number) => ((limit = n), q),
         range: (from: number, to: number) => ((range = [from, to]), q),
         overlaps: (col: string, val: unknown) => {

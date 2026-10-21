@@ -10,7 +10,8 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
  * account (imported, signed up, Claimed, Welcome-back voucher), since
  * migration 06 the Claim links a campaign email carried, by first click, and
- * since CRM 06 follow-ups (added, done).
+ * since CRM 06 follow-ups (added, done), and since CRM 12 a Linked Google
+ * review at its own date.
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -42,6 +43,7 @@ const KIMS_SG = "0f000000-0000-4000-8000-000000000008"; // mei@x.test.sg: someon
 const BOOKING = "0b000000-0000-4000-8000-000000000001";
 const RMA = "0c000000-0000-4000-8000-000000000001";
 const REVIEW = "0d000000-0000-4000-8000-000000000001";
+const G_REVIEW = "0d000000-0000-4000-8000-0000000000a1"; // a Linked Google review (CRM 12)
 const NOTE = "0a000000-0000-4000-8000-000000000001";
 const LEGACY_NOTE = "0a000000-0000-4000-8000-000000000002";
 const VOUCHER = "0c000000-0000-4000-8000-0000000000a1";
@@ -187,6 +189,16 @@ beforeEach(() => {
     customer_whatsapp: [
       { id: 1, customer_id: MEI, template: "aftercare.review_request", entity_id: MEI, status: "sent", sent_at: t("09-15T02:01") },
     ],
+    // CRM 12: Mei's Google review, linked by Staff weeks after she wrote it; Kim's; and one nobody linked.
+    google_reviews: [
+      { id: G_REVIEW, star_rating: 5, comment: "Slept through the night.", review_created_at: t("09-18T02:00"), created_at: t("09-18T03:00"), status: "posted", google_reply: "Thank you, Mei!" },
+      { id: "g-kim", star_rating: 2, comment: "Too firm.", review_created_at: t("09-19T02:00"), created_at: t("09-19T03:00"), status: "pending", google_reply: null },
+      { id: "g-nobody", star_rating: 4, comment: "Nice.", review_created_at: t("09-21T02:00"), created_at: t("09-21T03:00"), status: "pending", google_reply: null },
+    ],
+    customer_google_reviews: [
+      { google_review_id: G_REVIEW, customer_id: MEI, how: "suggestion", linked_by_profile_id: JESS, linked_at: t("10-01T00:00") },
+      { google_review_id: "g-kim", customer_id: KIM, how: "manual", linked_by_profile_id: null, linked_at: t("10-01T00:00") },
+    ],
     // Migration 02 and 05: imported, Claimed, and the voucher the Claim issued in the same transaction.
     migrated_customers: [
       { customer_id: MEI, created_by_import: false, imported_at: t("03-01T00:00"), claimed_at: t("06-15T00:00") },
@@ -231,6 +243,8 @@ const EVERYTHING = [
   `follow_up.added:${FOLLOW_UP}`,
   "aftercare.turned_on:1",
   "readjustment.attended:au-2",
+  // At the review's own date, not the day Staff linked it.
+  `google_review.written:${G_REVIEW}`,
   `review_request.clicked:${MEI}`,
   `review_request.sent:${MEI}`,
   `readjustment.booked:${BOOKING}`,
@@ -286,6 +300,13 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`review.submitted:${REVIEW}`)).toMatchObject({ summary: "Shop review: 5★ on Mpillow", status: "approved" });
     expect(byId.get(`review_request.sent:${MEI}`)?.summary).toBe("Review requested (email, WhatsApp)");
     expect(byId.get(`review_request.clicked:${MEI}`)?.summary).toBe("Review link clicked (2 times)");
+    // CRM 12: the stars and whether we replied; the text stays on the Reviews card.
+    expect(byId.get(`google_review.written:${G_REVIEW}`)).toMatchObject({
+      summary: "Google review: 5★",
+      status: "We replied on Google",
+      group: "reviews",
+    });
+    expect(JSON.stringify(byId.get(`google_review.written:${G_REVIEW}`))).not.toContain("Slept");
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
     expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
     expect(byId.get(`follow_up.added:${FOLLOW_UP}`)).toMatchObject({
@@ -362,7 +383,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
       EVERYTHING.filter((id) =>
-        /^(note|review|review_request|aftercare|consent|account|claim_link|follow_up)\./.test(id),
+        /^(note|review|google_review|review_request|aftercare|consent|account|claim_link|follow_up)\./.test(id),
       ),
     );
     expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "marketing", "account", "notes", "followups"]);
