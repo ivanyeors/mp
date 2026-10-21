@@ -325,3 +325,22 @@ export function sampleWelcomeVoucherFreeShipping(fixture: EmailFixture = "happy"
     minOrderAmount: null,
   };
 }
+
+/** CRM slice 07: the Review request, 14 days after delivery. */
+export function sampleReviewRequest(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    product: pick(fixture, "Premium Mpillow"),
+    orderNumber: pick(fixture, "MP-20261020-0042"),
+    deliveredOn: pick(fixture, "3 Nov 2026"),
+    reviewUrl: `${ORIGIN}/r/review?t=Zx81kQpL0aVb3nRt7yUe2w`,
+    accountUrl: `${ORIGIN}/en-US/account/login?next=%2Fen-US%2Faccount`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+  };
+}
+
+/** The same email for a customer with no first name on file. */
+export function sampleReviewRequestNoName(fixture: EmailFixture = "happy") {
+  return { ...sampleReviewRequest(fixture), firstName: null };
+}
