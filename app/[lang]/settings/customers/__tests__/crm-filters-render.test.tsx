@@ -49,6 +49,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   search_text: "ana@x.test ana tan",
   marketing_email: "not_subscribed",
   marketing_email_updated_at: null,
+  last_campaign_sent_at: null,
   ...over,
 });
 

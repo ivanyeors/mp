@@ -9,8 +9,9 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * Result of another Customer whose email merely contains this one's. Since the
  * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
  * account (imported, signed up, Claimed, Welcome-back voucher), since
- * migration 06 the Claim links a campaign email carried, by first click, and
- * since CRM 06 follow-ups (added, done).
+ * migration 06 the Claim links a campaign email carried, by first click,
+ * since CRM 06 follow-ups (added, done), and since migration 08 the campaign
+ * emails sent, bounced and complained about.
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -199,6 +200,15 @@ beforeEach(() => {
       { id: 2, customer_id: MEI, token_hash: "h-2", template: "migration_reminder", created_at: t("06-12T00:00"), first_clicked_at: null, click_count: 0 },
       { id: 3, customer_id: KIM, token_hash: "h-3", template: "migration_announcement", created_at: t("06-10T00:00"), first_clicked_at: t("06-11T00:00"), click_count: 1 },
     ],
+    // Migration 08: the announcement sent, the reminder sent and then bounced,
+    // and a service notice that failed (it reached nobody, so it is not shown).
+    // Kim's complaint is Kim's alone.
+    customer_campaign_sends: [
+      { id: "cs-1", customer_id: MEI, template: "migration_announcement", wave: "w1", status: "sent", provider_message_id: "re_1", sent_at: t("06-10T00:05"), bounced_at: null, complained_at: null },
+      { id: "cs-2", customer_id: MEI, template: "migration_reminder", wave: "r1", status: "bounced", provider_message_id: "re_2", sent_at: t("06-12T00:05"), bounced_at: t("06-12T01:00"), complained_at: null },
+      { id: "cs-3", customer_id: MEI, template: "migration_service_notice", wave: "n1", status: "failed", provider_message_id: null, sent_at: t("06-13T00:00"), bounced_at: null, complained_at: null },
+      { id: "cs-k", customer_id: KIM, template: "migration_announcement", wave: "w1", status: "complained", provider_message_id: "re_k", sent_at: t("06-10T00:06"), bounced_at: null, complained_at: t("06-10T09:00") },
+    ],
     coupons: [
       { id: VOUCHER, code: "WB-SECRETCODE", customer_id: MEI, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 1, expires_at: t("08-14T00:00"), created_at: t("06-15T00:00") },
       { id: "coupon-kim", code: "WB-KIMS", customer_id: KIM, issued_for: "welcome_back", is_active: true, usage_limit: 1, usage_count: 0, expires_at: null, created_at: t("06-16T00:00") },
@@ -253,6 +263,9 @@ const EVERYTHING = [
   `account.voucher_issued:${VOUCHER}`,
   `account.signed_up:${MEI}`,
   "claim_link.opened:1",
+  "campaign_email.bounced:cs-2",
+  "campaign_email.sent:cs-2",
+  "campaign_email.sent:cs-1",
   `result.created:${DECLINED}`,
   "result.cancelled:au-1",
   `result.created:${CANCELLED}`,
@@ -311,6 +324,15 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     // Only the first click is dated; the count is in the line. The token is never read.
     expect(byId.get("claim_link.opened:1")).toMatchObject({ summary: "Claim link opened (announcement email, 2 times)", group: "account" });
     expect(JSON.stringify(byId.get("claim_link.opened:1"))).not.toContain("h-1");
+    // Migration 08: each send the provider took, with its status; its bounce, dated.
+    expect(byId.get("campaign_email.sent:cs-1")).toMatchObject({
+      summary: "Campaign email sent: Account announcement (wave w1)",
+      status: "sent",
+      group: "marketing",
+    });
+    expect(byId.get("campaign_email.sent:cs-2")).toMatchObject({ summary: "Campaign email sent: Account reminder (wave r1)", status: "bounced" });
+    expect(byId.get("campaign_email.bounced:cs-2")?.summary).toBe("Campaign email bounced: Account reminder. Left out of later waves");
+    expect([...byId.keys()].some((k) => k.endsWith("cs-3"))).toBe(false);
     for (const e of byId.values()) expect(JSON.stringify(e)).not.toContain("WB-SECRETCODE");
     // No customer email in any line.
     for (const e of byId.values()) expect(e.summary.toLowerCase()).not.toContain("mei@x.test");
@@ -362,10 +384,18 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
       EVERYTHING.filter((id) =>
-        /^(note|review|review_request|aftercare|consent|account|claim_link|follow_up)\./.test(id),
+        /^(note|review|review_request|aftercare|consent|campaign_email|account|claim_link|follow_up)\./.test(id),
       ),
     );
     expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "marketing", "account", "notes", "followups"]);
+  });
+
+  it("shows a complaint on the Customer who made it, and nowhere else", async () => {
+    signIn(OWNER);
+    const kim = new Map((await page(KIM)).entries.map((e) => [e.id, e]));
+    expect(kim.get("campaign_email.complained:cs-k")?.summary).toBe("Marked as spam: Account announcement");
+    expect(kim.get("campaign_email.sent:cs-k")?.status).toBe("complained");
+    expect([...kim.keys()].some((k) => /cs-[123]/.test(k))).toBe(false);
   });
 
   it("narrows to the kind groups asked for, among those the viewer may see", async () => {

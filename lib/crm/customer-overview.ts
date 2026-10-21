@@ -51,6 +51,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "search_text",
   "marketing_email",
   "marketing_email_updated_at",
+  "last_campaign_sent_at",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -128,6 +129,11 @@ export interface CustomerOverviewRow {
   marketing_email: MarketingEmailState;
   /** When it was last set; null while `not_subscribed`. The export day for a Shopify one. */
   marketing_email_updated_at: string | null;
+  /**
+   * The latest campaign email the provider accepted for them (migration slice
+   * 08; sent, or since bounced or complained); null if the campaign never did.
+   */
+  last_campaign_sent_at: string | null;
 }
 
 /** Display name, or null when the Customer has none. */

@@ -76,6 +76,11 @@ describe("transactional mail carries no unsubscribe", () => {
       "lib/email/components.ts",
       "lib/email/types.ts",
       "lib/email/registry.ts",
+      // Migration slice 08, on purpose: the campaign emails, their preview
+      // fixtures, and the wave sender that sets the headers.
+      "lib/email/migration.ts",
+      "lib/email/__fixtures__/samples.ts",
+      "lib/customer-migration/wave-sender.ts",
     ]);
     const files = (dir: string): string[] =>
       readdirSync(dir).flatMap((name) => {

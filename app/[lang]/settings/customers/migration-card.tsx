@@ -6,7 +6,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { percentOf, signedUpPercent, type MigrationSummary } from "@/lib/customer-migration/overview";
 import { formatCurrency } from "@/lib/i18n/currencies";
 
-/** One figure on the card: slice 06 adds *Clicked*, *Voucher used* and *Revenue*; slice 08 adds *Emailed*. */
+/** One figure on the card: slice 06 adds *Clicked*, *Voucher used* and *Revenue*; slice 08 adds *Emailed*, before *Clicked*. */
 type MigrationCell = { label: string; value: string; detail: string };
 
 export function migrationCells(summary: MigrationSummary): MigrationCell[] {
@@ -22,6 +22,11 @@ export function migrationCells(summary: MigrationSummary): MigrationCell[] {
             label: "Signed up",
             value: `${n(summary.signedUp)} (${signedUpPercent(summary)}%)`,
             detail: `of which ${n(summary.signedUpBeforeImport)} already had an account before import`,
+        },
+        {
+            label: "Emailed",
+            value: `${n(summary.emailed)} (${percentOf(summary.emailed, summary.imported)}%)`,
+            detail: `${n(summary.emailsBounced)} bounced, ${n(summary.emailsComplained)} marked as spam`,
         },
         {
             label: "Clicked",
@@ -74,6 +79,10 @@ export function MigrationCard({
                         <p>
                             <em>Signed up</em> counts those who have an account now. Some already had one
                             before the import reached them.
+                        </p>
+                        <p>
+                            <em>Emailed</em> counts those a campaign email went out to. A bounced address
+                            and anyone who marked one as spam get no more.
                         </p>
                         <p>
                             <em>Clicked</em> counts those who opened the link in a campaign email.{" "}

@@ -32,22 +32,27 @@ const summary: MigrationSummary = {
   vouchersUsed: 30,
   voucherOrders: 31,
   voucherRevenue: 4250.5,
+  emailed: 960,
+  emailsBounced: 12,
+  emailsComplained: 1,
 };
 
 describe("Migration card", () => {
   it("adds Clicked (of imported), Voucher used (of issued) and the Revenue of their paid orders", () => {
     const cells = migrationCells(summary);
-    expect(cells.map((c) => c.label)).toEqual(["Imported", "Signed up", "Clicked", "Voucher used", "Revenue"]);
-    expect(cells[2]).toEqual({ label: "Clicked", value: "300 (25%)", detail: "opened their Claim link" });
-    expect(cells[3]).toEqual({ label: "Voucher used", value: "30", detail: "of 120 welcome-back vouchers issued" });
-    expect(cells[4].value).toMatch(/4,250\.50$/);
-    expect(cells[4].detail).toBe("from 31 paid orders that used a welcome-back voucher");
+    // Migration 08's Emailed sits before Clicked, in funnel order.
+    expect(cells.map((c) => c.label)).toEqual(["Imported", "Signed up", "Emailed", "Clicked", "Voucher used", "Revenue"]);
+    const cell = (label: string) => cells.find((c) => c.label === label)!;
+    expect(cell("Clicked")).toEqual({ label: "Clicked", value: "300 (25%)", detail: "opened their Claim link" });
+    expect(cell("Voucher used")).toEqual({ label: "Voucher used", value: "30", detail: "of 120 welcome-back vouchers issued" });
+    expect(cell("Revenue").value).toMatch(/4,250\.50$/);
+    expect(cell("Revenue").detail).toBe("from 31 paid orders that used a welcome-back voucher");
   });
 
   it("reads one paid order and one voucher in the singular", () => {
     const cells = migrationCells({ ...summary, vouchersIssued: 1, voucherOrders: 1 });
-    expect(cells[3].detail).toBe("of 1 welcome-back voucher issued");
-    expect(cells[4].detail).toBe("from 1 paid order that used a welcome-back voucher");
+    expect(cells.find((c) => c.label === "Voucher used")!.detail).toBe("of 1 welcome-back voucher issued");
+    expect(cells.find((c) => c.label === "Revenue")!.detail).toBe("from 1 paid order that used a welcome-back voucher");
   });
 });
 

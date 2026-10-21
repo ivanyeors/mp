@@ -132,3 +132,43 @@ export async function probeUnsubscribeRoute(
   }
   return { ready: false, reason: `${url} answered ${res.status}, not the unsubscribe route` };
 }
+
+/**
+ * A Customer id no row has: a v4 id with every random bit zero, which
+ * `gen_random_uuid()` will not produce in practice, so a link for it
+ * unsubscribes nobody.
+ */
+export const PROBE_CUSTOMER_ID = "00000000-0000-4000-8000-000000000000";
+
+/**
+ * Does `origin` verify links signed with THIS machine's secret? A sender
+ * signs every link it mails with its own UNSUBSCRIBE_SECRET; if the site
+ * holds a different one, every link would answer `invalid_link`. The probe
+ * one-click POSTs a link signed here for {@link PROBE_CUSTOMER_ID}: the site
+ * answers `200` when it verifies (and finds no such Customer, so nothing
+ * changes), and `400 invalid_link` when the secrets differ.
+ */
+export async function probeUnsubscribeSecret(
+  origin: string,
+  { secret = secretFromEnv(), fetchImpl = fetch }: { secret?: string; fetchImpl?: typeof fetch } = {},
+): Promise<UnsubscribeProbe> {
+  const links = unsubscribeLinks(PROBE_CUSTOMER_ID, { origin, secret });
+  if (!links) return { ready: false, reason: "UNSUBSCRIBE_SECRET is not set here, so no link can be signed" };
+  let res: Response;
+  try {
+    res = await fetchImpl(links.oneClickUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "List-Unsubscribe=One-Click",
+      redirect: "manual",
+    });
+  } catch (e) {
+    return { ready: false, reason: `${origin} did not answer: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  if (res.ok) return { ready: true };
+  const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+  if (res.status === 400 && body?.error === INVALID_LINK) {
+    return { ready: false, reason: `${origin} refuses links signed here: its UNSUBSCRIBE_SECRET is not this one` };
+  }
+  return { ready: false, reason: `${origin} answered a signed link with ${res.status}` };
+}
