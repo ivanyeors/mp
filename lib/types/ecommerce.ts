@@ -171,6 +171,15 @@ export interface Customer {
    * Staff-only.
    */
   account_providers: string[];
+  /**
+   * **Marketing consent** (migration slice 07). Written only by
+   * `set_marketing_email()`; the customer's own key reads the state, not its
+   * provenance.
+   */
+  marketing_email?: "subscribed" | "not_subscribed" | "unsubscribed";
+  /** Staff-only: what set the state, and when. Null while `not_subscribed`. */
+  marketing_email_source?: string | null;
+  marketing_email_updated_at?: string | null;
   addresses?: CustomerAddress[];
 }
 

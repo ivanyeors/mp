@@ -117,8 +117,8 @@ create unique index customer_segments_live_name
   `customer_segments_live_name` on `lower(name) where archived_at is null`. RLS on with no
   policy; `revoke all` from anon and authenticated.
 - No overview redefinition: Segments add no column to `admin_customer_overview`.
-- DB check: all 175 migrations apply on Postgres 16 (`db-check.sh … mp_c05`). By hand in psql:
-  a second live `premium, LAPSED` beside `Premium, lapsed` fails on the index; after archiving
+- DB check: all 178 migrations apply on Postgres 16 after the catch-up merge
+  (`db-check.sh … mp_c05`). By hand in psql: a second live `premium, LAPSED` beside `Premium, lapsed` fails on the index; after archiving
   the first, the name is accepted; unarchiving it while the new one is live fails; a blank name,
   an 81-character name and an array for `filters` fail their checks; `updated_at` moves on
   update; `authenticated` and `anon` get *permission denied*, `service_role` reads it. CRM 04's
@@ -131,8 +131,9 @@ create unique index customer_segments_live_name
   parse; an unknown key, an unknown value, another `filters_version` and a non-object each need
   review and are named; choosing; names; counts.
 - `lib/crm/__tests__/segments.test.ts`: over a fake overview of 120 Customers varied on every
-  filter, 11 filter sets (the PRD's list, Account/Source, Google, Mobile, voucher and follow-ups,
-  Bought + spend, Last order, tags and searches) are saved as Segments the way the row saves them.
+  filter, 13 filter sets (the PRD's list, Account/Source, Google, Mobile, voucher and
+  follow-ups, Email consent, Bought + spend, Last order, tags and searches) are saved as Segments
+  the way the row saves them.
   For each, `resolveSegment` returns exactly the ids that paging `listAdminCustomers` through
   the same URL returns, and the chip's count equals the list's total. A Segment that needs review
   has `count: null` and `resolveSegment` refuses it before reading, until it is updated. Names

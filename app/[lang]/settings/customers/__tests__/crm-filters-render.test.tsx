@@ -47,6 +47,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   bought: ["premium"],
   last_readjusted_at: null,
   search_text: "ana@x.test ana tan",
+  marketing_email: "not_subscribed",
+  marketing_email_updated_at: null,
   ...over,
 });
 
@@ -109,6 +111,15 @@ describe("Customers list: CRM filters", () => {
     expect(html).toContain('aria-label="Voucher"');
     expect(html).toContain("Voucher issued, unused");
     expect(listFor("")).not.toContain('aria-label="Voucher"');
+  });
+
+  it("puts migration slice 07's Email consent filter in the panel, and labels it in the summary", () => {
+    const html = listFor("consent=unsubscribed");
+    expect(html).toContain('id="customer-filters-panel"');
+    expect(html).toContain('aria-label="Email consent"');
+    expect(html).toContain("Email unsubscribed");
+    expect(html).toContain("Clear all");
+    expect(listFor("")).not.toContain('aria-label="Email consent"');
   });
 
   it("offers the last-order and spend sorts", () => {

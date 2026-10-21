@@ -51,6 +51,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   bought: [],
   last_readjusted_at: null,
   search_text: "ana@x.test ana tan",
+  marketing_email: "not_subscribed",
+  marketing_email_updated_at: null,
   ...over,
 });
 
@@ -93,16 +95,27 @@ describe("Customers list", () => {
     expect(list([row({})])).not.toContain(">Shopify<");
   });
 
-  it("offers the Account, Source and Sort controls with the URL's values", () => {
+  it("offers the Account, Source, Email consent and Sort controls with the URL's values", () => {
     const html = renderToString(
       <CustomersClient
         initialData={{ customers: { ok: true, rows: [], total: 0, page: 1, limit: 20 } }}
-        initialFilters={{ search: null, tags: [], account: "no-account", source: "shopify", voucher: "all", sort: "signed-up" }}
+        initialFilters={{
+          search: null,
+          tags: [],
+          account: "no-account",
+          source: "shopify",
+          voucher: "all",
+          consent: "unsubscribed",
+          sort: "signed-up",
+        }}
       />,
     );
-    for (const label of ['aria-label="Account"', 'aria-label="Source"', 'aria-label="Sort"']) expect(html).toContain(label);
+    for (const label of ['aria-label="Account"', 'aria-label="Source"', 'aria-label="Email consent"', 'aria-label="Sort"']) {
+      expect(html).toContain(label);
+    }
     expect(html).toContain("No account");
     expect(html).toContain("From Shopify");
+    expect(html).toContain("Unsubscribed");
     expect(html).toContain("Recently signed up");
     expect(html).toContain("No customers match these filters.");
   });

@@ -11,6 +11,8 @@ import {
   aftercareWhatsAppWording,
   mobileForWording,
 } from "@/lib/aftercare/state";
+import { readMarketingEmailState, setMarketingEmail } from "@/lib/marketing-consent/consent";
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /**
  * The customer's own Aftercare switches, in their Profile (PRD customer-crm
@@ -79,4 +81,37 @@ export async function setMyAftercarePreference(input: unknown): Promise<Aftercar
     whatsapp: after?.whatsapp ?? current.whatsapp,
     phone: after?.phone ?? current.phone,
   };
+}
+
+// ─── Marketing consent (migration slice 07) ─────────────────────────────────
+
+export type MarketingEmailActionResult =
+  | { ok: true; state: MarketingEmailState }
+  | { ok: false; error: string };
+
+const MarketingEmailSchema = z.object({ subscribed: z.boolean() });
+
+/**
+ * The Profile's "Email me news and offers" toggle: the platform's first
+ * first-party consent capture, source `account`. It is the one way an
+ * `unsubscribed` Customer subscribes again. Off is `unsubscribed`, never
+ * `not_subscribed`: a "no" given here is a choice, not "never asked".
+ *
+ * The Customer comes from the session, never from the request.
+ */
+export async function setMyMarketingEmail(input: unknown): Promise<MarketingEmailActionResult> {
+  const parsed = MarketingEmailSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid change" };
+
+  const customerId = await getCurrentCustomerId();
+  if (!customerId) return { ok: false, error: "You must be signed in." };
+
+  const admin = supabaseAdmin();
+  const to = parsed.data.subscribed ? "subscribed" : "unsubscribed";
+  const result = await setMarketingEmail(admin, { customerId, to, source: "account" });
+  if (!result.ok) return { ok: false, error: "Could not save that change. Please try again." };
+
+  const state = await readMarketingEmailState(admin, customerId).catch(() => null);
+  revalidatePath("/[lang]/account", "page");
+  return { ok: true, state: state ?? to };
 }

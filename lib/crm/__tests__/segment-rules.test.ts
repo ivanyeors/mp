@@ -57,7 +57,7 @@ describe("parseSegmentFilters (saving)", () => {
   });
 
   it("saves exactly what the URL holds, so the two read alike", () => {
-    const url = "bought=premium&last_order=over:12&readjusted=never&search=Tan%2C%20Mei&google=linked";
+    const url = "bought=premium&last_order=over:12&readjusted=never&search=Tan%2C%20Mei&google=linked&consent=subscribed";
     const saved = parseSegmentFilters(fromUrl(url));
     expect(saved).toEqual({ ok: true, params: fromUrl(url) });
   });
@@ -67,7 +67,7 @@ describe("parseSegmentFilters (saving)", () => {
     [{ bought: "premium,platinum" }, ["bought=premium,platinum"]],
     [{ last_order: "over:0" }, ["last_order=over:0"]],
     [{ min_spend: "1e3" }, ["min_spend=1e3"]],
-    [{ consent: "subscribed", bought: "premium" }, ["consent=subscribed"]],
+    [{ region: "east", bought: "premium" }, ["region=east"]],
     [{ sort: "spend", bought: "premium" }, ["sort=spend"]],
     [{ page: "2", bought: "premium" }, ["page=2"]],
     [{ bought: ["premium"] }, ['bought=["premium"]']],
@@ -98,9 +98,9 @@ describe("readSegmentFilters (loading)", () => {
 
   it("names a filter the schema no longer recognises, and needs review", () => {
     // Saved before a key was renamed, or by a newer schema.
-    const read = readSegmentFilters({ bought: "premium", consent: "subscribed" }, SEGMENT_FILTERS_VERSION);
+    const read = readSegmentFilters({ bought: "premium", region: "east" }, SEGMENT_FILTERS_VERSION);
     expect(read.needsReview).toBe(true);
-    expect(read.ignored).toEqual(["consent=subscribed"]);
+    expect(read.ignored).toEqual(["region=east"]);
     // What is still recognised is kept, for the list to show while it is reviewed.
     expect(read.params).toEqual({ bought: "premium" });
   });
@@ -132,6 +132,7 @@ describe("choosing a Segment", () => {
       google: "all",
       mobile: "all",
       voucher: "all",
+      consent: "all",
       followups: "all",
       bought: ["premium"],
       last_order: null,

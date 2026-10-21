@@ -79,7 +79,7 @@ beforeEach(() => {
     ],
     customer_segments: [
       { id: S_PREMIUM, name: "Premium", filters: { bought: "premium" }, filters_version: 1, created_by_profile_id: WANG, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", archived_at: null },
-      { id: S_OLD, name: "Old consent", filters: { bought: "premium", consent: "subscribed" }, filters_version: 1, created_by_profile_id: null, created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", archived_at: null },
+      { id: S_OLD, name: "Old region", filters: { bought: "premium", region: "east" }, filters_version: 1, created_by_profile_id: null, created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", archived_at: null },
       { id: S_ARCHIVED, name: "Basic", filters: { bought: "basic" }, filters_version: 1, created_by_profile_id: null, created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z", archived_at: "2026-09-15T00:00:00Z" },
     ],
     admin_audit_log: [],
@@ -95,10 +95,10 @@ describe("seeing Segments", () => {
     expect(res.status).toBe(200);
     const { rows } = (await res.json()) as { rows: Row[] };
     expect(rows.map((r) => [r.name, r.count, r.needsReview])).toEqual([
-      ["Old consent", null, true],
+      ["Old region", null, true],
       ["Premium", 2, false],
     ]);
-    expect(rows[0]).toMatchObject({ ignored: ["consent=subscribed"], params: { bought: "premium" } });
+    expect(rows[0]).toMatchObject({ ignored: ["region=east"], params: { bought: "premium" } });
   });
 
   it("needs customers", async () => {
@@ -149,7 +149,7 @@ describe("saving a Segment", () => {
 
   it.each([
     [{ bought: "foo" }, "bought=foo"],
-    [{ consent: "subscribed" }, "consent=subscribed"],
+    [{ region: "east" }, "region=east"],
     [{ bought: "premium", sort: "spend" }, "sort=spend"],
   ])("refuses %j, naming it, and saves nothing", async (filters, named) => {
     signIn(CLERK);
@@ -190,8 +190,8 @@ describe("changing a Segment", () => {
     expect(h.db.admin_audit_log[0]).toMatchObject({
       action: "customer_segment.update",
       entity_id: S_OLD,
-      before: { name: "Old consent", filters: { bought: "premium", consent: "subscribed" }, filters_version: 1 },
-      after: { name: "Old consent", filters: { bought: "premium" }, filters_version: 1 },
+      before: { name: "Old region", filters: { bought: "premium", region: "east" }, filters_version: 1 },
+      after: { name: "Old region", filters: { bought: "premium" }, filters_version: 1 },
     });
   });
 
@@ -204,7 +204,7 @@ describe("changing a Segment", () => {
 
   it("renames it, refusing a live name in use", async () => {
     signIn(CLERK);
-    expect((await patch(S_PREMIUM, { name: "old CONSENT" })).status).toBe(409);
+    expect((await patch(S_PREMIUM, { name: "old REGION" })).status).toBe(409);
     const res = await patch(S_PREMIUM, { name: "Premium buyers" });
     expect(res.status).toBe(200);
     expect(segment(S_PREMIUM)?.name).toBe("Premium buyers");
@@ -227,7 +227,7 @@ describe("changing a Segment", () => {
       before: { name: "Premium", filters: { bought: "premium" }, archived_at: null },
     });
     const { rows } = (await (await list()).json()) as { rows: Row[] };
-    expect(rows.map((r) => r.name)).toEqual(["Old consent"]);
+    expect(rows.map((r) => r.name)).toEqual(["Old region"]);
     expect((await create({ name: "Premium", filters: { bought: "premium" } })).status).toBe(201);
     // An archived Segment cannot be changed.
     expect((await patch(S_PREMIUM, { name: "Again" })).status).toBe(404);

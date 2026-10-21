@@ -9,6 +9,8 @@ import { readWelcomeVoucher, usableWelcomeVoucherCard } from "@/lib/customer-mig
 import { AccountSecurity } from "@/components/auth/account-security";
 import { WelcomeVoucherCard } from "@/components/account/welcome-voucher-card";
 import { AftercarePreferences } from "./aftercare-preferences";
+import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
+import { MarketingEmailPreference } from "./marketing-email-preference";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -49,10 +51,12 @@ export default async function AccountProfilePage({
   // The Welcome-back voucher (migration slice 06), while it is unused and
   // unexpired, so a customer who claimed without the campaign email still
   // finds it. Read after linkCustomerToAuthUser, whose Claim may have just
-  // issued it. A failed read only hides the card.
-  const [aftercare, voucher] = await Promise.all([
+  // issued it. A failed read only hides the card. Marketing consent (migration
+  // slice 07) is read the same way as the aftercare switches.
+  const [aftercare, voucher, marketingEmail] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),
     readWelcomeVoucher(admin, customer.id),
+    readMarketingEmailState(admin, customer.id).catch(() => null),
   ]);
   const voucherCard = usableWelcomeVoucherCard(voucher);
 
@@ -93,6 +97,8 @@ export default async function AccountProfilePage({
           phone={aftercare.phone}
         />
       ) : null}
+
+      {marketingEmail ? <MarketingEmailPreference state={marketingEmail} /> : null}
 
       <Separator />
 

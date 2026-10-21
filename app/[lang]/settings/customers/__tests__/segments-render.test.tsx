@@ -34,7 +34,7 @@ const seg = (over: Partial<CustomerSegment>): CustomerSegment => ({
 
 const SEGMENTS = [
   seg({}),
-  seg({ id: "s2", name: "Old consent", params: { bought: "basic" }, ignored: ["consent=subscribed"], needsReview: true, count: null }),
+  seg({ id: "s2", name: "Old region", params: { bought: "basic" }, ignored: ["region=east"], needsReview: true, count: null }),
 ];
 
 const row = { id: "c1", email: "ana@x.test", first_name: "Ana", last_name: "Tan", tags: [], total_orders: 1, total_spent: 0, created_at: "2025-01-01T00:00:00Z", has_account: false, from_shopify: false, account_providers: [], open_followups: 0 } as unknown as CustomerOverviewRow;
@@ -76,7 +76,7 @@ describe("the Segments row", () => {
   it("shows Needs review instead of a count, naming what was ignored", () => {
     const html = listFor("");
     expect(html).toContain("Needs review");
-    expect(html).toContain('title="Needs review: consent=subscribed"');
+    expect(html).toContain('title="Needs review: region=east"');
   });
 
   it("offers Save as Segment with a filter active, and nothing to change without one", () => {
@@ -101,9 +101,9 @@ describe("the Segments row", () => {
   it("says why a chosen Segment needs review, and offers to update it as shown", () => {
     const html = rowFor({ bought: "basic" }, "s2");
     expect(html).toContain("needs review");
-    expect(html).toContain("consent=subscribed");
+    expect(html).toContain("region=east");
     expect(html).toContain("counts no Customers");
-    expect(html).toContain("Update Old consent");
+    expect(html).toContain("Update Old region");
   });
 
   it("gives a view-only role the chips and counts, and nothing to change", () => {

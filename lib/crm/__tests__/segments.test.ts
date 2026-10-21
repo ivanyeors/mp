@@ -57,6 +57,7 @@ function overviewRow(n: number): Partial<CustomerOverviewRow> {
     has_phone: n % 5 !== 0,
     phone_valid: n % 5 !== 0 && n % 10 !== 1,
     welcome_voucher_state: n % 6 === 0 ? "issued" : "none",
+    marketing_email: n % 5 === 0 ? "subscribed" : n % 5 === 1 ? "unsubscribed" : "not_subscribed",
     open_followups: n % 8 === 0 ? 1 : 0,
     last_paid_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
     bought: BOUGHT[n % BOUGHT.length],
@@ -121,6 +122,8 @@ describe("a Segment and the same filters in the URL", () => {
     "google=not-linked&mobile=invalid",
     "mobile=missing",
     "voucher=issued&followups=open",
+    "consent=subscribed&readjusted=never",
+    "consent=not-subscribed",
     "bought=basic,accessory&min_spend=300",
     "last_order=within:6",
     "tags=vip",
@@ -163,7 +166,7 @@ describe("a Segment the schema no longer fully recognises", () => {
   };
 
   it.each([
-    [{ bought: "premium", consent: "subscribed" }, 1, ["consent=subscribed"]],
+    [{ bought: "premium", region: "east" }, 1, ["region=east"]],
     [{ bought: "premium,pillowcase" }, 1, ["bought=premium,pillowcase"]],
     [{ bought: "premium" }, 2, ["bought=premium"]],
   ])("%j (version %i) needs review, names %j, and is not counted", async (filters, version, ignored) => {
@@ -173,14 +176,14 @@ describe("a Segment the schema no longer fully recognises", () => {
   });
 
   it("returns no Customers: resolveSegment refuses before reading any", async () => {
-    const id = stored({ bought: "premium", consent: "subscribed" });
+    const id = stored({ bought: "premium", region: "east" });
     const first = resolveSegment(id, { now: NOW }).next();
     await expect(first).rejects.toBeInstanceOf(SegmentUnavailableError);
-    await expect(resolveSegment(id).next()).rejects.toMatchObject({ reason: "needs_review", ignored: ["consent=subscribed"] });
+    await expect(resolveSegment(id).next()).rejects.toMatchObject({ reason: "needs_review", ignored: ["region=east"] });
   });
 
   it("is resolved again once updated with filters the schema knows", async () => {
-    const id = stored({ bought: "premium", consent: "subscribed" });
+    const id = stored({ bought: "premium", region: "east" });
     const updated = await updateSegment(id, { params: { bought: "premium" } }, { now: NOW });
     expect(updated).toMatchObject({ needsReview: false, ignored: [] });
     const { ids } = await resolveAll(id);
