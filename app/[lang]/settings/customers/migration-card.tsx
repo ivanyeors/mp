@@ -3,13 +3,15 @@
 import { ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
-import { signedUpPercent, type MigrationSummary } from "@/lib/customer-migration/overview";
+import { percentOf, signedUpPercent, type MigrationSummary } from "@/lib/customer-migration/overview";
+import { formatCurrency } from "@/lib/i18n/currencies";
 
-/** One figure on the card: slices 06 and 08 append *Emailed*, *Clicked*, *Voucher used* and *Revenue*. */
+/** One figure on the card: slice 06 adds *Clicked*, *Voucher used* and *Revenue*; slice 08 adds *Emailed*. */
 type MigrationCell = { label: string; value: string; detail: string };
 
 export function migrationCells(summary: MigrationSummary): MigrationCell[] {
     const n = (v: number) => v.toLocaleString("en-SG");
+    const orders = (v: number) => `${n(v)} paid order${v === 1 ? "" : "s"}`;
     return [
         {
             label: "Imported",
@@ -20,6 +22,21 @@ export function migrationCells(summary: MigrationSummary): MigrationCell[] {
             label: "Signed up",
             value: `${n(summary.signedUp)} (${signedUpPercent(summary)}%)`,
             detail: `of which ${n(summary.signedUpBeforeImport)} already had an account before import`,
+        },
+        {
+            label: "Clicked",
+            value: `${n(summary.clicked)} (${percentOf(summary.clicked, summary.imported)}%)`,
+            detail: "opened their Claim link",
+        },
+        {
+            label: "Voucher used",
+            value: n(summary.vouchersUsed),
+            detail: `of ${n(summary.vouchersIssued)} welcome-back voucher${summary.vouchersIssued === 1 ? "" : "s"} issued`,
+        },
+        {
+            label: "Revenue",
+            value: formatCurrency(summary.voucherRevenue, "SGD"),
+            detail: `from ${orders(summary.voucherOrders)} that used a welcome-back voucher`,
         },
     ];
 }
@@ -58,11 +75,15 @@ export function MigrationCard({
                             <em>Signed up</em> counts those who have an account now. Some already had one
                             before the import reached them.
                         </p>
+                        <p>
+                            <em>Clicked</em> counts those who opened the link in a campaign email.{" "}
+                            <em>Revenue</em> is the total of paid orders that used a welcome-back voucher.
+                        </p>
                     </InfoTip>
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {migrationCells(summary).map((cell) => (
                         <div key={cell.label} className="rounded-lg border p-3">
                             <dt className="text-xs text-muted-foreground">{cell.label}</dt>
