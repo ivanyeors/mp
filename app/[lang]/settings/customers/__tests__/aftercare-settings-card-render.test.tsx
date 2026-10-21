@@ -27,7 +27,7 @@ const data: AftercareCardData = {
   reviewRequests: {
     today,
     last30: { asked: 18, opened: 9, email: 17, whatsapp: 3 },
-    googleReviewsLinked: null,
+    googleReviewsLinked: 0,
   },
   whatsapp: { senderConfigured: true, reviewTemplate: null },
   openStopRequests: 2,
@@ -51,7 +51,7 @@ describe("Aftercare card", () => {
       "Review request",
       "Off: nothing is sent. The numbers below are what would go today.",
       "18 customers asked (17 by email, 3 by WhatsApp); 9 opened the link.",
-      "shown once Google reviews can be linked to customers",
+      "Google reviews linked to a customer we asked, so far: 0.",
       "5 customers due, 4 reachable.",
       "No email or WhatsApp to reach them 1",
       "Orders never marked delivered 2",
@@ -98,7 +98,7 @@ describe("Aftercare card", () => {
       whatsapp: { senderConfigured: true, reviewTemplate: "aftercare_review_request" },
     });
     expect(live).toContain("On: due customers are asked in the daily run");
-    expect(plain(live)).toContain("Google reviews linked to a customer we asked: 4.");
+    expect(plain(live)).toContain("Google reviews linked to a customer we asked, so far: 4.");
     expect(live).toContain("WhatsApp: also sent to customers who opted in");
   });
 });

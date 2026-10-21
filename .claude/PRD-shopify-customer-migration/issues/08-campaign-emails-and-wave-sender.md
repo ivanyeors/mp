@@ -216,9 +216,11 @@ initiative widens this table's `template` check rather than adding another ledge
   and the `migration_service_notice_enabled = 'false'` seed.
 - `20261020200700_customer_overview_campaign_sends.sql` (reserved in the shared-views range):
   - both views redefined in full;
-  - the overview keeps all 32 columns from `20261020200400`, then `last_campaign_sent_at`;
+  - the overview keeps all 39 columns of the latest definition, CRM 12's
+    `20261020200500` (see the catch-up note below), then `last_campaign_sent_at`;
   - the summary keeps all 11 columns from `20261020200100`, then its three new ones.
-- Both apply in order with `db-check.sh` (179 migrations), and both re-apply idempotently.
+- Both apply in order with `db-check.sh` (182 migrations after the catch-up), and both
+  re-apply idempotently.
 
 **Tests**
 
@@ -345,3 +347,20 @@ initiative widens this table's `template` check rather than adding another ledge
 - **A row left `pending`** by a crash between the claim and Resend's answer is never resent.
   Resend's log says whether it went. Setting it `sent` or `failed` is a manual fix.
 - Slice 09 runs the pilot and the waves.
+
+**After merging CRM 05 and CRM 12**
+
+- **CRM 05 (Segments)** merged cleanly. Its `20261020131000` adds no view.
+- **CRM 12 (reviews)** redefined `admin_customer_overview` at `20261020200500`, which sorts before
+  this slice's `20261020200700`. This slice's redefinition now carries CRM 12's seven review
+  columns and their joins, then `last_campaign_sent_at`. `CUSTOMER_OVERVIEW_COLUMNS` lists them
+  in the same order.
+- **Conflicts resolved, keeping both sides:**
+  - `lib/crm/customer-overview.ts`: the column list and the row type;
+  - `lib/crm/timeline/registry.ts`: CRM 12's `googleReviewsAdapter` and this slice's
+    `campaignSendsAdapter` are both registered;
+  - `timeline-route.test.ts`: both fixtures, and the customers-only role's kinds include
+    `google_review` and `campaign_email`;
+  - the overview row fixtures in `account-status-render`, `contact-card-render` and
+    `crm-filters-render`. CRM 12's new `reviews-render` fixture gains `last_campaign_sent_at`
+    too.

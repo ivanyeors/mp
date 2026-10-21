@@ -49,6 +49,13 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   search_text: "ana@x.test ana tan",
   marketing_email: "not_subscribed",
   marketing_email_updated_at: null,
+  review_requested_at: null,
+  review_link_clicked_at: null,
+  google_review_rating: null,
+  google_reviewed_at: null,
+  shop_reviews_count: 0,
+  shop_review_avg_rating: null,
+  review_rating: null,
   last_campaign_sent_at: null,
   ...over,
 });

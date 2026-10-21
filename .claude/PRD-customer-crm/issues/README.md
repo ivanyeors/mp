@@ -21,7 +21,7 @@ demoable path through all layers.
 | [09](09-signoff.md) · [#286](https://github.com/ivanyeors/mp/issues/286) | Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests | HITL | **not started** | 02, 03, 05, 06, 07, 10–14 | all |
 | [10](10-customers-view-permission.md) · [#287](https://github.com/ivanyeors/mp/issues/287) | A view-only Customers permission | AFK | **built** (`38a8880`) | 01 | 17, 18 |
 | [11](11-contact-and-sign-in-status.md) · [#288](https://github.com/ivanyeors/mp/issues/288) | Contact and sign-in status: is the email verified, how do they sign in, is the mobile reachable | AFK | **built** (`beca3a4`) | 01; migration 12 | 19, 20 |
-| [12](12-reviews-per-customer.md) · [#289](https://github.com/ivanyeors/mp/issues/289) | Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff | AFK + HITL (Google sync live) | **not started** | 04, 07, 10 | 21–23 |
+| [12](12-reviews-per-customer.md) · [#289](https://github.com/ivanyeors/mp/issues/289) | Reviews on every Customer: shop reviews, review requests, and Google reviews matched by Staff | AFK + HITL (Google sync live) | **built** (`0f3d5df`) | 04, 07, 10 | 21–23 |
 | [13](13-aftercare-preferences-and-whatsapp.md) · [#290](https://github.com/ivanyeors/mp/issues/290) | Aftercare by email and WhatsApp, with a manual switch to turn them off | AFK (Meta templates approved) | **built** (`d1dbf95`) | 01, 10 | 25–28 |
 | [14](14-telegram-updates.md) · [#291](https://github.com/ivanyeors/mp/issues/291) | Telegram updates: four types, each with its own switch | AFK | **built** (`a299f53`) | 10 | 29, 30 |
 

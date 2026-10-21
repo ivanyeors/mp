@@ -8,8 +8,9 @@
 -- order, with its joins: CRM slice 11's contact status (20261020200000),
 -- migration slice 06's Claim link and Welcome-back voucher (20261020200100),
 -- CRM slice 06's open Follow-ups (20261020200200), CRM slice 04's purchase,
--- re-adjustment and search columns (20261020200300) and migration slice 07's
--- Marketing consent (20261020200400). Postgres refuses a drop or a reorder.
+-- re-adjustment and search columns (20261020200300), migration slice 07's
+-- Marketing consent (20261020200400) and CRM slice 12's reviews
+-- (20261020200500). Postgres refuses a drop or a reorder.
 --
 -- admin_customer_migration_summary adds, for the Migration card's *Emailed*:
 --   emailed            Migrated customers the campaign has emailed
@@ -71,6 +72,14 @@ select
   -- Migration 07 (20261020200400): Marketing consent.
   c.marketing_email,
   c.marketing_email_updated_at,
+  -- CRM slice 12 (20261020200500): reviews.
+  rq.asked_at                        as review_requested_at,
+  rr.first_clicked_at                as review_link_clicked_at,
+  gr.star_rating                     as google_review_rating,
+  gr.reviewed_at                     as google_reviewed_at,
+  coalesce(sr.shop_reviews_count, 0) as shop_reviews_count,
+  sr.shop_review_avg_rating,
+  coalesce(gr.star_rating::int, round(sr.shop_review_avg_rating)::int) as review_rating,
   -- Migration 08: the latest campaign email the provider accepted.
   (select max(cs.sent_at)
      from public.customer_campaign_sends cs
@@ -115,7 +124,46 @@ left join (
     from public.readjustment_bookings b
    where b.status = 'attended'
    group by b.customer_id
-) rb on rb.customer_id = c.id;
+) rb on rb.customer_id = c.id
+-- CRM slice 12: asked on, by either channel.
+left join (
+  select s.customer_id, min(s.sent_at) as asked_at
+    from (
+      select e.customer_id, e.sent_at
+        from public.customer_emails e
+       where e.template = 'aftercare.review_request'
+         and e.entity_id = e.customer_id
+         and e.status = 'sent'
+         and e.sent_at is not null
+      union all
+      select w.customer_id, w.sent_at
+        from public.customer_whatsapp w
+       where w.template = 'aftercare.review_request'
+         and w.entity_id = w.customer_id
+         and w.status = 'sent'
+         and w.sent_at is not null
+    ) s
+   group by s.customer_id
+) rq on rq.customer_id = c.id
+-- Once per Customer: its primary key is the Customer.
+left join public.customer_review_requests rr on rr.customer_id = c.id
+left join (
+  select distinct on (l.customer_id)
+         l.customer_id,
+         g.star_rating,
+         coalesce(g.review_created_at, g.created_at) as reviewed_at
+    from public.customer_google_reviews l
+    join public.google_reviews g on g.id = l.google_review_id
+   order by l.customer_id, coalesce(g.review_created_at, g.created_at) desc
+) gr on gr.customer_id = c.id
+left join (
+  select r.customer_id,
+         count(*)::int              as shop_reviews_count,
+         round(avg(r.rating), 1)    as shop_review_avg_rating
+    from public.product_reviews r
+   where r.customer_id is not null
+   group by r.customer_id
+) sr on sr.customer_id = c.id;
 
 revoke all on public.admin_customer_overview from anon, authenticated;
 

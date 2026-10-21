@@ -53,6 +53,7 @@ import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
 import { MarketingConsentCard } from "./marketing-consent-card";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
+import { CustomerReviewsCard } from "./customer-reviews-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -769,6 +770,8 @@ export function CustomerDetailClient({
 
                     {/* Marketing consent, read-only but for a support unsubscribe (migration slice 07) */}
                     <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
+                    {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
+                    <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>

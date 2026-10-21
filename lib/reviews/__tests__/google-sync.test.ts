@@ -73,6 +73,23 @@ describe("syncGoogleReviews", () => {
     });
   });
 
+  it("adds the Possible customer match line when the CRM suggests someone, and never links anyone (CRM slice 12)", async () => {
+    const url = "https://mpillow.test/settings/customers?view=reviews";
+    const matchLink = vi.fn(async () => url);
+    await run([review("r1")], { matchLink });
+    expect(matchLink).toHaveBeenCalledWith(byName("r1")!.id);
+    const text = String((send.mock.calls[0] as unknown[])[0]);
+    expect(text).toContain(`👤 Possible customer match: confirm in the Admin Panel: ${url}`);
+    // No customer is named, and the sync wrote no link: only a Staff action does.
+    expect(text).not.toMatch(/@|customer [A-Z]/);
+    expect(Object.keys(h.tables)).toEqual(["google_reviews"]);
+
+    // Without a suggestion, no line.
+    h.tables.google_reviews = [];
+    await run([review("r2")], { matchLink: async () => null });
+    expect(String((send.mock.calls[1] as unknown[])[0])).not.toContain("Possible customer match");
+  });
+
   it("is idempotent: a second run sends nothing new", async () => {
     await run([review("r1")]);
     const again = await run([review("r1")]);

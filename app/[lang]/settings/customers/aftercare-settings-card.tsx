@@ -215,8 +215,8 @@ function ReviewRequestSection({
           WhatsApp); {last30.opened} opened the link.
         </p>
         <p className="text-muted-foreground">
-          Google reviews linked to a customer we asked:{" "}
-          {googleReviewsLinked === null ? "shown once Google reviews can be linked to customers" : googleReviewsLinked}
+          Google reviews linked to a customer we asked, so far:{" "}
+          {googleReviewsLinked}
           .
         </p>
       </div>
