@@ -4,7 +4,9 @@
 --
 -- Both views are redefined in full, with every column the previous definition
 -- had, in the same order, and the new ones at the end (Postgres refuses a
--- reorder or a drop). The same columns are in CUSTOMER_OVERVIEW_COLUMNS
+-- reorder or a drop). The overview's previous definition is CRM 11's
+-- (20261020200000_customer_overview_contact_status.sql), whose Contact status
+-- columns come before this slice's. The same columns are in CUSTOMER_OVERVIEW_COLUMNS
 -- (lib/crm/customer-overview.ts) and MIGRATION_SUMMARY_COLUMNS
 -- (lib/customer-migration/overview.ts); lib/crm/__tests__/
 -- customer-overview-view.test.ts keeps them equal. A later redefinition must
@@ -49,6 +51,10 @@ select
   m.claimed_at,
   m.shopify_orders_count,
   m.shopify_amount_spent,
+  -- CRM 11 (20261020200000): Contact status.
+  c.account_providers,
+  not public.is_blank_phone(c.phone) as has_phone,
+  public.is_valid_phone(c.phone)     as phone_valid,
   (select min(l.first_clicked_at)
      from public.customer_claim_links l
     where l.customer_id = c.id)                               as claim_link_first_clicked_at,

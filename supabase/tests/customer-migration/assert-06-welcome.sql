@@ -1,5 +1,5 @@
 -- Migration slice 06: the Claim link, the voucher's state, and the surfaces
--- that count them (20261020121000, 20261020121100, 20261020200000).
+-- that count them (20261020121000, 20261020121100, 20261020200100).
 --
 -- Run against a database with every migration applied (a local Postgres with
 -- the Supabase roles, or a Supabase branch), as the owner role:

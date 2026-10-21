@@ -158,8 +158,10 @@ Built on `claude/shopify-migration-plan-izv7fo` @ `c351aca`.
 - `20261020121100_welcome_voucher_state.sql`: `welcome_voucher_state(usage_count, is_active,
   expires_at)`, the one rule for the voucher's state, and `admin_welcome_voucher_summary` for
   the Discounts card. The view is server-only.
-- `20261020200000_customer_overview_claim_and_voucher.sql` (the shared-views range):
-  - `admin_customer_overview` with every column slice 12 had, plus the two new ones;
+- `20261020200100_customer_overview_claim_and_voucher.sql` (the shared-views range):
+  - `admin_customer_overview` with every column slice 12 and CRM 11 (`account_providers`,
+    `has_phone`, `phone_valid`, from `20261020200000_customer_overview_contact_status.sql`)
+    had, plus the two new ones;
   - `admin_customer_migration_summary` plus `clicked`, `vouchers_issued`, `vouchers_used`,
     `voucher_orders` and `voucher_revenue`.
 - All apply in order on Postgres 16 with the Supabase stubs (`db-check.sh`), and re-apply
@@ -257,4 +259,17 @@ Built on `claude/shopify-migration-plan-izv7fo` @ `c351aca`.
   to the web stream's URL query-parameter redaction (Admin → Data streams → Redact data).
 - **Apply the three migrations before the code.** The new code reads the new views and
   functions, and the old code keeps working with them in place.
-- **The CRM timeline** gets an adapter for the Claim link's first click at the catch-up merge.
+
+**After merging CRM 03, 07 and 11**
+
+- **The overview redefinition moved to `20261020200100`.** CRM 11 had also taken
+  `20261020200000`, and its file sorted after this one, so its definition would have run last
+  and dropped this slice's columns. This slice's redefinition now carries CRM 11's three
+  columns, then its own two. CRM 11's SQL assert and slice 05's, 06's and 12's all pass on
+  the merged schema.
+- **The Customers list** keeps CRM 11's Google and Mobile filters beside the Voucher filter.
+  Like those, `voucher` is optional in the list's initial filters.
+- **The CRM timeline** has a `claim_link.opened` source (`lib/crm/timeline/sources/claim-links.ts`,
+  gated by `customers`, under the Account chip). It adds one entry per Claim link at its first
+  click, with the open count in the line, and never reads the token. The send itself belongs to
+  slice 08's ledger. `timeline-route.test.ts` covers it.
