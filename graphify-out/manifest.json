@@ -15460,5 +15460,65 @@
     "seen": 1792581415.9502378,
     "ast_hash": "ff66ed29f1378885f413b5c052580150",
     "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/01-glossary-and-adr.md": {
+    "mtime": 1792582208.075613,
+    "seen": 1792582289.3144076,
+    "ast_hash": "ac0c1cbcf76a114deb3bb4179377df4b",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/02-ledger-balance-and-staff.md": {
+    "mtime": 1792582208.111613,
+    "seen": 1792582289.3144143,
+    "ast_hash": "4fe08b1bca55bd093e74473d3abc4329",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/03-earning.md": {
+    "mtime": 1792582208.143613,
+    "seen": 1792582289.3144174,
+    "ast_hash": "170c19e4a4bea6a9efbd1c20f5d4b88f",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/04-spending-at-shop-checkout.md": {
+    "mtime": 1792582208.179613,
+    "seen": 1792582289.3144214,
+    "ast_hash": "ea7f708da22f452b1a3cf8b8bbb9d6ab",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/05-claim-bonus.md": {
+    "mtime": 1792582208.2156131,
+    "seen": 1792582289.3144243,
+    "ast_hash": "f85949b799f9397df78083f3844fec3f",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/06-retire-welcome-back-voucher.md": {
+    "mtime": 1792582225.5876126,
+    "seen": 1792582289.3144274,
+    "ast_hash": "d938ec9c9f62f566b0f855a70ac8b2f7",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/07-expiry-and-reminders.md": {
+    "mtime": 1792582208.2805698,
+    "seen": 1792582289.31443,
+    "ast_hash": "cd238c7c5b6c3280ab77daef90e8a810",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md": {
+    "mtime": 1792582208.303613,
+    "seen": 1792582289.3144326,
+    "ast_hash": "3d425345428a5a1f49e760dba8ba0b69",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/issues/README.md": {
+    "mtime": 1792582208.327613,
+    "seen": 1792582289.3144665,
+    "ast_hash": "32af8440e0644a58dea91ce9f1395064",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
+    "mtime": 1792582076.4276161,
+    "seen": 1792582289.3144722,
+    "ast_hash": "1ac9d01d3c51aaf3f3a8f62c6fa009aa",
+    "semantic_hash": ""
   }
 }
