@@ -85,12 +85,17 @@ export async function markCustomerEmailFailed(
 
 /**
  * Claim → send → mark. Renders only once the send is claimed, so a skipped
- * send costs no render. Returns `skipped` when it was not this caller's to send.
+ * send costs no render, and work that must happen only for the caller that
+ * owns the send can go in `render` (the review request mints its link token
+ * there). A `render` that throws is a failed attempt, like a failed send.
+ * Returns `skipped` when it was not this caller's to send.
  */
 export async function dispatchCustomerEmail(params: {
   key: CustomerEmailKey;
   to: string;
-  render: () => RenderedEmail;
+  render: () => RenderedEmail | Promise<RenderedEmail>;
+  /** Reply-To, e.g. the support inbox for an email whose footer says "reply to this email". */
+  replyTo?: string;
   admin?: SupabaseClient;
   transport?: EmailTransport;
 }): Promise<SendOutcome> {
@@ -110,9 +115,10 @@ export async function dispatchCustomerEmail(params: {
   try {
     const transport = params.transport ?? getEmailTransport();
     const result = await transport.send({
-      ...params.render(),
+      ...(await params.render()),
       to: params.to,
       from: getDefaultFromAddress(),
+      ...(params.replyTo ? { replyTo: params.replyTo } : {}),
     });
     await markCustomerEmailSent(admin, claim.id);
     return { sent: true, transport: transport.name, id: result.id };

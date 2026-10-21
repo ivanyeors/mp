@@ -170,6 +170,16 @@ beforeEach(() => {
       { id: 2, customer_id: MEI, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-25T00:00") },
       { id: 3, customer_id: KIM, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-26T00:00") },
     ],
+    // CRM 07: asked for a Google review once, by both channels, and the link opened twice.
+    customer_review_requests: [
+      { customer_id: MEI, order_id: O1, token_hash: "h-mei", created_at: t("09-15T02:00"), first_clicked_at: t("09-16T03:00"), click_count: 2 },
+    ],
+    customer_emails: [
+      { id: 1, customer_id: MEI, template: "aftercare.review_request", entity_id: MEI, status: "sent", sent_at: t("09-15T02:00") },
+    ],
+    customer_whatsapp: [
+      { id: 1, customer_id: MEI, template: "aftercare.review_request", entity_id: MEI, status: "sent", sent_at: t("09-15T02:01") },
+    ],
     // Migration 02 and 05: imported, Claimed, and the voucher the Claim issued in the same transaction.
     migrated_customers: [
       { customer_id: MEI, created_by_import: false, imported_at: t("03-01T00:00"), claimed_at: t("06-15T00:00") },
@@ -206,6 +216,8 @@ const EVERYTHING = [
   `follow_up.added:${FOLLOW_UP}`,
   "aftercare.turned_on:1",
   "readjustment.attended:au-2",
+  `review_request.clicked:${MEI}`,
+  `review_request.sent:${MEI}`,
   `readjustment.booked:${BOOKING}`,
   "return.status_changed:ev-2",
   `return.opened:${RMA}`,
@@ -255,6 +267,8 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get("return.status_changed:ev-2")).toMatchObject({ summary: "Return approved by Staff", ref: { href: `/settings/rma/${RMA}` } });
     expect(byId.get(`return.opened:${RMA}`)?.summary).toBe("Return opened on order #1001 (exchange)");
     expect(byId.get(`review.submitted:${REVIEW}`)).toMatchObject({ summary: "Shop review: 5★ on Mpillow", status: "approved" });
+    expect(byId.get(`review_request.sent:${MEI}`)?.summary).toBe("Review requested (email, WhatsApp)");
+    expect(byId.get(`review_request.clicked:${MEI}`)?.summary).toBe("Review link clicked (2 times)");
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
     expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
     expect(byId.get(`follow_up.added:${FOLLOW_UP}`)).toMatchObject({
@@ -318,11 +332,11 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.groups.map((g) => g.key)).not.toContain("results");
   });
 
-  it("shows a customers-only role the Customer's own facts: reviews, aftercare, account and notes", async () => {
+  it("shows a customers-only role the Customer's own facts: reviews, review requests, aftercare, account and notes", async () => {
     signIn(CRM_ONLY);
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
-      EVERYTHING.filter((id) => /^(note|review|aftercare|account|follow_up)\./.test(id)),
+      EVERYTHING.filter((id) => /^(note|review|review_request|aftercare|account|follow_up)\./.test(id)),
     );
     expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "account", "notes", "followups"]);
   });

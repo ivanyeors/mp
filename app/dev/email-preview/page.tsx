@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 const GROUP_ORDER: EmailGroup[] = [
   "order",
   "account",
+  "aftercare",
   "results",
   "rma",
   "partner",

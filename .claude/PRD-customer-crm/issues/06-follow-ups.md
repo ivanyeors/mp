@@ -125,9 +125,11 @@ line.
 - `20261020132000_customer_followups.sql`: the table, its two indexes and a check that
   `done_by_profile_id` is set only once the follow-up is done. RLS is on with no policy, and
   all access is revoked from `anon` and `authenticated`.
-- The `admin_customer_overview` redefinition with `open_followups` is in a file of its own in
-  the shared-views range: a left join on a grouped count of open follow-ups, cast to `int`, so a
-  Customer with none reads `0`.
+- `20261020200100_customer_overview_open_followups.sql` redefines `admin_customer_overview` in a
+  file of its own, in the shared-views range.
+  - It runs after CRM 11's `20261020200000` and carries all its columns.
+  - `open_followups` is a left join on a grouped count of open follow-ups, cast to `int`, so a
+    Customer with none reads `0`.
 - `supabase/tests/crm/assert-06-followups.sql` checks the constraints, the cascade, that an
   assignee profile cannot be deleted, the overview's count, the grants and that RLS is on. It
   runs with `psql -f` against a migrated database; it is not in CI.

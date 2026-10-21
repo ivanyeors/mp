@@ -29,6 +29,14 @@ function recorder() {
       calls.push(["overlaps", column, value]);
       return this;
     },
+    contains(column, value) {
+      calls.push(["contains", column, value]);
+      return this;
+    },
+    not(column, operator, value) {
+      calls.push(["not", column, operator, value]);
+      return this;
+    },
     eq(column, value) {
       calls.push(["eq", column, value]);
       return this;
@@ -154,6 +162,38 @@ describe("applyCustomerFilters", () => {
   });
 });
 
+describe("Contact status filters (CRM slice 11)", () => {
+  it("maps Google linked and not linked to the sign-in methods", () => {
+    expect(query("google=linked").calls).toEqual([["contains", "account_providers", ["google"]], newest]);
+    // Not linked includes every Customer with no account, whose list is empty.
+    expect(query("google=not-linked").calls).toEqual([["not", "account_providers", "cs", "{google}"], newest]);
+  });
+
+  it("maps the three Mobile values to the two derived columns, so each Customer is in exactly one", () => {
+    expect(query("mobile=on-file").calls).toEqual([["eq", "phone_valid", true], newest]);
+    expect(query("mobile=missing").calls).toEqual([["eq", "has_phone", false], newest]);
+    expect(query("mobile=invalid").calls).toEqual([
+      ["eq", "has_phone", true],
+      ["eq", "phone_valid", false],
+      newest,
+    ]);
+  });
+
+  it("reads them from the URL, drops an unknown value, and writes them back", () => {
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams("google=linked&mobile=nope"));
+    expect(filters).toMatchObject({ google: "linked", mobile: "all" });
+    expect(ignored).toEqual(["mobile"]);
+    expect(customerFilterParams({ google: "not-linked", mobile: "invalid" }).toString()).toBe(
+      "google=not-linked&mobile=invalid",
+    );
+  });
+
+  it("has no Email filter of its own: email verified is Signed up", () => {
+    expect(CUSTOMER_FILTER_PARAMS).not.toContain("email");
+    expect(query("account=signed-up").calls).toEqual([["eq", "has_account", true], newest]);
+  });
+});
+
 describe("customerFilterParams", () => {
   it("writes only what differs from the default, so the plain list has no query", () => {
     expect(customerFilterParams(DEFAULT_CUSTOMER_FILTERS).toString()).toBe("");
@@ -169,6 +209,8 @@ describe("customerFilterParams", () => {
       tags: ["vip"],
       account: "signed-up",
       source: "platform",
+      google: "linked",
+      mobile: "missing",
       followups: "open",
       sort: "signed-up",
       page: 3,
@@ -186,7 +228,18 @@ describe("customerFilterParams", () => {
 
 describe("CUSTOMER_FILTER_PARAMS", () => {
   it("names every key the filters own, and not the page's tab (`view`, CRM slice 14)", () => {
-    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual(["account", "followups", "limit", "page", "search", "sort", "source", "tags"]);
+    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
+      "account",
+      "followups",
+      "google",
+      "limit",
+      "mobile",
+      "page",
+      "search",
+      "sort",
+      "source",
+      "tags",
+    ]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
 });

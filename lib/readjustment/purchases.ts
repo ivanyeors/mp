@@ -26,8 +26,12 @@ import {
   type ReadjustmentPolicy,
 } from "@/lib/pricing/service-prices";
 
-/** Orders that were never paid for, or whose money went back, hold nothing to re-adjust. */
-const NOT_A_PURCHASE = new Set(["pending", "cancelled", "refunded", "payment_failed"]);
+/**
+ * Orders that were never paid for, or whose money went back, hold nothing to
+ * re-adjust. A counted Order is one with `paid_at` set and a status outside
+ * this set; the review request (CRM slice 07) uses the same rule.
+ */
+export const NOT_A_PURCHASE: ReadonlySet<string> = new Set(["pending", "cancelled", "refunded", "payment_failed"]);
 
 /** Complimentary bookings that use a free visit (cancelled / expired give it back). */
 export const COMPLIMENTARY_USING_STATUSES = ["booked", "attended", "no_show"] as const;

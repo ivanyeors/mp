@@ -106,7 +106,8 @@ export function aftercareSendError(err: unknown): string {
   return message.slice(0, 1000);
 }
 
-function transportConfigured(): boolean {
+/** Whether the utility sender is set up at all. Unset means every aftercare WhatsApp is skipped. */
+export function aftercareWhatsAppTransportConfigured(): boolean {
   return Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID?.trim() && process.env.WHATSAPP_TOKEN?.trim());
 }
 
@@ -132,7 +133,7 @@ export async function notifyAftercareWhatsApp(
   },
 ): Promise<AftercareWaResult> {
   try {
-    if (!transportConfigured()) return { sent: false, skip: "transport_unconfigured" };
+    if (!aftercareWhatsAppTransportConfigured()) return { sent: false, skip: "transport_unconfigured" };
     const gate = await readWhatsAppGate(admin, input.customerId);
     if (!gate) return { sent: false, skip: "no_customer" };
 

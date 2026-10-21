@@ -14,11 +14,22 @@
  * and a filter on `orders.customer_id` reads the embedded row, as PostgREST's
  * embedded filters do.
  *
- * `lt`/`lte`/`gt`/`gte` compare as strings, which orders ISO timestamps of one
- * shape; `filter(col, "imatch", re)` is a case-insensitive regex match.
+ * `lt`/`lte`/`gt`/`gte` compare two ISO timestamps as instants, to the
+ * microsecond, as Postgres compares timestamptz: `…:00Z` and `…:00.000000Z`
+ * are the same time. Anything else compares as strings.
+ * `filter(col, "imatch", re)` is a case-insensitive regex match.
  */
 type Row = Record<string, unknown>;
 export type FakeDb = Record<string, Row[]>;
+
+/** An ISO timestamp as a sortable UTC string with six fraction digits, or null. */
+function instant(value: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})$/.exec(value);
+  if (!m) return null;
+  const ms = Date.parse(`${m[1]}${m[3]}`);
+  if (Number.isNaN(ms)) return null;
+  return `${new Date(ms).toISOString().slice(0, 19)}.${(m[2] ?? "").padEnd(6, "0").slice(0, 6)}Z`;
+}
 
 const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -98,7 +109,11 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       const cmp = (col: string, test: (a: string, b: string) => boolean, val: unknown) => {
         filters.push((r) => {
           const v = value(r, col);
-          return v != null && test(String(v), String(val));
+          if (v == null) return false;
+          const [a, b] = [String(v), String(val)];
+          const ta = instant(a);
+          const tb = instant(b);
+          return ta !== null && tb !== null ? test(ta, tb) : test(a, b);
         });
         return q;
       };

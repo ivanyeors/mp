@@ -34,6 +34,9 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "claimed_at",
   "shopify_orders_count",
   "shopify_amount_spent",
+  "account_providers",
+  "has_phone",
+  "phone_valid",
   "open_followups",
 ] as const;
 
@@ -70,6 +73,12 @@ export interface CustomerOverviewRow {
   claimed_at: string | null;
   shopify_orders_count: number | null;
   shopify_amount_spent: number | null;
+  /** Sign-in methods on the login, sorted (`{email,google}`); empty without an account (CRM 11). */
+  account_providers: string[];
+  /** A number is on file (CRM 11: *Mobile: missing* is false). */
+  has_phone: boolean;
+  /** It passes `isValidPhone` (CRM 11: *Mobile: on file*; with `has_phone`, *invalid* when false). */
+  phone_valid: boolean;
   /** Follow-ups not done yet (CRM slice 06); 0 when none. */
   open_followups: number;
 }

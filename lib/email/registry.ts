@@ -10,6 +10,7 @@
 // Every `render` must be PURE — no network, no DB.
 
 import { renderWelcomeVoucherEmail } from "./account";
+import { renderReviewRequestEmail } from "./aftercare";
 import { renderApplicationOutcomeEmail } from "./application";
 import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderContactEmail } from "./contact";
@@ -50,6 +51,8 @@ import {
   sampleBalanceDueFinish,
   sampleReadjustmentReschedule,
   sampleRestock,
+  sampleReviewRequest,
+  sampleReviewRequestNoName,
   sampleResultAssigned,
   sampleResultAssignedBalance,
   sampleResultAssignedFinish,
@@ -73,6 +76,7 @@ export type { EmailFixture };
 export type EmailGroup =
   | "order"
   | "account"
+  | "aftercare"
   | "rma"
   | "partner"
   | "application"
@@ -310,6 +314,26 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucherFreeShipping(f)),
   },
 
+  // --- Aftercare (PRD customer-crm slices 07, 08) ---
+  {
+    // Once per Customer, 14 days after delivery. The id is also its
+    // customer_emails.template (REVIEW_REQUEST_TEMPLATE).
+    id: "aftercare.review_request",
+    label: "Review request",
+    group: "aftercare",
+    audience: "customer",
+    render: (f) => renderReviewRequestEmail(sampleReviewRequest(f)),
+  },
+  {
+    // Same renderer with no first name on file: the greeting is the one line
+    // that changes.
+    id: "aftercare.review_request_no_name",
+    label: "Review request — no first name",
+    group: "aftercare",
+    audience: "customer",
+    render: (f) => renderReviewRequestEmail(sampleReviewRequestNoName(f)),
+  },
+
   // --- Partner programme ---
   {
     id: "partner.referral_earned",
@@ -430,6 +454,7 @@ export function getEmailCase(id: string): EmailCase | undefined {
 export const EMAIL_GROUP_LABELS: Record<EmailGroup, string> = {
   order: "Orders",
   account: "Customer account",
+  aftercare: "Aftercare",
   rma: "Returns",
   results: "Customisation",
   partner: "Partner programme",

@@ -3,14 +3,17 @@
 -- Kept in a file of its own, sorted after every other definition of the view,
 -- because Postgres keeps whichever `create or replace view` runs last: this
 -- definition carries every column of the previous one
--- (20261020111000_customer_account_status_and_overview.sql), in the same
--- order, plus the new one at the end. lib/crm/customer-overview.ts lists the
--- same columns, and lib/crm/__tests__/customer-overview-view.test.ts keeps the
--- two equal.
+-- (20261020200000_customer_overview_contact_status.sql, CRM slice 11), in the
+-- same order, plus the new one at the end. lib/crm/customer-overview.ts lists
+-- the same columns, and lib/crm/__tests__/customer-overview-view.test.ts keeps
+-- the two equal.
 --
 -- open_followups: how many of the Customer's Follow-ups are not done
 -- (customer_followups, 20261020132000_customer_followups.sql). The Customers
 -- list's *has an open follow-up* filter reads it. Derived, never stored.
+--
+-- Server-only, like before: security_invoker, and no grant to anon or
+-- authenticated.
 --
 -- Idempotent.
 
@@ -34,6 +37,9 @@ select
   m.claimed_at,
   m.shopify_orders_count,
   m.shopify_amount_spent,
+  c.account_providers,
+  not public.is_blank_phone(c.phone) as has_phone,
+  public.is_valid_phone(c.phone)     as phone_valid,
   coalesce(f.open_followups, 0)::int as open_followups
 from public.customers c
 left join public.migrated_customers m on m.customer_id = c.id

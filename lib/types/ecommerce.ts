@@ -164,6 +164,13 @@ export interface Customer {
    * (`touchCustomerLastSeen`). Not the last site visit. Staff-only.
    */
   account_last_seen_at: string | null;
+  /**
+   * The sign-in methods on the current login, sorted (`{email,google}`); empty
+   * without one (CRM slice 11). Written by `linkCustomerToAuthUser` from the
+   * signed-in user's identities, and emptied by a trigger when the login goes.
+   * Staff-only.
+   */
+  account_providers: string[];
   addresses?: CustomerAddress[];
 }
 
