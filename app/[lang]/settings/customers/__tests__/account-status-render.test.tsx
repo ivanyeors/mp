@@ -45,6 +45,12 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   claim_link_first_clicked_at: null,
   welcome_voucher_state: "none",
   open_followups: 0,
+  paid_orders: 0,
+  first_paid_at: null,
+  last_paid_at: null,
+  bought: [],
+  last_readjusted_at: null,
+  search_text: "ana@x.test ana tan",
   ...over,
 });
 

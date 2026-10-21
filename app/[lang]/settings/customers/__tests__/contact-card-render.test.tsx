@@ -157,10 +157,16 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   claim_link_first_clicked_at: null,
   welcome_voucher_state: "none",
   open_followups: 0,
+  paid_orders: 0,
+  first_paid_at: null,
+  last_paid_at: null,
+  bought: [],
+  last_readjusted_at: null,
+  search_text: "ana@x.test ana tan",
   ...over,
 });
 
-const list = (rows: CustomerOverviewRow[]) =>
+const list =(rows: CustomerOverviewRow[]) =>
   renderToString(
     <CustomersClient initialData={{ customers: { ok: true, rows, total: rows.length, page: 1, limit: 20 } }} />,
   );

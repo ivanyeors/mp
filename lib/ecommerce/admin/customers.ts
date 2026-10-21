@@ -26,7 +26,9 @@ export type AdminCustomersListResult =
 /**
  * One page of the Customer overview (`admin_customer_overview`, migration
  * slice 12), filtered and sorted from the list's URL parameters
- * (lib/crm/customer-filters.ts). An invalid parameter is dropped there.
+ * (lib/crm/customer-filters.ts). An invalid parameter is dropped there, and
+ * search is one escaped `ilike` on `search_text`, never an `.or()` (CRM
+ * slice 04; ADR 0027 (d)).
  */
 export async function listAdminCustomers(
   searchParams: URLSearchParams,
