@@ -171,6 +171,15 @@ describe("applyCustomerFilters", () => {
     expect(query("").calls).toEqual([newest]);
   });
 
+  it("with order: false applies the same filters and leaves the order to the caller (a Segment's count and resolve)", () => {
+    const url = "bought=premium&last_order=over:12&readjusted=never&sort=spend";
+    const { filters } = parseCustomerFilters(new URLSearchParams(url));
+    const { q, calls } = recorder();
+    applyCustomerFilters(q, filters, { now: NOW, order: false });
+    expect(calls).toEqual(query(url).calls.filter(([method]) => method !== "order"));
+    expect(calls.length).toBe(3);
+  });
+
   it("maps From Shopify + No account to the two derived columns", () => {
     // The list that matters during the migration: migrated_customers join
     // customers where auth_user_id is null.
