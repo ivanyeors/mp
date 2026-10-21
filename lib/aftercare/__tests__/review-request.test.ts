@@ -143,7 +143,11 @@ describe("settings", () => {
     });
     expect(change).toEqual({
       ok: true,
-      next: { reviewRequests: { enabled: true, daysAfter: 21, maxAgeDays: 60, googleReviewUrl: "" } },
+      next: {
+        reviewRequests: { enabled: true, daysAfter: 21, maxAgeDays: 60, googleReviewUrl: "" },
+        // The check-up's settings (CRM slice 08) are untouched, and written nowhere.
+        checkups: { enabled: false, months: 12 },
+      },
       rows: [
         { key: "review_requests_enabled", value: "true" },
         { key: "review_request_days_after", value: "21" },

@@ -1,5 +1,12 @@
 import { z } from "zod";
 import {
+  CHECKUP_LIMITS,
+  CHECKUP_SETTING_KEYS,
+  parseCheckupSettings,
+  type CheckupReport,
+  type CheckupSettings,
+} from "./checkup";
+import {
   isUsableReviewUrl,
   parseReviewRequestSettings,
   REVIEW_REQUEST_LIMITS,
@@ -9,22 +16,22 @@ import {
 } from "./review-request";
 
 /**
- * The Aftercare card's settings (Customers → Settings, CRM slice 07): plain
- * `site_settings` keys, one per value, so the daily job reads exactly what the
- * card wrote. Pure, so the card, the route and the job share one schema.
+ * The Aftercare card's settings (Customers → Settings, CRM slices 07 and 08):
+ * plain `site_settings` keys, one per value, so the daily job reads exactly
+ * what the card wrote. Pure, so the card, the route and the job share one
+ * schema.
  *
- * CRM slice 08 adds the check-up's two keys (`checkup_reminders_enabled`,
- * `checkup_months`) here: to {@link AFTERCARE_SETTING_KEYS}, the patch schema,
- * {@link AftercareSettings} and {@link AftercareCardData}.
+ * A new Aftercare message adds its keys to {@link AFTERCARE_SETTING_KEYS}, the
+ * patch schema, {@link AftercareSettings} and {@link AftercareCardData}.
  */
 
-export const AFTERCARE_SETTING_KEYS = [...REVIEW_REQUEST_SETTING_KEYS] as const;
+export const AFTERCARE_SETTING_KEYS = [...REVIEW_REQUEST_SETTING_KEYS, ...CHECKUP_SETTING_KEYS] as const;
 export type AftercareSettingKey = (typeof AFTERCARE_SETTING_KEYS)[number];
 
-export type AftercareSettings = { reviewRequests: ReviewRequestSettings };
+export type AftercareSettings = { reviewRequests: ReviewRequestSettings; checkups: CheckupSettings };
 
 export function parseAftercareSettings(stored: Record<string, string | undefined>): AftercareSettings {
-  return { reviewRequests: parseReviewRequestSettings(stored) };
+  return { reviewRequests: parseReviewRequestSettings(stored), checkups: parseCheckupSettings(stored) };
 }
 
 /** A change from the card: any subset of the keys, by their `site_settings` names. */
@@ -44,6 +51,8 @@ export const aftercareSettingsPatchSchema = z
       .max(REVIEW_REQUEST_LIMITS.maxAgeDays.max)
       .optional(),
     google_review_url: z.string().trim().max(500).optional(),
+    checkup_reminders_enabled: z.boolean().optional(),
+    checkup_months: z.number().int().min(CHECKUP_LIMITS.months.min).max(CHECKUP_LIMITS.months.max).optional(),
   })
   .strict()
   .refine((p) => Object.keys(p).length > 0, { message: "Nothing to change" });
@@ -69,6 +78,10 @@ export function applyAftercareSettingsPatch(
     maxAgeDays: patch.review_request_max_age_days ?? r.maxAgeDays,
     googleReviewUrl: patch.google_review_url ?? r.googleReviewUrl,
   };
+  const checkups: CheckupSettings = {
+    enabled: patch.checkup_reminders_enabled ?? current.checkups.enabled,
+    months: patch.checkup_months ?? current.checkups.months,
+  };
   if (patch.google_review_url !== undefined && next.googleReviewUrl && !isUsableReviewUrl(next.googleReviewUrl)) {
     return { ok: false, error: "The Google review link must be a full https:// address." };
   }
@@ -86,7 +99,11 @@ export function applyAftercareSettingsPatch(
     rows.push({ key: "review_request_max_age_days", value: String(next.maxAgeDays) });
   }
   if (patch.google_review_url !== undefined) rows.push({ key: "google_review_url", value: next.googleReviewUrl });
-  return { ok: true, next: { reviewRequests: next }, rows };
+  if (patch.checkup_reminders_enabled !== undefined) {
+    rows.push({ key: "checkup_reminders_enabled", value: String(checkups.enabled) });
+  }
+  if (patch.checkup_months !== undefined) rows.push({ key: "checkup_months", value: String(checkups.months) });
+  return { ok: true, next: { reviewRequests: next, checkups }, rows };
 }
 
 /** What the Aftercare card shows. Counts only. */
@@ -100,11 +117,23 @@ export type AftercareCardData = {
     /** Customers we asked who have a Linked Google review, so far (CRM slice 12). */
     googleReviewsLinked: number;
   };
+  checkups: {
+    /** Today's plan, as a dry run of the daily job, with the fee read from Costings now. */
+    today: CheckupReport;
+    /**
+     * Check-ups sent in the last 90 days (one per Order and milestone), the
+     * messages by channel, and how many were followed by a Re-adjustment
+     * booking from that Customer.
+     */
+    last90: { sent: number; email: number; whatsapp: number; followedByBooking: number };
+  };
   whatsapp: {
     /** The utility sender is set up (WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_TOKEN). */
     senderConfigured: boolean;
     /** WHATSAPP_TEMPLATE_AFTERCARE_REVIEW, or null while it is unset. */
     reviewTemplate: string | null;
+    /** WHATSAPP_TEMPLATE_AFTERCARE_CHECKUP, or null while it is unset. */
+    checkupTemplate: string | null;
   };
   /** Customers with an open STOP request on WhatsApp (slice 13). */
   openStopRequests: number;

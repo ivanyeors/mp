@@ -344,3 +344,21 @@ export function sampleReviewRequest(fixture: EmailFixture = "happy") {
 export function sampleReviewRequestNoName(fixture: EmailFixture = "happy") {
   return { ...sampleReviewRequest(fixture), firstName: null };
 }
+
+/**
+ * CRM slice 08: the yearly Check-up reminder for a Premium Mpillow. The fee is
+ * Costings' seeded S$30; the job reads the live one at send time.
+ */
+export function sampleCheckup(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    product: pick(fixture, "Premium Mpillow"),
+    orderNumber: pick(fixture, "MP-20251103-0042"),
+    deliveredOn: pick(fixture, "3 Nov 2025"),
+    fee: pick(fixture, "S$30"),
+    bookingUrl: `${ORIGIN}/en-US/appointments?type=readjustment&item=6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b`,
+    accountUrl: `${ORIGIN}/en-US/account/login?next=%2Fen-US%2Faccount`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+  };
+}

@@ -10,7 +10,7 @@
 // Every `render` must be PURE — no network, no DB.
 
 import { renderWelcomeVoucherEmail } from "./account";
-import { renderReviewRequestEmail } from "./aftercare";
+import { renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { renderApplicationOutcomeEmail } from "./application";
 import { renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderContactEmail } from "./contact";
@@ -49,6 +49,7 @@ import {
   samplePartnerListing,
   sampleBalanceDue,
   sampleBalanceDueFinish,
+  sampleCheckup,
   sampleReadjustmentReschedule,
   sampleRestock,
   sampleReviewRequest,
@@ -338,6 +339,16 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "aftercare",
     audience: "customer",
     render: (f) => renderReviewRequestEmail(sampleReviewRequestNoName(f)),
+  },
+  {
+    // Yearly, Premium Mpillow only, stating the fee from Costings; email needs
+    // Marketing consent. Its customer_emails.template is the milestone,
+    // `aftercare.checkup_<n>m` (checkupTemplate), with the Order as entity.
+    id: "aftercare.checkup",
+    label: "Check-up reminder",
+    group: "aftercare",
+    audience: "customer",
+    render: (f) => renderCheckupEmail(sampleCheckup(f)),
   },
 
   // --- Partner programme ---
