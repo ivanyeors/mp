@@ -495,6 +495,10 @@ _Avoid_: "newsletter" or "blast"; sending one through the transactional mailbox 
 Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
 _Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
 
+**Email template**:
+The words of one email the platform sends (an order confirmation, a return update, a customisation notice…): its subject, inbox preview line, heading, messages and button labels, with placeholders such as `{order_number}`. Owner and Admin edit them on **Admin Panel** → Email templates (`email_template_copy`); the layout, the data (items, amounts, addresses, codes, links) and the footer stay in code. An unedited email sends its original words, and any failure to read an edit falls back to them.
+_Avoid_: "template" for the layout or design (that is fixed); calling an **Email campaign** a template (each campaign is written once, on its own page)
+
 **Wave**:
 One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)

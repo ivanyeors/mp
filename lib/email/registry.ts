@@ -41,7 +41,7 @@ import { money } from "./format";
 import { getSiteOrigin } from "@/lib/site-url";
 import { renderReadjustmentRescheduleEmail } from "./readjustment";
 import { RMA_EMAIL_TEMPLATES } from "./rma";
-import { ORDER_EMAIL_TEMPLATES } from "./templates";
+import { ORDER_EMAIL_COPY, ORDER_EMAIL_TEMPLATES, renderOrderEmail } from "./templates";
 import {
   sampleApplication,
   HOSTILE,
@@ -80,6 +80,7 @@ import {
   sampleWelcomeVoucherFreeShipping,
   type EmailFixture,
 } from "./__fixtures__/samples";
+import type { EmailCopy, EmailCopySpec } from "./copy";
 import type { EmailTemplateName, RenderedEmail } from "./types";
 import type { RmaEmailTemplateName } from "./rma";
 
@@ -111,8 +112,18 @@ export interface EmailCase {
    * and must carry neither (`__tests__/transactional-no-unsubscribe.test.ts`).
    */
   campaign?: true;
-  /** Pure renderer bound to the shared fixtures. */
-  render: (fixture: EmailFixture) => RenderedEmail;
+  /**
+   * The email's editable words (PRD-email-templates): what Admin Panel →
+   * Email templates edits. Entries that are variants of one renderer share
+   * one spec. Absent for an email Staff do not edit there.
+   */
+  copy?: EmailCopySpec;
+  /**
+   * Pure renderer bound to the shared fixtures. `copy`, when given, is the
+   * entry's `copy` spec filled in (the editor's preview); without it, the
+   * default words.
+   */
+  render: (fixture: EmailFixture, copy?: EmailCopy) => RenderedEmail;
 }
 
 const ORDER_LABELS: Record<EmailTemplateName, string> = {
@@ -135,15 +146,39 @@ const RMA_LABELS: Record<RmaEmailTemplateName, string> = {
   rma_refunded: "Return refunded",
 };
 
+/** The emails whose button opens the courier's tracking page when there is one, else the order. */
+const SHIPMENT_EMAILS = new Set<EmailTemplateName>([
+  "shipping",
+  "tracking_out_for_delivery",
+  "tracking_delivery_attempt",
+  "tracking_delivered",
+  "tracking_exception",
+]);
+
 const orderCases: EmailCase[] = (
   Object.keys(ORDER_EMAIL_TEMPLATES) as EmailTemplateName[]
-).map((key) => ({
-  id: `order.${key}`,
-  label: ORDER_LABELS[key],
-  group: "order",
-  audience: "customer",
-  render: (f) => ORDER_EMAIL_TEMPLATES[key](sampleOrder(f)),
-}));
+).flatMap((key): EmailCase[] => {
+  const base: EmailCase = {
+    id: `order.${key}`,
+    label: ORDER_LABELS[key],
+    group: "order",
+    audience: "customer",
+    copy: ORDER_EMAIL_COPY[key],
+    render: (f, copy) => renderOrderEmail(key, sampleOrder(f), copy),
+  };
+  if (!SHIPMENT_EMAILS.has(key)) return [base];
+  // Same renderer with no tracking link: the button opens the order instead,
+  // with its own editable label.
+  return [
+    base,
+    {
+      ...base,
+      id: `order.${key}_no_tracking`,
+      label: `${ORDER_LABELS[key]} — no tracking link`,
+      render: (f, copy) => renderOrderEmail(key, { ...sampleOrder(f), trackingUrl: null }, copy),
+    },
+  ];
+});
 
 const rmaCases: EmailCase[] = (
   Object.keys(RMA_EMAIL_TEMPLATES) as RmaEmailTemplateName[]

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Mail, Plus } from "lucide-react";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
+import { EmailsNav } from "@/components/settings/emails-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +31,7 @@ function statusOf({ campaign, stats }: CampaignListItem): { label: string; varia
 export default async function EmailCampaignsPage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-    await requireAdminPage("campaigns", locale);
+    const ctx = await requireAdminPage("campaigns", locale);
     const to = (href: string) => withLocale(href, locale);
 
     let items: CampaignListItem[] = [];
@@ -42,6 +44,11 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
 
     return (
         <div className="space-y-6">
+            <EmailsNav
+                current="campaigns"
+                campaignsHref={to("/settings/campaigns")}
+                templatesHref={hasPermission(ctx, "email-templates") ? to("/settings/email-templates") : null}
+            />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">Email campaigns</h1>

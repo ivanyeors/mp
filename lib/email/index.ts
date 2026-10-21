@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { renderOrderEmail } from "./templates";
+import type { EmailCopySpec } from "./copy";
+import { loadEmailCopy } from "./copy-store";
+import { ORDER_EMAIL_COPY, renderOrderEmail } from "./templates";
 import { getDefaultFromAddress, getDefaultTransport } from "./transport";
 import type {
   EmailTemplateName,
@@ -49,7 +51,9 @@ export async function sendOrderEmail(
   options?: { transport?: EmailTransport; from?: string }
 ): Promise<SendOutcome> {
   const transport = options?.transport ?? getEmailTransport();
-  const rendered = renderOrderEmail(template, data);
+  // The words Staff saved on Email templates, or the defaults (never throws).
+  const copy = await loadEmailCopy(ORDER_EMAIL_COPY[template] as EmailCopySpec);
+  const rendered = renderOrderEmail(template, data, copy);
   const result = await transport.send({
     ...rendered,
     to,

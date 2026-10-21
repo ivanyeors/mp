@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, HandCoins, TrendingUp, Store, ClipboardList,
   Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
-  ShoppingCart, UserCircle, Mail, Tag, Truck, KeyRound, Loader2, RotateCcw,
+  ShoppingCart, UserCircle, Mail, MailCheck, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
   GitBranch, ClipboardCheck, Percent, Box,
 } from "lucide-react";
@@ -123,6 +123,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle },
       { href: "/settings/campaigns", label: "Email campaigns", tooltip: "Write and send marketing email", Icon: Mail },
+      { href: "/settings/email-templates", label: "Email templates", tooltip: "The words of every email customers and partners get", Icon: MailCheck },
       { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
       { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart },
       { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw },

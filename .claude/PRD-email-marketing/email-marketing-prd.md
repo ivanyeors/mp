@@ -6,6 +6,9 @@ are set in Vercel (*Before the first send*).
 **Owner request (2026-10-21):** "I need the marketing tool to be built so that I can test and
 send to my customers that I've imported from Shopify", from "our setting page".
 
+Its sibling, **Email templates** (`PRD-email-templates`), edits the words of every email the
+platform sends; a Campaigns / Templates switch joins the two pages.
+
 This page replaces the placeholder that recorded what the initiative inherits. Those inherited
 rules are kept below, unchanged.
 

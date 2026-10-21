@@ -54,6 +54,8 @@ export const PERMISSION_CATALOG = [
   // Sending marketing email to the customer list (PRD-email-marketing). Its own key, held by
   // Owner and Admin only, as `customer-import` is: Manager and Staff hold `customers`.
   { key: "campaigns", label: "Email campaigns", group: "Store", href: "/settings/campaigns", surface: "admin-panel" },
+  // The words of every email the platform sends (PRD-email-templates): Owner and Admin only.
+  { key: "email-templates", label: "Email templates", group: "Store", href: "/settings/email-templates", surface: "admin-panel" },
   { key: "results", label: "Results", group: "Store", href: "/settings/results", surface: "admin-panel" },
   { key: "orders", label: "Orders", group: "Store", href: "/settings/orders", surface: "admin-panel" },
   { key: "returns", label: "Returns / RMA", group: "Store", href: "/settings/rma", surface: "admin-panel" },

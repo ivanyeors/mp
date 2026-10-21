@@ -7,6 +7,7 @@ import {
   infoList,
   paragraph,
 } from "./components";
+import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy, type EmailCopySpec } from "./copy";
 import { money, negativeMoney } from "./format";
 import type {
   EmailTemplateName,
@@ -109,63 +110,184 @@ function addressBlockText(data: OrderEmailData): string {
   return `\nShipping to:\n${formatAddressLines(data.shippingAddress).join("\n")}`;
 }
 
-function orderConfirmation(data: OrderEmailData): RenderedEmail {
-  const subject = `Order ${data.orderNumber} confirmed`;
-  const url = orderUrl(data.orderNumber);
-  const text = `Hi ${data.customerName},
+// ------------------------------------------------------------
+// The words of each order email (PRD-email-templates)
+// ------------------------------------------------------------
+//
+// Every order email names the customer and the order, so every one takes
+// {customer_name} and {order_number}. The tables, amounts, addresses and
+// tracking rows are data, and stay in code.
 
-Thanks for your order! We've received order ${data.orderNumber} and it's now confirmed.
+const ORDER_PLACEHOLDERS = {
+  customer_name: "The customer's name, as on the order",
+  order_number: "The order number, e.g. MP-10428",
+};
 
-Items:
-${itemsText(data)}
+const TRACK_HINT = "The button when the courier gave a tracking link.";
+const ORDER_HINT = "The button when there is no tracking link: it opens the order instead.";
 
-${totalsText(data)}
-${addressBlockText(data)}
+type ShipmentCopyKey = "subject" | "heading" | "intro" | "button_track" | "button_order";
 
-View your order: ${url}
-
-We'll email you again when it ships.`;
-
-  const html = renderEmailShell({
-    title: "Thanks for your order!",
-    preheader: `Order ${data.orderNumber} is confirmed.`,
-    bodyHtml: `${paragraph(
-      `Hi ${data.customerName}, we've received order ${data.orderNumber} and it's now confirmed.`
-    )}
-${itemsTableHtml(data)}
-${addressBlockHtml(data)}
-${paragraph("We'll email you again when it ships.", { muted: true })}`,
-    cta: { href: url, label: "View your order" },
+function trackingCopy(id: EmailTemplateName, name: string, description: string, d: { subject: string; heading: string; intro: string }) {
+  return defineEmailCopy<ShipmentCopyKey>({
+    id: `order.${id}`,
+    name,
+    description,
+    placeholders: ORDER_PLACEHOLDERS,
+    fields: {
+      subject: { label: "Subject", default: d.subject, hint: "Also the inbox preview line." },
+      heading: { label: "Heading", default: d.heading },
+      intro: { label: "Message", default: d.intro },
+      button_track: { label: "Button, with tracking", default: "Track your package", hint: TRACK_HINT },
+      button_order: { label: "Button, without tracking", default: "View your order", hint: ORDER_HINT },
+    },
   });
-
-  return { subject, html, text };
 }
 
-function paymentReceipt(data: OrderEmailData): RenderedEmail {
-  const subject = `Receipt for order ${data.orderNumber}`;
-  const url = orderUrl(data.orderNumber);
-  const text = `Hi ${data.customerName},
+export const ORDER_EMAIL_COPY = {
+  order_confirmation: defineEmailCopy({
+    id: "order.order_confirmation",
+    name: "Order confirmed",
+    description: "Sent when a shop order is paid, with its items, totals and delivery address.",
+    placeholders: ORDER_PLACEHOLDERS,
+    fields: {
+      subject: { label: "Subject", default: "Order {order_number} confirmed" },
+      preheader: { label: "Inbox preview line", default: "Order {order_number} is confirmed." },
+      heading: { label: "Heading", default: "Thanks for your order!" },
+      intro: { label: "Message", default: "Hi {customer_name}, we've received order {order_number} and it's now confirmed." },
+      closing: { label: "Closing line", default: "We'll email you again when it ships.", optional: true },
+      button: { label: "Button", default: "View your order" },
+    },
+  }),
+  payment_receipt: defineEmailCopy({
+    id: "order.payment_receipt",
+    name: "Payment receipt",
+    description: "Sent with the order confirmation: the totals and the amount charged.",
+    placeholders: ORDER_PLACEHOLDERS,
+    fields: {
+      subject: { label: "Subject", default: "Receipt for order {order_number}" },
+      preheader: { label: "Inbox preview line", default: "Receipt for order {order_number}." },
+      heading: { label: "Heading", default: "Payment receipt" },
+      intro: { label: "Message", default: "Hi {customer_name}, this is your payment receipt for order {order_number}." },
+      button: { label: "Button", default: "View your order" },
+    },
+  }),
+  shipping: defineEmailCopy({
+    id: "order.shipping",
+    name: "Order shipped",
+    description: "Sent when an order is handed to the courier, with the courier, delivery estimate and tracking number.",
+    placeholders: ORDER_PLACEHOLDERS,
+    fields: {
+      subject: { label: "Subject", default: "Order {order_number} has shipped" },
+      preheader: { label: "Inbox preview line", default: "Order {order_number} has shipped." },
+      heading: { label: "Heading", default: "Your order is on its way" },
+      intro: { label: "Message", default: "Hi {customer_name}, good news — order {order_number} has shipped!" },
+      button_track: { label: "Button, with tracking", default: "Track your package", hint: TRACK_HINT },
+      button_order: { label: "Button, without tracking", default: "View your order", hint: ORDER_HINT },
+    },
+  }),
+  tracking_out_for_delivery: trackingCopy("tracking_out_for_delivery", "Out for delivery", "Sent when the courier reports the order is out for delivery.", {
+    subject: "Order {order_number} is out for delivery",
+    heading: "Out for delivery",
+    intro: "Hi {customer_name}, order {order_number}: it's out for delivery and should arrive today.",
+  }),
+  tracking_delivery_attempt: trackingCopy("tracking_delivery_attempt", "Delivery attempt missed", "Sent when the courier reports a failed delivery attempt, with their latest update.", {
+    subject: "Delivery attempt for order {order_number}",
+    heading: "We missed you",
+    intro: "Hi {customer_name}, order {order_number}: the courier tried to deliver it but couldn't. They'll try again or leave instructions on the tracking page.",
+  }),
+  tracking_delivered: trackingCopy("tracking_delivered", "Order delivered", "Sent when the courier reports the order delivered.", {
+    subject: "Order {order_number} has been delivered",
+    heading: "Delivered",
+    intro: "Hi {customer_name}, order {order_number}: it's been delivered. We hope you love it.",
+  }),
+  tracking_exception: trackingCopy("tracking_exception", "Delivery problem", "Sent when the courier reports a problem, with their latest update.", {
+    subject: "Delivery problem with order {order_number}",
+    heading: "There's a problem with your delivery",
+    intro: "Hi {customer_name}, order {order_number}: the courier has reported a problem with the delivery. We're looking into it and will be in touch.",
+  }),
+  refund: defineEmailCopy({
+    id: "order.refund",
+    name: "Refund issued",
+    description: "Sent when a refund is issued on an order, with the amount.",
+    placeholders: { ...ORDER_PLACEHOLDERS, refund_amount: "The amount refunded, e.g. SGD 49.00" },
+    fields: {
+      subject: { label: "Subject", default: "Refund issued for order {order_number}" },
+      preheader: { label: "Inbox preview line", default: "A refund for order {order_number} is on its way back to you." },
+      heading: { label: "Heading", default: "Refund issued" },
+      intro: { label: "Message", default: "Hi {customer_name}, we've issued a refund for order {order_number}." },
+      note: { label: "Under the amount", default: "It may take a few business days to appear on your statement." },
+      button: { label: "Button", default: "View your order" },
+    },
+  }),
+} satisfies Record<EmailTemplateName, EmailCopySpec>;
 
-This is your payment receipt for order ${data.orderNumber}.
+type CopyOf<T extends EmailTemplateName> = EmailCopy<keyof (typeof ORDER_EMAIL_COPY)[T]["fields"] & string>;
+
+const orderValues = (data: OrderEmailData) => ({ customer_name: data.customerName, order_number: data.orderNumber });
+
+/** Fill every field of `copy` from `values`. */
+function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
+  const out = {} as EmailCopy<K>;
+  for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
+  return out;
+}
+
+function orderConfirmation(
+  data: OrderEmailData,
+  copy: CopyOf<"order_confirmation"> = defaultEmailCopy(ORDER_EMAIL_COPY.order_confirmation),
+): RenderedEmail {
+  const t = filled(copy, orderValues(data));
+  const url = orderUrl(data.orderNumber);
+  const text = [
+    t.intro,
+    "",
+    "Items:",
+    itemsText(data),
+    "",
+    `${totalsText(data)}${addressBlockText(data) ? `\n${addressBlockText(data)}` : ""}`,
+    "",
+    `${t.button}: ${url}`,
+    ...(t.closing ? ["", t.closing] : []),
+  ].join("\n");
+
+  const html = renderEmailShell({
+    title: t.heading,
+    preheader: t.preheader,
+    bodyHtml: `${paragraph(t.intro)}
+${itemsTableHtml(data)}
+${addressBlockHtml(data)}
+${t.closing ? paragraph(t.closing, { muted: true }) : ""}`,
+    cta: { href: url, label: t.button },
+  });
+
+  return { subject: t.subject, html, text };
+}
+
+function paymentReceipt(
+  data: OrderEmailData,
+  copy: CopyOf<"payment_receipt"> = defaultEmailCopy(ORDER_EMAIL_COPY.payment_receipt),
+): RenderedEmail {
+  const t = filled(copy, orderValues(data));
+  const url = orderUrl(data.orderNumber);
+  const text = `${t.intro}
 
 ${totalsText(data)}
 
 Total charged: ${money(data.total, data.currency)}
 
-View your order: ${url}`;
+${t.button}: ${url}`;
 
   const html = renderEmailShell({
-    title: "Payment receipt",
-    preheader: `Receipt for order ${data.orderNumber}.`,
-    bodyHtml: `${paragraph(
-      `Hi ${data.customerName}, this is your payment receipt for order ${data.orderNumber}.`
-    )}
+    title: t.heading,
+    preheader: t.preheader,
+    bodyHtml: `${paragraph(t.intro)}
 ${infoList(totalsRows(data))}
 ${amountPanel({ label: "Total charged", amount: money(data.total, data.currency) })}`,
-    cta: { href: url, label: "View your order" },
+    cta: { href: url, label: t.button },
   });
 
-  return { subject, html, text };
+  return { subject: t.subject, html, text };
 }
 
 type Row = { label: string; value: string; strong?: boolean };
@@ -191,42 +313,40 @@ function shipmentRows(data: OrderEmailData, opts: { eta?: boolean; checkpoint?: 
 
 const rowsText = (rows: Row[]) => rows.map((r) => `\n${r.label}: ${r.value}`).join("");
 
-function shipping(data: OrderEmailData): RenderedEmail {
-  const subject = `Order ${data.orderNumber} has shipped`;
+function shipping(data: OrderEmailData, copy: CopyOf<"shipping"> = defaultEmailCopy(ORDER_EMAIL_COPY.shipping)): RenderedEmail {
+  const t = filled(copy, orderValues(data));
   const rows = shipmentRows(data, { eta: true });
   const url = data.trackingUrl || orderUrl(data.orderNumber);
-  const label = data.trackingUrl ? "Track your package" : "View your order";
-  const text = `Hi ${data.customerName},
-
-Good news — order ${data.orderNumber} has shipped!${rowsText(rows)}
+  const label = data.trackingUrl ? t.button_track : t.button_order;
+  const text = `${t.intro}${rowsText(rows)}
 
 ${label}: ${url}`;
 
   const html = renderEmailShell({
-    title: "Your order is on its way",
-    preheader: `Order ${data.orderNumber} has shipped.`,
-    bodyHtml: `${paragraph(`Hi ${data.customerName}, good news — order ${data.orderNumber} has shipped!`)}
+    title: t.heading,
+    preheader: t.preheader,
+    bodyHtml: `${paragraph(t.intro)}
 ${infoList(rows)}`,
     cta: { href: url, label },
   });
 
-  return { subject, html, text };
+  return { subject: t.subject, html, text };
 }
 
-/** A courier status update: same shell as "shipped", with a status-specific line. */
-function trackingUpdate(title: string, subject: (n: string) => string, line: string, opts: { checkpoint?: boolean } = {}) {
-  return (data: OrderEmailData): RenderedEmail => {
+/** A courier status update: same shell as "shipped", with a status-specific message. */
+function trackingUpdate(name: Exclude<keyof typeof ORDER_EMAIL_COPY, "order_confirmation" | "payment_receipt" | "shipping" | "refund">, opts: { checkpoint?: boolean } = {}) {
+  return (data: OrderEmailData, copy: EmailCopy<ShipmentCopyKey> = defaultEmailCopy(ORDER_EMAIL_COPY[name])): RenderedEmail => {
+    const t = filled(copy, orderValues(data));
     const url = data.trackingUrl || orderUrl(data.orderNumber);
-    const label = data.trackingUrl ? "Track your package" : "View your order";
-    const body = `Hi ${data.customerName}, order ${data.orderNumber}: ${line}`;
+    const label = data.trackingUrl ? t.button_track : t.button_order;
     const rows = shipmentRows(data, opts);
     return {
-      subject: subject(data.orderNumber),
-      text: `${body}${rowsText(rows)}\n\n${label}: ${url}`,
+      subject: t.subject,
+      text: `${t.intro}${rowsText(rows)}\n\n${label}: ${url}`,
       html: renderEmailShell({
-        title,
-        preheader: subject(data.orderNumber),
-        bodyHtml: `${paragraph(body)}
+        title: t.heading,
+        preheader: t.subject,
+        bodyHtml: `${paragraph(t.intro)}
 ${infoList(rows)}`,
         cta: { href: url, label },
       }),
@@ -234,70 +354,46 @@ ${infoList(rows)}`,
   };
 }
 
-function refund(data: OrderEmailData): RenderedEmail {
-  const refundAmount = data.refundAmount ?? data.total;
-  const subject = `Refund issued for order ${data.orderNumber}`;
+function refund(data: OrderEmailData, copy: CopyOf<"refund"> = defaultEmailCopy(ORDER_EMAIL_COPY.refund)): RenderedEmail {
+  const refundAmount = money(data.refundAmount ?? data.total, data.currency);
+  const t = filled(copy, { ...orderValues(data), refund_amount: refundAmount });
   const url = orderUrl(data.orderNumber);
-  const text = `Hi ${data.customerName},
+  const text = `${t.intro}
 
-We've issued a refund of ${money(refundAmount, data.currency)} for order ${
-    data.orderNumber
-  }. It may take a few business days to appear on your statement.
+Refund issued: ${refundAmount}
+${t.note}
 
-View your order: ${url}`;
+${t.button}: ${url}`;
 
   const html = renderEmailShell({
-    title: "Refund issued",
-    preheader: `A refund for order ${data.orderNumber} is on its way back to you.`,
-    bodyHtml: `${paragraph(
-      `Hi ${data.customerName}, we've issued a refund for order ${data.orderNumber}.`
-    )}
+    title: t.heading,
+    preheader: t.preheader,
+    bodyHtml: `${paragraph(t.intro)}
 ${amountPanel({
       label: "Refund issued",
-      amount: money(refundAmount, data.currency),
-      caption: "It may take a few business days to appear on your statement.",
+      amount: refundAmount,
+      caption: t.note,
     })}`,
-    cta: { href: url, label: "View your order" },
+    cta: { href: url, label: t.button },
   });
 
-  return { subject, html, text };
+  return { subject: t.subject, html, text };
 }
 
-export const ORDER_EMAIL_TEMPLATES: Record<
-  EmailTemplateName,
-  (data: OrderEmailData) => RenderedEmail
-> = {
+/** Each order email's renderer. The copy is optional: without it, the default words. */
+export const ORDER_EMAIL_TEMPLATES: {
+  [T in EmailTemplateName]: (data: OrderEmailData, copy?: CopyOf<T>) => RenderedEmail;
+} = {
   order_confirmation: orderConfirmation,
   payment_receipt: paymentReceipt,
   shipping,
-  tracking_out_for_delivery: trackingUpdate(
-    "Out for delivery",
-    (n) => `Order ${n} is out for delivery`,
-    "it's out for delivery and should arrive today."
-  ),
-  tracking_delivery_attempt: trackingUpdate(
-    "We missed you",
-    (n) => `Delivery attempt for order ${n}`,
-    "the courier tried to deliver it but couldn't. They'll try again or leave instructions on the tracking page.",
-    { checkpoint: true }
-  ),
-  tracking_delivered: trackingUpdate(
-    "Delivered",
-    (n) => `Order ${n} has been delivered`,
-    "it's been delivered. We hope you love it."
-  ),
-  tracking_exception: trackingUpdate(
-    "There's a problem with your delivery",
-    (n) => `Delivery problem with order ${n}`,
-    "the courier has reported a problem with the delivery. We're looking into it and will be in touch.",
-    { checkpoint: true }
-  ),
+  tracking_out_for_delivery: trackingUpdate("tracking_out_for_delivery"),
+  tracking_delivery_attempt: trackingUpdate("tracking_delivery_attempt", { checkpoint: true }),
+  tracking_delivered: trackingUpdate("tracking_delivered"),
+  tracking_exception: trackingUpdate("tracking_exception", { checkpoint: true }),
   refund,
 };
 
-export function renderOrderEmail(
-  template: EmailTemplateName,
-  data: OrderEmailData
-): RenderedEmail {
-  return ORDER_EMAIL_TEMPLATES[template](data);
+export function renderOrderEmail(template: EmailTemplateName, data: OrderEmailData, copy?: EmailCopy): RenderedEmail {
+  return (ORDER_EMAIL_TEMPLATES[template] as (data: OrderEmailData, copy?: EmailCopy) => RenderedEmail)(data, copy);
 }
