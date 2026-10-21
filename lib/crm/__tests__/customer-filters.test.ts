@@ -33,6 +33,10 @@ function recorder() {
       calls.push(["eq", column, value]);
       return this;
     },
+    gt(column, value) {
+      calls.push(["gt", column, value]);
+      return this;
+    },
     order(column, options) {
       calls.push(["order", column, options]);
       return this;
@@ -140,6 +144,14 @@ describe("applyCustomerFilters", () => {
   it("never applies a dropped value", () => {
     expect(query("account=foo&source=bar&sort=baz").calls).toEqual([newest]);
   });
+
+  it("maps has an open follow-up (CRM slice 06) to open_followups above 0", () => {
+    expect(query("followups=open").calls).toEqual([["gt", "open_followups", 0], newest]);
+    expect(query("followups=all").calls).toEqual([newest]);
+    const dropped = query("followups=overdue");
+    expect(dropped.calls).toEqual([newest]);
+    expect(dropped.ignored).toEqual(["followups"]);
+  });
 });
 
 describe("customerFilterParams", () => {
@@ -157,6 +169,7 @@ describe("customerFilterParams", () => {
       tags: ["vip"],
       account: "signed-up",
       source: "platform",
+      followups: "open",
       sort: "signed-up",
       page: 3,
       limit: 50,
@@ -173,7 +186,7 @@ describe("customerFilterParams", () => {
 
 describe("CUSTOMER_FILTER_PARAMS", () => {
   it("names every key the filters own, and not the page's tab (`view`, CRM slice 14)", () => {
-    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual(["account", "limit", "page", "search", "sort", "source", "tags"]);
+    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual(["account", "followups", "limit", "page", "search", "sort", "source", "tags"]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
 });

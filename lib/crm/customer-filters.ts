@@ -19,6 +19,10 @@ export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 export const SOURCE_FILTERS = ["all", "shopify", "platform"] as const;
 export type SourceFilter = (typeof SOURCE_FILTERS)[number];
 
+/** *Has an open follow-up* (CRM slice 06): the overview's `open_followups` above 0. */
+export const FOLLOW_UP_FILTERS = ["all", "open"] as const;
+export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
+
 export const CUSTOMER_SORTS = ["newest", "oldest", "name-asc", "name-desc", "signed-up"] as const;
 export type CustomerSort = (typeof CUSTOMER_SORTS)[number];
 
@@ -31,6 +35,8 @@ export interface CustomerFilters {
   account: AccountFilter;
   /** *From Shopify* is a **Migrated customer**; *Platform* is every other Customer. */
   source: SourceFilter;
+  /** `open`: only Customers with a Follow-up not done yet. */
+  followups: FollowUpFilter;
   sort: CustomerSort;
   page: number;
   limit: number;
@@ -41,6 +47,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   tags: [],
   account: "all",
   source: "all",
+  followups: "all",
   sort: "newest",
   page: 1,
   limit: 20,
@@ -60,6 +67,7 @@ const PARAM_SCHEMAS = {
   ),
   account: z.enum(ACCOUNT_FILTERS),
   source: z.enum(SOURCE_FILTERS),
+  followups: z.enum(FOLLOW_UP_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
   // An oversized limit is capped, as before, rather than dropped.
@@ -120,6 +128,7 @@ export function customerFilterParams(
   if (f.tags.length) out.set("tags", f.tags.join(","));
   if (f.account !== "all") out.set("account", f.account);
   if (f.source !== "all") out.set("source", f.source);
+  if (f.followups !== "all") out.set("followups", f.followups);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
     out.set("page", String(f.page));
@@ -133,6 +142,7 @@ export interface CustomerListQuery {
   or(filters: string): this;
   overlaps(column: string, value: string[]): this;
   eq(column: string, value: boolean): this;
+  gt(column: string, value: number): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -153,6 +163,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+  if (filters.followups === "open") q = q.gt("open_followups", 0);
 
   switch (filters.sort) {
     case "name-asc":

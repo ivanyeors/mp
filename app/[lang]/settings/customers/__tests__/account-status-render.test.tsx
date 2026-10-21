@@ -39,6 +39,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   claimed_at: null,
   shopify_orders_count: null,
   shopify_amount_spent: null,
+  open_followups: 0,
   ...over,
 });
 

@@ -8,6 +8,7 @@ import { getMigrationSummary } from "@/lib/customer-migration/overview";
 import { getSiteSettings } from "@/lib/site-settings";
 import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
 import { readTelegramUpdates } from "@/lib/crm/telegram-updates-server";
+import { parseFollowUpScope } from "@/lib/crm/followup-rules";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -27,6 +28,9 @@ const LIMIT = 20;
  * The list reads the Customer overview (migration slice 12). Its filters live
  * in the URL (`?account=no-account&source=shopify`), so a filtered list is a
  * link: this page reads the same parameters and renders that list first.
+ *
+ * `?view=followups` opens the Follow-ups tab (CRM slice 06), on the list
+ * `?scope=` names (mine, all, overdue); the tab reads its own rows.
  *
  * `?view=settings` opens the Settings tab (CRM slice 14), whose card is read
  * here too when the page opens on it. Seeing it needs `customers`; changing it
@@ -68,6 +72,7 @@ export default async function SettingsCustomersPage({
             canEdit={canEdit}
             canEditOnlineResult={canEdit && hasPermission(ctx, "results")}
             telegramUpdates={telegramUpdates}
+            followUpScope={parseFollowUpScope(Array.isArray(query.scope) ? query.scope[0] : query.scope)}
             importHref={
                 hasPermission(ctx, "customer-import")
                     ? withLocale("/settings/customers/import", locale)

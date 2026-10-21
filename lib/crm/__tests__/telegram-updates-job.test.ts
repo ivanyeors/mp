@@ -69,8 +69,10 @@ function fakeAdmin(db: Db): SupabaseClient {
       insert: (p: Row) => ((op = "insert"), (payload = p), b),
       update: (p: Row) => ((op = "update"), (payload = p), b),
       eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), b),
-      gte: (c: string, v: string) => (filters.push((r) => String(r[c]) >= v), b),
-      lt: (c: string, v: string) => (filters.push((r) => String(r[c]) < v), b),
+      // A comparison with NULL is never true, as in SQL.
+      gte: (c: string, v: string) => (filters.push((r) => r[c] != null && String(r[c]) >= v), b),
+      lt: (c: string, v: string) => (filters.push((r) => r[c] != null && String(r[c]) < v), b),
+      is: (c: string, v: null) => (filters.push((r) => (r[c] ?? null) === v), b),
       maybeSingle: async () => {
         const res = await exec();
         const rows = (res.data as Row[] | null) ?? [];
@@ -109,6 +111,24 @@ const OVERVIEW: Row[] = [
   { id: "c4", from_shopify: true, account_linked_at: null },
 ];
 
+/**
+ * Follow-ups (CRM slice 06) around the week of 12–18 October, which closes at
+ * Monday 19 October 00:00 SGT. Their titles name a fixture customer: they must
+ * never reach the group.
+ */
+const FOLLOW_UPS: Row[] = [
+  // Done in the week.
+  { id: "f1", title: "Call Ana Tan about her second pillow", due_on: "2026-10-15", done_at: "2026-10-14T03:00:00.000Z" },
+  // Open, due on the Saturday: overdue as the week closed.
+  { id: "f2", title: "Send Wei Ling Lim the fill sample", due_on: "2026-10-17", done_at: null },
+  // Overdue as the week closed, done on the Monday after: overdue, not done in the week.
+  { id: "f3", title: "Raj Kumar: chase the return", due_on: "2026-10-10", done_at: "2026-10-19T01:00:00.000Z" },
+  // Due on the Monday itself: not overdue yet.
+  { id: "f4", title: "Ana Tan check-in", due_on: "2026-10-19", done_at: null },
+  // Done the week before.
+  { id: "f5", title: "Old one", due_on: "2026-10-04", done_at: "2026-10-05T03:00:00.000Z" },
+];
+
 let db: Db;
 let admin: SupabaseClient;
 let sent: string[];
@@ -131,6 +151,7 @@ beforeEach(() => {
       site_settings: [],
       customers: CUSTOMERS.map((c) => ({ ...c })),
       admin_customer_overview: OVERVIEW.map((c) => ({ ...c })),
+      customer_followups: FOLLOW_UPS.map((f) => ({ ...f })),
     },
     failSettingsRead: false,
   };
@@ -145,7 +166,9 @@ describe("Weekly summary", () => {
   it("posts on its day, counting the previous Monday to Sunday", async () => {
     const res = await run(MONDAY);
     expect(res).toMatchObject({ ok: true, weekly_summary: { status: "sent", period: "2026-W42" } });
-    expect(sent).toEqual(["This week: 2 new customers, 2 sign-ups.\nOpen: https://mpillow.test/settings/customers"]);
+    expect(sent).toEqual([
+      "This week: 2 new customers, 2 sign-ups, 1 follow-up done, 2 overdue.\nOpen: https://mpillow.test/settings/customers",
+    ]);
     expect(lastSent()).toEqual({ weekly_summary: "2026-W42" });
   });
 
@@ -190,14 +213,25 @@ describe("Weekly summary", () => {
       from: "2026-10-11T16:00:00.000Z",
       to: "2026-10-18T16:00:00.000Z",
     });
-    // New Customers, and sign-ups since migration slice 12.
-    expect(counts).toEqual({ newCustomers: 2, signUps: 2 });
+    // New Customers, sign-ups since migration slice 12, follow-ups since CRM slice 06.
+    const followUps = { done: 1, overdue: 2 };
+    expect(counts).toEqual({ newCustomers: 2, signUps: 2, followUps });
     const withSlice07 = await realSources.loadWeeklySummaryCounts(
       admin,
       { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" },
       [...realSources.WEEKLY_SUMMARY_SOURCES, async () => ({ reviewRequests: { sent: 4, opened: 1 } })],
     );
-    expect(withSlice07).toEqual({ newCustomers: 2, signUps: 2, reviewRequests: { sent: 4, opened: 1 } });
+    expect(withSlice07).toEqual({ newCustomers: 2, signUps: 2, followUps, reviewRequests: { sent: 4, opened: 1 } });
+  });
+
+  it("counts follow-ups done in the week, and overdue as it closed (CRM slice 06)", async () => {
+    const week = { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
+    // f1 was done in the week; f2 is still open and f3 was done only after it, both due before Monday.
+    expect(await realSources.countFollowUps(admin, week)).toEqual({ done: 1, overdue: 2 });
+    // The next week: f3 done in it; f2 and f4 (due that Monday) are overdue by its close.
+    expect(
+      await realSources.countFollowUps(admin, { from: "2026-10-18T16:00:00.000Z", to: "2026-10-25T16:00:00.000Z" }),
+    ).toEqual({ done: 1, overdue: 2 });
   });
 });
 
@@ -314,6 +348,8 @@ describe("no customer data reaches the Staff group", () => {
     for (const text of sent) {
       for (const fact of PII) expect(text, fact).not.toContain(fact);
       expect(text).not.toMatch(/@/);
+      // Follow-up titles name customers too (CRM slice 06): counts only.
+      for (const f of FOLLOW_UPS) expect(text).not.toContain(String(f.title));
     }
   });
 });

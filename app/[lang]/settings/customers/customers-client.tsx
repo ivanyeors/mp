@@ -40,6 +40,7 @@ import {
     type AccountFilter,
     type CustomerFilters,
     type CustomerSort,
+    type FollowUpFilter,
     type SourceFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
@@ -85,7 +86,8 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 }
 
 /** The filters the list's URL holds; "from Shopify, no account" is one of them. */
-type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort">;
+type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort"> &
+    Partial<Pick<CustomerFilters, "followups">>;
 
 /** The Account status: *Signed up* with its date, or a muted *No account*. */
 function AccountStatus({ customer, compact = false }: { customer: CustomerOverviewRow; compact?: boolean }) {
@@ -135,6 +137,7 @@ export function CustomersClient({
     const [debouncedSearch, setDebouncedSearch] = useState(initialFilters.search ?? "");
     const [account, setAccount] = useState<AccountFilter>(initialFilters.account);
     const [source, setSource] = useState<SourceFilter>(initialFilters.source);
+    const [followups, setFollowups] = useState<FollowUpFilter>(initialFilters.followups ?? "all");
     const [sort, setSort] = useState<CustomerSort>(initialFilters.sort);
     // Kept from the URL as given; the list has no tag control yet (CRM slice 04).
     const [tags] = useState<string[]>(initialFilters.tags);
@@ -166,9 +169,11 @@ export function CustomersClient({
         tags,
         account,
         source,
+        followups,
         sort,
     }).toString();
-    const filtered = account !== "all" || source !== "all" || Boolean(debouncedSearch) || tags.length > 0;
+    const filtered =
+        account !== "all" || source !== "all" || followups !== "all" || Boolean(debouncedSearch) || tags.length > 0;
 
     // Keep the address bar in step without a server round trip, so the list's
     // filters survive a reload and can be shared. Only the filters' own keys
@@ -186,6 +191,10 @@ export function CustomersClient({
     };
     const changeSource = (value: string) => {
         setSource(value as SourceFilter);
+        setPage(1);
+    };
+    const changeFollowups = (value: string) => {
+        setFollowups(value as FollowUpFilter);
         setPage(1);
     };
     const changeSort = (value: string) => {
@@ -292,6 +301,16 @@ export function CustomersClient({
                     </SelectContent>
                 </Select>
 
+                <Select value={followups} onValueChange={changeFollowups}>
+                    <SelectTrigger className="w-full sm:w-52" aria-label="Follow-ups">
+                        <SelectValue placeholder="Follow-ups" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any follow-ups</SelectItem>
+                        <SelectItem value="open">Has an open follow-up</SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Select value={sort} onValueChange={changeSort}>
                     <SelectTrigger className="w-full sm:w-48" aria-label="Sort">
                         <SelectValue placeholder="Sort" />
@@ -354,6 +373,15 @@ export function CustomersClient({
                                             {customer.from_shopify && (
                                                 <Badge variant="outline" className="ml-2 text-xs font-normal">
                                                     Shopify
+                                                </Badge>
+                                            )}
+                                            {customer.open_followups > 0 && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-2 text-xs font-normal"
+                                                    title={`${customer.open_followups} open follow-up${customer.open_followups === 1 ? "" : "s"}`}
+                                                >
+                                                    {customer.open_followups} to follow up
                                                 </Badge>
                                             )}
                                             <span className="block text-xs text-muted-foreground mt-0.5 sm:hidden">

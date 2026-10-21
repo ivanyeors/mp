@@ -34,6 +34,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "claimed_at",
   "shopify_orders_count",
   "shopify_amount_spent",
+  "open_followups",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -69,6 +70,8 @@ export interface CustomerOverviewRow {
   claimed_at: string | null;
   shopify_orders_count: number | null;
   shopify_amount_spent: number | null;
+  /** Follow-ups not done yet (CRM slice 06); 0 when none. */
+  open_followups: number;
 }
 
 /** Display name, or null when the Customer has none. */

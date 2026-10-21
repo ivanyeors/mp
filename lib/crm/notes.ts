@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
-import { getWorkingAs, memberProfiles } from "@/lib/staff/working-as";
+import { actingProfile } from "@/lib/staff/working-as";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 
 /**
@@ -80,10 +80,7 @@ export async function listCustomerNotes(
  * only.
  */
 export async function noteProfileFor(memberId: string): Promise<string | null> {
-  const chosen = await getWorkingAs(memberId);
-  if (chosen) return chosen.id;
-  const profiles = await memberProfiles(memberId);
-  return profiles.length === 1 ? profiles[0]!.id : null;
+  return (await actingProfile(memberId))?.id ?? null;
 }
 
 /** Writes a note as the signed-in Member. The caller has checked the Customer exists. */
