@@ -17,7 +17,7 @@ vi.mock("@/lib/supabase/server", async () => {
 vi.mock("@/lib/customer-migration/claim", () => ({
   claimOnSignIn: vi.fn(async (customer: { id: string }) => {
     h.claims.push(customer.id);
-    return { claimed: false, voucherIssued: false, welcomeEmailDue: false };
+    return { claimed: false, bonusGranted: false, bonusEmailDue: false };
   }),
 }));
 

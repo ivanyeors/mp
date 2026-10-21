@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { User } from "@supabase/supabase-js";
 import { loadWelcomePage, type WelcomeDeps } from "@/lib/customer-migration/welcome-page";
-import type { WelcomeVoucherRow } from "@/lib/customer-migration/welcome-voucher";
 
 /**
  * What the welcome page loads (migration slice 06). The first sign-in through
@@ -11,19 +10,7 @@ import type { WelcomeVoucherRow } from "@/lib/customer-migration/welcome-voucher
  */
 
 const TOKEN = "A".repeat(43);
-const NOW = new Date("2026-10-21T04:00:00Z");
 const user = (email: string) => ({ id: `auth-${email}`, email }) as User;
-
-const VOUCHER: WelcomeVoucherRow = {
-  code: "WB-ABCDEFGHJK",
-  discount_type: "fixed_amount",
-  discount_value: 20,
-  currency: "SGD",
-  min_order_amount: 60,
-  expires_at: "2026-12-20T03:00:00Z",
-  usage_count: 0,
-  is_active: true,
-};
 
 /** A database where the voucher exists only once the Claim has run. */
 function world({ signedInAs = null as string | null } = {}) {
@@ -45,25 +32,24 @@ function world({ signedInAs = null as string | null } = {}) {
       events.push("open");
       return token === TOKEN ? { customerId: "c-jane", firstName: "Jane", email: "jane@x.test" } : null;
     }),
-    readVoucher: vi.fn(async (customerId: string) => {
-      events.push("voucher");
-      return customerId === "c-jane" && claimed ? VOUCHER : null;
+    readBonus: vi.fn(async (customerId: string) => {
+      events.push("bonus");
+      return customerId === "c-jane" && claimed ? { kind: "granted" as const, points: 1000 } : null;
     }),
     hasAddress: async () => true,
-    now: () => NOW,
   };
   return { deps, events };
 }
 
 describe("loadWelcomePage", () => {
-  it("shows the voucher on the first sign-in's own page load", async () => {
+  it("shows the Claim bonus on the first sign-in's own page load", async () => {
     const { deps, events } = world({ signedInAs: "jane@x.test" });
     const data = await loadWelcomePage({ token: TOKEN }, deps);
     expect(data.state).toEqual({ kind: "signed_in" });
     expect(data.account).toMatchObject({ firstName: "Jane", email: "jane@x.test", hasAddress: true });
-    expect(data.account?.voucher?.code).toBe("WB-ABCDEFGHJK");
-    // The voucher is read only after the link (and its Claim) finished.
-    expect(events.indexOf("voucher")).toBeGreaterThan(events.indexOf("claimed"));
+    expect(data.account?.bonus).toEqual({ kind: "granted", points: 1000 });
+    // The bonus is read only after the link (and its Claim) finished.
+    expect(events.indexOf("bonus")).toBeGreaterThan(events.indexOf("claimed"));
   });
 
   it("counts a signed-out visit's click, and a signed-in visit's only as a first click", async () => {
@@ -76,7 +62,7 @@ describe("loadWelcomePage", () => {
     expect(back.deps.openLink).toHaveBeenCalledWith(TOKEN, { count: false });
   });
 
-  it("signed out: never reads a voucher, and never looks up a missing token", async () => {
+  it("signed out: never reads a bonus, and never looks up a missing token", async () => {
     const { deps } = world();
     const data = await loadWelcomePage({ token: null }, deps);
     expect(data).toEqual({
@@ -84,7 +70,7 @@ describe("loadWelcomePage", () => {
       account: null,
     });
     expect(deps.openLink).not.toHaveBeenCalled();
-    expect(deps.readVoucher).not.toHaveBeenCalled();
+    expect(deps.readBonus).not.toHaveBeenCalled();
   });
 
   it("an invalid token loads exactly what no token loads", async () => {
@@ -93,19 +79,21 @@ describe("loadWelcomePage", () => {
     );
   });
 
-  it("signed in as someone else: the wrong-account state, and no voucher of anyone's", async () => {
+  it("signed in as someone else: the wrong-account state, and no bonus of anyone's", async () => {
     const { deps } = world({ signedInAs: "sam@x.test" });
     const data = await loadWelcomePage({ token: TOKEN }, deps);
     expect(data).toEqual({
       state: { kind: "wrong_account", signedInEmail: "sam@x.test", returnToken: TOKEN },
       account: null,
     });
-    expect(deps.readVoucher).not.toHaveBeenCalled();
+    expect(deps.readBonus).not.toHaveBeenCalled();
   });
 
-  it("shows no card for a voucher that is used", async () => {
+  it("shows no card when the bonus cannot be read", async () => {
     const { deps } = world({ signedInAs: "jane@x.test" });
-    deps.readVoucher = async () => ({ ...VOUCHER, usage_count: 1 });
-    expect((await loadWelcomePage({ token: null }, deps)).account?.voucher).toBeNull();
+    deps.readBonus = async () => {
+      throw new Error("down");
+    };
+    expect((await loadWelcomePage({ token: null }, deps)).account?.bonus).toBeNull();
   });
 });

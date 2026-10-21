@@ -326,6 +326,11 @@ export function sampleWelcomeVoucherFreeShipping(fixture: EmailFixture = "happy"
   };
 }
 
+/** PRD-loyalty-points slice 05: the Claim bonus, 1,000 points. */
+export function sampleClaimBonus(fixture: EmailFixture = "happy") {
+  return { firstName: pick(fixture, "Wei Ling"), points: 1000, shopUrl: `${ORIGIN}/en-US/shop` };
+}
+
 /** CRM slice 07: the Review request, 14 days after delivery. */
 export function sampleReviewRequest(fixture: EmailFixture = "happy") {
   return {
@@ -369,16 +374,11 @@ export function sampleCheckup(fixture: EmailFixture = "happy") {
 const CAMPAIGN_CUSTOMER = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const sampleUnsubscribeUrl = `${ORIGIN}/en-US/unsubscribe?u=${CAMPAIGN_CUSTOMER}&t=Qm9vbGVhbi1zZWNyZXQtcHJldmlldy10b2tlbg`;
 const sampleClaimUrl = (template: string) =>
-  `${ORIGIN}/en-US/account/welcome?c=k3V9xQe2LmP0aRt7yUb4wZc8nDf1hJg6sKo5vXi2qEw&utm_source=shopify_migration&utm_medium=email&utm_campaign=${template}`;
+  `${ORIGIN}/en-US/account/welcome?c=k3V9xQe2LmP0aRt7yUb4wZc8nDf1hJg6sKo5vXi2qEw&utm_source=new_website&utm_medium=email&utm_campaign=${template}`;
 
-function sampleCampaignVoucher(fixture: EmailFixture) {
-  return {
-    kind: "fixed_amount" as const,
-    amount: pick(fixture, "SGD 20.00"),
-    minimumSpend: pick(fixture, "SGD 50.00"),
-    validDays: 60,
-    issueUntil: pick(fixture, "31 December 2026"),
-  };
+/** The Claim bonus as the wave sender states it (claimBonusOffer). */
+function sampleCampaignBonus(fixture: EmailFixture) {
+  return { points: pick(fixture, "1,000 points"), amount: pick(fixture, "S$10"), months: 3 };
 }
 
 export function sampleMigrationAnnouncement(fixture: EmailFixture = "happy") {
@@ -386,18 +386,14 @@ export function sampleMigrationAnnouncement(fixture: EmailFixture = "happy") {
     firstName: pick(fixture, "Wei Ling"),
     email: pick(fixture, "wei.ling@example.com"),
     claimUrl: sampleClaimUrl("migration_announcement"),
-    voucher: sampleCampaignVoucher(fixture),
+    bonus: sampleCampaignBonus(fixture),
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }
 
-/** Free-shipping terms, no minimum, and a customer with no first name. */
-export function sampleMigrationAnnouncementFreeShipping(fixture: EmailFixture = "happy") {
-  return {
-    ...sampleMigrationAnnouncement(fixture),
-    firstName: null,
-    voucher: { ...sampleCampaignVoucher(fixture), kind: "free_shipping" as const, amount: null, minimumSpend: null },
-  };
+/** A customer with no first name: the greeting is the sentence that changes. */
+export function sampleMigrationAnnouncementNoName(fixture: EmailFixture = "happy") {
+  return { ...sampleMigrationAnnouncement(fixture), firstName: null };
 }
 
 export function sampleMigrationReminder(fixture: EmailFixture = "happy") {
@@ -405,7 +401,7 @@ export function sampleMigrationReminder(fixture: EmailFixture = "happy") {
     firstName: pick(fixture, "Wei Ling"),
     email: pick(fixture, "wei.ling@example.com"),
     claimUrl: sampleClaimUrl("migration_reminder"),
-    voucher: sampleCampaignVoucher(fixture),
+    bonus: sampleCampaignBonus(fixture),
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }

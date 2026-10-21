@@ -108,6 +108,16 @@ export function isHttpsUrl(value: string): boolean {
   }
 }
 
+/**
+ * Pure — whether the Campaign promises points anywhere a customer reads it.
+ * Such a Campaign goes to customers only while points are live
+ * (`claimBonusOffer`, lib/points/offer.ts): an email never promises points a
+ * sign-in would not grant (PRD-loyalty-points slice 05).
+ */
+export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button">): boolean {
+  return /\bpoints?\b/i.test([c.subject, c.preheader ?? "", c.body, c.button?.label ?? ""].join("\n"));
+}
+
 /** A Campaign as stored. */
 export interface Campaign extends CampaignDraft {
   id: string;

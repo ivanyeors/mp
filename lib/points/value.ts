@@ -16,6 +16,11 @@ export function formatDollars(amount: number): string {
   return `${sign}S$${Math.abs(amount).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** "S$10" for whole dollars, "S$10.50" otherwise: for sentences, not tables. */
+export function formatDollarsShort(amount: number): string {
+  return Number.isInteger(amount) ? `S$${amount.toLocaleString("en-SG")}` : formatDollars(amount);
+}
+
 /** "2,130 points", "1 point". */
 export function formatPointsCount(points: number): string {
   const n = Math.round(points);

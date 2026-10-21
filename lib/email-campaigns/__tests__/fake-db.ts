@@ -55,11 +55,13 @@ export interface FakeWorld {
   sends: FakeSend[];
   campaigns: { id: string; audience: CampaignAudience; archived?: boolean }[];
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
+  /** `site_settings`, by key: the points settings a Campaign that mentions points is checked against. */
+  settings: Record<string, string>;
   /** Called inside each claim, before the rule runs: a test's chance to change the world. */
   onClaim?: (customerId: string) => void;
 }
 
-export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [] });
+export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
 
 const suppressedIn = (sends: FakeSend[]) =>
   sends.some((s) => s.status === "bounced" || s.status === "complained" || s.bounced_at || s.complained_at);
@@ -218,6 +220,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
     from(table: string) {
       if (table === "marketing_campaign_candidates") return query(() => candidates(world));
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
+      if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake: no table ${table}`);
     },
     async rpc(name: string, args: Row) {

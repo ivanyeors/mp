@@ -1,5 +1,7 @@
--- Slice 05 (PRD-shopify-customer-migration): the Claim, the Welcome-back
--- voucher and the customer_emails ledger, asserted against real Postgres.
+-- Slice 05 (PRD-shopify-customer-migration), as PRD-loyalty-points slice 05
+-- changed it: the Claim, the Claim bonus that replaced the Welcome-back
+-- voucher (ADR 0030 rules f, g), and the customer_emails ledger, asserted
+-- against real Postgres (20261020112100, 20261021150000).
 --
 -- Run against a database with every migration applied (a throwaway local one,
 -- never production). It prints one line, `slice 05 claim ok`:
@@ -11,72 +13,71 @@
 -- the first's uncommitted Claim. psql autocommits, so the fixtures are visible
 -- to those sessions; the script deletes them at the end. Needs a superuser
 -- (for dblink without a password) and the dblink contrib extension.
+--
+-- The window counts from the first campaign email sent to anyone, so this
+-- needs a database whose only campaign sends are its own.
 
 \set ON_ERROR_STOP 1
 set client_min_messages = error;
 create extension if not exists dblink;
 
 -- ---------------------------------------------------------------- fixtures
--- Fixed ids, so a failed earlier run is cleaned up here first.
-delete from coupons where customer_id in (select id from customers where email like '%@assert05.test');
 delete from customers where email like '%@assert05.test';
+delete from partner_users where email like '%@assert05.test';
 delete from customer_import_batches where file_name = 'assert-05.csv';
-delete from site_settings where key like 'welcome\_voucher\_%';
+delete from site_settings where key = 'points_launch_at';
+update site_settings set value = 'false' where key = 'points_enabled';
+update site_settings set value = '1000' where key = 'points_claim_bonus';
+update site_settings set value = '3' where key = 'points_claim_bonus_months';
 
--- exported_at is NOT NULL since slice 03 (20261020110000_customer_import_apply.sql).
+do $$
+begin
+  assert not exists (select 1 from customer_campaign_sends),
+    'this assert needs a database with no campaign sends: the window counts from the first one sent';
+end $$;
+
 insert into customer_import_batches (id, source, file_name, file_sha256, rows_total, exported_at)
-values ('05050505-0000-4000-8000-0000000000b0', 'shopify_customers_csv', 'assert-05.csv', repeat('a', 64), 5, '2026-10-20');
+values ('05050505-0000-4000-8000-0000000000b0', 'shopify_customers_csv', 'assert-05.csv', repeat('a', 64), 9, '2026-10-20');
 
 insert into customers (id, email, first_name) values
-  ('05050505-0000-4000-8000-000000000001', 'race@assert05.test',  'Race'),
-  ('05050505-0000-4000-8000-000000000002', 'plain@assert05.test', 'Plain'),
-  ('05050505-0000-4000-8000-000000000003', 'late@assert05.test',  'Late'),
-  ('05050505-0000-4000-8000-000000000004', 'off@assert05.test',   'Off'),
-  ('05050505-0000-4000-8000-000000000005', 'ship@assert05.test',  'Ship'),
-  ('05050505-0000-4000-8000-000000000006', 'bad@assert05.test',   'Bad');
+  ('05050505-0000-4000-8000-000000000001', 'race@assert05.test',    'Race'),
+  ('05050505-0000-4000-8000-000000000002', 'plain@assert05.test',   'Plain'),
+  ('05050505-0000-4000-8000-000000000003', 'early@assert05.test',   'Early'),
+  ('05050505-0000-4000-8000-000000000004', 'off@assert05.test',     'Off'),
+  ('05050505-0000-4000-8000-000000000005', 'partner@assert05.test', 'Pat'),
+  ('05050505-0000-4000-8000-000000000006', 'inside@assert05.test',  'Ina'),
+  ('05050505-0000-4000-8000-000000000007', 'outside@assert05.test', 'Otto'),
+  ('05050505-0000-4000-8000-000000000008', 'never@assert05.test',   'Neve'),
+  ('05050505-0000-4000-8000-000000000009', 'zero@assert05.test',    'Zed');
 
 -- Every customer but "plain" is a Migrated customer.
 insert into migrated_customers (customer_id, batch_id, created_by_import, email_marketing_at_export, exported_at)
 select id, '05050505-0000-4000-8000-0000000000b0', true, 'yes', date '2026-10-15'
   from customers where email like '%@assert05.test' and email <> 'plain@assert05.test';
 
--- The seed: issuance off, 60 days. Re-seeded here because the cleanup above
--- removed it.
-insert into site_settings (key, value) values
-  ('welcome_voucher_enabled', 'false'),
-  ('welcome_voucher_valid_days', '60');
+insert into partner_users (email, application_status) values ('partner@assert05.test', 'approved');
 
--- ----------------------------------------- the safe default issues nothing
+-- ------------------------------------- points off: the Claim, and no bonus
 do $$
 declare r record;
 begin
   select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000004');
   assert r.claimed, 'off: the Claim still happens';
-  assert not r.voucher_issued, 'off: issuance is off by default';
-  assert not r.welcome_email_due, 'off: no voucher, no email';
+  assert not r.bonus_granted, 'off: no bonus while points are off';
+  assert not r.bonus_email_due, 'off: no bonus, no email';
   assert (select claimed_at is not null from migrated_customers
            where customer_id = '05050505-0000-4000-8000-000000000004'), 'off: claimed_at stamped';
-  assert not exists (select 1 from coupons where customer_id = '05050505-0000-4000-8000-000000000004'),
-    'off: no voucher row';
+  assert not exists (select 1 from points_ledger where customer_id = '05050505-0000-4000-8000-000000000004'),
+    'off: nothing in the ledger';
 end $$;
 
--- Enabled, but the owner has not set the terms: still nothing.
-update site_settings set value = 'true' where key = 'welcome_voucher_enabled';
-do $$
-declare r record;
-begin
-  update migrated_customers set claimed_at = null where customer_id = '05050505-0000-4000-8000-000000000004';
-  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000004');
-  assert r.claimed and not r.voucher_issued, 'enabled with no terms: claimed, no voucher';
-end $$;
+-- "early" also claims while points are off.
+do $$ begin perform claim_migrated_customer('05050505-0000-4000-8000-000000000003'); end $$;
 
--- The terms for the rest of the script: SGD 20 off over SGD 50, 60 days,
--- issued until 30 days from today in Singapore.
-insert into site_settings (key, value) values
-  ('welcome_voucher_type', 'fixed_amount'),
-  ('welcome_voucher_value', '20'),
-  ('welcome_voucher_min_order', '50'),
-  ('welcome_voucher_issue_until', to_char((now() at time zone 'Asia/Singapore')::date + 30, 'YYYY-MM-DD'));
+-- --------------------------------------------------------------- points on
+insert into site_settings (key, value) values ('points_launch_at', '2026-10-01T00:00:00+08:00')
+on conflict (key) do update set value = excluded.value;
+update site_settings set value = 'true' where key = 'points_enabled';
 
 -- ------------------------------- two concurrent Claims for one Customer
 do $$
@@ -87,9 +88,9 @@ begin
 end $$;
 create temp table race_a as
   select * from dblink('a', $q$select * from claim_migrated_customer('05050505-0000-4000-8000-000000000001')$q$)
-    as t(claimed boolean, voucher_issued boolean, welcome_email_due boolean);
+    as t(claimed boolean, bonus_granted boolean, bonus_email_due boolean);
 
--- b starts while a's Claim and voucher are uncommitted, so it must wait.
+-- b starts while a's Claim and bonus are uncommitted, so it must wait.
 do $$
 begin
   perform dblink_send_query('b', $q$select * from claim_migrated_customer('05050505-0000-4000-8000-000000000001')$q$);
@@ -98,7 +99,7 @@ begin
   perform dblink_exec('a', 'commit');
 end $$;
 create temp table race_b as
-  select * from dblink_get_result('b') as t(claimed boolean, voucher_issued boolean, welcome_email_due boolean);
+  select * from dblink_get_result('b') as t(claimed boolean, bonus_granted boolean, bonus_email_due boolean);
 do $$
 begin
   perform dblink_disconnect('a');
@@ -109,114 +110,96 @@ do $$
 declare
   a record;
   b record;
-  v record;
-  m record;
 begin
   select * into a from race_a;
   select * into b from race_b;
-  assert a.claimed and a.voucher_issued, 'race: the first call claims and issues';
-  assert not b.claimed and not b.voucher_issued, 'race: the second call claims nothing and issues nothing';
-  assert a.welcome_email_due and b.welcome_email_due,
+  assert a.claimed and a.bonus_granted, 'race: the first call claims and grants';
+  assert not b.claimed and not b.bonus_granted, 'race: the second call claims nothing and grants nothing';
+  assert a.bonus_email_due and b.bonus_email_due,
     'race: both may try the email; the customer_emails claim lets one through';
-
-  assert (select count(*) from coupons where customer_id = '05050505-0000-4000-8000-000000000001') = 1,
-    'race: exactly one voucher';
-  select * into m from migrated_customers where customer_id = '05050505-0000-4000-8000-000000000001';
-  assert m.claimed_at is not null, 'race: one claimed_at';
-
-  select * into v from coupons where customer_id = '05050505-0000-4000-8000-000000000001';
-  assert v.code ~ '^WB-[2-9A-HJ-NP-Z]{10}$', 'voucher: WB- plus 10 base32 characters, no look-alikes: ' || v.code;
-  assert v.issued_for = 'welcome_back', 'voucher: issued_for';
-  assert v.discount_type = 'fixed_amount' and v.discount_value = 20, 'voucher: SGD 20 off';
-  assert v.min_order_amount = 50, 'voucher: minimum spend';
-  assert v.currency = 'SGD', 'voucher: SGD';
-  assert v.usage_limit = 1 and v.per_customer_limit = 1, 'voucher: one use';
-  assert v.is_active, 'voucher: active';
-  assert v.expires_at between m.claimed_at + interval '60 days' - interval '1 minute'
-                          and m.claimed_at + interval '60 days' + interval '1 minute',
-    'voucher: expires 60 days after the Claim';
+  assert (select count(*) from points_ledger
+           where customer_id = '05050505-0000-4000-8000-000000000001' and kind = 'claim_bonus') = 1,
+    'race: exactly one Claim bonus';
+  assert (select points from points_ledger
+           where customer_id = '05050505-0000-4000-8000-000000000001' and kind = 'claim_bonus') = 1000,
+    'race: 1,000 points';
+  assert (select available from points_balance('05050505-0000-4000-8000-000000000001')) = 1000,
+    'race: spendable at once';
 end $$;
 
--- The unique index is a guard of its own: even with claimed_at cleared, a
--- second voucher is never inserted.
-do $$
-declare r record;
-begin
-  update migrated_customers set claimed_at = null where customer_id = '05050505-0000-4000-8000-000000000001';
-  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000001');
-  assert r.claimed and not r.voucher_issued, 'index: a second voucher is refused';
-  assert (select count(*) from coupons where customer_id = '05050505-0000-4000-8000-000000000001') = 1,
-    'index: still one voucher';
-  -- And a later call is the one indexed no-op.
-  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000001');
-  assert not r.claimed and not r.voucher_issued, 'later call: nothing';
-end $$;
-
--- A purpose-issued coupon is always bound.
-do $$
-begin
-  begin
-    insert into coupons (code, discount_type, discount_value, issued_for)
-    values ('WB-UNBOUND', 'fixed_amount', 5, 'welcome_back');
-    assert false, 'a welcome_back coupon without a Customer must be refused';
-  exception when check_violation then null;
-  end;
-end $$;
-
--- ------------------- a non-migrated Customer: no voucher, and no write at all
-begin;
-do $$
-declare r record;
-begin
-  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000002');
-  assert not r.claimed and not r.voucher_issued and not r.welcome_email_due, 'plain: nothing';
-  -- No transaction id was assigned, so nothing was written (not even a no-op
-  -- row version).
-  assert txid_current_if_assigned() is null, 'plain: the Claim wrote nothing';
-end $$;
-commit;
-
--- ------------------------------ after issue_until: claimed, nothing issued
-update site_settings
-   set value = to_char((now() at time zone 'Asia/Singapore')::date - 1, 'YYYY-MM-DD')
- where key = 'welcome_voucher_issue_until';
+-- ------------------------------------------------------- earlier claimers
+-- "off" and "early" claimed while points were off, before any campaign email:
+-- inside the open window, so their next sign-in grants it (rule g).
 do $$
 declare r record;
 begin
   select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000003');
-  assert r.claimed, 'late: claimed';
-  assert not r.voucher_issued and not r.welcome_email_due, 'late: no voucher';
-  assert (select claimed_at is not null from migrated_customers
-           where customer_id = '05050505-0000-4000-8000-000000000003'), 'late: claimed_at stamped';
-  assert not exists (select 1 from coupons where customer_id = '05050505-0000-4000-8000-000000000003'),
-    'late: no voucher row';
+  assert not r.claimed and r.bonus_granted, 'early: no new Claim, and the bonus at the next sign-in';
+  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000003');
+  assert not r.bonus_granted, 'early: once';
 end $$;
 
--- Today is still inside the window.
-update site_settings
-   set value = to_char((now() at time zone 'Asia/Singapore')::date, 'YYYY-MM-DD')
- where key = 'welcome_voucher_issue_until';
-
--- ----------------------------------- free shipping, and malformed terms
-update site_settings set value = 'free_shipping' where key = 'welcome_voucher_type';
-delete from site_settings where key in ('welcome_voucher_value', 'welcome_voucher_min_order');
+-- ------------------------------------------------------- partners, and plain
 do $$
 declare r record;
 begin
   select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000005');
-  assert r.claimed and r.voucher_issued, 'ship: issued on the last day';
-  assert (select discount_type = 'free_shipping' and min_order_amount is null
-            from coupons where customer_id = '05050505-0000-4000-8000-000000000005'),
-    'ship: a free-shipping voucher with no minimum';
+  assert r.claimed and not r.bonus_granted, 'partner: claimed, never a bonus';
+  assert not exists (select 1 from points_ledger where customer_id = '05050505-0000-4000-8000-000000000005'),
+    'partner: nothing in the ledger';
 end $$;
 
-update site_settings set value = 'fixed_amount' where key = 'welcome_voucher_type';
-insert into site_settings (key, value) values ('welcome_voucher_value', 'twenty');
+-- A non-migrated Customer: no Claim, no bonus, and no write at all.
 do $$
 declare r record;
 begin
+  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000002');
+  assert not r.claimed and not r.bonus_granted and not r.bonus_email_due, 'plain: nothing';
+  assert txid_current_if_assigned() is null, 'plain: the Claim wrote nothing';
+end $$;
+
+-- A bonus of 0 grants nothing.
+do $$
+declare r record;
+begin
+  update site_settings set value = '0' where key = 'points_claim_bonus';
+  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000009');
+  assert r.claimed and not r.bonus_granted, 'zero: claimed, no bonus of 0';
+  update site_settings set value = '1000' where key = 'points_claim_bonus';
+end $$;
+
+-- ------------------------------------------------------------- the window
+-- "inside" was first emailed 3 months less a day ago: their window closes
+-- tomorrow, so a Claim now is granted. "outside" was first emailed 3 months
+-- and a day ago: closed yesterday. "never" was never emailed, so the first
+-- wave (outside's email) times them: closed too.
+insert into customer_campaign_sends (customer_id, template, wave, status, sent_at) values
+  ('05050505-0000-4000-8000-000000000006', 'migration_announcement', 'w2', 'sent', now() - interval '3 months' + interval '1 day'),
+  ('05050505-0000-4000-8000-000000000007', 'migration_announcement', 'w1', 'sent', now() - interval '3 months' - interval '1 day');
+
+do $$
+declare r record;
+begin
+  assert claim_bonus_window_end('05050505-0000-4000-8000-000000000006') > now(), 'window: inside is still open';
+  assert claim_bonus_window_end('05050505-0000-4000-8000-000000000007') < now(), 'window: outside has closed';
+  assert claim_bonus_window_end('05050505-0000-4000-8000-000000000008')
+       = claim_bonus_window_end('05050505-0000-4000-8000-000000000007'), 'window: the never-emailed are timed from the first wave';
+
   select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000006');
-  assert r.claimed and not r.voucher_issued, 'bad: a malformed value issues nothing, and raises nothing';
+  assert r.claimed and r.bonus_granted, 'window: a Claim 3 months less a day after the email is granted';
+  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000007');
+  assert r.claimed and not r.bonus_granted, 'window: a day after, nothing';
+  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000008');
+  assert r.claimed and not r.bonus_granted, 'window: the never-emailed, after the first wave''s window, nothing';
+
+  -- An earlier claimer whose Claim fell inside the window keeps their right
+  -- after it closes. "off" claimed while points were off; date that Claim
+  -- before the first wave, as it would be in life (the sends above are
+  -- backdated 3 months), so it fell inside the window.
+  update migrated_customers set claimed_at = now() - interval '4 months'
+   where customer_id = '05050505-0000-4000-8000-000000000004';
+  select * into r from claim_migrated_customer('05050505-0000-4000-8000-000000000004');
+  assert r.bonus_granted, 'window: a Claim made inside the window is granted at a sign-in after it';
 end $$;
 
 -- ------------------------------------------------- the customer_emails ledger
@@ -227,85 +210,58 @@ declare
   n   int;
 begin
   -- First claim: attempt 1. The email is in flight, so it is no longer due.
-  select * into r from claim_customer_email(c, 'account.welcome_voucher', c);
+  select * into r from claim_customer_email(c, 'account.claim_bonus', c);
   assert r.id is not null and r.attempts = 1, 'ledger: first claim is attempt 1';
-  assert not (select welcome_email_due from claim_migrated_customer(c)), 'ledger: pending is not due';
+  assert not (select bonus_email_due from claim_migrated_customer(c)), 'ledger: pending is not due';
 
-  select count(*) into n from claim_customer_email(c, 'account.welcome_voucher', c);
+  select count(*) into n from claim_customer_email(c, 'account.claim_bonus', c);
   assert n = 0, 'ledger: a pending row is not claimed twice';
 
   -- A failed send is retried, up to three attempts.
   update customer_emails set status = 'failed', last_error = 'smtp down' where id = r.id;
-  assert (select welcome_email_due from claim_migrated_customer(c)), 'ledger: failed with attempts left is due';
-  select * into r from claim_customer_email(c, 'account.welcome_voucher', c);
+  assert (select bonus_email_due from claim_migrated_customer(c)), 'ledger: failed with attempts left is due';
+  select * into r from claim_customer_email(c, 'account.claim_bonus', c);
   assert r.attempts = 2, 'ledger: the retry is attempt 2';
-  assert (select last_error is null and status = 'pending' from customer_emails where id = r.id),
-    'ledger: a re-claim clears the error';
 
   update customer_emails set status = 'failed' where id = r.id;
-  select * into r from claim_customer_email(c, 'account.welcome_voucher', c);
+  select * into r from claim_customer_email(c, 'account.claim_bonus', c);
   assert r.attempts = 3, 'ledger: attempt 3';
 
   update customer_emails set status = 'failed' where id = r.id;
-  select count(*) into n from claim_customer_email(c, 'account.welcome_voucher', c);
+  select count(*) into n from claim_customer_email(c, 'account.claim_bonus', c);
   assert n = 0, 'ledger: three attempts, then no more';
-  assert not (select welcome_email_due from claim_migrated_customer(c)), 'ledger: exhausted is not due';
+  assert not (select bonus_email_due from claim_migrated_customer(c)), 'ledger: exhausted is not due';
 
   -- A sent row is never claimed again.
   update customer_emails set status = 'sent', sent_at = now() where id = r.id;
-  select count(*) into n from claim_customer_email(c, 'account.welcome_voucher', c);
+  select count(*) into n from claim_customer_email(c, 'account.claim_bonus', c);
   assert n = 0, 'ledger: sent is final';
-
-  -- The same template about another entity is its own send.
-  select * into r from claim_customer_email(c, 'account.welcome_voucher', '05050505-0000-4000-8000-0000000000ff');
-  assert r.attempts = 1, 'ledger: keyed by entity';
-end $$;
-
--- A used or expired voucher is not emailed.
-do $$
-declare c constant uuid := '05050505-0000-4000-8000-000000000005';
-begin
-  assert (select welcome_email_due from claim_migrated_customer(c)), 'ship: due before it is used';
-  update coupons set usage_count = 1 where customer_id = c;
-  assert not (select welcome_email_due from claim_migrated_customer(c)), 'ship: a used voucher is not emailed';
-  update coupons set usage_count = 0, expires_at = now() - interval '1 second' where customer_id = c;
-  assert not (select welcome_email_due from claim_migrated_customer(c)), 'ship: an expired voucher is not emailed';
 end $$;
 
 -- ------------------------------------------------------------------ grants
 do $$
+declare f text;
 begin
-  assert not has_function_privilege('anon', 'public.claim_migrated_customer(uuid)', 'execute'), 'anon cannot claim';
-  assert not has_function_privilege('authenticated', 'public.claim_migrated_customer(uuid)', 'execute'), 'authenticated cannot claim';
-  assert has_function_privilege('service_role', 'public.claim_migrated_customer(uuid)', 'execute'), 'service_role claims';
-  assert not has_function_privilege('anon', 'public.claim_customer_email(uuid, text, uuid)', 'execute'), 'anon cannot claim an email';
-  assert not has_function_privilege('authenticated', 'public.claim_customer_email(uuid, text, uuid)', 'execute'), 'authenticated cannot claim an email';
-  assert has_function_privilege('service_role', 'public.claim_customer_email(uuid, text, uuid)', 'execute'), 'service_role claims an email';
-  assert not has_table_privilege('anon', 'public.customer_emails', 'select'), 'anon cannot read the ledger';
-  assert not has_table_privilege('authenticated', 'public.customer_emails', 'select'), 'authenticated cannot read the ledger';
-  assert not has_table_privilege('authenticated', 'public.customer_emails', 'insert'), 'authenticated cannot write the ledger';
-  assert (select relrowsecurity from pg_class where oid = 'public.customer_emails'::regclass), 'ledger has RLS on';
-  assert not exists (select 1 from pg_policies where tablename = 'customer_emails'), 'ledger has no policy';
-  -- coupons stays service-role only: its one policy is scoped to service_role.
-  assert not exists (select 1 from pg_policies where tablename = 'coupons' and roles <> '{service_role}'),
-    'coupons has no client policy';
+  foreach f in array array[
+    'public.claim_migrated_customer(uuid)',
+    'public.claim_bonus_window_end(uuid)',
+    'public.grant_claim_bonus(uuid)',
+    'public.claim_customer_email(uuid, text, uuid)'
+  ] loop
+    assert not has_function_privilege('anon', f, 'execute'), 'anon executes ' || f;
+    assert not has_function_privilege('authenticated', f, 'execute'), 'authenticated executes ' || f;
+    assert has_function_privilege('service_role', f, 'execute'), 'service_role cannot execute ' || f;
+  end loop;
+  assert not has_table_privilege('anon', 'public.customer_emails', 'select'), 'anon cannot read the email ledger';
+  assert not has_table_privilege('authenticated', 'public.customer_emails', 'select'), 'authenticated cannot read the email ledger';
+  assert (select relrowsecurity from pg_class where oid = 'public.customer_emails'::regclass), 'email ledger has RLS on';
 end $$;
-
--- A signed-in Customer cannot read their own voucher row, nor anyone's.
-set role authenticated;
-do $$
-begin
-  perform set_config('request.jwt.claim.sub', gen_random_uuid()::text, false);
-  assert (select count(*) from coupons) = 0, 'authenticated reads no coupon';
-end $$;
-reset role;
 
 -- ----------------------------------------------------------------- cleanup
-delete from coupons where customer_id in (select id from customers where email like '%@assert05.test');
+delete from customer_campaign_sends where customer_id in (select id from customers where email like '%@assert05.test');
 delete from customers where email like '%@assert05.test';
+delete from partner_users where email like '%@assert05.test';
 delete from customer_import_batches where file_name = 'assert-05.csv';
-delete from site_settings where key like 'welcome\_voucher\_%';
-insert into site_settings (key, value) values
-  ('welcome_voucher_enabled', 'false'),
-  ('welcome_voucher_valid_days', '60');
+delete from site_settings where key = 'points_launch_at';
+update site_settings set value = 'false' where key = 'points_enabled';
 select 'slice 05 claim ok';

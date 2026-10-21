@@ -3,7 +3,7 @@ import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { openClaimLink } from "@/lib/customer-migration/claim-link";
 import { loadWelcomePage } from "@/lib/customer-migration/welcome-page";
-import { readWelcomeVoucher } from "@/lib/customer-migration/welcome-voucher";
+import { readClaimBonusView } from "@/lib/points/claim-bonus";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -47,7 +47,7 @@ export default async function AccountWelcomePage({ params, searchParams }: Props
       getUser: getAuthUser,
       linkCustomer: linkCustomerToAuthUser,
       openLink: (t, options) => openClaimLink(admin, t, options),
-      readVoucher: (customerId) => readWelcomeVoucher(admin, customerId),
+      readBonus: (customerId) => readClaimBonusView(admin, customerId),
       hasAddress: async (customerId) => {
         const { count, error } = await admin
           .from("customer_addresses")

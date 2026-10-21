@@ -159,7 +159,8 @@ export async function previewCampaign(
 /** Every check a send must pass, for the page's status panel. Changes nothing. */
 export async function checkCampaignReadiness(id?: string): Promise<CampaignReadiness> {
   await assertAdmin("campaigns");
-  return campaignReadiness(campaignSenderSetup(), { campaignId: id && UUID.test(id) ? id : undefined });
+  const campaign = id && UUID.test(id) ? await loadCampaign(id) : null;
+  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined });
 }
 
 /** Sends the saved campaign to up to three addresses, with "[Test]" in the subject. Writes nothing to the ledger. */

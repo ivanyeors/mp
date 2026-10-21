@@ -5,9 +5,7 @@ import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { readProfileAftercare } from "@/lib/aftercare/preferences";
-import { readWelcomeVoucher, usableWelcomeVoucherCard } from "@/lib/customer-migration/welcome-voucher";
 import { AccountSecurity } from "@/components/auth/account-security";
-import { WelcomeVoucherCard } from "@/components/account/welcome-voucher-card";
 import { PointsCard } from "@/components/account/points-card";
 import { isPartnerCustomer, readPendingOrders, readPointsBalance, readPointsSettings } from "@/lib/points/server";
 import { AftercarePreferences } from "./aftercare-preferences";
@@ -66,18 +64,15 @@ export default async function AccountProfilePage({
   // does not depend on the customer's column grants on `customers`. A failed
   // read hides the card rather than the whole Profile.
   const admin = supabaseAdmin();
-  // The Welcome-back voucher (migration slice 06), while it is unused and
-  // unexpired, so a customer who claimed without the campaign email still
-  // finds it. Read after linkCustomerToAuthUser, whose Claim may have just
-  // issued it. A failed read only hides the card. Marketing consent (migration
-  // slice 07) is read the same way as the aftercare switches.
-  const [aftercare, voucher, marketingEmail, points] = await Promise.all([
+  // Points (PRD-loyalty-points slice 02) are read after linkCustomerToAuthUser,
+  // whose Claim may have just granted the Claim bonus. A failed read only
+  // hides the card. Marketing consent (migration slice 07) is read the same
+  // way as the aftercare switches.
+  const [aftercare, marketingEmail, points] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),
-    readWelcomeVoucher(admin, customer.id),
     readMarketingEmailState(admin, customer.id).catch(() => null),
     readOwnPoints(admin, customer.id),
   ]);
-  const voucherCard = usableWelcomeVoucherCard(voucher);
 
   return (
     <div className="w-full max-w-3xl space-y-8">
@@ -110,10 +105,6 @@ export default async function AccountProfilePage({
           termsHref={withLocale("/points", locale)}
           shopHref={withLocale("/shop", locale)}
         />
-      ) : null}
-
-      {voucherCard ? (
-        <WelcomeVoucherCard voucher={voucherCard} shopHref={withLocale("/shop", locale)} />
       ) : null}
 
       <AccountSecurity googleLinked={googleLinked} />

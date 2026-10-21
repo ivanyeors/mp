@@ -15,7 +15,6 @@ import {
 } from "@/lib/customer-migration/wave-sender";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
-import { singaporeDay } from "@/lib/customer-migration/welcome-voucher-terms";
 import { emptyWorld, fakeCampaignClient, type CampaignWorld } from "./fake-campaign-db";
 
 /**
@@ -59,15 +58,13 @@ function seed(world: CampaignWorld) {
     { customer_id: EVE, shopify_orders_count: 3, imported_at: "2026-10-12T02:00:00Z" },
     { customer_id: FAY, shopify_orders_count: 3, imported_at: "2026-10-12T02:00:00Z", claimed_at: "2026-10-16T02:00:00Z" },
   );
-  const until = new Date(Date.now() + 30 * 86400_000);
+  // Points are on and launched, with the seeded Claim bonus: 1,000 points within 3 months.
   Object.assign(world.settings, {
     migration_service_notice_enabled: "false",
-    welcome_voucher_enabled: "true",
-    welcome_voucher_type: "fixed_amount",
-    welcome_voucher_value: "20",
-    welcome_voucher_min_order: "50",
-    welcome_voucher_valid_days: "60",
-    welcome_voucher_issue_until: singaporeDay(until),
+    points_enabled: "true",
+    points_launch_at: new Date(Date.now() - 86400_000).toISOString(),
+    points_claim_bonus: "1000",
+    points_claim_bonus_months: "3",
   });
 }
 
@@ -219,10 +216,16 @@ describe("it refuses before sending anything", () => {
     await refused({ replyTo: "mpillow <onboarding@resend.dev>" }, "reply_to");
   });
 
-  it("an offer email while no sign-in would issue the voucher", async () => {
-    world.settings.welcome_voucher_enabled = "false";
-    const r = await refused({}, "voucher");
-    expect(r.preflight.checks.find((c) => c.key === "voucher")!.detail).toMatch(/promises a voucher/);
+  it("an offer email while a sign-in would grant no points", async () => {
+    world.settings.points_enabled = "false";
+    const off = await refused({}, "bonus");
+    expect(off.preflight.checks.find((c) => c.key === "bonus")!.detail).toMatch(/promises points.*points are off/);
+    world.settings.points_enabled = "true";
+    world.settings.points_launch_at = new Date(Date.now() + 86400_000).toISOString();
+    await refused({}, "bonus");
+    world.settings.points_launch_at = new Date(Date.now() - 86400_000).toISOString();
+    world.settings.points_claim_bonus = "0";
+    await refused({}, "bonus", { template: "migration_reminder", wave: "r1" });
   });
 
   it("the service notice while owner decision 3 is unanswered", async () => {
@@ -295,14 +298,15 @@ describe("--apply", () => {
 
     // One Claim link per email, stored as a hash only, with the campaign's UTMs.
     expect(world.claimLinks).toHaveLength(3);
-    const link = /https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=([A-Za-z0-9_-]{43})&utm_source=shopify_migration&utm_medium=email&utm_campaign=migration_announcement/.exec(bea.text);
+    const link = /https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=([A-Za-z0-9_-]{43})&utm_source=new_website&utm_medium=email&utm_campaign=migration_announcement/.exec(bea.text);
     expect(link).not.toBeNull();
     const stored = world.claimLinks.find((l) => l.customer_id === BEA)!;
     expect(stored).toEqual({ customer_id: BEA, token_hash: await hashClaimToken(link![1]), template: "migration_announcement" });
     expect(JSON.stringify(world.claimLinks)).not.toContain(link![1]);
 
-    // The voucher and its terms, from the Discounts settings.
-    expect(bea.text).toMatch(/SGD\s20\.00 off a shop order of SGD\s50\.00 or more/);
+    // The Claim bonus and its window, from Discounts → Points; no word of the old platform.
+    expect(bea.text).toContain("Sign in within 3 months of this email and we'll add 1,000 points, S$10 off your next shop order.");
+    expect(`${bea.subject}\n${bea.text}\n${bea.html}`).not.toMatch(/shopify|moved|voucher/i);
     expect(bea.subject).toBe("Your Mpillow account is ready");
   });
 
@@ -418,7 +422,7 @@ describe("--apply", () => {
     const report = await runCampaignWave(announce({ template: "migration_reminder", wave: "r1" }), s);
     expect(s.sent.map((e) => e.to)).toEqual(["ann@example.com"]);
     expect(report.audience!.excluded).toMatchObject({ announcement_too_recent: 1, no_announcement: 1 });
-    expect(s.sent[0].subject).toBe("Your welcome-back voucher is waiting");
+    expect(s.sent[0].subject).toBe("S$10 in points is waiting in your Mpillow account");
     expect(world.claimLinks).toEqual([expect.objectContaining({ customer_id: ANN, template: "migration_reminder" })]);
   });
 
@@ -429,12 +433,12 @@ describe("--apply", () => {
     expect(report.ran).toBe(true);
     expect(s.sent.map((e) => e.to)).toEqual(["dan@example.com"]);
     const notice = s.sent[0];
-    expect(notice.subject).toBe("Mpillow has moved");
-    expect(`${notice.text}\n${notice.html}`).not.toMatch(/voucher|discount|SGD|% off|offer|promo|free shipping/i);
+    expect(notice.subject).toBe("Mpillow has a new website");
+    expect(`${notice.text}\n${notice.html}`).not.toMatch(/voucher|discount|SGD|S\$|points?\b|% off|offer|promo|free shipping|shopify|moved/i);
     expect(notice.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(notice.text).toContain(`${ORIGIN}/en-US/appointments?type=readjustment`);
     // An offer check does not apply to it.
-    expect(report.preflight.checks.map((c) => c.key)).not.toContain("voucher");
+    expect(report.preflight.checks.map((c) => c.key)).not.toContain("bonus");
   });
 });
 

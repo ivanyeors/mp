@@ -12,8 +12,9 @@
  *  - the target site answers `POST /api/email/unsubscribe` (README, first
  *    hazard: no campaign email before one-click unsubscribe is live), and
  *    verifies links signed with this machine's UNSUBSCRIBE_SECRET;
- *  - an offer template's voucher would be issued by a sign-in now (the email
- *    promises one), and owner decision 3 allows the service notice;
+ *  - an offer template's Claim bonus would be granted by a sign-in now (the
+ *    email promises it: `claimBonusOffer`), and owner decision 3 allows the
+ *    service notice;
  *  - the most recent wave holds no pause condition (bounces over 2%,
  *    complaints over 0.1%), or the human passes `resume`.
  *
@@ -30,12 +31,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import { checkCampaignFrom, emailAddressOf } from "@/lib/email/campaign-transport";
-import { formatSgDate, money } from "@/lib/email/format";
 import {
   renderMigrationAnnouncementEmail,
   renderMigrationReminderEmail,
   renderMigrationServiceNoticeEmail,
-  type CampaignVoucherTerms,
+  type CampaignBonusTerms,
 } from "@/lib/email/migration";
 import type { EmailTransport, RenderedEmail } from "@/lib/email/types";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -64,7 +64,8 @@ import {
   type CampaignWaveStats,
 } from "./campaign-ledger";
 import { mintClaimLink } from "./claim-link";
-import { readWelcomeVoucherTerms, welcomeVoucherIssuing, type WelcomeVoucherTerms } from "./welcome-voucher-terms";
+import { claimBonusOffer } from "@/lib/points/offer";
+import { readPointsSettings } from "@/lib/points/server";
 
 /** About two messages a second. */
 export const THROTTLE_MS = 500;
@@ -118,8 +119,8 @@ export interface WavePreflight {
   checks: PreflightCheck[];
   /** Every check passed. */
   ready: boolean;
-  /** The voucher as the offer templates state it; null when none would be issued. */
-  voucher: CampaignVoucherTerms | null;
+  /** The Claim bonus as the offer templates state it; null when a sign-in would grant none. */
+  bonus: CampaignBonusTerms | null;
   stats: CampaignWaveStats[];
 }
 
@@ -150,23 +151,6 @@ export function maskEmail(email: string): string {
   const at = email.lastIndexOf("@");
   if (at < 1) return "***";
   return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`;
-}
-
-/**
- * Pure — the voucher as an offer email states it. Null when the terms are
- * incomplete; the caller has checked `welcomeVoucherIssuing` first.
- */
-export function campaignVoucherTerms(terms: WelcomeVoucherTerms): CampaignVoucherTerms | null {
-  if (!terms.type || !terms.issueUntil) return null;
-  if (terms.type === "fixed_amount" && !(terms.value != null && terms.value > 0)) return null;
-  return {
-    kind: terms.type,
-    amount: terms.type === "fixed_amount" ? money(terms.value!, "SGD") : null,
-    minimumSpend: terms.minOrder ? money(terms.minOrder, "SGD") : null,
-    validDays: terms.validDays,
-    // The last Singapore day, as a date.
-    issueUntil: formatSgDate(`${terms.issueUntil}T00:00:00+08:00`),
-  };
 }
 
 const isLocalHost = (host: string) => host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
@@ -263,19 +247,19 @@ export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now:
     );
   }
 
-  let voucher: CampaignVoucherTerms | null = null;
+  let bonus: CampaignBonusTerms | null = null;
   if (OFFER_TEMPLATES.has(req.template)) {
-    const read = await attempt(() => readWelcomeVoucherTerms(setup.admin));
-    if (!read.ok) add("voucher", false, read.error);
+    const read = await attempt(() => readPointsSettings(setup.admin));
+    if (!read.ok) add("bonus", false, read.error);
     else {
-      const issuing = welcomeVoucherIssuing(read.value, now);
-      voucher = issuing.issuing ? campaignVoucherTerms(read.value.terms) : null;
+      const offer = claimBonusOffer(read.value, now);
+      bonus = offer.live ? { points: offer.points, amount: offer.amount, months: offer.months } : null;
       add(
-        "voucher",
-        voucher !== null,
-        voucher
-          ? `a sign-in issues the welcome-back voucher until ${voucher.issueUntil}`
-          : `this email promises a voucher, and a sign-in now would issue none (${issuing.issuing ? "incomplete terms" : issuing.reason}): set the terms in Discounts`,
+        "bonus",
+        offer.live,
+        offer.live
+          ? `a sign-in within ${offer.months} months grants ${offer.points} (${offer.amount})`
+          : `this email promises points, and a sign-in now would grant none (${offer.reason}): set them in Discounts → Points`,
       );
     }
   }
@@ -295,7 +279,7 @@ export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now:
     );
   }
 
-  return { checks, ready: checks.every((c) => c.ok), voucher, stats };
+  return { checks, ready: checks.every((c) => c.ok), bonus, stats };
 }
 
 /** Pure — one campaign email for one recipient. */
@@ -306,7 +290,7 @@ export function renderCampaignEmail(
     email: string;
     claimUrl: string;
     unsubscribeUrl: string;
-    voucher: CampaignVoucherTerms | null;
+    bonus: CampaignBonusTerms | null;
     origin: string;
     locale: Locale;
   },
@@ -322,10 +306,10 @@ export function renderCampaignEmail(
       supportWhatsAppUrl: SUPPORT_WHATSAPP_URL,
     });
   }
-  if (!p.voucher) throw new Error(`${template} states the voucher, and there are no voucher terms`);
+  if (!p.bonus) throw new Error(`${template} states the Claim bonus, and a sign-in would grant none`);
   return template === "migration_reminder"
-    ? renderMigrationReminderEmail({ ...recipient, claimUrl: p.claimUrl, voucher: p.voucher })
-    : renderMigrationAnnouncementEmail({ ...recipient, claimUrl: p.claimUrl, voucher: p.voucher });
+    ? renderMigrationReminderEmail({ ...recipient, claimUrl: p.claimUrl, bonus: p.bonus })
+    : renderMigrationAnnouncementEmail({ ...recipient, claimUrl: p.claimUrl, bonus: p.bonus });
 }
 
 /**
@@ -409,7 +393,7 @@ export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promi
         email: claim.email,
         claimUrl: link.url,
         unsubscribeUrl: unsubscribe.pageUrl,
-        voucher: preflight.voucher,
+        bonus: preflight.bonus,
         origin,
         locale,
       });

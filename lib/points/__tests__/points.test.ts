@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import { isPartnerMatch, type PartnerMatchRow } from "../partner";
+import { claimBonusOffer } from "../offer";
 import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSettingsToRows } from "../settings";
 import { POINTS_PER_DOLLAR, formatDollars, formatPoints, formatPointsCount, pointsToDollars } from "../value";
 
@@ -97,5 +98,27 @@ describe("isPartnerMatch: partner-cases.json (the same table is_partner_customer
         ]
       : [];
     expect(isPartnerMatch({ auth_user_id: auth, email: c.customer.email }, rows)).toBe(c.expected);
+  });
+});
+
+describe("claimBonusOffer", () => {
+  const now = new Date("2026-11-02T00:00:00Z");
+  const live = { ...POINTS_DEFAULTS, enabled: true, launchAt: "2026-11-01T00:00:00.000Z" };
+
+  it("states the bonus once points are on, launched, and grant one", () => {
+    expect(claimBonusOffer(live, now)).toEqual({ live: true, points: "1,000 points", amount: "S$10", months: 3 });
+    expect(claimBonusOffer({ ...live, claimBonus: 1550 }, now)).toMatchObject({ points: "1,550 points", amount: "S$15.50" });
+  });
+
+  it.each([
+    ["off", { enabled: false }, /off/],
+    ["no launch date", { launchAt: null }, /no launch date/],
+    ["launch still ahead", { launchAt: "2026-11-03T00:00:00.000Z" }, /not yet/],
+    ["no bonus", { claimBonus: 0 }, /bonus is 0/],
+    ["no window", { claimBonusMonths: 0 }, /0 months/],
+  ])("promises nothing while %s", (_, over, reason) => {
+    const offer = claimBonusOffer({ ...live, ...over }, now);
+    expect(offer.live).toBe(false);
+    if (!offer.live) expect(offer.reason).toMatch(reason);
   });
 });

@@ -11,7 +11,10 @@
  * subdomain, a support inbox for Reply-To, a public https site, and that site
  * answering one-click unsubscribe for links signed here. The latest wave of
  * any campaign email must also be clear of the pause rule (bounces over 2%,
- * complaints over 0.1%), unless Staff resume after looking into it.
+ * complaints over 0.1%), unless Staff resume after looking into it. A
+ * Campaign that mentions points goes to customers only while points are live
+ * (`claimBonusOffer`): on, launched, with a Claim bonus. A test send is not
+ * held back by it.
  *
  * **Each send** is claimed in the ledger first (`claim_marketing_campaign_send`,
  * which re-checks consent, suppression and "already sent" in SQL at that
@@ -37,9 +40,12 @@ import type { RenderedEmail } from "@/lib/email/types";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { listUnsubscribeHeaders, PROBE_CUSTOMER_ID, unsubscribeLinks } from "@/lib/marketing-consent/unsubscribe";
+import { claimBonusOffer } from "@/lib/points/offer";
+import { readPointsSettings } from "@/lib/points/server";
 import {
   campaignLedgerKey,
   CAMPAIGN_BLOCKER_TEXT,
+  mentionsPoints,
   MAX_TEST_RECIPIENTS,
   MAX_WAVE_SIZE,
   nextWaveLabel,
@@ -153,6 +159,28 @@ export function pauseCheck(stats: readonly CampaignWaveStats[], resume: boolean)
 
 const originOf = (setup: DeliverySetup) => setup.origin.replace(/\/$/, "");
 
+type CampaignContent = Pick<Campaign, "subject" | "preheader" | "body" | "button">;
+
+/**
+ * Points as a check, for a Campaign that mentions them; null for one that
+ * does not. It fails until points are on, launched, and grant a Claim bonus.
+ */
+export async function pointsCheck(admin: SupabaseClient, campaign: CampaignContent, now: Date = new Date()): Promise<PreflightCheck | null> {
+  if (!mentionsPoints(campaign)) return null;
+  try {
+    const offer = claimBonusOffer(await readPointsSettings(admin), now);
+    return {
+      key: "points",
+      ok: offer.live,
+      detail: offer.live
+        ? `points are live: a sign-in within ${offer.months} months grants ${offer.points} (${offer.amount})`
+        : `this email mentions points, and ${offer.reason}: turn points on in Discounts → Points before sending it`,
+    };
+  } catch (err) {
+    return { key: "points", ok: false, detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /**
  * The checks with no network call, which every batch repeats in case the
  * configuration changed mid-wave. The probes ran when the wave was planned.
@@ -178,15 +206,17 @@ export interface CampaignReadiness {
 /** Every check, for the page's status panel. Changes nothing. */
 export async function campaignReadiness(
   setup: CampaignSenderSetup,
-  { campaignId, resume = false }: { campaignId?: string; resume?: boolean } = {},
+  { campaign, resume = false }: { campaign?: Pick<Campaign, "id"> & CampaignContent; resume?: boolean } = {},
 ): Promise<CampaignReadiness> {
   const checks = await campaignDeliveryChecks(setup);
   try {
-    const { all } = await readWaveStats(setup.admin, campaignId ?? "");
+    const { all } = await readWaveStats(setup.admin, campaign?.id ?? "");
     checks.push(pauseCheck(all, resume));
   } catch (err) {
     checks.push({ key: "pause", ok: false, detail: err instanceof Error ? err.message : String(err) });
   }
+  const points = campaign ? await pointsCheck(setup.admin, campaign) : null;
+  if (points) checks.push(points);
   return { checks, ready: checks.every((c) => c.ok) };
 }
 
@@ -215,7 +245,7 @@ export async function planWave(
     throw new Error(`A wave is 1 to ${MAX_WAVE_SIZE} people.`);
   }
   const [readiness, waves, candidates] = await Promise.all([
-    campaignReadiness(setup, { campaignId: campaign.id, resume }),
+    campaignReadiness(setup, { campaign, resume }),
     readWaveStats(setup.admin, campaign.id),
     readCampaignCandidates(setup.admin, campaign, segmentIds),
   ]);
@@ -285,6 +315,12 @@ export async function sendCampaignBatch(
   const notReady = quickChecks(setup);
   if (notReady) {
     result.stopped = notReady;
+    return result;
+  }
+  // Every batch, in case points were turned off mid-wave.
+  const points = await pointsCheck(setup.admin, campaign);
+  if (points && !points.ok) {
+    result.stopped = points.detail;
     return result;
   }
 

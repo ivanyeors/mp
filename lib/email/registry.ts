@@ -9,7 +9,7 @@
 //
 // Every `render` must be PURE — no network, no DB.
 
-import { renderWelcomeVoucherEmail } from "./account";
+import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail, renderWelcomeVoucherEmail } from "./account";
 import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
 import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
@@ -52,7 +52,7 @@ import {
   sampleHoldExpired,
   sampleHoldExpiredUnpaid,
   sampleMigrationAnnouncement,
-  sampleMigrationAnnouncementFreeShipping,
+  sampleMigrationAnnouncementNoName,
   sampleMigrationReminder,
   sampleMigrationServiceNotice,
   sampleOrder,
@@ -62,6 +62,7 @@ import {
   sampleBalanceDue,
   sampleBalanceDueFinish,
   sampleCheckup,
+  sampleClaimBonus,
   sampleComposedCampaign,
   sampleReadjustmentReschedule,
   sampleRestock,
@@ -424,6 +425,31 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderWelcomeVoucherEmail(sampleWelcomeVoucherFreeShipping(f)),
   },
 
+  // --- Account: the Claim bonus (PRD-loyalty-points slice 05) ---
+  // Sent once, when a sign-in grants the bonus. The id is also its
+  // customer_emails.template (CLAIM_BONUS_EMAIL).
+  {
+    id: "account.claim_bonus",
+    label: "Points for signing in",
+    group: "account",
+    audience: "customer",
+    copy: CLAIM_BONUS_EMAIL_COPY,
+    render: (f, copy) => renderClaimBonusEmail(sampleClaimBonus(f), copyFor(CLAIM_BONUS_EMAIL_COPY, copy)),
+  },
+  {
+    id: "account.claim_bonus_no_name",
+    label: "Points for signing in — no first name",
+    group: "account",
+    audience: "customer",
+    copy: CLAIM_BONUS_EMAIL_COPY,
+    // No name to probe, so the hostile fixture probes the button's link.
+    render: (f, copy) =>
+      renderClaimBonusEmail(
+        { ...sampleClaimBonus(f), firstName: null, ...(f === "hostile" ? { shopUrl: "javascript:alert(1)" } : {}) },
+        copyFor(CLAIM_BONUS_EMAIL_COPY, copy),
+      ),
+  },
+
   // --- Campaign: the Shopify customer migration (slice 08) ---
   // Campaign mail: rendered with the unsubscribe link, sent with
   // List-Unsubscribe, through the campaign transport only. Each id is the
@@ -431,25 +457,24 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
   // customer_campaign_sends.template.
   {
     id: "migration.announcement",
-    label: "Shopify move: account ready",
+    label: "New website: account ready",
     group: "migration",
     audience: "customer",
     campaign: true,
     render: (f) => renderMigrationAnnouncementEmail(sampleMigrationAnnouncement(f)),
   },
   {
-    // Same renderer, free-shipping terms, no minimum and no first name: the
-    // offer line and the greeting are the sentences that change.
-    id: "migration.announcement_free_shipping",
-    label: "Shopify move: account ready — free shipping",
+    // Same renderer, no first name: the greeting is the sentence that changes.
+    id: "migration.announcement_no_name",
+    label: "New website: account ready — no first name",
     group: "migration",
     audience: "customer",
     campaign: true,
-    render: (f) => renderMigrationAnnouncementEmail(sampleMigrationAnnouncementFreeShipping(f)),
+    render: (f) => renderMigrationAnnouncementEmail(sampleMigrationAnnouncementNoName(f)),
   },
   {
     id: "migration.reminder",
-    label: "Shopify move: voucher reminder",
+    label: "New website: points reminder",
     group: "migration",
     audience: "customer",
     campaign: true,
@@ -457,9 +482,9 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
   },
   {
     // To customers who never agreed to marketing, once, and only if owner
-    // decision 3 says so. No offer, voucher or promotion.
+    // decision 3 says so. No offer, points or promotion.
     id: "migration.service_notice",
-    label: "Shopify move: service notice",
+    label: "New website: service notice",
     group: "migration",
     audience: "customer",
     campaign: true,
@@ -683,7 +708,7 @@ export function getEmailCase(id: string): EmailCase | undefined {
 export const EMAIL_GROUP_LABELS: Record<EmailGroup, string> = {
   order: "Orders",
   account: "Customer account",
-  migration: "Shopify move (campaign)",
+  migration: "New website (campaign)",
   campaign: "Email campaigns",
   aftercare: "Aftercare",
   rma: "Returns",

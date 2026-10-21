@@ -43,6 +43,13 @@ function seed(w: FakeWorld) {
     { customer_id: DAN, imported_at: "2026-10-10T00:00:00Z", claimed_at: "2026-10-15T00:00:00Z" },
   );
   w.campaigns.push({ id: CAMPAIGN, audience: "subscribed" });
+  // Points are live, so the first campaign (which promises them) may go.
+  w.settings = {
+    points_enabled: "true",
+    points_launch_at: "2026-10-01T00:00:00.000Z",
+    points_claim_bonus: "1000",
+    points_claim_bonus_months: "3",
+  };
 }
 
 const campaign = (over: Partial<Campaign> = {}): Campaign => ({
@@ -201,6 +208,15 @@ describe("sendCampaignBatch", () => {
     }
   });
 
+  it("stops before claiming anyone when points were turned off mid-wave", async () => {
+    world.settings.points_enabled = "false";
+    const { s, sent, admin } = setup();
+    const r = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+    expect(r.stopped).toMatch(/mentions points, and points are off/);
+    expect(sent).toHaveLength(0);
+    expect(admin.rpcCalls).toHaveLength(0);
+  });
+
   it("stops at once when the campaign is archived mid-wave", async () => {
     world.campaigns[0].archived = true;
     const { s, sent } = setup();
@@ -224,6 +240,8 @@ describe("planWave", () => {
       "unsubscribe_route",
       "unsubscribe_secret",
       "pause",
+      // The first campaign promises points.
+      "points",
     ]);
     expect(r.wave).toBe("w1");
     // Ann (2 Shopify orders) and Bea (1 here) are buyers, Bea the newer; Dan
@@ -262,6 +280,27 @@ describe("planWave", () => {
     expect((await planWave(campaign(), { size: 10, resume: true }, s)).readiness.ready).toBe(true);
   });
 
+  it("holds a campaign that promises points until points are live, and only that one", async () => {
+    world.settings.points_enabled = "false";
+    const { s } = setup();
+    const r = await planWave(campaign(), { size: 10 }, s);
+    expect(r.readiness.ready).toBe(false);
+    expect(r.readiness.checks.find((c) => c.key === "points")).toMatchObject({
+      ok: false,
+      detail: expect.stringMatching(/mentions points, and points are off/),
+    });
+
+    world.settings.points_enabled = "true";
+    world.settings.points_launch_at = "2099-01-01T00:00:00.000Z";
+    expect((await planWave(campaign(), { size: 10 }, s)).readiness.ready).toBe(false);
+
+    world.settings.points_enabled = "false";
+    const plain = campaign({ subject: "Our new website", preheader: null, body: "Hello.", button: null });
+    const p = await planWave(plain, { size: 10 }, s);
+    expect(p.readiness.ready).toBe(true);
+    expect(p.readiness.checks.map((c) => c.key)).not.toContain("points");
+  });
+
   it("refuses a wave size outside 1 to 1,000", async () => {
     const { s } = setup();
     await expect(planWave(campaign(), { size: 0 }, s)).rejects.toThrow(/1 to 1000/);
@@ -298,6 +337,13 @@ describe("sendCampaignTest", () => {
     expect(sent[0].html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);
     expect(admin.rpcCalls).toHaveLength(0);
     expect(world.sends).toHaveLength(0);
+  });
+
+  it("is not held back by points being off: a test goes to Staff, not customers", async () => {
+    world.settings.points_enabled = "false";
+    const { s, sent } = setup();
+    expect(await sendCampaignTest(campaign(), { to: ["me@mpillow.com"], firstName: "Ivan" }, s)).toMatchObject({ sent: ["me@mpillow.com"] });
+    expect(sent).toHaveLength(1);
   });
 
   it("refuses no address, more than three, or a transport that is not set up", async () => {

@@ -10,6 +10,7 @@ import {
   campaignRowFromDraft,
   candidateFromRow,
   composedCampaignBlocker,
+  mentionsPoints,
   nextWaveLabel,
   planCampaignWave,
   type CampaignAudience,
@@ -203,5 +204,21 @@ describe("candidateFromRow", () => {
     expect(candidateFromRow(row, "c3")?.own).toBeNull();
     expect(candidateFromRow({ ...row, marketing_email: "weird" }, "c1")?.marketingEmail).toBe("not_subscribed");
     expect(candidateFromRow({ email: "x" }, "c1")).toBeNull();
+  });
+});
+
+describe("mentionsPoints", () => {
+  const base = { subject: "Hello", preheader: null, body: "News.", button: null };
+  it("finds points in any part a customer reads", () => {
+    expect(mentionsPoints(base)).toBe(false);
+    expect(mentionsPoints({ ...base, subject: "1,000 points for you" })).toBe(true);
+    expect(mentionsPoints({ ...base, preheader: "Collect your points" })).toBe(true);
+    expect(mentionsPoints({ ...base, body: "Earn a Point on every dollar." })).toBe(true);
+    expect(mentionsPoints({ ...base, button: { target: "sign_in" as const, label: "Collect points", url: null } })).toBe(true);
+    expect(mentionsPoints(FIRST_CAMPAIGN_DRAFT)).toBe(true);
+  });
+
+  it("does not read other words as points", () => {
+    expect(mentionsPoints({ ...base, body: "Appointments are open, and the pointed tip is new." })).toBe(false);
   });
 });

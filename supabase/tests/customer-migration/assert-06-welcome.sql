@@ -183,7 +183,10 @@ begin
   assert public.welcome_voucher_state(0, false, now() + interval '1 day') = 'expired', 'switched off';
 end $$;
 
--- Jane claims through the real function, with terms that issue.
+-- Jane claims through the real function. Since PRD-loyalty-points slice 05
+-- the Claim issues no voucher, even with terms that would have: her voucher
+-- below is one issued before then, which the views still count until slice 06
+-- retires them.
 update public.site_settings set value = 'true' where key = 'welcome_voucher_enabled';
 insert into public.site_settings (key, value) values
   ('welcome_voucher_type', 'fixed_amount'),
@@ -197,8 +200,13 @@ declare
   r record;
 begin
   select * into r from public.claim_migrated_customer('c6000000-0000-4000-8000-000000000001');
-  assert r.claimed and r.voucher_issued, format('Jane''s Claim issued no voucher: %s', r);
+  assert r.claimed, format('Jane''s Claim did not claim: %s', r);
+  assert not exists (select 1 from public.coupons where customer_id = 'c6000000-0000-4000-8000-000000000001'),
+    'the Claim issued a voucher';
 end $$;
+
+insert into public.coupons (code, discount_type, discount_value, currency, usage_limit, usage_count, per_customer_limit, expires_at, customer_id, issued_for)
+values ('WB-M06JANE000', 'fixed_amount', 20, 'SGD', 1, 0, 1, now() + interval '60 days', 'c6000000-0000-4000-8000-000000000001', 'welcome_back');
 
 -- Kai's voucher is used and paid for; Mo's expired; Lee has none.
 insert into public.coupons (code, discount_type, discount_value, currency, usage_limit, usage_count, per_customer_limit, expires_at, customer_id, issued_for)

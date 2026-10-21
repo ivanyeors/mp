@@ -45,7 +45,7 @@ const one = <T>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? 
 
 /** The settings as typed values. Throws on a failed read. */
 export async function readPointsSettings(admin: SupabaseClient): Promise<PointsSettings> {
-  const { data, error } = await admin.from("site_settings").select("key, value").like("key", "points\\_%");
+  const { data, error } = await admin.from("site_settings").select("key, value").in("key", Object.values(POINTS_SETTING_KEYS));
   if (error) throw new Error(`Could not read the points settings: ${error.message}`);
   return pointsSettingsFromRows((data ?? []) as { key: string; value: string }[]);
 }
