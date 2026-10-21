@@ -41,6 +41,7 @@ import {
     type CustomerFilters,
     type CustomerSort,
     type SourceFilter,
+    type VoucherFilter,
 } from "@/lib/crm/customer-filters";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
 import { MigrationCard } from "./migration-card";
@@ -85,7 +86,7 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 }
 
 /** The filters the list's URL holds; "from Shopify, no account" is one of them. */
-type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "sort">;
+type ListFilters = Pick<CustomerFilters, "search" | "tags" | "account" | "source" | "voucher" | "sort">;
 
 /** The Account status: *Signed up* with its date, or a muted *No account*. */
 function AccountStatus({ customer, compact = false }: { customer: CustomerOverviewRow; compact?: boolean }) {
@@ -135,6 +136,7 @@ export function CustomersClient({
     const [debouncedSearch, setDebouncedSearch] = useState(initialFilters.search ?? "");
     const [account, setAccount] = useState<AccountFilter>(initialFilters.account);
     const [source, setSource] = useState<SourceFilter>(initialFilters.source);
+    const [voucher, setVoucher] = useState<VoucherFilter>(initialFilters.voucher);
     const [sort, setSort] = useState<CustomerSort>(initialFilters.sort);
     // Kept from the URL as given; the list has no tag control yet (CRM slice 04).
     const [tags] = useState<string[]>(initialFilters.tags);
@@ -166,9 +168,11 @@ export function CustomersClient({
         tags,
         account,
         source,
+        voucher,
         sort,
     }).toString();
-    const filtered = account !== "all" || source !== "all" || Boolean(debouncedSearch) || tags.length > 0;
+    const filtered =
+        account !== "all" || source !== "all" || voucher !== "all" || Boolean(debouncedSearch) || tags.length > 0;
 
     // Keep the address bar in step without a server round trip, so the list's
     // filters survive a reload and can be shared. Only the filters' own keys
@@ -186,6 +190,10 @@ export function CustomersClient({
     };
     const changeSource = (value: string) => {
         setSource(value as SourceFilter);
+        setPage(1);
+    };
+    const changeVoucher = (value: string) => {
+        setVoucher(value as VoucherFilter);
         setPage(1);
     };
     const changeSort = (value: string) => {
@@ -289,6 +297,18 @@ export function CustomersClient({
                         <SelectItem value="all">All sources</SelectItem>
                         <SelectItem value="shopify">From Shopify</SelectItem>
                         <SelectItem value="platform">Platform</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {/* The Welcome-back voucher (migration slice 06): issued and unused is the list to nudge before it expires. */}
+                <Select value={voucher} onValueChange={changeVoucher}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Voucher">
+                        <SelectValue placeholder="Voucher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All vouchers</SelectItem>
+                        <SelectItem value="issued">Voucher issued, unused</SelectItem>
+                        <SelectItem value="used">Voucher used</SelectItem>
                     </SelectContent>
                 </Select>
 

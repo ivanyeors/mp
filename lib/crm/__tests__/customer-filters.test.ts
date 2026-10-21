@@ -138,7 +138,24 @@ describe("applyCustomerFilters", () => {
   });
 
   it("never applies a dropped value", () => {
-    expect(query("account=foo&source=bar&sort=baz").calls).toEqual([newest]);
+    expect(query("account=foo&source=bar&sort=baz&voucher=expired").calls).toEqual([newest]);
+  });
+
+  it("maps the Voucher filter to the overview's derived state (migration slice 06)", () => {
+    // Issued, unused: the list to nudge before the vouchers expire.
+    expect(query("voucher=issued").calls).toEqual([["eq", "welcome_voucher_state", "issued"], newest]);
+    expect(query("voucher=used&source=shopify").calls).toEqual([
+      ["eq", "from_shopify", true],
+      ["eq", "welcome_voucher_state", "used"],
+      newest,
+    ]);
+    const { calls, ignored } = query("voucher=all");
+    expect(calls).toEqual([newest]);
+    expect(ignored).toEqual([]);
+  });
+
+  it("drops a voucher value the list does not offer, and names it", () => {
+    expect(query("voucher=none").ignored).toEqual(["voucher"]);
   });
 });
 
@@ -157,6 +174,7 @@ describe("customerFilterParams", () => {
       tags: ["vip"],
       account: "signed-up",
       source: "platform",
+      voucher: "issued",
       sort: "signed-up",
       page: 3,
       limit: 50,
@@ -173,7 +191,16 @@ describe("customerFilterParams", () => {
 
 describe("CUSTOMER_FILTER_PARAMS", () => {
   it("names every key the filters own, and not the page's tab (`view`, CRM slice 14)", () => {
-    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual(["account", "limit", "page", "search", "sort", "source", "tags"]);
+    expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
+      "account",
+      "limit",
+      "page",
+      "search",
+      "sort",
+      "source",
+      "tags",
+      "voucher",
+    ]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
 });

@@ -21,6 +21,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 /**
  * Saves the fields the client says changed. Only fields whose value really
  * differs are written, and the audit entry holds just those, before and after.
+ *
+ * A new email voids the Customer's Claim links unless they have Claimed, so
+ * an old campaign email cannot prefill or claim for the new address
+ * (migration slice 06). A trigger on `customers` does it, for every write path.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");

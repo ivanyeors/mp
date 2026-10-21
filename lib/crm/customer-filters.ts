@@ -19,6 +19,13 @@ export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 export const SOURCE_FILTERS = ["all", "shopify", "platform"] as const;
 export type SourceFilter = (typeof SOURCE_FILTERS)[number];
 
+/**
+ * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
+ * to nudge before the vouchers expire; *Used* is who redeemed one.
+ */
+export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
+export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
+
 export const CUSTOMER_SORTS = ["newest", "oldest", "name-asc", "name-desc", "signed-up"] as const;
 export type CustomerSort = (typeof CUSTOMER_SORTS)[number];
 
@@ -31,6 +38,8 @@ export interface CustomerFilters {
   account: AccountFilter;
   /** *From Shopify* is a **Migrated customer**; *Platform* is every other Customer. */
   source: SourceFilter;
+  /** The Welcome-back voucher's state (`welcome_voucher_state`). */
+  voucher: VoucherFilter;
   sort: CustomerSort;
   page: number;
   limit: number;
@@ -41,6 +50,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   tags: [],
   account: "all",
   source: "all",
+  voucher: "all",
   sort: "newest",
   page: 1,
   limit: 20,
@@ -60,6 +70,7 @@ const PARAM_SCHEMAS = {
   ),
   account: z.enum(ACCOUNT_FILTERS),
   source: z.enum(SOURCE_FILTERS),
+  voucher: z.enum(VOUCHER_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
   // An oversized limit is capped, as before, rather than dropped.
@@ -120,6 +131,7 @@ export function customerFilterParams(
   if (f.tags.length) out.set("tags", f.tags.join(","));
   if (f.account !== "all") out.set("account", f.account);
   if (f.source !== "all") out.set("source", f.source);
+  if (f.voucher !== "all") out.set("voucher", f.voucher);
   if (f.sort !== DEFAULT_CUSTOMER_FILTERS.sort) out.set("sort", f.sort);
   if (paging) {
     out.set("page", String(f.page));
@@ -132,7 +144,7 @@ export function customerFilterParams(
 export interface CustomerListQuery {
   or(filters: string): this;
   overlaps(column: string, value: string[]): this;
-  eq(column: string, value: boolean): this;
+  eq(column: string, value: boolean | string): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -153,6 +165,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(query: Q, filt
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+  if (filters.voucher !== "all") q = q.eq("welcome_voucher_state", filters.voucher);
 
   switch (filters.sort) {
     case "name-asc":
