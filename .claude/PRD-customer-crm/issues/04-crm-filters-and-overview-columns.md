@@ -138,18 +138,24 @@ The README records it so it is not lost. It is fixed separately, outside the CRM
 - `20261020122100_customer_search_text_index.sql`: a trigram GIN index on the `search_text`
   expression over `customers`. The planner drops the view's other joins for a search, so the
   search is a filtered scan of `customers`.
-- `20261020200100_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
-  keeps every earlier column: migration 12's 18, then CRM 11's `account_providers`,
-  `has_phone` and `phone_valid` from `20261020200000`. It adds `paid_orders`,
-  `first_paid_at`, `last_paid_at`, `bought`, `last_readjusted_at` and `search_text`, computed
-  in grouped subqueries. The file was first `20261020200000` and was renamed at the catch-up
-  merge, because CRM 11 had taken that minute.
-- DB check: all migrations apply in order (`db-check.sh`, 169 after the catch-up). As
+- `20261020200200_customer_overview_crm_columns.sql`: the overview redefinition on its own. It
+  keeps every earlier column:
+  - migration 12's 18;
+  - CRM 11's `account_providers`, `has_phone` and `phone_valid` (`20261020200000`);
+  - migration slice 06's `claim_link_first_clicked_at` and `welcome_voucher_state`
+    (`20261020200100`).
+
+  It adds `paid_orders`, `first_paid_at`, `last_paid_at`, `bought`, `last_readjusted_at` and
+  `search_text`, computed in grouped subqueries. Migration 06's `admin_customer_migration_summary`
+  is left as that slice defined it. The file was first `20261020200000`, and was renamed at each
+  catch-up merge to stay after CRM 11's and migration 06's redefinitions.
+- DB check: all migrations apply in order (`db-check.sh`, 172 after the last catch-up). As
   `authenticated` and `anon`, both views give *permission denied*; `service_role` reads them.
-  Migration 12's `assert-12-account-status.sql` and CRM 11's `assert-11-contact-status.sql`
-  still pass.
-- **CRM 11's filters** (`google`, `mobile`) are in the one schema too, with summary labels. They
-  stay in the toolbar, where CRM 11 put them.
+  Every `supabase/tests/customer-migration/assert-*.sql` and `supabase/tests/customer-crm/assert-*.sql`
+  still passes.
+- **CRM 11's filters** (`google`, `mobile`) and **migration 06's** `voucher` are in the one schema
+  too, each with a summary label. Google and Mobile stay in the toolbar, where CRM 11 put them.
+  Voucher moved into the Filters panel, which opens when a link carries it.
 
 **Tests.**
 
@@ -178,10 +184,10 @@ The README records it so it is not lost. It is fixed separately, outside the CRM
 
 **Deviations.**
 
-- **Consent and voucher filters are not in the schema yet.** Their columns (`marketing_email`,
-  `welcome_voucher_state`) come from migration slices 07 and 06, which build in parallel. The
-  schema takes them as more `PARAM_SCHEMAS` keys, and the summary needs a label for each (the
-  types require one).
+- **The consent filter is not in the schema yet.** Its column (`marketing_email`) comes from
+  migration slice 07, which builds in parallel. The voucher filter arrived with migration 06 at
+  the catch-up merge. The schema takes each as one more `PARAM_SCHEMAS` key, and the summary
+  needs a label for each (the types require one).
 - **The URL is written with `history.replaceState`, not `router.replace`.** This is migration
   12's and CRM 14's existing mechanism. It avoids re-running the RSC page on every keystroke and
   likewise adds no history entries.

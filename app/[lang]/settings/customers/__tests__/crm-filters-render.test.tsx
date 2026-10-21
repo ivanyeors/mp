@@ -38,6 +38,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   account_providers: [],
   has_phone: false,
   phone_valid: false,
+  claim_link_first_clicked_at: null,
+  welcome_voucher_state: "none",
   paid_orders: 1,
   first_paid_at: "2025-03-04T02:00:00Z",
   last_paid_at: "2025-03-04T02:00:00Z",
@@ -98,6 +100,14 @@ describe("Customers list: CRM filters", () => {
     const html = listFor("");
     expect(html).toContain(">Last order<");
     expect(html).toContain("4 Mar 2025");
+  });
+
+  it("puts migration slice 06's Voucher filter in the panel, and labels it in the summary", () => {
+    const html = listFor("voucher=issued");
+    expect(html).toContain('id="customer-filters-panel"');
+    expect(html).toContain('aria-label="Voucher"');
+    expect(html).toContain("Voucher issued, unused");
+    expect(listFor("")).not.toContain('aria-label="Voucher"');
   });
 
   it("offers the last-order and spend sorts", () => {

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PURCHASE_CLASSES } from "@/lib/crm/customer-overview";
 import { boughtClasses, isCountedOrder, purchaseClass, purchaseLine } from "@/lib/crm/purchase-lines";
@@ -56,7 +56,10 @@ describe("isCountedOrder", () => {
   it("excludes in SQL exactly the statuses purchases.ts excludes", () => {
     // Both views write the list out; it must be NOT_A_PURCHASE, in either.
     const dir = new URL("../../../supabase/migrations/", import.meta.url);
-    for (const file of ["20261020122000_customer_purchase_lines.sql", "20261020200100_customer_overview_crm_columns.sql"]) {
+    // By name, not timestamp: the overview's file moves to stay the latest definition.
+    const files = readdirSync(dir).filter((f) => /_(customer_purchase_lines|customer_overview_crm_columns)\.sql$/.test(f));
+    expect(files).toHaveLength(2);
+    for (const file of files) {
       const sql = readFileSync(new URL(file, dir), "utf8").replace(/--.*$/gm, "");
       const lists = [...sql.matchAll(/status not in \(([^)]*)\)/g)].map(([, l]) => l.replace(/[\s']/g, "").split(",").sort());
       expect(lists.length, file).toBeGreaterThan(0);

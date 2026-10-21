@@ -286,7 +286,24 @@ describe("applyCustomerFilters", () => {
   });
 
   it("never applies a dropped value", () => {
-    expect(query("account=foo&source=bar&sort=baz&bought=qux").calls).toEqual([newest]);
+    expect(query("account=foo&source=bar&sort=baz&bought=qux&voucher=expired").calls).toEqual([newest]);
+  });
+
+  it("maps the Voucher filter to the overview's derived state (migration slice 06)", () => {
+    // Issued, unused: the list to nudge before the vouchers expire.
+    expect(query("voucher=issued").calls).toEqual([["eq", "welcome_voucher_state", "issued"], newest]);
+    expect(query("voucher=used&source=shopify").calls).toEqual([
+      ["eq", "from_shopify", true],
+      ["eq", "welcome_voucher_state", "used"],
+      newest,
+    ]);
+    const { calls, ignored } = query("voucher=all");
+    expect(calls).toEqual([newest]);
+    expect(ignored).toEqual([]);
+  });
+
+  it("drops a voucher value the list does not offer, and names it", () => {
+    expect(query("voucher=none").ignored).toEqual(["voucher"]);
   });
 });
 
@@ -321,11 +338,12 @@ describe("Contact status filters (CRM slice 11)", () => {
     expect(query("account=signed-up").calls).toEqual([["eq", "has_account", true], newest]);
   });
 
-  it("labels them in the active-filter summary", () => {
-    const { filters } = parseCustomerFilters(new URLSearchParams("google=not-linked&mobile=invalid"));
+  it("labels them, and the Voucher filter, in the active-filter summary", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("google=not-linked&mobile=invalid&voucher=issued"));
     expect(describeCustomerFilters(filters)).toEqual([
       { key: "google", label: "Google not linked" },
       { key: "mobile", label: "Mobile invalid" },
+      { key: "voucher", label: "Voucher issued, unused" },
     ]);
   });
 });
@@ -376,6 +394,7 @@ describe("customerFilterParams", () => {
       source: "platform",
       google: "linked",
       mobile: "missing",
+      voucher: "issued",
       bought: ["premium", "mbolster"],
       last_order: { when: "over", months: 18 },
       readjusted: "never",
@@ -414,6 +433,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "sort",
       "source",
       "tags",
+      "voucher",
     ]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
   });
@@ -430,6 +450,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "search",
       "source",
       "tags",
+      "voucher",
     ]);
   });
 });

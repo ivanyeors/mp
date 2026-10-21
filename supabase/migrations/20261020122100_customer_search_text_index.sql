@@ -6,7 +6,7 @@
 -- `%term%` match. The view's other joins do not touch these columns, so the
 -- planner can filter customers first.
 --
--- The expression must stay the view's (20261020200100 and every later
+-- The expression must stay the view's (20261020200200 and every later
 -- redefinition of admin_customer_overview), or the index stops matching.
 -- pg_trgm lives in `extensions`, as for idx_customers_email_trgm.
 

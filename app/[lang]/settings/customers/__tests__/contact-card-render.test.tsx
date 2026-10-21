@@ -154,6 +154,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   account_providers: [],
   has_phone: false,
   phone_valid: false,
+  claim_link_first_clicked_at: null,
+  welcome_voucher_state: "none",
   paid_orders: 0,
   first_paid_at: null,
   last_paid_at: null,

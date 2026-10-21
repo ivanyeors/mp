@@ -40,6 +40,13 @@ export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
 export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
 export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
+/**
+ * The Welcome-back voucher (migration slice 06): *Issued, unused* is the list
+ * to nudge before the vouchers expire; *Used* is who redeemed one.
+ */
+export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
+export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
+
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
 export type BoughtFilter = PurchaseClass;
@@ -83,6 +90,8 @@ export interface CustomerFilters {
   google: GoogleFilter;
   /** The mobile on file (`has_phone`, `phone_valid`). */
   mobile: MobileFilter;
+  /** The Welcome-back voucher's state (`welcome_voucher_state`). */
+  voucher: VoucherFilter;
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
   last_order: LastOrderFilter | null;
@@ -101,6 +110,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   source: "all",
   google: "all",
   mobile: "all",
+  voucher: "all",
   bought: [],
   last_order: null,
   readjusted: null,
@@ -129,6 +139,7 @@ const PARAM_SCHEMAS = {
   source: z.enum(SOURCE_FILTERS),
   google: z.enum(GOOGLE_FILTERS),
   mobile: z.enum(MOBILE_FILTERS),
+  voucher: z.enum(VOUCHER_FILTERS),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
@@ -246,6 +257,7 @@ export function customerFilterParams(
   if (f.source !== "all") out.set("source", f.source);
   if (f.google !== "all") out.set("google", f.google);
   if (f.mobile !== "all") out.set("mobile", f.mobile);
+  if (f.voucher !== "all") out.set("voucher", f.voucher);
   if (f.bought.length) out.set("bought", f.bought.join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
@@ -291,6 +303,7 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   source: (v) => (v === "shopify" ? "From Shopify" : "Platform"),
   google: (v) => (v === "linked" ? "Google linked" : "Google not linked"),
   mobile: (v) => (v === "on-file" ? "Valid mobile on file" : v === "missing" ? "Mobile missing" : "Mobile invalid"),
+  voucher: (v) => (v === "issued" ? "Voucher issued, unused" : "Voucher used"),
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
@@ -318,7 +331,7 @@ export interface CustomerListQuery {
   ilike(column: string, pattern: string): this;
   overlaps(column: string, value: string): this;
   contains(column: string, value: string[]): this;
-  eq(column: string, value: boolean): this;
+  eq(column: string, value: boolean | string): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs", value: string | null): this;
   gte(column: string, value: string | number): this;
@@ -369,6 +382,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
+  if (filters.voucher !== "all") q = q.eq("welcome_voucher_state", filters.voucher);
 
   if (filters.google === "linked") q = q.contains("account_providers", ["google"]);
   if (filters.google === "not-linked") q = q.not("account_providers", "cs", "{google}");

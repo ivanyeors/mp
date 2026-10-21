@@ -2,9 +2,11 @@
 -- ADR 0028 (k)).
 --
 -- `create or replace view admin_customer_overview` keeps every column the
--- last definition had, in order (migration 12's, then CRM 11's
--- account_providers, has_phone and phone_valid from 20261020200000), and adds
--- at the end:
+-- last definition had, in order: migration 12's; CRM 11's account_providers,
+-- has_phone and phone_valid (20261020200000); and migration slice 06's
+-- claim_link_first_clicked_at and welcome_voucher_state (20261020200100,
+-- which also redefined admin_customer_migration_summary; that view is not
+-- touched here). It adds at the end:
 --   paid_orders                  counted platform Orders: paid_at set, status not
 --                                pending, cancelled, refunded or payment_failed
 --                                (purchases.ts's NOT_A_PURCHASE)
@@ -49,9 +51,17 @@ select
   m.claimed_at,
   m.shopify_orders_count,
   m.shopify_amount_spent,
+  -- CRM 11 (20261020200000): Contact status.
   c.account_providers,
   not public.is_blank_phone(c.phone) as has_phone,
   public.is_valid_phone(c.phone)     as phone_valid,
+  -- Migration slice 06 (20261020200100): the Claim link and the voucher.
+  (select min(cl.first_clicked_at)
+     from public.customer_claim_links cl
+    where cl.customer_id = c.id)                               as claim_link_first_clicked_at,
+  coalesce(public.welcome_voucher_state(v.usage_count, v.is_active, v.expires_at), 'none')
+                                                              as welcome_voucher_state,
+  -- CRM slice 04: what they bought, when, and whether they were re-adjusted.
   coalesce(po.paid_orders, 0)        as paid_orders,
   po.first_paid_at,
   po.last_paid_at,
@@ -60,6 +70,8 @@ select
   lower(c.email || ' ' || coalesce(c.first_name, '') || ' ' || coalesce(c.last_name, '')) as search_text
 from public.customers c
 left join public.migrated_customers m on m.customer_id = c.id
+-- At most one: coupons_one_per_customer_purpose (20261020112100).
+left join public.coupons v on v.customer_id = c.id and v.issued_for = 'welcome_back'
 left join (
   select o.customer_id,
          count(*)::int  as paid_orders,

@@ -99,7 +99,7 @@ class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} @> ${lit(pgTextArray(value))}::text[]`);
     return this;
   }
-  eq(column: string, value: boolean) {
+  eq(column: string, value: boolean | string) {
     this.where.push(`${column} = ${lit(value)}`);
     return this;
   }

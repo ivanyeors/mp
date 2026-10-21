@@ -24,13 +24,15 @@ import {
     type CustomerListFilters,
     type LastOrderFilter,
     type ReadjustedFilter,
+    type VoucherFilter,
 } from "@/lib/crm/customer-filters";
 
 /**
  * The Customers list's CRM filters (CRM slice 04): what they bought, when
  * they last ordered, whether they have been re-adjusted, what they spent, and
- * tags. Values go through the list's one schema (lib/crm/customer-filters.ts),
- * so a control can never put into the URL what a link could not.
+ * tags; and the Welcome-back voucher (migration slice 06). Values go through
+ * the list's one schema (lib/crm/customer-filters.ts), so a control can never
+ * put into the URL what a link could not.
  */
 
 /** Presets for *Last order*; a link may carry any other month count, shown as its own option. */
@@ -164,7 +166,23 @@ export function CustomerFiltersPanel({
                 <p className="text-xs text-muted-foreground">Total spent on platform orders.</p>
             </div>
 
-            <TagsField tags={filters.tags} onChange={(tags) => onChange({ tags })} />
+            <div className="min-w-0 space-y-4">
+                {/* The Welcome-back voucher (migration slice 06): issued and unused is the list to nudge before it expires. */}
+                <div className="space-y-2">
+                    <Label htmlFor={`${id}-voucher`}>Welcome-back voucher</Label>
+                    <Select value={filters.voucher} onValueChange={(v) => onChange({ voucher: v as VoucherFilter })}>
+                        <SelectTrigger id={`${id}-voucher`} className="w-full" aria-label="Voucher">
+                            <SelectValue placeholder="Voucher" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All vouchers</SelectItem>
+                            <SelectItem value="issued">Voucher issued, unused</SelectItem>
+                            <SelectItem value="used">Voucher used</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <TagsField tags={filters.tags} onChange={(tags) => onChange({ tags })} />
+            </div>
         </div>
     );
 }
