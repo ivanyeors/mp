@@ -163,6 +163,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   bought: [],
   last_readjusted_at: null,
   search_text: "ana@x.test ana tan",
+  marketing_email: "not_subscribed",
+  marketing_email_updated_at: null,
   ...over,
 });
 

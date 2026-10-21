@@ -19,6 +19,7 @@ import {
     BOUGHT_LABELS,
     customerFiltersSchema,
     describeCustomerFilters,
+    type ConsentFilter,
     type CustomerFilterKey,
     type CustomerFilterParam,
     type CustomerListFilters,
@@ -30,7 +31,8 @@ import {
 /**
  * The Customers list's CRM filters (CRM slice 04): what they bought, when
  * they last ordered, whether they have been re-adjusted, what they spent, and
- * tags; and the Welcome-back voucher (migration slice 06). Values go through
+ * tags; the Welcome-back voucher (migration slice 06); and Email consent
+ * (migration slice 07). Values go through
  * the list's one schema (lib/crm/customer-filters.ts), so a control can never
  * put into the URL what a link could not.
  */
@@ -135,35 +137,52 @@ export function CustomerFiltersPanel({
                 </div>
             </div>
 
-            <div className="min-w-0 space-y-2">
-                <Label htmlFor={`${id}-min-spend`}>Spent at least (SGD)</Label>
-                {/* Keyed by the applied value, so clearing its chip clears the field. */}
-                <Input
-                    key={String(filters.min_spend)}
-                    id={`${id}-min-spend`}
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    step="any"
-                    placeholder="Any amount"
-                    defaultValue={filters.min_spend ?? ""}
-                    onKeyDown={onEnter}
-                    onBlur={(e) => {
-                        const text = e.currentTarget.value.trim();
-                        if (!text) {
-                            if (filters.min_spend != null) onChange({ min_spend: null });
-                            return;
-                        }
-                        const parsed = customerFiltersSchema.shape.min_spend.safeParse(text);
-                        if (!parsed.success) {
-                            // Not an amount the list reads: put back the one applied.
-                            e.currentTarget.value = filters.min_spend == null ? "" : String(filters.min_spend);
-                        } else if (parsed.data !== filters.min_spend) {
-                            onChange({ min_spend: parsed.data ?? null });
-                        }
-                    }}
-                />
-                <p className="text-xs text-muted-foreground">Total spent on platform orders.</p>
+            <div className="min-w-0 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor={`${id}-min-spend`}>Spent at least (SGD)</Label>
+                    {/* Keyed by the applied value, so clearing its chip clears the field. */}
+                    <Input
+                        key={String(filters.min_spend)}
+                        id={`${id}-min-spend`}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="any"
+                        placeholder="Any amount"
+                        defaultValue={filters.min_spend ?? ""}
+                        onKeyDown={onEnter}
+                        onBlur={(e) => {
+                            const text = e.currentTarget.value.trim();
+                            if (!text) {
+                                if (filters.min_spend != null) onChange({ min_spend: null });
+                                return;
+                            }
+                            const parsed = customerFiltersSchema.shape.min_spend.safeParse(text);
+                            if (!parsed.success) {
+                                // Not an amount the list reads: put back the one applied.
+                                e.currentTarget.value = filters.min_spend == null ? "" : String(filters.min_spend);
+                            } else if (parsed.data !== filters.min_spend) {
+                                onChange({ min_spend: parsed.data ?? null });
+                            }
+                        }}
+                    />
+                    <p className="text-xs text-muted-foreground">Total spent on platform orders.</p>
+                </div>
+                {/* Marketing consent (migration slice 07): who a campaign may reach. */}
+                <div className="space-y-2">
+                    <Label htmlFor={`${id}-consent`}>Email consent</Label>
+                    <Select value={filters.consent} onValueChange={(v) => onChange({ consent: v as ConsentFilter })}>
+                        <SelectTrigger id={`${id}-consent`} className="w-full" aria-label="Email consent">
+                            <SelectValue placeholder="Email consent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Any email consent</SelectItem>
+                            <SelectItem value="subscribed">Subscribed</SelectItem>
+                            <SelectItem value="not-subscribed">Not subscribed</SelectItem>
+                            <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             <div className="min-w-0 space-y-4">

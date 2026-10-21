@@ -17,7 +17,7 @@ slice is a thin, demoable path through all layers.
 | [04](04-export-rehearse-import.md) · [#268](https://github.com/ivanyeors/mp/issues/268) | Export from Shopify, rehearse, then import into production from the Admin Panel | HITL | **not started** | 03, 12 | 2, 8, 14, 15 |
 | [05](05-claim-and-welcome-back-voucher.md) · [#269](https://github.com/ivanyeors/mp/issues/269) | Claim on first sign-in, and an account-bound welcome-back voucher | AFK | **built** (`f3d41cc`) | 02 | 2, 3, 7 |
 | [06](06-welcome-page-and-surfaces.md) · [#270](https://github.com/ivanyeors/mp/issues/270) | Welcome page, Claim link, and the account and Admin Panel surfaces | AFK | **built** (`43ec93d`) | 05, 12 | 1, 3, 6, 8, 11, 12 |
-| [07](07-marketing-consent-and-unsubscribe.md) · [#271](https://github.com/ivanyeors/mp/issues/271) | Marketing consent with provenance, and one-click unsubscribe | AFK | **not started** | 02, 12 | 4, 5 |
+| [07](07-marketing-consent-and-unsubscribe.md) · [#271](https://github.com/ivanyeors/mp/issues/271) | Marketing consent with provenance, and one-click unsubscribe | AFK | **built** (`23cf626`) | 02, 12 | 4, 5 |
 | [08](08-campaign-emails-and-wave-sender.md) · [#272](https://github.com/ivanyeors/mp/issues/272) | Campaign emails, the send ledger, and a wave sender that cannot double-send | AFK | **not started** | 06, 07 | 1, 4, 5, 11 |
 | [09](09-pilot-and-waves.md) · [#273](https://github.com/ivanyeors/mp/issues/273) | Sign-off: DNS, a pilot of 50, then the waves | HITL | **not started** | 04, 08 | all |
 | [10](10-cutover-and-shopify-wind-down.md) · [#274](https://github.com/ivanyeors/mp/issues/274) | Cutover: final delta import, Shopify notices, erasure | HITL | **not started** | 09 | 13 |

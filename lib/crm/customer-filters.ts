@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PURCHASE_CLASSES, type PurchaseClass } from "@/lib/crm/customer-overview";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
+import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /**
  * The Customers list's URL parameters, and how they become a query on the
@@ -51,6 +52,16 @@ export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
 export const VOUCHER_FILTERS = ["all", "issued", "used"] as const;
 export type VoucherFilter = (typeof VOUCHER_FILTERS)[number];
 
+/** *Email consent* (migration slice 07): the Customer's **Marketing consent**. */
+export const CONSENT_FILTERS = ["all", "subscribed", "not-subscribed", "unsubscribed"] as const;
+export type ConsentFilter = (typeof CONSENT_FILTERS)[number];
+
+const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> = {
+  subscribed: "subscribed",
+  "not-subscribed": "not_subscribed",
+  unsubscribed: "unsubscribed",
+};
+
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
 export type BoughtFilter = PurchaseClass;
@@ -98,6 +109,8 @@ export interface CustomerFilters {
   voucher: VoucherFilter;
   /** `open`: only Customers with a Follow-up not done yet. */
   followups: FollowUpFilter;
+  /** *Email consent*: `marketing_email` on the overview. */
+  consent: ConsentFilter;
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
   last_order: LastOrderFilter | null;
@@ -118,6 +131,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   mobile: "all",
   voucher: "all",
   followups: "all",
+  consent: "all",
   bought: [],
   last_order: null,
   readjusted: null,
@@ -148,6 +162,7 @@ const PARAM_SCHEMAS = {
   mobile: z.enum(MOBILE_FILTERS),
   voucher: z.enum(VOUCHER_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
+  consent: z.enum(CONSENT_FILTERS),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
@@ -267,6 +282,7 @@ export function customerFilterParams(
   if (f.mobile !== "all") out.set("mobile", f.mobile);
   if (f.voucher !== "all") out.set("voucher", f.voucher);
   if (f.followups !== "all") out.set("followups", f.followups);
+  if (f.consent !== "all") out.set("consent", f.consent);
   if (f.bought.length) out.set("bought", f.bought.join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
@@ -302,6 +318,14 @@ export const BOUGHT_LABELS: Record<BoughtFilter, string> = {
   accessory: "Accessories",
 };
 
+/** How the *Email consent* filter's values read, in its control and its summary chip. */
+export const CONSENT_LABELS: Record<ConsentFilter, string> = {
+  all: "any consent",
+  subscribed: "subscribed",
+  "not-subscribed": "not subscribed",
+  unsubscribed: "unsubscribed",
+};
+
 const spend = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
 /** How each filter reads in the summary above the list. */
@@ -314,6 +338,7 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   mobile: (v) => (v === "on-file" ? "Valid mobile on file" : v === "missing" ? "Mobile missing" : "Mobile invalid"),
   voucher: (v) => (v === "issued" ? "Voucher issued, unused" : "Voucher used"),
   followups: () => "Has an open follow-up",
+  consent: (v) => `Email ${CONSENT_LABELS[v]}`,
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
@@ -403,6 +428,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.mobile === "invalid") q = q.eq("has_phone", true).eq("phone_valid", false);
 
   if (filters.followups === "open") q = q.gt("open_followups", 0);
+  if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
   if (filters.last_order) {

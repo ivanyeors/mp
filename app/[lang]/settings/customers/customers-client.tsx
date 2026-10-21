@@ -97,9 +97,18 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 
 /**
  * The filters that live in the Filters panel rather than the toolbar: CRM
- * slice 04's, and migration slice 06's Welcome-back voucher.
+ * slice 04's, migration slice 06's Welcome-back voucher, and migration slice
+ * 07's Email consent.
  */
-const PANEL_FILTERS: CustomerFilterKey[] = ["bought", "last_order", "readjusted", "min_spend", "voucher", "tags"];
+const PANEL_FILTERS: CustomerFilterKey[] = [
+    "bought",
+    "last_order",
+    "readjusted",
+    "min_spend",
+    "consent",
+    "voucher",
+    "tags",
+];
 
 /**
  * Contact status as small marks (CRM slice 11): how they sign in (an envelope

@@ -51,6 +51,7 @@ import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
 import { ContactCard, FromShopifyCard } from "./customer-account-cards";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
+import { MarketingConsentCard } from "./marketing-consent-card";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -765,6 +766,9 @@ export function CustomerDetailClient({
 
                     {/* Aftercare switches (CRM slice 13), beside the Contact card: they change things */}
                     <AftercareCard customerId={customer.id} canEdit={canEdit} />
+
+                    {/* Marketing consent, read-only but for a support unsubscribe (migration slice 07) */}
+                    <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Stats Card */}
                     <Card>

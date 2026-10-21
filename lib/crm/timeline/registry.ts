@@ -1,6 +1,7 @@
 import { accountAdapter } from "@/lib/crm/timeline/sources/account";
 import { aftercareAdapter } from "@/lib/crm/timeline/sources/aftercare";
 import { claimLinksAdapter } from "@/lib/crm/timeline/sources/claim-links";
+import { consentAdapter } from "@/lib/crm/timeline/sources/consent";
 import { followUpsAdapter } from "@/lib/crm/timeline/sources/followups";
 import { notesAdapter } from "@/lib/crm/timeline/sources/notes";
 import { orderEmailsAdapter, ordersAdapter } from "@/lib/crm/timeline/sources/orders";
@@ -17,7 +18,7 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
  * each fact: nothing is copied, so a new source needs no backfill.
  *
  * HOW TO ADD A SOURCE (still to come: CRM 08 check-ups, 12 reviews;
- * migration 07 consent, 08 campaign sends):
+ * migration 08 campaign sends):
  *
  * 1. Write `sources/<name>.ts` exporting one `TimelineAdapter`:
  *    - `group`: one from `groups.ts`, or a new one added there (a new chip);
@@ -46,6 +47,7 @@ export const TIMELINE_ADAPTERS: readonly TimelineAdapter[] = [
   reviewsAdapter,
   reviewRequestsAdapter,
   aftercareAdapter,
+  consentAdapter,
   accountAdapter,
   claimLinksAdapter,
   notesAdapter,
