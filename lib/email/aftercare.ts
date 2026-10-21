@@ -209,8 +209,11 @@ ${paragraphHtml(footerHtml, { muted: true })}`,
   return { subject: t.subject, html, text };
 }
 
-/** The footer, with its "in your account" as the link to the Profile. */
-function aftercareFooterHtml(accountUrl: string): string {
+/**
+ * The footer, with its "in your account" as the link to the Profile. The
+ * points expiry reminders (./points.ts) carry it too, as the check-up does.
+ */
+export function aftercareFooterHtml(accountUrl: string): string {
   const at = AFTERCARE_EMAIL_FOOTER.indexOf(ACCOUNT_PHRASE);
   return at >= 0
     ? `${escapeHtml(AFTERCARE_EMAIL_FOOTER.slice(0, at))}${link({ href: accountUrl, label: ACCOUNT_PHRASE })}${escapeHtml(

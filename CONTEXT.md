@@ -504,7 +504,7 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
 
 **Points expiry**:
-The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**.
+The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.
 _Avoid_: expiring points per batch, or describing expiry as fixed at earning time
 
 ## Email marketing (PRD-email-marketing)

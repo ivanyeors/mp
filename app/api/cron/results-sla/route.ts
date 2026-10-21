@@ -32,6 +32,7 @@ import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
 import { runPointsEarn } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
+import { runPointsExpiry } from "@/lib/points/expiry-server";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -538,6 +539,12 @@ export async function GET(req: Request) {
   // session expired or failed; this catches what it missed. Never throws.
   const pointsReservations = await releaseStalePointReservations(admin, now);
 
+  // Chain: points expiry and its reminders (PRD-loyalty-points slice 07, ADR
+  // 0030 o, p). A balance expires the day after its expiry date, once; the 3-,
+  // 2- and 1-month reminders go once per clock, the latest due only, to
+  // customers with Marketing consent. Nothing while points are off. Never throws.
+  const pointsExpiry = await runPointsExpiry(admin, { origin, now });
+
   // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
   // match, New sign-ups and the Weekly summary. Each goes at most once per
   // period by compare-and-set, so a manual re-run posts nothing twice. After
@@ -561,6 +568,7 @@ export async function GET(req: Request) {
     aftercare,
     points,
     pointsReservations,
+    pointsExpiry,
     crmTelegram,
   });
 }
