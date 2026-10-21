@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countReviewRequests } from "@/lib/aftercare/review-request-counts";
-import type { CountWindow, SignUpCounts, WeeklySummaryCounts } from "@/lib/crm/telegram-updates";
+import { sgtDay, type CountWindow, type SignUpCounts, type WeeklySummaryCounts } from "@/lib/crm/telegram-updates";
 
 /**
  * Where the scheduled Telegram updates get their numbers (CRM slice 14).
@@ -75,6 +75,30 @@ export async function countNewCustomers(admin: SupabaseClient, window: CountWind
 }
 
 /**
+ * CRM slice 06. Follow-ups done in `week`, and how many were overdue as it
+ * closed: open at its end (not done, or done after it) and due before its
+ * last day's midnight, the Monday the default summary posts on. A snapshot at
+ * the week's edge, so a re-run on another day reports the same week the same
+ * way. Counts only: a follow-up's title and its Customer never leave here.
+ */
+export async function countFollowUps(
+  admin: SupabaseClient,
+  week: CountWindow,
+): Promise<{ done: number; overdue: number }> {
+  const count = () => admin.from("customer_followups").select("id", { count: "exact", head: true });
+  const closedOn = sgtDay(new Date(week.to));
+  const [done, stillOpen, doneLater] = await Promise.all([
+    count().gte("done_at", week.from).lt("done_at", week.to),
+    count().lt("due_on", closedOn).is("done_at", null),
+    count().lt("due_on", closedOn).gte("done_at", week.to),
+  ]);
+  for (const res of [done, stillOpen, doneLater]) {
+    if (res.error) throw new Error(`customer_followups: ${res.error.message}`);
+  }
+  return { done: done.count ?? 0, overdue: (stillOpen.count ?? 0) + (doneLater.count ?? 0) };
+}
+
+/**
  * One line of the Weekly summary: the counts its source contributes for the
  * week, or nothing while the source does not exist. Like a timeline adapter,
  * each source is added by the slice that owns it, and the renderer
@@ -83,8 +107,7 @@ export async function countNewCustomers(admin: SupabaseClient, window: CountWind
  *  - CRM slice 07's `reviewRequests` (`customer_review_requests`: asked in the
  *    week, and how many of those have `first_clicked_at` set) is in;
  *  - CRM slice 12 adds `googleReviewsLinked` (`customer_google_reviews.linked_at`);
- *  - CRM slice 06 adds `followUps` (`customer_followups`: done in the week, and
- *    overdue now).
+ *  - CRM slice 06 added `followUps` ({@link countFollowUps}).
  */
 export type WeeklySummarySource = (
   admin: SupabaseClient,
@@ -103,6 +126,8 @@ export const WEEKLY_SUMMARY_SOURCES: readonly WeeklySummarySource[] = [
     const reviewRequests = await countReviewRequests(admin, week);
     return reviewRequests.sent > 0 ? { reviewRequests } : {};
   },
+  // CRM slice 06: follow-ups done in the week, and overdue as it closed.
+  async (admin, week) => ({ followUps: await countFollowUps(admin, week) }),
 ];
 
 /** Every source's counts for `week`, merged. */

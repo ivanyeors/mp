@@ -8,13 +8,16 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { AftercareSettingsCard } from "./aftercare-settings-card";
+import type { FollowUpScope } from "@/lib/crm/followup-rules";
+import { FollowUpsTab } from "./followups-tab";
 import { TelegramUpdatesCard, type TelegramUpdatesCardData } from "./telegram-updates-card";
 import { parseCustomersView, type CustomersView } from "./views";
 
 /**
- * The Customers page: the list, and a *Settings* tab for the CRM's settings
- * cards (CRM slice 07's Aftercare, slice 14's Telegram updates).
- * The tab is kept in `?view=` so it can be linked and survives a reload.
+ * The Customers page: the list, a *Follow-ups* tab (CRM slice 06: Mine, All,
+ * Overdue), and a *Settings* tab for the CRM's settings cards (CRM slice 07's
+ * Aftercare, slice 14's Telegram updates). The tab is kept in `?view=` so it
+ * can be linked and survives a reload.
  */
 export function CustomersPageTabs({
   initialView,
@@ -23,6 +26,7 @@ export function CustomersPageTabs({
   telegramUpdates,
   aftercare,
   importHref,
+  followUpScope = "mine",
   children,
 }: {
   initialView: CustomersView;
@@ -36,6 +40,8 @@ export function CustomersPageTabs({
   aftercare?: AftercareCardData;
   /** Import from Shopify, when the role holds `customer-import` (migration slice 02). */
   importHref?: string;
+  /** The Follow-ups tab's list from `?scope=`. */
+  followUpScope?: FollowUpScope;
   /** The Customers list. */
   children: ReactNode;
 }) {
@@ -43,14 +49,18 @@ export function CustomersPageTabs({
   // Settings mounts the first time it is opened (its card fetches then), and
   // stays mounted so a change made there survives a look at the list.
   const [settingsSeen, setSettingsSeen] = useState(initialView === "settings");
+  // Follow-ups likewise: fetched the first time it is opened.
+  const [followUpsSeen, setFollowUpsSeen] = useState(initialView === "followups");
 
   const selectView = (next: string) => {
     const value = parseCustomersView(next);
     setView(value);
     if (value === "settings") setSettingsSeen(true);
+    if (value === "followups") setFollowUpsSeen(true);
     const url = new URL(window.location.href);
     if (value === "list") url.searchParams.delete("view");
     else url.searchParams.set("view", value);
+    if (value !== "followups") url.searchParams.delete("scope");
     window.history.replaceState(null, "", url);
   };
 
@@ -80,11 +90,19 @@ export function CustomersPageTabs({
       <Tabs value={view} onValueChange={selectView}>
         <TabsList>
           <TabsTrigger value="list">Customers</TabsTrigger>
+          <TabsTrigger value="followups">Follow-ups</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         {/* Kept mounted so a search and its page survive a look at Settings. */}
         <TabsContent value="list" forceMount className="pt-4 data-[state=inactive]:hidden">
           {children}
+        </TabsContent>
+        <TabsContent
+          value="followups"
+          forceMount={followUpsSeen || undefined}
+          className="pt-4 data-[state=inactive]:hidden"
+        >
+          {followUpsSeen ? <FollowUpsTab canEdit={canEdit} initialScope={followUpScope} /> : null}
         </TabsContent>
         <TabsContent
           value="settings"

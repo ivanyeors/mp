@@ -112,6 +112,7 @@ async function main() {
   await mustNotRead("orders.internal_notes", "orders", "internal_notes", "internal_notes");
   await mustNotRead("orders *", "orders", "*", "internal_notes");
   await mustNotRead("customer_notes", "customer_notes", "*");
+  await mustNotRead("customer_followups (CRM 06)", "customer_followups", "*");
 
   // --- what the storefront reads under the customer's key still works ---
   const me = await mustRead("customers.id (lib/shop/customer-addresses.ts)", () =>

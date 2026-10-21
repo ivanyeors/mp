@@ -41,6 +41,10 @@ function recorder() {
       calls.push(["eq", column, value]);
       return this;
     },
+    gt(column, value) {
+      calls.push(["gt", column, value]);
+      return this;
+    },
     order(column, options) {
       calls.push(["order", column, options]);
       return this;
@@ -165,6 +169,14 @@ describe("applyCustomerFilters", () => {
   it("drops a voucher value the list does not offer, and names it", () => {
     expect(query("voucher=none").ignored).toEqual(["voucher"]);
   });
+
+  it("maps has an open follow-up (CRM slice 06) to open_followups above 0", () => {
+    expect(query("followups=open").calls).toEqual([["gt", "open_followups", 0], newest]);
+    expect(query("followups=all").calls).toEqual([newest]);
+    const dropped = query("followups=overdue");
+    expect(dropped.calls).toEqual([newest]);
+    expect(dropped.ignored).toEqual(["followups"]);
+  });
 });
 
 describe("Contact status filters (CRM slice 11)", () => {
@@ -217,6 +229,7 @@ describe("customerFilterParams", () => {
       google: "linked",
       mobile: "missing",
       voucher: "issued",
+      followups: "open",
       sort: "signed-up",
       page: 3,
       limit: 50,
@@ -235,6 +248,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
   it("names every key the filters own, and not the page's tab (`view`, CRM slice 14)", () => {
     expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
       "account",
+      "followups",
       "google",
       "limit",
       "mobile",

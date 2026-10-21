@@ -44,6 +44,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   phone_valid: false,
   claim_link_first_clicked_at: null,
   welcome_voucher_state: "none",
+  open_followups: 0,
   ...over,
 });
 

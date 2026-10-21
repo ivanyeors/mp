@@ -41,6 +41,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "phone_valid",
   "claim_link_first_clicked_at",
   "welcome_voucher_state",
+  "open_followups",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -89,6 +90,8 @@ export interface CustomerOverviewRow {
    * `none`, `issued` (unused, still usable), `used` or `expired`.
    */
   welcome_voucher_state: WelcomeVoucherState;
+  /** Follow-ups not done yet (CRM slice 06); 0 when none. */
+  open_followups: number;
 }
 
 /** Display name, or null when the Customer has none. */
