@@ -61,6 +61,11 @@ export function pointsSettingsFromRows(rows: readonly { key: string; value: stri
   };
 }
 
+/** Pure — points are on and their launch has passed: customers earn and spend. */
+export function pointsLive(s: Pick<PointsSettings, "enabled" | "launchAt">, now: Date = new Date()): boolean {
+  return s.enabled && s.launchAt !== null && Date.parse(s.launchAt) <= now.getTime();
+}
+
 /** What the Settings card saves, checked on the server. */
 export const PointsSettingsSchema = z
   .object({

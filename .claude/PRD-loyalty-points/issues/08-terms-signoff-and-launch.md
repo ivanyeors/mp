@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** HITL
-**Status:** not started
+**Status:** terms page built; counsel, the accountant and the live test are the owner's
 **Blocked by:** 03, 04, 05
 **User stories:** all
 **Labels:** `documentation`, `needs-triage`, `P2`
@@ -72,3 +72,21 @@ window), sets `points_launch_at`, then turns on `points_enabled`.
 - [ ] The accountant's treatment is recorded in ADR 0030.
 - [ ] The live test passes, and its Orders are refunded afterwards.
 - [ ] The migration's issues README marks slice 09 as unblocked by points.
+
+## Build notes
+
+Built on `claude/admiring-ride-40h2o6`.
+
+- **The terms page** is `/[lang]/points` (`app/[lang]/points/page.tsx`). Its words are
+  `pointsTermsSections()` (`lib/points/terms.ts`), built from the live settings, so the earn rate,
+  the minimum, the share, the expiry and the Claim bonus on the page are the ones the system uses;
+  the seeded defaults stand in if the settings cannot be read. Every rule in the list above is
+  held by `lib/points/__tests__/terms.test.ts`. Until points are on and launched, the page says
+  "Points are coming soon. These are the rules that will apply." It names no old platform: the
+  Claim bonus is "if you had an Mpillow account before our new website".
+- **Linked from:** the footer ("Points"), checkout's Points section ("How points work"), the
+  Profile's Points card and the welcome page's Claim bonus card. Not in the sitemap: it is
+  terms, not a landing page.
+- **Left for the owner:** counsel's three questions, the accountant's treatment, the production
+  settings (launch date, then `points_enabled`), and the live test with a real card. Nothing here
+  sends email or turns points on.

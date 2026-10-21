@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronDown, CreditCard, Loader2, Minus, Plus, ShoppingBag } from "lucide-react";
@@ -41,6 +42,8 @@ import {
   useShippingQuote,
 } from "@/lib/shop/use-shipping-quote";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
 import { POINTS_ACCOUNT_ERROR, POINTS_CHECKOUT_COPY } from "@/lib/points/spend";
 import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
 
@@ -1175,7 +1178,12 @@ export default function CheckoutPage() {
                 {pointsPreview.emailOk === false && (
                   <p className="text-xs text-destructive">{POINTS_ACCOUNT_ERROR}</p>
                 )}
-                <p className="text-xs text-muted-foreground">{POINTS_CHECKOUT_COPY}</p>
+                <p className="text-xs text-muted-foreground">
+                  {POINTS_CHECKOUT_COPY}{" "}
+                  <Link href={withLocale("/points", isSupportedLocale(lang) ? lang : DEFAULT_LOCALE)} className="underline underline-offset-4">
+                    How points work
+                  </Link>
+                </p>
               </section>
             )}
 
