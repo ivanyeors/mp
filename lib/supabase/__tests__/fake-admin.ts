@@ -16,8 +16,13 @@
  *
  * `lt`/`lte`/`gt`/`gte` compare two ISO timestamps as instants, to the
  * microsecond, as Postgres compares timestamptz: `…:00Z` and `…:00.000000Z`
- * are the same time. Anything else compares as strings.
+ * are the same time. Two numbers compare as numbers. Anything else compares as
+ * strings.
  * `filter(col, "imatch", re)` is a case-insensitive regex match.
+ * `overlaps` (`&&`, given an array or a quoted array literal such as
+ * `{"premium"}`) and `contains` (`@>`) read an array column. `range(from, to)`
+ * returns that slice, and the exact count is of every matching row, as
+ * PostgREST counts.
  */
 type Row = Record<string, unknown>;
 export type FakeDb = Record<string, Row[]>;
@@ -45,6 +50,37 @@ export function likeMatch(pattern: string, value: unknown): boolean {
   }
   return new RegExp(`^${re}$`, "is").test(value);
 }
+
+/** The elements of a Postgres array literal (`{"a","b\"c"}` or `{a,b}`), as strings. */
+function pgArrayElements(literal: string): string[] {
+  const body = literal.trim().replace(/^\{/, "").replace(/\}$/, "");
+  const out: string[] = [];
+  let cur = "";
+  let quoted = false;
+  let started = false;
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (quoted) {
+      if (c === "\\") cur += body[++i] ?? "";
+      else if (c === '"') quoted = false;
+      else cur += c;
+    } else if (c === '"') {
+      quoted = true;
+      started = true;
+    } else if (c === ",") {
+      out.push(cur);
+      cur = "";
+      started = false;
+    } else {
+      cur += c;
+      started = true;
+    }
+  }
+  if (started || cur) out.push(cur);
+  return out;
+}
+
+const asElements = (val: unknown): string[] => (Array.isArray(val) ? val.map(String) : pgArrayElements(String(val)));
 
 type Embed = { alias: string; table: string; fk: string; inner: boolean };
 
@@ -77,6 +113,7 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let embeds: Embed[] = [];
       let sort: { col: string; asc: boolean } | null = null;
       let limit: number | null = null;
+      let range: [number, number] | null = null;
       const embedded = (row: Row, e: Embed): Row | null => (db[e.table] ?? []).find((o) => o.id === row[e.fk]) ?? null;
       // `orders.customer_id` reads the embedded `orders` row.
       const value = (row: Row, col: string): unknown => {
@@ -106,10 +143,12 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         if (limit !== null) r = r.slice(0, limit);
         return r;
       };
-      const cmp = (col: string, test: (a: string, b: string) => boolean, val: unknown) => {
+      const cmp = (col: string, test: <T extends string | number>(a: T, b: T) => boolean, val: unknown) => {
         filters.push((r) => {
           const v = value(r, col);
           if (v == null) return false;
+          // Two numbers compare as numbers, as a numeric column does.
+          if (typeof v === "number" && typeof val === "number") return test(v, val);
           const [a, b] = [String(v), String(val)];
           const ta = instant(a);
           const tb = instant(b);
@@ -127,9 +166,35 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(value(r, col))), q),
         order: (col: string, opts?: { ascending?: boolean }) => ((sort = { col, asc: opts?.ascending !== false }), q),
         limit: (n: number) => ((limit = n), q),
+        range: (from: number, to: number) => ((range = [from, to]), q),
+        overlaps: (col: string, val: unknown) => {
+          const want = asElements(val);
+          filters.push((r) => {
+            const v = value(r, col);
+            return Array.isArray(v) && v.some((x) => want.includes(String(x)));
+          });
+          return q;
+        },
+        contains: (col: string, val: unknown) => {
+          const want = asElements(val);
+          filters.push((r) => {
+            const v = value(r, col);
+            return Array.isArray(v) && want.every((x) => v.map(String).includes(x));
+          });
+          return q;
+        },
         neq: (col: string, val: unknown) => (filters.push((r) => value(r, col) !== val), q),
         is: (col: string, val: null) => (filters.push((r) => (value(r, col) ?? null) === val), q),
-        not: (col: string, _op: "is", val: null) => (filters.push((r) => (value(r, col) ?? null) !== val), q),
+        not: (col: string, op: "is" | "cs", val: unknown) => {
+          if (op === "cs") {
+            const want = asElements(val);
+            filters.push((r) => {
+              const v = value(r, col);
+              return !(Array.isArray(v) && want.every((x) => v.map(String).includes(x)));
+            });
+          } else filters.push((r) => (value(r, col) ?? null) !== val);
+          return q;
+        },
         lt: (col: string, val: unknown) => cmp(col, (a, b) => a < b, val),
         lte: (col: string, val: unknown) => cmp(col, (a, b) => a <= b, val),
         gt: (col: string, val: unknown) => cmp(col, (a, b) => a > b, val),
@@ -167,7 +232,8 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         },
         then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
           const r = rows();
-          return Promise.resolve({ data: head ? null : r.map(out), count: r.length, error: null }).then(resolve, reject);
+          const page = range ? r.slice(range[0], range[1] + 1) : r;
+          return Promise.resolve({ data: head ? null : page.map(out), count: r.length, error: null }).then(resolve, reject);
         },
       };
       return q;

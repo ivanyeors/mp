@@ -344,7 +344,7 @@ export interface CustomerListQuery {
   eq(column: string, value: boolean | string): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs", value: string | null): this;
-  gt(column: string, value: number): this;
+  gt(column: string, value: string | number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
@@ -378,11 +378,15 @@ export function monthsBefore(now: Date, months: number): Date {
  * Applies the filters and the sort to a query on `admin_customer_overview`.
  * Paging is the caller's (`range`). Pure: it only calls the query's methods,
  * and *Last order* counts back from `now`.
+ *
+ * `order: false` applies the filters only and leaves the order to the caller:
+ * a Segment's count needs none, and `resolveSegment` (lib/crm/segments.ts)
+ * pages by `id` so a long run is stable (CRM slice 05).
  */
 export function applyCustomerFilters<Q extends CustomerListQuery>(
   query: Q,
   filters: CustomerFilters,
-  { now = new Date() }: { now?: Date } = {},
+  { now = new Date(), order = true }: { now?: Date; order?: boolean } = {},
 ): Q {
   let q = query;
 
@@ -412,6 +416,7 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.readjusted === "ever") q = q.not("last_readjusted_at", "is", null);
   if (filters.readjusted === "never") q = q.is("last_readjusted_at", null);
   if (filters.min_spend != null) q = q.gte("total_spent", filters.min_spend);
+  if (!order) return q;
 
   switch (filters.sort) {
     case "name-asc":
