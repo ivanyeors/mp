@@ -12,7 +12,8 @@ import { sendGroupCard } from "@/lib/telegram/bot-api";
 
 type ProductContent = Record<string, { title?: string } | undefined> | null;
 
-function productTitle(product: { slug?: string | null; content?: ProductContent } | null): string | null {
+/** A product's name for Staff: its default-locale title, else its slug. Also the Customer timeline's. */
+export function productTitle(product: { slug?: string | null; content?: ProductContent } | null): string | null {
   if (!product) return null;
   const content = product.content ?? {};
   const localized = content[DEFAULT_LOCALE] ?? Object.values(content)[0];

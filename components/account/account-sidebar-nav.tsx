@@ -54,6 +54,13 @@ const NAV_ITEMS: NavItem[] = [
 
 type AuthStatus = "checking" | "authed" | "unauth";
 
+/**
+ * Pages that render without the shell and without the sign-in redirect:
+ * sign-in itself, and the welcome page a Claim link opens (migration slice 06),
+ * which a signed-out visitor must reach with its `?c=` intact.
+ */
+const BARE_ROUTES = new Set(["/account/login", "/account/welcome"]);
+
 function isResultsRoute(basePathname: string): boolean {
   return basePathname === "/results" || basePathname.startsWith("/results/");
 }
@@ -120,8 +127,8 @@ function buildCrumbs(basePathname: string): Array<{ label: string; href?: string
 
 /**
  * Customer account shell — same sidebar + inset pattern as settings.
- * Always requires auth (except /account/login). Results guests are handled by
- * the server results layout, which omits this shell entirely.
+ * Always requires auth, except on the bare routes below. Results guests are
+ * handled by the server results layout, which omits this shell entirely.
  */
 export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -130,7 +137,7 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
   const basePathname = stripLocale(pathname);
   const to = (href: string) => withLocale(href, locale);
 
-  const isLoginRoute = basePathname === "/account/login";
+  const isLoginRoute = BARE_ROUTES.has(basePathname);
   const [status, setStatus] = useState<AuthStatus>(isLoginRoute ? "unauth" : "checking");
 
   useEffect(() => {
@@ -159,7 +166,7 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isLoginRoute]);
 
-  // Login: no shell. Stable tree — never flip between shell and bare children
+  // Login and welcome: no shell. Stable tree — never flip between shell and bare children
   // for the same route (that caused "Rendered more hooks" in the App Router).
   if (isLoginRoute) {
     return <>{children}</>;

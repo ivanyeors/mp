@@ -13,7 +13,7 @@ const CreateAddressSchema = z.object({
   city: z.string().trim().min(1),
   state: z.string().trim().optional(),
   postal_code: z.string().trim().min(1),
-  country: z.string().trim().length(2).default("MY"),
+  country: z.string().trim().length(2).default("SG"),
   phone: z.string().trim().optional(),
   is_default: z.boolean().optional().default(false),
 });
@@ -37,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
 
   const { id } = await params;

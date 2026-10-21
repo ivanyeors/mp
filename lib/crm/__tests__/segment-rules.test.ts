@@ -1,0 +1,168 @@
+import { describe, expect, it } from "vitest";
+import {
+  DEFAULT_CUSTOMER_FILTERS,
+  customerFilterParams,
+  parseCustomerFilters,
+} from "@/lib/crm/customer-filters";
+import {
+  SEGMENT_FILTERS_VERSION,
+  SegmentNameSchema,
+  chosenSegmentFilters,
+  formatSegmentCount,
+  parseSegmentFilters,
+  readSegmentFilters,
+  sameSegmentFilters,
+  segmentKey,
+  segmentParams,
+} from "@/lib/crm/segment-rules";
+
+/**
+ * CRM 05: a Segment's filters are the Customers list's own URL parameters,
+ * checked by the list's one schema on the way in and on the way out. A filter
+ * the schema no longer recognises marks the Segment *Needs review*, and is
+ * named; it is never silently dropped.
+ */
+
+/** What the list's URL `url` would save as a Segment. */
+const fromUrl = (url: string) => Object.fromEntries(customerFilterParams(parseCustomerFilters(new URLSearchParams(url)).filters));
+
+describe("segmentParams", () => {
+  it("keeps only what chooses Customers: never the sort or the page", () => {
+    expect(
+      segmentParams({ ...DEFAULT_CUSTOMER_FILTERS, bought: ["premium"], sort: "spend", page: 3, limit: 50 }),
+    ).toEqual({ bought: "premium" });
+  });
+
+  it("writes the same parameters as the list's URL, in the list's order", () => {
+    const url = "readjusted=never&last_order=over:12&bought=premium&sort=name-asc";
+    const expected = fromUrl(url);
+    expect(expected.sort).toBe("name-asc");
+    delete expected.sort;
+    const params = segmentParams(parseCustomerFilters(new URLSearchParams(url)).filters);
+    expect(params).toEqual(expected);
+    expect(Object.keys(params)).toEqual(["bought", "last_order", "readjusted"]);
+  });
+
+  it("is empty for the plain list", () => {
+    expect(segmentParams(DEFAULT_CUSTOMER_FILTERS)).toEqual({});
+  });
+});
+
+describe("parseSegmentFilters (saving)", () => {
+  it("accepts the list's parameters and stores them normalised", () => {
+    expect(parseSegmentFilters({ bought: "mbolster,premium,premium", tags: " vip , wholesale," })).toEqual({
+      ok: true,
+      params: { tags: "vip,wholesale", bought: "premium,mbolster" },
+    });
+  });
+
+  it("saves exactly what the URL holds, so the two read alike", () => {
+    const url = "bought=premium&last_order=over:12&readjusted=never&search=Tan%2C%20Mei&google=linked&consent=subscribed";
+    const saved = parseSegmentFilters(fromUrl(url));
+    expect(saved).toEqual({ ok: true, params: fromUrl(url) });
+  });
+
+  it.each([
+    [{ bought: "foo" }, ["bought=foo"]],
+    [{ bought: "premium,platinum" }, ["bought=premium,platinum"]],
+    [{ last_order: "over:0" }, ["last_order=over:0"]],
+    [{ min_spend: "1e3" }, ["min_spend=1e3"]],
+    [{ region: "east", bought: "premium" }, ["region=east"]],
+    [{ sort: "spend", bought: "premium" }, ["sort=spend"]],
+    [{ page: "2", bought: "premium" }, ["page=2"]],
+    [{ bought: ["premium"] }, ['bought=["premium"]']],
+  ])("refuses %j, naming %j: anything the list would drop", (raw, refused) => {
+    const result = parseSegmentFilters(raw);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.refused).toEqual(refused);
+      expect(result.error).toContain(refused[0]);
+    }
+  });
+
+  it("refuses a set that chooses every Customer", () => {
+    expect(parseSegmentFilters({})).toMatchObject({ ok: false, refused: [] });
+    expect(parseSegmentFilters({ account: "all", source: "all" })).toMatchObject({ ok: false, refused: [] });
+    expect(parseSegmentFilters(null)).toMatchObject({ ok: false });
+    expect(parseSegmentFilters(["bought"])).toMatchObject({ ok: false });
+  });
+});
+
+describe("readSegmentFilters (loading)", () => {
+  it("reads a saved Segment back as the same link reads", () => {
+    const url = "bought=premium&last_order=over:12&readjusted=never";
+    const read = readSegmentFilters(fromUrl(url), SEGMENT_FILTERS_VERSION);
+    expect(read).toMatchObject({ ignored: [], needsReview: false, params: fromUrl(url) });
+    expect(read.filters).toEqual(parseCustomerFilters(new URLSearchParams(url)).filters);
+  });
+
+  it("names a filter the schema no longer recognises, and needs review", () => {
+    // Saved before a key was renamed, or by a newer schema.
+    const read = readSegmentFilters({ bought: "premium", region: "east" }, SEGMENT_FILTERS_VERSION);
+    expect(read.needsReview).toBe(true);
+    expect(read.ignored).toEqual(["region=east"]);
+    // What is still recognised is kept, for the list to show while it is reviewed.
+    expect(read.params).toEqual({ bought: "premium" });
+  });
+
+  it("names a value the schema no longer accepts", () => {
+    const read = readSegmentFilters({ bought: "premium,pillowcase", readjusted: "never" }, SEGMENT_FILTERS_VERSION);
+    expect(read).toMatchObject({ needsReview: true, ignored: ["bought=premium,pillowcase"], params: { readjusted: "never" } });
+  });
+
+  it("trusts no key of another filters_version until it is upgraded", () => {
+    const read = readSegmentFilters({ bought: "premium" }, SEGMENT_FILTERS_VERSION + 1);
+    expect(read).toMatchObject({ needsReview: true, ignored: ["bought=premium"], params: {} });
+    expect(readSegmentFilters({}, 99).ignored).toEqual(["filters_version=99"]);
+  });
+
+  it("needs review when the stored filters are not an object", () => {
+    expect(readSegmentFilters(["bought"], SEGMENT_FILTERS_VERSION)).toMatchObject({ needsReview: true, ignored: ["filters"] });
+    expect(readSegmentFilters(null, SEGMENT_FILTERS_VERSION)).toMatchObject({ needsReview: true });
+  });
+});
+
+describe("choosing a Segment", () => {
+  it("puts exactly its filters on the list, every other filter at its default", () => {
+    expect(chosenSegmentFilters({ bought: "premium", readjusted: "never" })).toEqual({
+      search: null,
+      tags: [],
+      account: "all",
+      source: "all",
+      google: "all",
+      mobile: "all",
+      voucher: "all",
+      consent: "all",
+      followups: "all",
+      bought: ["premium"],
+      last_order: null,
+      readjusted: "never",
+      min_spend: null,
+      // CRM slice 12's review filters.
+      google_review: "all",
+      shop_review: "all",
+      rating: null,
+    });
+  });
+
+  it("compares filters by what they choose, not by key order", () => {
+    expect(sameSegmentFilters({ readjusted: "never", bought: "premium" }, { bought: "premium", readjusted: "never" })).toBe(true);
+    expect(sameSegmentFilters({ bought: "premium" }, { bought: "premium", readjusted: "never" })).toBe(false);
+    expect(segmentKey({ readjusted: "never", bought: "premium" })).toBe("bought=premium&readjusted=never");
+  });
+});
+
+describe("names and counts", () => {
+  it("trims a name and keeps it between 1 and 80 characters", () => {
+    expect(SegmentNameSchema.parse("  Premium, lapsed  ")).toBe("Premium, lapsed");
+    expect(SegmentNameSchema.safeParse("   ").success).toBe(false);
+    expect(SegmentNameSchema.safeParse("x".repeat(81)).success).toBe(false);
+    expect(SegmentNameSchema.safeParse("x".repeat(80)).success).toBe(true);
+  });
+
+  it("shows a count, or a dash when there is none", () => {
+    expect(formatSegmentCount(1204)).toBe("1,204");
+    expect(formatSegmentCount(0)).toBe("0");
+    expect(formatSegmentCount(null)).toBe("—");
+  });
+});

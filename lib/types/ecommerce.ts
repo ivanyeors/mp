@@ -142,12 +142,44 @@ export interface Customer {
   last_name: string | null;
   phone: string | null;
   locale: string;
+  /** Staff-only: the customer's own key is not granted it. */
   tags: string[];
+  /**
+   * Retired (ADR 0028 (a)): moved into `customer_notes`, and never written.
+   * Staff-only, like `tags`. Dropped by a later migration.
+   */
   notes: string | null;
   total_orders: number;
   total_spent: number;
   created_at: string;
   updated_at: string;
+  /**
+   * When the current login was bound to this row; null without one. Set by a
+   * trigger, never by app code (migration slice 12). Staff-only: read through
+   * the service role, not granted to the customer's own key.
+   */
+  account_linked_at: string | null;
+  /**
+   * The last time they opened an account page while signed in, to the hour
+   * (`touchCustomerLastSeen`). Not the last site visit. Staff-only.
+   */
+  account_last_seen_at: string | null;
+  /**
+   * The sign-in methods on the current login, sorted (`{email,google}`); empty
+   * without one (CRM slice 11). Written by `linkCustomerToAuthUser` from the
+   * signed-in user's identities, and emptied by a trigger when the login goes.
+   * Staff-only.
+   */
+  account_providers: string[];
+  /**
+   * **Marketing consent** (migration slice 07). Written only by
+   * `set_marketing_email()`; the customer's own key reads the state, not its
+   * provenance.
+   */
+  marketing_email?: "subscribed" | "not_subscribed" | "unsubscribed";
+  /** Staff-only: what set the state, and when. Null while `not_subscribed`. */
+  marketing_email_source?: string | null;
+  marketing_email_updated_at?: string | null;
   addresses?: CustomerAddress[];
 }
 
@@ -233,6 +265,7 @@ export interface Order {
   coupon_id: string | null;
   coupon_code: string | null;
   notes: string | null;
+  /** Staff-only: the customer's own key is not granted it (CustomerOrder omits it). */
   internal_notes: string | null;
   payment_method: string | null;
   payment_reference: string | null;
@@ -395,6 +428,10 @@ export interface Coupon {
   expires_at: string | null;
   applies_to: { product_ids?: string[]; category_ids?: string[] } | null;
   is_active: boolean;
+  /** Bound to this Customer (ADR 0029 g); null is a bearer code. */
+  customer_id: string | null;
+  /** Why the platform issued it; set only on a bound coupon. */
+  issued_for: "welcome_back" | null;
   created_at: string;
   updated_at: string;
 }

@@ -52,7 +52,12 @@ import {
   SettingsBreadcrumbProvider,
   useSettingsBreadcrumbDetailLabel,
 } from "@/components/settings/settings-breadcrumb-context";
-import { WorkingAsPicker, type WorkingAsState } from "@/components/settings/working-as-picker";
+import {
+  WORKING_AS_CHANGED_EVENT,
+  WorkingAsPicker,
+  type WorkingAsState,
+} from "@/components/settings/working-as-picker";
+import { FOLLOW_UPS_CHANGED_EVENT, followUpBadge, type FollowUpCounts } from "@/lib/crm/followup-badge";
 import {
   buildSettingsBreadcrumbs,
   findActiveHref,
@@ -238,6 +243,8 @@ export function SettingsSidebarNav({
   // Work waiting in the Results queue, so staff see it without opening the page.
   const [resultsQueue, setResultsQueue] = useState(0);
   const [resultsStuck, setResultsStuck] = useState(0);
+  // The current profile's follow-ups due today or overdue (CRM slice 06).
+  const [followUpCounts, setFollowUpCounts] = useState<FollowUpCounts | null>(null);
 
   // Keep in sync if the server re-renders the layout with a new session
   // (e.g. after sign-in redirects back into the Admin Panel).
@@ -273,6 +280,29 @@ export function SettingsSidebarNav({
       cancelled = true;
     };
   }, [status, permissions, basePathname]);
+
+  // Same for the Customers badge. Whose it is follows "Working as", so a switch
+  // re-reads it too; with no profile chosen on a shared login it shows nothing.
+  useEffect(() => {
+    if (status !== "authed" || !permissions.includes("customers")) return;
+    let cancelled = false;
+    const read = () =>
+      fetch("/api/settings/customers/followup-counts")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { counts?: FollowUpCounts | null } | null) => {
+          if (!cancelled && data) setFollowUpCounts(data.counts ?? null);
+        })
+        .catch(() => {});
+    void read();
+    // Who is at the device changed, or a follow-up was added, done or moved.
+    const events = [WORKING_AS_CHANGED_EVENT, FOLLOW_UPS_CHANGED_EVENT];
+    for (const e of events) window.addEventListener(e, read);
+    return () => {
+      cancelled = true;
+      for (const e of events) window.removeEventListener(e, read);
+    };
+  }, [status, permissions, basePathname]);
+  const customersBadge = followUpBadge(followUpCounts);
 
   useEffect(() => {
     if (isLoginRoute || initialAuth) return;
@@ -475,6 +505,18 @@ export function SettingsSidebarNav({
                                 }
                               >
                                 {resultsQueue}
+                              </SidebarMenuBadge>
+                            ) : null}
+                            {href === "/settings/customers" && customersBadge ? (
+                              <SidebarMenuBadge
+                                className={
+                                  customersBadge.urgent
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                                    : undefined
+                                }
+                                title={customersBadge.title}
+                              >
+                                {customersBadge.total}
                               </SidebarMenuBadge>
                             ) : null}
 

@@ -32,6 +32,7 @@ import {
   type Actor,
 } from "@/lib/reviews/google-actions";
 import { moderateShopReview } from "@/lib/reviews/shop-reviews";
+import { customerMatchLinkFor } from "@/lib/crm/google-review-match-server";
 
 /**
  * The review half of the Telegram bot: buttons on review cards, replies to a
@@ -156,7 +157,8 @@ const PREVIEW_EFFECT: Record<ReviewCallback["action"], string> = {
 
 async function showGoogleCard(row: GoogleReviewRow | undefined, messageId: number): Promise<void> {
   if (!row) return;
-  const card = renderGoogleReviewCard(row);
+  // CRM slice 12: keeps the *Possible customer match* line while a suggestion exists.
+  const card = renderGoogleReviewCard(row, { possibleCustomerMatch: await customerMatchLinkFor(row.id) });
   await editGroupCard(messageId, card.text, card.replyMarkup);
 }
 

@@ -1,5 +1,7 @@
 import type { User } from "@supabase/supabase-js";
+import { claimOnSignIn } from "@/lib/customer-migration/claim";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { Customer } from "@/lib/types/ecommerce";
 
 /**
@@ -16,21 +18,9 @@ export type CustomerLinkDecision =
   | { type: "link_existing"; customerId: string }
   | { type: "create" };
 
-/**
- * Escapes SQL `LIKE`/`ILIKE` wildcards so an `ilike` filter behaves as an exact
- * case-insensitive match. Without this, an email containing `_` (legal in the
- * local part, e.g. `john_doe@x.com`) or `%` would be treated as a wildcard and
- * could match unrelated rows — which would wrongly link guest orders that don't
- * actually belong to the customer (#33).
- *
- * PostgREST also rewrites every `*` in a like/ilike value to `%`, so `*` needs
- * escaping too. `\*` arrives in Postgres as `\%`, a literal percent sign.
- * ponytail: there is no way to send a literal `*`, so an address containing one
- * never matches its own row; such addresses are vanishingly rare.
- */
-export function escapeLikePattern(value: string): string {
-  return value.replace(/[\\%_*]/g, (ch) => `\\${ch}`);
-}
+// Escapes LIKE wildcards for an exact `ilike` (#33). It lives in a module with
+// no imports, so the Customers list's filters can share it with the client.
+export { escapeLikePattern };
 
 /**
  * Pure decision over the two candidate lookups (by auth id, by email).
@@ -122,9 +112,124 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
     customer = data as Customer;
   }
 
+  // The Claim (ADR 0029 f), for every decision type: someone who signed in
+  // before it shipped, or whose Shopify row merged into an account they already
+  // had, claims on this sign-in. For anyone else it is one indexed no-op
+  // update. Only for a row this user owns, never one `already_linked` returned
+  // because another login holds the email. Never throws.
+  if (customer.auth_user_id === user.id) {
+    await claimOnSignIn(customer, { admin });
+  }
+
   await associateGuestOrdersToCustomer(customer);
 
+  await touchCustomerLastSeen(customer, admin);
+
+  await touchAccountProviders(customer, user, admin);
+
   return customer;
+}
+
+// ─── Account status: the last signed-in visit (migration slice 12) ──────────
+//
+// `account_linked_at` needs no code here: a trigger on `customers` stamps it
+// whenever `auth_user_id` is bound and clears it when the login goes.
+
+/** A visit rewrites `account_last_seen_at` only once it is this old. */
+export const LAST_SEEN_INTERVAL_MS = 60 * 60 * 1000;
+
+/** Whether a signed-in visit at `now` should rewrite `account_last_seen_at`. */
+export function lastSeenIsStale(stored: string | null | undefined, now: Date): boolean {
+  if (!stored) return true;
+  const at = Date.parse(stored);
+  return Number.isNaN(at) || now.getTime() - at >= LAST_SEEN_INTERVAL_MS;
+}
+
+/**
+ * Records a signed-in visit: `account_last_seen_at`, at most once an hour per
+ * Customer. It runs on every account page (through `linkCustomerToAuthUser`),
+ * so it skips the write while the stored value is fresh, and the update itself
+ * re-checks the value it read: of two concurrent page loads, the second
+ * matches no row. Best-effort, like `recordAdminAction`: a failure is
+ * swallowed and never breaks the page. Returns whether it wrote.
+ */
+export async function touchCustomerLastSeen(
+  customer: Pick<Customer, "id" | "account_last_seen_at">,
+  admin: ReturnType<typeof supabaseAdmin> = supabaseAdmin(),
+  now: Date = new Date(),
+): Promise<boolean> {
+  const stored = customer.account_last_seen_at ?? null;
+  if (!lastSeenIsStale(stored, now)) return false;
+  try {
+    const update = admin
+      .from("customers")
+      .update({ account_last_seen_at: now.toISOString() })
+      .eq("id", customer.id);
+    const { data, error } = await (stored == null
+      ? update.is("account_last_seen_at", null)
+      : update.lt("account_last_seen_at", new Date(now.getTime() - LAST_SEEN_INTERVAL_MS).toISOString())
+    ).select("id");
+    return !error && (data?.length ?? 0) > 0;
+  } catch {
+    // The visit is a convenience for Staff; the account page must load.
+    return false;
+  }
+}
+
+// ─── Contact status: how they sign in (CRM slice 11) ────────────────────────
+
+/**
+ * The sign-in methods on a login, as `account_providers` stores them: each
+ * identity's provider (`email`, `google`), sorted and once each. Null when the
+ * user object carries no identities to read, so nothing is written from a
+ * session that cannot say.
+ */
+export function accountProvidersOf(user: Pick<User, "identities">): string[] | null {
+  if (!Array.isArray(user.identities)) return null;
+  const providers = user.identities
+    .map((i) => (typeof i?.provider === "string" ? i.provider.trim() : ""))
+    .filter(Boolean);
+  return [...new Set(providers)].sort();
+}
+
+/** A text array as a Postgres literal, for re-checking the stored value in a filter. */
+function pgTextArray(values: readonly string[]): string {
+  return `{${values.map((v) => `"${v.replace(/["\\]/g, "\\$&")}"`).join(",")}}`;
+}
+
+/**
+ * Records how the Customer signs in, from the signed-in user's own identities
+ * (no `auth.users` read, no `supabase.auth.admin` call). Writes only when the
+ * methods changed, by the same conditional update as `touchCustomerLastSeen`:
+ * the update re-checks the login and the value it read, so of two concurrent
+ * page loads the second matches no row. Linking Google from the Profile shows
+ * on the Customer page after their next account page load. Only for the row
+ * this login owns. Best-effort: a failure is swallowed. Returns whether it
+ * wrote.
+ */
+export async function touchAccountProviders(
+  customer: Pick<Customer, "id" | "auth_user_id" | "account_providers">,
+  user: Pick<User, "id" | "identities">,
+  admin: ReturnType<typeof supabaseAdmin> = supabaseAdmin(),
+): Promise<boolean> {
+  if (customer.auth_user_id !== user.id) return false;
+  const next = accountProvidersOf(user);
+  if (!next) return false;
+  const stored = customer.account_providers ?? [];
+  if (stored.length === next.length && stored.every((p, i) => p === next[i])) return false;
+  try {
+    const { data, error } = await admin
+      .from("customers")
+      .update({ account_providers: next })
+      .eq("id", customer.id)
+      .eq("auth_user_id", user.id)
+      .eq("account_providers", pgTextArray(stored))
+      .select("id");
+    return !error && (data?.length ?? 0) > 0;
+  } catch {
+    // How they sign in is a convenience for Staff; the account page must load.
+    return false;
+  }
 }
 
 /**

@@ -26,6 +26,8 @@ import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
+import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
+import { runAftercareMessages } from "@/lib/aftercare/job";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -503,6 +505,30 @@ export async function GET(req: Request) {
     googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
   }
 
+  // Chain: Aftercare messages (PRD customer-crm slices 07 and 08): the Review
+  // request, 14 days after delivery, and the yearly Check-up reminder for a
+  // Premium Mpillow. Every send is claimed in a ledger first, so a manual
+  // re-run messages nobody twice. Each is off until its switch is turned on
+  // (review_requests_enabled, checkup_reminders_enabled); until then it only
+  // counts.
+  let aftercare: Awaited<ReturnType<typeof runAftercareMessages>> | { ok: false; error: string };
+  try {
+    aftercare = await runAftercareMessages(admin, { origin, now });
+  } catch (e) {
+    aftercare = { ok: false, error: e instanceof Error ? e.message : "aftercare messages failed" };
+  }
+
+  // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
+  // match, New sign-ups and the Weekly summary. Each goes at most once per
+  // period by compare-and-set, so a manual re-run posts nothing twice. After
+  // the Google review catch-up, so today's reviews are counted.
+  let crmTelegram: Awaited<ReturnType<typeof runCrmTelegramUpdates>> | { ok: false; error: string };
+  try {
+    crmTelegram = await runCrmTelegramUpdates(admin, { origin, now });
+  } catch (e) {
+    crmTelegram = { ok: false, error: e instanceof Error ? e.message : "crm telegram updates failed" };
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
@@ -512,6 +538,8 @@ export async function GET(req: Request) {
     gscIngest,
     preOrderRestock,
     googleReviews,
+    aftercare,
+    crmTelegram,
   });
 }
 

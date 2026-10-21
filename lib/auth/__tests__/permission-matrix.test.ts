@@ -35,6 +35,35 @@ describe("togglePermission", () => {
     expect(r).toEqual({ ok: true, next: set("media"), note: null });
   });
 
+  // CRM slice 10: a role cannot keep `customers-edit` once it cannot see Customers.
+  it("unticking Customers also unticks Customers: make changes, and says why", () => {
+    const r = togglePermission(set("orders", "customers", "customers-edit"), "customers", false);
+    expect(r).toEqual({
+      ok: true,
+      next: set("orders"),
+      note: "Also turned off Customers: make changes (Customers page) — it needs Customers.",
+    });
+  });
+
+  it("unticking Customers: make changes leaves the role view-only", () => {
+    const r = togglePermission(set("customers", "customers-edit"), "customers-edit", false);
+    expect(r).toEqual({ ok: true, next: set("customers"), note: null });
+  });
+
+  it("ticking Customers: make changes ticks Customers", () => {
+    const r = togglePermission(set(), "customers-edit", true);
+    expect(r.ok && [...r.next].sort()).toEqual(["customers", "customers-edit"]);
+  });
+
+  it("a page's tabs go with it; a page that uses it still blocks", () => {
+    const r = togglePermission(set("media", "products", "categories"), "products", false);
+    expect(r).toMatchObject({ ok: true, next: set("media") });
+    expect(togglePermission(set("media", "products", "categories"), "media", false)).toEqual({
+      ok: false,
+      reason: "Products, Categories (Products tab) use Media. Untick them first.",
+    });
+  });
+
   it("samePermissions ignores order", () => {
     expect(samePermissions(["a", "b"], ["b", "a"])).toBe(true);
     expect(samePermissions(["a"], ["a", "b"])).toBe(false);

@@ -47,6 +47,10 @@ export const PERMISSION_CATALOG = [
   { key: "configure", label: "Configure", group: "Store", href: "/settings/inventory/configure", surface: "admin-panel" },
   { key: "rules-engine", label: "Rules Engine", group: "Store", href: "/settings/product-builder/rules-engine", surface: "admin-panel" },
   { key: "customers", label: "Customers", group: "Store", href: "/settings/customers", surface: "admin-panel" },
+  // Seeing the Customers page is `customers`; every change on it is this key (CRM slice 10).
+  { key: "customers-edit", label: "Customers: make changes (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers"] },
+  // Importing is a change, so it sits on `customers-edit` (migration slice 02, CRM slice 10).
+  { key: "customer-import", label: "Customer import (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers", "customers-edit"] },
   { key: "results", label: "Results", group: "Store", href: "/settings/results", surface: "admin-panel" },
   { key: "orders", label: "Orders", group: "Store", href: "/settings/orders", surface: "admin-panel" },
   { key: "returns", label: "Returns / RMA", group: "Store", href: "/settings/rma", surface: "admin-panel" },
@@ -181,9 +185,11 @@ const ALL: Permission[] = [...ADMIN_PERMISSIONS];
 /**
  * The code matrix the `admin_roles` rows were seeded from
  * (`supabase/migrations/20261004100000_admin_roles.sql`; the old `staff` role
- * is seeded as Fulfilment). Not read at runtime: a test keeps the seed and
- * this list equal, and `permissions.test.ts` proves it is the pre-split matrix
- * with every coarse key expanded (no gain, no loss).
+ * is seeded as Fulfilment), plus the keys later data migrations gave them
+ * (`20261020102000_customers_edit_permission.sql`: `customers-edit` to every
+ * role holding `customers`). Not read at runtime: a test keeps the seed, the
+ * data migrations and this list equal, and `permissions.test.ts` proves it is
+ * the pre-split matrix with every coarse key expanded (no gain, no loss).
  */
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   owner: ALL,
@@ -194,6 +200,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "configure",
     "rules-engine",
     "customers",
+    "customers-edit",
     "results",
     "appointments",
     "orders",
@@ -214,7 +221,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "media",
     "showroom",
   ],
-  staff: ["orders", "returns", "results", "appointments", "customers", "inventory", "configure", "shopify-link"],
+  staff: ["orders", "returns", "results", "appointments", "customers", "customers-edit", "inventory", "configure", "shopify-link"],
   viewer: ["orders", "returns", "analytics"],
 };
 

@@ -4,6 +4,7 @@ import { requireAnyAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Permission } from "@/lib/auth/permissions";
 import { secretMatches } from "@/lib/auth/secret";
+import { isCustomersResult } from "@/lib/results/owner";
 
 /** Guest magic-link token or signed-in customer matching the Result. */
 export async function authorizeResultAccess(
@@ -27,13 +28,8 @@ export async function authorizeResultAccess(
     .maybeSingle();
   if (!customer) return false;
 
-  return (
-    customer.id === row.customer_id ||
-    Boolean(
-      row.customer_email &&
-        customer.email?.toLowerCase() === row.customer_email.toLowerCase(),
-    )
-  );
+  // Shared with the Customer timeline, so the two can never disagree.
+  return isCustomersResult(customer, row);
 }
 
 export type ResultAccess =

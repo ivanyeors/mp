@@ -135,20 +135,34 @@ function reopenedLine(row: GoogleReviewRow): string {
   return `🔄 REOPENED — ${change}${row.google_reply ? " after it was answered" : ""}.`;
 }
 
+export type GoogleCardOptions = {
+  /**
+   * CRM slice 12: the Admin Panel link to confirm a suggested customer, when
+   * the review has one. The line names nobody: the Staff group is a shared
+   * chat (CRM README, third hazard).
+   */
+  possibleCustomerMatch?: string | null;
+};
+
+/** The line a Google card gains when a customer may have written the review. */
+export function possibleCustomerMatchLine(url: string): string {
+  return `👤 Possible customer match: confirm in the Admin Panel: ${url}`;
+}
+
 /**
  * The card for a Google review in its current state. A long review is clipped
  * harder until the whole card fits Telegram's limit, so the card always sends.
  */
-export function renderGoogleReviewCard(row: GoogleReviewRow): Card {
-  let card = renderGoogleCardWithin(row, 1200);
+export function renderGoogleReviewCard(row: GoogleReviewRow, opts: GoogleCardOptions = {}): Card {
+  let card = renderGoogleCardWithin(row, 1200, opts);
   for (const reviewChars of [600, 200]) {
     if (card.text.length <= TELEGRAM_MAX_CHARS) break;
-    card = renderGoogleCardWithin(row, reviewChars);
+    card = renderGoogleCardWithin(row, reviewChars, opts);
   }
   return card;
 }
 
-function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card {
+function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts: GoogleCardOptions): Card {
   const style = replyStyleFor(row.star_rating);
   const open = !SETTLED.includes(row.status);
   const lines: string[] = [
@@ -165,6 +179,7 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card
   lines.push("", quoted(row.comment, "(Rating only — no written review)", reviewChars));
   const edited = editedLine(row);
   if (edited) lines.push(edited);
+  if (opts.possibleCustomerMatch) lines.push(possibleCustomerMatchLine(opts.possibleCustomerMatch));
   lines.push("");
 
   switch (row.status) {
