@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_MIN_REVIEW_RATING,
+  PLACE_REVIEWS_REVALIDATE_SECONDS,
   getGooglePlaceTestimonials,
   isTestimonialVisible,
 } from "@/lib/google/places-reviews";
@@ -65,6 +66,17 @@ describe("getGooglePlaceTestimonials", () => {
     const result = await getGooglePlaceTestimonials({ limit: 2 });
 
     expect(result.map((t) => t.rating)).toEqual([5, 4]);
+  });
+
+  it("caches the billed read for a day and asks only for the fields it reads", async () => {
+    stubFetch([5]);
+
+    await getGooglePlaceTestimonials({ limit: 20 });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit & { next?: { revalidate?: number } }];
+    expect(init.next?.revalidate).toBe(PLACE_REVIEWS_REVALIDATE_SECONDS);
+    expect(PLACE_REVIEWS_REVALIDATE_SECONDS).toBe(24 * 60 * 60);
+    expect((init.headers as Record<string, string>)["X-Goog-FieldMask"]).toBe("reviews,googleMapsUri");
   });
 
   it("shows every review when minRating is 1", async () => {
