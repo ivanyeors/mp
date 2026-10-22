@@ -83,8 +83,8 @@ through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `d
     through PayPal), professional services and one-off software. An unpaid invoice from an unknown
     sender goes to `sg@` first, because fake invoices sent to accounts teams are a common fraud.
     Anything that may be personal (gym, travel, retail) also goes to `sg@`.
-  - TikTok coin top-ups and Meta ad receipts are listed under "To verify" and are not added to the
-    totals: Jun's marketing invoice bills the same ad spend.
+  - TikTok coin top-ups and Meta ad receipts paid with card ···7005 are skipped. That card is Jun's,
+    and her marketing invoice bills the same ad spend with those receipts attached.
   - Google Cloud emails only budget alerts, never bills. Each summary points to Cloud Console →
     Billing → Documents.
   - Excluded by the owner: Stamford Tools; anything about the Midview property (22 Sin Ming Lane
