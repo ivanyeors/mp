@@ -43,7 +43,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   has_phone: false,
   phone_valid: false,
   claim_link_first_clicked_at: null,
-  welcome_voucher_state: "none",
+  points_available: 0,
+  claim_bonus_at: null,
   open_followups: 0,
   paid_orders: 0,
   first_paid_at: null,
@@ -72,10 +73,10 @@ const summary: MigrationSummary = {
   signedUpBeforeImport: 40,
   batchesApplied: 1,
   clicked: 300,
-  vouchersIssued: 120,
-  vouchersUsed: 30,
-  voucherOrders: 31,
-  voucherRevenue: 4250.5,
+  claimBonuses: 120,
+  migratedPointsSpent: 30000,
+  pointsOrders: 31,
+  pointsRevenue: 4250.5,
   emailed: 960,
   emailsBounced: 12,
   emailsComplained: 1,
@@ -115,7 +116,7 @@ describe("Customers list", () => {
           tags: [],
           account: "no-account",
           source: "shopify",
-          voucher: "all",
+          points: "all",
           consent: "unsubscribed",
           sort: "signed-up",
         }}
@@ -189,7 +190,7 @@ const facts: MigratedCustomerFacts = {
   exportedAt: "2026-10-20",
   batch: { id: "b1", fileName: "customers_export.csv", appliedAt: "2026-10-21T02:05:00Z", rolledBackAt: null },
   claimLinkFirstClickedAt: null,
-  welcomeVoucher: null,
+  claimBonusAt: null,
 };
 
 const detail = (c: Customer, migration?: { ok: true; facts: MigratedCustomerFacts | null } | { ok: false }, canImport = false) =>

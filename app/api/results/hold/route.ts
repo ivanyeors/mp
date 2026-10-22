@@ -18,7 +18,8 @@ import { sendTelegram, type TelegramStatus } from "@/lib/telegram/notify";
 import { renderOnlineResultHeld } from "@/lib/crm/telegram-updates";
 import { isOnlineResultNoticeOn } from "@/lib/crm/telegram-updates-server";
 import { getDefaultFromAddress } from "@/lib/email/transport";
-import { renderResultHeldEmail } from "@/lib/email/results";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import { RESULT_EMAIL_COPY, renderResultHeldEmail } from "@/lib/email/results";
 import {
   isCaseInventoryCategory,
   isProtectorInventoryCategory,
@@ -259,10 +260,11 @@ async function sendHeldEmail(opts: {
   currency: string;
 }) {
   try {
+    const copy = await loadEmailCopy(RESULT_EMAIL_COPY.held);
     await getEmailTransport().send({
       to: opts.to,
       from: getDefaultFromAddress(),
-      ...renderResultHeldEmail(opts),
+      ...renderResultHeldEmail(opts, copy),
     });
     return "sent" as const;
   } catch (e) {

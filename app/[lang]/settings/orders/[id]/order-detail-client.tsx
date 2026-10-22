@@ -69,6 +69,7 @@ import {
 import { CELLS } from "@/lib/spatial-fillings/cells";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
+import { orderEarnLine, pointsUsedRow, type OrderEarn } from "@/lib/points/order-lines";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -157,6 +158,8 @@ export type OrderDetailInitialData = {
         row: Record<string, unknown>;
         margin: OrderMargin | null;
     } | null;
+    /** What the order earns (PRD-loyalty-points slice 03); null when nothing or unread. */
+    pointsEarn?: OrderEarn | null;
     timeline: { ok: true; rows: OrderTimelineEvent[]; events: OrderTimelineEvent[] } | null;
     mpConfigLinks: {
         ok: true;
@@ -634,6 +637,10 @@ export default function OrderDetailPage({
 
     const customClass = orderStatusBadgeClass(order.status);
     const badgeVariant = orderStatusBadgeVariant(order.status);
+    // Points used are their own line, apart from the coupon; their dollars are
+    // inside discount_amount (PRD-loyalty-points slice 04).
+    const pointsUsed = pointsUsedRow(Number(order.points_spent ?? 0));
+    const couponDiscount = Math.round((order.discount_amount - (pointsUsed?.dollars ?? 0)) * 100) / 100;
     const hasUnitCost = (order.items ?? []).some(
         (item) => item.unit_cost != null && item.unit_cost > 0
     );
@@ -758,10 +765,16 @@ export default function OrderDetailPage({
                                     <span>Shipping</span>
                                     <span>{formatSGD(order.shipping_amount)}</span>
                                 </div>
-                                {order.discount_amount > 0 && (
+                                {couponDiscount > 0 && (
                                     <div className="flex justify-between text-green-600 dark:text-green-400">
                                         <span>Discount</span>
-                                        <span>-{formatSGD(order.discount_amount)}</span>
+                                        <span>-{formatSGD(couponDiscount)}</span>
+                                    </div>
+                                )}
+                                {pointsUsed && (
+                                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                                        <span>{pointsUsed.label}</span>
+                                        <span>-{formatSGD(pointsUsed.dollars)}</span>
                                     </div>
                                 )}
                                 {order.tax_amount > 0 && (
@@ -780,6 +793,9 @@ export default function OrderDetailPage({
                                         <span>-{formatSGD(Number(order.amount_refunded))}</span>
                                     </div>
                                 )}
+                                {initialData?.pointsEarn ? (
+                                    <p className="pt-1 text-xs text-muted-foreground">{orderEarnLine(initialData.pointsEarn)}</p>
+                                ) : null}
                             </div>
                             {canRestock && (
                                 <Dialog open={restockOpen} onOpenChange={setRestockOpen}>

@@ -119,6 +119,63 @@ describe("readSegmentFilters (loading)", () => {
   it("needs review when the stored filters are not an object", () => {
     expect(readSegmentFilters(["bought"], SEGMENT_FILTERS_VERSION)).toMatchObject({ needsReview: true, ignored: ["filters"] });
     expect(readSegmentFilters(null, SEGMENT_FILTERS_VERSION)).toMatchObject({ needsReview: true });
+    expect(readSegmentFilters(null, 1)).toMatchObject({ needsReview: true });
+  });
+});
+
+/**
+ * PRD-loyalty-points slice 06 retired the Welcome-back voucher and its filter
+ * (`voucher`), so Segments are saved at filters_version 2. One saved at 1 is
+ * upgraded each time it is read: the voucher filter is dropped, and the rest
+ * of the Segment stands.
+ */
+describe("a Segment saved at filters_version 1", () => {
+  it("is saved at 2 now", () => {
+    expect(SEGMENT_FILTERS_VERSION).toBe(2);
+  });
+
+  it("still loads, its filters read as they were saved", () => {
+    const url = "bought=premium&last_order=over:12&readjusted=never";
+    const read = readSegmentFilters(fromUrl(url), 1);
+    expect(read).toMatchObject({ ignored: [], needsReview: false, params: fromUrl(url) });
+    expect(read.filters).toEqual(parseCustomerFilters(new URLSearchParams(url)).filters);
+  });
+
+  it.each(["issued", "used"])("loses only the voucher filter (voucher=%s), and chooses what the rest chooses", (voucher) => {
+    const read = readSegmentFilters({ source: "shopify", voucher, bought: "premium" }, 1);
+    expect(read).toMatchObject({ ignored: [], needsReview: false, params: { source: "shopify", bought: "premium" } });
+    expect(read.filters).toEqual(parseCustomerFilters(new URLSearchParams("source=shopify&bought=premium")).filters);
+  });
+
+  it("needs review when the voucher was its only filter, rather than choosing every Customer", () => {
+    expect(readSegmentFilters({ voucher: "issued" }, 1)).toMatchObject({
+      needsReview: true,
+      ignored: ["voucher=issued"],
+      params: {},
+    });
+  });
+
+  it("keeps naming anything else it does not recognise", () => {
+    expect(readSegmentFilters({ voucher: "used", bought: "premium", region: "east" }, 1)).toMatchObject({
+      needsReview: true,
+      ignored: ["region=east"],
+      params: { bought: "premium" },
+    });
+  });
+
+  it("is the only upgrade: at version 2 the voucher is a filter the list does not know", () => {
+    expect(readSegmentFilters({ voucher: "issued", bought: "premium" }, 2)).toMatchObject({
+      needsReview: true,
+      ignored: ["voucher=issued"],
+    });
+    expect(parseSegmentFilters({ voucher: "issued" })).toMatchObject({ ok: false, refused: ["voucher=issued"] });
+    expect(readSegmentFilters({ bought: "premium" }, 0)).toMatchObject({ needsReview: true, ignored: ["bought=premium"] });
+    expect(readSegmentFilters({ bought: "premium" }, 1.5)).toMatchObject({ needsReview: true });
+  });
+
+  it("saves its Points filter like any other", () => {
+    expect(parseSegmentFilters({ points: "has" })).toEqual({ ok: true, params: { points: "has" } });
+    expect(readSegmentFilters({ points: "none" }, SEGMENT_FILTERS_VERSION)).toMatchObject({ needsReview: false, params: { points: "none" } });
   });
 });
 
@@ -131,7 +188,7 @@ describe("choosing a Segment", () => {
       source: "all",
       google: "all",
       mobile: "all",
-      voucher: "all",
+      points: "all",
       consent: "all",
       followups: "all",
       bought: ["premium"],

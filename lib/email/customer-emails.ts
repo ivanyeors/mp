@@ -4,9 +4,9 @@
 //
 // `order_emails` keys a send by Order (dispatchOrderEmail in ./index). These
 // emails belong to a Customer instead, and are keyed by
-// (customer, template, entity): the Welcome-back voucher email
-// (PRD-shopify-customer-migration slice 05) uses the Customer itself as the
-// entity, the CRM's Aftercare emails use the Customer or an Order.
+// (customer, template, entity): the Claim bonus email (PRD-loyalty-points
+// slice 05) uses the Customer itself as the entity, the CRM's Aftercare emails
+// use the Customer or an Order.
 //
 // The row is claimed as `pending` before sending, then marked `sent` or
 // `failed`. Unlike order_emails, a failed send is retried: a later claim
@@ -25,7 +25,7 @@ export const CUSTOMER_EMAIL_MAX_ATTEMPTS = 3;
 
 export interface CustomerEmailKey {
   customerId: string;
-  /** The registry id (lib/email/registry.ts), e.g. "account.welcome_voucher". */
+  /** The registry id (lib/email/registry.ts), e.g. "account.claim_bonus". */
   template: string;
   /** What the email is about: the Customer, an Order… */
   entityId: string;

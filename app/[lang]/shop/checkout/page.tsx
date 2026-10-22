@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ChevronDown, CreditCard, Loader2, ShoppingBag } from "lucide-react";
+import { ChevronDown, CreditCard, Loader2, Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/shop/cart-context";
 import { useCurrency } from "@/lib/shop/currency-context";
@@ -41,8 +42,26 @@ import {
   useShippingQuote,
 } from "@/lib/shop/use-shipping-quote";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
+import { POINTS_ACCOUNT_ERROR, POINTS_CHECKOUT_COPY } from "@/lib/points/spend";
+import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
 
 const NEW_ADDRESS = "new";
+
+/**
+ * What /api/shop/points/allowance says for the signed-in shopper (ADR 0030
+ * (h), (i)). Absent for a guest, a partner, points switched off, or a
+ * balance below the minimum: the control does not show.
+ */
+interface PointsPreview {
+  available: number;
+  min: number;
+  /** The most this order takes; null when it is too small to take any. */
+  max: number | null;
+  /** Whether the email typed is the account's; null before one is typed. */
+  emailOk: boolean | null;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -327,6 +346,63 @@ export default function CheckoutPage() {
       });
   }, [couponCode, subtotal, items, form.email, couponDiscount, couponFreeShipping]);
 
+  // Points (ADR 0030 (h) to (j)): offered to a signed-in shopper who is not a
+  // partner and holds at least the minimum. The server works the balance out
+  // from the session; the page sends only the products less the coupon, and
+  // the email, to show the most this order takes. Opt-in, because points used
+  // are not refunded; once on, the amount starts at that most.
+  const [fetchedPointsPreview, setPointsPreview] = useState<PointsPreview | null>(null);
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsChoice, setPointsChoice] = useState<number | null>(null);
+  const productsAfterCoupon = Math.max(0, subtotal - checkoutDiscount);
+  const pointsPreview = signedIn && items.length > 0 ? fetchedPointsPreview : null;
+
+  useEffect(() => {
+    if (!signedIn || items.length === 0) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetch("/api/shop/points/allowance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          products_after_coupon: productsAfterCoupon,
+          email: form.email.trim() || undefined,
+        }),
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          if (cancelled) return;
+          setPointsPreview(
+            json?.usable
+              ? { available: json.available, min: json.min, max: json.max ?? null, emailOk: json.email_ok ?? null }
+              : null,
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setPointsPreview(null);
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [signedIn, items.length, productsAfterCoupon, form.email]);
+
+  const pointsMax = pointsPreview?.max ?? null;
+  const pointsToUse =
+    usePoints && pointsPreview && pointsMax !== null && pointsPreview.emailOk !== false
+      ? Math.min(pointsMax, Math.max(pointsPreview.min, pointsChoice ?? pointsMax))
+      : 0;
+  const pointsDiscount = pointsToDollars(pointsToUse);
+
+  function stepPoints(direction: 1 | -1) {
+    if (!pointsPreview || pointsMax === null) return;
+    const current = pointsChoice ?? pointsMax;
+    const next = Math.min(pointsMax, Math.max(pointsPreview.min, current + direction * POINTS_PER_DOLLAR));
+    // Back at the most: follow it if the order grows or shrinks.
+    setPointsChoice(next === pointsMax ? null : next);
+  }
+
   // Derived values
   const selectedMethod =
     displayOptions.find((o) => o.id === chosenShipping && !o.pending) ?? null;
@@ -338,7 +414,7 @@ export default function CheckoutPage() {
         ? 0
         : (selectedMethod.price ?? 0)
       : 0;
-  const total = Math.max(0, subtotal + shippingCost - checkoutDiscount);
+  const total = Math.max(0, subtotal + shippingCost - checkoutDiscount - pointsDiscount);
 
   // ---------------------------------------------------------------------------
   // Validation
@@ -420,6 +496,8 @@ export default function CheckoutPage() {
         shipping_method_id: chosenShipping,
         coupon_code: couponCode ?? undefined,
         referral_code: referralCode.trim() || undefined,
+        // Checked and reserved again on the server; the page only asks.
+        points: pointsToUse > 0 ? pointsToUse : undefined,
         locale: lang,
         items: items.map((item) => ({
           variant_id: item.variantId,
@@ -611,6 +689,14 @@ export default function CheckoutPage() {
           )}
           {couponPreviewError && (
             <p className="text-xs text-destructive">{couponPreviewError}</p>
+          )}
+          {pointsToUse > 0 && (
+            <div className="flex justify-between text-green-600 dark:text-green-400">
+              <span>Points ({pointsToUse.toLocaleString("en-SG")})</span>
+              <span>
+                -<PriceDisplay price={pointsDiscount} currency={currency} className="inline text-sm" />
+              </span>
+            </div>
           )}
 
           <div className="flex justify-between font-semibold text-base border-t pt-2 mt-1">
@@ -1040,6 +1126,66 @@ export default function CheckoutPage() {
                 </p>
               )}
             </section>
+
+            {/* Points: signed-in, not a partner, at least the minimum (ADR 0030 h, i) */}
+            {pointsPreview && (
+              <section id="points" data-section="points" className="flex flex-col gap-3">
+                <h2 className="text-lg font-semibold">Points</h2>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={usePoints}
+                    disabled={pointsMax === null || pointsPreview.emailOk === false}
+                    onCheckedChange={(checked) => {
+                      setUsePoints(checked === true);
+                      setPointsChoice(null);
+                    }}
+                  />
+                  Use points
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  You have {formatPoints(pointsPreview.available)}.{" "}
+                  {pointsMax !== null
+                    ? `This order can take up to ${formatPoints(pointsMax)}.`
+                    : `This order is too small to use points: the least you can use is ${formatPoints(pointsPreview.min)}.`}
+                </p>
+                {usePoints && pointsToUse > 0 && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Use S$1 less"
+                      disabled={pointsToUse <= pointsPreview.min}
+                      onClick={() => stepPoints(-1)}
+                    >
+                      <Minus className="size-4" />
+                    </Button>
+                    <span className="min-w-40 text-center text-sm font-medium" aria-live="polite">
+                      {formatPoints(pointsToUse)}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Use S$1 more"
+                      disabled={pointsMax === null || pointsToUse >= pointsMax}
+                      onClick={() => stepPoints(1)}
+                    >
+                      <Plus className="size-4" />
+                    </Button>
+                  </div>
+                )}
+                {pointsPreview.emailOk === false && (
+                  <p className="text-xs text-destructive">{POINTS_ACCOUNT_ERROR}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {POINTS_CHECKOUT_COPY}{" "}
+                  <Link href={withLocale("/points", isSupportedLocale(lang) ? lang : DEFAULT_LOCALE)} className="underline underline-offset-4">
+                    How points work
+                  </Link>
+                </p>
+              </section>
+            )}
 
             {/* Submit error */}
             {submitError && (

@@ -14,6 +14,8 @@ import type { TimelineAdapter, TimelineEntry } from "@/lib/crm/timeline/types";
  * not shown), and the webhook's bounce and complaint (`bounced_at`,
  * `complained_at`). The send's current status is its pill. The Claim link
  * the email carried is the claim-links source's entry, at its first click.
+ * A campaign Staff wrote (PRD-email-marketing; `campaign:<id>`) is named by
+ * its campaign name.
  */
 
 type SendRow = {
@@ -24,12 +26,19 @@ type SendRow = {
   sent_at: string;
   bounced_at: string | null;
   complained_at: string | null;
+  campaign?: { name: string | null } | { name: string | null }[] | null;
 };
 
-const COLUMNS = "id, template, wave, status, sent_at, bounced_at, complained_at";
+const COLUMNS = "id, template, wave, status, sent_at, bounced_at, complained_at, campaign:email_campaigns(name)";
 
-const label = (template: string) =>
-  isCampaignTemplate(template) ? CAMPAIGN_TEMPLATE_LABEL[template] : template.replace(/_/g, " ");
+const label = (s: Pick<SendRow, "template" | "campaign">) => {
+  if (isCampaignTemplate(s.template)) return CAMPAIGN_TEMPLATE_LABEL[s.template];
+  if (s.template.startsWith("campaign:")) {
+    const name = (Array.isArray(s.campaign) ? s.campaign[0] : s.campaign)?.name;
+    return name ? `“${name}”` : "an email campaign";
+  }
+  return s.template.replace(/_/g, " ");
+};
 
 const ref = (s: SendRow) => ({ type: "campaign_send", id: s.id });
 
@@ -51,7 +60,7 @@ export const campaignSendsAdapter: TimelineAdapter = {
           at: s.sent_at,
           kind: "campaign_email.sent",
           ref: ref(s),
-          summary: `Campaign email sent: ${label(s.template)} (wave ${s.wave})`,
+          summary: `Campaign email sent: ${label(s)} (wave ${s.wave})`,
           status: s.status,
         }),
       ),
@@ -60,14 +69,14 @@ export const campaignSendsAdapter: TimelineAdapter = {
         at: s.bounced_at!,
         kind: "campaign_email.bounced",
         ref: ref(s),
-        summary: `Campaign email bounced: ${label(s.template)}. Left out of later waves`,
+        summary: `Campaign email bounced: ${label(s)}. Left out of later waves`,
       })),
       readStream<SendRow>(rows(), "complained_at", before, limit, (s) => ({
         id: `campaign_email.complained:${s.id}`,
         at: s.complained_at!,
         kind: "campaign_email.complained",
         ref: ref(s),
-        summary: `Marked as spam: ${label(s.template)}`,
+        summary: `Marked as spam: ${label(s)}`,
       })),
     ]);
     return joinBatches([sent, bounced, complained]);

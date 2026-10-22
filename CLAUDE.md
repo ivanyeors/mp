@@ -17,6 +17,20 @@ Read these before making design decisions:
   purchase channel, and which Admin Panel pages change which tables. Read it
   before changing inventory, pricing or order code.
 
+## Shopify is being replaced
+
+This platform replaces Shopify; it does not run beside it (owner, 2026-10-21).
+Design and build for this platform alone:
+
+- **No new work depends on Shopify.** Nothing new integrates with it, syncs to
+  it, reads from it live, falls back on it, or keeps compatibility with it.
+  How Shopify or its apps do something is not a requirement here.
+- **The only Shopify work is leaving it:** the one-time customer import and the
+  cutover (ADR 0029). The **Shopify order mirror** stays the read-only Analytics
+  input it already is (`CONTEXT.md`) and gains no features.
+- **Shopify-era facts become this platform's data.** Settle them once, during
+  the migration. Do not build a feature around Shopify to carry them.
+
 ## Commit author
 
 Every commit in this repository is authored as

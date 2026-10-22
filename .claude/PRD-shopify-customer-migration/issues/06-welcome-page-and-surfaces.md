@@ -65,6 +65,8 @@ The page is `noindex`.
 
 Add `utm_source=shopify_migration&utm_medium=email&utm_campaign=<template>` to every campaign
 link, so GA4 and **Entry source** see the channel even though the claim ledger carries the funnel.
+(Amended 2026-10-21, PRD-loyalty-points slice 05: the source is `new_website`. A plain-text email
+shows the link whole, and no email names the old platform.)
 
 ## Account
 

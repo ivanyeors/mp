@@ -19,6 +19,7 @@ import {
     BOUGHT_LABELS,
     GOOGLE_REVIEW_FILTERS,
     GOOGLE_REVIEW_LABELS,
+    POINTS_LABELS,
     RATING_FILTERS,
     RATING_LABELS,
     customerFiltersSchema,
@@ -29,16 +30,16 @@ import {
     type CustomerListFilters,
     type GoogleReviewFilter,
     type LastOrderFilter,
+    type PointsFilter,
     type RatingFilter,
     type ReadjustedFilter,
     type ShopReviewFilter,
-    type VoucherFilter,
 } from "@/lib/crm/customer-filters";
 
 /**
  * The Customers list's CRM filters (CRM slice 04): what they bought, when
  * they last ordered, whether they have been re-adjusted, what they spent, and
- * tags; the Welcome-back voucher (migration slice 06); Email consent
+ * tags; Points (PRD-loyalty-points slice 06); Email consent
  * (migration slice 07); and reviews (CRM slice 12: the Google review, Shop
  * reviews, the rating). Values go through
  * the list's one schema (lib/crm/customer-filters.ts), so a control can never
@@ -194,17 +195,17 @@ export function CustomerFiltersPanel({
             </div>
 
             <div className="min-w-0 space-y-4">
-                {/* The Welcome-back voucher (migration slice 06): issued and unused is the list to nudge before it expires. */}
+                {/* Points (PRD-loyalty-points slice 06): an available balance, or none. */}
                 <div className="space-y-2">
-                    <Label htmlFor={`${id}-voucher`}>Welcome-back voucher</Label>
-                    <Select value={filters.voucher} onValueChange={(v) => onChange({ voucher: v as VoucherFilter })}>
-                        <SelectTrigger id={`${id}-voucher`} className="w-full" aria-label="Voucher">
-                            <SelectValue placeholder="Voucher" />
+                    <Label htmlFor={`${id}-points`}>Points</Label>
+                    <Select value={filters.points} onValueChange={(v) => onChange({ points: v as PointsFilter })}>
+                        <SelectTrigger id={`${id}-points`} className="w-full" aria-label="Points">
+                            <SelectValue placeholder="Points" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All vouchers</SelectItem>
-                            <SelectItem value="issued">Voucher issued, unused</SelectItem>
-                            <SelectItem value="used">Voucher used</SelectItem>
+                            <SelectItem value="all">Any points</SelectItem>
+                            <SelectItem value="has">{POINTS_LABELS.has}</SelectItem>
+                            <SelectItem value="none">{POINTS_LABELS.none}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

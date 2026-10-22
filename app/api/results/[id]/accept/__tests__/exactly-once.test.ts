@@ -22,6 +22,8 @@ const h = vi.hoisted(() => ({
   applyMilestoneProgress: vi.fn(),
   loadAssignedBuild: vi.fn(),
   sessionsRetrieve: vi.fn(),
+  /** The `customers` table is unreachable. */
+  failCustomers: false,
 }));
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -32,6 +34,7 @@ function query(table: string) {
   const filters: Array<(r: Row) => boolean> = [];
   const run = async (): Promise<Row[]> => {
     await tick();
+    if (table === "customers" && h.failCustomers) throw new Error("connection reset");
     // Everything below is synchronous: one query is one atomic step.
     const rows = (h.db[table] ??= []);
     if (op !== "select") h.writes.push({ table, op });
@@ -57,6 +60,10 @@ function query(table: string) {
     neq: (c: string, v: unknown) => (filters.push((r) => r[c] !== v), b),
     is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), b),
     in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), b),
+    // An exact match without case, as findCustomerByEmail escapes its pattern.
+    ilike: (c: string, v: string) => (
+      filters.push((r) => String(r[c] ?? "").toLowerCase() === v.replace(/\\([\\%_*])/g, "$1").toLowerCase()), b
+    ),
     maybeSingle: async () => ({ data: (await run())[0] ?? null, error: null }),
     single: async () => ({ data: (await run())[0] ?? null, error: null }),
     then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
@@ -149,6 +156,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.db = { mp_config_responses: [assignedRow()] };
   h.writes = [];
+  h.failCustomers = false;
   h.piStatus = "requires_capture";
   h.captureHold.mockImplementation(async () => {
     await tick();
@@ -445,5 +453,63 @@ describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
     expect((await accept()).status).toBe(502);
     expect(row(ID).status).toBe("assigned");
     expect(row(BOLSTER).status).toBe("assigned");
+  });
+});
+
+describe("POST /api/results/[id]/accept — the Order's Customer (PRD-loyalty-points slice 03)", () => {
+  it("a guest Result with an email gets a Customer, as shop checkout does", async () => {
+    h.db.mp_config_responses = [assignedRow({ customer_id: null, customer_email: "  Ada@X.test " })];
+    expect((await accept()).status).toBe(200);
+    expect(h.db.customers).toHaveLength(1);
+    expect(h.db.customers[0]).toMatchObject({ email: "ada@x.test" });
+    expect(h.db.orders[0]).toMatchObject({ customer_id: h.db.customers[0].id });
+  });
+
+  it("finds the Customer an earlier guest Order made, rather than a second one", async () => {
+    h.db.customers = [{ id: "cust-ada", email: "ada@x.test" }];
+    h.db.mp_config_responses = [assignedRow({ customer_id: null, customer_email: "ADA@x.test" })];
+    expect((await accept()).status).toBe(200);
+    expect(h.db.customers).toHaveLength(1);
+    expect(h.db.orders[0]).toMatchObject({ customer_id: "cust-ada" });
+  });
+
+  it("keeps the Customer a signed-in Result already names, and looks nothing up", async () => {
+    h.db.mp_config_responses = [assignedRow({ customer_id: "cust-signed-in" })];
+    expect((await accept()).status).toBe(200);
+    expect(h.db.orders[0]).toMatchObject({ customer_id: "cust-signed-in" });
+    expect(h.writes.some((w) => w.table === "customers")).toBe(false);
+    expect(h.db.customers).toBeUndefined();
+  });
+
+  it.each([
+    ["no email", null],
+    ["the fallback address", "unknown@example.com"],
+    ["something that is not an address", "walk-in"],
+  ])("makes no Customer for %s", async (_name, email) => {
+    h.db.mp_config_responses = [assignedRow({ customer_id: null, customer_email: email })];
+    expect((await accept()).status).toBe(200);
+    expect(h.db.customers).toBeUndefined();
+    expect(h.db.orders[0]).toMatchObject({ customer_id: null, email: email ?? "unknown@example.com" });
+  });
+
+  it("never fails the sale when the Customer cannot be resolved: the Order is written without one", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    h.failCustomers = true;
+    h.db.mp_config_responses = [assignedRow({ customer_id: null })];
+    const res = await accept();
+    expect(res.status).toBe(200);
+    expect(h.captureHold).toHaveBeenCalledOnce();
+    expect(count("orders")).toBe(1);
+    expect(h.db.orders[0]).toMatchObject({ customer_id: null, email: "ada@x.test" });
+    expect(result()).toMatchObject({ status: "captured", order_id: "orders-1" });
+    expect(quiet).toHaveBeenCalled();
+    quiet.mockRestore();
+  });
+
+  it("two concurrent accepts of a guest Result make one Customer", async () => {
+    await Promise.all([accept(), accept()]);
+    expect(count("orders")).toBe(1);
+    expect(h.db.customers).toHaveLength(1);
+    expect(h.db.orders[0]).toMatchObject({ customer_id: h.db.customers[0].id });
   });
 });

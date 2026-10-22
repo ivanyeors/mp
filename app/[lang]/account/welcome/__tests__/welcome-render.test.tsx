@@ -57,9 +57,10 @@ describe("signed out", () => {
 describe("signed in as another Customer", () => {
   const html = page({ session: { customerId: "c-sam", email: "sam@x.test" }, token: TOKEN, tokenCustomer: jane });
 
-  it("says whose account this is and where the voucher went, with a switch that returns here", () => {
+  it("says whose account this is and which email the link is for, with a switch that returns here", () => {
     expect(html).toContain("sam@x.test");
-    expect(html).toContain("Your voucher was sent to the email you shopped with.");
+    expect(html).toContain("This link is for the account of the email you shopped with.");
+    expect(html).not.toMatch(/voucher/i);
     expect(html).toContain("Use another account");
     expect(html).toContain(
       `action="/auth/signout?next=${encodeURIComponent(`/en-US/account/welcome?c=${TOKEN}`)}"`,
@@ -79,18 +80,26 @@ describe("signed in", () => {
     firstName: "Jane",
     email: "jane@x.test",
     hasAddress: true,
-    voucher: { code: "WB-ABCDEFGHJK", worth: "$20.00 off", minimum: "$60.00", expiresOn: "20 December 2026" },
+    bonus: { kind: "granted" as const, points: 1000 },
   };
 
-  it("shows the voucher card: code, value, minimum, expiry, Copy and Shop now", () => {
+  it("shows the Claim bonus: what was added, how to use it, and its two limits", () => {
     const html = page({ session: { customerId: "c-jane", email: "jane@x.test" } }, account);
-    expect(html).toContain("WB-ABCDEFGHJK");
-    expect(html).toContain("$20.00 off");
-    expect(html).toContain("$60.00");
-    expect(html).toContain("20 December 2026");
-    expect(html).toContain("Copy");
+    expect(html).toContain("S$10 in points is in your account");
+    expect(html).toContain("We&#x27;ve added 1,000 points. Use them on any shop order, up to half the price.");
     expect(html).toContain('href="/en-US/shop"');
-    expect(html).toContain("Shop now");
+    expect(html).toContain("can&#x27;t be used on custom pillows, and points used are not refunded");
+    expect(html).toContain('href="/en-US/points"');
+    expect(html).not.toMatch(/voucher|shopify/i);
+  });
+
+  it("says plainly when the bonus window had closed, and promises nothing", () => {
+    const html = page(
+      { session: { customerId: "c-jane", email: "jane@x.test" } },
+      { ...account, bonus: { kind: "closed", endedOn: "2027-01-21T04:00:00Z" } },
+    );
+    expect(html).toContain("The sign-in bonus for this account ended on 21 January 2027");
+    expect(html).not.toContain("is in your account");
   });
 
   it("says what the account does, the imported address first", () => {
@@ -102,9 +111,9 @@ describe("signed in", () => {
     expect(html).toContain("Returns");
   });
 
-  it("leaves the card out when there is no usable voucher", () => {
-    const html = page({ session: { customerId: "c-jane", email: "jane@x.test" } }, { ...account, voucher: null });
-    expect(html).not.toContain("welcome-back voucher");
+  it("leaves the card out when there is nothing true to say", () => {
+    const html = page({ session: { customerId: "c-jane", email: "jane@x.test" } }, { ...account, bonus: null });
+    expect(html).not.toContain("in points");
     expect(html).toContain("What your account does");
   });
 });

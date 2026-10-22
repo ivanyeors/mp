@@ -28,10 +28,20 @@ import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
+import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** What the Order's email reads when the Result has none. Never a Customer. */
+const NO_EMAIL = "unknown@example.com";
+
+/** The Result's email when it can name a Customer: an address, and not the fallback. */
+function customerEmailOf(email: string | null | undefined): string | null {
+  const e = email?.trim().toLowerCase();
+  return e && e !== NO_EMAIL && /^[^\s@]+@[^\s@]+$/.test(e) ? e : null;
+}
 
 const BodySchema = z.object({
   token: z.string().uuid().optional(),
@@ -466,12 +476,28 @@ export async function POST(
   // and partner commission release (lib/commissions/ledger).
   const inStoreHandover = row.source === "manual" || row.shipping_address == null;
 
+  // Every Order has a Customer when the Result has an email (PRD-loyalty-points
+  // slice 03): points are earned by a Customer, and a guest, assisted or
+  // in-store Result names none. Resolved from the email as shop checkout does,
+  // so the points wait on that email until its owner signs in. Best-effort: the
+  // money is captured by now, so a failure leaves the Order without a Customer
+  // (and without points) rather than failing the sale.
+  let customerId: string | null = (row.customer_id as string | null) ?? null;
+  const customerEmail = customerId ? null : customerEmailOf(row.customer_email);
+  if (customerEmail) {
+    try {
+      customerId = (await findOrCreateCustomer(customerEmail)).id;
+    } catch (e) {
+      console.error("Could not resolve the Customer for an accepted Result", id, e);
+    }
+  }
+
   const { data: order, error: orderErr } = await admin
     .from("orders")
     .insert({
       order_number: "",
-      email: row.customer_email ?? "unknown@example.com",
-      customer_id: row.customer_id,
+      email: row.customer_email ?? NO_EMAIL,
+      customer_id: customerId,
       status: inStoreHandover ? "delivered" : "confirmed",
       currency: row.currency ?? "SGD",
       subtotal: orderSubtotal,

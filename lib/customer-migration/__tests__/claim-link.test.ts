@@ -49,7 +49,7 @@ describe("the link", () => {
     expect(url.origin + url.pathname).toBe("https://mpillow.test/en-US/account/welcome");
     expect(url.searchParams.get("c")).toBe("T".repeat(43));
     expect(url.searchParams.get("utm_source")).toBe(CAMPAIGN_UTM_SOURCE);
-    expect(url.searchParams.get("utm_source")).toBe("shopify_migration");
+    expect(url.searchParams.get("utm_source")).toBe("new_website");
     expect(url.searchParams.get("utm_medium")).toBe("email");
     expect(url.searchParams.get("utm_campaign")).toBe("migration_announcement");
   });

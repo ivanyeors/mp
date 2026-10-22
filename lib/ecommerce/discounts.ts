@@ -23,48 +23,7 @@ export interface ValidateCouponOptions {
    * Never an id from a request body.
    */
   customerId?: string;
-  /**
-   * The signed-in Customer, from the session (`getCurrentCustomerId`), never
-   * from the request body. A resolver rather than its result: only a coupon
-   * bound to a Customer calls it, so a bearer code costs no auth round trip.
-   */
-  getSessionCustomerId?: () => Promise<string | null>;
   lineItems?: CouponLineItem[];
-}
-
-export const BOUND_COUPON_ERROR =
-  "This voucher belongs to an account. Sign in with the email it was sent to.";
-
-/**
- * Pure — whether this checkout may use a coupon bound to `couponCustomerId`
- * (ADR 0029 g). Both must hold: the signed-in Customer is its owner, and the
- * checkout email resolves to that same Customer, so the Order, the
- * per-customer count and the voucher stay on one row. A guest never may. A
- * coupon with no owner is a bearer code and always may.
- */
-export function mayUseBoundCoupon(
-  couponCustomerId: string | null | undefined,
-  holder: { sessionCustomerId: string | null; emailCustomerId: string | null },
-): boolean {
-  if (!couponCustomerId) return true;
-  return (
-    holder.sessionCustomerId === couponCustomerId && holder.emailCustomerId === couponCustomerId
-  );
-}
-
-/** The Customer the checkout email resolves to: the caller's when it has one, else looked up. */
-async function resolveEmailCustomerId(
-  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId"> | undefined,
-): Promise<string | null> {
-  if (options?.customerId) return options.customerId;
-  const email = options?.customerEmail?.toLowerCase().trim();
-  if (!email) return null;
-  const { data } = await supabaseAdmin()
-    .from("customers")
-    .select("id")
-    .ilike("email", escapeLikePattern(email))
-    .maybeSingle();
-  return (data?.id as string | undefined) ?? null;
 }
 
 /** Pure discount math — testable without DB. */
@@ -230,17 +189,6 @@ export async function validateCoupon(
   }
 
   const coupon = data as Coupon;
-
-  // Before anything else, so a forwarded voucher tells its holder nothing about
-  // its expiry, limits or scope. Only a bound coupon pays for these lookups.
-  if (coupon.customer_id) {
-    const sessionCustomerId = (await options?.getSessionCustomerId?.()) ?? null;
-    const emailCustomerId =
-      sessionCustomerId === coupon.customer_id ? await resolveEmailCustomerId(options) : null;
-    if (!mayUseBoundCoupon(coupon.customer_id, { sessionCustomerId, emailCustomerId })) {
-      return { valid: false, error: BOUND_COUPON_ERROR };
-    }
-  }
 
   const now = new Date();
 

@@ -94,6 +94,10 @@ export interface OrderEmailData {
   /** The courier's latest checkpoint, e.g. "Held at customs — Singapore". */
   trackingCheckpoint?: string | null;
   refundAmount?: number | null;
+  /** Points spent at checkout; their dollars are inside `discountAmount` (PRD-loyalty-points slice 04). */
+  pointsSpent?: number | null;
+  /** What the Order will earn, for the order confirmation (slice 03); null when nothing. */
+  pointsEarn?: { points: number; guest: boolean } | null;
 }
 
 export interface SendOutcome {

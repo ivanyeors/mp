@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { ACCOUNT_GROUP } from "@/lib/crm/timeline/groups";
 import { joinBatches, readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
+import { formatPoints } from "@/lib/points/value";
 
 /**
  * The Customer's account on the timeline (`customers`), from the Shopify
@@ -14,37 +15,22 @@ import type { TimelineAdapter } from "@/lib/crm/timeline/types";
  *   slice it is the login's creation, the closest fact there is; the Account
  *   card says so;
  * - **Claimed**, their first sign-in after the import (`claimed_at`, slice 05);
- * - the **Welcome-back voucher** issued at the Claim (`coupons.created_at`,
- *   `issued_for = 'welcome_back'`, slice 05). A coupon stores no time it was
- *   used, so whether it is used, expired or still open is its pill. The Order
- *   it went on shows under Orders. Its code is not shown.
+ * - the **Claim bonus** (PRD-loyalty-points slice 05), read from the Points
+ *   ledger: its one `claim_bonus` entry, at the time it was written. For a
+ *   Customer who claimed before points launched, that is the later sign-in
+ *   that granted it, not the Claim.
  */
 
 type LinkedRow = { id: string; account_linked_at: string | null };
 
 type MigratedRow = { customer_id: string; created_by_import: boolean; imported_at: string; claimed_at: string | null };
 
-type VoucherRow = {
-  id: string;
-  is_active: boolean;
-  usage_limit: number | null;
-  usage_count: number;
-  expires_at: string | null;
-  created_at: string;
-};
-
-/** The voucher as it stands now: a pill, never a dated step. */
-function voucherStatus(v: VoucherRow, now: number): string {
-  if (v.usage_limit !== null && v.usage_count >= v.usage_limit) return "used";
-  if (!v.is_active) return "inactive";
-  if (v.expires_at !== null && Date.parse(v.expires_at) <= now) return "expired";
-  return "open";
-}
+type ClaimBonusRow = { id: string; points: number; created_at: string };
 
 export const accountAdapter: TimelineAdapter = {
   key: "account",
   group: ACCOUNT_GROUP,
-  kinds: ["account.imported", "account.signed_up", "account.claimed", "account.voucher_issued"],
+  kinds: ["account.imported", "account.signed_up", "account.claimed", "account.claim_bonus"],
   permission: "customers",
   async load(customer, before, limit) {
     const db = supabaseAdmin();
@@ -53,7 +39,6 @@ export const accountAdapter: TimelineAdapter = {
         .from("migrated_customers")
         .select("customer_id, created_by_import, imported_at, claimed_at")
         .eq("customer_id", customer.id);
-    const now = Date.now();
     return joinBatches(
       await Promise.all([
         readStream<MigratedRow>(migrated(), "imported_at", before, limit, (m) => ({
@@ -85,22 +70,22 @@ export const accountAdapter: TimelineAdapter = {
           ref: { type: "migrated_customer", id: m.customer_id },
           summary: "Claimed: first sign-in since the import",
         })),
-        readStream<VoucherRow>(
+        // At most one: points_ledger_one_claim_bonus.
+        readStream<ClaimBonusRow>(
           db
-            .from("coupons")
-            .select("id, is_active, usage_limit, usage_count, expires_at, created_at")
+            .from("points_ledger")
+            .select("id, points, created_at")
             .eq("customer_id", customer.id)
-            .eq("issued_for", "welcome_back"),
+            .eq("kind", "claim_bonus"),
           "created_at",
           before,
           limit,
-          (v) => ({
-            id: `account.voucher_issued:${v.id}`,
-            at: v.created_at,
-            kind: "account.voucher_issued",
-            ref: { type: "coupon", id: v.id },
-            summary: "Welcome-back voucher issued",
-            status: voucherStatus(v, now),
+          (b) => ({
+            id: `account.claim_bonus:${b.id}`,
+            at: b.created_at,
+            kind: "account.claim_bonus",
+            ref: { type: "points_ledger", id: b.id },
+            summary: `Claim bonus: ${formatPoints(b.points)}`,
           }),
         ),
       ]),

@@ -92,7 +92,7 @@ describe("the review requests adapter", () => {
       customer_emails: [
         { customer_id: "ann", template: "aftercare.review_request", entity_id: "ann", status: "sent", sent_at: "2026-10-20T02:00:01.000Z" },
         // Another email to the same Customer is not this adapter's.
-        { customer_id: "ann", template: "account.welcome_voucher", entity_id: "ann", status: "sent", sent_at: "2026-10-01T00:00:00.000Z" },
+        { customer_id: "ann", template: "account.claim_bonus", entity_id: "ann", status: "sent", sent_at: "2026-10-01T00:00:00.000Z" },
       ],
       customer_whatsapp: [],
     };

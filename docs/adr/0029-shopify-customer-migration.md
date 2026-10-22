@@ -79,6 +79,8 @@ scope and no order link: it reads a file the owner exports by hand.
 - **(g) The voucher is account-bound.** `coupons.customer_id` is checked against the signed-in
   **Customer** at preview and again at checkout, so a forwarded code is worthless. A bound coupon
   is never valid for a guest. Every unbound coupon stays a bearer code, as today.
+  *2026-10-21: the incentive is the **Claim bonus** in points ([ADR 0030](0030-loyalty-points.md));
+  the Welcome-back voucher is deleted.*
 - **(h) Consent carries provenance.** Shopify's *Accepts Email Marketing = yes* becomes
   `subscribed`, with source `shopify_import` and the export's date. Shopify's "no" stays
   `not_subscribed`, never `unsubscribed`, because it may mean "never asked". An import never

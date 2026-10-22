@@ -387,6 +387,23 @@ export type CheckupEmailSkip = AftercareEmailSkip | "no_marketing_consent";
 export type CheckupEmailDecision = AftercareEmailDecision | { send: false; skip: "no_marketing_consent" };
 
 /**
+ * The consent gate of a consent-gated reminder: an email that would go, goes
+ * only to a Customer whose `marketing_email` is `subscribed`. One rule, shared
+ * by the check-up (below) and the points expiry reminders
+ * (`decidePointsReminderEmail`, lib/points/expiry.ts; PRD-loyalty-points slice
+ * 07), so the two cannot drift apart. `not_subscribed`, `unsubscribed` and an
+ * unknown value are all no.
+ */
+export function requireMarketingConsent(
+  decision: AftercareEmailDecision,
+  /** `customers.marketing_email` (migration slice 07). */
+  marketingEmail: string | null | undefined,
+): CheckupEmailDecision {
+  if (decision.send && marketingEmail !== "subscribed") return { send: false, skip: "no_marketing_consent" };
+  return decision;
+}
+
+/**
  * Email's send-or-skip for the check-up: the Aftercare email decision (the
  * switch, an address, the allowlist), and Marketing consent.
  */
@@ -401,10 +418,10 @@ export function decideCheckupEmail(input: {
   const decision = decideAftercareEmail(input);
   // ── CONSENT ── The one Aftercare rule that reads marketing_email (README, second hazard): a
   // paid visit is direct marketing under the PDPA. If counsel advises a Premium Mpillow buyer may
-  // be reminded without it, delete this line (customer-crm PRD, Owner decisions). Pinned by
+  // be reminded without it, make this line `return decision` (customer-crm PRD, Owner decisions);
+  // the points expiry reminders keep the gate (owner decision 9, PRD-loyalty-points). Pinned by
   // checkup.test.ts and checkup-job.test.ts, which say which assertions change with it.
-  if (decision.send && input.marketingEmail !== "subscribed") return { send: false, skip: "no_marketing_consent" };
-  return decision;
+  return requireMarketingConsent(decision, input.marketingEmail);
 }
 
 export type CheckupChannelPlan = {

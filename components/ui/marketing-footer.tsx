@@ -17,6 +17,7 @@ const FOOTER_LINKS = [
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Returns & Warranty", href: "/shipping-refund-policies" },
   { label: "Terms of Service", href: "/terms-of-service" },
+  { label: "Points", href: "/points" },
   { label: "Contact Us", href: "/support" },
   { label: "FAQ", href: "/faq" },
 ] as const;

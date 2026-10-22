@@ -19,13 +19,18 @@ before relying on one.
 ### admin_audit_log
 Defined in supabase/migrations/0041_admin_audit_log.sql:9
 References: `mp_staff`
-Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
+Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/email-templates`, `/settings/email-templates/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
 - Written by:
   - `recordAdminAction()` [insert] — lib/auth/audit.ts:36
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:54
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
+
+### admin_points_summary
+Defined in supabase/migrations/20261021120000_points_ledger.sql:310
+- Read by:
+  - `readPointsSummary()` [select] — lib/points/server.ts:167
 
 ### admin_roles
 Defined in supabase/migrations/20261004100000_admin_roles.sql:18
@@ -97,7 +102,7 @@ Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
   - `persistJourneyIngest()` [update,upsert] — lib/analytics/journey/ingest.ts:201
   - `stampVisitorRef()` [upsert] — lib/referrals/index.ts:120
 - Read by:
-  - `POST()` [select] — app/api/results/hold/route.ts:796
+  - `POST()` [select] — app/api/results/hold/route.ts:798
   - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:178
 
 ### analytics_visits
@@ -171,7 +176,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:420
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:185
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:483
-  - `POST()` [select] — app/api/shop/checkout/route.ts:442
+  - `POST()` [select] — app/api/shop/checkout/route.ts:462
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:166
   - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:203
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
@@ -216,8 +221,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
 - Read by:
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:79
   - `GET()` [select] — app/api/mp-config/assist/route.ts:79
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:220
-  - `POST()` [select] — app/api/results/hold/route.ts:437
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:223
+  - `POST()` [select] — app/api/results/hold/route.ts:439
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:251
 
 ### bom_lines
@@ -233,7 +238,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:391
-  - `POST()` [select] — app/api/shop/checkout/route.ts:416
+  - `POST()` [select] — app/api/shop/checkout/route.ts:436
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:152
   - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:186
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:162
@@ -273,7 +278,7 @@ Changed from pages: `/settings/inventory`, `/settings/inventory/configure/[card]
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:485
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:69
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:38
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:271
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:274
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:83
   - `commitShopifySales()` [select] — app/[lang]/settings/inventory/actions.ts:804
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:178
@@ -302,8 +307,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:82
   - `GET()` [select] — app/api/mp-config/assist/route.ts:62
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:23
-  - `POST()` [select] — app/api/results/[id]/accept/route.ts:516
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:174
+  - `POST()` [select] — app/api/results/[id]/accept/route.ts:542
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:177
   - `assertTemplateNameFree()` [select] — lib/filling-templates/membership.ts:75
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:75
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:86
@@ -321,7 +326,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
 Defined in supabase/migrations/0028_ecommerce.sql:272
 References: `customers`
 - Written by:
-  - `POST()` [delete] — app/api/stripe/webhook/route.ts:171
+  - `POST()` [delete] — app/api/stripe/webhook/route.ts:207
 
 ### categories
 Defined in supabase/migrations/0028_ecommerce.sql:15
@@ -377,7 +382,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/partner`, `/results/[id]`, `/se
   - `loadMilestoneDashboard()` [select] — lib/milestones/ledger.ts:219
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:183
   - `releasedBalance()` [select] — lib/commissions/ledger.ts:182
-  - `sendReferralEarnedEmail()` [select] — lib/email/partner.ts:243
+  - `sendReferralEarnedEmail()` [select] — lib/email/partner.ts:373
 
 ### config_upload
 Defined in supabase/migrations/20260726000000_config_upload.sql:7
@@ -396,18 +401,14 @@ Changed from pages: `/settings/discounts`, `/settings/discounts/[id]`
   - `DELETE()` [delete] — app/api/shop/coupons/[id]/route.ts:69
   - `PATCH()` [update] — app/api/shop/coupons/[id]/route.ts:52
   - `POST()` [insert] — app/api/shop/coupons/route.ts:53
-  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:617
+  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:673
   - `deleteCoupon()` [delete] — app/[lang]/settings/discounts/actions.ts:14
-  - `incrementCouponUsage()` [select,update] — lib/ecommerce/discounts.ts:293
+  - `incrementCouponUsage()` [select,update] — lib/ecommerce/discounts.ts:241
   - `toggleCouponActive()` [update] — app/[lang]/settings/discounts/actions.ts:23
 - Read by:
-  - `getAdminCoupon()` [select] — lib/ecommerce/admin/coupons.ts:68
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:258
-  - `listAdminCoupons()` [select] — lib/ecommerce/admin/coupons.ts:44
-  - `readWelcomeVoucher()` [select] — lib/customer-migration/welcome-voucher.ts:66
-  - `sendWelcomeVoucherEmail()` [select] — lib/customer-migration/claim.ts:129
-  - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:89
-  - `validateCoupon()` [select] — lib/ecommerce/discounts.ts:221
+  - `getAdminCoupon()` [select] — lib/ecommerce/admin/coupons.ts:58
+  - `listAdminCoupons()` [select] — lib/ecommerce/admin/coupons.ts:35
+  - `validateCoupon()` [select] — lib/ecommerce/discounts.ts:180
 
 ### customer_addresses
 Defined in supabase/migrations/0028_ecommerce.sql:241
@@ -446,7 +447,7 @@ Changed from pages: `/settings/customers`
   - `recordAftercareDeliveryFailure()` [update] — lib/whatsapp/aftercare-notify.ts:219
 - Read by:
   - `latestAftercareSentAt()` [select] — lib/whatsapp/aftercare-notify.ts:197
-  - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:219
+  - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:220
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:165
 
 ### customers
@@ -463,11 +464,12 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:77
 - Read by:
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
-  - `POST()` [select] — app/api/results/hold/route.ts:713
+  - `POST()` [select] — app/api/results/hold/route.ts:715
   - `POST()` [select] — app/api/shop/customers/[id]/addresses/route.ts:53
   - `POST()` [select] — app/api/shop/customers/[id]/followups/route.ts:65
   - `POST()` [select] — app/api/shop/customers/[id]/notes/route.ts:45
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
+  - `confirmationPoints()` [select] — lib/email/index.ts:281
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:7
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:77
@@ -476,16 +478,15 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `getCustomers()` [select] — lib/ecommerce/customers.ts:52
   - `linkGoogleReview()` [select] — lib/crm/google-review-links.ts:64
   - `listOpenStopRequests()` [select] — lib/aftercare/preferences.ts:225
-  - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:298
-  - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:227
+  - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
+  - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
   - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:89
   - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:62
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
   - `readWhatsAppGate()` [select] — lib/aftercare/preferences.ts:109
-  - `resolveEmailCustomerId()` [select] — lib/ecommerce/discounts.ts:62
-  - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:376
-  - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:69
+  - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:382
+  - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:54
 
 ### customization_configs
 Defined in supabase/migrations/0029_ecommerce_inventory_bridge.sql:40
@@ -495,7 +496,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `handleApply()` [insert] — app/api/shop/customize/route.ts:630
   - `handleApplyBolster()` [insert] — app/api/shop/customize/route.ts:746
 - Read by:
-  - `POST()` [select] — app/api/shop/checkout/route.ts:224
+  - `POST()` [select] — app/api/shop/checkout/route.ts:244
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:168
 
 ### exchange_rates
@@ -599,9 +600,9 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:83
   - `GET()` [select] — app/api/mp-config/assist/route.ts:79
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:115
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:220
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:223
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:197
-  - `POST()` [select] — app/api/results/hold/route.ts:456
+  - `POST()` [select] — app/api/results/hold/route.ts:458
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
@@ -624,14 +625,14 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### increment_coupon_usage
 Defined in supabase/migrations/20260702130000_increment_coupon_usage.sql:2
 - Called by:
-  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:289
+  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:237
 
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
 - Read by:
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:430
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:296
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:299
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:262
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:155
   - `getAvailableFillings()` [select] — lib/shop/customization-llm.ts:54
@@ -650,7 +651,7 @@ Defined in supabase/migrations/0001_inventory.sql:30
 References: `items`
 Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/inventory`, `/settings/orders`, `/settings/orders/[id]`
 - Written by:
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:692
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:718
   - `deductInventoryForOrder()` [insert] — lib/ecommerce/inventory-deduction.ts:236
   - `insertStockIn()` [insert] — app/[lang]/settings/inventory/actions.ts:342
   - `restockOrderItem()` [insert] — lib/ecommerce/restock-order.ts:214
@@ -689,9 +690,9 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 - Read by:
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:397
   - `GET()` [select] — app/api/results/addons/route.ts:74
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:299
-  - `POST()` [select] — app/api/results/hold/route.ts:528
-  - `POST()` [select] — app/api/shop/checkout/route.ts:387
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:302
+  - `POST()` [select] — app/api/results/hold/route.ts:530
+  - `POST()` [select] — app/api/shop/checkout/route.ts:407
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:368
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:311
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:156
@@ -738,10 +739,10 @@ Changed from pages: `/settings/inventory`
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:40
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:293
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:296
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:141
-  - `POST()` [select] — app/api/results/hold/route.ts:417
+  - `POST()` [select] — app/api/results/hold/route.ts:419
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:367
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:310
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:37
@@ -867,25 +868,25 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 - Written by:
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
-  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:103
+  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:109
   - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:317
-  - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:58
-  - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:131
+  - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:68
+  - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:134
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
-  - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:34
+  - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:35
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:54
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:114
-  - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:45
-  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:301
+  - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:47
+  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:303
   - `POST()` [insert,update] — app/api/shop/orders/[id]/mp-config-link/route.ts:60
-  - `POST()` [update] — app/api/stripe/webhook/route.ts:112
+  - `POST()` [update] — app/api/stripe/webhook/route.ts:148
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:39
-  - `cascadeEnding()` [update] — lib/results/pair-ending.ts:74
+  - `cascadeEnding()` [update] — lib/results/pair-ending.ts:75
   - `createMpConfigFromCustomization()` [insert,select] — lib/ecommerce/mp-config-sync.ts:157
   - `loadMpConfigResponseDetail()` [select,update] — lib/results/admin/response-detail.ts:114
   - `reorderResult` [insert,select,update] — lib/results/reorder.ts:149
   - `rollback()` [delete] — lib/results/reorder.ts:108
-  - `runPreOrderRestockNotices()` [select,update] — lib/configurator/pre-order-restock.ts:109
+  - `runPreOrderRestockNotices()` [select,update] — lib/configurator/pre-order-restock.ts:115
 - Read by:
   - `/mp-basic` (page) [select] — app/[lang]/mp-config/page.tsx:83
   - `/mp-config` (page) [select] — app/[lang]/mp-config/page.tsx:83
@@ -898,15 +899,15 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:174
   - `POST()` [select] — app/api/mp-config/photos/route.ts:41
   - `POST()` [select] — app/api/results/[id]/reorder/route.ts:43
-  - `companionLockReason()` [select] — lib/results/pair-ending.ts:93
+  - `companionLockReason()` [select] — lib/results/pair-ending.ts:94
   - `getMpConfigMetricsBreakdown()` [select] — app/[lang]/settings/analytics/actions.ts:83
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:70
   - `loadAdminOrderMpConfigLinks()` [select] — lib/ecommerce/admin/order-detail.ts:88
-  - `loadEndingPlan()` [select] — lib/results/pair-ending.ts:45
+  - `loadEndingPlan()` [select] — lib/results/pair-ending.ts:46
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:191
   - `loadResumeFinish()` [select] — lib/results/resume-finish.ts:38
   - `loadStaffEditResult()` [select] — lib/results/staff-edit.ts:123
-  - `notifyCompanionRemoved()` [select] — lib/results/pair-ending.ts:130
+  - `notifyCompanionRemoved()` [select] — lib/results/pair-ending.ts:131
   - `readContactFacts()` [select] — lib/crm/contact-facts.ts:189
   - `readResults()` [select] — lib/crm/timeline/sources/results.ts:140
   - `revokeInvite()` [select] — lib/auth/members.ts:433
@@ -914,7 +915,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 ### mp_staff
 Defined in supabase/migrations/0025_staff_management.sql:6
 References: `admin_users`
-Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
+Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/email-templates`, `/settings/email-templates/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
 - Written by:
   - `createStaffProfile()` [insert] — lib/staff/admin.ts:133
   - `revokeInvite()` [delete,select,update] — lib/auth/members.ts:395
@@ -950,7 +951,7 @@ Defined in supabase/migrations/0035_order_emails.sql:10
 References: `orders`
 Changed from pages: `/settings/orders/[id]`
 - Written by:
-  - `dispatchOrderEmail()` [update,upsert] — lib/email/index.ts:171
+  - `dispatchOrderEmail()` [update,upsert] — lib/email/index.ts:187
 - Read by:
   - `sources/orders.ts` [select] — lib/crm/timeline/sources/orders.ts:112
 
@@ -960,13 +961,14 @@ References: `customization_configs`, `orders`, `product_variants`, `service_pric
 Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/shop/checkout`
 - Written by:
   - `POST()` [insert] — app/api/readjustments/checkout/route.ts:186
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:545
-  - `POST()` [delete,insert] — app/api/shop/checkout/route.ts:750
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:571
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:828
   - `POST()` [insert] — app/api/shop/orders/route.ts:108
+  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:955
   - `restockOrderItem()` [update] — lib/ecommerce/restock-order.ts:219
 - Read by:
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:31
-  - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:168
+  - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:169
   - `loadOrderItem()` [select] — lib/ecommerce/restock-order.ts:45
   - `loadOrderShippableLines()` [select] — lib/shipping/lines.ts:76
 
@@ -985,7 +987,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
 - Written by:
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:120
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:824
+  - `POST()` [select] — app/api/stripe/webhook/route.ts:880
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:144
 
@@ -995,7 +997,7 @@ References: `orders`
 Changed from pages: `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop/checkout`
 - Written by:
   - `GET()` [update] — app/api/shop/orders/[id]/easyship/label/route.ts:45
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:702
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:780
   - `applyShipmentToOrder()` [upsert] — lib/shipping/order-shipment.ts:137
   - `buyOrderLabel()` [update,upsert] — lib/shipping/order-shipment.ts:211
 - Read by:
@@ -1007,7 +1009,7 @@ Defined in supabase/migrations/0028_ecommerce.sql:480
 References: `orders`
 Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`
 - Written by:
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:699
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:725
   - `POST()` [insert] — app/api/shipping/easyship/webhook/route.ts:71
   - `POST()` [insert] — app/api/shop/orders/[id]/timeline/route.ts:49
   - `POST()` [insert] — app/api/shop/orders/route.ts:117
@@ -1027,15 +1029,16 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `PATCH()` [update] — app/api/shop/orders/[id]/route.ts:65
   - `POST()` [select,update] — app/api/account/orders/[orderNumber]/refund-request/route.ts:34
   - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:90
-  - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:469
+  - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:495
   - `POST()` [update] — app/api/settings/readjustments/[id]/route.ts:137
   - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:51
-  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:659
+  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:734
   - `POST()` [select,update] — app/api/shop/orders/[id]/cancel/route.ts:21
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund-request/route.ts:43
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:35
   - `POST()` [delete,insert,select] — app/api/shop/orders/route.ts:97
-  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:177
+  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:213
+  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:948
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:165
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:252
   - `fulfillOrder()` [select,update] — app/[lang]/settings/orders/actions.ts:63
@@ -1053,12 +1056,12 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [select] — app/api/shop/orders/[id]/restock/route.ts:34
   - `POST()` [select] — app/api/shop/orders/[id]/timeline/route.ts:39
   - `POST()` [select] — app/api/shop/reviews/route.ts:81
-  - `countNotMarkedDelivered()` [select] — lib/aftercare/checkup-server.ts:196
-  - `countNotMarkedDelivered()` [select] — lib/aftercare/review-request-server.ts:140
+  - `countNotMarkedDelivered()` [select] — lib/aftercare/checkup-server.ts:197
+  - `countNotMarkedDelivered()` [select] — lib/aftercare/review-request-server.ts:141
   - `emailStatus()` [select] — app/api/shipping/easyship/webhook/route.ts:121
   - `fetchConvertedRows()` [select] — lib/analytics/journey/aggregates.ts:436
-  - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:192
-  - `finalizeReadjustmentBooking()` [select] — lib/readjustment/checkout.ts:171
+  - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:151
+  - `finalizeReadjustmentBooking()` [select] — lib/readjustment/checkout.ts:172
   - `getChannelMix()` [select] — app/[lang]/settings/analytics/seo-actions.ts:134
   - `getCustomerOrderByNumber()` [select] — lib/shop/customer-orders.ts:65
   - `getCustomerOrders()` [select] — lib/shop/customer-orders.ts:48
@@ -1070,8 +1073,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:85
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:34
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:18
-  - `loadDeliveredOrders()` [select] — lib/aftercare/checkup-server.ts:178
-  - `loadDueOrders()` [select] — lib/aftercare/review-request-server.ts:118
+  - `loadDeliveredOrders()` [select] — lib/aftercare/checkup-server.ts:179
+  - `loadDueOrders()` [select] — lib/aftercare/review-request-server.ts:119
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:138
   - `loadOrderForShipping()` [select] — lib/shipping/order-shipment.ts:56
   - `loadOrderInfo()` [select] — lib/commissions/referral-rows.ts:141
@@ -1080,7 +1083,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadPlatformFacts()` [select] — lib/analytics/channel-sales.ts:450
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:206
   - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:37
-  - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:385
+  - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:391
   - `sources/orders.ts` [select] — lib/crm/timeline/sources/orders.ts:67
   - `updateCustomerStats()` [select] — lib/ecommerce/customers.ts:67
 
@@ -1089,7 +1092,7 @@ Defined in supabase/migrations/20260728070000_partner_emails.sql:18
 References: `partners`
 Changed from pages: `/mp-basic`, `/mp-config`, `/partner`, `/results/[id]`, `/settings/partner-applications`, `/settings/partner-commissions`
 - Written by:
-  - `dispatchPartnerEmail()` [update,upsert] — lib/email/partner.ts:50
+  - `dispatchPartnerEmail()` [update,upsert] — lib/email/partner.ts:52
 
 ### partner_milestones
 Defined in supabase/migrations/20260728030000_milestones.sql:33
@@ -1125,18 +1128,18 @@ Defined in supabase/migrations/20260728000000_partner_users.sql:10
 References: `partners`
 Changed from pages: `/partner`, `/partner/apply`, `/partner/settings`, `/settings/partner-applications`, `/shop/checkout`
 - Written by:
-  - `POST()` [select,update] — app/api/partner/backup-email/route.ts:41
+  - `POST()` [select,update] — app/api/partner/backup-email/route.ts:42
   - `POST()` [select,update] — app/api/partner/backup-email/verify/route.ts:30
-  - `approveApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:72
+  - `approveApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:79
   - `loadPartnerRow()` [select,update] — lib/auth/partner.ts:44
   - `reacceptAgreement()` [select,update] — app/[lang]/partner/apply/actions.ts:81
-  - `rejectApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:153
+  - `rejectApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:160
   - `submitApplication()` [insert,select] — app/[lang]/partner/apply/actions.ts:47
 - Read by:
   - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:30
   - `/settings/partner-applications` (page) [select] — app/[lang]/settings/partner-applications/page.tsx:55
   - `notifyPartnerWhatsApp()` [select] — lib/whatsapp/partner-notify.ts:89
-  - `partnerRecipientEmail()` [select] — lib/email/partner.ts:101
+  - `partnerRecipientEmail()` [select] — lib/email/partner.ts:103
 
 ### partner_whatsapp
 Defined in supabase/migrations/20260802000000_partner_notify_whatsapp.sql:17
@@ -1158,7 +1161,7 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `PATCH()` [update] — app/api/settings/appointments/locations/route.ts:52
   - `POST()` [insert,select] — app/api/partners/route.ts:50
   - `PUT()` [update] — app/api/partners/reorder/route.ts:23
-  - `approveApplication()` [insert,select] — app/[lang]/settings/partner-applications/actions.ts:96
+  - `approveApplication()` [insert,select] — app/[lang]/settings/partner-applications/actions.ts:103
   - `ensureReferralCode()` [select,update] — lib/referrals/index.ts:76
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:374
   - `upsertSelfPurchaseRate()` [update] — app/[lang]/settings/partner-commissions/self-purchase-actions.ts:37
@@ -1207,7 +1210,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:59
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:69
-  - `POST()` [select] — app/api/shop/checkout/route.ts:314
+  - `POST()` [select] — app/api/shop/checkout/route.ts:334
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1170
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:194
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:161
@@ -1220,7 +1223,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:337
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:177
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:195
-  - `loadPillows()` [select] — lib/aftercare/review-request-server.ts:166
+  - `loadPillows()` [select] — lib/aftercare/review-request-server.ts:167
   - `loadPreOrderTriggerAtHold()` [select] — lib/configurator/pre-order-persist.ts:37
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:239
   - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:472
@@ -1324,7 +1327,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:49
   - `GET()` [select] — app/api/shop/products/[id]/variants/route.ts:35
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:84
-  - `POST()` [select] — app/api/shop/checkout/route.ts:113
+  - `POST()` [select] — app/api/shop/checkout/route.ts:133
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:301
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:115
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:938
@@ -1358,7 +1361,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `syncProductToStripe()` [select,update] — lib/stripe/sync.ts:43
 - Read by:
   - `PATCH()` [select] — app/api/shop/products/[id]/variants/[variantId]/route.ts:43
-  - `POST()` [select] — app/api/shop/coupons/validate/route.ts:41
+  - `POST()` [select] — app/api/shop/coupons/validate/route.ts:40
   - `POST()` [select] — app/api/shop/products/[id]/variants/route.ts:60
   - `getAdminProduct()` [select] — lib/ecommerce/admin/products.ts:92
   - `getComposedProductImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:959
@@ -1377,18 +1380,23 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `setComposedProductImage()` [select] — app/[lang]/settings/inventory/actions.ts:945
   - `syncAllAutoGeneratedProductPrices()` [select] — lib/shop/price-sync.ts:284
 
+### adjust_points
+Defined in supabase/migrations/20261021120000_points_ledger.sql:261
+- Called by:
+  - `adjustPoints()` — lib/points/server.ts:142
+
 ### admin_customer_migration_summary
-Defined in supabase/migrations/20261020200700_customer_overview_campaign_sends.sql:170
+Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
 - Read by:
-  - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:109
+  - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261020200700_customer_overview_campaign_sends.sql:33
+Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:153
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:253
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
   - `resolveSegment()` [select] — lib/crm/segments.ts:244
 
@@ -1403,10 +1411,10 @@ Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:1
 - Called by:
   - `loadOrdersDashboard()` — lib/ecommerce/admin/orders-dashboard.ts:62
 
-### admin_welcome_voucher_summary
-Defined in supabase/migrations/20261020121100_welcome_voucher_state.sql:50
-- Read by:
-  - `getWelcomeVoucherSummary()` [select] — lib/customer-migration/welcome-voucher.ts:181
+### claim_bonus_window_end
+Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:29
+- Called by:
+  - `readClaimBonusView()` — lib/points/claim-bonus.ts:26
 
 ### claim_campaign_send
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:184
@@ -1418,10 +1426,20 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
 - Called by:
   - `claimCustomerEmail()` — lib/email/customer-emails.ts:47
 
-### claim_migrated_customer
-Defined in supabase/migrations/20261020112100_welcome_back_voucher.sql:77
+### claim_marketing_campaign_send
+Defined in supabase/migrations/20261021100000_email_campaigns.sql:194
 - Called by:
-  - `claimMigratedCustomer()` — lib/customer-migration/claim.ts:75
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:246
+
+### claim_migrated_customer
+Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
+- Called by:
+  - `claimMigratedCustomer()` — lib/customer-migration/claim.ts:79
+
+### clawback_points_for_refund
+Defined in supabase/migrations/20261021130000_points_earning.sql:110
+- Called by:
+  - `clawbackPointsForRefund()` — lib/points/earn.ts:79
 
 ### customer_campaign_candidates
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:364
@@ -1430,9 +1448,9 @@ Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:364
 
 ### customer_campaign_sends
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:52
-References: `customers`
+References: `customers`, `email_campaigns`
 - Read by:
-  - `campaign-sends.ts` [select] — lib/crm/timeline/sources/campaign-sends.ts:42
+  - `campaign-sends.ts` [select] — lib/crm/timeline/sources/campaign-sends.ts:51
 
 ### customer_campaign_wave_stats
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:392
@@ -1460,8 +1478,9 @@ Changed from pages: `/account`, `/account/addresses`, `/account/orders`, `/accou
   - `markCustomerEmailFailed()` [update] — lib/email/customer-emails.ts:78
   - `markCustomerEmailSent()` [update] — lib/email/customer-emails.ts:62
 - Read by:
-  - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:212
-  - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:359
+  - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:213
+  - `readLedger()` [select] — lib/points/expiry-server.ts:129
+  - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:365
 
 ### customer_followups
 Defined in supabase/migrations/20261020132000_customer_followups.sql:27
@@ -1514,18 +1533,18 @@ References: `customers`, `mp_staff`
 ### customer_purchase_lines
 Defined in supabase/migrations/20261020122000_customer_purchase_lines.sql:34
 - Read by:
-  - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:157
+  - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:158
 
 ### customer_review_requests
 Defined in supabase/migrations/20261020124000_customer_review_requests.sql:36
 References: `customers`, `orders`
 Changed from pages: `/settings/customers`
 - Written by:
-  - `askOne()` [upsert] — lib/aftercare/review-request-server.ts:286
-  - `retryFailedEmails()` [select,update] — lib/aftercare/review-request-server.ts:375
+  - `askOne()` [upsert] — lib/aftercare/review-request-server.ts:292
+  - `retryFailedEmails()` [select,update] — lib/aftercare/review-request-server.ts:381
 - Read by:
   - `countReviewRequests()` [select] — lib/aftercare/review-request-counts.ts:33
-  - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:213
+  - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:214
   - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:327
   - `review-requests.ts` [select] — lib/crm/timeline/sources/review-requests.ts:36
 
@@ -1546,6 +1565,42 @@ Changed from pages: `/settings/customers`
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:132
 - Called by:
   - `DELETE()` — app/api/landing-sections/publish/route.ts:90
+
+### email_campaign_stats
+Defined in supabase/migrations/20261021100000_email_campaigns.sql:297
+- Read by:
+  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:97
+  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:76
+
+### email_campaigns
+Defined in supabase/migrations/20261021100000_email_campaigns.sql:42
+References: `customer_segments`, `mp_staff`
+Changed from pages: `/settings/campaigns/[id]`, `/settings/campaigns/new`
+- Written by:
+  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:128
+  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:108
+  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:138
+  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:123
+- Read by:
+  - `getCampaign()` [select] — lib/email-campaigns/store.ts:91
+  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:75
+
+### email_template_copy
+Defined in supabase/migrations/20261021110000_email_template_copy.sql:23
+References: `mp_staff`
+Changed from pages: `/settings/email-templates/[id]`
+- Written by:
+  - `resetCopy()` [delete] — lib/email/copy-admin.ts:102
+  - `writeCopy()` [upsert] — lib/email/copy-admin.ts:93
+- Read by:
+  - `readAllSavedCopy()` [select] — lib/email/copy-admin.ts:69
+  - `readSavedCopy()` [select] — lib/email/copy-admin.ts:77
+  - `readSavedEmailCopy()` [select] — lib/email/copy-store.ts:36
+
+### expire_due_points
+Defined in supabase/migrations/20261021170000_points_expiry.sql:178
+- Called by:
+  - `runPointsExpiry()` — lib/points/expiry-server.ts:169
 
 ### finish_campaign_send
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:265
@@ -1574,6 +1629,11 @@ Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.
 - Called by:
   - `applyShopifyImportChunk()` — app/[lang]/settings/customers/import/actions.ts:128
 
+### is_partner_customer
+Defined in supabase/migrations/20261021120000_points_ledger.sql:143
+- Called by:
+  - `isPartnerCustomer()` — lib/points/server.ts:129
+
 ### landing_page_publishes
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:34
 - Read by:
@@ -1584,12 +1644,18 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
 - Called by:
   - `linkGoogleReview()` — lib/crm/google-review-links.ts:52
 
+### marketing_campaign_candidates
+Defined in supabase/migrations/20261021100000_email_campaigns.sql:265
+- Read by:
+  - `readPaged()` [select] — lib/email-campaigns/store.ts:160
+
 ### migrated_customers
 Defined in supabase/migrations/20261020100000_customer_import.sql:52
 References: `customer_addresses`, `customer_import_batches`, `customers`
 - Read by:
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:250
-  - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:52
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:217
+  - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:25
+  - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:38
 
 ### mint_claim_link
 Defined in supabase/migrations/20261020121000_customer_claim_links.sql:66
@@ -1600,6 +1666,32 @@ Defined in supabase/migrations/20261020121000_customer_claim_links.sql:66
 Defined in supabase/migrations/20261020121000_customer_claim_links.sql:82
 - Called by:
   - `openClaimLink()` — lib/customer-migration/claim-link.ts:147
+
+### points_balance
+Defined in supabase/migrations/20261021170000_points_expiry.sql:93
+- Called by:
+  - `readPointsBalance()` — lib/points/server.ts:67
+
+### points_expiry_reminder_candidates
+Defined in supabase/migrations/20261021170000_points_expiry.sql:222
+- Called by:
+  - `readCandidates()` — lib/points/expiry-server.ts:104
+
+### points_ledger
+Defined in supabase/migrations/20261021120000_points_ledger.sql:79
+References: `customers`, `mp_staff`, `orders`
+- Read by:
+  - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:24
+  - `readOrderPoints()` [select] — lib/points/order.ts:45
+  - `readPointsHistory()` [select] — lib/points/server.ts:92
+  - `sendClaimBonusEmail()` [select] — lib/customer-migration/claim.ts:105
+  - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:75
+
+### points_order_candidates
+Defined in supabase/migrations/20261021120000_points_ledger.sql:177
+- Read by:
+  - `readOrderPoints()` [select] — lib/points/order.ts:46
+  - `readPendingOrders()` [select] — lib/points/server.ts:113
 
 ### preview_shopify_import_undo
 Defined in supabase/migrations/20261020110000_customer_import_apply.sql:497
@@ -1630,6 +1722,26 @@ Defined in supabase/migrations/20261020124000_customer_review_requests.sql:65
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:283
 - Called by:
   - `rejectGoogleReviewMatch()` — lib/crm/google-review-links.ts:103
+
+### release_earned_points
+Defined in supabase/migrations/20261021130000_points_earning.sql:46
+- Called by:
+  - `runPointsEarn()` — lib/points/earn.ts:55
+
+### release_points
+Defined in supabase/migrations/20261021140000_points_spending.sql:149
+- Called by:
+  - `releasePoints()` — lib/points/spend.ts:189
+
+### release_stale_point_reservations
+Defined in supabase/migrations/20261021140000_points_spending.sql:191
+- Called by:
+  - `releaseStalePointReservations()` — lib/points/spend.ts:211
+
+### reserve_points
+Defined in supabase/migrations/20261021140000_points_spending.sql:66
+- Called by:
+  - `reservePoints()` — lib/points/spend.ts:163
 
 ### restore_landing_snapshot
 Defined in supabase/migrations/20261002090000_easyship_shipping.sql:147
@@ -1685,19 +1797,19 @@ Changed from pages: `/appointments`, `/settings/appointments`
   - `POST()` [insert,update] — app/api/readjustments/book/route.ts:66
   - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:77
   - `POST()` [select,update] — app/api/settings/readjustments/[id]/route.ts:115
-  - `expireReadjustmentBooking()` [update] — lib/readjustment/checkout.ts:270
-  - `finalizeReadjustmentBooking()` [select,update] — lib/readjustment/checkout.ts:160
-  - `markBooked()` [update] — lib/readjustment/checkout.ts:258
+  - `expireReadjustmentBooking()` [update] — lib/readjustment/checkout.ts:276
+  - `finalizeReadjustmentBooking()` [select,update] — lib/readjustment/checkout.ts:161
+  - `markBooked()` [update] — lib/readjustment/checkout.ts:264
   - `markReadjustmentCancelledByEvent()` [update] — lib/readjustment/lifecycle.ts:20
   - `moveReadjustmentByEvent()` [update] — lib/readjustment/lifecycle.ts:37
 - Read by:
-  - `/account/orders/[orderNumber]` (page) [select] — app/[lang]/account/orders/[orderNumber]/page.tsx:63
+  - `/account/orders/[orderNumber]` (page) [select] — app/[lang]/account/orders/[orderNumber]/page.tsx:64
   - `/appointments/confirmed` (page) [select] — app/[lang]/appointments/confirmed/page.tsx:46
   - `countCheckupSends()` [select] — lib/aftercare/checkup-counts.ts:66
   - `liveSlotHolds()` [select] — lib/appointments/book-slot.ts:29
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:26
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:213
-  - `loadRecentReadjustments()` [select] — lib/aftercare/checkup-server.ts:241
+  - `loadRecentReadjustments()` [select] — lib/aftercare/checkup-server.ts:242
   - `readContactFacts()` [select] — lib/crm/contact-facts.ts:181
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:53
 
@@ -1706,8 +1818,8 @@ Defined in supabase/migrations/20260719000002_result_filling_placements.sql:16
 References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
-  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:499
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1048
+  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:502
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1050
   - `reorderResult` [insert,select] — lib/results/reorder.ts:221
 - Read by:
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:136
@@ -1717,9 +1829,9 @@ Defined in supabase/migrations/20260719000002_result_filling_placements.sql:6
 References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
-  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:499
+  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:502
   - `POST()` [delete,insert] — app/api/results/[id]/reconfigure/route.ts:285
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1065
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1067
   - `reorderResult` [insert,select] — lib/results/reorder.ts:221
 - Read by:
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:64
@@ -1732,7 +1844,7 @@ Defined in supabase/migrations/20260723120000_rma_returns_schema.sql:66
 References: `rma_requests`
 Changed from pages: `/account/orders/[orderNumber]`, `/settings/rma/[id]`
 - Written by:
-  - `dispatchRmaEmail()` [update,upsert] — lib/email/rma.ts:241
+  - `dispatchRmaEmail()` [update,upsert] — lib/email/rma.ts:311
 
 ### rma_request_items
 Defined in supabase/migrations/20260723120000_rma_returns_schema.sql:43
@@ -1828,11 +1940,11 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `PATCH()` [update] — app/api/shop/shipping/[id]/route.ts:35
   - `POST()` [insert] — app/api/shop/shipping/route.ts:57
 - Read by:
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:412
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:415
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:96
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:144
-  - `POST()` [select] — app/api/results/hold/route.ts:531
-  - `POST()` [select] — app/api/shop/checkout/route.ts:531
+  - `POST()` [select] — app/api/results/hold/route.ts:533
+  - `POST()` [select] — app/api/shop/checkout/route.ts:548
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:205
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
   - `getAllShippingMethods()` [select] — lib/ecommerce/shipping.ts:20
@@ -1951,12 +2063,12 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `PUT()` [select,upsert] — app/api/settings/appointments/route.ts:83
   - `PUT()` [upsert] — app/api/settings/customers/aftercare/route.ts:70
   - `PUT()` [upsert] — app/api/settings/customers/telegram-updates/route.ts:90
-  - `PUT()` [upsert] — app/api/settings/discounts/welcome-voucher/route.ts:83
   - `PUT()` [delete,upsert] — app/api/site-settings/route.ts:108
   - `applyPublicMigration()` [upsert] — lib/media/migrate-public-apply.ts:170
   - `claimTelegramPeriod()` [insert,select,update] — lib/crm/telegram-updates-server.ts:74
   - `runReplaceEverywhere()` [select,upsert] — lib/media/replace.ts:369
   - `saveDiscoverySourceCatalog()` [upsert] — lib/discovery-source/index.ts:54
+  - `savePointsSettings()` [delete,upsert] — lib/points/server.ts:57
   - `saveServices()` [upsert] — app/[lang]/settings/costings/save/route.ts:301
 - Read by:
   - `GET()` [select] — app/api/appointments/slots/route.ts:63
@@ -1964,17 +2076,17 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `POST()` [select] — app/api/appointments/book/route.ts:68
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:927
   - `getSiteSettings()` [select] — lib/site-settings.ts:13
-  - `loadCheckupSettings()` [select] — lib/aftercare/checkup-server.ts:125
+  - `loadCheckupSettings()` [select] — lib/aftercare/checkup-server.ts:126
   - `loadDimensionOverrides()` [select] — lib/spatial-fillings/dimension-overrides.server.ts:29
   - `loadPayload()` [select] — app/[lang]/settings/product-builder/dimensions/route.ts:39
   - `loadPayload()` [select] — app/[lang]/settings/product-builder/soft-body/route.ts:39
   - `loadPublicMigrationContext()` [select] — lib/media/migrate-public-apply.ts:42
   - `loadReadjustmentPolicy()` [select] — lib/pricing/service-prices.ts:111
-  - `loadReviewRequestSettings()` [select] — lib/aftercare/review-request-server.ts:101
+  - `loadReviewRequestSettings()` [select] — lib/aftercare/review-request-server.ts:102
   - `readAftercareSettings()` [select] — lib/aftercare/card-server.ts:26
+  - `readPointsSettings()` [select] — lib/points/server.ts:48
   - `readServiceNoticeEnabled()` [select] — lib/customer-migration/campaign-ledger.ts:121
   - `readTelegramUpdates()` [select] — lib/crm/telegram-updates-server.ts:40
-  - `readWelcomeVoucherTerms()` [select] — lib/customer-migration/welcome-voucher-terms.ts:184
   - `settings-store.ts` [select] — lib/appointments/settings-store.ts:17
   - `site-settings/route.ts` [select] — app/api/site-settings/route.ts:30
   - `sla-settings/route.ts` [select] — app/api/results/sla-settings/route.ts:56
@@ -1982,7 +2094,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
 ### stripe_webhook_failures
 Defined in supabase/migrations/0033_stripe_webhook_failures.sql:8
 - Written by:
-  - `recordWebhookFailure()` [upsert] — app/api/stripe/webhook/route.ts:46
+  - `recordWebhookFailure()` [upsert] — app/api/stripe/webhook/route.ts:82
 
 ### tax_rates
 Defined in supabase/migrations/0036_tax_rates.sql:16
@@ -2013,7 +2125,7 @@ Changed from pages: `/settings/users`
 Defined in supabase/migrations/20260630120000_variant_stock_bolster.sql:10
 - Read by:
   - `GET()` [select] — app/api/shop/stock/route.ts:32
-  - `POST()` [select] — app/api/shop/checkout/route.ts:181
+  - `POST()` [select] — app/api/shop/checkout/route.ts:201
   - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:18
 
 ## Pages
@@ -2025,22 +2137,22 @@ app/[lang]/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/service-fees [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
 - Loads: `getFeaturedProducts()`, `getLandingSections()`, `getPageFaq()`, `loadLandingPageData()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `mp_staff`, `orders`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `coupons`, `landing_sections`, `pillow_products`, `product_prices`, `product_reviews`, `products`, `service_prices`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `coupons`, `landing_sections`, `pillow_products`, `points_ledger`, `product_prices`, `product_reviews`, `products`, `service_prices`, `site_settings`, `variant_stock`
 
 ### /account
 app/[lang]/account/page.tsx
 - Server actions: `setMyAftercarePreference()`, `setMyMarketingEmail()`
 - Endpoints: `/auth/signout`
-- Loads: `linkCustomerToAuthUser()`, `readMarketingEmailState()`, `readProfileAftercare()`, `readWelcomeVoucher()`
+- Loads: `isPartnerCustomer()`, `linkCustomerToAuthUser()`, `readMarketingEmailState()`, `readPendingOrders()`, `readPointsBalance()`, `readPointsSettings()`, `readProfileAftercare()`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `coupons`
+- Reads, through the same: `email_template_copy`, `points_ledger`, `points_order_candidates`, `site_settings`
 
 ### /account/addresses
 app/[lang]/account/addresses/page.tsx
 - Server actions: `createAddress()`, `deleteAddress()`, `setDefaultAddress()`, `updateAddress()`
 - Loads: `getCustomerAddresses()`, `linkCustomerToAuthUser()`
 - Changes, through its actions, endpoints and their calls: `customer_addresses`, `customer_emails`, `customers`, `orders`
-- Reads, through the same: `coupons`
+- Reads, through the same: `email_template_copy`, `points_ledger`
 
 ### /account/login
 app/[lang]/account/login/page.tsx
@@ -2052,30 +2164,30 @@ app/[lang]/account/login/page.tsx
 app/[lang]/account/orders/page.tsx
 - Loads: `getCustomerOrders()`, `linkCustomerToAuthUser()`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `coupons`
+- Reads, through the same: `email_template_copy`, `points_ledger`
 
 ### /account/orders/[orderNumber]
 app/[lang]/account/orders/[orderNumber]/page.tsx
 - Endpoints: `/api/account/orders/[orderNumber]/refund-request [POST]`, `/api/account/orders/[orderNumber]/rma [POST]`
-- Loads: `getCustomerOrderByNumber()`, `getSiteSettings()`, `linkCustomerToAuthUser()`, `loadReadjustmentContext()`, `openReturnedQtyByOrder()`
+- Loads: `getCustomerOrderByNumber()`, `getSiteSettings()`, `linkCustomerToAuthUser()`, `loadReadjustmentContext()`, `openReturnedQtyByOrder()`, `readOrderPoints()`
 - Reads: `readjustment_bookings`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `order_timeline`, `orders`, `rma_emails`, `rma_request_items`, `rma_requests`, `rma_status_events`
-- Reads, through the same: `coupons`, `pillow_products`, `readjustment_bookings`, `service_prices`, `site_settings`
+- Reads, through the same: `email_template_copy`, `pillow_products`, `points_ledger`, `points_order_candidates`, `readjustment_bookings`, `service_prices`, `site_settings`
 
 ### /account/welcome
 app/[lang]/account/welcome/page.tsx
 - Endpoints: `/auth/signout`
-- Loads: `linkCustomerToAuthUser()`, `openClaimLink()`, `readWelcomeVoucher()`
+- Loads: `linkCustomerToAuthUser()`, `openClaimLink()`, `readClaimBonusView()`
 - Reads: `customer_addresses`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `coupons`, `customer_addresses`
+- Reads, through the same: `customer_addresses`, `email_template_copy`, `migrated_customers`, `points_ledger`, `site_settings`
 
 ### /appointments
 app/[lang]/appointments/page.tsx
 - Endpoints: `/api/appointments/book [POST]`, `/api/appointments/ics`, `/api/appointments/slots [GET]`, `/api/locations [GET]`, `/api/readjustments/book`, `/api/readjustments/checkout`
 - Loads: `linkCustomerToAuthUser()`, `loadReadjustmentContext()`, `loadServicePrices()`
 - Changes, through its actions, endpoints and their calls: `appointment_reminders`, `customer_emails`, `customers`, `order_items`, `orders`, `readjustment_bookings`
-- Reads, through the same: `coupons`, `partners`, `pillow_products`, `service_prices`, `site_settings`, `tax_rates`
+- Reads, through the same: `email_template_copy`, `partners`, `pillow_products`, `points_ledger`, `service_prices`, `site_settings`, `tax_rates`
 
 ### /appointments/confirmed
 app/[lang]/appointments/confirmed/page.tsx
@@ -2083,7 +2195,7 @@ app/[lang]/appointments/confirmed/page.tsx
 - Loads: `linkCustomerToAuthUser()`
 - Reads: `readjustment_bookings`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `coupons`, `readjustment_bookings`
+- Reads, through the same: `email_template_copy`, `points_ledger`, `readjustment_bookings`
 
 ### /blog
 app/[lang]/blog/page.tsx
@@ -2109,7 +2221,7 @@ app/[lang]/mbolster-config/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/config-uploads [DELETE,GET,POST]`, `/api/discovery-source [GET]`, `/api/mp-config/assist [GET,POST]`, `/api/partner/referral/validate [GET]`, `/api/results/addons [GET]`, `/api/results/hold [POST]`, `/api/service-fees [GET]`, `/api/shop/customize [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
 - Loads: `getAdminContext`, `getConfiguratorOfferRange()`, `getPageFaq()`, `getPartnerByCode()`, `getWorkingAs()`, `loadServicePrices()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `config_upload`, `customer_addresses`, `customers`, `customization_configs`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `filling_template_placements`, `mp_config_responses`, `mp_staff`, `orders`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `analytics_visitors`, `bolster_bom_lines`, `bolster_buildable`, `bom_lines`, `collection_products`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `media_assets`, `neck_support_dimension_overrides`, `partners`, `product_buildable`, `product_prices`, `product_variants`, `products`, `service_prices`, `site_settings`, `tax_rates`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `analytics_visitors`, `bolster_bom_lines`, `bolster_buildable`, `bom_lines`, `collection_products`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `media_assets`, `neck_support_dimension_overrides`, `partners`, `points_ledger`, `product_buildable`, `product_prices`, `product_variants`, `products`, `service_prices`, `site_settings`, `tax_rates`, `variant_stock`
 
 ### /mp-basic
 app/[lang]/mp-basic/page.tsx
@@ -2117,7 +2229,7 @@ app/[lang]/mp-basic/page.tsx
 - Loads: `getAdminContext`, `getConfiguratorOfferRange()`, `getPageFaq()`, `getPartnerByCode()`, `getStaffByAssistCode()`, `getWorkingAs()`, `loadResumeFinish()`, `loadServicePrices()`, `loadStaffEditResult()`
 - Reads: `mp_config_responses`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `commission_schemes`, `commissions`, `config_upload`, `customer_addresses`, `customers`, `customization_configs`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `filling_template_placements`, `inventory_transactions`, `milestone_bonuses`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `analytics_visitors`, `bolster_bom_lines`, `bolster_buildable`, `bom_lines`, `bom_template_lines`, `collection_products`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `media_assets`, `milestone_rungs`, `neck_support_dimension_overrides`, `partner_users`, `partners`, `product_buildable`, `product_prices`, `product_variants`, `products`, `service_prices`, `site_settings`, `tax_rates`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `analytics_visitors`, `bolster_bom_lines`, `bolster_buildable`, `bom_lines`, `bom_template_lines`, `collection_products`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `media_assets`, `milestone_rungs`, `neck_support_dimension_overrides`, `partner_users`, `partners`, `points_ledger`, `product_buildable`, `product_prices`, `product_variants`, `products`, `service_prices`, `site_settings`, `tax_rates`, `variant_stock`
 
 ### /mp-config
 app/[lang]/mp-config/page.tsx
@@ -2125,13 +2237,13 @@ app/[lang]/mp-config/page.tsx
 - Loads: `getAdminContext`, `getConfiguratorOfferRange()`, `getPageFaq()`, `getPartnerByCode()`, `getStaffByAssistCode()`, `getWorkingAs()`, `loadResumeFinish()`, `loadServicePrices()`, `loadStaffEditResult()`
 - Reads: `mp_config_responses`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `commission_schemes`, `commissions`, `config_upload`, `customer_addresses`, `customers`, `customization_configs`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `filling_template_placements`, `inventory_transactions`, `milestone_bonuses`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `analytics_visitors`, `bolster_bom_lines`, `bolster_buildable`, `bom_lines`, `bom_template_lines`, `collection_products`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `media_assets`, `milestone_rungs`, `neck_support_dimension_overrides`, `partner_users`, `partners`, `product_buildable`, `product_prices`, `product_variants`, `products`, `service_prices`, `site_settings`, `tax_rates`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `analytics_visitors`, `bolster_bom_lines`, `bolster_buildable`, `bom_lines`, `bom_template_lines`, `collection_products`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `media_assets`, `milestone_rungs`, `neck_support_dimension_overrides`, `partner_users`, `partners`, `points_ledger`, `product_buildable`, `product_prices`, `product_variants`, `products`, `service_prices`, `site_settings`, `tax_rates`, `variant_stock`
 
 ### /mp-maker
 app/[lang]/mp-maker/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/mp-config/responses/[id] [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/customize [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `customization_configs`, `exchange_rates`, `mp_config_responses`, `mp_staff`, `orders`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_buildable`, `bolster_template_placements`, `bom_lines`, `bom_template_keys`, `bom_templates`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `filling_template_placements`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `neck_support_dimension_overrides`, `pillow_products`, `product_buildable`, `product_prices`, `product_variants`, `products`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_buildable`, `bolster_template_placements`, `bom_lines`, `bom_template_keys`, `bom_templates`, `coupons`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `filling_template_placements`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `neck_support_dimension_overrides`, `pillow_products`, `points_ledger`, `product_buildable`, `product_prices`, `product_variants`, `products`, `site_settings`
 
 ### /our-partners
 app/[lang]/our-partners/page.tsx
@@ -2143,7 +2255,7 @@ app/[lang]/page-builder-preview/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/service-fees [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
 - Loads: `getFeaturedProducts()`, `getPageFaq()`, `listLandingSectionRows()`, `loadLandingPageData()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `mp_staff`, `orders`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `coupons`, `landing_sections`, `pillow_products`, `product_prices`, `product_reviews`, `products`, `service_prices`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `coupons`, `landing_sections`, `pillow_products`, `points_ledger`, `product_prices`, `product_reviews`, `products`, `service_prices`, `site_settings`, `variant_stock`
 
 ### /partner
 app/[lang]/partner/page.tsx
@@ -2151,7 +2263,7 @@ app/[lang]/partner/page.tsx
 - Loads: `ensureReferralCode()`, `getAgreementMarkdown()`, `loadMilestoneDashboard()`, `loadPartnerMoneyReferrals()`, `loadSelfPurchaseAllowance()`, `releasedBalance()`, `requirePartnerPage()`
 - Reads: `partner_payouts`
 - Changes, through its actions, endpoints and their calls: `commissions`, `partner_emails`, `partner_milestones`, `partner_users`, `partner_whatsapp`, `partners`
-- Reads, through the same: `milestone_bonuses`, `milestone_rungs`, `mp_config_responses`, `orders`, `partner_payouts`, `partners_page`
+- Reads, through the same: `email_template_copy`, `milestone_bonuses`, `milestone_rungs`, `mp_config_responses`, `orders`, `partner_payouts`, `partners_page`
 
 ### /partner/apply
 app/[lang]/partner/apply/page.tsx
@@ -2166,19 +2278,25 @@ app/[lang]/partner/settings/page.tsx
 - Loads: `requireActivePartnerPage()`
 - Reads: `partner_payment_details`, `partner_users`, `partners`
 - Changes, through its actions, endpoints and their calls: `partner_payment_details`, `partner_users`, `partners`
+- Reads, through the same: `email_template_copy`
+
+### /points
+app/[lang]/points/page.tsx
+- Loads: `readPointsSettings()`
+- Reads, through the same: `site_settings`
 
 ### /results
 app/[lang]/results/page.tsx
 - Loads: `linkCustomerToAuthUser()`
 - Reads: `mp_config_responses`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `coupons`, `mp_config_responses`
+- Reads, through the same: `email_template_copy`, `mp_config_responses`, `points_ledger`
 
 ### /results/[id]
 app/[lang]/results/[id]/page.tsx
 - Endpoints: `/api/results [GET]`, `/api/results/[id] [GET]`, `/api/results/[id]/accept [POST]`, `/api/results/[id]/decline [POST]`, `/api/results/[id]/reorder [POST]`
 - Changes, through its actions, endpoints and their calls: `commission_schemes`, `commissions`, `customers`, `inventory_transactions`, `milestone_bonuses`, `mp_config_responses`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `result_bolster_filling_placements`, `result_filling_placements`
-- Reads, through the same: `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `bom_templates`, `config_upload`, `coupons`, `inventory_balances`, `item_prices`, `items`, `milestone_rungs`, `partner_users`, `partners`, `pillow_products`, `product_prices`, `service_prices`, `shipping_methods`, `tax_rates`
+- Reads, through the same: `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `bom_templates`, `config_upload`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `milestone_rungs`, `partner_users`, `partners`, `pillow_products`, `points_ledger`, `product_prices`, `service_prices`, `shipping_methods`, `tax_rates`
 
 ### /settings/analytics
 app/[lang]/settings/analytics/page.tsx
@@ -2216,6 +2334,26 @@ app/[lang]/settings/blogs/[id]/page.tsx
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `blog_posts`, `media_assets`, `media_folders`, `mp_staff`
 - Reads, through the same: `admin_roles`, `admin_users`, `categories`, `item_overlay_mappings`, `items`, `landing_sections`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
 
+### /settings/campaigns
+app/[lang]/settings/campaigns/page.tsx
+- Loads: `listCampaigns()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
+- Reads, through the same: `admin_roles`, `admin_users`, `email_campaign_stats`, `email_campaigns`
+
+### /settings/campaigns/[id]
+app/[lang]/settings/campaigns/[id]/page.tsx
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `marketing_campaign_candidates`, `site_settings`
+
+### /settings/campaigns/new
+app/[lang]/settings/campaigns/new/page.tsx
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Loads: `listSegments()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_wave_stats`, `customer_segments`, `marketing_campaign_candidates`, `site_settings`
+
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx
 - Server actions: `syncShopifyPricesOnly()`
@@ -2236,14 +2374,14 @@ app/[lang]/settings/customers/page.tsx
 - Endpoints: `/api/admin/working-as [POST]`, `/api/settings/customers/aftercare [GET,PUT]`, `/api/settings/customers/followups [GET]`, `/api/settings/customers/google-reviews [GET]`, `/api/settings/customers/segments`, `/api/settings/customers/telegram-updates [GET,PUT]`, `/api/settings/customers/telegram-updates/test [POST]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id]/followups/[followupId]`
 - Loads: `getMigrationSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_emails`, `customer_followups`, `customer_review_requests`, `customer_segments`, `customer_whatsapp`, `customers`, `mp_staff`, `site_settings`
-- Reads, through the same: `admin_customer_migration_summary`, `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
+- Reads, through the same: `admin_customer_migration_summary`, `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
 
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
-- Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
+- Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
 - Loads: `getAdminCustomer()`, `getMigratedCustomer()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `mp_staff`, `order_items`, `order_timeline`, `orders`
-- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `coupons`, `customer_consent_events`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `migrated_customers`, `mp_config_responses`, `order_margins`, `product_reviews`, `readjustment_bookings`, `whatsapp_inbound`
+- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `customer_consent_events`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `migrated_customers`, `mp_config_responses`, `order_margins`, `points_ledger`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 
 ### /settings/customers/import
 app/[lang]/settings/customers/import/page.tsx
@@ -2254,10 +2392,10 @@ app/[lang]/settings/customers/import/page.tsx
 
 ### /settings/discounts
 app/[lang]/settings/discounts/page.tsx
-- Endpoints: `/api/settings/discounts/welcome-voucher [GET,PUT]`, `/api/shop/coupons`
-- Loads: `getWelcomeVoucherSummary()`, `listAdminCoupons()`, `readWelcomeVoucherTerms()`, `requireAdminPage()`
+- Endpoints: `/api/settings/discounts/points [GET,PUT]`, `/api/shop/coupons [GET]`
+- Loads: `listAdminCoupons()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `coupons`, `mp_staff`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `admin_welcome_voucher_summary`
+- Reads, through the same: `admin_points_summary`, `admin_roles`, `admin_users`
 
 ### /settings/discounts/[id]
 app/[lang]/settings/discounts/[id]/page.tsx
@@ -2265,6 +2403,19 @@ app/[lang]/settings/discounts/[id]/page.tsx
 - Loads: `getAdminCoupon()`, `listAdminProducts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `categories`, `coupons`, `media_assets`, `mp_staff`
 - Reads, through the same: `admin_roles`, `admin_users`, `products`, `variant_stock`
+
+### /settings/email-templates
+app/[lang]/settings/email-templates/page.tsx
+- Loads: `readAllSavedCopy()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
+- Reads, through the same: `admin_roles`, `admin_users`, `email_template_copy`
+
+### /settings/email-templates/[id]
+app/[lang]/settings/email-templates/[id]/page.tsx
+- Server actions: `previewEmailCopy()`, `resetEmailCopy()`, `saveEmailCopy()`, `sendEmailCopyTest()`
+- Loads: `readSavedCopy()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_template_copy`, `mp_staff`
+- Reads, through the same: `admin_roles`, `admin_users`
 
 ### /settings/faq
 app/[lang]/settings/faq/page.tsx
@@ -2344,9 +2495,9 @@ app/[lang]/settings/orders/page.tsx
 ### /settings/orders/[id]
 app/[lang]/settings/orders/[id]/page.tsx
 - Endpoints: `/api/mp-config/responses [GET]`, `/api/shop/orders/[id] [GET,PATCH]`, `/api/shop/orders/[id]/cancel [POST]`, `/api/shop/orders/[id]/easyship [GET,POST]`, `/api/shop/orders/[id]/easyship/label`, `/api/shop/orders/[id]/easyship/rates [POST]`, `/api/shop/orders/[id]/fulfill [POST]`, `/api/shop/orders/[id]/mp-config-link [DELETE,GET,POST]`, `/api/shop/orders/[id]/refund [POST]`, `/api/shop/orders/[id]/refund-request [POST]`, `/api/shop/orders/[id]/restock [POST]`, `/api/shop/orders/[id]/timeline [GET,POST]`
-- Loads: `loadAdminOrderDetail()`, `loadAdminOrderMpConfigLinks()`, `loadAdminOrderTimeline()`, `requireAdminPage()`
+- Loads: `loadAdminOrderDetail()`, `loadAdminOrderMpConfigLinks()`, `loadAdminOrderTimeline()`, `readOrderPoints()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `inventory_transactions`, `mp_config_responses`, `mp_staff`, `order_emails`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `shipping_rate_quotes`
-- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `product_variants`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `points_ledger`, `points_order_candidates`, `product_variants`, `site_settings`
 
 ### /settings/page-builder
 app/[lang]/settings/page-builder/page.tsx
@@ -2361,7 +2512,7 @@ app/[lang]/settings/partner-applications/page.tsx
 - Loads: `requireAdminPage()`
 - Reads: `partner_users`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `partner_emails`, `partner_users`, `partners`
-- Reads, through the same: `admin_roles`, `admin_users`
+- Reads, through the same: `admin_roles`, `admin_users`, `email_template_copy`
 
 ### /settings/partner-commissions
 app/[lang]/settings/partner-commissions/page.tsx
@@ -2370,7 +2521,7 @@ app/[lang]/settings/partner-commissions/page.tsx
 - Writes: `milestone_rungs`
 - Reads: `commission_schemes`, `commissions`, `partner_payment_details`, `partner_payouts`, `partners`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `commission_schemes`, `commissions`, `milestone_rungs`, `mp_staff`, `partner_emails`, `partner_payouts`, `partner_whatsapp`, `partners`
-- Reads, through the same: `admin_roles`, `admin_users`, `orders`, `partner_payment_details`, `partner_users`
+- Reads, through the same: `admin_roles`, `admin_users`, `email_template_copy`, `orders`, `partner_payment_details`, `partner_users`
 
 ### /settings/partners
 app/[lang]/settings/partners/page.tsx
@@ -2418,7 +2569,7 @@ app/[lang]/settings/results/page.tsx
 - Endpoints: `/api/mp-config/assist-link [POST]`, `/api/mp-config/responses [GET,POST]`, `/api/mp-config/responses/[id] [DELETE]`, `/api/results/[id]/request-payment [POST]`, `/api/staff [GET]`
 - Loads: `listMpConfigResponses()`, `listStaffProfiles()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_users`, `mp_config_responses`, `mp_staff`
-- Reads, through the same: `admin_roles`, `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `config_upload`, `customers`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `orders`, `pillow_products`, `product_prices`, `result_bolster_filling_placements`, `result_filling_placements`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
+- Reads, through the same: `admin_roles`, `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `config_upload`, `customers`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `orders`, `pillow_products`, `product_prices`, `result_bolster_filling_placements`, `result_filling_placements`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
 
 ### /settings/results/[id]
 app/[lang]/settings/results/[id]/page.tsx
@@ -2426,7 +2577,7 @@ app/[lang]/settings/results/[id]/page.tsx
 - Loads: `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `requireAdminPage()`
 - Reads: `items`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_responses`, `mp_staff`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
 
 ### /settings/rma
 app/[lang]/settings/rma/page.tsx
@@ -2482,32 +2633,32 @@ app/[lang]/shop/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/exchange-rates [GET]`
 - Loads: `getProducts()`, `getReviewAggregates()`
 - Changes, through its actions, endpoints and their calls: `customer_addresses`, `customers`, `exchange_rates`, `orders`
-- Reads, through the same: `collection_products`, `coupons`, `product_reviews`, `products`, `variant_stock`
+- Reads, through the same: `collection_products`, `coupons`, `points_ledger`, `product_reviews`, `products`, `variant_stock`
 
 ### /shop/[slug]
 app/[lang]/shop/[slug]/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/customize [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/reviews [GET,POST]`, `/api/shop/shipping [GET]`
 - Loads: `getPageFaq()`, `getProductBySlug()`, `getProducts()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `customization_configs`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `mp_staff`, `orders`, `product_reviews`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_buildable`, `bolster_template_placements`, `bom_lines`, `bom_template_keys`, `bom_templates`, `collection_products`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `filling_template_placements`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `neck_support_dimension_overrides`, `pillow_products`, `product_buildable`, `product_prices`, `product_variants`, `products`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_buildable`, `bolster_template_placements`, `bom_lines`, `bom_template_keys`, `bom_templates`, `collection_products`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `filling_template_placements`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `neck_support_dimension_overrides`, `pillow_products`, `points_ledger`, `product_buildable`, `product_prices`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
 ### /shop/cart
 app/[lang]/shop/cart/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `exchange_rates`, `mp_staff`, `orders`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `coupons`, `products`
+- Reads, through the same: `admin_roles`, `admin_users`, `coupons`, `points_ledger`, `products`
 
 ### /shop/checkout
 app/[lang]/shop/checkout/page.tsx
-- Endpoints: `/api/account/addresses [GET,POST]`, `/api/partner/referral/validate [GET]`, `/api/shop/checkout [POST]`, `/api/shop/coupons/validate [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
+- Endpoints: `/api/account/addresses [GET,POST]`, `/api/partner/referral/validate [GET]`, `/api/shop/checkout [POST]`, `/api/shop/coupons/validate [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/points/allowance [POST]`, `/api/shop/shipping [GET]`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `exchange_rates`, `mp_staff`, `order_items`, `order_shipments`, `orders`, `partner_users`, `shipping_methods`, `shipping_rate_quotes`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `coupons`, `customization_configs`, `inventory_balances`, `item_prices`, `items`, `partners`, `pillow_products`, `product_prices`, `product_variants`, `products`, `tax_rates`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `coupons`, `customization_configs`, `inventory_balances`, `item_prices`, `items`, `partners`, `pillow_products`, `points_ledger`, `product_prices`, `product_variants`, `products`, `site_settings`, `tax_rates`, `variant_stock`
 
 ### /shop/checkout/confirmation
 app/[lang]/shop/checkout/confirmation/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/shop/coupons/validate [POST]`, `/api/shop/orders/by-number/[orderNumber]`
 - Changes, through its actions, endpoints and their calls: `customer_addresses`, `customers`, `orders`
-- Reads, through the same: `coupons`, `products`
+- Reads, through the same: `coupons`, `points_ledger`, `products`
 
 ### /support
 app/[lang]/support/page.tsx

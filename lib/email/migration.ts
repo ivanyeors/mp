@@ -7,19 +7,24 @@
 // never by the transactional transport:
 //
 //   migration_announcement    to Migrated customers who are `subscribed`:
-//                             the account is ready, one button (the Claim
-//                             link), the Welcome-back voucher and its terms.
-//   migration_reminder        once, 7 days on, if still unclaimed: the last
-//                             day to sign in for the voucher, and the button.
+//                             the account is ready on the new website, one
+//                             button (the Claim link), and the Claim bonus.
+//   migration_reminder        once, 7 days on, if still unclaimed: the bonus
+//                             again, and the button.
 //   migration_service_notice  once, to `not_subscribed` only (owner decision
 //                             3): where the account lives, re-adjustments and
-//                             support. NO offer, voucher or promotion; counsel
-//                             confirms the copy (PRD, legal points).
+//                             support. NO offer or promotion; counsel confirms
+//                             the copy (PRD, legal points).
+//
+// The Claim bonus replaced the Welcome-back voucher (PRD-loyalty-points slice
+// 05; ADR 0030), and none of them names the old platform or a move: the
+// customer is told the website is new (owner, 2026-10-21). Admin Panel →
+// Email campaigns (PRD-email-marketing) is the usual way to write to them now.
 //
 // Each is campaign mail: it renders the footer's unsubscribe link
 // (`unsubscribeUrl`, the confirm page) and is sent with `List-Unsubscribe`.
-// The welcome-back voucher's own email (account.ts) is transactional and
-// carries neither.
+// The Claim bonus's own email (account.ts) is transactional and carries
+// neither.
 //
 // Every renderer is pure: the sender resolves the links and formats the terms.
 
@@ -28,17 +33,14 @@ import { bulletList, button, heading, link, paragraph, paragraphHtml } from "./c
 import { escapeHtml } from "./html";
 import type { RenderedEmail } from "./types";
 
-/** The Welcome-back voucher a first sign-in issues, as the email states it. */
-export interface CampaignVoucherTerms {
-  kind: "fixed_amount" | "free_shipping";
-  /** "SGD 20.00" for a fixed amount; null for free shipping. */
-  amount: string | null;
-  /** "SGD 50.00", or null for no minimum. */
-  minimumSpend: string | null;
-  /** Days the voucher lasts from the first sign-in. */
-  validDays: number;
-  /** The last day a sign-in issues one, e.g. "31 December 2026". */
-  issueUntil: string;
+/** The Claim bonus a sign-in grants (ADR 0030 f), as the email states it. */
+export interface CampaignBonusTerms {
+  /** "1,000 points". */
+  points: string;
+  /** "S$10". */
+  amount: string;
+  /** Months from this email to sign in for it. */
+  months: number;
 }
 
 interface CampaignRecipient {
@@ -52,13 +54,16 @@ interface CampaignRecipient {
 export interface MigrationAnnouncementEmailData extends CampaignRecipient {
   /** The Claim link minted for this email. */
   claimUrl: string;
-  voucher: CampaignVoucherTerms;
+  bonus: CampaignBonusTerms;
+  /** The points terms, /[lang]/points (PRD-loyalty-points slice 08). */
+  termsUrl: string;
 }
 
 export interface MigrationReminderEmailData extends CampaignRecipient {
   /** A Claim link minted for this email (not the announcement's). */
   claimUrl: string;
-  voucher: CampaignVoucherTerms;
+  bonus: CampaignBonusTerms;
+  termsUrl: string;
 }
 
 export interface MigrationServiceNoticeEmailData extends CampaignRecipient {
@@ -79,18 +84,25 @@ export const CAMPAIGN_CONSENT_NOTE =
 
 /** Why someone who never agreed to marketing gets the service notice. */
 export const SERVICE_NOTICE_NOTE =
-  "A one-time service notice for people who shopped with Mpillow on Shopify. It is not marketing.";
+  "A one-time service notice for people who have shopped with Mpillow. It is not marketing.";
 
 const greet = (firstName: string | null) => {
   const name = firstName?.replace(/\s+/g, " ").trim();
   return name ? `Hi ${name},` : "Hi,";
 };
 
-/** "SGD 20.00 off a shop order of SGD 50.00 or more", "free shipping on a shop order". */
-export function voucherOfferPhrase(v: Pick<CampaignVoucherTerms, "kind" | "amount" | "minimumSpend">): string {
-  const base = v.kind === "free_shipping" || !v.amount ? "free shipping on a shop order" : `${v.amount} off a shop order`;
-  return v.minimumSpend ? `${base} of ${v.minimumSpend} or more` : base;
+/** "1,000 points, S$10 off your next shop order". */
+export function claimBonusPhrase(b: Pick<CampaignBonusTerms, "points" | "amount">): string {
+  return `${b.points}, ${b.amount} off your next shop order`;
 }
+
+/** The two limits the terms promise, in every email that states the bonus. */
+export const BONUS_TERMS =
+  "Use them at checkout on any shop order, up to half the products' price. They can't be used on custom pillows, and points used are not refunded.";
+
+/** The link to the points terms, under BONUS_TERMS. */
+const TERMS_LINK = "How points work";
+const termsHtml = (termsUrl: string) => paragraphHtml(link({ href: termsUrl, label: TERMS_LINK }), { muted: true });
 
 /** What the account does: the welcome page's own list (app/[lang]/account/welcome). */
 const ACCOUNT_FEATURES = [
@@ -103,20 +115,20 @@ const ACCOUNT_FEATURES = [
 export function renderMigrationAnnouncementEmail(p: MigrationAnnouncementEmailData): RenderedEmail {
   const greeting = greet(p.firstName);
   const subject = "Your Mpillow account is ready";
-  const move = `Mpillow's online shop has moved from Shopify to our own site, and your account is ready. There's nothing to fill in and no password to set: sign in with ${p.email}, the email you shopped with, and it's yours.`;
-  const offer = `When you first sign in, we'll add a welcome-back voucher to your account: ${voucherOfferPhrase(p.voucher)}. Sign in by ${p.voucher.issueUntil} to get it.`;
-  const terms = `The voucher is valid for ${p.voucher.validDays} days from your first sign-in. It works once, while you're signed in as ${p.email} and checking out with that email. It can't be passed on, and it applies to shop orders, not to custom builds.`;
+  const news = `We have a new website, and your Mpillow account is ready on it. There's nothing to fill in and no password to set: sign in with ${p.email}, the email you shopped with, and it's yours.`;
+  const offer = `Sign in within ${p.bonus.months} months of this email and we'll add ${claimBonusPhrase(p.bonus)}.`;
 
   const text = [
     greeting,
     "",
-    move,
+    news,
     "",
     `Sign in to your account: ${p.claimUrl}`,
     "",
-    "A welcome-back voucher",
+    "Points for signing in",
     offer,
-    terms,
+    BONUS_TERMS,
+    `${TERMS_LINK}: ${p.termsUrl}`,
     "",
     "What your account does",
     ...ACCOUNT_FEATURES.map((f) => `- ${f}`),
@@ -127,14 +139,15 @@ export function renderMigrationAnnouncementEmail(p: MigrationAnnouncementEmailDa
 
   const html = renderEmailShell({
     title: subject,
-    preheader: `Sign in with the email you shopped with for a welcome-back voucher, until ${p.voucher.issueUntil}.`,
+    preheader: `Sign in within ${p.bonus.months} months for ${p.bonus.amount} in points.`,
     // The one button: the Claim link, straight after the news.
     bodyHtml: `${paragraph(greeting)}
-${paragraph(move)}
+${paragraph(news)}
 ${button({ href: p.claimUrl, label: "Sign in to your account" })}
-${heading("A welcome-back voucher", 2, { top: 24 })}
+${heading("Points for signing in", 2, { top: 24 })}
 ${paragraph(offer)}
-${paragraph(terms, { muted: true })}
+${paragraph(BONUS_TERMS, { muted: true })}
+${termsHtml(p.termsUrl)}
 ${heading("What your account does", 2, { top: 12 })}
 ${bulletList(ACCOUNT_FEATURES)}`,
     footer: CAMPAIGN_CONSENT_NOTE,
@@ -146,14 +159,16 @@ ${bulletList(ACCOUNT_FEATURES)}`,
 
 export function renderMigrationReminderEmail(p: MigrationReminderEmailData): RenderedEmail {
   const greeting = greet(p.firstName);
-  const subject = "Your welcome-back voucher is waiting";
-  const body = `A quick reminder: your Mpillow account is ready. Sign in with ${p.email} by ${p.voucher.issueUntil}, and we'll add your welcome-back voucher: ${voucherOfferPhrase(p.voucher)}.`;
+  const subject = `${p.bonus.amount} in points is waiting in your Mpillow account`;
+  const body = `A quick reminder: your Mpillow account is ready on our new website. Sign in with ${p.email} within ${p.bonus.months} months of our first email, and we'll add ${claimBonusPhrase(p.bonus)}.`;
   const once = "This is the only reminder we'll send.";
 
   const text = [
     greeting,
     "",
     body,
+    BONUS_TERMS,
+    `${TERMS_LINK}: ${p.termsUrl}`,
     "",
     `Sign in to your account: ${p.claimUrl}`,
     "",
@@ -165,9 +180,11 @@ export function renderMigrationReminderEmail(p: MigrationReminderEmailData): Ren
 
   const html = renderEmailShell({
     title: subject,
-    preheader: `Sign in by ${p.voucher.issueUntil} to get it.`,
+    preheader: `Sign in to collect ${p.bonus.points}.`,
     bodyHtml: `${paragraph(greeting)}
-${paragraph(body)}`,
+${paragraph(body)}
+${paragraph(BONUS_TERMS, { muted: true })}
+${termsHtml(p.termsUrl)}`,
     cta: { href: p.claimUrl, label: "Sign in to your account" },
     footer: `${once} ${CAMPAIGN_CONSENT_NOTE}`,
     unsubscribeUrl: p.unsubscribeUrl,
@@ -178,8 +195,8 @@ ${paragraph(body)}`,
 
 export function renderMigrationServiceNoticeEmail(p: MigrationServiceNoticeEmailData): RenderedEmail {
   const greeting = greet(p.firstName);
-  const subject = "Mpillow has moved";
-  const move = `Mpillow's online shop has moved from Shopify to ${p.siteHost}. This one-time notice is so you know where to find us.`;
+  const subject = "Mpillow has a new website";
+  const move = `Mpillow has a new website at ${p.siteHost}. This one-time notice is so you know where to find us.`;
   const signIn = `To sign in, use ${p.email}, the email you shopped with. There's no password to set.`;
   const readjust = "Re-adjustments for your pillow are booked on the new site.";
   const support = `Need help? Message us on WhatsApp at ${p.supportWhatsAppDisplay}, or reply to this email.`;

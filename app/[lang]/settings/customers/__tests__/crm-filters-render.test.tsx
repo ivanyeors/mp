@@ -39,7 +39,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   has_phone: false,
   phone_valid: false,
   claim_link_first_clicked_at: null,
-  welcome_voucher_state: "none",
+  points_available: 0,
+  claim_bonus_at: null,
   open_followups: 0,
   paid_orders: 1,
   first_paid_at: "2025-03-04T02:00:00Z",
@@ -113,12 +114,15 @@ describe("Customers list: CRM filters", () => {
     expect(html).toContain("4 Mar 2025");
   });
 
-  it("puts migration slice 06's Voucher filter in the panel, and labels it in the summary", () => {
-    const html = listFor("voucher=issued");
+  it("puts the Points filter in the panel, and labels it in the summary (PRD-loyalty-points slice 06)", () => {
+    const html = listFor("points=has");
     expect(html).toContain('id="customer-filters-panel"');
-    expect(html).toContain('aria-label="Voucher"');
-    expect(html).toContain("Voucher issued, unused");
-    expect(listFor("")).not.toContain('aria-label="Voucher"');
+    expect(html).toContain('aria-label="Points"');
+    expect(html).toContain("Has points");
+    expect(listFor("")).not.toContain('aria-label="Points"');
+    expect(listFor("points=none")).toContain("No points");
+    // The retired voucher filter is gone from the panel.
+    expect(html).not.toMatch(/voucher/i);
   });
 
   it("puts migration slice 07's Email consent filter in the panel, and labels it in the summary", () => {

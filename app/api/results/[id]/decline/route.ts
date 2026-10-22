@@ -4,7 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { releaseHold } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
-import { renderResultDeclinedEmail } from "@/lib/email/results";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import { RESULT_EMAIL_COPY, renderResultDeclinedEmail } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { cascadeEnding, companionLockReason, loadEndingPlan } from "@/lib/results/pair-ending";
@@ -111,19 +112,23 @@ export async function POST(
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
   if (row.customer_email) {
     try {
+      const copy = await loadEmailCopy(RESULT_EMAIL_COPY.declined);
       await getEmailTransport().send({
         to: row.customer_email,
         from: getDefaultFromAddress(),
-        ...renderResultDeclinedEmail({
-          origin: getPublicOrigin(req),
-          resultId: id,
-          accessToken: row.access_token,
-          productType: row.product_type,
-          // Only claim a release when one actually happened, and name what it
-          // freed: the whole hold, which for a pair covered both builds.
-          releasedAmount: releasesHold ? plan.intentAmount : null,
-          currency: row.currency ?? "SGD",
-        }),
+        ...renderResultDeclinedEmail(
+          {
+            origin: getPublicOrigin(req),
+            resultId: id,
+            accessToken: row.access_token,
+            productType: row.product_type,
+            // Only claim a release when one actually happened, and name what it
+            // freed: the whole hold, which for a pair covered both builds.
+            releasedAmount: releasesHold ? plan.intentAmount : null,
+            currency: row.currency ?? "SGD",
+          },
+          copy,
+        ),
       });
       emailStatus = "sent";
     } catch (e) {

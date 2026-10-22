@@ -4,7 +4,9 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmailTransport } from "@/lib/email";
-import { renderRestockEmail } from "@/lib/email/results";
+import type { EmailCopy } from "@/lib/email/copy";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import { RESULT_EMAIL_COPY, renderRestockEmail } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { isPreOrder, type PreOrderTriggerInput } from "./pre-order-trigger";
 import { loadPreOrderTriggerAtHold } from "./pre-order-persist";
@@ -60,14 +62,18 @@ export function stockRecoveredForResult(input: PreOrderTriggerInput): boolean {
 /**
  * Restock notice copy. Rendering lives in lib/email/results.ts alongside the
  * other Result lifecycle emails; this wrapper keeps the existing call sites and
- * the pre-order-restock self-check pointed at a stable name.
+ * the pre-order-restock self-check pointed at a stable name. `words` is the
+ * email's editable copy (`RESULT_EMAIL_COPY.restocked`); without it, the defaults.
  */
-export function restockEmailCopy(opts: {
-  origin: string;
-  resultId: string;
-  accessToken: string | null;
-}): { subject: string; text: string; html: string } {
-  return renderRestockEmail(opts);
+export function restockEmailCopy(
+  opts: {
+    origin: string;
+    resultId: string;
+    accessToken: string | null;
+  },
+  words?: EmailCopy<keyof typeof RESULT_EMAIL_COPY.restocked.fields>,
+): { subject: string; text: string; html: string } {
+  return renderRestockEmail(opts, words);
 }
 
 type PrefLine = { item_id: number };
@@ -175,11 +181,15 @@ export async function runPreOrderRestockNotices(
       continue;
     }
 
-    const copy = restockEmailCopy({
-      origin: opts.origin,
-      resultId: row.id,
-      accessToken: row.access_token,
-    });
+    const words = await loadEmailCopy(RESULT_EMAIL_COPY.restocked);
+    const copy = restockEmailCopy(
+      {
+        origin: opts.origin,
+        resultId: row.id,
+        accessToken: row.access_token,
+      },
+      words,
+    );
 
     try {
       await getEmailTransport().send({

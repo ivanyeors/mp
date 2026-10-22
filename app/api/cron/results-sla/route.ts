@@ -6,7 +6,9 @@ import { releaseHold } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { renderHeldResultReminderEmail } from "@/lib/email/ops";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import {
+  RESULT_EMAIL_COPY,
   renderBalanceDueReminderEmail,
   renderHoldExpiredEmail,
 } from "@/lib/email/results";
@@ -28,6 +30,9 @@ import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock"
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
+import { runPointsEarn } from "@/lib/points/earn";
+import { releaseStalePointReservations } from "@/lib/points/spend";
+import { runPointsExpiry } from "@/lib/points/expiry-server";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -72,10 +77,11 @@ async function sendCustomerExpiredEmail(opts: {
   productType: string | null;
   reason?: "unreviewed" | "unpaid";
 }) {
+  const copy = await loadEmailCopy(RESULT_EMAIL_COPY.hold_expired);
   await getEmailTransport().send({
     to: opts.to,
     from: getDefaultFromAddress(),
-    ...renderHoldExpiredEmail(opts),
+    ...renderHoldExpiredEmail(opts, copy),
   });
 }
 
@@ -285,21 +291,25 @@ export async function GET(req: Request) {
       );
       if (plan !== "remind") continue;
       try {
+        const copy = await loadEmailCopy(RESULT_EMAIL_COPY.balance_due);
         await getEmailTransport().send({
           to: row.customer_email,
           from: getDefaultFromAddress(),
-          ...renderBalanceDueReminderEmail({
-            origin,
-            resultId: row.id,
-            accessToken: row.access_token,
-            productType: row.product_type,
-            amount:
-              row.final_amount != null
-                ? Number(row.final_amount) + (companionFinal.get(row.id) ?? 0)
-                : null,
-            currency: row.currency ?? "SGD",
-            needsFinish: needsCustomerFinish(row),
-          }),
+          ...renderBalanceDueReminderEmail(
+            {
+              origin,
+              resultId: row.id,
+              accessToken: row.access_token,
+              productType: row.product_type,
+              amount:
+                row.final_amount != null
+                  ? Number(row.final_amount) + (companionFinal.get(row.id) ?? 0)
+                  : null,
+              currency: row.currency ?? "SGD",
+              needsFinish: needsCustomerFinish(row),
+            },
+            copy,
+          ),
         });
         // Its own clock and counter — `last_reminder_at` stays the operator SLA's,
         // so moving one cadence no longer drags the other with it.
@@ -518,6 +528,23 @@ export async function GET(req: Request) {
     aftercare = { ok: false, error: e instanceof Error ? e.message : "aftercare messages failed" };
   }
 
+  // Chain: earned points (PRD-loyalty-points slice 03, ADR 0030 d). One `earn`
+  // entry for each Order whose return window has closed; nothing while points
+  // are off. A manual re-run writes nothing twice. It never throws: a failure
+  // comes back as `{ error }` and tomorrow's run writes what today's missed.
+  const points = await runPointsEarn(admin, now);
+
+  // Chain: points reserved by a Checkout that was never paid (PRD-loyalty-points
+  // slice 04, ADR 0030 j). The webhook gives them back when Stripe says the
+  // session expired or failed; this catches what it missed. Never throws.
+  const pointsReservations = await releaseStalePointReservations(admin, now);
+
+  // Chain: points expiry and its reminders (PRD-loyalty-points slice 07, ADR
+  // 0030 o, p). A balance expires the day after its expiry date, once; the 3-,
+  // 2- and 1-month reminders go once per clock, the latest due only, to
+  // customers with Marketing consent. Nothing while points are off. Never throws.
+  const pointsExpiry = await runPointsExpiry(admin, { origin, now });
+
   // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
   // match, New sign-ups and the Weekly summary. Each goes at most once per
   // period by compare-and-set, so a manual re-run posts nothing twice. After
@@ -539,6 +566,9 @@ export async function GET(req: Request) {
     preOrderRestock,
     googleReviews,
     aftercare,
+    points,
+    pointsReservations,
+    pointsExpiry,
     crmTelegram,
   });
 }

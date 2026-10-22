@@ -51,6 +51,11 @@ export const PERMISSION_CATALOG = [
   { key: "customers-edit", label: "Customers: make changes (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers"] },
   // Importing is a change, so it sits on `customers-edit` (migration slice 02, CRM slice 10).
   { key: "customer-import", label: "Customer import (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers", "customers-edit"] },
+  // Sending marketing email to the customer list (PRD-email-marketing). Its own key, held by
+  // Owner and Admin only, as `customer-import` is: Manager and Staff hold `customers`.
+  { key: "campaigns", label: "Email campaigns", group: "Store", href: "/settings/campaigns", surface: "admin-panel" },
+  // The words of every email the platform sends (PRD-email-templates): Owner and Admin only.
+  { key: "email-templates", label: "Email templates", group: "Store", href: "/settings/email-templates", surface: "admin-panel" },
   { key: "results", label: "Results", group: "Store", href: "/settings/results", surface: "admin-panel" },
   { key: "orders", label: "Orders", group: "Store", href: "/settings/orders", surface: "admin-panel" },
   { key: "returns", label: "Returns / RMA", group: "Store", href: "/settings/rma", surface: "admin-panel" },

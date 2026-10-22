@@ -12,7 +12,7 @@
  * reused: every email sent mints its own, with `mintClaimLink`, and the slice
  * 08 sender puts the plaintext only in that email.
  *
- * Every campaign link carries `utm_source=shopify_migration&utm_medium=email&
+ * Every campaign link carries `utm_source=new_website&utm_medium=email&
  * utm_campaign=<template>`, so GA4 and **Entry source** see the channel. The
  * funnel itself is counted in the claim ledger, not in journey analytics.
  */
@@ -33,7 +33,7 @@ export const WELCOME_PATH = "/account/welcome";
 export const CLAIM_TOKEN_PARAM = "c";
 
 /** `utm_source` on every campaign link. */
-export const CAMPAIGN_UTM_SOURCE = "shopify_migration";
+export const CAMPAIGN_UTM_SOURCE = "new_website";
 export const CAMPAIGN_UTM_MEDIUM = "email";
 
 // 32 bytes are 43 base64url characters, unpadded.

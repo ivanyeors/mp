@@ -30,7 +30,9 @@ import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { getPublicOrigin } from "@/lib/site-url";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import {
+  RESULT_EMAIL_COPY,
   renderResultAssignedEmail,
   type ResultPricing,
 } from "@/lib/email/results";
@@ -97,10 +99,11 @@ async function sendAssignedEmail(opts: {
   paired: { label: string; total: number } | null;
 }) {
   try {
+    const copy = await loadEmailCopy(RESULT_EMAIL_COPY.assigned);
     await getEmailTransport().send({
       to: opts.to,
       from: getDefaultFromAddress(),
-      ...renderResultAssignedEmail(opts),
+      ...renderResultAssignedEmail(opts, copy),
     });
     return "sent" as const;
   } catch (e) {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CalendarClock, ClipboardList, MapPin, RotateCcw, ShoppingCart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
-import { WelcomeVoucherCard } from "@/components/account/welcome-voucher-card";
+import { ClaimBonusCard } from "@/components/account/claim-bonus-card";
 import { Button } from "@/components/ui/button";
 import { welcomePath } from "@/lib/customer-migration/claim-link";
 import type { WelcomeAccount, WelcomePageData } from "@/lib/customer-migration/welcome-page";
@@ -51,7 +51,7 @@ export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePag
             You&apos;re signed in as <span className="break-all">{state.signedInEmail}</span>.
           </h1>
           <p className="text-sm text-muted-foreground">
-            Your voucher was sent to the email you shopped with. Sign in with that email to see it.
+            This link is for the account of the email you shopped with. Sign in with that email to see it.
           </p>
         </div>
         <div className="mt-8 space-y-3">
@@ -114,7 +114,7 @@ function SignedIn({ locale, account }: { locale: Locale; account: WelcomeAccount
         </p>
       </div>
 
-      {account?.voucher ? <WelcomeVoucherCard voucher={account.voucher} shopHref={to("/shop")} /> : null}
+      {account?.bonus ? <ClaimBonusCard bonus={account.bonus} shopHref={to("/shop")} termsHref={to("/points")} /> : null}
 
       <section aria-labelledby="welcome-account-title" className="space-y-3">
         <h2 id="welcome-account-title" className="text-sm font-medium">

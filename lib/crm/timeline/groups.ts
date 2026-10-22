@@ -15,7 +15,7 @@ export const NOTES_GROUP: TimelineGroup = { key: "notes", label: "Notes" };
 export const AFTERCARE_GROUP: TimelineGroup = { key: "aftercare", label: "Aftercare" };
 /** Marketing consent (migration 07); campaign sends (migration 08) join it. */
 export const MARKETING_GROUP: TimelineGroup = { key: "marketing", label: "Marketing" };
-/** The Customer's account: imported from Shopify, Claimed, the Welcome-back voucher (migration PRD). */
+/** The Customer's account: imported from Shopify, Claimed, the Claim bonus (migration PRD, PRD-loyalty-points). */
 export const ACCOUNT_GROUP: TimelineGroup = { key: "account", label: "Account" };
 /** Follow-ups (CRM 06): added, and done. */
 export const FOLLOW_UPS_GROUP: TimelineGroup = { key: "followups", label: "Follow-ups" };

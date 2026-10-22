@@ -15,13 +15,21 @@ slice is a thin, demoable path through all layers.
 | [03](03-import-apply-and-rollback.md) · [#267](https://github.com/ivanyeors/mp/issues/267) | Apply, reconcile and undo an import batch from the Admin Panel | AFK | **built** (`e15f787`) | 02 | 9, 10, 13, 15 |
 | [12](12-account-status-and-customer-overview.md) · [#276](https://github.com/ivanyeors/mp/issues/276) | Account status on every Customer, and the Customer overview | AFK | **built** (`a49f8d6`) | 02 | 8, 14 |
 | [04](04-export-rehearse-import.md) · [#268](https://github.com/ivanyeors/mp/issues/268) | Export from Shopify, rehearse, then import into production from the Admin Panel | HITL | **not started** | 03, 12 | 2, 8, 14, 15 |
-| [05](05-claim-and-welcome-back-voucher.md) · [#269](https://github.com/ivanyeors/mp/issues/269) | Claim on first sign-in, and an account-bound welcome-back voucher | AFK | **built** (`f3d41cc`) | 02 | 2, 3, 7 |
+| [05](05-claim-and-welcome-back-voucher.md) · [#269](https://github.com/ivanyeors/mp/issues/269) | Claim on first sign-in, and an account-bound welcome-back voucher | AFK | **built** (`f3d41cc`); the voucher half is superseded by `PRD-loyalty-points` slices 05 and 06 | 02 | 2, 3, 7 |
 | [06](06-welcome-page-and-surfaces.md) · [#270](https://github.com/ivanyeors/mp/issues/270) | Welcome page, Claim link, and the account and Admin Panel surfaces | AFK | **built** (`43ec93d`) | 05, 12 | 1, 3, 6, 8, 11, 12 |
 | [07](07-marketing-consent-and-unsubscribe.md) · [#271](https://github.com/ivanyeors/mp/issues/271) | Marketing consent with provenance, and one-click unsubscribe | AFK | **built** (`23cf626`) | 02, 12 | 4, 5 |
 | [08](08-campaign-emails-and-wave-sender.md) · [#272](https://github.com/ivanyeors/mp/issues/272) | Campaign emails, the send ledger, and a wave sender that cannot double-send | AFK | **built** (`2c9312b`) | 06, 07 | 1, 4, 5, 11 |
-| [09](09-pilot-and-waves.md) · [#273](https://github.com/ivanyeors/mp/issues/273) | Sign-off: DNS, a pilot of 50, then the waves | HITL | **not started** | 04, 08 | all |
+| [09](09-pilot-and-waves.md) · [#273](https://github.com/ivanyeors/mp/issues/273) | Sign-off: DNS, a pilot of 50, then the waves | HITL | **not started**; unblocked by points (`PRD-loyalty-points` 08 signed off 2026-10-22) | 04, 08 | all |
 | [10](10-cutover-and-shopify-wind-down.md) · [#274](https://github.com/ivanyeors/mp/issues/274) | Cutover: final delta import, Shopify notices, erasure | HITL | **not started** | 09 | 13 |
 | [11](11-optional-complimentary-readjustment.md) · [#275](https://github.com/ivanyeors/mp/issues/275) | *(optional)* One complimentary re-adjustment for Migrated customers | AFK | **owner decision** | 05 | 7 |
+
+**2026-10-21: the waves run from the Admin Panel.** Admin Panel → Email campaigns
+(`PRD-email-marketing`) sends a campaign the owner writes to *Imported from Shopify, not signed
+in yet*. It uses the same checks, ledger, Claim links, unsubscribe and pause rule as slice 08's
+script. Its first campaign is the invitation to the new website with the points Claim bonus
+(`PRD-loyalty-points`; the voucher is deleted). Customer-facing words never name Shopify or a
+move (owner, 2026-10-21). Slice 09's seed test, pilot and ramp run from that page. The script and
+its three templates stay; since points slice 05 they offer the Claim bonus, never the voucher.
 
 ## Dependency graph
 
