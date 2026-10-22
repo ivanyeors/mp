@@ -172,18 +172,17 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:185
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:483
   - `POST()` [select] — app/api/shop/checkout/route.ts:442
-  - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:131
-  - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:212
+  - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:166
+  - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:203
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
   - `getBolsterBaseQuantities()` [select] — lib/shop/customization-inventory.ts:413
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:460
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:391
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:156
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:34
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:263
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:133
   - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:474
   - `mergeBolsterCustomLines()` [select] — lib/ecommerce/inventory-deduction.ts:93
-  - `restoreInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:333
   - `sellBolster()` [select] — app/[lang]/settings/inventory/actions.ts:360
   - `syncBolsterProducts()` [select] — lib/ecommerce/inventory-sync.ts:177
   - `syncShopifyInventoryForDepletedItems()` [select] — lib/shopify/sync.ts:200
@@ -235,8 +234,8 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:391
   - `POST()` [select] — app/api/shop/checkout/route.ts:416
-  - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:117
-  - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:191
+  - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:152
+  - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:186
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:162
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:229
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:124
@@ -246,7 +245,6 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:473
   - `loadVariantLabels()` [select] — lib/stripe/variant-labels.ts:83
   - `mergePillowCustomLines()` [select] — lib/ecommerce/inventory-deduction.ts:114
-  - `restoreInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:312
   - `sellPillow()` [select] — app/[lang]/settings/inventory/actions.ts:277
   - `syncShopifyInventoryForDepletedItems()` [select] — lib/shopify/sync.ts:197
   - `validateFullConfig()` [select] — lib/shop/customization-inventory.ts:350
@@ -398,7 +396,7 @@ Changed from pages: `/settings/discounts`, `/settings/discounts/[id]`
   - `DELETE()` [delete] — app/api/shop/coupons/[id]/route.ts:69
   - `PATCH()` [update] — app/api/shop/coupons/[id]/route.ts:52
   - `POST()` [insert] — app/api/shop/coupons/route.ts:53
-  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:605
+  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:617
   - `deleteCoupon()` [delete] — app/[lang]/settings/discounts/actions.ts:14
   - `incrementCouponUsage()` [select,update] — lib/ecommerce/discounts.ts:293
   - `toggleCouponActive()` [update] — app/[lang]/settings/discounts/actions.ts:23
@@ -637,8 +635,8 @@ Defined in supabase/migrations/0001_inventory.sql:45
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:262
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:155
   - `getAvailableFillings()` [select] — lib/shop/customization-llm.ts:54
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:467
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:293
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:398
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:273
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:183
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:211
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:33
@@ -653,10 +651,9 @@ References: `items`
 Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/inventory`, `/settings/orders`, `/settings/orders/[id]`
 - Written by:
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:692
-  - `deductInventoryForOrder()` [insert] — lib/ecommerce/inventory-deduction.ts:168
+  - `deductInventoryForOrder()` [insert] — lib/ecommerce/inventory-deduction.ts:236
   - `insertStockIn()` [insert] — app/[lang]/settings/inventory/actions.ts:342
-  - `restockOrderItem()` [insert] — lib/ecommerce/restock-order.ts:179
-  - `restoreInventoryForOrder()` [insert] — lib/ecommerce/inventory-deduction.ts:289
+  - `restockOrderItem()` [insert] — lib/ecommerce/restock-order.ts:214
   - `sellBolster()` [insert] — app/[lang]/settings/inventory/actions.ts:383
   - `sellFromReplaceLinesForShopifyCommit()` [insert] — app/[lang]/settings/inventory/actions.ts:267
   - `sellFromTemplate()` [insert] — app/[lang]/settings/inventory/actions.ts:450
@@ -665,9 +662,9 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/inven
   - `sellPartForShopifyCommit()` [insert] — app/[lang]/settings/inventory/actions.ts:187
   - `sellPillow()` [insert] — app/[lang]/settings/inventory/actions.ts:292
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:333
   - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:208
   - `hasShopifyQueueInventoryDeduction()` [select] — app/[lang]/settings/inventory/actions.ts:173
+  - `resultRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:96
 
 ### item_overlay_mappings
 Defined in supabase/migrations/20260719090000_item_overlay_mappings.sql:4
@@ -745,7 +742,6 @@ Changed from pages: `/settings/inventory`
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:141
   - `POST()` [select] — app/api/results/hold/route.ts:417
-  - `POST()` [select] — app/api/telegram/webhook/route.ts:677
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:367
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:310
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:37
@@ -761,8 +757,8 @@ Changed from pages: `/settings/inventory`
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:100
   - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:230
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:916
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:497
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:287
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:427
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:267
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:167
   - `linkPartToShopifyVariant()` [select] — app/[lang]/settings/inventory/actions.ts:1473
   - `listOverlayMappingItems()` [select] — lib/product-builder/overlay-mappings.ts:24
@@ -786,7 +782,7 @@ Changed from pages: `/settings/inventory`
   - `publishAllUnpublishedAccessories()` [select] — lib/ecommerce/from-inventory.ts:193
   - `quoteCustomization()` [select] — lib/shop/customization-quote.ts:62
   - `receiveStock()` [select] — app/[lang]/settings/inventory/actions.ts:314
-  - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:213
+  - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:193
   - `sellBolster()` [select] — app/[lang]/settings/inventory/actions.ts:371
   - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:310
   - `validateBolsterConfig()` [select] — lib/shop/customization-inventory.ts:473
@@ -967,7 +963,7 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:545
   - `POST()` [delete,insert] — app/api/shop/checkout/route.ts:750
   - `POST()` [insert] — app/api/shop/orders/route.ts:108
-  - `restockOrderItem()` [update] — lib/ecommerce/restock-order.ts:184
+  - `restockOrderItem()` [update] — lib/ecommerce/restock-order.ts:219
 - Read by:
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:31
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:168
@@ -989,7 +985,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
 - Written by:
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:120
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:812
+  - `POST()` [select] — app/api/stripe/webhook/route.ts:824
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:144
 
@@ -1212,7 +1208,6 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:59
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:69
   - `POST()` [select] — app/api/shop/checkout/route.ts:314
-  - `POST()` [select] — app/api/telegram/webhook/route.ts:659
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1170
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:194
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:161
@@ -1220,8 +1215,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:333
   - `getPillowXsFromPriceLabel()` [select] — lib/landing-page-data.ts:51
   - `handleApply()` [select] — app/api/shop/customize/route.ts:579
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:404
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:266
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:336
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:246
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:337
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:177
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:195
@@ -1240,8 +1235,8 @@ Defined in supabase/migrations/0014_pillow_kinds.sql:45
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:56
   - `GET()` [select] — app/api/shopify/diagnostics/route.ts:20
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:93
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:412
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:274
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:344
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:254
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:393
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:32
   - `loadPreOrderTriggerAtHold()` [select] — lib/configurator/pre-order-persist.ts:45
@@ -1316,9 +1311,8 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `activate()` [update] — lib/ecommerce/shop-listings.ts:273
   - `adoptManualProducts()` [update] — lib/ecommerce/inventory-sync.ts:433
   - `deactivate()` [select,update] — lib/ecommerce/shop-listings.ts:253
-  - `deductInventoryForOrder()` [select,update] — lib/ecommerce/inventory-deduction.ts:141
+  - `deductInventoryForOrder()` [select,update] — lib/ecommerce/inventory-deduction.ts:144
   - `publishAccessoryFamily()` [insert,select] — lib/ecommerce/from-inventory.ts:64
-  - `restoreInventoryForOrder()` [select,update] — lib/ecommerce/inventory-deduction.ts:262
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:372
   - `setProductBaseImage()` [select,update] — lib/ecommerce/item-image-sync.ts:122
   - `syncBolsterProducts()` [insert,select] — lib/ecommerce/inventory-sync.ts:265
@@ -1332,7 +1326,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:84
   - `POST()` [select] — app/api/shop/checkout/route.ts:113
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:301
-  - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:80
+  - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:115
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:938
   - `handleApply()` [select] — app/api/shop/customize/route.ts:566
   - `handleApplyBolster()` [select] — app/api/shop/customize/route.ts:694

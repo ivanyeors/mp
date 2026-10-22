@@ -68,14 +68,49 @@ function restockMetadata(
   };
 }
 
+type RestockRow = { item_id: number; quantity_signed: number; reason: string; metadata: Record<string, unknown> };
+
+/** Reverses a line's sale rows pro rata: `units` of `sold` units come back. */
+export function reverseSaleRows(
+  saleRows: Array<{ item_id: number; quantity_signed: number }>,
+  sold: number,
+  units: number,
+  metadata: Record<string, unknown>
+): RestockRow[] {
+  const perItem = new Map<number, number>();
+  for (const r of saleRows) perItem.set(r.item_id, (perItem.get(r.item_id) ?? 0) - r.quantity_signed);
+  return [...perItem]
+    .map(([item_id, out]) => ({ item_id, quantity_signed: Math.round((out * units) / sold), reason: "receive", metadata }))
+    .filter((r) => r.quantity_signed > 0);
+}
+
+/** A Result line has no Variant: its stock left as sale rows tagged with the Result. */
+async function resultRestockTransactions(
+  admin: SupabaseClient,
+  item: OrderItemRow,
+  units: number,
+  metadata: Record<string, unknown>
+): Promise<RestockRow[]> {
+  const resultId = (item.customization_snapshot as { result_id?: unknown } | null)?.result_id;
+  if (typeof resultId !== "string") return [];
+  const { data, error } = await admin
+    .from("inventory_transactions")
+    .select("item_id, quantity_signed")
+    .eq("reason", "sale")
+    .eq("metadata->>order_id", item.order_id)
+    .eq("metadata->>result_id", resultId);
+  if (error) throw new Error(error.message);
+  return reverseSaleRows(data ?? [], item.quantity, units, { ...metadata, result_id: resultId });
+}
+
 /** BOM-aware positive inventory rows for `units` of one order line. */
 async function buildRestockTransactions(
   admin: SupabaseClient,
   item: OrderItemRow,
   units: number,
   metadata: Record<string, unknown>
-): Promise<Array<{ item_id: number; quantity_signed: number; reason: string; metadata: Record<string, unknown> }>> {
-  if (!item.variant_id) return [];
+): Promise<RestockRow[]> {
+  if (!item.variant_id) return resultRestockTransactions(admin, item, units, metadata);
 
   const { data: variant } = await admin
     .from("product_variants")

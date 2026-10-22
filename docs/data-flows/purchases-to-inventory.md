@@ -62,10 +62,11 @@ flowchart TD
      mismatch both stop here and flag the Order. Nothing is deducted.
    - Otherwise it sets `status 'confirmed'` and `paid_at`, and **then**
      deducts.
-3. **Guard**: it counts `inventory_transactions` rows whose
-   `metadata->>order_id` is this Order and deducts only when the count is 0.
+3. **Guard**: it claims the Order by setting `orders.inventory_deducted_at`
+   where it is null, and deducts only when the claim lands. A failed
+   deduction clears the claim so Stripe's retry deducts.
 4. **`deductInventoryForOrder`** (`lib/ecommerce/inventory-deduction.ts`)
-   writes `sale` rows per line. It
+   writes the `sale` rows for every line in one insert and throws on error. It
    skips lines with no Variant and Variants with `track_inventory = false`:
 
    | Case | When | Deducts |
@@ -163,9 +164,6 @@ Analytics does not count these as a revenue channel.
 | Part, custom drawers | `sellPart` | That Item |
 
 None of these has an idempotency key, so a double submit deducts twice.
-Telegram `/out` calls the same `sellPillow` / `sellBolster` / `sellPart`
-actions. See [inventory.md](inventory.md#known-gaps) for why those Telegram
-calls are likely to fail.
 
 ## Purchases that take no stock
 
@@ -179,15 +177,9 @@ calls are likely to fail.
 
 Found by reading the code, not by running it.
 
-- **The shop guard is check-then-insert.** It takes no lock and has no unique
-  key, so two concurrent webhook deliveries could both see 0 rows.
-- **Manual-stock-only Orders never trip the guard.** Case 6 writes no ledger
-  row, so an Order made only of manual-stock Variants never records a row. A
-  redelivered event would decrement `stock_quantity` again.
-- **Insert errors are ignored.** `deductInventoryForOrder` does not check its
-  insert results (Supabase returns `{ error }`; it does not throw). If some
-  inserts fail and some succeed, the rows that landed carry `order_id`, so a
-  retry skips the rest.
+- **Manual-stock updates run after the ledger insert.** If one of several
+  case 6 `stock_quantity` updates fails, the earlier ones stay applied and
+  the retry applies them again.
 - **Shop customisations deduct differently from Result builds.**
   - A customised bolster bought in the shop deducts its snapshot's
     `config_lines` but not its `filling_lines`.
