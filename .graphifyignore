@@ -8,3 +8,10 @@ public/**/*.svg
 
 # Scratch / throwaway
 temp-blog.html
+
+# UI — React components, hooks and pages. The graph is for data and logic;
+# scripts/graphify-dataflow.py adds each page back as one node per route
+# carrying only the data its component tree touches.
+components/
+hooks/
+**/*.tsx
