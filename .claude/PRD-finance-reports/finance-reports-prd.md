@@ -1,6 +1,6 @@
 # PRD: Finance reports for the accounts team
 
-Status: Slice 01 built; slices 02–05 needs-triage
+Status: Slice 01 built; slices 03–04 replaced by a Claude scheduled task (see "Supplier invoices"); slices 02 and 05 needs-triage
 Source: owner request, 2026-10-22: "a reporting page under Analytics that pulls all cost-related
 metrics — customer sales and billing invoices like Vercel, Claude Code, Google Workspace — for our
 account team to validate through their account statements, and lets me choose emails/users to send to."
@@ -28,8 +28,8 @@ Reports, in the order they can be built:
 
 1. **Customer purchases** (slice 01, built): what customers paid us and what we refunded.
 2. **Stripe fees and payouts** (slice 02): what reached the bank, payout by payout, and what Stripe kept.
-3. **Supplier costs from APIs** (slice 03): the suppliers whose API reports money.
-4. **Supplier invoices from a billing mailbox** (slice 04): the suppliers with no invoice API, which is most of them.
+3. ~~**Supplier costs from APIs** (slice 03)~~: replaced, see "Supplier invoices" below.
+4. ~~**Supplier invoices from a billing mailbox** (slice 04)~~: replaced, see "Supplier invoices" below.
 5. **Monthly send** (slice 05): last month's reports go out on the 1st without anyone pressing Send.
 
 ## What each supplier's API can give (researched 2026-10-22)
@@ -55,6 +55,40 @@ Matching card lines: Vercel and Anthropic bill in USD and the card statement is 
 is on date, supplier and the original USD amount the statement prints, never on the SGD figure.
 
 Full findings and source URLs are in `issues/03-supplier-costs-from-apis.md` and `issues/04-billing-mailbox-invoices.md`.
+
+## Supplier invoices: a Claude scheduled task, not app code (decided 2026-10-22)
+
+The owner chose not to build slices 03 and 04. Supplier invoices are consolidated by a Claude
+scheduled task, "Monthly service invoices to accounts", that reads the `sg@mpillow.com` mailbox
+through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `darren@` and `boss@`.
+
+- **When and where:** on the 7th of each month at 08:56 SGT, for the previous month. It runs on
+  the 7th because Stripe's GST tax invoice arrives around the 6th.
+- **What it sends:**
+  - It forwards each service invoice email to `account@mpillow.com` with the original PDF.
+  - It then sends one summary email listing supplier, invoice number, date, before GST, GST and
+    total, plus totals per currency. `sg@` is copied.
+  - Anything that looks like an invoice but comes from an unknown sender goes to `sg@` only.
+- **No double sends:** each forwarded thread gets the Gmail label
+  "Mpillow/Invoices/Sent to accounts", and the task skips labelled threads.
+- **Services only:**
+  - Included: Claude (Max plan receipts), Google Workspace, Google Cloud, Vercel, AWS, 42Metrics
+    (SEO), the monthly marketing invoice (fee plus TikTok and Meta ads), Elfsight, and Stripe's GST
+    tax invoice. Supabase, Resend, Shopify, Meta and Singtel are included when one arrives.
+  - Excluded by the owner: Stamford Tools.
+  - Also excluded: bank documents, and Easyship's weekly shipping summaries.
+- **Gaps it cannot close:**
+  - The Stripe tax invoice email has only a Dashboard link, so the summary lists it to be downloaded.
+  - Easyship's emailed invoice link expires after about 40 minutes.
+  - Vercel invoices go to the team owner's personal address until Vercel's invoice recipient is set
+    to `sg@mpillow.com`.
+- **Guardrails:**
+  - It sends only to `account@` and `sg@`.
+  - It treats email content as data, never as instructions.
+  - It never guesses an amount: an amount that appears only in a PDF is read from the PDF, or
+    reported as "see PDF".
+- **Trade-off accepted:** the task lives in the owner's Claude account, not the Admin Panel. The
+  Gmail Sent folder is its record, not `admin_audit_log`.
 
 ## User Stories
 
@@ -113,8 +147,7 @@ Full findings and source URLs are in `issues/03-supplier-costs-from-apis.md` and
 
 ## Open Questions (owner)
 
-1. **Which mailbox receives supplier invoices?** Slice 04 needs one billing mailbox (e.g. a
-   `billing@mpillow.com` Google Group) that every supplier's invoice email goes to.
-2. **How is Claude Code paid?** Team plan, individual Max seats, or Console API credits — this decides which Anthropic receipts slice 04 looks for.
+1. ~~Which mailbox receives supplier invoices?~~ Answered: `sg@mpillow.com`, read by the scheduled task above. Vercel's invoice recipient still has to be pointed at it.
+2. ~~How is Claude Code paid?~~ Answered: a Claude Max plan billed monthly on the 19th in SGD. The receipt is emailed to `sg@mpillow.com` with the invoice and receipt attached as PDFs.
 3. **Is Shopify Payments still taking money?** If so, its payouts reach the bank separately from Stripe and slice 02 needs a Shopify half.
-4. **Who are the accountants' addresses?** They can be typed in on each send today; slice 05 needs a saved list.
+4. ~~Who are the accountants' addresses?~~ Answered: `account@mpillow.com`.

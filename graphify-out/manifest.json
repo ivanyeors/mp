@@ -14370,9 +14370,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-finance-reports/finance-reports-prd.md": {
-    "mtime": 1792644195.437373,
-    "seen": 1792644290.3617828,
-    "ast_hash": "dc5f1f5a91e8f8fe2b214c5f41d230c6",
+    "mtime": 1792648211.5936306,
+    "seen": 1792648279.3907712,
+    "ast_hash": "43c4181839873e372a9f77ced8234a3d",
     "semantic_hash": ""
   },
   ".claude/PRD-finance-reports/issues/01-customer-purchases-report.md": {
@@ -14388,15 +14388,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-finance-reports/issues/03-supplier-costs-from-apis.md": {
-    "mtime": 1792644240.3008432,
-    "seen": 1792644290.3617861,
-    "ast_hash": "e476398a4a1313ac18cb33205ed595ab",
+    "mtime": 1792648219.9524105,
+    "seen": 1792648279.390783,
+    "ast_hash": "7cd64d9fb7dc4aebaaabd96440a01dcc",
     "semantic_hash": ""
   },
   ".claude/PRD-finance-reports/issues/04-billing-mailbox-invoices.md": {
-    "mtime": 1792644240.302797,
-    "seen": 1792644290.3617873,
-    "ast_hash": "b7682ca625f848f817d65ca66826cd69",
+    "mtime": 1792648219.9740884,
+    "seen": 1792648279.3907907,
+    "ast_hash": "5a31400aac5b67bc440c8c29d159d650",
     "semantic_hash": ""
   },
   ".claude/PRD-finance-reports/issues/05-monthly-send.md": {
@@ -14406,9 +14406,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-finance-reports/issues/README.md": {
-    "mtime": 1792644240.2948017,
-    "seen": 1792644290.3617895,
-    "ast_hash": "a5256170b485344bedca85dd855ae206",
+    "mtime": 1792648212.4154415,
+    "seen": 1792648279.390796,
+    "ast_hash": "c40ce49caf2d3da4b27ac1328955405c",
     "semantic_hash": ""
   }
 }

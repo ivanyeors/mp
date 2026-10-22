@@ -1,5 +1,9 @@
 # Slice 03 — Supplier costs from the APIs that report money
 
+> **Won't build (2026-10-22).** The owner chose a Claude scheduled task that reads the
+> `sg@mpillow.com` mailbox through the Gmail connector instead of app code. See the PRD section
+> "Supplier invoices". The research below is kept for reference.
+
 Type: AFK
 Parent: PRD `finance-reports` (`../finance-reports-prd.md`)
 User stories covered: 11
