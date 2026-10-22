@@ -12,8 +12,8 @@
 # supabase/migrations are skipped and the graph loses the whole DB schema.
 #
 # Override the pin for a one-off with: GRAPHIFY_VERSION=x.y.z ./scripts/graphify ...
-# On a machine with neither uv nor graphify this exits silently, so the
-# PreToolUse hooks in .claude/settings.json can never break a session.
+# On a machine with neither uv nor graphify this exits silently, so a
+# script or hook that calls it can never break a session.
 set -uo pipefail
 
 GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.75}"
@@ -41,12 +41,17 @@ fi
 # page), which graphify's AST pass cannot see. It is stripped first so graphify
 # rebuilds from exactly what it produced last time, then added back from the
 # current source. Both steps are deterministic; CI runs this same path.
+#
+# The extraction cache is cleared first: it has been seen to skip new and moved
+# files while the digest still looked stable, which CI (no cache) then fails.
+# A full rebuild costs ~50s and never disagrees with CI.
 dataflow="$(dirname "$0")/graphify-dataflow.py"
 root=.
 for arg in "${@:2}"; do
   case "$arg" in -*) ;; *) root="$arg"; break ;; esac
 done
 graph="$root/graphify-out/graph.json"
+rm -rf "$root/graphify-out/cache"
 
 if [ -f "$graph" ]; then
   "${python[@]}" "$dataflow" --strip "$graph" || exit 1

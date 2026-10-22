@@ -6780,21 +6780,21 @@
     "semantic_hash": ""
   },
   ".claude/settings.json": {
-    "mtime": 1792629073.283663,
-    "seen": 1792629909.4602246,
-    "ast_hash": "1741579a746054e607902b4d08d7d83b",
+    "mtime": 1792631086.3797827,
+    "seen": 1792631224.9891863,
+    "ast_hash": "76ce4217aca35efe67ce13ed4b059d60",
     "semantic_hash": ""
   },
   "scripts/graphify": {
-    "mtime": 1792629863.70371,
-    "seen": 1792629909.4619412,
-    "ast_hash": "4671601b543b0f64f6c88ba9ebdc763f",
+    "mtime": 1792631096.6286523,
+    "seen": 1792631224.9918358,
+    "ast_hash": "c8c4d2e8beeddd738a1a23a6ac52b018",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792630530.0557497,
-    "seen": 1792630649.9855936,
-    "ast_hash": "2946367bb1f33b0cb088b019edd4bc11",
+    "mtime": 1792631125.5823994,
+    "seen": 1792631224.993275,
+    "ast_hash": "1e63367307f11ee8df2217802093e03f",
     "semantic_hash": ""
   },
   "scripts/graphify-digest.py": {
@@ -14268,9 +14268,9 @@
     "semantic_hash": ""
   },
   "scripts/graphify-dataflow.py": {
-    "mtime": 1792630750.6939654,
-    "seen": 1792630796.4014325,
-    "ast_hash": "4cebb73e60d2bc2c0b7642a59fe10b4e",
+    "mtime": 1792631274.393867,
+    "seen": 1792631300.8410544,
+    "ast_hash": "dcc95d166e5894281d800590da5f7ec4",
     "semantic_hash": ""
   },
   "docs/data-flows/README.md": {
@@ -14295,6 +14295,18 @@
     "mtime": 1792630516.1197488,
     "seen": 1792630649.9856625,
     "ast_hash": "56f75fa1db66de3cac531039fe1c4a21",
+    "semantic_hash": ""
+  },
+  "scripts/graph-hint": {
+    "mtime": 1792631176.8474324,
+    "seen": 1792631224.9918323,
+    "ast_hash": "c58820de0fcf450e356b2113545f1495",
+    "semantic_hash": ""
+  },
+  "docs/graphify.md": {
+    "mtime": 1792631274.3997493,
+    "seen": 1792631300.842608,
+    "ast_hash": "c033ec9bad48225b109fcb1802d046ed",
     "semantic_hash": ""
   }
 }

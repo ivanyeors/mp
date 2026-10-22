@@ -76,13 +76,6 @@ Defined in supabase/migrations/20261002020000_ai_crawler_hits.sql:7
 Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:36
 References: `analytics_visitors`, `analytics_visits`
 - Written by:
-  - `cleanup()` [delete] — lib/analytics/journey/slice-08-09.smoke.ts:26
-  - `cleanup()` [delete] — lib/analytics/journey/slice-10.smoke.ts:27
-  - `cleanup()` [delete] — lib/analytics/journey/slice-11.smoke.ts:37
-  - `cleanup()` [delete] — lib/analytics/journey/slice-12.smoke.ts:34
-  - `main()` [insert] — lib/analytics/journey/slice-08-09.smoke.ts:73
-  - `main()` [insert] — lib/analytics/journey/slice-10.smoke.ts:86
-  - `main()` [insert] — lib/analytics/journey/slice-11.smoke.ts:153
   - `persistJourneyIngest()` [insert] — lib/analytics/journey/ingest.ts:269
 - Read by:
   - `fetchConvertedRows()` [select] — lib/analytics/journey/aggregates.ts:445
@@ -94,43 +87,25 @@ References: `analytics_visitors`, `analytics_visits`
 Defined in supabase/migrations/20260715103000_analytics_ga_events.sql:3
 References: `analytics_visitors`
 - Written by:
-  - `cleanup()` [delete] — lib/analytics/journey/slice-12.smoke.ts:30
   - `runGaSync()` [insert] — lib/analytics/journey/ga-sync.ts:156
   - `stitchUnlinkedGaEvents()` [select,update] — lib/analytics/journey/ga-sync.ts:169
-- Read by:
-  - `main()` [select] — lib/analytics/journey/slice-12.smoke.ts:100
 
 ### analytics_visitors
 Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
 - Written by:
-  - `cleanup()` [delete] — lib/analytics/journey/slice-08-09.smoke.ts:28
-  - `cleanup()` [delete] — lib/analytics/journey/slice-10.smoke.ts:29
-  - `cleanup()` [delete] — lib/analytics/journey/slice-11.smoke.ts:39
-  - `cleanup()` [delete] — lib/analytics/journey/slice-12.smoke.ts:36
-  - `main()` [insert] — lib/analytics/journey/slice-08-09.smoke.ts:35
-  - `main()` [insert] — lib/analytics/journey/slice-10.smoke.ts:34
-  - `main()` [insert] — lib/analytics/journey/slice-11.smoke.ts:43
   - `mergeVisitorIdentity()` [select,update,upsert] — lib/analytics/journey/identity.ts:117
   - `persistJourneyIngest()` [update,upsert] — lib/analytics/journey/ingest.ts:201
   - `stampVisitorRef()` [upsert] — lib/referrals/index.ts:120
 - Read by:
   - `POST()` [select] — app/api/results/hold/route.ts:796
-  - `main()` [select] — lib/analytics/journey/slice-12.smoke.ts:55
   - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:178
 
 ### analytics_visits
 Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:16
 References: `analytics_visitors`
 - Written by:
-  - `cleanup()` [delete] — lib/analytics/journey/slice-08-09.smoke.ts:27
-  - `cleanup()` [delete] — lib/analytics/journey/slice-10.smoke.ts:28
-  - `cleanup()` [delete] — lib/analytics/journey/slice-11.smoke.ts:38
-  - `cleanup()` [delete] — lib/analytics/journey/slice-12.smoke.ts:35
   - `closeJourneyVisit()` [select,update] — lib/analytics/journey/ingest.ts:137
   - `linkVisitToPaidOrder()` [select,update] — lib/analytics/journey/identity.ts:161
-  - `main()` [insert,select] — lib/analytics/journey/slice-08-09.smoke.ts:42
-  - `main()` [insert] — lib/analytics/journey/slice-10.smoke.ts:57
-  - `main()` [insert] — lib/analytics/journey/slice-11.smoke.ts:46
   - `persistJourneyIngest()` [upsert] — lib/analytics/journey/ingest.ts:244
 - Read by:
   - `closeStaleVisitsForVisitor()` [select] — lib/analytics/journey/ingest.ts:179
@@ -174,8 +149,6 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/media`
   - `POST()` [insert] — app/api/blogs/route.ts:63
   - `applyPublicMigration()` [update] — lib/media/migrate-public-apply.ts:187
   - `deleteBlog()` [delete] — app/[lang]/settings/blogs/actions.ts:16
-  - `main()` [delete,insert] — scripts/smoke-asset-picker-rollout.ts:60
-  - `main()` [delete,insert] — scripts/smoke-replace-everywhere.ts:134
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:368
   - `updateBlogStatus()` [update] — app/[lang]/settings/blogs/actions.ts:29
 - Read by:
@@ -186,7 +159,6 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/media`
   - `getBlogPostsFromDb()` [select] — lib/blogs.ts:86
   - `listAdminBlogPosts()` [select] — lib/blogs.ts:143
   - `loadPublicMigrationContext()` [select] — lib/media/migrate-public-apply.ts:43
-  - `main()` [select] — scripts/smoke-migrate-public-images.ts:111
 
 ### bolster_bom_lines
 Defined in supabase/migrations/0002_bolster.sql:2
@@ -363,8 +335,6 @@ Changed from pages: `/settings/discounts/[id]`, `/settings/media`, `/settings/pr
   - `POST()` [insert] — app/api/shop/categories/route.ts:43
   - `PUT()` [update] — app/api/shop/categories/reorder/route.ts:31
   - `deleteCategory()` [delete] — app/[lang]/settings/categories/actions.ts:14
-  - `main()` [delete,insert] — scripts/smoke-asset-picker-rollout.ts:80
-  - `main()` [delete,insert] — scripts/smoke-replace-everywhere.ts:83
   - `reorderCategories()` [update] — app/[lang]/settings/categories/actions.ts:26
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:373
 - Read by:
@@ -831,8 +801,6 @@ Changed from pages: `/settings/media`, `/settings/page-builder`
   - `PATCH()` [select,update] — app/api/landing-sections/[id]/route.ts:44
   - `POST()` [insert,select] — app/api/landing-sections/route.ts:68
   - `PUT()` [select,upsert] — app/api/landing-sections/reorder/route.ts:39
-  - `main()` [select,update] — scripts/smoke-asset-picker-rollout.ts:145
-  - `main()` [select,update] — scripts/smoke-replace-everywhere.ts:152
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:370
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:932
@@ -1074,9 +1042,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [select,update] — app/api/stripe/webhook/route.ts:177
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:165
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:252
-  - `cleanup()` [delete] — lib/analytics/journey/slice-10.smoke.ts:30
   - `fulfillOrder()` [select,update] — app/[lang]/settings/orders/actions.ts:63
-  - `main()` [insert] — lib/analytics/journey/slice-10.smoke.ts:46
   - `markOrderDeliveredByCourier()` [update] — lib/ecommerce/fulfilment.ts:81
   - `markOrderShipped()` [update] — lib/ecommerce/fulfilment.ts:34
   - `rollupOrderMoney()` [select,update] — lib/ecommerce/money-ledger.ts:138
@@ -1198,8 +1164,6 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `PUT()` [update] — app/api/partners/reorder/route.ts:23
   - `approveApplication()` [insert,select] — app/[lang]/settings/partner-applications/actions.ts:96
   - `ensureReferralCode()` [select,update] — lib/referrals/index.ts:76
-  - `main()` [delete,insert] — scripts/smoke-asset-picker-rollout.ts:98
-  - `main()` [delete,insert] — scripts/smoke-replace-everywhere.ts:117
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:374
   - `upsertSelfPurchaseRate()` [update] — app/[lang]/settings/partner-commissions/self-purchase-actions.ts:37
 - Read by:
@@ -1222,7 +1186,6 @@ Defined in supabase/migrations/20260706200000_partners.sql:3
 Changed from pages: `/settings/media`, `/settings/partners`
 - Written by:
   - `PATCH()` [insert,update] — app/api/partners-page/route.ts:62
-  - `main()` [delete,insert,select,update] — scripts/smoke-asset-picker-rollout.ts:117
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:375
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:947
@@ -1292,8 +1255,6 @@ Changed from pages: `/settings/inventory`, `/settings/media`, `/settings/product
   - `POST()` [insert,select] — app/api/shop/products/[id]/images/route.ts:33
   - `PUT()` [update] — app/api/shop/products/[id]/images/reorder/route.ts:26
   - `applyGalleryImage()` [delete,insert,select,update] — lib/ecommerce/item-image-sync.ts:43
-  - `main()` [delete,insert] — scripts/smoke-asset-picker-products.ts:66
-  - `main()` [delete,insert] — scripts/smoke-replace-everywhere.ts:101
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:371
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:935
@@ -1417,8 +1378,6 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `loadExistingVariants()` [select] — lib/ecommerce/shop-listings.ts:131
   - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:31
   - `main()` [select] — scripts/costings-sync-prices.ts:58
-  - `main()` [select] — scripts/smoke-asset-picker-products.ts:47
-  - `main()` [select] — scripts/smoke-replace-everywhere.ts:98
   - `main()` [select] — scripts/stripe-sync-all.ts:73
   - `resolveSurfaceKey()` [select] — lib/page-faq/seed.ts:24
   - `setComposedProductImage()` [select] — app/[lang]/settings/inventory/actions.ts:945
@@ -2002,9 +1961,6 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `PUT()` [delete,upsert] — app/api/site-settings/route.ts:108
   - `applyPublicMigration()` [upsert] — lib/media/migrate-public-apply.ts:170
   - `claimTelegramPeriod()` [insert,select,update] — lib/crm/telegram-updates-server.ts:74
-  - `main()` [delete,upsert] — scripts/smoke-drive-asset-detail.ts:94
-  - `main()` [delete,select,upsert] — scripts/smoke-replace-everywhere.ts:61
-  - `main()` [delete,upsert] — scripts/smoke-usage-resolver.ts:39
   - `runReplaceEverywhere()` [select,upsert] — lib/media/replace.ts:369
   - `saveDiscoverySourceCatalog()` [upsert] — lib/discovery-source/index.ts:54
   - `saveServices()` [upsert] — app/[lang]/settings/costings/save/route.ts:301
@@ -2021,7 +1977,6 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `loadPublicMigrationContext()` [select] — lib/media/migrate-public-apply.ts:42
   - `loadReadjustmentPolicy()` [select] — lib/pricing/service-prices.ts:111
   - `loadReviewRequestSettings()` [select] — lib/aftercare/review-request-server.ts:101
-  - `main()` [select] — scripts/smoke-migrate-public-images.ts:60
   - `readAftercareSettings()` [select] — lib/aftercare/card-server.ts:26
   - `readServiceNoticeEnabled()` [select] — lib/customer-migration/campaign-ledger.ts:121
   - `readTelegramUpdates()` [select] — lib/crm/telegram-updates-server.ts:40
