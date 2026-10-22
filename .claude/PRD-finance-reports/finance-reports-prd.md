@@ -77,8 +77,19 @@ through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `d
     tax invoice. Supabase, Resend, Shopify, Meta and Singtel are included when one arrives.
   - Easyship's weekly payment summaries are summary rows only, with the invoice number taken from the
     link's file name. They are not forwarded, because the PDF link expires within hours.
-  - Excluded by the owner: Stamford Tools.
-  - Also excluded: bank documents.
+  - Lazada's weekly seller-fee tax invoices are forwarded. A Gmail auto-forward to `account@` already
+    existed, but `account@` rejects those forwards for lacking a Message-ID.
+  - Ad-hoc bills are forwarded only when they are already paid: receipts for freelancers (Fiverr
+    through PayPal), professional services and one-off software. An unpaid invoice from an unknown
+    sender goes to `sg@` first, because fake invoices sent to accounts teams are a common fraud.
+    Anything that may be personal (gym, travel, retail) also goes to `sg@`.
+  - TikTok coin top-ups and Meta ad receipts are listed under "To verify" and are not added to the
+    totals: Jun's marketing invoice bills the same ad spend.
+  - Google Cloud emails only budget alerts, never bills. Each summary points to Cloud Console →
+    Billing → Documents.
+  - Excluded by the owner: Stamford Tools; anything about the Midview property (22 Sin Ming Lane
+    #08-83), for now.
+  - Also excluded: bank documents, customer order notifications and shipping notifications.
 - **Gaps it cannot close:**
   - The Stripe tax invoice email has only a Dashboard link, so the summary lists it to be downloaded.
   - Easyship's emailed invoice link expires after about 40 minutes.
