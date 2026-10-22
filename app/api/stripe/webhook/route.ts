@@ -365,16 +365,28 @@ export async function POST(req: Request) {
           customization_snapshot?: Record<string, unknown> | null;
         }>;
 
-        // Step 2 (CRITICAL): Deduct inventory (idempotent — check if transactions already exist)
-        const { count: existingTxCount } = await admin
-          .from("inventory_transactions")
-          .select("id", { count: "exact", head: true })
-          .eq("metadata->>order_id", orderId);
+        // Step 2 (CRITICAL): Deduct inventory once. Claiming the Order first means
+        // two concurrent deliveries cannot both deduct.
+        const { data: claimed, error: claimError } = await admin
+          .from("orders")
+          .update({ inventory_deducted_at: new Date().toISOString() })
+          .eq("id", orderId)
+          .is("inventory_deducted_at", null)
+          .select("id")
+          .maybeSingle();
+        if (claimError) {
+          throw new CriticalWebhookError(
+            `Failed to claim inventory deduction for ${orderId}: ${claimError.message}`,
+            claimError
+          );
+        }
 
-        if ((existingTxCount ?? 0) === 0) {
+        if (claimed) {
           try {
             await deductInventoryForOrder(orderId, items);
           } catch (err) {
+            // Release the claim so Stripe's retry deducts; the ledger insert is all-or-nothing.
+            await admin.from("orders").update({ inventory_deducted_at: null }).eq("id", orderId);
             const message = err instanceof Error ? err.message : String(err);
             // Oversold: a PAID order can't be fulfilled from stock. Flag it loudly
             // for a human to refund/reconcile (the dead-letter + 500 retry happens

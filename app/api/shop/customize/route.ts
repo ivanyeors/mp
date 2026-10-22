@@ -225,10 +225,10 @@ async function handleRecommend(req: Request) {
       // Fetch bolster buildable counts per variant
       const { data: bolsterBuildable } = await admin
         .from("bolster_buildable")
-        .select("variant, buildable");
+        .select("bolster_variant, buildable");
       const buildable_counts: Record<string, number> = {};
       for (const row of bolsterBuildable ?? []) {
-        buildable_counts[row.variant] = row.buildable ?? 0;
+        buildable_counts[row.bolster_variant] = row.buildable ?? 0;
       }
       const composed_buildable = buildable_counts[bolsterVariant] ?? 0;
 

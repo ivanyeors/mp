@@ -5,12 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * production — including when TELEGRAM_WEBHOOK_SECRET was never set.
  */
 
-vi.mock("@/app/[lang]/settings/inventory/actions", () => ({
-  sellPillow: vi.fn(),
-  sellPart: vi.fn(),
-  receiveStock: vi.fn(),
-  sellBolster: vi.fn(),
-}));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: vi.fn() }));
 
 const { GET, POST } = await import("@/app/api/telegram/webhook/route");
