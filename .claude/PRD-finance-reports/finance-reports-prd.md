@@ -75,8 +75,10 @@ through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `d
   - Included: Claude (Max plan receipts), Google Workspace, Google Cloud, Vercel, AWS, 42Metrics
     (SEO), the monthly marketing invoice (fee plus TikTok and Meta ads), Elfsight, and Stripe's GST
     tax invoice. Supabase, Resend, Shopify, Meta and Singtel are included when one arrives.
+  - Easyship's weekly payment summaries are summary rows only, with the invoice number taken from the
+    link's file name. They are not forwarded, because the PDF link expires within hours.
   - Excluded by the owner: Stamford Tools.
-  - Also excluded: bank documents, and Easyship's weekly shipping summaries.
+  - Also excluded: bank documents.
 - **Gaps it cannot close:**
   - The Stripe tax invoice email has only a Dashboard link, so the summary lists it to be downloaded.
   - Easyship's emailed invoice link expires after about 40 minutes.
