@@ -205,3 +205,50 @@ export function wavePause(stats: readonly CampaignWaveStats[]): WavePause {
   }
   return { paused: false };
 }
+
+// ─── The send limit ──────────────────────────────────────────────────────────
+
+/** Statuses that used up one of the provider's sends, or may have: a pending row may have gone. */
+export const COUNTED_SEND_STATUSES = ["pending", "sent", "bounced", "complained"] as const;
+
+/**
+ * The windows the limits are counted over. Rolling, and a little wider than
+ * a calendar day or month, so they hold at least what Resend counts however
+ * it draws its own day and billing month.
+ */
+export const SEND_LIMIT_DAY_MS = 24 * 3600_000;
+export const SEND_LIMIT_MONTH_MS = 31 * 86400_000;
+
+export interface RecentCampaignSends {
+  lastDay: number;
+  lastMonth: number;
+}
+
+/** Campaign sends in the last 24 hours and the last 31 days, every template and wave. */
+export async function readRecentCampaignSends(admin: SupabaseClient, now: Date): Promise<RecentCampaignSends> {
+  const since = async (ms: number) => {
+    const { count, error } = await admin
+      .from("customer_campaign_sends")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...COUNTED_SEND_STATUSES])
+      .gte("sent_at", new Date(now.getTime() - ms).toISOString());
+    if (error) throw new Error(`Could not count the campaign's recent sends: ${error.message}`);
+    return count ?? 0;
+  };
+  const [lastDay, lastMonth] = await Promise.all([since(SEND_LIMIT_DAY_MS), since(SEND_LIMIT_MONTH_MS)]);
+  return { lastDay, lastMonth };
+}
+
+export interface SendBudget {
+  /** How many more this run may send. */
+  remaining: number;
+  /** The limit that leaves the least room. */
+  binding: "daily" | "monthly";
+}
+
+/** Pure — what the limits leave for this run. */
+export function sendBudget(limits: { daily: number; monthly: number }, used: RecentCampaignSends): SendBudget {
+  const daily = Math.max(0, limits.daily - used.lastDay);
+  const monthly = Math.max(0, limits.monthly - used.lastMonth);
+  return daily <= monthly ? { remaining: daily, binding: "daily" } : { remaining: monthly, binding: "monthly" };
+}

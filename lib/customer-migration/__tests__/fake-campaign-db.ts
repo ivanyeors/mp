@@ -6,6 +6,8 @@ import { marketingEmailState } from "@/lib/marketing-consent/state";
  * the wave sender asks of Postgres:
  *  - `customer_campaign_candidates` and `customer_campaign_wave_stats`, the
  *    two views, computed from the tables (`select`, `order`, `range`);
+ *  - `customer_campaign_sends`, for the send limit's count (`in`, `gte`,
+ *    `select` with `count: "exact", head: true`);
  *  - `site_settings` (`eq`, `in`, `maybeSingle`);
  *  - the RPCs `claim_campaign_send`, `finish_campaign_send`, `mint_claim_link`
  *    and `set_marketing_email`.
@@ -129,6 +131,7 @@ function query(source: () => Row[]) {
   const filters: Array<(r: Row) => boolean> = [];
   let sort: string | null = null;
   let range: [number, number] | null = null;
+  let head = false;
   const rows = () => {
     let r = source().filter((row) => filters.every((f) => f(row)));
     if (sort) r = [...r].sort((a, b) => (String(a[sort!]) < String(b[sort!]) ? -1 : 1));
@@ -136,14 +139,15 @@ function query(source: () => Row[]) {
     return r;
   };
   const q = {
-    select: () => q,
+    select: (_columns?: string, opts?: { count?: string; head?: boolean }) => ((head = opts?.head === true), q),
     eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
     in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(r[col])), q),
+    gte: (col: string, val: string) => (filters.push((r) => String(r[col]) >= val), q),
     order: (col: string) => ((sort = col), q),
     range: (from: number, to: number) => ((range = [from, to]), q),
     maybeSingle: () => Promise.resolve({ data: rows()[0] ?? null, error: null }),
     then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
-      Promise.resolve({ data: rows(), error: null }).then(resolve, reject),
+      Promise.resolve({ data: head ? null : rows(), count: rows().length, error: null }).then(resolve, reject),
   };
   return q;
 }
@@ -240,6 +244,7 @@ export function fakeCampaignClient(world: CampaignWorld) {
     from(table: string) {
       if (table === "customer_campaign_candidates") return query(() => candidates(world));
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
+      if (table === "customer_campaign_sends") return query(() => world.sends as unknown as Row[]);
       if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake-campaign-db: no table ${table}`);
     },

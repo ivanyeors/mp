@@ -36,6 +36,37 @@ export function getCampaignTransport(env: Env = process.env): EmailTransport | n
   return key ? new ResendTransport(key) : null;
 }
 
+/**
+ * How much the campaign's Resend plan may send. Resend's free plan allows 100
+ * emails a day and 3,000 a month, and the wave sender keeps every run inside
+ * both (`sendBudget`), so waves stagger across days instead of failing
+ * half-way. A paid plan raises them:
+ *   CAMPAIGN_DAILY_SEND_LIMIT    default 100
+ *   CAMPAIGN_MONTHLY_SEND_LIMIT  default 3000
+ * Set them lower if anything else sends from the same Resend account: the
+ * ledger only counts campaign sends.
+ */
+export interface CampaignSendLimits {
+  daily: number;
+  monthly: number;
+}
+
+export const RESEND_FREE_SEND_LIMITS: CampaignSendLimits = { daily: 100, monthly: 3000 };
+
+export function campaignSendLimits(env: Env = process.env): CampaignSendLimits {
+  const read = (name: string, fallback: number) => {
+    const raw = env[name]?.trim();
+    if (!raw) return fallback;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) throw new Error(`${name} must be a whole number of emails, not ${raw}`);
+    return n;
+  };
+  return {
+    daily: read("CAMPAIGN_DAILY_SEND_LIMIT", RESEND_FREE_SEND_LIMITS.daily),
+    monthly: read("CAMPAIGN_MONTHLY_SEND_LIMIT", RESEND_FREE_SEND_LIMITS.monthly),
+  };
+}
+
 /** The bare address in `Name <a@b.c>` or `a@b.c`, lowercased; null when there is none. */
 export function emailAddressOf(value: string | null | undefined): string | null {
   const raw = value?.trim() ?? "";
