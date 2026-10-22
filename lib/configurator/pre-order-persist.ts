@@ -53,7 +53,7 @@ export async function loadPreOrderTriggerAtHold(
     const { data: row } = await admin
       .from("bolster_buildable")
       .select("buildable")
-      .eq("variant", args.suggestedLength)
+      .eq("bolster_variant", args.suggestedLength)
       .maybeSingle();
     composedBuildable = Number(row?.buildable ?? 0);
   }

@@ -134,6 +134,9 @@ export async function deductInventoryForOrder(
   items: OrderItemForDeduction[]
 ): Promise<void> {
   const admin = supabaseAdmin();
+  // One insert for the whole Order: all rows land or none do, so a retry is safe.
+  const transactions: Array<Record<string, unknown>> = [];
+  const manualStock: Array<{ variantId: string; quantity: number }> = [];
 
   for (const item of items) {
     if (!item.variant_id) continue;
@@ -157,32 +160,24 @@ export async function deductInventoryForOrder(
       if (!bolsterVariant) continue;
 
       const allLines = await mergeBolsterCustomLines(bolsterVariant, snapshot.config_lines ?? []);
-      const transactions = buildSaleDeductionTransactions(
+      transactions.push(...buildSaleDeductionTransactions(
         allLines,
         item.quantity,
         orderId,
         item.customization_id
-      );
-
-      if (transactions.length > 0) {
-        await admin.from("inventory_transactions").insert(transactions);
-      }
+      ));
       continue;
     }
 
     // Case 2: Customized pillow order
     if (variant.pillow_product_id && item.customization_id && item.customization_snapshot) {
       const allLines = await mergePillowCustomLines(variant.pillow_product_id, snapshot);
-      const transactions = allLines.map((line) => ({
+      transactions.push(...allLines.map((line) => ({
         item_id: line.item_id,
         quantity_signed: -(line.quantity * item.quantity),
         reason: "sale" as const,
         metadata: { order_id: orderId, customization_id: item.customization_id },
-      }));
-
-      if (transactions.length > 0) {
-        await admin.from("inventory_transactions").insert(transactions);
-      }
+      })));
       continue;
     }
 
@@ -193,16 +188,12 @@ export async function deductInventoryForOrder(
         .select("item_id, quantity")
         .eq("product_id", variant.pillow_product_id);
 
-      if (bomLines && bomLines.length > 0) {
-        const transactions = bomLines.map((bl: { item_id: number; quantity: number }) => ({
-          item_id: bl.item_id,
-          quantity_signed: -(bl.quantity * item.quantity),
-          reason: "sale" as const,
-          metadata: { order_id: orderId },
-        }));
-
-        await admin.from("inventory_transactions").insert(transactions);
-      }
+      transactions.push(...(bomLines ?? []).map((bl: { item_id: number; quantity: number }) => ({
+        item_id: bl.item_id,
+        quantity_signed: -(bl.quantity * item.quantity),
+        reason: "sale" as const,
+        metadata: { order_id: orderId },
+      })));
       continue;
     }
 
@@ -214,22 +205,18 @@ export async function deductInventoryForOrder(
         .select("item_id, quantity")
         .eq("variant", bolsterVariant);
 
-      if (bomLines && bomLines.length > 0) {
-        const transactions = bomLines.map((bl: { item_id: number; quantity: number }) => ({
-          item_id: bl.item_id,
-          quantity_signed: -(bl.quantity * item.quantity),
-          reason: "sale" as const,
-          metadata: { order_id: orderId },
-        }));
-
-        await admin.from("inventory_transactions").insert(transactions);
-      }
+      transactions.push(...(bomLines ?? []).map((bl: { item_id: number; quantity: number }) => ({
+        item_id: bl.item_id,
+        quantity_signed: -(bl.quantity * item.quantity),
+        reason: "sale" as const,
+        metadata: { order_id: orderId },
+      })));
       continue;
     }
 
     // Case 5: Item-linked variant (accessory/part)
     if (variant.item_id) {
-      await admin.from("inventory_transactions").insert({
+      transactions.push({
         item_id: variant.item_id,
         quantity_signed: -item.quantity,
         reason: "sale",
@@ -239,130 +226,21 @@ export async function deductInventoryForOrder(
     }
 
     // Case 6: Manual stock tracking (fallback)
-    const newQty = Math.max(0, (variant.stock_quantity ?? 0) - item.quantity);
-    await admin
-      .from("product_variants")
-      .update({ stock_quantity: newQty })
-      .eq("id", item.variant_id);
+    manualStock.push({
+      variantId: item.variant_id,
+      quantity: Math.max(0, (variant.stock_quantity ?? 0) - item.quantity),
+    });
   }
-}
 
-/**
- * Restore inventory for a refunded order — reverse of deductInventoryForOrder.
- */
-export async function restoreInventoryForOrder(
-  orderId: string,
-  items: OrderItemForDeduction[]
-): Promise<void> {
-  const admin = supabaseAdmin();
-
-  for (const item of items) {
-    if (!item.variant_id) continue;
-
-    const { data: variant } = await admin
+  if (transactions.length > 0) {
+    const { error } = await admin.from("inventory_transactions").insert(transactions);
+    if (error) throw new Error(error.message);
+  }
+  for (const m of manualStock) {
+    const { error } = await admin
       .from("product_variants")
-      .select("id, pillow_product_id, item_id, track_inventory, stock_quantity, option1")
-      .eq("id", item.variant_id)
-      .single();
-
-    if (!variant || !variant.track_inventory) continue;
-
-    const snapshot = (item.customization_snapshot ?? {}) as CustomizationSnapshot;
-
-    // Case 1: Customized bolster
-    if (isBolsterCustomizedItem(variant, item, snapshot)) {
-      const bolsterVariant =
-        (isBolsterVariant(snapshot.bolster_variant) ? snapshot.bolster_variant : null) ??
-        (isBolsterVariant(variant.option1?.toLowerCase()) ? variant.option1!.toLowerCase() : null);
-
-      if (!bolsterVariant) continue;
-
-      const allLines = await mergeBolsterCustomLines(bolsterVariant, snapshot.config_lines ?? []);
-      const transactions = allLines.map((line) => ({
-        item_id: line.item_id,
-        quantity_signed: line.quantity * item.quantity,
-        reason: "correction" as const,
-        metadata: { order_id: orderId, refund: true },
-      }));
-
-      if (transactions.length > 0) {
-        await admin.from("inventory_transactions").insert(transactions);
-      }
-      continue;
-    }
-
-    // Case 2: Customized pillow
-    if (variant.pillow_product_id && item.customization_id && item.customization_snapshot) {
-      const allLines = await mergePillowCustomLines(variant.pillow_product_id, snapshot);
-      const transactions = allLines.map((line) => ({
-        item_id: line.item_id,
-        quantity_signed: line.quantity * item.quantity,
-        reason: "correction" as const,
-        metadata: { order_id: orderId, refund: true },
-      }));
-
-      if (transactions.length > 0) {
-        await admin.from("inventory_transactions").insert(transactions);
-      }
-      continue;
-    }
-
-    // Case 3: Standard pillow
-    if (variant.pillow_product_id) {
-      const { data: bomLines } = await admin
-        .from("bom_lines")
-        .select("item_id, quantity")
-        .eq("product_id", variant.pillow_product_id);
-
-      if (bomLines && bomLines.length > 0) {
-        const transactions = bomLines.map((bl: { item_id: number; quantity: number }) => ({
-          item_id: bl.item_id,
-          quantity_signed: bl.quantity * item.quantity,
-          reason: "correction" as const,
-          metadata: { order_id: orderId, refund: true },
-        }));
-
-        await admin.from("inventory_transactions").insert(transactions);
-      }
-      continue;
-    }
-
-    // Case 4: Standard bolster
-    const bolsterVariant = variant.option1?.toLowerCase();
-    if (isBolsterVariant(bolsterVariant)) {
-      const { data: bomLines } = await admin
-        .from("bolster_bom_lines")
-        .select("item_id, quantity")
-        .eq("variant", bolsterVariant);
-
-      if (bomLines && bomLines.length > 0) {
-        const transactions = bomLines.map((bl: { item_id: number; quantity: number }) => ({
-          item_id: bl.item_id,
-          quantity_signed: bl.quantity * item.quantity,
-          reason: "correction" as const,
-          metadata: { order_id: orderId, refund: true },
-        }));
-
-        await admin.from("inventory_transactions").insert(transactions);
-      }
-      continue;
-    }
-
-    // Case 5: Item-linked
-    if (variant.item_id) {
-      await admin.from("inventory_transactions").insert({
-        item_id: variant.item_id,
-        quantity_signed: item.quantity,
-        reason: "correction",
-        metadata: { order_id: orderId, refund: true },
-      });
-      continue;
-    }
-
-    // Case 6: Manual
-    await admin
-      .from("product_variants")
-      .update({ stock_quantity: (variant.stock_quantity ?? 0) + item.quantity })
-      .eq("id", item.variant_id);
+      .update({ stock_quantity: m.quantity })
+      .eq("id", m.variantId);
+    if (error) throw new Error(error.message);
   }
 }

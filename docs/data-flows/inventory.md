@@ -47,7 +47,7 @@ flowchart LR
   | `sale` | − | every purchase channel and the manual sells |
   | `receive` | + | Receive stock, initial stock, restock of returned goods |
   | `assemble` | ± | converting a base filling into an altered filling (two rows) |
-  | `correction` | + | only `restoreInventoryForOrder`, which has no caller |
+  | `correction` | | allowed by the check constraint; nothing writes it |
   | `adjustment` | | allowed by the check constraint; nothing writes it |
 
 - **`metadata`** is how writers find their own rows again (idempotency) and
@@ -98,7 +98,6 @@ Storefront products are a projection of inventory; see `CONTEXT.md`.
 flowchart TD
   recv["Admin Panel → Inventory<br/>Receive stock"] --> rs["receiveStock()"]
   add["Admin Panel → Inventory<br/>Add item with opening stock"] --> aii["addInventoryItem()"]
-  tg["Telegram /in"] -.-> rs
   rs --> isi["insertStockIn()"]
   aii --> isi
   isi --> sir["stockInRows()"]
@@ -124,6 +123,8 @@ flowchart TD
   - `restockOrderItem` resolves Items through the Variant the same way shop
     deduction does, writes `receive` rows and adds to
     `order_items.returned_quantity`.
+  - A Result Order line has no Variant. Its restock reverses that Result's
+    own `sale` rows (matched on `order_id` + `result_id`).
   - It refuses to return more units than were sold.
   - The ledger insert and the `returned_quantity` update are separate
     statements.
@@ -178,21 +179,7 @@ flowchart LR
 
 Found by reading the code, not by running it.
 
-- **Possible bolster Pre-order bug.** `lib/configurator/pre-order-persist.ts`
-  and `app/api/shop/customize/route.ts` read `bolster_buildable` by a `variant`
-  column, but the view defines `bolster_variant`. Both ignore the error and
-  fall back to 0. If the live view matches the migrations:
-  - every Mbolster would be shown and held as Pre-order;
-  - bolster restock notices would never fire.
-
-  `variant_stock` uses the right column.
-- **Result Order restocks write nothing.** Result Order lines have
-  `variant_id = null`, and `buildRestockTransactions` returns no rows without
-  a Variant. Restocking one bumps `returned_quantity` but adds no stock.
-- **`restoreInventoryForOrder`** (`reason 'correction'`) has no caller.
-- **Telegram stock commands** call `receiveStock` / `sellPart` /
-  `sellPillow` / `sellBolster` directly. Each starts with `assertAdmin`, which
-  needs a signed-in Staff session. A Telegram webhook request has none, so
-  these calls are likely to fail.
+- **The Telegram bot is read-only.** `/stock` shows on-hand and buildable
+  counts. Stock moves need a Staff session, so they happen in the Admin Panel.
 - **`getAvailableBolsterComponents`** (`lib/shop/customization-inventory.ts`)
   queries a `bolster_products` table no migration creates. It has no caller.
