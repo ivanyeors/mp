@@ -1298,7 +1298,7 @@ Changed from pages: `/shop/[slug]`
   - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:25
   - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:322
   - `sources/reviews.ts` [select] — lib/crm/timeline/sources/reviews.ts:31
-  - `topic-reviews-loader.ts` [select] — lib/seo/topic-reviews-loader.ts:12
+  - `topic-reviews-loader.ts` [select] — lib/seo/topic-reviews-loader.ts:11
 
 ### product_variants
 Defined in supabase/migrations/0028_ecommerce.sql:101
