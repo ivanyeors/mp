@@ -81,22 +81,30 @@ describe("missingStepsAfterCarryOver", () => {
     ).toEqual(["neck-to-back", "head-to-back", "neck-length"]);
   });
 
-  it("Bolster → Premium needs mpillow measurement + customize", () => {
+  it("Bolster → Premium asks age and health before measuring, photos last", () => {
     expect(
       missingStepsAfterCarryOver("mbolster", "premium-mpillow", {}),
     ).toEqual([
+      "age",
+      "health",
       "shoulder-length",
       "neck-to-back",
       "head-to-back",
       "neck-length",
-      "customize",
+      "photos",
     ]);
   });
 
-  it("Bolster → Basic needs shoulder + customize", () => {
+  it("Bolster → Basic asks age and health, then shoulder, photos last", () => {
     expect(
       missingStepsAfterCarryOver("mbolster", "basic-mpillow", {}),
-    ).toEqual(["shoulder-length", "customize"]);
+    ).toEqual(["age", "health", "shoulder-length", "photos"]);
+  });
+
+  it("keeps the photos step even when every answer carried over", () => {
+    expect(
+      missingStepsAfterCarryOver("mbolster", "basic-mpillow", basicAnswers),
+    ).toEqual(["photos"]);
   });
 
   it("filters steps already present in carried answers", () => {

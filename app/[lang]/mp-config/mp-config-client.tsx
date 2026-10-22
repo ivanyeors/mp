@@ -60,6 +60,8 @@ import {
   ArrowRight,
   ArrowLeft,
   User,
+  Cake,
+  HeartPulse,
   Sparkles,
   CheckCircle,
   Camera,
@@ -261,11 +263,13 @@ type Step =
   | "welcome"
   | "what-to-expect"
   | "name"
+  | "age"
+  | "health"
   | "shoulder-length"
   | "neck-to-back"
   | "head-to-back"
   | "neck-length"
-  | "customize"
+  | "photos"
   | "preview";
 
 interface MeasurementData {
@@ -803,19 +807,22 @@ export function MpConfigClient({
       valid: isNonEmptyString(measurementData.name),
       message: "Enter your name",
     },
-    {
-      key: "gender",
-      touched: isNonEmptyString(measurementData.gender),
-      valid: isNonEmptyString(measurementData.gender),
-      message: "Select a gender",
-    },
+  ], [measurementData.name]);
+
+  const ageFields = useMemo((): FieldCheck[] => [
     {
       key: "ageGroup",
       touched: isNonEmptyString(measurementData.ageGroup),
       valid: isNonEmptyString(measurementData.ageGroup),
       message: "Select an age group",
     },
-  ], [measurementData.name, measurementData.gender, measurementData.ageGroup]);
+    {
+      key: "gender",
+      touched: isNonEmptyString(measurementData.gender),
+      valid: isNonEmptyString(measurementData.gender),
+      message: "Select a gender",
+    },
+  ], [measurementData.ageGroup, measurementData.gender]);
 
   const measureField = (key: MeasureKey): FieldCheck[] => [
     {
@@ -858,7 +865,7 @@ export function MpConfigClient({
     setMeasurementUnit(next);
   };
 
-  const customizeFields = useMemo((): FieldCheck[] => [
+  const healthFields = useMemo((): FieldCheck[] => [
     {
       key: "bloodPressureLevel",
       touched: isNonEmptyString(measurementData.bloodPressureLevel),
@@ -981,6 +988,10 @@ export function MpConfigClient({
     switch (currentStep) {
       case "name":
         return nameFields;
+      case "age":
+        return ageFields;
+      case "health":
+        return healthFields;
       case "shoulder-length":
         return measureField("shoulderLength");
       case "neck-to-back":
@@ -989,14 +1000,12 @@ export function MpConfigClient({
         return measureField("headToBack");
       case "neck-length":
         return measureField("neckLength");
-      case "customize":
-        return customizeFields;
       case "preview":
         return holdFields;
       default:
         return [];
     }
-  }, [currentStep, nameFields, customizeFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
+  }, [currentStep, nameFields, ageFields, healthFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
 
   useEffect(() => {
     setFieldErrors({});
@@ -1909,7 +1918,8 @@ export function MpConfigClient({
     fetchShopRecommendation,
   ]);
 
-  const finishPostUpsellNeck = useCallback(async () => {
+  /** Ends a route into Premium: the target's recommendation, stamped with the journey. */
+  const finishPostUpsell = useCallback(async () => {
     const rec = await fetchShopRecommendation({ preserveSelections: false });
     if (rec?.recommendation_record && entryJourneyRef.current) {
       const stamped = stampAcceptedTargetRecord(
@@ -1950,7 +1960,7 @@ export function MpConfigClient({
    * the stored row's `source`, never by this flag.
    */
   const handleSendToBuildTeam = () =>
-    tryAdvance([...customizeFields, ...previewContactFieldChecks(contactValues)], async () => {
+    tryAdvance(previewContactFieldChecks(contactValues), async () => {
       setHoldSubmitting(true);
       try {
         const saved = await upsertToDb();
@@ -3476,7 +3486,9 @@ export function MpConfigClient({
                   </div>
                   <div>
                     <h3 className="font-semibold">Tell us about yourself</h3>
-                    <p className="text-sm text-muted-foreground">Provide us helpful information for us to work with</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your name, your age and a few questions about your health and sleep
+                    </p>
                   </div>
                 </div>
 
@@ -3506,6 +3518,18 @@ export function MpConfigClient({
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     3
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Add photos</h3>
+                    <p className="text-sm text-muted-foreground">
+                      A front and a side photo of you, if you&apos;d like
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                    4
                   </div>
                   <div>
                     <h3 className="font-semibold">See your results</h3>
@@ -3571,28 +3595,6 @@ export function MpConfigClient({
                     <p className="text-sm text-destructive">{fieldErrors.name}</p>
                   ) : null}
                 </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Gender</div>
-                  <SingleSelectOptionRows
-                    options={GENDER_OPTIONS}
-                    value={measurementData.gender}
-                    onChange={(v) => updateMeasurement("gender", v)}
-                    invalid={!!fieldErrors.gender}
-                    error={fieldErrors.gender}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Age group</div>
-                  <SingleSelectOptionRows
-                    options={AGE_GROUP_OPTIONS}
-                    value={measurementData.ageGroup}
-                    onChange={(v) => updateMeasurement("ageGroup", v)}
-                    invalid={!!fieldErrors.ageGroup}
-                    error={fieldErrors.ageGroup}
-                  />
-                </div>
               </div>
 
               <div className="pt-4 empty:hidden">
@@ -3608,6 +3610,274 @@ export function MpConfigClient({
                   <Button
                     onClick={() => tryAdvance(nameFields, goToNextStep)}
                     disabled={!hybridCtaEnabled(nameFields)}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </ConfiguratorStepActions>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Age Step */}
+          {currentStep === "age" && (
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
+              <div className="text-center space-y-2">
+                <Cake className="h-12 w-12 mx-auto text-primary" />
+                <h2 className="text-3xl font-bold">
+                  {measurementData.name ? `Nice to meet you, ${measurementData.name}` : "A little about you"}
+                </h2>
+                <p className="text-muted-foreground">How old are you?</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Age group</div>
+                  <SingleSelectOptionRows
+                    options={AGE_GROUP_OPTIONS}
+                    value={measurementData.ageGroup}
+                    onChange={(v) => updateMeasurement("ageGroup", v)}
+                    invalid={!!fieldErrors.ageGroup}
+                    error={fieldErrors.ageGroup}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Gender</div>
+                  <SingleSelectOptionRows
+                    options={GENDER_OPTIONS}
+                    value={measurementData.gender}
+                    onChange={(v) => updateMeasurement("gender", v)}
+                    invalid={!!fieldErrors.gender}
+                    error={fieldErrors.gender}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => tryAdvance(ageFields, goToNextStep)}
+                    disabled={!hybridCtaEnabled(ageFields)}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </ConfiguratorStepActions>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Health Step — answered before any measuring */}
+          {currentStep === "health" && (
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
+              <div className="text-center space-y-2">
+                <HeartPulse className="h-12 w-12 mx-auto text-primary" />
+                <h2 className="text-3xl font-bold">Your health &amp; sleep</h2>
+                <p className="text-muted-foreground">A few quick questions before we measure</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Blood Pressure levels</h3>
+                  <SingleSelectOptionRows
+                    options={BLOOD_PRESSURE_OPTIONS}
+                    value={measurementData.bloodPressureLevel}
+                    onChange={(v) => updateMeasurement("bloodPressureLevel", v)}
+                    invalid={!!fieldErrors.bloodPressureLevel}
+                    error={fieldErrors.bloodPressureLevel}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
+                  <Tabs
+                    value={measurementData.earDiscomfortSideSleep}
+                    onValueChange={(v) =>
+                      updateMeasurement("earDiscomfortSideSleep", v as "yes" | "no")
+                    }
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="yes" className="px-4">
+                        Yes
+                      </TabsTrigger>
+                      <TabsTrigger value="no" className="px-4">
+                        No
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {fieldErrors.earDiscomfortSideSleep ? (
+                    <p className="text-sm text-destructive">{fieldErrors.earDiscomfortSideSleep}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Bed firmness</h3>
+                  <SingleSelectOptionRows
+                    options={BED_FIRMNESS_OPTIONS}
+                    value={measurementData.bedFirmness}
+                    onChange={(v) => updateMeasurement("bedFirmness", v)}
+                    invalid={!!fieldErrors.bedFirmness}
+                    error={fieldErrors.bedFirmness}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Acid Reflux?</h3>
+                  <Tabs
+                    value={measurementData.acidReflux}
+                    onValueChange={(v) => updateMeasurement("acidReflux", v as "yes" | "no")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="yes" className="px-4">
+                        Yes
+                      </TabsTrigger>
+                      <TabsTrigger value="no" className="px-4">
+                        No
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {fieldErrors.acidReflux ? (
+                    <p className="text-sm text-destructive">{fieldErrors.acidReflux}</p>
+                  ) : null}
+                </div>
+
+                {/* Sleep pain areas (multi-select; None exclusive) */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">I experience one of the following during/after sleep</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {PAIN_AREA_OPTIONS.map((opt) => {
+                      const isSelected = measurementData.sleepPainAreas.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setMeasurementData((prev) => ({
+                              ...prev,
+                              sleepPainAreas: togglePainArea(prev.sleepPainAreas, opt.value),
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
+                            isSelected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.sleepPainAreas ? (
+                    <p className="text-sm text-destructive">{fieldErrors.sleepPainAreas}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Select all that apply, or None</p>
+                  )}
+                </div>
+
+                {/* Sleep position type (multi-select) */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">I&apos;m a</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: "side-and-back", label: "Side & Back sleeper" },
+                      { value: "side", label: "Side Sleeper" },
+                      { value: "back", label: "Back Sleeper" },
+                      { value: "stomach", label: "Stomach Sleeper" },
+                    ].map((opt) => {
+                      const isSelected = measurementData.sleepPositionType.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setMeasurementData((prev) => ({
+                              ...prev,
+                              sleepPositionType: isSelected
+                                ? prev.sleepPositionType.filter((v) => v !== opt.value)
+                                : [...prev.sleepPositionType, opt.value],
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
+                            isSelected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.sleepPositionType ? (
+                    <p className="text-sm text-destructive">{fieldErrors.sleepPositionType}</p>
+                  ) : null}
+                </div>
+
+                {/* Uses bolster */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
+                  <Tabs
+                    value={measurementData.usesBolster}
+                    onValueChange={(v) => updateMeasurement("usesBolster", v as "yes" | "no")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="yes" className="px-4">
+                        Yes
+                      </TabsTrigger>
+                      <TabsTrigger value="no" className="px-4">
+                        No
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {fieldErrors.usesBolster ? (
+                    <p className="text-sm text-destructive">{fieldErrors.usesBolster}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => tryAdvance(healthFields, goToNextStep)}
+                    disabled={!hybridCtaEnabled(healthFields)}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -3956,8 +4226,10 @@ export function MpConfigClient({
                     onClick={() =>
                       tryAdvance(measureField("neckLength"), () => {
                         commitMeasureDraft("neckLength");
-                        if (upsoldToPremium) {
-                          void finishPostUpsellNeck();
+                        // Basic → Premium has already been through photos; a
+                        // route from Mbolster still has them ahead of it.
+                        if (upsoldToPremium && !stepOrder.includes("photos")) {
+                          void finishPostUpsell();
                           return;
                         }
                         goToNextStep();
@@ -3982,12 +4254,14 @@ export function MpConfigClient({
             </Card>
           )}
 
-          {/* Customize Button Step */}
-          {currentStep === "customize" && (
+          {/* Photos — the questionnaire's last step and its submit */}
+          {currentStep === "photos" && (
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
-                <h2 className="text-3xl font-bold">Great job, {measurementData.name}!</h2>
+                <h2 className="text-3xl font-bold">
+                  Great job{measurementData.name ? `, ${measurementData.name}` : ""}!
+                </h2>
                 <p className="text-muted-foreground">
                   {isBasic
                     ? "Almost there — confirm your fit and finish your Basic Mpillow"
@@ -4026,172 +4300,6 @@ export function MpConfigClient({
                       </div>
                     </>
                   )}
-                </div>
-              </div>
-
-              <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-semibold text-lg">A few more questions</h4>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Blood Pressure levels</h3>
-                    <SingleSelectOptionRows
-                      options={BLOOD_PRESSURE_OPTIONS}
-                      value={measurementData.bloodPressureLevel}
-                      onChange={(v) => updateMeasurement("bloodPressureLevel", v)}
-                      invalid={!!fieldErrors.bloodPressureLevel}
-                      error={fieldErrors.bloodPressureLevel}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
-                    <Tabs
-                      value={measurementData.earDiscomfortSideSleep}
-                      onValueChange={(v) =>
-                        updateMeasurement("earDiscomfortSideSleep", v as "yes" | "no")
-                      }
-                    >
-                      <TabsList className="h-12">
-                        <TabsTrigger value="yes" className="px-4">
-                          Yes
-                        </TabsTrigger>
-                        <TabsTrigger value="no" className="px-4">
-                          No
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {fieldErrors.earDiscomfortSideSleep ? (
-                      <p className="text-sm text-destructive">{fieldErrors.earDiscomfortSideSleep}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Bed firmness</h3>
-                    <SingleSelectOptionRows
-                      options={BED_FIRMNESS_OPTIONS}
-                      value={measurementData.bedFirmness}
-                      onChange={(v) => updateMeasurement("bedFirmness", v)}
-                      invalid={!!fieldErrors.bedFirmness}
-                      error={fieldErrors.bedFirmness}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Acid Reflux?</h3>
-                    <Tabs
-                      value={measurementData.acidReflux}
-                      onValueChange={(v) => updateMeasurement("acidReflux", v as "yes" | "no")}
-                    >
-                      <TabsList className="h-12">
-                        <TabsTrigger value="yes" className="px-4">
-                          Yes
-                        </TabsTrigger>
-                        <TabsTrigger value="no" className="px-4">
-                          No
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {fieldErrors.acidReflux ? (
-                      <p className="text-sm text-destructive">{fieldErrors.acidReflux}</p>
-                    ) : null}
-                  </div>
-
-                  {/* Sleep pain areas (multi-select; None exclusive) */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">I experience one of the following during/after sleep</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {PAIN_AREA_OPTIONS.map((opt) => {
-                        const isSelected = measurementData.sleepPainAreas.includes(opt.value);
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setMeasurementData((prev) => ({
-                                ...prev,
-                                sleepPainAreas: togglePainArea(prev.sleepPainAreas, opt.value),
-                              }));
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
-                              isSelected
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {fieldErrors.sleepPainAreas ? (
-                      <p className="text-sm text-destructive">{fieldErrors.sleepPainAreas}</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Select all that apply, or None</p>
-                    )}
-                  </div>
-
-                  {/* Sleep position type (multi-select) */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">I&apos;m a</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "side-and-back", label: "Side & Back sleeper" },
-                        { value: "side", label: "Side Sleeper" },
-                        { value: "back", label: "Back Sleeper" },
-                        { value: "stomach", label: "Stomach Sleeper" },
-                      ].map((opt) => {
-                        const isSelected = measurementData.sleepPositionType.includes(opt.value);
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setMeasurementData((prev) => ({
-                                ...prev,
-                                sleepPositionType: isSelected
-                                  ? prev.sleepPositionType.filter((v) => v !== opt.value)
-                                  : [...prev.sleepPositionType, opt.value],
-                              }));
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
-                              isSelected
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {fieldErrors.sleepPositionType ? (
-                      <p className="text-sm text-destructive">{fieldErrors.sleepPositionType}</p>
-                    ) : null}
-                  </div>
-
-                  {/* Uses bolster */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
-                    <Tabs
-                      value={measurementData.usesBolster}
-                      onValueChange={(v) => updateMeasurement("usesBolster", v as "yes" | "no")}
-                    >
-                      <TabsList className="h-12">
-                        <TabsTrigger value="yes" className="px-4">
-                          Yes
-                        </TabsTrigger>
-                        <TabsTrigger value="no" className="px-4">
-                          No
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {fieldErrors.usesBolster ? (
-                      <p className="text-sm text-destructive">{fieldErrors.usesBolster}</p>
-                    ) : null}
-                  </div>
                 </div>
               </div>
 
@@ -4400,8 +4508,14 @@ export function MpConfigClient({
                     onClick={() =>
                       assisted
                         ? handleSendToBuildTeam()
-                        : tryAdvance(customizeFields, async () => {
+                        : tryAdvance([], async () => {
+                            // Photos are optional; every answer was checked on its own step.
                             await upsertToDb();
+                            if (upsoldToPremium) {
+                              // A route in from Mbolster finishes here, after its photos.
+                              await finishPostUpsell();
+                              return;
+                            }
                             if (isBasic) {
                               const rec = shopRecommendation ?? (await fetchBasicRecommendation());
                               if (!rec) return;
@@ -4412,7 +4526,6 @@ export function MpConfigClient({
                           })
                     }
                     disabled={
-                      !hybridCtaEnabled(customizeFields) ||
                       photoUploading.front ||
                       photoUploading.side ||
                       shopLoading ||
