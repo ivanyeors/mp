@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -167,7 +168,7 @@ function applySlice<T>(
   }
 }
 
-export default function AnalyticsClient() {
+export default function AnalyticsClient({ reportsHref }: { reportsHref: string }) {
   const [items, setItems] = useState<ItemMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -847,6 +848,9 @@ export default function AnalyticsClient() {
             disabled={refreshing || timelineRefreshing || mpMetricsRefreshing || realizedMarginLoading || inventoryLoading}
           >
             {refreshing || timelineRefreshing ? "Refreshing…" : "Refresh"}
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={reportsHref}>Reports</Link>
           </Button>
         </div>
       </div>

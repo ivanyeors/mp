@@ -43,6 +43,7 @@ then write with the service-role client. Permissions are code; roles are data
 | **Result detail** `/settings/results/[id]` | `/api/results/assign/prep`, `/api/results/[id]/assign`, `/api/results/[id]/cancel`, `/api/results/[id]/request-payment` | `mp_config_responses`, `result_filling_placements` / `result_bolster_filling_placements`. Stock is checked but not written. |
 | **Integrations → Shopify** `/settings/integrations/shopify` | `fullShopifySync`, mapping and override actions | `shopify_variant_mappings`, `shopify_variant_overrides`; pushes stock and prices to Shopify |
 | **Analytics** `/settings/analytics` | `getInventoryMovementWaterfall` and other read actions | Reads the ledger; writes only SEO annotations and target queries |
+| **Analytics → Reports** `/settings/analytics/reports` | `generateCustomerPurchasesReport`, `emailCustomerPurchasesReport` (`analytics-reports`) | Reads `orders`, `order_payments`, `shopify_orders`, `shopify_order_refunds`; writes only `admin_audit_log` (one row per email sent). PRD `finance-reports` |
 
 How a sale and a restock move stock is in
 [purchases-to-inventory.md](purchases-to-inventory.md) and

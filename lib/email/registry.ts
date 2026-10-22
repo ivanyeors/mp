@@ -19,6 +19,7 @@ import {
   renderMigrationReminderEmail,
   renderMigrationServiceNoticeEmail,
 } from "./migration";
+import { renderFinanceReportEmail } from "./finance-report";
 import { renderHeldResultReminderEmail, renderPartnerListingUpdatedEmail } from "./ops";
 import {
   renderMilestoneEmail,
@@ -45,6 +46,7 @@ import {
   sampleApplication,
   HOSTILE,
   sampleContact,
+  sampleFinanceReport,
   sampleHeldReminder,
   sampleHoldExpired,
   sampleHoldExpiredUnpaid,
@@ -513,6 +515,13 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "ops",
     audience: "staff",
     render: (f) => renderHeldResultReminderEmail(sampleHeldReminder(f)),
+  },
+  {
+    id: "ops.finance_report",
+    label: "Finance report",
+    group: "ops",
+    audience: "staff",
+    render: (f) => renderFinanceReportEmail(sampleFinanceReport(f)),
   },
 ];
 

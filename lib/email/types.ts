@@ -36,6 +36,20 @@ export interface OutgoingEmail extends RenderedEmail {
    * owns (From, To, Subject, ...) or a value with a line break is refused.
    */
   headers?: Record<string, string>;
+  /** Files sent with the message, e.g. a finance report's CSV. */
+  attachments?: EmailAttachment[];
+}
+
+/**
+ * A text file attached to an email. Text only (UTF-8): the one caller is a
+ * CSV report. The filename and content type reach a MIME header, so the
+ * transports refuse anything outside a plain token (`attachmentParts`).
+ */
+export interface EmailAttachment {
+  filename: string;
+  /** A bare MIME type, e.g. `text/csv`; Gmail adds the UTF-8 charset itself. */
+  contentType: string;
+  content: string;
 }
 
 export interface TransportResult {

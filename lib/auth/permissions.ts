@@ -67,6 +67,8 @@ export const PERMISSION_CATALOG = [
   { key: "media", label: "Media", group: "Landing Site", href: "/settings/media", surface: "admin-panel" },
 
   { key: "analytics", label: "Analytics", group: "Insights", href: "/settings/analytics", surface: "admin-panel" },
+  // Seeing a report is `analytics`; emailing one (customer names, to any address) is this key.
+  { key: "analytics-reports", label: "Finance reports: send by email (Analytics page)", group: "Insights", surface: "admin-panel", requires: ["analytics"] },
   { key: "audit-log", label: "Audit Log", group: "Insights", href: "/settings/audit-log", surface: "admin-panel" },
 
   { key: "showroom", label: "Showroom Model", group: "Showroom", href: "/settings/showroom", surface: "admin-panel" },

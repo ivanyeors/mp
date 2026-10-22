@@ -1,5 +1,5 @@
 import { JWT } from "google-auth-library";
-import type { EmailTransport, OutgoingEmail, TransportResult } from "./types";
+import type { EmailAttachment, EmailTransport, OutgoingEmail, TransportResult } from "./types";
 
 // ============================================================
 // Email transports (swappable providers)
@@ -14,8 +14,10 @@ export class ConsoleTransport implements EmailTransport {
   readonly name = "console";
 
   async send(email: OutgoingEmail): Promise<TransportResult> {
+    const files = (email.attachments ?? []).map((a) => a.filename).join(",");
     console.info(
-      `[email:console] to=${email.to} from=${email.from} subject="${email.subject}"`
+      `[email:console] to=${email.to} from=${email.from} subject="${email.subject}"` +
+        (files ? ` attachments=${files}` : "")
     );
     return { id: `console_${Date.now()}` };
   }
@@ -45,6 +47,15 @@ export class ResendTransport implements EmailTransport {
         html: email.html,
         text: email.text,
         ...(email.headers ? { headers: Object.fromEntries(extraHeaders(email.headers)) } : {}),
+        ...(email.attachments?.length
+          ? {
+              attachments: checkedAttachments(email.attachments).map((a) => ({
+                filename: a.filename,
+                content: Buffer.from(a.content, "utf8").toString("base64"),
+                content_type: a.contentType,
+              })),
+            }
+          : {}),
       }),
     });
 
@@ -150,9 +161,39 @@ export function extraHeaders(headers: Record<string, string> | undefined): Array
   });
 }
 
+/**
+ * `OutgoingEmail.attachments`, checked. The filename and content type are
+ * written into MIME headers (Gmail) or passed on (Resend), so each must be a
+ * plain token: no quotes, separators or line breaks that could add a header.
+ */
+export function checkedAttachments(attachments: readonly EmailAttachment[] | undefined): EmailAttachment[] {
+  return (attachments ?? []).map((a) => {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,150}$/.test(a.filename)) {
+      throw new Error(`Invalid attachment filename: ${a.filename}`);
+    }
+    if (!/^[a-z]+\/[a-z0-9.+-]+$/.test(a.contentType)) {
+      throw new Error(`Invalid attachment content type: ${a.contentType}`);
+    }
+    return a;
+  });
+}
+
+/** Base64 in 76-character lines, as RFC 2045 asks of a MIME body. */
+function base64Lines(text: string): string {
+  return Buffer.from(text, "utf8").toString("base64").replace(/.{76}(?=.)/g, "$&\r\n");
+}
+
+function boundaryToken(): string {
+  return `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+}
+
 /** Build a base64url-encoded MIME message for the Gmail API. Exported for tests. */
 export function buildRawMessage(email: OutgoingEmail): string {
-  const boundary = `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  const boundary = boundaryToken();
+  const attachments = checkedAttachments(email.attachments);
+  // With attachments the text/HTML alternative becomes the first part of a
+  // multipart/mixed message, and each file a part after it.
+  const mixed = attachments.length > 0 ? boundaryToken() : null;
   const headers = [
     `From: ${email.from}`,
     `To: ${email.to}`,
@@ -160,10 +201,12 @@ export function buildRawMessage(email: OutgoingEmail): string {
     `Subject: ${encodeHeaderValue(email.subject)}`,
     ...extraHeaders(email.headers).map(([name, value]) => `${name}: ${encodeHeaderValue(value)}`),
     "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    mixed
+      ? `Content-Type: multipart/mixed; boundary="${mixed}"`
+      : `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
 
-  const body = [
+  const alternative = [
     `--${boundary}`,
     "Content-Type: text/plain; charset=UTF-8",
     "Content-Transfer-Encoding: base64",
@@ -177,6 +220,25 @@ export function buildRawMessage(email: OutgoingEmail): string {
     `--${boundary}--`,
     "",
   ];
+
+  const body = mixed
+    ? [
+        `--${mixed}`,
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        "",
+        ...alternative,
+        ...attachments.flatMap((a) => [
+          `--${mixed}`,
+          `Content-Type: ${a.contentType}; charset=UTF-8; name="${a.filename}"`,
+          `Content-Disposition: attachment; filename="${a.filename}"`,
+          "Content-Transfer-Encoding: base64",
+          "",
+          base64Lines(a.content),
+        ]),
+        `--${mixed}--`,
+        "",
+      ]
+    : alternative;
 
   const mime = `${headers.join("\r\n")}\r\n\r\n${body.join("\r\n")}`;
   return Buffer.from(mime, "utf8").toString("base64url");

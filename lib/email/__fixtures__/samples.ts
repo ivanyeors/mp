@@ -293,6 +293,22 @@ export function sampleHeldReminder(fixture: EmailFixture = "happy") {
   };
 }
 
+export function sampleFinanceReport(fixture: EmailFixture = "happy") {
+  return {
+    reportName: "Customer purchases",
+    periodLabel: "October 2026",
+    sentBy: pick(fixture, "ops@mpillow.com"),
+    note: pick(fixture, "October numbers for the GST return.\nShopify refunds are in the last rows."),
+    attachmentName: "customer-purchases-2026-10.csv",
+    rowCount: 48,
+    totals: [{ currency: "SGD", saleCount: 42, sales: 12480.5, tax: 1030.5, refunds: -320, net: 12160.5 }],
+    channels: [
+      { label: "Mpillow", currency: "SGD", saleCount: 39, net: 11820.6 },
+      { label: "Shopify", currency: "SGD", saleCount: 3, net: 339.9 },
+    ],
+  };
+}
+
 export function sampleApplication(fixture: EmailFixture = "happy") {
   return {
     partnerSignInUrl: `${ORIGIN}/partner`,

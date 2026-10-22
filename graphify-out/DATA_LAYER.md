@@ -19,11 +19,12 @@ before relying on one.
 ### admin_audit_log
 Defined in supabase/migrations/0041_admin_audit_log.sql:9
 References: `mp_staff`
-Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
+Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/analytics/reports`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
 - Written by:
   - `recordAdminAction()` [insert] — lib/auth/audit.ts:36
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:54
+  - `listRecentSends()` [select] — lib/finance-reports/send.ts:152
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
 
@@ -37,6 +38,7 @@ Changed from pages: `/settings/users`
 - Read by:
   - `auth/admin.ts` [select] — lib/auth/admin.ts:150
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:53
+  - `listMemberRecipients()` [select] — lib/finance-reports/send.ts:61
   - `listRoles()` [select] — lib/auth/members.ts:117
   - `loginRefusal` [select] — lib/auth/login-guard.ts:20
   - `operators.ts` [select] — lib/telegram/operators.ts:188
@@ -59,6 +61,7 @@ Changed from pages: `/settings/results`, `/settings/users`
   - `invitedTarget()` [select] — lib/auth/members.ts:334
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:47
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:169
+  - `listMemberRecipients()` [select] — lib/finance-reports/send.ts:60
   - `listMembers()` [select] — lib/auth/members.ts:103
   - `listRoles()` [select] — lib/auth/members.ts:118
   - `loadImportHistory()` [select] — app/[lang]/settings/customers/import/history.ts:36
@@ -730,7 +733,7 @@ Changed from pages: `/settings/inventory`
   - `renameInventoryItem()` [update] — app/[lang]/settings/inventory/actions.ts:861
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:893
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:285
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:286
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:406
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:178
@@ -918,7 +921,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 ### mp_staff
 Defined in supabase/migrations/0025_staff_management.sql:6
 References: `admin_users`
-Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
+Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/analytics/reports`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
 - Written by:
   - `createStaffProfile()` [insert] — lib/staff/admin.ts:133
   - `revokeInvite()` [delete,select,update] — lib/auth/members.ts:395
@@ -990,6 +993,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:120
 - Read by:
   - `POST()` [select] — app/api/stripe/webhook/route.ts:812
+  - `loadCustomerPurchasesReport()` [select] — lib/finance-reports/load-customer-purchases.ts:117
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:144
 
@@ -1074,6 +1078,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:85
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:34
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:18
+  - `loadCustomerPurchasesReport()` [select] — lib/finance-reports/load-customer-purchases.ts:107
   - `loadDeliveredOrders()` [select] — lib/aftercare/checkup-server.ts:178
   - `loadDueOrders()` [select] — lib/aftercare/review-request-server.ts:118
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:138
@@ -1877,6 +1882,8 @@ Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:58
 References: `shopify_orders`
 - Written by:
   - `applyShopifyRefund()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:625
+- Read by:
+  - `loadCustomerPurchasesReport()` [select] — lib/finance-reports/load-customer-purchases.ts:138
 
 ### shopify_orders
 Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:8
@@ -1884,6 +1891,7 @@ Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:8
   - `applyShopifyRefund()` [select,update] — lib/shopify/order-mirror-ingest.ts:631
   - `upsertShopifyOrderMirror()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:557
 - Read by:
+  - `loadCustomerPurchasesReport()` [select] — lib/finance-reports/load-customer-purchases.ts:128
   - `loadShopifyFacts()` [select] — lib/analytics/channel-sales.ts:481
 
 ### shopify_processed_orders
@@ -2193,6 +2201,13 @@ app/[lang]/settings/analytics/page.tsx
 - Reads: `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `items`, `pillow_products`, `product_prices`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `seo_annotations`, `seo_daily_metrics`, `seo_target_queries`
 - Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `inventory_transactions`, `items`, `mp_config_responses`, `order_margins`, `orders`, `pillow_products`, `product_prices`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
+
+### /settings/analytics/reports
+app/[lang]/settings/analytics/reports/page.tsx
+- Server actions: `emailCustomerPurchasesReport()`, `generateCustomerPurchasesReport()`
+- Loads: `listMemberRecipients()`, `listRecentSends()`, `loadCustomerPurchasesReport()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
+- Reads, through the same: `admin_roles`, `admin_users`, `order_payments`, `orders`, `shopify_order_refunds`, `shopify_orders`
 
 ### /settings/appointments
 app/[lang]/settings/appointments/page.tsx
