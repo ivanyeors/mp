@@ -64,12 +64,21 @@ through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `d
 
 - **When and where:** on the 7th of each month at 08:56 SGT, for the previous month. It runs on
   the 7th because Stripe's GST tax invoice arrives around the 6th.
-- **What it sends:**
-  - It forwards each service invoice email to `account@mpillow.com` with the original PDF.
-  - It then sends one summary email listing supplier, invoice number, date, before GST, GST and
-    total, plus totals per currency. `sg@` is copied.
+- **What it sends:** one email per month to `account@mpillow.com`, copied to `sg@`. It holds a table
+  with supplier, invoice number, date, before GST, GST and total, the totals per currency, a "Not
+  attached" list, and every invoice PDF attached.
+  - The task writes the report as a Gmail draft whose last line names the chosen emails:
+    `[[invoice-report attach=<message ids> list=<message ids>]]`.
+  - Claude cannot attach the PDFs itself: the connector would need each file's raw contents passed
+    through the conversation, which is 0.5–1.5 MB a month. So the owner's Google Apps Script,
+    "invoice report sender", runs in `sg@` every day at about 5pm SGT. It attaches the PDFs from the
+    `attach` emails (an email with no PDF goes in as a PDF of itself), removes the marker and sends
+    the draft.
+  - The script only sends drafts addressed to `account@` alone, copied to nobody but `sg@`, with the
+    report subject and the marker. That leaves the owner until 5pm to read, edit or delete the
+    draft.
   - Anything that looks like an invoice but comes from an unknown sender goes to `sg@` only.
-- **No double sends:** each forwarded thread gets the Gmail label
+- **No double sends:** after sending, the script labels the thread of every `attach` and `list` email
   "Mpillow/Invoices/Sent to accounts", and the task skips labelled threads.
 - **Services only:**
   - Included: Claude (Max plan receipts), Google Workspace, Google Cloud, Vercel, AWS, 42Metrics

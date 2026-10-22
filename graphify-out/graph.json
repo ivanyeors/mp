@@ -80992,7 +80992,7 @@
       "node_kind": "heading",
       "norm_label": "implementation decisions",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L121"
+      "source_location": "L130"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_07_marketing_consent_and_unsubscribe_build_notes",
@@ -149070,7 +149070,7 @@
       "node_kind": "heading",
       "norm_label": "open questions (owner)",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L161"
+      "source_location": "L170"
     },
     {
       "id": "claude_prd_finance_reports_finance_reports_prd_out_of_scope",
@@ -149082,7 +149082,7 @@
       "node_kind": "heading",
       "norm_label": "out of scope",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L155"
+      "source_location": "L164"
     },
     {
       "id": "claude_prd_finance_reports_finance_reports_prd_prd_finance_reports_for_the_accounts_team",
@@ -149142,7 +149142,7 @@
       "node_kind": "heading",
       "norm_label": "testing decisions",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L146"
+      "source_location": "L155"
     },
     {
       "id": "claude_prd_finance_reports_finance_reports_prd_user_stories",
@@ -149154,7 +149154,7 @@
       "node_kind": "heading",
       "norm_label": "user stories",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L106"
+      "source_location": "L115"
     },
     {
       "id": "claude_prd_finance_reports_finance_reports_prd_what_each_supplier_s_api_can_give_researched_2026_10_22",
@@ -453175,7 +453175,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L106",
+      "source_location": "L115",
       "weight": 1.0
     },
     {
@@ -453186,7 +453186,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L121",
+      "source_location": "L130",
       "weight": 1.0
     },
     {
@@ -453197,7 +453197,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L146",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -453208,7 +453208,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L155",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -453219,7 +453219,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L161",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -588989,7 +588989,7 @@
       "confidence_score": 0.95,
       "context": "OutgoingEmail",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L135",
+      "source_location": "L144",
       "weight": 1.0
     },
     {
@@ -600869,7 +600869,7 @@
       "confidence_score": 0.95,
       "context": "renderFinanceReportEmail",
       "source_file": ".claude/PRD-finance-reports/finance-reports-prd.md",
-      "source_location": "L134",
+      "source_location": "L143",
       "weight": 1.0
     },
     {
@@ -629895,5 +629895,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "23f86737034bc1bbc263e0d7920fe66f2144cac6"
+  "built_at_commit": "a005be407f231ea5f68ca18db610976852ba8f94"
 }
