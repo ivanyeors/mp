@@ -18,14 +18,38 @@ set -uo pipefail
 
 GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.75}"
 
+run=()
+python=()
 for uv_bin in uvx "$HOME/.local/bin/uvx"; do
   if command -v "$uv_bin" >/dev/null 2>&1; then
-    exec "$uv_bin" --from "graphifyy[sql]==${GRAPHIFY_VERSION}" graphify "$@"
+    run=("$uv_bin" --from "graphifyy[sql]==${GRAPHIFY_VERSION}")
+    python=("${run[@]}" python)
+    break
   fi
 done
 
-if command -v graphify >/dev/null 2>&1; then
-  exec graphify "$@"
+if [ ${#run[@]} -eq 0 ]; then
+  command -v graphify >/dev/null 2>&1 || exit 0
+  python=(python3)
 fi
 
-exit 0
+if [ "${1:-}" != "update" ]; then
+  exec "${run[@]}" graphify "$@"
+fi
+
+# `update` also maintains the data layer (code -> table edges, one node per
+# page), which graphify's AST pass cannot see. It is stripped first so graphify
+# rebuilds from exactly what it produced last time, then added back from the
+# current source. Both steps are deterministic; CI runs this same path.
+dataflow="$(dirname "$0")/graphify-dataflow.py"
+root=.
+for arg in "${@:2}"; do
+  case "$arg" in -*) ;; *) root="$arg"; break ;; esac
+done
+graph="$root/graphify-out/graph.json"
+
+if [ -f "$graph" ]; then
+  "${python[@]}" "$dataflow" --strip "$graph" || exit 1
+fi
+"${run[@]}" graphify "$@" || exit $?
+"${python[@]}" "$dataflow" "$graph"

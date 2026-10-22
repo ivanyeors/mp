@@ -13,12 +13,8 @@ Scripts:
 Default BOM rules:
 - Packaging mapping: XS/S/M → S; L/XL → L (1 vacuum_bag + 1 laundry_net)
 - Core components per size: cover x1, case x1, protector x1 (matching size)
-- Fillings defaults (can be edited later in Configure page):
-  - XS: 3D (S) x1
-  - S: 3D (S) x2
-  - M: 3D (L) x1, 6D (S) x1
-  - L: 3D (L) x1, 6D (L) x1
-  - XL: 6D (L) x2, 6D+ (L) x1
+- Fillings are not BOM lines. They live only in Filling Templates, chosen per
+  size in Configure (ADR 0003).
 
 Updated filling subtypes available:
 - 3D (S)
@@ -38,6 +34,5 @@ Usage:
   - Sell part: deducts that single item
   - Receive stock: increases on-hand for that item
 
-Notes:
-- Buildable pillow counts are computed from parts on-hand via `product_buildable` view
-- Low stock list shows items with on_hand <= 0; thresholds can be added via `item_thresholds`
+How stock is recorded, added, sold and shown: `docs/data-flows/inventory.md` and
+`docs/data-flows/purchases-to-inventory.md`.

@@ -13,6 +13,9 @@ Read these before making design decisions:
   `issues/`. Check for an existing PRD before designing new work.
 - **`LLM.md`** — applies only to "sections-only" tasks (`agent/sections.md`).
 - **`docs/adr/`** — architecture decision records.
+- **`docs/data-flows/`** — how stock is recorded, added and sold through each
+  purchase channel, and which Admin Panel pages change which tables. Read it
+  before changing inventory, pricing or order code.
 
 ## Commit author
 
@@ -74,31 +77,54 @@ point. The author is load-bearing.
 
 ## graphify knowledge graph
 
-This repo has a committed knowledge graph at `graphify-out/` — 9.5k nodes and
-20.8k edges across TypeScript, React, docs, and the `supabase/migrations`
+This repo has a committed knowledge graph at `graphify-out/` — 16.7k nodes and
+36.7k edges across TypeScript logic, docs, and the `supabase/migrations`
 schema. It is a navigation index: use it to orient before searching, not as a
 substitute for reading the code you are about to change.
+
+The graph is for **data and logic, not UI**. `.graphifyignore` leaves out
+`components/`, `hooks/` and every `.tsx` file. In their place,
+`scripts/graphify-dataflow.py` adds a data layer graphify's AST pass cannot see:
+
+- **code → table**: `writes_to` (insert/update/upsert/delete), `reads_from`
+  (select) and `calls_rpc`, from every Supabase `.from("t")` / `.rpc("fn")`
+  call, attributed to the enclosing function.
+- **one node per page**, labelled with its URL (`/settings/inventory`,
+  `/shop/checkout`), linked to the server actions (`uses_action`), data loaders
+  (`loads`), endpoints (`requests`) and tables its component tree touches.
+- **one node per route handler**, labelled with its URL (`/api/stripe/webhook`),
+  `handled_by` its `GET()` / `POST()` functions.
+- **foreign keys** (`references`) the SQL pass missed.
 
 Always invoke through the wrapper, which resolves graphify from PATH or uvx and
 no-ops silently when it is unavailable:
 
 ```bash
-./scripts/graphify query "how does costings set variant price"   # BFS subgraph for a question
-./scripts/graphify explain "cart_items"                          # one node + its neighbours
-./scripts/graphify path "A" "B"                                  # shortest path between two nodes
+./scripts/graphify explain "inventory_transactions"                 # every function that reads/writes it
+./scripts/graphify explain "/settings/costings"                     # what a page touches
+./scripts/graphify path "/settings/inventory" "inventory_transactions"
+./scripts/graphify query "how does costings set variant price"      # BFS subgraph for a question
 ```
 
 Practical notes:
 
+- For data questions, start from `explain "<table>"` or `explain "<page URL>"`
+  and `path`. They return exact edges. `query` picks start nodes by matching
+  words in the question, so common words pull in unrelated nodes. Name a table,
+  a function or a URL instead of asking in prose.
 - `query` truncates to a ~2000-token budget and tells you how many nodes it cut.
   Raise it with `--budget` or narrow the question rather than trusting a
   truncated answer.
 - `path` searches directed edges by default; add `--undirected` when it reports
   no path.
-- `explain` is the fastest way to see a DB table's foreign keys, since the
-  migrations are indexed (`explain "product_variants"`).
-- `graphify-out/GRAPH_REPORT.md` is for broad architecture review only. Prefer
-  the three commands above — they return a scoped subgraph instead of a 35KB file.
+- `graphify-out/DATA_LAYER.md` lists, for every table, the code that writes,
+  reads and RPCs it and the pages that change it; and for every page, what it
+  touches. It is ~170KB, so grep it (`grep -A20 '^### orders$'`) rather than
+  reading it whole.
+- `docs/data-flows/` explains how stock moves (stock in, purchases out,
+  restocks) in prose and diagrams. Read it before changing inventory code.
+- `graphify-out/GRAPH_REPORT.md` (~220KB) is for broad architecture review
+  only. Prefer the commands above, which return a scoped subgraph.
 
 ### Keeping it current
 
@@ -108,12 +134,17 @@ After changing code, refresh the graph:
 ./scripts/graphify update .
 ```
 
-This is AST-only — no API key, no token cost, ~25s for a full rebuild of all
-1,600 files (plus a one-time dependency download on a machine that has never
+This is AST-only — no API key, no token cost, ~50s for a full rebuild of all
+2,200 files (plus a one-time dependency download on a machine that has never
 run it). It is deterministic: the same code always produces a byte-identical
 graph, so running it with no code changes produces no diff.
 The `[sql]` extra is required for `supabase/migrations` to be parsed; the
 wrapper requests it automatically.
+
+The wrapper's `update` strips the data layer, runs graphify, then rebuilds the
+data layer from the current source and regenerates `DATA_LAYER.md`. Never run
+the bare `graphify update` or `uvx ... graphify update`: it leaves the data
+layer stale and CI will fail.
 
 Community names are written by an LLM pass and are not regenerated by `update`.
 After a refactor that adds or removes whole subsystems, re-run:
@@ -122,7 +153,8 @@ After a refactor that adds or removes whole subsystems, re-run:
 ./scripts/graphify label . --missing-only
 ```
 
-`.graphifyignore` excludes `public/` binary assets and scratch files from the index.
+`.graphifyignore` excludes `public/` binary assets, scratch files and UI code
+from the index.
 
 CI enforces this. `.github/workflows/graphify-freshness.yml` rebuilds the graph
 on every pull request and fails if the committed one does not match the source,
