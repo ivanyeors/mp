@@ -82,8 +82,22 @@ describe("request bodies", () => {
     expect(cityFor({ country: "MY", postal_code: "80000", city: "  " })).toBe("Kuala Lumpur");
     // The shopper's own city wins.
     expect(cityFor({ country: "MY", postal_code: "80000", city: " Johor Bahru " })).toBe("Johor Bahru");
-    // No main city on file: none is invented.
-    expect(cityFor({ country: "FR", postal_code: "75001" })).toBeUndefined();
+    // Every catalog country has one, so a quote to anywhere in the world can be made.
+    expect(cityFor({ country: "FR", postal_code: "75001" })).toBe("Paris");
+    expect(cityFor({ country: "us", postal_code: "10001" })).toBe("New York");
+    // Outside the catalog: none is invented.
+    expect(cityFor({ country: "XX", postal_code: "12345" })).toBeUndefined();
+  });
+
+  it("leaves the postal code out where the country has none", () => {
+    const body = ratesRequestBody({
+      settings,
+      origin,
+      destination: { country: "AE", postal_code: "" },
+      parcels,
+      currency: "SGD",
+    });
+    expect(body.destination_address).toEqual({ country_alpha2: "AE", city: "Dubai" });
   });
 
   it("asks for rates in the store currency, in kg and cm, with the HS code", () => {

@@ -4,6 +4,7 @@ import type {
   ShippingSettings,
 } from "@/lib/shipping/types";
 import type { EasyshipAddress } from "@/lib/easyship/schema";
+import { quoteCity } from "@/lib/shipping/countries";
 
 /**
  * Easyship Public API client (https://developers.easyship.com).
@@ -131,24 +132,11 @@ export function originAddressBody(origin: EasyshipAddress) {
  * blank"), but most quotes are made from a country and postal code alone: the
  * delivery checker, the checkout before the address is finished, Settings' test.
  * Couriers zone rates by postal code (which is why `quoteCacheKey` leaves the city
- * out), so those quotes send the country's main city. A country not listed here
- * sends none, Easyship refuses it, and the method charges its Fallback rate.
+ * out), so those quotes send the country's main city from the country catalog. A
+ * country outside it sends none, Easyship refuses it, and live methods are hidden.
  */
-const QUOTE_CITY: Record<string, string> = {
-  SG: "Singapore",
-  HK: "Hong Kong",
-  MO: "Macau",
-  MY: "Kuala Lumpur",
-  ID: "Jakarta",
-  TH: "Bangkok",
-  PH: "Manila",
-  VN: "Ho Chi Minh City",
-  BN: "Bandar Seri Begawan",
-  AU: "Sydney",
-};
-
 function destinationCity(destination: Pick<ShippingDestination, "country" | "city">): string | undefined {
-  return destination.city?.trim() || QUOTE_CITY[destination.country.toUpperCase()];
+  return destination.city?.trim() || quoteCity(destination.country);
 }
 
 export function destinationAddressBody(

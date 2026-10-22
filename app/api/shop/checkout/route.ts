@@ -13,6 +13,7 @@ import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/s
 import { toShippableLine } from "@/lib/shipping/lines";
 import { quoteShippingMethods } from "@/lib/shipping/quote";
 import { readShippingSettings } from "@/lib/shipping/settings";
+import { usesPostalCode } from "@/lib/shipping/countries";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
@@ -62,9 +63,13 @@ const ShippingAddressSchema = z.object({
   line2: z.string().optional(),
   city: z.string().min(1),
   state: z.string().optional(),
-  postal_code: z.string().min(1),
+  postal_code: z.string().trim().default(""),
   country: z.string().default("SG"),
   phone: z.string().optional(),
+}).refine((a) => !usesPostalCode(a.country) || a.postal_code.length > 0, {
+  // Blank only where the country has no postal codes (Hong Kong, the UAE…).
+  message: "Postal code is required",
+  path: ["postal_code"],
 });
 
 const CheckoutItemSchema = z.object({
