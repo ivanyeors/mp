@@ -54,8 +54,8 @@ A new campaign opens on a ready-written invitation, *"Our new website is here, w
 for you"*, with the button *Sign in and collect your points* and the audience *Imported from
 Shopify, not signed in yet*. It says the site is new and never names Shopify or a move (owner,
 2026-10-21). It offers the **Claim bonus**: 1,000 points, S$10 off a shop order, for signing in
-within 3 months of the email (`PRD-loyalty-points`, decisions 10 and 11). Points are not built
-yet, so read that plan's first hazard before sending it.
+within 3 months of the email (`PRD-loyalty-points`, decisions 10 and 11). Until points are on and
+launched, the page refuses to send any campaign that mentions points (`pointsCheck`).
 
 ## Rules it keeps
 
@@ -190,5 +190,5 @@ The page runs on Vercel, so what the script read from a laptop must now be set t
 - **Images, templates and a rich-text editor.** The body is plain text with paragraphs, bullets,
   headings and links.
 - **The migration's three templates** (`migration_announcement`, `_reminder`,
-  `_service_notice`) stay on the script (`scripts/customer-migration-send.ts`). The announcement
-  and reminder promise the deleted voucher, so they should not be sent. Use a campaign instead.
+  `_service_notice`) stay on the script (`scripts/customer-migration-send.ts`). Since points slice 05
+  they offer the Claim bonus, not the voucher, but use a campaign instead.

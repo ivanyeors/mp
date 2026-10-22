@@ -1,15 +1,17 @@
-# Graph Report - mp  (2026-10-21)
+# Graph Report - mp  (2026-10-22)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 2795 files · ~6,816,618 words
+- Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 34 file(s) not represented in the graph (top: .glb 12, .css 10, (none) 5)
 
 ## Summary
-- 20321 nodes · 53461 edges · 912 communities (734 shown, 178 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1888 edges (avg confidence: 0.93)
+- 20321 nodes · 53463 edges · 912 communities (734 shown, 178 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1890 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4aafd0b7`
+- Built from commit: `36f163de`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -833,16 +835,16 @@
 10. `DEFAULT_LOCALE` - 180 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Build notes` --references--> `CustomerOrder`  [INFERRED]
-  .claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md → lib/shop/customer-orders.ts
-- `Acceptance criteria` --references--> `resolveDims()`  [INFERRED]
-  .claude/PRD-xray-pillow-ux/issues/01-dimension-registry-glossary-adr.md → lib/spatial-fillings/dimensions.ts
-- `Fixes found during signoff` --references--> `JsonLdScript()`  [INFERRED]
-  .claude/PRD-page-faq-embeds/OPS-STAGING-SIGNOFF.md → components/seo/json-ld-script.tsx
-- `Acceptance criteria` --references--> `JsonLdScript()`  [INFERRED]
-  .claude/PRD-prod-hardening/issues/12-web-hardening.md → components/seo/json-ld-script.tsx
-- `Code shape` --references--> `getLocations()`  [INFERRED]
-  docs/adr/0012-locations-unified-partner-model.md → lib/locations/index.ts
+- `CONTEXT.md entries` --references--> `sgd()`  [INFERRED]
+  .claude/PRD-paynow-checkout/issues/01-glossary-and-adr.md → app/[lang]/appointments/page.tsx
+- `Proof` --references--> `AnalyticsClient()`  [INFERRED]
+  .claude/PRD-prospect-journey-analytics/issues/07-loops-chrome-side-panel.md → app/[lang]/settings/analytics/AnalyticsClient.tsx
+- `What to build` --references--> `receiveStock()`  [INFERRED]
+  .claude/PRD-money-flow-traceability/issues/08-admin-refund-cancel-restock.md → app/[lang]/settings/inventory/actions.ts
+- `What to build` --references--> `SizeEditor()`  [INFERRED]
+  .claude/PRD-configure-product-filling-tabs/issues/04-configure-drawer-tabs.md → app/[lang]/settings/inventory/configure/[card]/page.tsx
+- `Configure UI` --references--> `DynamicPartSection()`  [INFERRED]
+  .claude/PRD-configure-product-filling-tabs/configure-product-filling-tabs-prd.md → app/[lang]/settings/inventory/configure/[card]/page.tsx
 
 ## Import Cycles
 - None detected.
@@ -3786,24 +3788,24 @@ Cohesion: 0.13
 Nodes (15): google_reviews, idx_google_reviews_card, idx_google_reviews_status, telegram_operators, trg_google_reviews_updated_at, trg_telegram_operators_updated_at, idx_customer_google_review_rejections_customer, idx_customer_google_reviews_customer (+7 more)
 
 ## Knowledge Gaps
-- **6949 isolated node(s):** `RouteParams`, `MemberRow`, `RoleRow`, `ApiConfigRow`, `Payload` (+6944 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 8690 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **6948 isolated node(s):** `npx`, `supabase`, `vercel`, `supabase`, `h` (+6943 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 8689 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **178 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `vitest` connect `vitest` to `auth/admin.ts`, `timeline/registry.ts`, `soft-cut.ts`, `product-detail-client.tsx`, `image-usages.ts`, `faq/index.ts`, `telegram-switch.test.ts`, `showroom-scene.ts`, `dimensions.ts`, `customize/route.ts`, `secretMatches`, `copy.ts`, `members.ts`, `Input`, `renderEmailShell`, `soft-body/route.ts`, `purchase-lines.check.ts`, `email-campaigns/rules.ts`, `appointments-calendar.tsx`, `drive.ts`, `checkup-server.ts`, `email/registry.ts`, `auth/partner.ts`, `[orderNumber]/page.tsx`, `partner-applications/page.tsx`, `Button`, `claim.ts`, `supabaseAdmin`, `welcome-page.ts`, `result-access.test.ts`, `addOrderTimelineEvent`, `blog/[slug]/page.tsx`, `whatsapp/route.ts`, `rma/actions.ts`, `core.ts`, `morphs.ts`, `addons.ts`, `media-assets/index.ts`, `usage-fixtures.ts`, `normalizePhone`, `results-sla/route.ts`, `slice-05.check.ts`, `paired-build.e2e.test.ts`, `ingest-gsc.ts`, `[card]/page.tsx`, `aggregates.ts`, `ownership.test.ts`, `google-sync.ts`, `quote/route.ts`, `config-upload/index.ts`, `import-drive.ts`, `paired.test.ts`, `pricing-surface.check.ts`, `seed-rule-graphs.ts`, `aftercare-notify.ts`, `readjustment/checkout.ts`, `easyship.test.ts`, `commissions/index.ts`, `rma/route.ts`, `email/account.ts`, `applyCustomerFilters`, `migrate-slide-apply.ts`, `xray-cross-section.tsx`, `lib/contact.ts`, `merge.test.ts`, `mp-config/page.tsx`, `locations/index.ts`, `customization.ts`, `composed-sellable.ts`, `costings/page.tsx`, `telegram-handler.ts`, `service-prices.ts`, `referral-rows.tsx`, `easyship/schema.ts`, `@supabase/supabase-js`, `telegram-handler.test.ts`, `stripe/sync.ts`, `measured-by.test.ts`, `csv-import.ts`, `next`, `settings-breadcrumbs.ts`, `linkCustomerToAuthUser`, `settings/test/route.ts`, `milestones/ledger.ts`, `review-request.test.ts`, `wave-sender.test.ts`, `email/index.ts`, `segments-routes.test.ts`, `xray-assets.ts`, `ai-crawlers.ts`, `easyship/store.ts`, `referrals/index.ts`, `product-slide-section-renderer.tsx`, `shop/checkout/route.ts`, `[topic]/page.tsx`, `appointments/settings.ts`, `hold/route.ts`, `sender.ts`, `admin-customers-list.test.ts`, `tax.ts`, `google-status.ts`, `legacy-filling-migration.test.ts`, `expiry-server.ts`, `customisation-binding.test.ts`, `getSiteOrigin`, `price-sync.ts`, `unsubscribe/__tests__/route.test.ts`, `customer-migration/preview.ts`, `places-reviews.ts`, `apply.ts`, `shop-listings.ts`, `ecommerce.ts`, `google-review-match-server.ts`, `package.json`, `ref_node_fs`, `customers-write-guard.test.ts`, `suggest/route.ts`, `ProductVariant`, `ics.ts`, `stripe/webhook/route.ts`, `reconfigure/route.ts`, `mp-config-client.tsx`, `calendar.ts`, `from-inventory.ts`, `wave-sender.ts`, `rules-engine/layout.ts`, `review-request-server.ts`, `cards.ts`, `overlays.ts`, `telegram-updates.ts`, `replace.ts`, `parcels.ts`, `customers/page.tsx`, `held`, `migrate-public-apply.ts`, `requireAdminPage`, `fake-admin.ts`, `unsubscribe.ts`, `__tests__/fixtures.ts`, `rules-engine/types.ts`, `sla-settings/route.ts`, `stock.ts`, `xray-pillow.tsx`, `SearchVisibilityCard.tsx`, `item-image-sync.ts`, `quote.ts`, `overview.ts`, `claim-link.ts`, `permissions.ts`, `authErrorMessage`, `review-requests.ts`, `slice-04.check.ts`, `recordAdminAction`, `operators.ts`, `result-stage.ts`, `aftercare-templates.ts`, `google-reviews-routes.test.ts`, `dock-chrome.ts`, `followups-routes.test.ts`, `rowsToCsv`, `blogs/[id]/route.ts`, `ecommerce/products.ts`, `customers/[id]/route.ts`, `email/results.ts`, `fit.ts`, `batches.ts`, `getAdminContext`, `components.ts`, `inventory-deduction.ts`, `exactly-once.test.ts`, `notes-routes.test.ts`, `purchases.ts`, `sql-agreement.test.ts`, `copy-fit.check.ts`, `webhook/__tests__/route.test.ts`, `review-match.ts`, `telegram-updates-job.test.ts`?**
-  _High betweenness centrality (0.125) - this node is a cross-community bridge._
+  _High betweenness centrality (0.147) - this node is a cross-community bridge._
 - **Why does `supabaseAdmin()` connect `supabaseAdmin` to `auth/admin.ts`, `timeline/registry.ts`, `image-usages.ts`, `faq/index.ts`, `appointment-reminders/route.ts`, `dimensions.ts`, `customize/route.ts`, `secretMatches`, `copy.ts`, `members.ts`, `soft-body/route.ts`, `Badge`, `purchase-lines.check.ts`, `email-campaigns/rules.ts`, `rules-engine/index.ts`, `orders/route.ts`, `exchange-rates.ts`, `timeline/types.ts`, `auth/partner.ts`, `[orderNumber]/page.tsx`, `partner-applications/page.tsx`, `Button`, `claim.ts`, `partner-upload/index.ts`, `addOrderTimelineEvent`, `blog/[slug]/page.tsx`, `whatsapp/route.ts`, `rma/actions.ts`, `order-mirror-catchup.ts`, `addons.ts`, `media-assets/index.ts`, `results-sla/route.ts`, `aggregates.ts`, `google-sync.ts`, `quote/route.ts`, `config-upload/index.ts`, `import-drive.ts`, `supabase/server.ts`, `err`, `seed-rule-graphs.ts`, `aftercare-notify.ts`, `readjustment/checkout.ts`, `campaigns/actions.ts`, `easyship.test.ts`, `rma/route.ts`, `payout-upload/index.ts`, `email/account.ts`, `marketing-consent/state.ts`, `ProspectJourneyCard.tsx`, `merge.test.ts`, `mp-config/page.tsx`, `locations/index.ts`, `customization.ts`, `composed-sellable.ts`, `telegram-handler.ts`, `service-prices.ts`, `referral-rows.tsx`, `sources/results.ts`, `stripe/sync.ts`, `next`, `linkCustomerToAuthUser`, `settings/test/route.ts`, `channel-sales.ts`, `email/index.ts`, `featured-products-section.tsx`, `rma.ts`, `easyship/store.ts`, `referrals/index.ts`, `shop/checkout/route.ts`, `[topic]/page.tsx`, `discovery-source/index.ts`, `appointments/settings.ts`, `hold/route.ts`, `tax.ts`, `price-sync.ts`, `react`, `order-shipment.ts`, `apply.ts`, `shop-listings.ts`, `ecommerce.ts`, `google-review-match-server.ts`, `segments.ts`, `suggest/route.ts`, `reconfigure/route.ts`, `stripe/webhook/route.ts`, `order-mirror-ingest.ts`, `journey/ingest.ts`, `calendar.ts`, `from-inventory.ts`, `review-request-server.ts`, `cards.ts`, `overlays.ts`, `telegram-updates.ts`, `parcels.ts`, `customers/page.tsx`, `held`, `migrate-public-apply.ts`, `requireAdminPage`, `isSupportedLocale`, `unsubscribe.ts`, `partners/index.ts`, `sla-settings/route.ts`, `SearchVisibilityCard.tsx`, `quote.ts`, `overview.ts`, `shopify/webhook/route.ts`, `permissions.ts`, `review-requests.ts`, `02 — The points ledger, the balance, the settings, and Staff adjustments`, `recordAdminAction`, `result-stage.ts`, `operators.ts`, `mappings/route.ts`, `sources/orders.ts`, `blogs/[id]/route.ts`, `ecommerce/products.ts`, `application.ts`, `customers/[id]/route.ts`, `page-faq/index.ts`, `batches.ts`, `getAdminContext`, `inventory-deduction.ts`, `sql-agreement.test.ts`, `readjustments.ts`, `partners-page.tsx`, `resend-webhook/route.ts`, `cn`, `answer-lede-coverage.check.ts`?**
-  _High betweenness centrality (0.116) - this node is a cross-community bridge._
+  _High betweenness centrality (0.124) - this node is a cross-community bridge._
 - **Why does `next` connect `next` to `auth/admin.ts`, `product-detail-client.tsx`, `image-usages.ts`, `faq/index.ts`, `appointment-reminders/route.ts`, `telegram-switch.test.ts`, `dimensions.ts`, `google-reviews-sync/route.ts`, `customize/route.ts`, `secretMatches`, `members.ts`, `InfoTip`, `copy.ts`, `Input`, `soft-body/route.ts`, `Badge`, `email-campaigns/rules.ts`, `rules-engine/index.ts`, `orders/route.ts`, `exchange-rates.ts`, `drive.ts`, `hero-section.tsx`, `email/registry.ts`, `auth/partner.ts`, `partner-upload/index.ts`, `[orderNumber]/page.tsx`, `Button`, `partner-applications/page.tsx`, `supabaseAdmin`, `claim.ts`, `result-access.test.ts`, `addOrderTimelineEvent`, `blog/[slug]/page.tsx`, `whatsapp/route.ts`, `rma/actions.ts`, `order-mirror-catchup.ts`, `types/landing-sections.ts`, `addons.ts`, `media-assets/index.ts`, `normalizePhone`, `results-sla/route.ts`, `paired-build.e2e.test.ts`, `[card]/page.tsx`, `aggregates.ts`, `ownership.test.ts`, `quote/route.ts`, `config-upload/index.ts`, `supabase/server.ts`, `err`, `paired.test.ts`, `aftercare-notify.ts`, `readjustment/checkout.ts`, `easyship.test.ts`, `rma/route.ts`, `payout-upload/index.ts`, `email/account.ts`, `getCurrentCustomerId`, `marketing-consent/state.ts`, `lib/contact.ts`, `merge.test.ts`, `mp-config/page.tsx`, `locations/index.ts`, `composed-sellable.ts`, `costings/page.tsx`, `service-prices.ts`, `easyship/schema.ts`, `stripe/sync.ts`, `measured-by.test.ts`, `linkCustomerToAuthUser`, `settings/test/route.ts`, `workbench.tsx`, `easyship/store.ts`, `referrals/index.ts`, `product-slide-section-renderer.tsx`, `shop/checkout/route.ts`, `[topic]/page.tsx`, `discovery-source/index.ts`, `appointments/settings.ts`, `hold/route.ts`, `api-request-tracker.tsx`, `google-status.ts`, `getSiteOrigin`, `price-sync.ts`, `measurement-grid-section.tsx`, `react`, `order-shipment.ts`, `places-reviews.ts`, `vitest`, `shop-listings.ts`, `ecommerce.ts`, `google-review-match-server.ts`, `package.json`, `segments.ts`, `suggest/route.ts`, `reconfigure/route.ts`, `stripe/webhook/route.ts`, `journey/ingest.ts`, `mp-config-client.tsx`, `calendar.ts`, `firmness-compare-section.tsx`, `review-request-server.ts`, `telegram-updates.ts`, `replace.ts`, `parcels.ts`, `held`, `migrate-public-apply.ts`, `requireAdminPage`, `isSupportedLocale`, `unsubscribe.ts`, `sla-settings/route.ts`, `SearchVisibilityCard.tsx`, `badge.tsx`, `shopify/webhook/route.ts`, `permissions.ts`, `recordAdminAction`, `result-stage.ts`, `operators.ts`, `journey-tracker.tsx`, `easyship/page.tsx`, `apple-cards-carousel.tsx`, `inventory/shopify/page.tsx`, `mappings/route.ts`, `next.config.ts`, `blogs/[id]/route.ts`, `ecommerce/products.ts`, `mp-maker/page.tsx`, `application.ts`, `customers/[id]/route.ts`, `page-faq/index.ts`, `MagicBento.jsx`, `getAdminContext`, `partners-page.tsx`, `resend-webhook/route.ts`, `cn`?**
-  _High betweenness centrality (0.079) - this node is a cross-community bridge._
+  _High betweenness centrality (0.098) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `supabaseAdmin()` (e.g. with `Build notes` and `What to build`) actually correct?**
   _`supabaseAdmin()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 6 inferred relationships involving `Button()` (e.g. with `Further Notes` and `Implementation Decisions`) actually correct?**
   _`Button()` has 6 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `RouteParams`, `MemberRow`, `RoleRow` to the rest of the system?**
-  _6949 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `npx`, `supabase`, `vercel` to the rest of the system?**
+  _6948 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `auth/admin.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.04055245371730826 - nodes in this community are weakly interconnected._

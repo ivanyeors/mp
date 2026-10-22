@@ -191812,7 +191812,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/09-pilot-and-waves.md",
-      "source_location": "L40"
+      "source_location": "L41"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_09_pilot_and_waves_goal",
@@ -191932,7 +191932,7 @@
       "node_kind": "heading",
       "norm_label": "build order",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L70"
+      "source_location": "L69"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_readme_dependency_graph",
@@ -191944,7 +191944,7 @@
       "node_kind": "heading",
       "norm_label": "dependency graph",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L35"
+      "source_location": "L34"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_readme_hitl_notes",
@@ -191956,7 +191956,7 @@
       "node_kind": "heading",
       "norm_label": "hitl notes",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L122"
+      "source_location": "L121"
     },
     {
       "id": "claude_prd_shopify_customer_migration_issues_readme_shopify_customer_migration_vertical_slices_issues",
@@ -191992,7 +191992,7 @@
       "node_kind": "heading",
       "norm_label": "what the audit found, so it is not re-litigated",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L108"
+      "source_location": "L107"
     },
     {
       "id": "claude_prd_customer_crm_issues_06_follow_ups",
@@ -220287,7 +220287,7 @@
       "node_kind": "heading",
       "norm_label": "build notes",
       "source_file": ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md",
-      "source_location": "L76"
+      "source_location": "L77"
     },
     {
       "id": "claude_prd_loyalty_points_issues_08_terms_signoff_and_launch_goal",
@@ -220395,7 +220395,7 @@
       "node_kind": "heading",
       "norm_label": "what the audit found, so it is not re-litigated",
       "source_file": ".claude/PRD-loyalty-points/issues/README.md",
-      "source_location": "L105"
+      "source_location": "L103"
     },
     {
       "id": "claude_prd_media_asset_library_issues_05_drive_connector_browse_apis",
@@ -692219,7 +692219,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -692241,7 +692241,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-loyalty-points/issues/README.md",
-      "source_location": "L105",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -707696,7 +707696,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/issues/09-pilot-and-waves.md",
-      "source_location": "L40",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
@@ -707949,7 +707949,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L108",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -707960,7 +707960,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L122",
+      "source_location": "L121",
       "weight": 1.0
     },
     {
@@ -707971,7 +707971,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L35",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -707982,7 +707982,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L70",
+      "source_location": "L69",
       "weight": 1.0
     },
     {
@@ -850193,7 +850193,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-loyalty-points/issues/README.md",
-      "source_location": "L88",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
@@ -850493,7 +850493,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L106",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
@@ -850505,7 +850505,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L112",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -854885,7 +854885,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L97",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -854897,7 +854897,7 @@
       "confidence_score": 0.95,
       "context": "linkCustomerToAuthUser",
       "source_file": ".claude/PRD-shopify-customer-migration/issues/README.md",
-      "source_location": "L112",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -857813,7 +857813,7 @@
       "confidence_score": 0.95,
       "context": "planCapture",
       "source_file": ".claude/PRD-loyalty-points/issues/README.md",
-      "source_location": "L94",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -858117,6 +858117,30 @@
       "weight": 1.0
     },
     {
+      "source": "claude_prd_email_marketing_email_marketing_prd_what_it_does",
+      "target": "lib_email_campaigns_sender_pointscheck",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "context": "pointsCheck",
+      "source_file": ".claude/PRD-email-marketing/email-marketing-prd.md",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_prd_loyalty_points_issues_readme_hazards",
+      "target": "lib_email_campaigns_sender_pointscheck",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "context": "pointsCheck",
+      "source_file": ".claude/PRD-loyalty-points/issues/README.md",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
       "source": "claude_prd_loyalty_points_issues_03_earning_build_notes",
       "target": "lib_points_earn_pointsfororder",
       "relation": "references",
@@ -858137,7 +858161,7 @@
       "confidence_score": 0.95,
       "context": "pointsTermsSections()",
       "source_file": ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md",
-      "source_location": "L81",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -863852,5 +863876,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4aafd0b7444bf0ee60c9b62e77fa625ad199ede9"
+  "built_at_commit": "36f163de62e2138d2869d6babad51c2789b943af"
 }

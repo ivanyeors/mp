@@ -22,7 +22,7 @@ demoable path through all layers.
 | [05](05-claim-bonus.md) | The Claim bonus replaces the voucher, for every customer-facing surface | AFK | **built** | 02, 04 | 7 |
 | [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **built** | 05 | 7, 12 |
 | [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **built** | 02, 03 | 8 |
-| [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **not started** | 03, 04, 05 | all |
+| [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **signed off** (2026-10-22); live test after deploy | 03, 04, 05 | all |
 
 ## Dependency graph
 
@@ -79,11 +79,9 @@ preflight refuse otherwise.
 On 2026-10-21 the owner had the first campaign promise the points. Admin Panel → Email campaigns
 (`PRD-email-marketing`) now drafts it: *"Sign in within 3 months of this email and we'll add
 1,000 points to your account"*. Its 3 months are decision 11's window, counted from this email,
-so the window question is settled. The hazard stands: the page does not check whether points
-are live. Sent before they are, it promises points a customer cannot see or spend. A customer
-who signs in then gets the bonus at their next sign-in after launch (slice 05). Either send it
-once slices 04, 05 and 08 are live, or change its words to say the points arrive when points
-launch.
+so the window question is settled. The page now checks: a campaign that mentions points is refused until points are on and
+launched with a Claim bonus (`pointsCheck`, slice 05), and the migration's wave sender does the
+same (`claimBonusOffer`).
 
 **Second hazard.** The balance is never a column on `customers`. The customer can read their own
 row (ADR 0029 (d)), and a stored total drifts from its history. Read it with `points_balance`.

@@ -15522,9 +15522,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-email-marketing/email-marketing-prd.md": {
-    "mtime": 1792588919.1772623,
-    "seen": 1792600217.004194,
-    "ast_hash": "73c450b264a46f2bdc38aec6b0dacb66",
+    "mtime": 1792628961.2043462,
+    "seen": 1792629041.8476024,
+    "ast_hash": "87fbf778d989ff954584eb04d3ce37e1",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/01-glossary-and-adr.md": {
@@ -15576,9 +15576,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/09-pilot-and-waves.md": {
-    "mtime": 1792585991.583365,
-    "seen": 1792600217.0045915,
-    "ast_hash": "bbb30a60b6ba0731a05665081482d461",
+    "mtime": 1792628961.20415,
+    "seen": 1792629041.8480465,
+    "ast_hash": "b9b32dbe050235647fd027077fa7dbbb",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/10-cutover-and-shopify-wind-down.md": {
@@ -15600,9 +15600,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/issues/README.md": {
-    "mtime": 1792594929.2814987,
-    "seen": 1792600217.0045965,
-    "ast_hash": "8b24dcf963a6d1293f6c2bb49c1027b4",
+    "mtime": 1792628961.2039227,
+    "seen": 1792629041.8480527,
+    "ast_hash": "7129e3e42c91889fb213909c1b7123c2",
     "semantic_hash": ""
   },
   ".claude/PRD-shopify-customer-migration/shopify-customer-migration-prd.md": {
@@ -17418,15 +17418,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/08-terms-signoff-and-launch.md": {
-    "mtime": 1792600626.232858,
-    "seen": 1792600780.2589405,
-    "ast_hash": "398967427b70bb0611f3fc0a79055761",
+    "mtime": 1792628961.2032602,
+    "seen": 1792629041.8476813,
+    "ast_hash": "e844c936cf03c490a568b7ac4f28c7a8",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/README.md": {
-    "mtime": 1792600231.8115087,
-    "seen": 1792600780.2589424,
-    "ast_hash": "ecab2a04fa7b42fb3ff7650c1ab8f929",
+    "mtime": 1792628961.2036831,
+    "seen": 1792629041.8476827,
+    "ast_hash": "3b8408fa9e97207e6cf01e7481c2bfd1",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {

@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** HITL
-**Status:** terms page built; counsel, the accountant and the live test are the owner's
+**Status:** signed off by the owner (2026-10-22). The live test waits for the deploy
 **Blocked by:** 03, 04, 05
 **User stories:** all
 **Labels:** `documentation`, `needs-triage`, `P2`
@@ -68,10 +68,11 @@ window), sets `points_launch_at`, then turns on `points_enabled`.
 ## Acceptance criteria
 
 - [x] The terms page is built and linked from all four places (live once deployed).
-- [ ] Counsel's answers are recorded in ADR 0030, dated, and any gate they ask for is switched.
-- [ ] The accountant's treatment is recorded in ADR 0030.
-- [ ] The live test passes, and its Orders are refunded afterwards.
-- [ ] The migration's issues README marks slice 09 as unblocked by points.
+- [x] Counsel and the accountant: signed off by the owner (2026-10-22). Their answers are still
+      to be copied into ADR 0030, and any gate counsel asks for switched.
+- [ ] The live test passes, and its Orders are refunded afterwards. It needs this branch merged
+      and its eight migrations applied to production first.
+- [x] The migration's issues README marks slice 09 as unblocked by points.
 
 ## Build notes
 
