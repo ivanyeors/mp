@@ -60,7 +60,11 @@ npx tsx --env-file=.env.local scripts/customer-migration-send.ts \
 - **It refuses to run** if:
   - the transport is not Resend;
   - `CAMPAIGN_EMAIL_FROM` is not on the campaign subdomain;
-  - `POST /api/email/unsubscribe` does not answer on the target site (the README's first hazard).
+  - `POST /api/email/unsubscribe` does not answer on the target site (the README's first hazard);
+  - the send limit is used up. It sends no more than the Resend plan allows: 100 a day and 3,000
+    a month on the free plan (owner, 2026-10-22: stagger, and stay on the free plan), counted
+    from the ledger over every template and wave in the last 24 hours and 31 days.
+    `CAMPAIGN_DAILY_SEND_LIMIT` / `CAMPAIGN_MONTHLY_SEND_LIMIT` raise them on a paid plan.
 
 **What it selects:**
 
@@ -75,7 +79,11 @@ npx tsx --env-file=.env.local scripts/customer-migration-send.ts \
   concurrent run, skip that person.
 - On a send error it marks the row `failed`. A failed row is retried only with
   `--retry-failed`.
-- It throttles to about 2 messages a second, and stops after 5 consecutive failures.
+- It throttles to about 2 messages a second, and stops after 5 consecutive failures, or at once
+  when Resend answers that its quota is used up.
+- **A wave bigger than the day's limit is staggered.** A run sends what the limit leaves and holds
+  the rest of its selection back; the wave keeps its room, so the same command run the next day
+  carries on where it stopped.
 - Its transport is `getCampaignTransport()`, built from `CAMPAIGN_RESEND_API_KEY` and
   `CAMPAIGN_EMAIL_FROM`. It is a separate instance from `getDefaultTransport()`.
   - **The key must not be called `RESEND_API_KEY`.** `resolveTransport` picks Resend for

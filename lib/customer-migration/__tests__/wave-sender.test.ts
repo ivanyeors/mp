@@ -25,8 +25,9 @@ import { emptyWorld, fakeCampaignClient, type CampaignWorld } from "./fake-campa
  * nothing the second time; two runs at once never send one person the same
  * template twice; each email carries its own Claim link, the footer link and
  * RFC 8058 headers; a failure is kept and retried only on request; five in a
- * row stop the wave. assert-08-campaign-sends.sql proves the ledger itself in
- * Postgres, concurrency included.
+ * row stop the wave; no run sends past Resend's plan, and the rest of a wave
+ * goes out on a later day. assert-08-campaign-sends.sql proves the ledger
+ * itself in Postgres, concurrency included.
  */
 
 const ORIGIN = "https://custom.mpillow.com";
@@ -81,11 +82,16 @@ function site({ live = true, siteSecret = SECRET, configured = true } = {}) {
   });
 }
 
-function fakeTransport(opts: { name?: string; failFor?: Set<string>; failAll?: boolean } = {}) {
+function fakeTransport(opts: { name?: string; failFor?: Set<string>; failAll?: boolean; quotaAfter?: number } = {}) {
   const sent: OutgoingEmail[] = [];
   const transport: EmailTransport = {
     name: opts.name ?? "resend",
     async send(email) {
+      if (opts.quotaAfter !== undefined && sent.length >= opts.quotaAfter) {
+        throw new Error(
+          'Resend send failed (429): {"statusCode":429,"name":"daily_quota_exceeded","message":"You have reached your daily email sending quota."}',
+        );
+      }
       if (opts.failAll || opts.failFor?.has(email.to)) throw new Error(`Resend send failed (500): ${email.to}`);
       sent.push(email);
       return { id: `re_${sent.length}` };
@@ -441,6 +447,129 @@ describe("--apply", () => {
     expect(notice.text).toContain(`${ORIGIN}/en-US/appointments?type=readjustment`);
     // An offer check does not apply to it.
     expect(report.preflight.checks.map((c) => c.key)).not.toContain("bonus");
+  });
+});
+
+describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => {
+  const moreBuyers = (n: number) => {
+    for (let i = 0; i < n; i++) {
+      world.customers.push({ id: id(30 + i), email: `b${i}@example.com`, marketing_email: "subscribed" });
+      world.migrated.push({ customer_id: id(30 + i), shopify_orders_count: 1, imported_at: "2026-10-01T00:00:00Z" });
+    }
+  };
+  /** A send of another wave or template, `daysAgo` old. */
+  const earlier = (n: number, status: string, daysAgo: number) => {
+    for (let i = 0; i < n; i++) {
+      world.sends.push({
+        id: `e-${status}-${daysAgo}-${i}`,
+        customer_id: `earlier-${status}-${daysAgo}-${i}`,
+        template: "migration_reminder",
+        wave: "r0",
+        status,
+        provider_message_id: status === "failed" ? null : `re_e_${status}_${daysAgo}_${i}`,
+        sent_at: new Date(Date.now() - daysAgo * 86400_000).toISOString(),
+        attempts: 1,
+        last_error: null,
+        bounced_at: status === "bounced" ? new Date().toISOString() : null,
+        complained_at: status === "complained" ? new Date().toISOString() : null,
+      });
+    }
+  };
+  const limitCheck = (r: { preflight: { checks: { key: string; ok: boolean; detail: string }[] } }) =>
+    r.preflight.checks.find((c) => c.key === "send_limit")!;
+
+  it("is the free plan when no limits are given", async () => {
+    const report = await runCampaignWave(announce({ apply: false }), setup());
+    expect(limitCheck(report)).toEqual({
+      key: "send_limit",
+      ok: true,
+      detail: "0 of 100 sent in the last 24 hours, 0 of 3,000 in the last 31 days: this run sends at most 100",
+    });
+    expect(report.preflight.budget).toBe(100);
+  });
+
+  it("sends no more than the day allows, holds the rest back, and the same command carries on the next day", async () => {
+    moreBuyers(5); // 8 eligible
+    const limits = { sendLimits: { daily: 3, monthly: 3000 } };
+
+    const dry = await runCampaignWave(announce({ apply: false }), setup(limits));
+    expect(dry.audience!.eligible).toHaveLength(8);
+    expect(dry.audience!.selection).toHaveLength(3);
+    expect(dry.heldBack).toBe(5);
+    expect(formatWaveReport(dry).join("\n")).toContain("Held back by the send limit: 5 more. The same command sends them on a later day.");
+
+    const day1 = setup(limits);
+    const first = await runCampaignWave(announce(), day1);
+    expect(first.sent).toBe(3);
+    expect(day1.sent).toHaveLength(3);
+    expect(world.sends).toHaveLength(3);
+
+    // The same day: the limit is used up, so it refuses before claiming anyone.
+    const again = setup(limits);
+    const refused = await runCampaignWave(announce(), again);
+    expect(refused.ran).toBe(false);
+    expect(limitCheck(refused)).toMatchObject({ ok: false });
+    expect(limitCheck(refused).detail).toBe(
+      "3 of 3 sent in the last 24 hours, 3 of 3,000 in the last 31 days: the daily limit (CAMPAIGN_DAILY_SEND_LIMIT) is used up; run it again tomorrow",
+    );
+    expect(claims(again)).toEqual([]);
+    expect(again.sent).toEqual([]);
+
+    // A day later, the same command carries the wave on.
+    for (const row of world.sends) row.sent_at = new Date(Date.now() - 25 * 3600_000).toISOString();
+    const day2 = setup(limits);
+    const second = await runCampaignWave(announce(), day2);
+    expect(second.sent).toBe(3);
+    expect(formatWaveReport(second).join("\n")).toContain("Wave w1 already holds 3 of 10; room for 7.");
+    expect(new Set([...day1.sent, ...day2.sent].map((e) => e.to)).size).toBe(6);
+    expect(world.sends.every((r) => r.wave === "w1" && r.status === "sent")).toBe(true);
+  });
+
+  it("counts every template and wave over 31 days, and what may have gone, but not what failed", async () => {
+    earlier(10, "sent", 10);
+    earlier(2, "bounced", 10);
+    earlier(1, "complained", 10);
+    earlier(1, "pending", 10);
+    earlier(20, "failed", 10);
+    earlier(50, "sent", 40); // outside the month
+    const report = await runCampaignWave(announce({ apply: false }), setup({ sendLimits: { daily: 100, monthly: 16 } }));
+    expect(limitCheck(report)).toEqual({
+      key: "send_limit",
+      ok: true,
+      detail: "0 of 100 sent in the last 24 hours, 14 of 16 in the last 31 days: this run sends at most 2",
+    });
+    expect(report.audience!.selection.map((c) => c.customerId)).toEqual([CAL, ANN]);
+    expect(report.heldBack).toBe(1);
+  });
+
+  it("refuses while the month is used up", async () => {
+    earlier(16, "sent", 3);
+    const report = await runCampaignWave(announce(), setup({ sendLimits: { daily: 100, monthly: 16 } }));
+    expect(report.ran).toBe(false);
+    expect(limitCheck(report).detail).toMatch(
+      /the monthly limit \(CAMPAIGN_MONTHLY_SEND_LIMIT\) is used up; run it again once the oldest of them is 31 days old$/,
+    );
+  });
+
+  it("limits a retry of failed sends too", async () => {
+    const failing = setup({ transport: fakeTransport({ failAll: true }).transport });
+    await runCampaignWave(announce(), failing);
+    expect(world.sends.every((r) => r.status === "failed")).toBe(true);
+    const retry = setup({ sendLimits: { daily: 1, monthly: 3000 } });
+    const report = await runCampaignWave(announce({ retryFailed: true }), retry);
+    expect(retry.sent).toHaveLength(1);
+    expect(report.heldBack).toBe(2);
+  });
+
+  it("stops at once when Resend says its quota is used up", async () => {
+    moreBuyers(5);
+    const s = setup({ transport: fakeTransport({ quotaAfter: 2 }).transport });
+    const report = await runCampaignWave(announce(), s);
+    expect(report.sent).toBe(2);
+    expect(report.failed).toBe(1);
+    expect(report.stopped).toMatch(/quota is used up/);
+    expect(world.sends.map((r) => r.status)).toEqual(["sent", "sent", "failed"]);
+    expect(formatWaveReport(report).join("\n")).toContain("STOPPED: Resend's sending quota is used up.");
   });
 });
 

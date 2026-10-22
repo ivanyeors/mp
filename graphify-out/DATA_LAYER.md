@@ -1455,6 +1455,7 @@ Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:52
 References: `customers`, `email_campaigns`
 - Read by:
   - `campaign-sends.ts` [select] — lib/crm/timeline/sources/campaign-sends.ts:51
+  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:230
 
 ### customer_campaign_wave_stats
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:392
