@@ -39,7 +39,7 @@ assert.deepEqual(
 assert.ok(FLOW_ROUTE_EXPECTATION.includes("2 minute"));
 assert.deepEqual(
   missingStepsAfterCarryOver("mbolster", "basic-mpillow", {}),
-  ["shoulder-length", "customize"],
+  ["age", "health", "shoulder-length", "photos"],
 );
 
 const pendingRecord = (): RecommendationRecord => ({

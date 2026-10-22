@@ -4,24 +4,31 @@ export type MpConfigStep =
   | "welcome"
   | "what-to-expect"
   | "name"
+  | "age"
+  | "health"
   | "shoulder-length"
   | "neck-to-back"
   | "head-to-back"
   | "neck-length"
-  | "customize"
+  | "photos"
   | "preview";
 
 export type MpConfigVariant = "full" | "basic";
 
+// Questions run name → age → health → body measurements → photos (owner,
+// 2026-10-22): the health answers come before the tape measure, and the photos
+// close the questionnaire.
 const FULL_STEPS: MpConfigStep[] = [
   "welcome",
   "what-to-expect",
   "name",
+  "age",
+  "health",
   "shoulder-length",
   "neck-to-back",
   "head-to-back",
   "neck-length",
-  "customize",
+  "photos",
   "preview",
 ];
 
@@ -29,8 +36,10 @@ const BASIC_STEPS: MpConfigStep[] = [
   "welcome",
   "what-to-expect",
   "name",
+  "age",
+  "health",
   "shoulder-length",
-  "customize",
+  "photos",
   "preview",
 ];
 
