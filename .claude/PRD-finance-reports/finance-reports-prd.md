@@ -66,20 +66,37 @@ through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `d
   the 7th because Stripe's GST tax invoice arrives around the 6th.
 - **What it sends:** one email per month to `account@mpillow.com`, copied to `sg@`. It holds a table
   with supplier, invoice number, date, before GST, GST and total, the totals per currency, a "Not
-  attached" list, and every invoice PDF attached.
+  attached" list, and a "Shopify orders" table. Two PDFs are attached: "Mpillow invoices - <Month>"
+  (every invoice, in table order) and "Mpillow Shopify orders - <Month>" (every order email). Each
+  starts with a contents page.
   - The task writes the report as a Gmail draft whose last line names the chosen emails:
     `[[invoice-report attach=<message ids> list=<message ids>]]`.
   - Claude cannot attach the PDFs itself: the connector would need each file's raw contents passed
     through the conversation, which is 0.5–1.5 MB a month. So the owner's Google Apps Script,
-    "invoice report sender", runs in `sg@` every day at about 5pm SGT. It attaches the PDFs from the
-    `attach` emails (an email with no PDF goes in as a PDF of itself), removes the marker and sends
-    the draft.
+    "invoice report sender", runs in `sg@` every day at about 5pm SGT. It joins the PDFs from the
+    `attach` emails into one PDF with pdf-lib (an email with no PDF goes in as a PDF of itself),
+    removes the marker and sends the report.
+  - The script also adds the Shopify orders itself: every "[Mpillow - Fully customisable pillow]
+    Order #…" email received in the month (SGT), as a table in the email and a second joined PDF.
+    Product photos are removed to keep the file small. A month with no order emails says "No
+    Shopify orders were received", so the section stays once the Shopify store is closed. The
+    order totals are as placed; later edits, cancellations and refunds are not shown.
+  - pdf-lib 1.17.1 is fetched from jsDelivr (unpkg as fallback) when a report is built, and is
+    run only if its SHA-256 matches the npm package's `dist/pdf-lib.min.js`.
+  - When a step fails, the script still sends what it can and emails `sg@` a note: a PDF it cannot
+    join, or an email it cannot convert, is attached on its own; without pdf-lib every file is
+    attached separately; an unreadable order total shows "see PDF". It holds a report back, and
+    tells `sg@` why, only when a named email is gone, the recipients are wrong, the month in the
+    subject cannot be read, or the files exceed Gmail's limit. `previewInvoiceReports` emails `sg@`
+    the finished report without sending it.
+  - The script is not in this repository: it lives in the owner's Apps Script project.
   - The script only sends drafts addressed to `account@` alone, copied to nobody but `sg@`, with the
     report subject and the marker. That leaves the owner until 5pm to read, edit or delete the
     draft.
   - Anything that looks like an invoice but comes from an unknown sender goes to `sg@` only.
-- **No double sends:** after sending, the script labels the thread of every `attach` and `list` email
-  "Mpillow/Invoices/Sent to accounts", and the task skips labelled threads.
+- **No double sends:** after sending, the script labels the thread of every `attach`, `list` and
+  Shopify order email "Mpillow/Invoices/Sent to accounts", and the task and the script skip
+  labelled threads. It records each sent draft, so a draft it could not delete is never sent again.
 - **Services only:**
   - Included: Claude (Max plan receipts), Google Workspace, Google Cloud, Vercel, AWS, 42Metrics
     (SEO), the monthly marketing invoice (fee plus TikTok and Meta ads), Elfsight, and Stripe's GST
@@ -98,7 +115,8 @@ through the Gmail connector. That mailbox also receives `admin@`, `ivanyeo@`, `d
     Billing → Documents.
   - Excluded by the owner: Stamford Tools; anything about the Midview property (22 Sin Ming Lane
     #08-83), for now.
-  - Also excluded: bank documents, customer order notifications and shipping notifications.
+  - Also excluded from Claude's table: bank documents and shipping notifications. Shopify order
+    emails are left to the script, as above.
 - **Gaps it cannot close:**
   - The Stripe tax invoice email has only a Dashboard link, so the summary lists it to be downloaded.
   - Easyship's emailed invoice link expires after about 40 minutes.
