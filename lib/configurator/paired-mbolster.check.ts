@@ -109,7 +109,12 @@ assert.equal(
 
 // --- Wiring: both builds first, then details, then the review that pays ---
 const mp = readFileSync("app/[lang]/mp-config/mp-config-client.tsx", "utf8");
-assert.match(mp, /<PairedStepper\s+step=\{phase === "customize" \? 1 : phase === "details" \? 3 : 4\}/, "steps 1, 3 and 4 on the Mpillow page");
+assert.match(
+  mp,
+  /\{phase \? \(\s*<PairedStepperBar\s+className="border-t"\s+step=\{phase === "customize" \? 1 : phase === "details" \? 3 : 4\}[\s\S]{0,200}<\/header>/,
+  "steps 1, 3 and 4 along the top of the Mpillow page, in its sticky header",
+);
+assert.doesNotMatch(mp, /<PairedStepper\s/, "and only there");
 assert.match(mp, /writePairedHandoff\(window\.sessionStorage/, "Next: Mbolster writes the hand-off");
 assert.match(mp, /router\.push\(withLocale\(PAIRED_MBOLSTER_PATH, locale\)\)/, "and goes to the Mbolster page");
 assert.match(mp, /askingDetails && !resumeFinish && !staffEdit && \(/, "contact waits for step 3");
@@ -122,7 +127,9 @@ assert.match(mp, /record\.flowRoute\.targetFlow !== "mbolster"/, "no Upsell card
 assert.match(mp, /r\.flowRoute\?\.targetFlow !== "mbolster"/, "a pending Mbolster route never blocks the hold");
 
 const mb = readFileSync("app/[lang]/mbolster-config/mbolster-config-client.tsx", "utf8");
-assert.match(mb, /<PairedStepper step=\{2\} \/>/, "step 2 header on the Mbolster page");
+assert.match(mb, /<PairedStepperBar className="border-t" step=\{2\} \/> : null\}\s*<\/header>/, "step 2 along the top of the Mbolster's customisation page");
+assert.match(mb, /\{paired \? \(\s*<PairedStepperBar\s+className="sticky top-0/, "and above its height step");
+assert.doesNotMatch(mb, /<PairedStepper\s/, "and only there");
 assert.match(mb, /nextStep: "preview"/, "paired: height goes straight to the customisation page");
 assert.match(mb, /if \(pairedHandoffOnPage\(\)\) return;/, "a paired run never overwrites the standalone draft");
 assert.match(mb, /router\.push\(to\(pairedDetailsPath\(paired\.configPath\)\)\)/, "its answer goes back to the Mpillow's step 3");

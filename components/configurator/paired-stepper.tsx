@@ -5,13 +5,30 @@ import { cn } from "@/lib/utils";
 
 export type PairedStep = 1 | 2 | 3 | 4;
 
+type PairedStepperProps = { step: PairedStep; bolsterSkipped?: boolean };
+
+/**
+ * The stepper along the top of the page, wherever a Paired build runs: under
+ * the preview header on both configurators, and above the Mbolster's height
+ * step. 44px tall (`h-11`); the pages' sticky offsets allow for it.
+ */
+export function PairedStepperBar({ className, ...props }: PairedStepperProps & { className?: string }) {
+  return (
+    <div className={cn("bg-background/95", className)}>
+      <div className="mx-auto flex h-11 max-w-[1400px] items-center justify-center px-4 max-md:px-3">
+        <PairedStepper {...props} />
+      </div>
+    </div>
+  );
+}
+
 /**
  * "1 Mpillow · 2 Mbolster (optional) · 3 Details · 4 Review" — where a Paired
  * build's shopper is (ADR 0026). Both builds come before details and payment.
  * Shown on the Mpillow preview, on the Mbolster page it hands to, and on the
  * Mpillow's details and review that follow. Phones name the current step only.
  */
-export function PairedStepper({ step, bolsterSkipped = false }: { step: PairedStep; bolsterSkipped?: boolean }) {
+export function PairedStepper({ step, bolsterSkipped = false }: PairedStepperProps) {
   const steps = [
     { n: 1, label: "Mpillow" },
     { n: 2, label: "Mbolster", note: bolsterSkipped ? "skipped" : step <= 2 ? "optional" : null },

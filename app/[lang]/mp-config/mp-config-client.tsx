@@ -79,7 +79,7 @@ import {
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
-import { PairedStepper } from "@/components/configurator/paired-stepper";
+import { PairedStepperBar } from "@/components/configurator/paired-stepper";
 import { ReviewCard } from "@/components/configurator/review-card";
 import {
   bolsterSleepPosition,
@@ -2875,7 +2875,7 @@ export function MpConfigClient({
         {pairedBolster ? (
           <ReviewCard
             title={pairedBolster.label}
-            detail="Ships with your Mpillow. You can still remove it when you review the final builds."
+            detail="Ships with your Mpillow. You can still drop it later, when you accept the finished builds."
             lines={pairedBolster.lines}
             amount={
               pairedBolster.ballpark != null
@@ -2992,9 +2992,22 @@ export function MpConfigClient({
                 </Button>
               )}
             </div>
+            {/* A Paired build's steps, at the top of every one of them. */}
+            {phase ? (
+              <PairedStepperBar
+                className="border-t"
+                step={phase === "customize" ? 1 : phase === "details" ? 3 : 4}
+                bolsterSkipped={pairedChoice != null && !pairedChoice.bolster}
+              />
+            ) : null}
           </header>
 
-          <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+          <div
+            className={cn(
+              "grid grid-cols-1 lg:grid-cols-[1fr_460px]",
+              phase ? "min-h-[calc(100dvh-100px)]" : "min-h-[calc(100dvh-56px)]",
+            )}
+          >
             {/* Left: the stage. Dark in both themes: the white silhouette, the
                 starfield and the x-ray's shell paint (xray-theme.ts) are drawn for
                 a dark ground, and `dark` flips the tokens and `dark:` variants
@@ -3008,7 +3021,9 @@ export function MpConfigClient({
                 would only push them below the fold, so it stays on step 1. */}
             <div
               className={cn(
-                "dark relative bg-background text-foreground lg:sticky lg:top-[56px] lg:h-[calc(100dvh-56px)] lg:overflow-hidden",
+                "dark relative bg-background text-foreground lg:sticky lg:overflow-hidden",
+                // Under the header, and the stepper bar when there is one.
+                phase ? "lg:top-[100px] lg:h-[calc(100dvh-100px)]" : "lg:top-[56px] lg:h-[calc(100dvh-56px)]",
                 (phase === "details" || phase === "review") && "max-lg:hidden",
               )}
             >
@@ -3047,7 +3062,11 @@ export function MpConfigClient({
                     <XraySectionDock
                       dived={divedSection}
                       onSlot={setSideSlot}
-                      className={cn("sticky top-0 flex max-h-[calc(100dvh-56px-2rem)]", STAGE_PANEL_CLASS)}
+                      className={cn(
+                        "sticky top-0 flex",
+                        phase ? "max-h-[calc(100dvh-100px-2rem)]" : "max-h-[calc(100dvh-56px-2rem)]",
+                        STAGE_PANEL_CLASS,
+                      )}
                     />
                   )}
                   <div className="flex min-w-0 flex-col items-center gap-4 md:gap-6">
@@ -3251,18 +3270,17 @@ export function MpConfigClient({
             </div>
 
             {/* Right: customization panel */}
-            <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100dvh-56px)] lg:border-l">
+            <div
+              className={cn(
+                "flex min-h-0 flex-col bg-background lg:border-l",
+                phase ? "lg:h-[calc(100dvh-100px)]" : "lg:h-[calc(100dvh-56px)]",
+              )}
+            >
               <div
                 ref={previewPanelRef}
                 className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}
               >
                 {partner ? <CoBrandBanner partner={partner} /> : null}
-                {phase ? (
-                  <PairedStepper
-                    step={phase === "customize" ? 1 : phase === "details" ? 3 : 4}
-                    bolsterSkipped={pairedChoice != null && !pairedChoice.bolster}
-                  />
-                ) : null}
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">
                     {staffEdit

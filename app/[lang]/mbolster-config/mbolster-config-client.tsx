@@ -137,7 +137,7 @@ import {
 } from "@/lib/configurator/height-draft";
 import { soleCaseId } from "@/lib/configurator/preference-policy";
 import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
-import { PairedStepper } from "@/components/configurator/paired-stepper";
+import { PairedStepperBar } from "@/components/configurator/paired-stepper";
 import {
   clearPairedHandoff,
   pairedDetailsPath,
@@ -1334,13 +1334,26 @@ export function MbolsterConfigClient({
               </Button>
             )}
           </div>
+          {/* A Paired build's steps, at the top of every one of them. */}
+          {paired ? <PairedStepperBar className="border-t" step={2} /> : null}
         </header>
 
-        <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+        <div
+          className={cn(
+            "grid grid-cols-1 lg:grid-cols-[1fr_460px]",
+            paired ? "min-h-[calc(100dvh-100px)]" : "min-h-[calc(100dvh-56px)]",
+          )}
+        >
           {/* Left: product visual */}
           {/* Below lg the stage flows at its natural height (same fix as mp-config):
               a 40vh cap with overflow-hidden clipped the staff toolbox on phones. */}
-          <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:overflow-hidden">
+          <div
+            className={cn(
+              "relative lg:sticky lg:overflow-hidden",
+              // Under the header, and the stepper bar when there is one.
+              paired ? "lg:top-[100px] lg:h-[calc(100vh-100px)]" : "lg:top-[56px] lg:h-[calc(100vh-56px)]",
+            )}
+          >
             {!isMobile && (
               <>
                 <Particles
@@ -1513,7 +1526,12 @@ export function MbolsterConfigClient({
           </div>
 
           {/* Right: customization panel (case, add-ons, shipping) */}
-          <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100vh-56px)] lg:border-l">
+          <div
+            className={cn(
+              "flex min-h-0 flex-col bg-background lg:border-l",
+              paired ? "lg:h-[calc(100vh-100px)]" : "lg:h-[calc(100vh-56px)]",
+            )}
+          >
             <div
               className={cn(
                 "flex-1 space-y-8 overflow-y-auto",
@@ -1521,7 +1539,6 @@ export function MbolsterConfigClient({
               )}
             >
               {partner ? <CoBrandBanner partner={partner} /> : null}
-              {paired ? <PairedStepper step={2} /> : null}
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight">
                   {paired ? "Customize your Mbolster" : "Customize finish"}
@@ -1810,13 +1827,22 @@ export function MbolsterConfigClient({
       {state.step !== "welcome" && isMobile && (
         <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
       )}
+      {/* Step 2 of a Paired build: the stepper along the top, as on every step. */}
+      {paired ? (
+        <PairedStepperBar
+          className="sticky top-0 z-40 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60"
+          step={2}
+        />
+      ) : null}
       <div
         className={cn(
-          "relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center py-10 px-3 md:px-6",
+          "relative mx-auto flex w-full max-w-3xl flex-col justify-center py-10 px-3 md:px-6",
+          paired ? "min-h-[calc(100dvh-44px)]" : "min-h-dvh",
           state.step !== "welcome" && configuratorMobileCloseClearanceClassName,
         )}
       >
-        {state.step !== "welcome" ? (
+        {/* A paired run's progress is the stepper above. */}
+        {state.step !== "welcome" && !paired ? (
           <div className="mb-6">
             <Progress value={progressValue} aria-label="Mbolster customisation progress" />
           </div>
@@ -1914,7 +1940,6 @@ export function MbolsterConfigClient({
 
         {state.step === "height" ? (
           <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
-            {paired ? <PairedStepper step={2} /> : null}
             <div className="space-y-1">
               {paired ? null : (
                 <div className="text-sm font-semibold text-muted-foreground">Step 1</div>
