@@ -488,7 +488,7 @@ A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as mo
 _Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
 
 **Points ledger**:
-The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
 _Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
 
 **Pending points**:
@@ -498,6 +498,10 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 **Claim bonus**:
 1,000 points a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
+
+**Milestone bonus**:
+Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, expiry, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
+_Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the bonus); conflating it with the partner **Milestone track** (units, cash and rate bumps); counting the balance towards it
 
 **Points expiry**:
 The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.

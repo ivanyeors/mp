@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SEEDED_MILESTONES } from "../milestones";
 import { POINTS_DEFAULTS, pointsLive } from "../settings";
 import { pointsTermsSections } from "../terms";
 
@@ -41,6 +42,21 @@ describe("pointsTermsSections", () => {
     expect(t).toContain("from S$10, up to 30% of the products' price");
     expect(t).toContain("expire 12 months after your last purchase");
     expect(t).toContain("within 1 month of the email we sent you about it adds 1,500 points (S$15)");
+  });
+
+  it("lists the bonus milestones and their rules, and leaves them out when there are none", () => {
+    const t = text({ ...POINTS_DEFAULTS, milestones: [...SEEDED_MILESTONES] });
+    for (const rule of [
+      "at 1,000 points earned, 100 points (S$1); at 2,500 points earned, 300 points (S$3); at 5,000 points earned, 800 points (S$8); at 10,000 points earned, 2,000 points (S$20).",
+      "Only points earned on orders count towards a milestone",
+      "Using points or letting them expire doesn't set you back",
+      "the points we take back come off your total",
+      "A bonus you've received is yours to keep",
+      "Each milestone gives its bonus once",
+    ]) {
+      expect(t).toContain(rule);
+    }
+    expect(text()).not.toContain("Bonus milestones");
   });
 
   it("leaves the signing-in bonus out when there is none", () => {

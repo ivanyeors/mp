@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import { isPartnerMatch, type PartnerMatchRow } from "../partner";
+import { SEEDED_MILESTONES } from "../milestones";
 import { claimBonusOffer } from "../offer";
 import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSettingsToRows, profilePointsView } from "../settings";
 import { POINTS_PER_DOLLAR, formatDollars, formatPoints, formatPointsCount, pointsToDollars } from "../value";
@@ -58,6 +59,29 @@ describe("settings", () => {
     expect(PointsSettingsSchema.safeParse({ ...base, maxShare: 1.2 }).success).toBe(false);
   });
 
+  it("reads the milestone ladder, and refuses one that doesn't climb, odd amounts, or more than five", () => {
+    expect(pointsSettingsFromRows([{ key: "points_milestones", value: "2500:300,1000:100" }]).milestones).toEqual([
+      { at: 1000, bonus: 100 },
+      { at: 2500, bonus: 300 },
+    ]);
+    expect(pointsSettingsFromRows([{ key: "points_milestones", value: "lots" }]).milestones).toEqual([]);
+    const base = { ...POINTS_DEFAULTS, milestones: [...SEEDED_MILESTONES] };
+    expect(PointsSettingsSchema.safeParse(base).success).toBe(true);
+    expect(PointsSettingsSchema.safeParse({ ...base, milestones: [] }).success).toBe(true);
+    const bad = [
+      [{ at: 2500, bonus: 300 }, { at: 1000, bonus: 100 }],
+      [{ at: 1000, bonus: 100 }, { at: 1000, bonus: 200 }],
+      [{ at: 1050, bonus: 100 }],
+      [{ at: 1000, bonus: 150 }],
+      [{ at: 1000, bonus: 0 }],
+      [{ at: 0, bonus: 100 }],
+      Array.from({ length: 6 }, (_, i) => ({ at: (i + 1) * 1000, bonus: 100 })),
+    ];
+    for (const milestones of bad) {
+      expect(PointsSettingsSchema.safeParse({ ...base, milestones }).success, JSON.stringify(milestones)).toBe(false);
+    }
+  });
+
   it("shows the Profile 'coming soon' before the launch, the balance once live, and nothing when switched off after it", () => {
     const now = new Date("2026-11-15T00:00:00Z");
     const past = "2026-11-01T00:00:00+08:00";
@@ -74,6 +98,12 @@ describe("settings", () => {
     expect(withLaunch.upsert.map((r) => r.key)).toContain("points_launch_at");
     expect(withLaunch.remove).toEqual([]);
     expect(pointsSettingsToRows(POINTS_DEFAULTS).remove).toEqual(["points_launch_at"]);
+    // The ladder is one row, blank for none (never deleted, which would read as none too).
+    expect(withLaunch.upsert).toContainEqual({ key: "points_milestones", value: "" });
+    expect(pointsSettingsToRows({ ...POINTS_DEFAULTS, milestones: [...SEEDED_MILESTONES] }).upsert).toContainEqual({
+      key: "points_milestones",
+      value: "1000:100,2500:300,5000:800,10000:2000",
+    });
   });
 });
 

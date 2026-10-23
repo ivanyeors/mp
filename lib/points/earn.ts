@@ -3,8 +3,10 @@
  * 20261021130000_points_earning.sql).
  *
  * An Order's points are pending until its return window closes; the daily job
- * then writes one `earn` entry (`runPointsEarn`). A refund after that takes
- * back what the refunded cash earned (`clawbackPointsForRefund`). Which Orders
+ * then writes one `earn` entry (`runPointsEarn`), and right after grants any
+ * milestone bonus those points reached (`runPointsMilestones`, slice 09). A
+ * refund after that takes back what the refunded cash earned
+ * (`clawbackPointsForRefund`). Which Orders
  * earn, and when, is decided in SQL (`points_order_candidates`) so the job,
  * the balance and the Admin Panel agree; `pointsForOrder` is the same formula
  * for code that already holds the Order.
@@ -57,6 +59,26 @@ export async function runPointsEarn(
     return { written: Number.isFinite(Number(data)) ? Number(data) : 0 };
   } catch (e) {
     return { error: `Could not release earned points: ${message(e, "unknown error")}` };
+  }
+}
+
+/**
+ * Slice 09, rule (w): the daily job grants each Customer one milestone bonus
+ * per milestone reached beyond those they hold, right after the release, so a
+ * bonus lands on the same run as the points that reached it. Nothing while
+ * points are off or before the launch, nothing twice. Returns how many bonuses
+ * it granted.
+ */
+export async function runPointsMilestones(
+  admin: SupabaseClient,
+  now: Date = new Date(),
+): Promise<{ granted: number } | { error: string }> {
+  try {
+    const { data, error } = await admin.rpc("grant_due_milestone_bonuses", { p_now: now.toISOString() });
+    if (error) return { error: `Could not grant milestone bonuses: ${error.message}` };
+    return { granted: Number.isFinite(Number(data)) ? Number(data) : 0 };
+  } catch (e) {
+    return { error: `Could not grant milestone bonuses: ${message(e, "unknown error")}` };
   }
 }
 

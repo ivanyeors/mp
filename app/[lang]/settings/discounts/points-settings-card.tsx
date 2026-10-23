@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Coins, Loader2 } from "lucide-react";
+import { Coins, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { MAX_MILESTONES, milestoneCostRows, type PointsMilestone } from "@/lib/points/milestones";
 import type { PointsSummary } from "@/lib/points/server";
 import type { PointsSettings } from "@/lib/points/settings";
-import { formatPoints } from "@/lib/points/value";
+import { formatDollarsShort, formatPoints } from "@/lib/points/value";
 
 /** "2026-11-01T00:00" in Singapore, for a datetime-local input. */
 function toSgInput(iso: string | null): string {
@@ -45,6 +46,99 @@ function NumberField({
             <Label htmlFor={id}>{label}</Label>
             <Input id={id} type="number" step={step} min={0} value={Number.isFinite(value) ? value : ""} onChange={(e) => onChange(Number(e.target.value))} />
             {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+        </div>
+    );
+}
+
+/**
+ * The bonus milestones (slice 09): points earned from orders, and the bonus
+ * each adds once, lowest first. Each row says roughly what a customer spends to
+ * reach it and what they then have back, earn rate and bonuses together.
+ */
+function MilestonesField({
+    milestones,
+    earnPerDollar,
+    onChange,
+}: {
+    milestones: PointsMilestone[];
+    earnPerDollar: number;
+    onChange: (list: PointsMilestone[]) => void;
+}) {
+    const costs = milestoneCostRows(milestones, earnPerDollar);
+    const cost = (at: number) => costs.find((c) => c.at === at);
+    const setRow = (i: number, patch: Partial<PointsMilestone>) =>
+        onChange(milestones.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+    const add = () => {
+        const last = milestones[milestones.length - 1];
+        onChange([...milestones, last ? { at: last.at * 2, bonus: last.bonus * 2 } : { at: 1000, bonus: 100 }]);
+    };
+
+    return (
+        <div className="space-y-3">
+            <div>
+                <p className="text-sm font-medium">Bonus milestones</p>
+                <p className="text-xs text-muted-foreground">
+                    When the points a customer has earned from orders reach a milestone, we add its bonus, once. Spending
+                    or expiry never sets them back. A new or lower milestone is given on the next daily run to everyone
+                    already past it. Leave none to switch milestones off.
+                </p>
+            </div>
+            {milestones.length ? (
+                <ol className="space-y-3">
+                    {milestones.map((m, i) => {
+                        const c = cost(m.at);
+                        return (
+                            <li key={i} className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor={`points-ms-at-${i}`}>Milestone {i + 1}: points earned</Label>
+                                    <Input
+                                        id={`points-ms-at-${i}`}
+                                        type="number"
+                                        step={100}
+                                        min={100}
+                                        value={Number.isFinite(m.at) ? m.at : ""}
+                                        onChange={(e) => setRow(i, { at: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor={`points-ms-bonus-${i}`}>Bonus (points)</Label>
+                                    <Input
+                                        id={`points-ms-bonus-${i}`}
+                                        type="number"
+                                        step={100}
+                                        min={100}
+                                        value={Number.isFinite(m.bonus) ? m.bonus : ""}
+                                        onChange={(e) => setRow(i, { bonus: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label={`Remove milestone ${i + 1}`}
+                                    onClick={() => onChange(milestones.filter((_, j) => j !== i))}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                                {c ? (
+                                    <p className="text-xs text-muted-foreground sm:col-span-3">
+                                        {formatPoints(m.bonus)}.{" "}
+                                        {c.spend !== null && c.backShare !== null
+                                            ? `Reached after about ${formatDollarsShort(c.spend)} spent; with every bonus so far, ${(c.backShare * 100).toFixed(2)}% back.`
+                                            : null}
+                                    </p>
+                                ) : null}
+                            </li>
+                        );
+                    })}
+                </ol>
+            ) : (
+                <p className="text-sm text-muted-foreground">No milestones: customers earn only on what they pay.</p>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={add} disabled={milestones.length >= MAX_MILESTONES}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add a milestone
+            </Button>
         </div>
     );
 }
@@ -190,6 +284,12 @@ export function PointsSettingsCard() {
                             />
                         </div>
 
+                        <MilestonesField
+                            milestones={settings.milestones}
+                            earnPerDollar={settings.earnPerDollar}
+                            onChange={(list) => set("milestones", list)}
+                        />
+
                         <Button onClick={save} disabled={saving}>
                             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                             Save
@@ -212,6 +312,10 @@ export function PointsSettingsCard() {
                             Taken back on refunds: {formatPoints(summary.clawedBack)} ({formatPoints(summary.clawedBackThisMonth)} this month)
                         </p>
                         <p>Claim bonuses given: {summary.claimBonuses.toLocaleString("en-SG")}</p>
+                        <p>
+                            Milestone bonuses given: {summary.milestoneBonuses.toLocaleString("en-SG")}, worth{" "}
+                            {formatPoints(summary.milestoneBonusPoints)}
+                        </p>
                     </div>
                 ) : null}
             </CardContent>

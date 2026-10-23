@@ -9,6 +9,7 @@ import {
   isPartnerCustomer,
   readPendingOrders,
   readPointsBalance,
+  readMilestoneStanding,
   readPointsHistory,
   readPointsSettings,
 } from "@/lib/points/server";
@@ -17,8 +18,8 @@ export const runtime = "nodejs";
 
 /**
  * A Customer's points (PRD-loyalty-points slice 02; ADR 0030): the balance,
- * pending points by Order, and the latest ledger entries. Seeing them needs
- * `customers`.
+ * pending points by Order, the latest ledger entries, and their place on the
+ * bonus milestones (slice 09). Seeing them needs `customers`.
  *
  * POST is a Staff adjustment (rule n): points up or down with a written
  * reason, refused for a partner and below zero by `adjust_points`. It needs
@@ -36,14 +37,20 @@ const AdjustSchema = z
 
 async function readView(id: string) {
   const admin = supabaseAdmin();
-  const [balance, pending, history, partner, settings] = await Promise.all([
+  const [balance, pending, history, partner, settings, standing] = await Promise.all([
     readPointsBalance(admin, id),
     readPendingOrders(admin, id),
     readPointsHistory(admin, id, 20),
     isPartnerCustomer(admin, id),
     readPointsSettings(admin),
+    readMilestoneStanding(admin, id),
   ]);
-  return { balance, pending, history, partner, enabled: settings.enabled };
+  const milestones = {
+    earned: standing.earned,
+    reached: settings.milestones.filter((m) => m.at <= standing.earned).length,
+    total: settings.milestones.length,
+  };
+  return { balance, pending, history, partner, enabled: settings.enabled, milestones };
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {

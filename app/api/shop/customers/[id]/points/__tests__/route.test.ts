@@ -29,7 +29,8 @@ vi.mock("@/lib/points/server", () => ({
   readPendingOrders: vi.fn(async () => []),
   readPointsHistory: vi.fn(async () => []),
   isPartnerCustomer: vi.fn(async () => false),
-  readPointsSettings: vi.fn(async () => ({ enabled: false })),
+  readPointsSettings: vi.fn(async () => ({ enabled: false, milestones: [{ at: 1000, bonus: 100 }, { at: 2500, bonus: 300 }] })),
+  readMilestoneStanding: vi.fn(async () => ({ earned: 1200, granted: 1 })),
   adjustPoints: h.adjust,
 }));
 
@@ -52,7 +53,9 @@ describe("GET", () => {
     h.permissions = new Set(["customers"]);
     const res = await GET(new Request("http://x"), { params });
     expect(res.status).toBe(200);
-    expect((await res.json()).view.balance.available).toBe(500);
+    const { view } = await res.json();
+    expect(view.balance.available).toBe(500);
+    expect(view.milestones).toEqual({ earned: 1200, reached: 1, total: 2 });
   });
 
   it("answers 404 for an id that is not one", async () => {

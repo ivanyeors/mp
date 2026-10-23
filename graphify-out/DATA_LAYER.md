@@ -19,18 +19,13 @@ before relying on one.
 ### admin_audit_log
 Defined in supabase/migrations/0041_admin_audit_log.sql:9
 References: `mp_staff`
-Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/email-templates`, `/settings/email-templates/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
+Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/docs`, `/settings/docs/points`, `/settings/email-templates`, `/settings/email-templates/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
 - Written by:
   - `recordAdminAction()` [insert] — lib/auth/audit.ts:36
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:54
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
-
-### admin_points_summary
-Defined in supabase/migrations/20261021120000_points_ledger.sql:310
-- Read by:
-  - `readPointsSummary()` [select] — lib/points/server.ts:167
 
 ### admin_roles
 Defined in supabase/migrations/20261004100000_admin_roles.sql:18
@@ -915,7 +910,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 ### mp_staff
 Defined in supabase/migrations/0025_staff_management.sql:6
 References: `admin_users`
-Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/email-templates`, `/settings/email-templates/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
+Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/settings/analytics`, `/settings/appointments`, `/settings/audit-log`, `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/import`, `/settings/discounts`, `/settings/discounts/[id]`, `/settings/docs`, `/settings/docs/points`, `/settings/email-templates`, `/settings/email-templates/[id]`, `/settings/faq`, `/settings/forms`, `/settings/general`, `/settings/integrations/shopify`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/inventory/configure/calibration`, `/settings/media`, `/settings/orders`, `/settings/orders/[id]`, `/settings/page-builder`, `/settings/partner-applications`, `/settings/partner-commissions`, `/settings/partners`, `/settings/partners/hide`, `/settings/product-builder/rules-engine`, `/settings/product-builder/rules-engine/[flow]`, `/settings/products`, `/settings/products/[id]`, `/settings/results`, `/settings/results/[id]`, `/settings/rma`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/settings/showroom`, `/settings/users`, `/shipping-refund-policies`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`
 - Written by:
   - `createStaffProfile()` [insert] — lib/staff/admin.ts:133
   - `revokeInvite()` [delete,select,update] — lib/auth/members.ts:395
@@ -1383,7 +1378,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 ### adjust_points
 Defined in supabase/migrations/20261021120000_points_ledger.sql:261
 - Called by:
-  - `adjustPoints()` — lib/points/server.ts:142
+  - `adjustPoints()` — lib/points/server.ts:165
 
 ### admin_customer_migration_summary
 Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
@@ -1410,6 +1405,11 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:321
 Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:12
 - Called by:
   - `loadOrdersDashboard()` — lib/ecommerce/admin/orders-dashboard.ts:62
+
+### admin_points_summary
+Defined in supabase/migrations/20261023120000_points_milestones.sql:218
+- Read by:
+  - `readPointsSummary()` [select] — lib/points/server.ts:192
 
 ### claim_bonus_window_end
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:29
@@ -1439,7 +1439,7 @@ Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
 ### clawback_points_for_refund
 Defined in supabase/migrations/20261021130000_points_earning.sql:110
 - Called by:
-  - `clawbackPointsForRefund()` — lib/points/earn.ts:79
+  - `clawbackPointsForRefund()` — lib/points/earn.ts:101
 
 ### customer_campaign_candidates
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:364
@@ -1624,6 +1624,11 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:113
 - Called by:
   - `loadCandidates()` — lib/crm/google-review-match-server.ts:120
 
+### grant_due_milestone_bonuses
+Defined in supabase/migrations/20261023120000_points_milestones.sql:181
+- Called by:
+  - `runPointsMilestones()` — lib/points/earn.ts:77
+
 ### import_shopify_customers
 Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.sql:52
 - Called by:
@@ -1632,7 +1637,7 @@ Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.
 ### is_partner_customer
 Defined in supabase/migrations/20261021120000_points_ledger.sql:143
 - Called by:
-  - `isPartnerCustomer()` — lib/points/server.ts:129
+  - `isPartnerCustomer()` — lib/points/server.ts:152
 
 ### landing_page_publishes
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:34
@@ -1687,6 +1692,11 @@ References: `customers`, `mp_staff`, `orders`
   - `sendClaimBonusEmail()` [select] — lib/customer-migration/claim.ts:105
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:75
 
+### points_milestone_progress
+Defined in supabase/migrations/20261023120000_points_milestones.sql:119
+- Read by:
+  - `readMilestoneStanding()` [select] — lib/points/server.ts:140
+
 ### points_order_candidates
 Defined in supabase/migrations/20261021120000_points_ledger.sql:177
 - Read by:
@@ -1726,7 +1736,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:283
 ### release_earned_points
 Defined in supabase/migrations/20261021130000_points_earning.sql:46
 - Called by:
-  - `runPointsEarn()` — lib/points/earn.ts:55
+  - `runPointsEarn()` — lib/points/earn.ts:57
 
 ### release_points
 Defined in supabase/migrations/20261021140000_points_spending.sql:149
@@ -2143,9 +2153,9 @@ app/[lang]/page.tsx
 app/[lang]/account/page.tsx
 - Server actions: `setMyAftercarePreference()`, `setMyMarketingEmail()`
 - Endpoints: `/auth/signout`
-- Loads: `isPartnerCustomer()`, `linkCustomerToAuthUser()`, `readMarketingEmailState()`, `readPendingOrders()`, `readPointsBalance()`, `readPointsSettings()`, `readProfileAftercare()`
+- Loads: `isPartnerCustomer()`, `linkCustomerToAuthUser()`, `readMarketingEmailState()`, `readMilestoneStanding()`, `readPendingOrders()`, `readPointsBalance()`, `readPointsSettings()`, `readProfileAftercare()`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `email_template_copy`, `points_ledger`, `points_order_candidates`, `site_settings`
+- Reads, through the same: `email_template_copy`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `site_settings`
 
 ### /account/addresses
 app/[lang]/account/addresses/page.tsx
@@ -2381,7 +2391,7 @@ app/[lang]/settings/customers/[id]/page.tsx
 - Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
 - Loads: `getAdminCustomer()`, `getMigratedCustomer()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `mp_staff`, `order_items`, `order_timeline`, `orders`
-- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `customer_consent_events`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `migrated_customers`, `mp_config_responses`, `order_margins`, `points_ledger`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
+- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `customer_consent_events`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `migrated_customers`, `mp_config_responses`, `order_margins`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 
 ### /settings/customers/import
 app/[lang]/settings/customers/import/page.tsx
@@ -2403,6 +2413,18 @@ app/[lang]/settings/discounts/[id]/page.tsx
 - Loads: `getAdminCoupon()`, `listAdminProducts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `categories`, `coupons`, `media_assets`, `mp_staff`
 - Reads, through the same: `admin_roles`, `admin_users`, `products`, `variant_stock`
+
+### /settings/docs
+app/[lang]/settings/docs/page.tsx
+- Loads: `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
+- Reads, through the same: `admin_roles`, `admin_users`
+
+### /settings/docs/points
+app/[lang]/settings/docs/points/page.tsx
+- Loads: `readPointsSettings()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
+- Reads, through the same: `admin_roles`, `admin_users`, `site_settings`
 
 ### /settings/email-templates
 app/[lang]/settings/email-templates/page.tsx

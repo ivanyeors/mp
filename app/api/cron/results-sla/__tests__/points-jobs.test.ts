@@ -4,12 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Points join the daily job: earned points are released (PRD-loyalty-points
- * slice 03), stale checkout reservations given back (slice 04), and balances
- * expired and their reminders sent (slice 07), chained onto results-sla with
- * no third cron, each as of the job's own clock, and a failure reported in the
+ * slice 03) and the milestone bonuses they reach granted (slice 09), stale
+ * checkout reservations given back (slice 04), and balances expired and their
+ * reminders sent (slice 07), chained onto results-sla with no third cron, each as of the job's own clock, and a failure reported in the
  * job's answer without stopping what follows.
  *
- * The real cron handler, runPointsEarn and runPointsExpiry; the Supabase
+ * The real cron handler, runPointsEarn, runPointsMilestones and
+ * runPointsExpiry; the Supabase
  * client is a fake with no Results to work on and the points settings in
  * `h.settings`, and every other chained job is a stub.
  */
@@ -64,9 +65,15 @@ describe("the daily job releases earned points and stale reservations, and expir
     expect(vercel.crons).toHaveLength(2);
     const sla = readFileSync(join(process.cwd(), "app/api/cron/results-sla/route.ts"), "utf8");
     const earn = sla.search(/await runPointsEarn\(admin, now\)/);
+    const milestones = sla.search(/await runPointsMilestones\(admin, now\)/);
     const sweep = sla.search(/await releaseStalePointReservations\(admin, now\)/);
     const expiry = sla.search(/await runPointsExpiry\(admin, \{ origin, now \}\)/);
     expect(earn).toBeGreaterThan(0);
+    // Milestone bonuses right after the release, so a bonus lands on the same
+    // run as the points that reached it.
+    expect(milestones).toBeGreaterThan(earn);
+    expect(sla.slice(earn, milestones).match(/\bawait\b/g)).toHaveLength(1);
+    expect(sweep).toBeGreaterThan(milestones);
     // The expiry runs right after the reservation sweep, so a reservation the
     // sweep gives back today is in the balance it expires.
     expect(sweep).toBeGreaterThan(earn);
@@ -77,23 +84,24 @@ describe("the daily job releases earned points and stale reservations, and expir
 
   it("releases and expires as of the job's clock, once per run, and reports what it wrote", async () => {
     h.rpc.mockImplementation(async (fn: string) => ({
-      data: { release_earned_points: 3, release_stale_point_reservations: 2, expire_due_points: 4 }[fn] ?? null,
+      data: { release_earned_points: 3, grant_due_milestone_bonuses: 5, release_stale_point_reservations: 2, expire_due_points: 4 }[fn] ?? null,
       error: null,
     }));
     const before = Date.now();
     const { status, body } = await tick();
     expect(status).toBe(200);
     expect(body.points).toEqual({ written: 3 });
+    expect(body.pointsMilestones).toEqual({ granted: 5 });
     expect(body.pointsReservations).toEqual({ ok: true, released: 2 });
     expect(body.pointsExpiry).toMatchObject({ ok: true, enabled: false, expired: 4, candidates: 0, errors: [] });
-    for (const fn of ["release_earned_points", "release_stale_point_reservations", "expire_due_points"]) {
+    for (const fn of ["release_earned_points", "grant_due_milestone_bonuses", "release_stale_point_reservations", "expire_due_points"]) {
       expect(calls(fn)).toHaveLength(1);
       const [, args] = calls(fn)[0];
       expect(Date.parse(args.p_now)).toBeGreaterThanOrEqual(before - 1000);
       expect(Date.parse(args.p_now)).toBeLessThanOrEqual(Date.now());
     }
     // Points off: nobody is listed for a reminder.
-    expect(h.rpc).toHaveBeenCalledTimes(3);
+    expect(h.rpc).toHaveBeenCalledTimes(4);
   });
 
   it("with points on, lists the reminders as of the job's clock, 3 months ahead", async () => {
@@ -113,6 +121,7 @@ describe("the daily job releases earned points and stale reservations, and expir
     const { status, body } = await tick();
     expect(status).toBe(200);
     expect(body.points).toEqual({ error: "Could not release earned points: connection reset" });
+    expect(body.pointsMilestones).toEqual({ error: "Could not grant milestone bonuses: connection reset" });
     expect(body.pointsReservations).toEqual({ ok: false, error: "Could not release stale point reservations: connection reset" });
     expect(body.pointsExpiry).toMatchObject({
       ok: false,
