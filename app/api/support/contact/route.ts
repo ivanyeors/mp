@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sendContactMessage } from "@/lib/email/contact";
+import { deliverContactMessage } from "@/lib/support/contact";
 import { clientIp, isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -33,20 +33,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  try {
-    await sendContactMessage({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      subject: parsed.data.subject || null,
-      message: parsed.data.message,
-    });
+  // Email to the support inbox plus a Telegram notice; either one reaching staff is a success.
+  const { emailed, notified } = await deliverContactMessage({
+    name: parsed.data.name,
+    email: parsed.data.email,
+    subject: parsed.data.subject || null,
+    message: parsed.data.message,
+  });
+  if (emailed || notified) {
     return NextResponse.json({ ok: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to send message";
-    console.error("[support/contact] send failed:", message);
-    return NextResponse.json(
-      { error: "We couldn't send your message right now. Please try another channel below." },
-      { status: 502 }
-    );
   }
+  return NextResponse.json(
+    { error: "We couldn't send your message right now. Please try again, or message us on WhatsApp." },
+    { status: 502 }
+  );
 }
