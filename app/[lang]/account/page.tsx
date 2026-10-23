@@ -44,7 +44,8 @@ async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId
     const [balance, pending, standing] = await Promise.all([
       readPointsBalance(admin, customerId),
       readPendingOrders(admin, customerId),
-      settings.milestones.length ? readMilestoneStanding(admin, customerId) : null,
+      // A failed milestone read only hides the bar, never the balance.
+      settings.milestones.length ? readMilestoneStanding(admin, customerId).catch(() => null) : null,
     ]);
     const milestones = standing ? { ladder: settings.milestones, earned: standing.earned } : null;
     return { view, balance, pending, milestones } as const;

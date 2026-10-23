@@ -43,13 +43,16 @@ async function readView(id: string) {
     readPointsHistory(admin, id, 20),
     isPartnerCustomer(admin, id),
     readPointsSettings(admin),
-    readMilestoneStanding(admin, id),
+    // A failed milestone read only hides the milestone line, never the balance.
+    readMilestoneStanding(admin, id).catch(() => null),
   ]);
-  const milestones = {
-    earned: standing.earned,
-    reached: settings.milestones.filter((m) => m.at <= standing.earned).length,
-    total: settings.milestones.length,
-  };
+  const milestones = standing
+    ? {
+        earned: standing.earned,
+        reached: settings.milestones.filter((m) => m.at <= standing.earned).length,
+        total: settings.milestones.length,
+      }
+    : null;
   return { balance, pending, history, partner, enabled: settings.enabled, milestones };
 }
 

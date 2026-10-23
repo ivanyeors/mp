@@ -30,8 +30,8 @@ type PointsView = {
     history: PointsEntry[];
     partner: boolean;
     enabled: boolean;
-    /** Points earned from orders, and how many of the bonus milestones they reach (slice 09). */
-    milestones: { earned: number; reached: number; total: number };
+    /** Points earned from orders, and how many of the bonus milestones they reach (slice 09); null if unread. */
+    milestones: { earned: number; reached: number; total: number } | null;
 };
 
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("en-SG")}`;
@@ -143,7 +143,7 @@ export function PointsCard({ customerId, canEdit }: { customerId: string; canEdi
                             {view.balance.expiresOn ? (
                                 <p className="text-xs text-muted-foreground">Expires on {formatAdminDateMY(view.balance.expiresOn)}</p>
                             ) : null}
-                            {view.milestones.total > 0 ? (
+                            {view.milestones && view.milestones.total > 0 ? (
                                 <p className="text-xs text-muted-foreground">
                                     {view.milestones.earned.toLocaleString("en-SG")} points earned from orders:{" "}
                                     {view.milestones.reached} of {view.milestones.total} bonus milestones reached
