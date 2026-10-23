@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import type { CourierRate, PackageType, ShippingSettings } from "@/lib/shipping/types";
 import { InfoTip } from "@/components/ui/info-tip";
+import { COUNTRIES, findCountry, usesPostalCode } from "@/lib/shipping/countries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,8 +61,6 @@ type TestResult =
     | { ok: false; error: string };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const TEST_COUNTRIES = ["SG", "MY", "ID", "TH", "PH", "BN", "VN", "HK", "AU"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -428,9 +427,9 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {TEST_COUNTRIES.map((c) => (
-                                        <SelectItem key={c} value={c}>
-                                            {c}
+                                    {COUNTRIES.map((c) => (
+                                        <SelectItem key={c.code} value={c.code}>
+                                            {c.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -442,7 +441,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                 id="test-postal"
                                 value={testPostal}
                                 onChange={(e) => setTestPostal(e.target.value)}
-                                placeholder="e.g. 018989"
+                                placeholder={findCountry(testCountry)?.postal ?? "Not used there"}
                                 className="text-base md:text-sm"
                             />
                         </div>
@@ -475,7 +474,9 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                     <Button
                         variant="outline"
                         onClick={handleTest}
-                        disabled={testing || !status.tokenConfigured || testPostal.trim().length < 2}
+                        disabled={
+                            testing || !status.tokenConfigured || (usesPostalCode(testCountry) && testPostal.trim().length < 2)
+                        }
                     >
                         {testing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Get live rates

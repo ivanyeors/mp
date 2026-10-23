@@ -124,6 +124,29 @@ export async function readPendingOrders(admin: SupabaseClient, customerId: strin
   }));
 }
 
+export interface MilestoneStanding {
+  /** Points earned from orders over the customer's lifetime: earned less clawed back. */
+  earned: number;
+  /** Milestone bonuses already granted. */
+  granted: number;
+}
+
+/**
+ * One Customer's place on the milestone ladder (slice 09;
+ * `points_milestone_progress`). Zero for a Customer with no entries. Throws on
+ * a failed read.
+ */
+export async function readMilestoneStanding(admin: SupabaseClient, customerId: string): Promise<MilestoneStanding> {
+  const { data, error } = await admin
+    .from("points_milestone_progress")
+    .select("earned, granted")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not read the milestone progress: ${error.message}`);
+  const r = (data ?? {}) as { earned?: unknown; granted?: unknown };
+  return { earned: int(r.earned), granted: int(r.granted) };
+}
+
 /** Rule (r), asked of SQL. Throws on a failed read. */
 export async function isPartnerCustomer(admin: SupabaseClient, customerId: string): Promise<boolean> {
   const { data, error } = await admin.rpc("is_partner_customer", { p_customer_id: customerId });
@@ -160,6 +183,8 @@ export interface PointsSummary {
   clawedBack: number;
   clawedBackThisMonth: number;
   claimBonuses: number;
+  milestoneBonuses: number;
+  milestoneBonusPoints: number;
 }
 
 /** What points cost now (`admin_points_summary`). Throws on a failed read. */
@@ -178,6 +203,8 @@ export async function readPointsSummary(admin: SupabaseClient): Promise<PointsSu
     clawedBack: int(r.clawed_back_points),
     clawedBackThisMonth: int(r.clawed_back_points_month),
     claimBonuses: int(r.claim_bonuses),
+    milestoneBonuses: int(r.milestone_bonuses),
+    milestoneBonusPoints: int(r.milestone_bonus_points),
   };
 }
 

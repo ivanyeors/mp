@@ -14,6 +14,15 @@ export const LiveRateFields = {
   rate_rounding: z.number().min(0).max(100).optional(),
 };
 
+/**
+ * The ISO alpha-2 countries a method delivers to. Checkout offers every country an
+ * active method lists, so a method with none would be invisible.
+ */
+export const CountriesField = z
+  .array(z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "Use two-letter country codes"))
+  .min(1, "Choose at least one country")
+  .max(300);
+
 /** A pinned-courier strategy needs the courier it pins. */
 export function courierPinned(body: {
   easyship_strategy?: string;

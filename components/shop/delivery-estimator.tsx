@@ -22,18 +22,9 @@ import {
   useShippingQuote,
   type ShippingQuoteRequest,
 } from "@/lib/shop/use-shipping-quote";
+import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
+import { usesPostalCode } from "@/lib/shipping/countries";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
-
-/** Where we deliver; the labels are country names, which read the same to every shopper here. */
-const COUNTRIES = [
-  { code: "SG", label: "Singapore" },
-  { code: "MY", label: "Malaysia" },
-  { code: "ID", label: "Indonesia" },
-  { code: "TH", label: "Thailand" },
-  { code: "PH", label: "Philippines" },
-  { code: "VN", label: "Vietnam" },
-  { code: "BN", label: "Brunei" },
-];
 
 interface DeliveryEstimatorProps {
   locale: Locale;
@@ -80,6 +71,9 @@ export function DeliveryEstimator({
   // Quote what was submitted, not every keystroke: a partial postal code is a wasted courier call.
   const [submitted, setSubmitted] = useState<{ country: string; postal: string } | null>(null);
   const [freeAbove, setFreeAbove] = useState<number | null>(null);
+  // Where we deliver: every country an active shipping method lists.
+  const countries = useDeliveryCountries(country);
+  const postalReady = isPostalReady(postal, country);
 
   // The free-shipping threshold for the chosen country, from the methods themselves.
   useEffect(() => {
@@ -140,7 +134,7 @@ export function DeliveryEstimator({
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          if (isPostalReady(postal)) setSubmitted({ country, postal: postal.trim() });
+          if (postalReady) setSubmitted({ country, postal: postal.trim() });
         }}
       >
         <div className="flex flex-1 gap-2">
@@ -153,7 +147,7 @@ export function DeliveryEstimator({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {COUNTRIES.map((c) => (
+                {countries.map((c) => (
                   <SelectItem key={c.code} value={c.code}>
                     {c.label}
                   </SelectItem>
@@ -169,7 +163,7 @@ export function DeliveryEstimator({
               id={`delivery-postal-${fieldId}`}
               value={postal}
               onChange={(e) => setPostal(e.target.value)}
-              placeholder={m.postalPlaceholder}
+              placeholder={usesPostalCode(country) ? m.postalPlaceholder : m.postalOptional}
               autoComplete="postal-code"
               inputMode="text"
               maxLength={12}
@@ -180,7 +174,7 @@ export function DeliveryEstimator({
         <Button
           type="submit"
           variant={compact ? "outline" : "default"}
-          disabled={!isPostalReady(postal) || (submitted != null && quote.loading)}
+          disabled={!postalReady || (submitted != null && quote.loading)}
         >
           {submitted != null && quote.loading ? (
             <>

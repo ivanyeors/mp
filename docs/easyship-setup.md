@@ -63,7 +63,33 @@ confirm delivery.
    checker; a **Delivery Estimator** section can be added to the landing page from the page
    builder (Settings → Page builder → Add section).
 
-## 7. Buy a label (sandbox first)
+## 7. Ship worldwide (ADR 0031)
+
+Checkout and the delivery checker offer every country an active method lists, so offering a
+country means adding it to a method.
+
+1. **Settings → Shipping → Coverage**: pick a region or **Worldwide** and the item type, then
+   **Check**. Each country is quoted live (four at a time, so the whole world can take several minutes) and
+   shows its cheapest and fastest courier, what it costs us, and which methods offer it already.
+2. **Offer the covered countries with** a live method, then **Add**. Only live methods are offered:
+   a flat rate would charge Singapore and Brazil the same.
+3. Or edit a method: **Countries** has a region picker and **Worldwide**. Listing a country no
+   courier serves on a live method is harmless; the method is hidden there.
+4. Check the customs settings before the first international parcel: DDU means the receiver pays
+   duties and import taxes on delivery. Labels print a commercial invoice.
+
+Countries without postal codes (Hong Kong, the UAE, Qatar and others) check out with the postal code
+blank. A failed row in Coverage is often a sample postal code the courier did not accept; re-test
+that country with a real address under **Couriers → Test a quote**.
+
+**This store's setup (2026-10-23).** Standard and Express are flat and list Singapore only. One
+live method, **International Shipping** (cheapest courier, no markup, customisation order rate
+SGD 25), lists every other catalog country. A shopper who picks any country but Singapore sees
+the live courier rate in place of Standard and Express. The list was set before a Coverage run,
+so a country no courier serves still appears at checkout with no delivery option. Run
+Coverage, then remove those countries from the method.
+
+## 8. Buy a label (sandbox first)
 
 On a paid order in **Settings → Orders**, use **Buy courier label**. The customer's courier is
 preselected with today's price. **Buy label** creates the shipment; once tracking exists the order is
@@ -74,6 +100,8 @@ production token. Easyship's API field names have moved between versions; the co
 2024-09 and 2023-01 shapes, and `EASYSHIP_API_VERSION` pins one if needed.
 
 ## Not covered yet
+
+- The storefront does not tell international shoppers that duties may be due on delivery (DDU).
 
 - Customised builds (Results) charge a live method's customisation order rate at the hold — see
   ADR 0020, Consequences.

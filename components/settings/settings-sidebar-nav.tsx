@@ -8,7 +8,7 @@ import {
   Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Mail, MailCheck, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
-  GitBranch, ClipboardCheck, Percent, Box,
+  GitBranch, ClipboardCheck, Percent, Box, BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -91,6 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
           { href: "/settings/users", label: "Users & permissions", tooltip: "Members, roles, staff profiles and Telegram", Icon: ShieldCheck },
         ],
       },
+      { href: "/settings/docs", label: "Documentation", tooltip: "How the platform works, in plain words", Icon: BookOpen },
     ],
   },
   {

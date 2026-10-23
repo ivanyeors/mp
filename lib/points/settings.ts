@@ -1,9 +1,11 @@
 /**
  * The points settings (PRD-loyalty-points slice 02): `site_settings` rows the
  * owner edits on Settings → Discounts → Points. `points_settings()` in SQL
- * reads the same keys with the same defaults.
+ * reads the same keys with the same defaults, and `points_milestones()` reads
+ * the milestone ladder (slice 09) as `parseMilestones` does.
  */
 import { z } from "zod";
+import { MAX_MILESTONES, formatMilestones, parseMilestones, type PointsMilestone } from "./milestones";
 
 export const POINTS_SETTING_KEYS = {
   enabled: "points_enabled",
@@ -14,6 +16,7 @@ export const POINTS_SETTING_KEYS = {
   expiryMonths: "points_expiry_months",
   claimBonus: "points_claim_bonus",
   claimBonusMonths: "points_claim_bonus_months",
+  milestones: "points_milestones",
 } as const;
 
 export interface PointsSettings {
@@ -27,6 +30,8 @@ export interface PointsSettings {
   expiryMonths: number;
   claimBonus: number;
   claimBonusMonths: number;
+  /** The bonus milestones, lowest first; empty for none (slice 09). */
+  milestones: PointsMilestone[];
 }
 
 export const POINTS_DEFAULTS: PointsSettings = {
@@ -38,6 +43,10 @@ export const POINTS_DEFAULTS: PointsSettings = {
   expiryMonths: 24,
   claimBonus: 1000,
   claimBonusMonths: 3,
+  // A missing or malformed ladder is none, never a default one: a bonus is
+  // only granted on a ladder that was saved. The migration seeds
+  // SEEDED_MILESTONES as the starting ladder.
+  milestones: [],
 };
 
 const num = (v: string | undefined, ok: (n: number) => boolean, fallback: number) => {
@@ -58,12 +67,23 @@ export function pointsSettingsFromRows(rows: readonly { key: string; value: stri
     expiryMonths: num(get(POINTS_SETTING_KEYS.expiryMonths), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.expiryMonths),
     claimBonus: num(get(POINTS_SETTING_KEYS.claimBonus), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.claimBonus),
     claimBonusMonths: num(get(POINTS_SETTING_KEYS.claimBonusMonths), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.claimBonusMonths),
+    milestones: parseMilestones(get(POINTS_SETTING_KEYS.milestones)),
   };
 }
 
 /** Pure — points are on and their launch has passed: customers earn and spend. */
 export function pointsLive(s: Pick<PointsSettings, "enabled" | "launchAt">, now: Date = new Date()): boolean {
   return s.enabled && s.launchAt !== null && Date.parse(s.launchAt) <= now.getTime();
+}
+
+/**
+ * Pure — the Profile's Points card: the balance once points are live, "coming
+ * soon" before the launch, and nothing once they are switched off after it
+ * (customers may hold points then, so "coming soon" would be wrong).
+ */
+export function profilePointsView(s: Pick<PointsSettings, "enabled" | "launchAt">, now: Date = new Date()): "live" | "soon" | "off" {
+  if (pointsLive(s, now)) return "live";
+  return s.launchAt === null || Date.parse(s.launchAt) > now.getTime() ? "soon" : "off";
 }
 
 /** What the Settings card saves, checked on the server. */
@@ -82,9 +102,22 @@ export const PointsSettingsSchema = z
     expiryMonths: z.number().int().min(1, "At least 1 month.").max(120, "At most 120 months."),
     claimBonus: z.number().int().min(0).max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
     claimBonusMonths: z.number().int().min(1, "At least 1 month.").max(24, "At most 24 months."),
+    milestones: z
+      .array(
+        z.object({
+          at: z.number().int().min(100, "A milestone is at least 100 points.").max(1_000_000, "A milestone is at most 1,000,000 points.").refine((n) => n % 100 === 0, "Milestones are multiples of 100 points."),
+          bonus: z.number().int().min(100, "A bonus is at least 100 points (S$1).").max(100_000, "A bonus is at most 100,000 points.").refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
+        }),
+      )
+      .max(MAX_MILESTONES, `At most ${MAX_MILESTONES} milestones.`),
   })
   .superRefine((s, ctx) => {
     if (s.enabled && !s.launchAt) ctx.addIssue({ code: "custom", path: ["launchAt"], message: "Set the launch date before turning points on." });
+    s.milestones.forEach((m, i) => {
+      if (i > 0 && m.at <= s.milestones[i - 1]!.at) {
+        ctx.addIssue({ code: "custom", path: ["milestones", i, "at"], message: "Each milestone needs more points than the one before it." });
+      }
+    });
   });
 
 /** Pure — the `site_settings` rows for saved settings. An unset launch date deletes its row. */
@@ -97,6 +130,7 @@ export function pointsSettingsToRows(s: PointsSettings): { upsert: { key: string
     { key: POINTS_SETTING_KEYS.expiryMonths, value: String(s.expiryMonths) },
     { key: POINTS_SETTING_KEYS.claimBonus, value: String(s.claimBonus) },
     { key: POINTS_SETTING_KEYS.claimBonusMonths, value: String(s.claimBonusMonths) },
+    { key: POINTS_SETTING_KEYS.milestones, value: formatMilestones(s.milestones) },
   ];
   if (s.launchAt) upsert.push({ key: POINTS_SETTING_KEYS.launchAt, value: new Date(s.launchAt).toISOString() });
   return { upsert, remove: s.launchAt ? [] : [POINTS_SETTING_KEYS.launchAt] };

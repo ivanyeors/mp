@@ -51,7 +51,7 @@ const UNIQUE: Record<string, UniqueKey[]> = {
   mp_config_responses: [
     ["id"],
     // A companion carries its anchor's Result access token, so the index leaves
-    // companions out (20261023120000_access_token_companion.sql).
+    // companions out (20261023140000_access_token_companion.sql).
     { cols: ["access_token"], where: (r) => r.paired_build_id == null || r.paired_build_id === r.id },
   ],
   orders: [["id"]],

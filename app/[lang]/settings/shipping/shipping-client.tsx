@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight, AlertTriangle, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,9 @@ import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/curre
 import type { EasyshipStrategy, ShippingRateSource } from "@/lib/types/ecommerce";
 import { apiErrorMessage } from "./couriers/easyship-panel";
 import { InfoTip } from "@/components/ui/info-tip";
+import { findCountry, summarizeCountries } from "@/lib/shipping/countries";
+import { CountryPicker } from "./country-picker";
+import { CoverageCheck } from "./coverage-check";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
@@ -84,7 +87,7 @@ type ShippingForm = {
     slug: string;
     base_rate: string;
     free_above: string;
-    countries: string;
+    countries: string[];
     is_active: boolean;
     rate_source: ShippingRateSource;
     easyship_strategy: EasyshipStrategy;
@@ -121,11 +124,6 @@ const ROUNDING_OPTIONS = [
     { value: "1", label: "Up to the next 1.00" },
 ];
 
-const COMMON_COUNTRIES = [
-    "MY", "SG", "ID", "TH", "PH", "BN", "VN", "MM", "KH", "LA",
-    "HK", "TW", "CN", "JP", "KR", "AU", "NZ", "IN",
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getMethodName(method: ShippingMethod): string {
@@ -149,7 +147,7 @@ function methodToForm(m: ShippingMethod): ShippingForm {
         slug: m.slug,
         base_rate: String(m.base_rate),
         free_above: m.free_above !== null ? String(m.free_above) : "",
-        countries: (m.countries ?? []).join(", "),
+        countries: [...(m.countries ?? [])],
         is_active: m.is_active,
         rate_source: m.rate_source ?? "flat",
         easyship_strategy: m.easyship_strategy ?? "cheapest",
@@ -168,7 +166,7 @@ const DEFAULT_FORM: ShippingForm = {
     slug: "",
     base_rate: "",
     free_above: "",
-    countries: "SG",
+    countries: ["SG"],
     is_active: true,
     rate_source: "easyship",
     easyship_strategy: "cheapest",
@@ -190,17 +188,14 @@ function formToPayload(form: ShippingForm): Record<string, unknown> {
     if (form.zh.name || form.zh.description || form.zh.estimated_days) {
         content["zh-CN"] = form.zh;
     }
-    const countries = form.countries
-        .split(/[\s,]+/)
-        .map((c) => c.trim().toUpperCase())
-        .filter(Boolean);
+    const countries = [...new Set(form.countries.map((c) => c.trim().toUpperCase()).filter(Boolean))];
 
     return {
         slug: form.slug.trim().toLowerCase().replace(/\s+/g, "-"),
         content,
         base_rate: parseFloat(form.base_rate) || 0,
         free_above: form.free_above !== "" ? parseFloat(form.free_above) : null,
-        countries: countries.length > 0 ? countries : ["SG"],
+        countries,
         is_active: form.is_active,
         // Nothing is couriered on Self-collect, so it is always a flat rate.
         rate_source: form.collect_location_id ? "flat" : form.rate_source,
@@ -231,13 +226,15 @@ function liveRateSummary(m: ShippingMethod): string {
 // ─── Subcomponents ────────────────────────────────────────────────────────────
 
 function CountryBadges({ countries }: { countries: string[] }) {
-    const shown = countries.slice(0, 6);
-    const rest = countries.length - shown.length;
+    // Whole regions read as the region ("Europe"), every country as "Worldwide".
+    const labels = summarizeCountries(countries);
+    const shown = labels.slice(0, 6);
+    const rest = labels.length - shown.length;
     return (
         <div className="flex flex-wrap gap-1">
-            {shown.map((c) => (
-                <Badge key={c} variant="outline" className="text-xs px-1.5 py-0">
-                    {c}
+            {shown.map((label) => (
+                <Badge key={label} variant="outline" className="text-xs px-1.5 py-0">
+                    {label}
                 </Badge>
             ))}
             {rest > 0 && (
@@ -293,6 +290,8 @@ export default function SettingsShippingPage({
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<ShippingForm>(DEFAULT_FORM);
+
+    const [coverageOpen, setCoverageOpen] = useState(false);
 
     // Delete dialog state
     const [deleteTarget, setDeleteTarget] = useState<ShippingMethod | null>(null);
@@ -354,6 +353,11 @@ export default function SettingsShippingPage({
         setError(null);
         setSaving(true);
         const payload = formToPayload(form);
+        if (form.countries.length === 0) {
+            setError("Choose at least one country this method delivers to.");
+            setSaving(false);
+            return;
+        }
         if (!form.collect_location_id && form.rate_source === "easyship" && !(parseFloat(form.base_rate) > 0)) {
             setError("Set a customisation order rate above 0. Customisation orders charge it instead of a courier quote.");
             setSaving(false);
@@ -413,11 +417,25 @@ export default function SettingsShippingPage({
                         Shipping methods and delivery areas, with live courier rates and labels.
                     </InfoTip>
                 </div>
-                <Button size="sm" onClick={openCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Method
-                </Button>
+                <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setCoverageOpen(true)}>
+                        <Globe className="mr-2 h-4 w-4" />
+                        Coverage
+                    </Button>
+                    <Button size="sm" onClick={openCreate}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Method
+                    </Button>
+                </div>
             </div>
+
+            <CoverageCheck
+                open={coverageOpen}
+                onOpenChange={setCoverageOpen}
+                methods={methods}
+                environment={couriers.environment}
+                onMethodsChanged={fetchMethods}
+            />
 
             {/* Couriers */}
             <Link href={couriers.href} className="block">
@@ -832,57 +850,19 @@ export default function SettingsShippingPage({
 
                         {/* Countries */}
                         <div className="space-y-2">
-                            <Label htmlFor="countries">Countries</Label>
-                            <Input
-                                id="countries"
-                                value={form.countries}
-                                onChange={(e) => setField("countries", e.target.value)}
-                                placeholder="MY, SG, ID, ..."
-                                className="font-mono text-base md:text-sm"
-                            />
+                            <Label>Countries</Label>
+                            <CountryPicker key={editingId ?? "new"} value={form.countries} onChange={(next) => setField("countries", next)} />
+                            {form.rate_source === "flat" &&
+                                new Set(form.countries.map((c) => findCountry(c)?.region)).size > 1 && (
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        A flat rate charges every one of these countries the same, and couriers charge
+                                        far countries several times more. Use a live courier rate for these.
+                                    </p>
+                                )}
                             <p className="text-xs text-muted-foreground">
-                                Comma-separated ISO country codes (e.g. MY, SG, ID).
+                                Checkout offers every country an active method lists. Use Coverage to see where your
+                                couriers deliver.
                             </p>
-                            {/* Quick-add common countries */}
-                            <div className="flex flex-wrap gap-1">
-                                {COMMON_COUNTRIES.map((c) => {
-                                    const currentList = form.countries
-                                        .split(/[\s,]+/)
-                                        .map((x) => x.trim().toUpperCase())
-                                        .filter(Boolean);
-                                    const isIncluded = currentList.includes(c);
-                                    return (
-                                        <button
-                                            key={c}
-                                            type="button"
-                                            onClick={() => {
-                                                const list = form.countries
-                                                    .split(/[\s,]+/)
-                                                    .map((x) => x.trim().toUpperCase())
-                                                    .filter(Boolean);
-                                                if (isIncluded) {
-                                                    setField(
-                                                        "countries",
-                                                        list.filter((x) => x !== c).join(", ")
-                                                    );
-                                                } else {
-                                                    setField(
-                                                        "countries",
-                                                        [...list, c].join(", ")
-                                                    );
-                                                }
-                                            }}
-                                            className={`rounded border px-2 py-0.5 text-xs transition-colors ${
-                                                isIncluded
-                                                    ? "border-primary bg-primary text-primary-foreground"
-                                                    : "border-border bg-background hover:bg-muted"
-                                            }`}
-                                        >
-                                            {c}
-                                        </button>
-                                    );
-                                })}
-                            </div>
                         </div>
 
                         {/* Active toggle */}

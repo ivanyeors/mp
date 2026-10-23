@@ -492,7 +492,7 @@ A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as mo
 _Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
 
 **Points ledger**:
-The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
 _Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
 
 **Pending points**:
@@ -502,6 +502,10 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 **Claim bonus**:
 1,000 points a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
+
+**Milestone bonus**:
+Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, expiry, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
+_Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the bonus); conflating it with the partner **Milestone track** (units, cash and rate bumps); counting the balance towards it
 
 **Points expiry**:
 The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.
@@ -525,11 +529,19 @@ _Avoid_: "template" for the layout or design (that is fixed); calling an **Email
 One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
 
-## Shipping (ADR 0020, ADR 0022)
+## Shipping (ADR 0020, ADR 0022, ADR 0031)
 
 **Shipping method**:
 A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express), scoped to `countries`. Its **Rate source** decides how it is priced; `free_above` and free-shipping coupons apply to either source. Edited in Settings → Shipping.
 _Avoid_: "courier" (a method may be served by different couriers per address)
+
+**Delivery country**:
+A country at least one active **Shipping method** lists. Checkout and the delivery checker offer exactly these, so adding a country to a method is what offers it; there is no other list. Countries come from the country catalog (`lib/shipping/countries.ts`): name, region, the main city a quote sends when the shopper has given none, and a sample postal code, or none where the country has no postal codes (Hong Kong, the UAE), in which case the postal code is optional.
+_Avoid_: a country list hardcoded in a page; "shipping zone" (methods list countries, not zones)
+
+**Courier coverage**:
+Whether the **Courier account** gets at least one courier rate for a country, checked live in Settings → Shipping → Coverage by quoting one boxed item to the country's main city. Shown, never stored: it answers which countries are safe to add to a live method, and each checkout still quotes its own address.
+_Avoid_: treating a covered country as offered (only a method's `countries` offers it); a stored coverage table
 
 **Rate source**:
 How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is its customisation order rate: Results charge it flat because they don't quote couriers. It is never charged at checkout.

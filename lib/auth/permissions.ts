@@ -38,6 +38,8 @@ export const PERMISSION_CATALOG = [
   { key: "api-configs", label: "API Configs", group: "General", href: "/settings/general", surface: "admin-panel" },
   { key: "appointments", label: "Appointments", group: "General", href: "/settings/appointments", surface: "admin-panel" },
   { key: "users", label: "Users & permissions", group: "General", href: "/settings/users", surface: "admin-panel" },
+  // How the platform works, in plain words: Owner and Admin, and any role the owner ticks.
+  { key: "docs", label: "Documentation", group: "General", href: "/settings/docs", surface: "admin-panel" },
 
   { key: "inventory", label: "Inventory", group: "Inventory", href: "/settings/inventory", surface: "admin-panel" },
   { key: "costings", label: "Costings", group: "Inventory", href: "/settings/costings", surface: "admin-panel" },

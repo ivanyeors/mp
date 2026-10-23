@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { clawbackPointsForRefund, pointsForOrder, runPointsEarn } from "../earn";
+import { clawbackPointsForRefund, pointsForOrder, runPointsEarn, runPointsMilestones } from "../earn";
 
 /**
  * Earning (PRD-loyalty-points slice 03; ADR 0030 c, m). The release and the
@@ -79,6 +79,25 @@ describe("runPointsEarn", () => {
       throw new Error("fetch failed");
     });
     expect(await runPointsEarn(admin)).toEqual({ error: "Could not release earned points: fetch failed" });
+  });
+});
+
+describe("runPointsMilestones (slice 09)", () => {
+  it("grants as of the job's clock and reports how many bonuses", async () => {
+    const admin = rpcAdmin(async () => ({ data: 2, error: null }));
+    const now = new Date("2026-11-20T01:00:00.000Z");
+    expect(await runPointsMilestones(admin, now)).toEqual({ granted: 2 });
+    expect(admin.rpc).toHaveBeenCalledWith("grant_due_milestone_bonuses", { p_now: "2026-11-20T01:00:00.000Z" });
+  });
+
+  it("reports an error without throwing", async () => {
+    expect(await runPointsMilestones(rpcAdmin(async () => ({ data: null, error: { message: "permission denied" } })))).toEqual({
+      error: "Could not grant milestone bonuses: permission denied",
+    });
+    const throwing = rpcAdmin(async () => {
+      throw new Error("fetch failed");
+    });
+    expect(await runPointsMilestones(throwing)).toEqual({ error: "Could not grant milestone bonuses: fetch failed" });
   });
 });
 

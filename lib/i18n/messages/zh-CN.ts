@@ -518,10 +518,11 @@ export const zhCN: Messages = {
     },
     delivery: {
       title: "送货上门",
-      subtitle: "我们配送至新加坡及东南亚各地。输入邮编即可查看实时快递运费。",
+      subtitle: "我们从新加坡发货。选择国家/地区并输入邮编，即可查看实时快递运费。",
       country: "国家/地区",
       postalCode: "邮编",
       postalPlaceholder: "例如 018956",
+      postalOptional: "无需填写",
       check: "查询配送",
       checking: "查询中…",
       free: "免运费",
