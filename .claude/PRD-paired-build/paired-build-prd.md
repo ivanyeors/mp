@@ -19,13 +19,14 @@ Order and refund assumed one Result per PaymentIntent.
 
 ## Solution
 
-When the evaluated graph routes to Mbolster, the preview becomes a two-step stepper:
-**1 Mpillow** → **2 Mbolster (optional)**. "Next: Mbolster" takes the shopper to the Mbolster
-configurator in paired mode. It asks only what the Mbolster flow needs that the pillow did not,
-which is height, then opens the Mbolster's own customisation page: recommended length and price,
-case, add-ons, and the Staff x-ray editor in store. It offers **Add Mbolster** or **Skip**. Skip
-holds the pillow exactly as today. Add holds a **Paired build**: two Results under one
-Authorization hold and one Stripe Checkout. Staff assign each build
+When the evaluated graph routes to Mbolster, the preview becomes a stepper:
+**1 Mpillow** → **2 Mbolster (optional)** → **3 Details** → **4 Review**. Both builds are customised
+first. "Next: Mbolster" takes the shopper to the Mbolster configurator in paired mode. It asks only
+what the Mbolster flow needs that the pillow did not, which is height, then opens the Mbolster's
+own customisation page: recommended length and price, case, add-ons, and the Staff x-ray editor in
+store. It offers **Add Mbolster** or **Skip**, and either goes on to the shopper's contact and
+shipping, then a summary of the whole order to pay from. Skip holds the pillow exactly as today.
+Add holds a **Paired build**: two Results under one Authorization hold and one Stripe Checkout. Staff assign each build
 as usual. The shopper accepts both together on one status page, may drop the Mbolster there, and
 gets one Order.
 
@@ -48,6 +49,8 @@ gets one Order.
     the pillow alone.
 11. As the business, I want one Order per payment, so that refunds, RMA, disputes and the money
     ledger keep working unchanged.
+12. As that shopper, I want to finish customising both builds before I give my name, contact and
+    address, and to see a summary of the whole order before I pay (owner, 2026-10-23).
 
 ## Implementation Decisions
 
@@ -84,14 +87,22 @@ anchor-led endings, one accept, one capture and one Order.
   Mbolster" (decline the companion) once it is assigned. The assigned email waits until no member is
   still `held`, and the SLA sends no payment reminder for an anchor whose companion is still `held`.
   Every reader picks the live partner when a pair ever has more than one companion row.
-- **Configurator:** the stepper replaces the Upsell card when the route targets Mbolster. Step 1's
-  "Next: Mbolster" validates the Mpillow's finish, writes its hold body to `sessionStorage`
-  (`mp_paired_build_handoff`, with a stable companion id), and opens `/mbolster-config?paired=1`.
-  Paired mode never reads or writes that device's standalone Mbolster draft. It asks height only,
-  hides contact and shipping, and sends `pairedHoldBody(handoff, bolster)`: the Mpillow's body,
-  route answered, plus the Mbolster with its Staff mix. Back returns to the Mpillow preview, which
-  restores itself. A cancelled Checkout returns there too, and the hand-off keeps the Mbolster's
-  answers.
+- **Configurator:** the stepper replaces the Upsell card when the route targets Mbolster. It
+  customises both builds before asking for anything else (owner, 2026-10-23): **1 Mpillow · 2
+  Mbolster (optional) · 3 Details · 4 Review**. Step 1 asks only cover, case and add-ons. "Next:
+  Mbolster" checks that finish, writes the hand-off to `sessionStorage` (`mp_paired_build_handoff`
+  v2: the anchor id and a companion id minted once per anchor), and opens
+  `/mbolster-config?paired=1`. Paired mode never reads or writes that device's standalone Mbolster
+  draft. It asks height only, then its own customisation page, and **Add Mbolster** or **Skip**
+  writes step 2's answer into the hand-off and returns to the Mpillow page at step 3
+  (`?paired=details`). Steps 3 and 4 are the Mpillow page's, since contact, address and shipping are
+  the anchor's: step 3 asks contact and shipping (quoted for both boxes when the Mbolster was
+  added), step 4 summarises both builds, delivery and contact with an Edit on each, and its Proceed
+  sends `pairedHoldBody(pillowHold, bolster)`: the Mpillow's body, route answered, plus the Mbolster
+  with its Staff mix. Back from step 3 returns to the Mbolster's customisation page, which drops its
+  old answer until it is given again, so the summary never shows a case changed since. A cancelled
+  Checkout returns to step 4; the hold re-anchors the hand-off first, so the Mpillow's fresh Result
+  id gets a fresh companion id with the Mbolster's answers kept.
 - **Rollout gate:** the Premium **draft** graph wires `uses_bolster = true` into `route-mbolster`
   (`in-bolster` → `m-bolster` → route; `lib/rules-engine/__tests__/mbolster-route.test.ts`). Nothing
   reaches this flow until that draft is published, which must wait for this code to deploy: the
