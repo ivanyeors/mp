@@ -135,16 +135,34 @@ from customers there never reach the API — they stay in the TikTok app.
 
 ### 2. A TikTok API for Business developer app
 
+TikTok grants **Business Messaging** only after its data security review (step 5), and that review
+needs an already-approved app. So the app is created first with the basic permissions TikTok's
+[Business Messaging access guide](https://business-api.tiktok.com/portal/docs?id=1832184145137922)
+names for a new app, and the messaging permissions are added once the review passes (step 6).
+
 1. business-api.tiktok.com/portal → register as a developer (same login as TikTok for Business /
-   Ads Manager) → **My Apps** → **Create app**. TikTok's docs say a brand-new app is approved with
-   the **Ad Account Management**, **CTX Events Management** and **Measurement** permissions; ask for
-   those if the form wants a reason to exist.
-2. **App logo** (JPG/PNG, at most 512×512) — without it TikTok's sign-in page shows an error.
-3. App Detail → **Authorization → Scope of permission** → **TikTok Accounts** → tick **Business
-   Messaging** (and the account-info permissions it brings).
-4. **TikTok account holder redirect URL**:
-   `https://custom.mpillow.com/api/social-inbox/tiktok/callback/` — **with the `/` at the end**;
-   TikTok refuses it without. If the app has several, click this one so it is the active one.
+   Ads Manager; the developer profile must be approved first) → **My Apps** → **Create app**:
+   - **App name**: `Mpillow Inbox`
+   - **App description** (under 500 characters):
+     > Intended uses: in-house tool for Mpillow (mpillow.com), a Singapore pillow maker. Customers'
+     > DMs to our own TikTok account (@thempillow) reach our staff's internal system, and staff reply
+     > from there via the Business Messaging API and the account's basic profile. Ad Account
+     > Management and Measurement are included as TikTok's Business Messaging access guide asks of a
+     > new app.
+     > Access controls: internal only, for our own account and staff; not offered to other businesses.
+   - **Advertiser redirect URL**: `https://custom.mpillow.com/api/social-inbox/tiktok/callback/`
+     (advertiser sign-in isn't used; this is just a valid page of ours)
+   - **Scope of permission**: **Ad Account Management**, **Measurement**, and **CTX Events
+     Management** if the list has it (search "CTX"). Not TikTok Accounts yet — since 20 March 2026
+     that needs its own form (step 6).
+   - Submit. TikTok reviews it in 2–3 business days (My Apps → Verification Status).
+2. Once approved: App Detail → **App logo** (JPG/PNG, at most 512×512) — without it TikTok's sign-in
+   page shows an error.
+3. (Step 6.) App Detail → **Authorization → Scope of permission** → **TikTok Accounts** and
+   **Business Messaging**.
+4. **TikTok account holder redirect URL** (App Detail → Basic Information, once TikTok Accounts is
+   granted): `https://custom.mpillow.com/api/social-inbox/tiktok/callback/` — **with the `/` at the
+   end**; TikTok refuses it without. If the app has several, click this one so it is the active one.
 5. **Business Messaging access review** (the slow part) — once the app from step 1 is approved, as
    the form wants its App ID. Fill in the
    [intake form](https://bytedance.sg.larkoffice.com/share/base/form/shrlg7vFArGhg9V20neYCEwIKrb)
@@ -155,6 +173,11 @@ from customers there never reach the API — they stay in the TikTok app.
    and reply promptly to follow-ups. **Leave the US out of the application** — it adds a separate
    US review, and the Mpillow account is in Singapore. There is no progress tracker; approval
    arrives by email.
+6. **Add the messaging permissions** once step 5 is approved. First fill in TikTok's
+   [Accounts API Access Application Form](https://bytedance.sg.larkoffice.com/share/base/form/shrlgu4WEvtSXpEDLcCw56u4Rfc)
+   (required since 20 March 2026 for any app asking for **TikTok Accounts**): our own account,
+   internal staff tool, basic profile plus Business Messaging. Then request the scope increase in
+   step 3 and set the redirect URL in step 4.
 
 ### 3. Environment
 
