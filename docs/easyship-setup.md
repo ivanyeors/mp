@@ -82,6 +82,13 @@ Countries without postal codes (Hong Kong, the UAE, Qatar and others) check out 
 blank. A failed row in Coverage is often a sample postal code the courier did not accept; re-test
 that country with a real address under **Couriers → Test a quote**.
 
+**This store's setup (2026-10-23).** Standard and Express are flat and list Singapore only. One
+live method, **International Shipping** (cheapest courier, no markup, customisation order rate
+SGD 25), lists every other catalog country. A shopper who picks any country but Singapore sees
+the live courier rate in place of Standard and Express. The list was set before a Coverage run,
+so a country no courier serves still appears at checkout with no delivery option. Run
+Coverage, then remove those countries from the method.
+
 ## 8. Buy a label (sandbox first)
 
 On a paid order in **Settings → Orders**, use **Buy courier label**. The customer's courier is

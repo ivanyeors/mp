@@ -166956,7 +166956,7 @@
       "node_kind": "heading",
       "norm_label": "8. buy a label (sandbox first)",
       "source_file": "docs/easyship-setup.md",
-      "source_location": "L85"
+      "source_location": "L92"
     },
     {
       "id": "docs_easyship_setup_easyship_setup",
@@ -166980,7 +166980,7 @@
       "node_kind": "heading",
       "norm_label": "not covered yet",
       "source_file": "docs/easyship-setup.md",
-      "source_location": "L95"
+      "source_location": "L102"
     },
     {
       "id": "supabase_migrations_20260728000000_partner_users",
@@ -505070,6 +505070,17 @@
     },
     {
       "source": "docs_easyship_setup_easyship_setup",
+      "target": "docs_easyship_setup_not_covered_yet",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/easyship-setup.md",
+      "source_location": "L102",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_easyship_setup_easyship_setup",
       "target": "docs_easyship_setup_2_create_the_easyship_account_and_tokens",
       "relation": "contains",
       "_origin": "ast",
@@ -505153,18 +505164,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/easyship-setup.md",
-      "source_location": "L85",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_easyship_setup_easyship_setup",
-      "target": "docs_easyship_setup_not_covered_yet",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/easyship-setup.md",
-      "source_location": "L95",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -653722,5 +653722,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "e9395a3446758570876acacab0a75ca8c0834a93"
+  "built_at_commit": "5cdc1a43a9d6d9e3918809c21de992ee8003110b"
 }
