@@ -202,8 +202,9 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
             </li>
             <li>You will receive another notification when your order has shipped.</li>
             <li>
-              We deliver across Singapore and Southeast Asia through our courier partners. Delivery
-              rates depend on your address and are shown at checkout — or check yours below.
+              We ship from Singapore through our courier partners to every country in the delivery
+              checker below. Delivery rates depend on your address and are shown at checkout — or
+              check yours below.
             </li>
           </ul>
           <div className="max-w-xl rounded-xl border p-4 md:p-5">

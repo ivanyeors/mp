@@ -5,6 +5,7 @@ import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
 import { loadShippableLines } from "@/lib/shipping/lines";
 import { quoteShippingMethods } from "@/lib/shipping/quote";
+import { QuoteDestinationSchema } from "@/lib/shipping/destination-schema";
 import { DEFAULT_SHIPPING_SETTINGS, readShippingSettings } from "@/lib/shipping/settings";
 import type { ShippableLine, ShippingQuoteResponse } from "@/lib/shipping/types";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
@@ -20,13 +21,7 @@ const QuoteSchema = z
       .optional(),
     /** No cart (the landing-page estimator): one unit boxed as this product type. */
     profile: z.enum(["pillow", "bolster", "accessory"]).optional(),
-    destination: z.object({
-      country: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
-      postal_code: z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9 -]+$/),
-      city: z.string().trim().max(120).optional(),
-      state: z.string().trim().max(120).optional(),
-      line1: z.string().trim().max(200).optional(),
-    }),
+    destination: QuoteDestinationSchema,
   })
   .refine((b) => (b.items?.length ?? 0) > 0 || b.profile, { message: "items or profile is required" });
 

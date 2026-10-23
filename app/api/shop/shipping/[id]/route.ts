@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { COURIER_PIN_ERROR, courierPinned, LIVE_PRICE_ERROR, LiveRateFields, livePriced } from "@/lib/shipping/method-schema";
+import {
+  COURIER_PIN_ERROR,
+  CountriesField,
+  courierPinned,
+  LIVE_PRICE_ERROR,
+  LiveRateFields,
+  livePriced,
+} from "@/lib/shipping/method-schema";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
@@ -13,7 +20,7 @@ const UpdateShippingMethodSchema = z.object({
   base_rate: z.number().nonnegative().optional(),
   free_above: z.number().nonnegative().nullable().optional(),
   currency: z.string().optional(),
-  countries: z.array(z.string()).optional(),
+  countries: CountriesField.optional(),
   is_active: z.boolean().optional(),
   position: z.number().int().nonnegative().optional(),
   ...LiveRateFields,
