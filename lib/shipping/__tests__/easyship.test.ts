@@ -89,6 +89,36 @@ describe("request bodies", () => {
     expect(cityFor({ country: "XX", postal_code: "12345" })).toBeUndefined();
   });
 
+  it("sends a state where Easyship needs one, read from the postal code", () => {
+    const stateFor = (destination: { country: string; postal_code: string; state?: string | null }) =>
+      ratesRequestBody({ settings, origin, destination, parcels, currency: "SGD" }).destination_address.state;
+    // "destination_address.state can't be blank": a US quote from a ZIP alone.
+    expect(stateFor({ country: "US", postal_code: "91606" })).toBe("CA");
+    expect(stateFor({ country: "CA", postal_code: "V6B 1A1" })).toBe("BC");
+    // The shopper's own state wins, as the abbreviation Easyship asks for.
+    expect(stateFor({ country: "US", postal_code: "91606", state: " California " })).toBe("CA");
+    // A ZIP that does not say still quotes, with the main city's state.
+    expect(stateFor({ country: "US", postal_code: "9" })).toBe("NY");
+    // Countries that need none get none.
+    expect(stateFor({ country: "SG", postal_code: "018956" })).toBeUndefined();
+  });
+
+  it("never guesses a state on a label", () => {
+    const labelState = (destination: { country: string; postal_code: string }) =>
+      shipmentRequestBody({
+        settings,
+        origin,
+        destination: { ...destination, line1: "1 Main St", city: "Somewhere" },
+        contact: { name: "Ada", email: "ada@x.test" },
+        parcels,
+        courierServiceId: "cs_x",
+        orderNumber: "MP-1",
+      }).destination_address.state;
+    expect(labelState({ country: "US", postal_code: "91606" })).toBe("CA");
+    // A quote would send Jakarta's; a label leaves it for Easyship to refuse.
+    expect(labelState({ country: "ID", postal_code: "40111" })).toBeUndefined();
+  });
+
   it("leaves the postal code out where the country has none", () => {
     const body = ratesRequestBody({
       settings,
@@ -109,7 +139,12 @@ describe("request bodies", () => {
       currency: "SGD",
     });
     expect(body.origin_address).toMatchObject({ country_alpha2: "SG", postal_code: "123456" });
-    expect(body.destination_address).toEqual({ country_alpha2: "MY", postal_code: "50450", city: "Kuala Lumpur" });
+    expect(body.destination_address).toEqual({
+      country_alpha2: "MY",
+      postal_code: "50450",
+      city: "Kuala Lumpur",
+      state: "Kuala Lumpur",
+    });
     expect(body.shipping_settings).toEqual({ units: { weight: "kg", dimensions: "cm" }, output_currency: "SGD" });
     expect(body.incoterms).toBe("DDU");
     expect(body.parcels[0]).toEqual({

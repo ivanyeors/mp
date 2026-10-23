@@ -5,6 +5,7 @@ import type {
 } from "@/lib/shipping/types";
 import type { EasyshipAddress } from "@/lib/easyship/schema";
 import { quoteCity } from "@/lib/shipping/countries";
+import { destinationState } from "@/lib/shipping/states";
 
 /**
  * Easyship Public API client (https://developers.easyship.com).
@@ -139,6 +140,10 @@ function destinationCity(destination: Pick<ShippingDestination, "country" | "cit
   return destination.city?.trim() || quoteCity(destination.country);
 }
 
+/**
+ * A label (`contact` given) carries the shopper's state or the one their postal
+ * code is in; only a quote falls back to the main city's (`destinationState`).
+ */
 export function destinationAddressBody(
   destination: ShippingDestination,
   contact?: { name?: string | null; email?: string | null; phone?: string | null },
@@ -150,7 +155,7 @@ export function destinationAddressBody(
     line_1: destination.line1 ?? undefined,
     line_2: destination.line2 ?? undefined,
     city: destinationCity(destination),
-    state: destination.state ?? undefined,
+    state: destinationState(destination, { guess: !contact }),
     postal_code: destination.postal_code,
     country_alpha2: destination.country.toUpperCase(),
   });

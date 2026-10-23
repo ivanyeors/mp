@@ -82,6 +82,12 @@ Countries without postal codes (Hong Kong, the UAE, Qatar and others) check out 
 blank. A failed row in Coverage is often a sample postal code the courier did not accept; re-test
 that country with a real address under **Couriers → Test a quote**.
 
+Easyship refuses an address without a state in the US, Canada, Australia, Mexico, China,
+Indonesia, Malaysia, Thailand and Vietnam. A quote from a postal code alone sends the state that
+postal code is in (`lib/shipping/states.ts`), or the main city's state where it cannot tell
+(always, in Indonesia and Vietnam). A label sends the shopper's state, or the one their postal
+code is in, and never guesses.
+
 **This store's setup (2026-10-23).** Standard and Express are flat and list Singapore only. One
 live method, **International Shipping** (cheapest courier, no markup, customisation order rate
 SGD 25), lists every other catalog country. A shopper who picks any country but Singapore sees
