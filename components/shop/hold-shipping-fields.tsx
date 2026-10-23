@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { Check, Store } from "lucide-react";
+import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -102,12 +102,9 @@ export function HoldShippingFields({
       </div>
 
       {collect ? (
-        <div className="flex gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">
-          <Store className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <div className="min-w-0 space-y-0.5">
-            <p className="font-medium">Collect from {collect.name}</p>
-            <p className="break-words text-muted-foreground">{collect.address}</p>
-          </div>
+        <div className="space-y-0.5 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+          <p className="font-medium">Collect from {collect.name}</p>
+          <p className="break-words text-muted-foreground">{collect.address}</p>
         </div>
       ) : (
         <SavedAddressSelect {...savedAddresses} />
