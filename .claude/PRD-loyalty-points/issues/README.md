@@ -23,7 +23,7 @@ demoable path through all layers.
 | [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **built** | 05 | 7, 12 |
 | [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **built** | 02, 03 | 8 |
 | [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **signed off** (2026-10-22); live test after deploy | 03, 04, 05 | all |
-| [09](09-bonus-milestones.md) | Bonus milestones: a progress bar to one-time bonuses (owner, 2026-10-23) | AFK | **built**; migration not yet applied | 02, 03 | 15, 16 |
+| [09](09-bonus-milestones.md) | Bonus milestones: a progress bar to one-time bonuses (owner, 2026-10-23) | AFK | **built**; applied to production (2026-10-23) | 02, 03 | 15, 16 |
 
 ## Dependency graph
 

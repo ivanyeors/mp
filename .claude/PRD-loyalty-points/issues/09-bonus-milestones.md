@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** built (2026-10-23); its migration is not yet applied to production
+**Status:** built, and its migration applied to production (2026-10-23). Points are still off
 **Blocked by:** 02, 03
 **User stories:** 15, 16
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:account`, `area:admin`
@@ -143,10 +143,21 @@ never throws.
 - [x] **The daily job.** It runs the grant right after the release, once, on the job's clock,
       and reports a failure without stopping the jobs after it.
 - [x] `./scripts/graphify update .` is run in the same commit.
-- [ ] Apply `20261023120000_points_milestones.sql` to production. It only seeds the ladder and
-      grants nothing while points are off.
+- [x] Apply `20261023120000_points_milestones.sql` to production (2026-10-23, recorded as
+      version `20261023120000`). It seeded the ladder and granted nothing, since points are off.
 
 ## Build notes
+
+- **Production (2026-10-23).**
+  - Before applying, both checks the migration replaces were confirmed to carry the names it
+    drops (`points_ledger_kind_check`, `points_ledger_sign`).
+  - Afterwards, checked on production:
+    - `points_milestones()` returns the four seeded milestones;
+    - the kind check includes `milestone_bonus`, and the unique index exists;
+    - anon and authenticated can neither run the new functions nor read
+      `points_milestone_progress`;
+    - the ledger is still empty;
+    - the security advisor reports nothing new.
 
 - **SQL.** `assert-09-milestones.sql` passes against a local Postgres 16 with all 193 migrations.
   The asserts for slices 02, 03, 04, 05 and 07 still pass with the widened kind and sign checks.
