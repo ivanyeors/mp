@@ -36,16 +36,6 @@ export const COURIER_PIN_ERROR = {
   path: ["easyship_courier_service_id"],
 };
 
-/** Customisation orders charge a live method's base_rate (they don't quote couriers), so it can't be free. */
-export function livePriced(body: { rate_source?: string; base_rate?: number }): boolean {
-  return body.rate_source !== "easyship" || body.base_rate === undefined || body.base_rate > 0;
-}
-
-export const LIVE_PRICE_ERROR = {
-  message: "Set a customisation order rate above 0 for a live method",
-  path: ["base_rate"],
-};
-
 /** Self-collect: the studio (own Location) the method is collected from; null = delivered. */
 export const SelfCollectFields = {
   collect_location_id: z.string().uuid().nullable().optional(),

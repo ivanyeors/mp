@@ -8,9 +8,7 @@ import {
   COURIER_PIN_ERROR,
   CountriesField,
   courierPinned,
-  LIVE_PRICE_ERROR,
   LiveRateFields,
-  livePriced,
   SelfCollectFields,
 } from "@/lib/shipping/method-schema";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -28,7 +26,7 @@ const UpdateShippingMethodSchema = z.object({
   position: z.number().int().nonnegative().optional(),
   ...LiveRateFields,
   ...SelfCollectFields,
-}).partial().refine(courierPinned, COURIER_PIN_ERROR).refine(livePriced, LIVE_PRICE_ERROR)
+}).partial().refine(courierPinned, COURIER_PIN_ERROR)
   .refine(collectIsFlat, COLLECT_FLAT_ERROR);
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

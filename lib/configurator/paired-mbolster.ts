@@ -26,7 +26,7 @@ export type PairedHandoff = {
   reason: string;
   /** The Mpillow's configurator: where Back returns, and Stripe's cancel too. */
   configPath: string;
-  pillow: { label: string; ballpark: number | null; currency: string };
+  pillow: { label: string; ballpark: number | null; currency: string; shipping?: PairedShipping };
   /** Self-collect: the studio the Mpillow is collected from, so step 2 says so. */
   collectAt?: string;
   /** Step 2's own answers, kept so Back and forth does not lose them. */
@@ -59,6 +59,32 @@ export function bolsterSleepPosition(pillow: string): BolsterSleepPosition {
   return "other";
 }
 
+/**
+ * The Mpillow's shipping as step 1 priced it. The Mbolster rides in the same
+ * shipment, so step 2 asks couriers again for a live method, with both boxes
+ * (ADR 0032); a flat method, or one the Mpillow already ships free, stays as is.
+ */
+export type PairedShipping = {
+  label: string;
+  live: boolean;
+  /** Step 1's charge; null while it had no rate. */
+  amount: number | null;
+  /** free_above reached on the Mpillow's goods. */
+  free: boolean;
+};
+
+function parsePairedShipping(raw: unknown): PairedShipping | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const s = raw as Partial<PairedShipping>;
+  if (typeof s.label !== "string") return undefined;
+  return {
+    label: s.label,
+    live: s.live === true,
+    amount: typeof s.amount === "number" ? s.amount : null,
+    free: s.free === true,
+  };
+}
+
 export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
   if (!raw || typeof raw !== "object") return null;
   const h = raw as Partial<PairedHandoff>;
@@ -69,6 +95,7 @@ export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
   if (h.sleepPosition !== "side" && h.sleepPosition !== "stomach" && h.sleepPosition !== "other") {
     return null;
   }
+  const shipping = parsePairedShipping(h.pillow?.shipping);
   return {
     v: 1,
     pillowHold: h.pillowHold,
@@ -80,6 +107,7 @@ export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
       label: h.pillow?.label ?? "Mpillow",
       ballpark: typeof h.pillow?.ballpark === "number" ? h.pillow.ballpark : null,
       currency: h.pillow?.currency ?? "SGD",
+      ...(shipping ? { shipping } : {}),
     },
     ...(typeof h.collectAt === "string" && h.collectAt ? { collectAt: h.collectAt } : {}),
     ...(h.bolster && typeof h.bolster === "object" ? { bolster: h.bolster } : {}),

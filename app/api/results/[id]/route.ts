@@ -7,7 +7,7 @@ import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib
 import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
-import { calculateShippingRate } from "@/lib/ecommerce/shipping";
+import { resultShippingAmount } from "@/lib/results/shipping";
 import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
@@ -20,7 +20,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PUBLIC_FIELDS =
-  "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, created_at, updated_at, customer_email, payment_intent_id, is_pre_order, paired_build_id";
+  "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, authorized_amount, final_amount, currency, created_at, updated_at, customer_email, payment_intent_id, is_pre_order, paired_build_id";
 
 type PrefLine = { item_id: number; quantity: number; category: string };
 type AddonLine = { item_id: number; quantity: number };
@@ -41,6 +41,7 @@ async function buildPublicSummary(row: {
   addon_lines: unknown;
   shipping_method: string | null;
   shipping_address: unknown;
+  shipping_rate?: number | string | null;
   authorized_amount: number | null;
   final_amount: number | null;
   currency: string | null;
@@ -212,7 +213,7 @@ async function buildPublicSummary(row: {
               // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
               shippingAmount = shipsWithAnchor(row)
                 ? 0
-                : calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
+                : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
               const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
               taxAmount = computeTax(
                 { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },

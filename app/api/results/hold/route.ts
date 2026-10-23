@@ -11,7 +11,6 @@ import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { createHoldCheckout } from "@/lib/authorization-hold";
-import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { sendTelegram, type TelegramStatus } from "@/lib/telegram/notify";
@@ -30,6 +29,7 @@ import {
   loadComposedSellable,
 } from "@/lib/results/composed-sellable";
 import { priceCompanionBolster } from "@/lib/results/paired-hold";
+import { quoteResultShipping, resultShippingAmount } from "@/lib/results/shipping";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import { AddonLineSchema, PreferenceLineSchema } from "@/lib/results/finish-schemas";
 import { ShippingAddressInputSchema, resolveShippingAddress } from "@/lib/shipping/self-collect";
@@ -550,6 +550,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
   }
   const shippingCountry = shippingAddress?.ok ? shippingAddress.address.country : "SG";
+  // A live method's rate is quoted now and kept on the Result, so assign and
+  // accept charge what the customer is shown here (ADR 0032). A pair ships both
+  // builds in one shipment, so it is boxed as both.
+  let shippingRate: number | null = null;
+  if (shippingRow && shippingAddress?.ok) {
+    const quoted = await quoteResultShipping(admin, {
+      method: shippingRow as ShippingMethod,
+      parcelTypes: paired ? ["pillow", "bolster"] : [productType],
+      destination: shippingAddress.address,
+    });
+    if (!quoted.ok) return NextResponse.json({ error: quoted.error }, { status: 400 });
+    shippingRate = quoted.rate;
+  }
 
   const itemById = new Map((items ?? []).map((i) => [i.id as number, i]));
   for (const line of input.preferenceLines) {
@@ -654,7 +667,7 @@ export async function POST(req: Request) {
   // is goods-only, the same as assign prices it until the customer finishes.
   // Free shipping is earned by goods alone; tax is due on goods and services.
   const shippingMethod = shippingRow as ShippingMethod | null;
-  const shippingAmount = shippingMethod ? calculateShippingRate(shippingMethod, goods.subtotal) : 0;
+  const shippingAmount = shippingMethod ? resultShippingAmount(shippingMethod, shippingRate, goods.subtotal) : 0;
   const taxRule = await resolveTaxRuleForRegion(shippingCountry);
   const tax = computeTax(
     { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
@@ -852,6 +865,7 @@ export async function POST(req: Request) {
     // reads exactly that until the customer picks their finish.
     shipping_method: shippingMethod?.slug ?? null,
     shipping_address: shippingAddress?.ok ? shippingAddress.address : null,
+    shipping_rate: shippingRate,
     // No card was taken for an Assisted customisation, so there is no authorized
     // amount. The price is still computed above — an unpriced Composed sellable
     // must refuse here exactly as on the hold path, or Staff inherit a
@@ -1025,6 +1039,8 @@ export async function POST(req: Request) {
         category: l.category,
       })),
       addon_lines: paired.addonLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity })),
+      // It rides in the anchor's shipment, whose rate is the anchor's.
+      shipping_rate: null,
       authorized_amount: takeCard ? companion.total : null,
       is_pre_order: preOrderFlagForResult(
         await loadPreOrderTriggerAtHold(admin, {

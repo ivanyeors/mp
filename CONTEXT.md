@@ -544,12 +544,16 @@ Whether the **Courier account** gets at least one courier rate for a country, ch
 _Avoid_: treating a covered country as offered (only a method's `countries` offers it); a stored coverage table
 
 **Rate source**:
-How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is its customisation order rate: Results charge it flat because they don't quote couriers. It is never charged at checkout.
+How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is never charged: checkout and the customisation flows both quote couriers, and a Result keeps its **Result shipping rate**.
 _Avoid_: "fallback rate" — a live method with no quote is hidden, not priced flat (ADR 0022)
 
 **Live rate**:
 The price of an Easyship **Shipping method** for one cart to one postal code: Easyship's courier price for the courier the method's strategy picks (`cheapest`, `fastest`, `best_value`, or one pinned **Courier service**), plus the method's markup, rounded up to its increment. Quoted by the server from the **Variants** in the database — never from a client price — and cached as a **Rate quote**.
 _Avoid_: treating it as a stored price on the method; showing a live rate the checkout route would not charge
+
+**Result shipping rate**:
+The **Live rate** a customisation was quoted for its address when its shipping was chosen (hold, finish, or a Staff re-configure that changed the method or postal code), stored on the Result as `shipping_rate`, before `free_above`. Every later repricing charges it, so assign and accept ask for the figure the customer saw. A Paired build's is quoted for both boxes on the anchor (ADR 0032). Null for a flat method, Self-collect, or a companion: those charge `base_rate`.
+_Avoid_: re-quoting couriers at assign or accept; charging a live method's `base_rate` on a Result
 
 **Hidden live method**:
 A live method with no quote for this cart and address (no token, couriers down, wrong currency, no box for an item type, or no allowed courier serves it) is left out of checkout. Only an active flat method guarantees the shopper an option, and the Shipping page warns when there is none.

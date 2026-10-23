@@ -57,7 +57,7 @@ Southeast Asian couriers in one integration, and landed-cost quotes for cross-bo
 
 ## Consequences
 
-- **Results keep flat shipping.** A customisation session's **Authorization hold** is taken days
+- **Results keep flat shipping.** _Superseded by ADR 0032: a Result quotes a live method once and keeps the rate._ A customisation session's **Authorization hold** is taken days
   before the build ships, and its total is recomputed at hold, assign, finish and accept. Those paths
   price an Easyship method at its **Fallback rate**, so the hold is a stable number. Their orders are
   still labelled through Easyship. Live-pricing the finish would need the quote persisted on the

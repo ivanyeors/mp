@@ -8,6 +8,7 @@ import { decideFillingAssign } from "@/lib/results/filling-assign";
 import { AddonLineSchema, PreferenceLineSchema } from "@/lib/results/finish-schemas";
 import { ShippingAddressInputSchema, resolveShippingAddress } from "@/lib/shipping/self-collect";
 import { staffEditableResult } from "@/lib/results/staff-edit";
+import { quoteResultShipping, resultParcelTypes, sameQuoteDestination } from "@/lib/results/shipping";
 import {
   isCaseInventoryCategory,
   isProtectorInventoryCategory,
@@ -22,6 +23,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,7 +113,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, order_id, filling_template_id, shipping_method, shipping_address, currency, measured_by_type",
+      "id, status, product_type, order_id, filling_template_id, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -215,13 +217,35 @@ export async function POST(
   // Staff may leave shipping alone (an Assisted customisation has none yet, and
   // the customer's own finish is where it lands); only a method actually sent
   // rewrites the stored pair.
-  const shippingPatch =
-    shippingRow && shippingAddress?.ok
-      ? {
-          shipping_method: shippingRow.slug as string,
-          shipping_address: shippingAddress.address as Record<string, unknown>,
-        }
-      : null;
+  let shippingPatch: {
+    shipping_method: string;
+    shipping_address: Record<string, unknown>;
+    shipping_rate: number | string | null;
+  } | null = null;
+  if (shippingRow && shippingAddress?.ok) {
+    // The same method to the same postal code keeps the rate the customer was
+    // quoted, so a filling change does not move their shipping; anything else
+    // is quoted again (ADR 0032).
+    const unchanged =
+      shippingRow.slug === row.shipping_method &&
+      row.shipping_rate != null &&
+      sameQuoteDestination(row.shipping_address, shippingAddress.address);
+    let rate: number | string | null = row.shipping_rate as number | string | null;
+    if (!unchanged) {
+      const quoted = await quoteResultShipping(admin, {
+        method: shippingRow as ShippingMethod,
+        parcelTypes: resultParcelTypes({ ...row, id: row.id as string, product_type: "pillow" }),
+        destination: shippingAddress.address,
+      });
+      if (!quoted.ok) return NextResponse.json({ error: quoted.error }, { status: 400 });
+      rate = quoted.rate;
+    }
+    shippingPatch = {
+      shipping_method: shippingRow.slug as string,
+      shipping_address: shippingAddress.address as Record<string, unknown>,
+      shipping_rate: rate,
+    };
+  }
 
   const rewritten = {
     assigned_size: input.assignedSize,
@@ -251,6 +275,7 @@ export async function POST(
       ...rewritten,
       shipping_method: shippingPatch?.shipping_method ?? (row.shipping_method as string | null),
       shipping_address: shippingPatch?.shipping_address ?? row.shipping_address,
+      shipping_rate: shippingPatch ? shippingPatch.shipping_rate : (row.shipping_rate as number | string | null),
     },
     // The snapshot rows are written further down; quote the new mix rather than
     // the one still on disk. Empty means the stored snapshot is unchanged, and

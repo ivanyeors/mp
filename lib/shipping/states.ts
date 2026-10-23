@@ -214,6 +214,9 @@ const RULES: Record<string, StateRule> = {
   VN: { mainCity: "Ho Chi Minh" },
 };
 
+/** The countries this file has a rule for; the tests check it is `STATE_COUNTRIES`. */
+export const STATE_RULE_COUNTRIES = Object.keys(RULES);
+
 /**
  * The state to send to Easyship: the shopper's own (as the abbreviation where
  * Easyship wants one), else the one the postal code is in, else, for a quote,

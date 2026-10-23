@@ -92,6 +92,20 @@ describe("Self-collect", () => {
     expect(full.ok && isSelfCollectAddress(full.address)).toBe(false);
   });
 
+  it("asks for a postal code only where the country has them", async () => {
+    const delivered = (fields: Record<string, unknown>) =>
+      resolveShippingAddress(fakeAdmin([]), {}, input({ recipient: "A", line1: "1 Road", ...fields }));
+    expect(await delivered({ city: "Singapore", country: "SG" })).toMatchObject({ ok: false, status: 400 });
+    expect(await delivered({ city: "Hong Kong", country: "HK" })).toMatchObject({
+      ok: true,
+      address: { country: "HK", postal_code: "" },
+    });
+    expect(await delivered({ city: "Los Angeles", country: "us", postal_code: " 91606 " })).toMatchObject({
+      ok: true,
+      address: { country: "US", postal_code: "91606" },
+    });
+  });
+
   it("needs someone to collect it", () => {
     expect(ShippingAddressInputSchema.safeParse({ recipient: " " }).success).toBe(false);
   });

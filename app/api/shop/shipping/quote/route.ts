@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
-import { loadShippableLines } from "@/lib/shipping/lines";
+import { estimateLines, loadShippableLines } from "@/lib/shipping/lines";
 import { quoteShippingMethods } from "@/lib/shipping/quote";
 import { isSelfCollect } from "@/lib/shipping/self-collect";
 import { QuoteDestinationSchema } from "@/lib/shipping/destination-schema";
@@ -13,6 +13,8 @@ import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 
+const Profile = z.enum(["pillow", "bolster", "accessory"]);
+
 const QuoteSchema = z
   .object({
     /** A cart: priced from the variants in the database, never from client prices. */
@@ -20,8 +22,12 @@ const QuoteSchema = z
       .array(z.object({ variant_id: z.string().uuid(), quantity: z.number().int().min(1).max(50) }))
       .max(50)
       .optional(),
-    /** No cart (the landing-page estimator): one unit boxed as this product type. */
-    profile: z.enum(["pillow", "bolster", "accessory"]).optional(),
+    /**
+     * No cart: one unit boxed as this product type (the landing-page estimator),
+     * or one of each (a customisation, which ships a Paired build's Mbolster in
+     * its Mpillow's shipment).
+     */
+    profile: z.union([Profile, z.array(Profile).min(1).max(4)]).optional(),
     destination: QuoteDestinationSchema,
   })
   .refine((b) => (b.items?.length ?? 0) > 0 || b.profile, { message: "items or profile is required" });
@@ -73,16 +79,7 @@ export async function POST(req: Request) {
     }
   } else {
     const settings = await readShippingSettings().catch(() => DEFAULT_SHIPPING_SETTINGS);
-    lines = [
-      {
-        product_type: profile!,
-        quantity: 1,
-        weight_grams: null,
-        unit_value: settings.estimate_declared_value,
-        currency: methods[0]?.currency ?? "SGD",
-        description: profile === "bolster" ? "Mbolster" : profile === "accessory" ? "Accessory" : "Mpillow",
-      },
-    ];
+    lines = estimateLines([profile!].flat(), settings.estimate_declared_value, methods[0]?.currency ?? "SGD");
   }
 
   // Priced at subtotal 0, i.e. before free_above — see `price` above.

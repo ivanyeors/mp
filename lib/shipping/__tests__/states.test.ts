@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COUNTRIES } from "@/lib/shipping/countries";
-import { destinationState } from "@/lib/shipping/states";
+import { needsState, STATE_COUNTRIES } from "@/lib/shipping/state-countries";
+import { destinationState, STATE_RULE_COUNTRIES } from "@/lib/shipping/states";
 
 const NEEDS_STATE = ["AU", "CA", "CN", "ID", "MX", "MY", "TH", "US", "VN"];
 
@@ -66,6 +67,12 @@ describe("destinationState", () => {
   it("sends none where the country needs none", () => {
     expect(destinationState({ country: "SG", postal_code: "018956" })).toBeUndefined();
     expect(destinationState({ country: "GB", postal_code: "SW1A 1AA" })).toBeUndefined();
+  });
+
+  it("has a rule for exactly the countries an address form asks a state for", () => {
+    expect([...STATE_RULE_COUNTRIES].sort()).toEqual([...STATE_COUNTRIES].sort());
+    expect(needsState(" us ")).toBe(true);
+    expect(needsState("SG")).toBe(false);
   });
 
   it("finds a state for every catalog country that needs one, from its sample postal code", () => {
