@@ -106,8 +106,12 @@ export function SocialInboxCard() {
             }
             action={
               tiktok?.appConfigured ? (
-                // A full-page navigation: the route redirects to TikTok's sign-in.
-                <Button variant="outline" size="sm" onClick={() => window.location.assign("/api/social-inbox/tiktok/connect")}>
+                // A full-page navigation (not the router): the route redirects to TikTok's sign-in.
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.assign(new URL("/api/social-inbox/tiktok/connect", window.location.origin))}
+                >
                   <Music2 className="mr-2 h-4 w-4" />
                   {tiktok.connected ? "Reconnect TikTok" : "Connect TikTok"}
                 </Button>

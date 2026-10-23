@@ -14532,9 +14532,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/staff-management/social-inbox-client.tsx": {
-    "mtime": 1792721819.9385393,
-    "seen": 1792722257.8603165,
-    "ast_hash": "5904aeb1c42732c93aebb5d55a54d0c8",
+    "mtime": 1792722542.4504116,
+    "seen": 1792722611.9849296,
+    "ast_hash": "df39ad83badbe9e12f148325e6f56f99",
     "semantic_hash": ""
   },
   "app/api/social-inbox/status/route.ts": {
