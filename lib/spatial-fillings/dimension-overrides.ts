@@ -20,7 +20,6 @@ import {
   type Measured,
   type NeckSupportDimensions,
   type NeckSupportSize,
-  type Orientation,
   type PouchDimensions,
   type ResolvedDims,
 } from "./dimensions";
@@ -36,12 +35,14 @@ export type DimensionOverrideRow = {
   thickness_mm: number;
   min_thickness_mm: number;
   min_width_mm: number;
-  orientation: Orientation;
+  /** Legacy: an "along" row stored its long axis as width; read it swapped. New rows are "across". */
+  orientation: "across" | "along";
   flat_length_mm?: number | null;
   flat_width_mm?: number | null;
   updated_at?: string | null;
 };
 
+/** Stored as the roll's footprint: width = its length, thickness = its diameter. */
 export type NeckSupportOverrideRow = {
   size: NeckSupportSize;
   width_mm: number;
@@ -71,15 +72,18 @@ export function effectiveRegistry(
   const pouches: Record<string, Measured<PouchDimensions>> = { ...CODE_REGISTRY.pouches };
   const configured = new Set<string>();
   for (const r of rows) {
+    const along = r.orientation === "along";
+    const flatLength = along ? r.flat_width_mm : r.flat_length_mm;
+    const flatWidth = along ? r.flat_length_mm : r.flat_width_mm;
     pouches[r.key] = {
-      widthMm: r.width_mm,
-      lengthMm: r.length_mm,
+      widthMm: along ? r.length_mm : r.width_mm,
+      lengthMm: along ? r.width_mm : r.length_mm,
       thicknessMm: r.thickness_mm,
       minThicknessMm: r.min_thickness_mm,
-      minWidthMm: r.min_width_mm,
-      orientation: r.orientation,
-      ...(r.flat_length_mm ? { flatLengthMm: r.flat_length_mm } : {}),
-      ...(r.flat_width_mm ? { flatWidthMm: r.flat_width_mm } : {}),
+      // An along row's minimum was for its long axis; the across side squeezes by the same share.
+      minWidthMm: along ? Math.round((r.length_mm * Math.min(r.min_width_mm, r.width_mm)) / r.width_mm) : r.min_width_mm,
+      ...(flatLength ? { flatLengthMm: flatLength } : {}),
+      ...(flatWidth ? { flatWidthMm: flatWidth } : {}),
       measuredOn: r.updated_at ? r.updated_at.slice(0, 10) : "configured",
     };
     configured.add(r.key);
@@ -88,10 +92,9 @@ export function effectiveRegistry(
   for (const r of neckRows) {
     if (!(NECK_SUPPORT_SIZES as readonly string[]).includes(r.size)) continue;
     neck[r.size] = {
-      widthMm: r.width_mm,
-      lengthMm: r.length_mm,
-      thicknessMm: r.thickness_mm,
-      minThicknessMm: r.min_thickness_mm,
+      lengthMm: r.width_mm,
+      radiusMm: r.thickness_mm / 2,
+      minRadiusMm: r.min_thickness_mm / 2,
       measuredOn: r.updated_at ? r.updated_at.slice(0, 10) : "configured",
     };
     configured.add(`neck/${r.size.toLowerCase()}`);

@@ -9,7 +9,6 @@ import {
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
   GitBranch, ClipboardCheck, Percent,
-  Ship,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -152,7 +151,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Integration",
     items: [
       { href: "/settings/integrations/shopify", label: "Shopify Link", tooltip: "Shopify Link", Icon: Store, perm: "inventory" },
-      { href: "/settings/integrations/easyship", label: "Easyship", tooltip: "Easyship account settings sync", Icon: Ship, perm: "shipping" },
     ],
   },
 ];

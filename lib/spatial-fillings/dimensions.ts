@@ -180,12 +180,11 @@ export function sizeFactors(pillow: Pick<PillowDimensions, "widthMm" | "lengthMm
   };
 }
 
-/** A pouch (or Neck support) at a Size: its reference dimensions × the Size's factors, per axis by orientation. */
+/** A pouch (or Neck support) at a Size: its reference dimensions × the Size's factors, per axis. */
 export function pouchAtSize(d: PouchDimensions, f: SizeFactors): PouchDimensions {
   if (f.across === 1 && f.along === 1 && f.thickness === 1) return d;
-  // The width axis is the long one: across the Section unless the pouch lies along it.
-  const wf = d.orientation === "along" ? f.along : f.across;
-  const lf = d.orientation === "along" ? f.across : f.along;
+  const wf = f.across;
+  const lf = f.along;
   return {
     ...d,
     widthMm: round1(d.widthMm * wf),
@@ -237,12 +236,10 @@ export function pillowDimensions(size: string | null | undefined): {
 
 // --- Pouches, Neck support, bolster ------------------------------------------
 
-export type Orientation = "across" | "along";
-
 export type PouchDimensions = {
-  /** Long axis, mm. */
+  /** Across the Section (left ↔ right), mm. */
   widthMm: number;
-  /** Short axis, mm. */
+  /** Along the Section (front ↔ back), mm. */
   lengthMm: number;
   /** Relaxed thickness, mm. */
   thicknessMm: number;
@@ -250,8 +247,6 @@ export type PouchDimensions = {
   minThicknessMm: number;
   /** Minimum width when squeezed, mm. */
   minWidthMm: number;
-  /** Long axis across the Section (left ↔ right) or along it (front ↔ back). */
-  orientation: Orientation;
   /** The fabric's own spread limit, when it stops a spread before the fill is fully compressed. */
   flatLengthMm?: number;
   flatWidthMm?: number;
@@ -260,12 +255,25 @@ export type PouchDimensions = {
 export type NeckSupportSize = "XS" | "S" | "M" | "L";
 export const NECK_SUPPORT_SIZES: readonly NeckSupportSize[] = ["XS", "S", "M", "L"];
 
+/** A Neck support is a mini bolster: a roll lying across the Section. */
 export type NeckSupportDimensions = {
-  widthMm: number;
+  /** Left ↔ right, end to end. */
   lengthMm: number;
-  thicknessMm: number;
-  minThicknessMm: number;
+  radiusMm: number;
+  /** Fully squashed. */
+  minRadiusMm: number;
 };
+
+/** The roll as a pouch: its diameter is both its thickness and its front ↔ back footprint. */
+export function neckAsPouch(n: NeckSupportDimensions): PouchDimensions {
+  return {
+    widthMm: n.lengthMm,
+    lengthMm: 2 * n.radiusMm,
+    thicknessMm: 2 * n.radiusMm,
+    minThicknessMm: 2 * n.minRadiusMm,
+    minWidthMm: n.lengthMm,
+  };
+}
 
 export type BolsterDimensions = { lengthMm: number; diameterMm: number };
 
@@ -291,7 +299,6 @@ export const POUCH_FAMILY_FALLBACKS: Readonly<Record<string, Measured<PouchDimen
     thicknessMm: 35,
     minThicknessMm: 20,
     minWidthMm: 140,
-    orientation: "across",
     measuredOn: null,
   },
   "6d": {
@@ -300,7 +307,6 @@ export const POUCH_FAMILY_FALLBACKS: Readonly<Record<string, Measured<PouchDimen
     thicknessMm: 45,
     minThicknessMm: 25,
     minWidthMm: 160,
-    orientation: "across",
     measuredOn: null,
   },
   "6d+": {
@@ -309,7 +315,6 @@ export const POUCH_FAMILY_FALLBACKS: Readonly<Record<string, Measured<PouchDimen
     thicknessMm: 55,
     minThicknessMm: 30,
     minWidthMm: 170,
-    orientation: "across",
     measuredOn: null,
   },
 };
@@ -321,7 +326,6 @@ export const GENERIC_POUCH: Measured<PouchDimensions> = {
   thicknessMm: 45,
   minThicknessMm: 25,
   minWidthMm: 150,
-  orientation: "across",
   measuredOn: null,
 };
 
@@ -332,10 +336,9 @@ export const NECK_SUPPORT_DIMENSIONS: Readonly<
 
 /** The Neck support drawn until it is measured. */
 export const NECK_SUPPORT_FALLBACK: Measured<NeckSupportDimensions> = {
-  widthMm: 300,
-  lengthMm: 90,
-  thicknessMm: 50,
-  minThicknessMm: 30,
+  lengthMm: 300,
+  radiusMm: 25,
+  minRadiusMm: 15,
   measuredOn: null,
 };
 
@@ -444,14 +447,7 @@ export function resolveDims(item: DimensionItemLike, registry: DimensionRegistry
     return {
       key,
       kind: "neck",
-      dims: {
-        widthMm: n.widthMm,
-        lengthMm: n.lengthMm,
-        thicknessMm: n.thicknessMm,
-        minThicknessMm: n.minThicknessMm,
-        minWidthMm: n.widthMm,
-        orientation: "across",
-      },
+      dims: neckAsPouch(n),
       source: entry ? sourceOf(key, entry, registry) : "fallback",
       measuredOn: entry?.measuredOn ?? null,
     };
@@ -474,7 +470,7 @@ function pouch(key: string, entry: Measured<PouchDimensions>, source: ResolvedSo
 }
 
 /** `180 × 120 × 45 mm`, for the Product Visualize column and the fit messages. */
-export function formatDims(dims: PouchDimensions | NeckSupportDimensions): string {
+export function formatDims(dims: PouchDimensions): string {
   return `${dims.widthMm} × ${dims.lengthMm} × ${dims.thicknessMm} mm`;
 }
 

@@ -59,6 +59,9 @@ export type PieceSettle = {
   spreadBackMm: number;
   /** Its relaxed extent along the Section (front ↔ back), mm. */
   alongMm: number;
+  /** Where the settled pouch starts and ends, mm from the Section's front, cut to the columns it spans. */
+  startMm: number;
+  endMm: number;
   settledLengthMm: number;
   thicknessMm: number;
   minThicknessMm: number;
@@ -85,9 +88,9 @@ export type SettleContext = {
   pillow?: PillowDimensions;
 };
 
-/** A pouch's relaxed extent along the Section (front ↔ back), from its orientation. */
+/** A pouch's relaxed extent along the Section (front ↔ back). */
 export function alongMm(d: PouchDimensions): number {
-  return d.orientation === "along" ? d.widthMm : d.lengthMm;
+  return d.lengthMm;
 }
 
 /**
@@ -99,7 +102,7 @@ export function spreadCapacityMm(d: PouchDimensions): number {
   const along = alongMm(d);
   const minT = Math.min(d.minThicknessMm, d.thicknessMm);
   const byVolume = minT > 0 ? along * (d.thicknessMm / minT - 1) : 0;
-  const flat = d.orientation === "along" ? d.flatWidthMm : d.flatLengthMm;
+  const flat = d.flatLengthMm;
   const byFabric = flat === undefined ? Infinity : Math.max(flat - along, 0);
   return Math.max(Math.min(byVolume, byFabric), 0);
 }
@@ -260,6 +263,16 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
       const settledLength = along + front + back;
       const cellsFront = front > 0 ? Math.ceil(front / cellLen - EPS) : 0;
       const cellsBack = back > 0 ? Math.ceil(back / cellLen - EPS) : 0;
+      // The authored extent as the x-ray draws it: cut to one cell's length, moved by its fine offset, kept in the Section.
+      const len = Math.min(along, cellLen);
+      const authored = Math.min(
+        Math.max(w.col * cellLen + (cellLen - len) / 2 + (w.p.offsetYMm ?? 0) * alongScale, 0),
+        SUB_SECTIONS.length * cellLen - len,
+      );
+      // A spread fills the pouch's own cell first: it stands in a neighbour's column only once it reaches it.
+      const colOf = (mm: number) => Math.min(Math.max(Math.floor(mm / cellLen), 0), SUB_SECTIONS.length - 1);
+      const spanFrom = Math.max(w.col - cellsFront, 0, Math.min(w.col, colOf(authored - front + SEAM_MM)));
+      const spanTo = Math.min(w.col + cellsBack, SUB_SECTIONS.length - 1, Math.max(w.col, colOf(authored + len + back - SEAM_MM)));
       pieces.push({
         key: `${section}/${w.p.subSection}/${w.p.slot}`,
         section,
@@ -267,11 +280,13 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
         slot: w.p.slot,
         itemId: w.p.itemId,
         depth: w.depth,
-        spanFrom: SUB_SECTIONS[Math.max(w.col - cellsFront, 0)],
-        spanTo: SUB_SECTIONS[Math.min(w.col + cellsBack, SUB_SECTIONS.length - 1)],
+        spanFrom: SUB_SECTIONS[spanFrom],
+        spanTo: SUB_SECTIONS[spanTo],
         spreadFrontMm: r1(front),
         spreadBackMm: r1(back),
         alongMm: r1(along),
+        startMm: r1(Math.max(authored - front, spanFrom * cellLen)),
+        endMm: r1(Math.min(authored + len + back, (spanTo + 1) * cellLen)),
         settledLengthMm: r1(settledLength),
         thicknessMm: r1(w.dims.thicknessMm),
         minThicknessMm: r1(Math.min(w.dims.minThicknessMm, w.dims.thicknessMm)),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronRight,
   FileText,
@@ -9,10 +9,13 @@ import {
   HardDrive,
   Image as ImageIcon,
   Loader2,
+  Search,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import {
   Dialog,
   DialogContent,
@@ -66,13 +69,26 @@ function kindIcon(kind: ImportableKind | "other" | "folder", className = "h-5 w-
   }
 }
 
+export type DriveImportedAsset = {
+  id: string;
+  hosted_url?: string | null;
+  alt_text?: string | null;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImported: () => void;
+  onImported: (assets: DriveImportedAsset[]) => void;
+  /** Lock the kind filter to images and hide it. */
+  imageOnly?: boolean;
 };
 
-export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props) {
+export function SelectFromDriveDialog({
+  open,
+  onOpenChange,
+  onImported,
+  imageOnly = false,
+}: Props) {
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ label: "Shared Drives" }]);
   const [drives, setDrives] = useState<SharedDrive[]>([]);
   const [items, setItems] = useState<DriveItem[]>([]);
@@ -82,6 +98,12 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Map<string, DriveItem>>(new Map());
   const [importing, setImporting] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<DriveItem[]>([]);
+  const [resultsNext, setResultsNext] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [kindFilter, setKindFilter] = useState<ImportableKind | "all">(imageOnly ? "image" : "all");
+  const searchSeq = useRef(0);
 
   const current = crumbs[crumbs.length - 1];
   const atDriveList = !current.driveId;
@@ -94,7 +116,11 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
     setError(null);
     setSelected(new Map());
     setImporting(false);
-  }, []);
+    setQuery("");
+    setResults([]);
+    setResultsNext(null);
+    setKindFilter(imageOnly ? "image" : "all");
+  }, [imageOnly]);
 
   const loadDrives = useCallback(async () => {
     setLoading(true);
@@ -116,41 +142,112 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
     }
   }, []);
 
-  const loadFolder = useCallback(
-    async (driveId: string, folderId: string, pageToken?: string) => {
-      const appending = Boolean(pageToken);
-      if (appending) setLoadingMore(true);
-      else {
-        setLoading(true);
-        setError(null);
+  const loadFolder = useCallback(async (driveId: string, folderId: string, pageToken?: string) => {
+    const appending = Boolean(pageToken);
+    if (appending) setLoadingMore(true);
+    else {
+      setLoading(true);
+      setError(null);
+    }
+    try {
+      const qs = new URLSearchParams({ driveId, folderId });
+      if (pageToken) qs.set("pageToken", pageToken);
+      const res = await fetch(`/api/media/drive/browse?${qs}`);
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(getApiErrorMessage(data.error, "Failed to list folder"));
       }
+      const next = (data.items ?? []) as DriveItem[];
+      setItems((prev) => (appending ? [...prev, ...next] : next));
+      setNextPageToken(data.nextPageToken ?? null);
+      if (!appending) setDrives([]);
+    } catch (e) {
+      if (!appending) {
+        setError(e instanceof Error ? e.message : "Failed to list folder");
+        setItems([]);
+        setNextPageToken(null);
+      } else {
+        toast.error(e instanceof Error ? e.message : "Failed to load more");
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  const runSearch = useCallback(
+    async (
+      text: string,
+      driveId: string | undefined,
+      kind: ImportableKind | "all",
+      pageToken?: string,
+    ) => {
+      const seq = ++searchSeq.current;
+      if (!pageToken) setSearching(true);
+      else setLoadingMore(true);
       try {
-        const qs = new URLSearchParams({ driveId, folderId });
+        const qs = new URLSearchParams({ q: text });
+        if (driveId) qs.set("driveId", driveId);
+        if (kind !== "all") qs.set("kind", kind);
         if (pageToken) qs.set("pageToken", pageToken);
         const res = await fetch(`/api/media/drive/browse?${qs}`);
         const data = await res.json();
+        if (seq !== searchSeq.current) return;
         if (!res.ok || !data.ok) {
-          throw new Error(getApiErrorMessage(data.error, "Failed to list folder"));
+          throw new Error(getApiErrorMessage(data.error, "Search failed"));
         }
         const next = (data.items ?? []) as DriveItem[];
-        setItems((prev) => (appending ? [...prev, ...next] : next));
-        setNextPageToken(data.nextPageToken ?? null);
-        if (!appending) setDrives([]);
+        setResults((prev) => (pageToken ? [...prev, ...next] : next));
+        setResultsNext(data.nextPageToken ?? null);
       } catch (e) {
-        if (!appending) {
-          setError(e instanceof Error ? e.message : "Failed to list folder");
-          setItems([]);
-          setNextPageToken(null);
-        } else {
-          toast.error(e instanceof Error ? e.message : "Failed to load more");
+        if (seq === searchSeq.current) {
+          toast.error(e instanceof Error ? e.message : "Search failed");
         }
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (seq === searchSeq.current) {
+          setSearching(false);
+          setLoadingMore(false);
+        }
       }
     },
     [],
   );
+
+  const debouncedSearch = useDebouncedCallback(
+    (text: string, driveId: string | undefined, kind: ImportableKind | "all") =>
+      void runSearch(text, driveId, kind),
+    300,
+  );
+
+  const onQueryChange = (text: string) => {
+    setQuery(text);
+    if (text.trim()) {
+      debouncedSearch(text.trim(), current.driveId, kindFilter);
+    } else {
+      debouncedSearch.cancel();
+      searchSeq.current += 1;
+      setSearching(false);
+      setResults([]);
+      setResultsNext(null);
+    }
+  };
+
+  const searchActive = query.trim().length > 0;
+  const changeKind = (kind: ImportableKind | "all") => {
+    setKindFilter(kind);
+    if (searchActive) {
+      debouncedSearch.cancel();
+      void runSearch(query.trim(), current.driveId, kind);
+    }
+  };
+
+  // Search is filtered server-side; folder listings filter here and keep folders navigable.
+  const listItems = searchActive
+    ? results
+    : kindFilter === "all"
+      ? items
+      : items.filter((i) => i.isFolder || kindFromMime(i.mimeType) === kindFilter);
+  const listNext = searchActive ? resultsNext : nextPageToken;
 
   useEffect(() => {
     if (!open) return;
@@ -159,6 +256,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
   }, [open, reset, loadDrives]);
 
   const goToCrumb = (index: number) => {
+    onQueryChange("");
     const next = crumbs.slice(0, index + 1);
     setCrumbs(next);
     const c = next[next.length - 1];
@@ -167,6 +265,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
   };
 
   const openDrive = (drive: SharedDrive) => {
+    onQueryChange("");
     setCrumbs([
       { label: "Shared Drives" },
       { label: drive.name, driveId: drive.id, folderId: drive.id },
@@ -200,6 +299,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
     let ok = 0;
     let existing = 0;
     let failed = 0;
+    const imported: DriveImportedAsset[] = [];
     try {
       for (const file of files) {
         try {
@@ -211,11 +311,10 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
           const data = await res.json();
           if (!res.ok || !data.ok) {
             failed += 1;
-            toast.error(
-              getApiErrorMessage(data.error, `Failed to import ${file.name}`),
-            );
+            toast.error(getApiErrorMessage(data.error, `Failed to import ${file.name}`));
             continue;
           }
+          if (data.asset) imported.push(data.asset);
           if (data.existing) existing += 1;
           else ok += 1;
         } catch {
@@ -230,7 +329,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
           failed ? `${failed} failed` : null,
         ].filter(Boolean);
         toast.success(parts.join(" · "));
-        onImported();
+        onImported(imported);
         onOpenChange(false);
       }
     } finally {
@@ -271,12 +370,49 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
           })}
         </nav>
 
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder={
+              current.driveId ? `Search ${crumbs[1]?.label}…` : "Search all Shared Drives…"
+            }
+            aria-label="Search Drive files by name"
+            className="pl-8"
+          />
+        </div>
+
+        {!imageOnly && (
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by kind">
+            {(
+              [
+                ["all", "All kinds"],
+                ["image", "Images"],
+                ["video", "Videos"],
+                ["pdf", "PDFs"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={kindFilter === value ? "default" : "outline"}
+                aria-pressed={kindFilter === value}
+                onClick={() => changeKind(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        )}
+
         <div className="flex-1 min-h-[280px] max-h-[50vh] overflow-y-auto border rounded-lg">
-          {loading ? (
+          {loading || (searchActive && searching) ? (
             <div className="flex justify-center py-16">
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
             </div>
-          ) : error ? (
+          ) : error && !searchActive ? (
             <div className="p-6 text-center space-y-3">
               <p className="text-sm text-destructive">{error}</p>
               <Button
@@ -291,7 +427,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
                 Retry
               </Button>
             </div>
-          ) : atDriveList ? (
+          ) : atDriveList && !searchActive ? (
             drives.length === 0 ? (
               <p className="p-6 text-sm text-muted-foreground text-center">
                 No Shared Drives visible to the workspace account.
@@ -312,11 +448,17 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
                 ))}
               </ul>
             )
-          ) : items.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground text-center">This folder is empty.</p>
+          ) : listItems.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground text-center">
+              {searchActive
+                ? "No matching files."
+                : kindFilter !== "all" && items.length > 0
+                  ? "Nothing of this kind in this folder."
+                  : "This folder is empty."}
+            </p>
           ) : (
             <ul className="divide-y">
-              {items.map((item) => {
+              {listItems.map((item) => {
                 const kind = item.isFolder ? "folder" : kindFromMime(item.mimeType);
                 const importable = !item.isFolder && kind !== "other";
                 const checked = selected.has(item.id);
@@ -389,18 +531,16 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
           )}
         </div>
 
-        {nextPageToken && !loading && !error && (
+        {listNext && !loading && !searching && (searchActive || !error) && (
           <Button
             variant="outline"
             size="sm"
             className="self-center"
             disabled={loadingMore || importing}
             onClick={() =>
-              void loadFolder(
-                current.driveId!,
-                current.folderId ?? current.driveId!,
-                nextPageToken,
-              )
+              searchActive
+                ? void runSearch(query.trim(), current.driveId, kindFilter, listNext)
+                : void loadFolder(current.driveId!, current.folderId ?? current.driveId!, listNext)
             }
           >
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -410,9 +550,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
 
         <DialogFooter className="gap-2 sm:items-center">
           <span className="text-xs text-muted-foreground mr-auto">
-            {selected.size === 0
-              ? "Select one or more files"
-              : `${selected.size} selected`}
+            {selected.size === 0 ? "Select one or more files" : `${selected.size} selected`}
           </span>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
             Cancel

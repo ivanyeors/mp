@@ -13,6 +13,8 @@ import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 import { aggregateSignedQuantities, combineTemplateSaleLines } from '@/lib/inventory/template-sale-lines'
 import { alterationBaseId, assertConvertible, stockInRows, type StockItem } from '@/lib/inventory/alteration-stock'
 import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
+import { setProductBaseImage, syncItemImageToProducts } from '@/lib/ecommerce/item-image-sync'
+import { resolveAddonImageUrls } from '@/lib/results/addon-images'
 
 function scheduleMirrorReResolve(variantIds: number[]) {
   after(() => {
@@ -878,26 +880,93 @@ export async function renameInventoryItem(input: z.infer<typeof RenameItemSchema
   return { ok: true }
 }
 
-const ItemImageSchema = z.object({
-  itemId: z.number().int().positive(),
+const ItemsImageSchema = z.object({
+  itemIds: z.array(z.number().int().positive()).min(1),
   assetId: z.string().uuid().nullable(),
 })
 
-/** Slice 12: link an Item to its primary Media Asset (add-on card imagery). */
-export async function setItemPrimaryImage(input: z.infer<typeof ItemImageSchema>) {
+/** Set one primary image on a group of Items (all sizes of a family); it becomes their shop products' base image. */
+export async function setItemsPrimaryImage(input: z.infer<typeof ItemsImageSchema>) {
   await assertAdmin('inventory')
-  const parsed = ItemImageSchema.parse(input)
+  const parsed = ItemsImageSchema.parse(input)
   const admin = supabaseAdmin()
-  const { data, error } = await admin
+  const { data: before, error: bErr } = await admin
+    .from('items')
+    .select('id, primary_media_asset_id')
+    .in('id', parsed.itemIds)
+    .eq('is_active', true)
+  if (bErr) throw new Error(bErr.message)
+  if (!before?.length) throw new Error('Items not found or already inactive')
+  const { error } = await admin
     .from('items')
     .update({ primary_media_asset_id: parsed.assetId })
-    .eq('id', parsed.itemId)
+    .in('id', before.map((i) => i.id))
+  if (error) throw new Error(error.message)
+  // All items updated first so the sync replaces the shared old row in place.
+  for (const it of before) {
+    await syncItemImageToProducts(admin, it.id, it.primary_media_asset_id ?? null, parsed.assetId)
+  }
+  return { ok: true }
+}
+
+/** item_id → current primary image URL, for thumbnails on the inventory page. */
+export async function getItemImageUrls(): Promise<Record<number, string>> {
+  await assertAdmin('inventory')
+  const admin = supabaseAdmin()
+  const { data: items, error } = await admin
+    .from('items')
+    .select('id, primary_media_asset_id')
     .eq('is_active', true)
+    .not('primary_media_asset_id', 'is', null)
+  if (error) throw new Error(error.message)
+  const assetIds = [...new Set((items ?? []).map((i) => i.primary_media_asset_id as string))]
+  if (assetIds.length === 0) return {}
+  const { data: assets, error: aErr } = await admin
+    .from('media_assets')
+    .select('id, kind, hosted_url')
+    .in('id', assetIds)
+  if (aErr) throw new Error(aErr.message)
+  return Object.fromEntries(resolveAddonImageUrls(items ?? [], assets ?? []))
+}
+
+const COMPOSED_PRODUCT_SLUGS = ['mpillow-basic', 'mpillow-premium', 'mbolster'] as const
+export type ComposedProductSlug = (typeof COMPOSED_PRODUCT_SLUGS)[number]
+
+const ComposedImageSchema = z.object({
+  slug: z.enum(COMPOSED_PRODUCT_SLUGS),
+  assetId: z.string().uuid().nullable(),
+})
+
+/** Set the base image of the basic / premium pillow or bolster storefront product. */
+export async function setComposedProductImage(input: z.infer<typeof ComposedImageSchema>) {
+  await assertAdmin('inventory')
+  const parsed = ComposedImageSchema.parse(input)
+  const admin = supabaseAdmin()
+  const { data: product, error } = await admin
+    .from('products')
     .select('id')
+    .eq('slug', parsed.slug)
     .maybeSingle()
   if (error) throw new Error(error.message)
-  if (!data) throw new Error('Item not found or already inactive')
-  return { ok: true }
+  if (!product) throw new Error('Shop product not generated yet — run the product sync first')
+  const url = await setProductBaseImage(admin, product.id, parsed.assetId)
+  return { ok: true, url }
+}
+
+/** slug → current base image URL of the pillow/bolster storefront products. */
+export async function getComposedProductImageUrls(): Promise<Partial<Record<ComposedProductSlug, string>>> {
+  await assertAdmin('inventory')
+  const { data, error } = await supabaseAdmin()
+    .from('products')
+    .select('slug, product_variants(image_url)')
+    .in('slug', [...COMPOSED_PRODUCT_SLUGS])
+  if (error) throw new Error(error.message)
+  const out: Partial<Record<ComposedProductSlug, string>> = {}
+  for (const p of data ?? []) {
+    const url = (p.product_variants as Array<{ image_url: string | null }>).map((v) => v.image_url).find(Boolean)
+    if (url) out[p.slug as ComposedProductSlug] = url
+  }
+  return out
 }
 
 export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {

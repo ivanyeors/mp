@@ -83,6 +83,11 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       url.pathname = pathname.replace("/settings/inventory/shopify", "/settings/integrations/shopify");
       return NextResponse.redirect(url, 308);
     }
+    if (pathname.endsWith("/settings/integrations/easyship")) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname.replace("/settings/integrations/easyship", "/settings/shipping/couriers");
+      return NextResponse.redirect(url, 308);
+    }
     if (pathname.endsWith("/settings/categories")) {
       const url = request.nextUrl.clone();
       url.pathname = pathname.replace("/settings/categories", "/settings/products");

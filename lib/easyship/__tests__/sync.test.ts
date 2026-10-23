@@ -42,6 +42,7 @@ const desired: EasyshipSettings = {
     { name: "Keep", outer_length: 20, outer_width: 20, outer_height: 40, weight: 0 },
     { name: "New", outer_length: 10, outer_width: 10, outer_height: 10, weight: 0.1 },
   ],
+  box_for_type: { pillow: { box: "Keep", weight_grams: 1500 } },
   shipping_rules: [
     { name: "Same", description: "d", priority: 1, active: true, conditions: [{ type: "match_all", options: {} }], actions: [{ type: "force_insurance", options: { insured: true } }] },
     { name: "Changed", description: "d", priority: 2, active: true, conditions: [{ type: "match_all", options: {} }], actions: [{ type: "force_insurance", options: { insured: true } }] },
@@ -92,6 +93,8 @@ describe("syncEasyship", () => {
     expect(find("DELETE", "/boxes/b-old")).toHaveLength(1);
     expect(find("DELETE", "/boxes/b-flat")).toHaveLength(0);
     expect(find("PATCH", "/boxes/b-keep")).toHaveLength(0);
+    // The type → box mapping is ours alone; the courier account never sees it.
+    expect(calls.some((c) => JSON.stringify(c.body ?? {}).includes("box_for_type") || JSON.stringify(c.body ?? {}).includes("weight_grams"))).toBe(false);
 
     expect(find("DELETE", "/shipping_rules/r-same")).toHaveLength(0);
     expect(find("DELETE", "/shipping_rules/r-changed")).toHaveLength(1);
@@ -125,5 +128,22 @@ describe("syncEasyship", () => {
     const { report: local } = await syncEasyship(desired, null);
     expect(calls.some((c) => c.path.startsWith("/webhooks"))).toBe(false);
     expect(local.steps.find((s) => s.area === "webhook")?.action).toBe("skipped");
+  });
+
+  it("updates a renamed company at the same address instead of adding a second one", async () => {
+    const renamed = { ...desired, addresses: [{ ...desired.addresses[0], company_name: "Mellow Life" }] };
+    await syncEasyship(renamed, ENDPOINT);
+    expect(find("POST", "/addresses")).toHaveLength(0);
+    expect(find("PATCH", "/addresses/a1")[0].body?.company_name).toBe("Mellow Life");
+  });
+});
+
+describe("courierEmailStatuses", () => {
+  it("switches the courier's emails off only while tracking webhooks reach us", async () => {
+    const { courierEmailStatuses } = await import("@/lib/easyship/sync");
+    const s = { ...DEFAULT_SETTINGS, tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["delivered" as const] } };
+    expect(courierEmailStatuses({ ...s, webhook: { enabled: true, event_types: ["shipment_tracking_status_changed"] } })).toEqual([]);
+    expect(courierEmailStatuses({ ...s, webhook: { enabled: false, event_types: ["shipment_tracking_status_changed"] } })).toEqual(["delivered"]);
+    expect(courierEmailStatuses({ ...s, webhook: { enabled: true, event_types: ["shipment_label_created"] } })).toEqual(["delivered"]);
   });
 });

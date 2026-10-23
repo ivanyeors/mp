@@ -34,3 +34,40 @@ describe("CrossSectionSvg layouts", () => {
     expect(m).toContain(">cannot close<");
   });
 });
+
+describe("CrossSectionSvg along profiles", () => {
+  const empty = (size: "XS" | "M") => fitPillow([], { size, dims });
+  const along = (size: "XS" | "M", section: "left" | "center") =>
+    renderToStaticMarkup(<CrossSectionSvg fit={empty(size)} cut={{ section }} itemSubtypes={new Map()} />);
+
+  it("draws the designer profile per Section and Size", () => {
+    expect(along("M", "left")).toContain('data-xray-profile="sides"');
+    expect(along("M", "center")).toContain('data-xray-profile="center"');
+    expect(along("XS", "center")).toContain('data-xray-profile="center-xs"');
+  });
+});
+
+describe("CrossSectionSvg along pieces", () => {
+  // One squashable pouch alone in its Section: it settles front-to-back across all three columns.
+  const soft = new Map([[1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, thicknessMm: 60, minThicknessMm: 15 } }]]);
+  const lone = fitPillow([{ section: "right", subSection: "middle", slot: 1, itemId: 1, row: 0 }], { size: "M", dims: soft });
+
+  it("draws one slab for one pouch, however many columns it settles into", () => {
+    const m = renderToStaticMarkup(<CrossSectionSvg fit={lone} cut={{ section: "right" }} itemSubtypes={new Map()} />);
+    const s = lone.settle.pieces[0];
+    expect(s.spanFrom).toBe("front");
+    expect(s.spanTo).toBe("back");
+    expect(m.match(/data-slab-status=/g)).toHaveLength(1);
+  });
+
+  it("draws a Neck support as a round roll", () => {
+    const m = renderToStaticMarkup(<CrossSectionSvg fit={lone} cut={{ section: "right" }} itemSubtypes={new Map([[1, "Cervical neck support"]])} />);
+    expect(m).toMatch(/data-slab-status="[a-z]+"[^>]*><path d="M[\d.]+ [\d.]+ A/);
+  });
+
+  it("an offset moves the pouch's settled span front ↔ back", () => {
+    const pushed = fitPillow([{ section: "right", subSection: "middle", slot: 1, itemId: 1, row: 0, offsetYMm: 20 }], { size: "M", dims: dims });
+    const home = fitPillow([{ section: "right", subSection: "middle", slot: 1, itemId: 1, row: 0 }], { size: "M", dims: dims });
+    expect(pushed.sections.right.pieces[0].startMm).toBeGreaterThan(home.sections.right.pieces[0].startMm);
+  });
+});

@@ -27,12 +27,11 @@ export function webhookEndpoint(): string | null {
 
 const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
 
-function sameAddress(a: EasyshipAddress, b: LiveAddress): boolean {
+function samePlace(a: EasyshipAddress, b: LiveAddress): boolean {
   return (
     norm(a.line_1) === norm(b.line_1) &&
     norm(a.postal_code) === norm(b.postal_code) &&
-    norm(a.country_alpha2) === norm(b.country_alpha2) &&
-    norm(a.company_name) === norm(b.company_name)
+    norm(a.country_alpha2) === norm(b.country_alpha2)
   );
 }
 
@@ -66,14 +65,15 @@ function clausesEqual(a: RuleClause[], b: Array<RuleClause & { id?: string }>): 
   return stableJson(strip(a)) === stableJson(strip(b));
 }
 
-function trackingBody<T extends { advertising: unknown; allowed_statuses?: string[] }>(t: T) {
-  const { advertising, allowed_statuses, ...rest } = t;
-  return {
-    ...rest,
-    ...(advertising ? { advertising } : {}),
-    // ponytail: an empty list is omitted (left unchanged); clear statuses in the dashboard
-    ...(allowed_statuses && allowed_statuses.length ? { allowed_statuses } : {}),
-  };
+function trackingBody<T extends { advertising: unknown }>(t: T) {
+  const { advertising, ...rest } = t;
+  return { ...rest, ...(advertising ? { advertising } : {}) };
+}
+
+/** We send status emails once tracking webhooks reach us; until then the courier account keeps sending its own. */
+export function courierEmailStatuses(s: EasyshipSettings): string[] {
+  const ours = s.webhook.enabled && s.webhook.event_types.includes("shipment_tracking_status_changed");
+  return ours ? [] : s.tracking_email.allowed_statuses;
 }
 
 export async function syncEasyship(desired: EasyshipSettings, endpoint: string | null): Promise<SyncOutcome> {
@@ -96,7 +96,10 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
   try {
     await easyship("/account/settings", {
       method: "POST",
-      body: { tracking_email: trackingBody(desired.tracking_email), tracking_page: trackingBody(desired.tracking_page) },
+      body: {
+        tracking_email: { ...trackingBody(desired.tracking_email), allowed_statuses: courierEmailStatuses(desired) },
+        tracking_page: trackingBody(desired.tracking_page),
+      },
     });
     step({ area: "tracking", action: "updated", target: "tracking email + page" });
   } catch (e) {
@@ -107,7 +110,10 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
     const live = await easyshipList<LiveAddress>("/addresses", "addresses");
     for (const a of desired.addresses) {
       const target = `${a.company_name} · ${a.line_1}`;
-      const match = live.find((l) => sameAddress(a, l));
+      // A renamed company at the same place is an update, not a second address.
+      const match =
+        live.find((l) => samePlace(a, l) && norm(a.company_name) === norm(l.company_name)) ??
+        live.find((l) => samePlace(a, l));
       const flags = trueFlags(a.default_for);
       if (!match) {
         await easyship("/addresses", { method: "POST", body: { ...addressFields(a), default_for: a.default_for } });

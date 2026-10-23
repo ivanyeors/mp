@@ -19,7 +19,7 @@ const BUILD_SIZES = ["S", "M", "L"];
  * Calibration sheet (X-ray pillow UX slice 10): the x-ray's predictions for
  * every bench check, read fresh from Settings on each load, so it can be
  * printed before the measurements are in and again after. Same permission as
- * Product Visualize, whose Dimensions section it checks.
+ * the Products › Dimensions tab, which it checks.
  */
 export default async function CalibrationPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;

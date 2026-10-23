@@ -16,7 +16,7 @@ export interface ShippingQuoteRequest {
 
 export interface ShippingQuoteState {
   options: ShippingQuoteOptionView[];
-  /** False when live rates were wanted but unavailable; the options are then flat fallbacks. */
+  /** False when live rates were wanted but unavailable; live methods are then left out of the options. */
   live: boolean;
   loading: boolean;
   error: string | null;

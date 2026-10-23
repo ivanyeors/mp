@@ -1,9 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
+
+const h = vi.hoisted(() => ({ sender: null as EasyshipAddress | null, readTypeBoxes: vi.fn() }));
+vi.mock("@/lib/easyship/store", () => ({ readSenderAddress: async () => h.sender, readTypeBoxes: h.readTypeBoxes }));
+
 import { fetchCourierRates, priceMethod, quoteCacheKey, quoteShippingMethods } from "@/lib/shipping/quote";
 import { DEFAULT_SHIPPING_SETTINGS } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
-import type { RatesResult, ShippableLine, ShippingSettings } from "@/lib/shipping/types";
+import type { RatesResult, ShippableLine, ShippingSettings, TypeBoxes } from "@/lib/shipping/types";
 
 /** In-memory `shipping_rate_quotes`, enough of the query builder for the quote service. */
 function fakeAdmin() {
@@ -48,18 +53,28 @@ function fakeAdmin() {
 
 const settings: ShippingSettings = {
   ...DEFAULT_SHIPPING_SETTINGS,
-  easyship_enabled: true,
   handling_days: 1,
-  origin_address: {
-    contact_name: "Mpillow",
-    contact_phone: "+6560000000",
-    contact_email: "ops@mpillow.test",
-    line_1: "1 Office Road",
-    city: "Singapore",
-    postal_code: "123456",
-    country_alpha2: "SG",
-  },
 };
+
+/** The courier account doc's default sender address. */
+const sender: EasyshipAddress = {
+  line_1: "1 Office Road",
+  line_2: null,
+  city: "Singapore",
+  state: null,
+  postal_code: "123456",
+  country_alpha2: "SG",
+  company_name: "Mpillow",
+  contact_name: "Mpillow",
+  contact_phone: "+6560000000",
+  contact_email: "ops@mpillow.test",
+  default_for: { sender: true, return: false, pickup: false, billing: false },
+};
+
+beforeEach(() => {
+  h.sender = sender;
+  h.readTypeBoxes.mockReset().mockResolvedValue({});
+});
 
 const config = { token: "sand_t", baseUrl: "https://es.test/2024-09", environment: "sandbox" as const };
 
@@ -104,6 +119,7 @@ const method = (over: Partial<ShippingMethod>): ShippingMethod => ({
 });
 
 const destination = { country: "SG", postal_code: "018 989" };
+const boxes: TypeBoxes = { pillow: { length_cm: 70, width_cm: 45, height_cm: 20, tare_grams: 0, weight_grams: 1500 } };
 
 describe("fetchCourierRates", () => {
   it("calls Easyship once, then serves the same cart and postal code from the cache", async () => {
@@ -138,11 +154,11 @@ describe("fetchCourierRates", () => {
     const base = { settings, destination, parcels, currency: "SGD" };
     expect(await fetchCourierRates(admin, { ...base, config: null })).toMatchObject({ reason: "not_configured" });
     expect(
-      await fetchCourierRates(admin, { ...base, config, settings: { ...settings, easyship_enabled: false } }),
-    ).toMatchObject({ reason: "disabled" });
-    expect(
-      await fetchCourierRates(admin, { ...base, config, settings: { ...settings, origin_address: {} } }),
+      await fetchCourierRates(admin, { ...base, config, origin: { ...sender, postal_code: null } }),
     ).toMatchObject({ reason: "invalid_origin" });
+    h.sender = null;
+    expect(await fetchCourierRates(admin, { ...base, config })).toMatchObject({ reason: "invalid_origin" });
+    h.sender = sender;
     expect(await fetchCourierRates(admin, { ...base, config, parcels: null })).toMatchObject({
       reason: "too_many_parcels",
     });
@@ -162,9 +178,28 @@ describe("fetchCourierRates", () => {
       },
     ];
     const key = (d: string, postal = "018989") =>
-      quoteCacheKey({ settings, destination: { country: "SG", postal_code: postal }, parcels: parcel(d), currency: "SGD" });
+      quoteCacheKey({
+        settings,
+        origin: sender,
+        destination: { country: "SG", postal_code: postal },
+        parcels: parcel(d),
+        currency: "SGD",
+      });
     expect(key("Mpillow")).toBe(key("Mpillow — renamed"));
     expect(key("Mpillow")).not.toBe(key("Mpillow", "018990"));
+  });
+
+  it("quotes from the current default sender address", async () => {
+    const admin = fakeAdmin();
+    const fetchImpl = okFetch();
+    const parcels = [{ length_cm: 70, width_cm: 45, height_cm: 20, weight_kg: 1.5, items: [] }];
+    const input = { settings, destination, parcels, currency: "SGD", config, fetchImpl };
+    await fetchCourierRates(admin, input);
+    h.sender = { ...sender, postal_code: "654321" };
+    expect(await fetchCourierRates(admin, input)).toMatchObject({ ok: true, cached: false });
+    const body = (n: number) => JSON.parse((fetchImpl.mock.calls[n] as unknown as [string, RequestInit])[1].body as string);
+    expect(body(0).origin_address.postal_code).toBe("123456");
+    expect(body(1).origin_address.postal_code).toBe("654321");
   });
 });
 
@@ -219,26 +254,30 @@ describe("priceMethod", () => {
     });
   });
 
-  it("falls back to base_rate when live rates failed, so the sale is not blocked", () => {
+  it("hides a live method on an outage, never charging base_rate", () => {
     const failed: RatesResult = { ok: false, reason: "error", message: "timeout" };
-    expect(priceMethod(method({ rate_source: "easyship" }), failed, 40, 0)).toMatchObject({
-      amount: 8,
-      source: "fallback",
-    });
+    expect(priceMethod(method({ rate_source: "easyship" }), failed, 40, 0)).toBeNull();
+    expect(priceMethod(method({ rate_source: "easyship" }), null, 40, 0)).toBeNull();
   });
 
-  it("drops a live method no courier can serve", () => {
+  it("hides a live method when there are no rates", () => {
     expect(priceMethod(method({ rate_source: "easyship" }), { ...live, rates: [] }, 40, 0)).toBeNull();
     expect(
       priceMethod(method({ rate_source: "easyship", easyship_strategy: "courier", easyship_courier_service_id: "gone" }), live, 40, 0),
     ).toBeNull();
   });
 
-  it("falls back rather than charge in the wrong currency", () => {
+  it("hides a live method rather than charge in the wrong currency", () => {
     const usd: RatesResult = { ...live, rates: live.ok ? live.rates.map((r) => ({ ...r, currency: "USD" })) : [] };
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(priceMethod(method({ rate_source: "easyship" }), usd, 40, 0)).toMatchObject({ source: "fallback" });
+    expect(priceMethod(method({ rate_source: "easyship" }), usd, 40, 0)).toBeNull();
     spy.mockRestore();
+  });
+
+  it("leaves flat methods unaffected when live rates fail", () => {
+    const failed: RatesResult = { ok: false, reason: "error", message: "timeout" };
+    expect(priceMethod(method({}), failed, 40, 0)).toMatchObject({ amount: 8, source: "flat" });
+    expect(priceMethod(method({}), null, 40, 0)).toMatchObject({ amount: 8, source: "flat" });
   });
 });
 
@@ -272,6 +311,7 @@ describe("quoteShippingMethods", () => {
       destination,
       subtotal: 40,
       loadSettings: async () => settings,
+      loadBoxes: async () => boxes,
       config,
       fetchImpl,
     });
@@ -283,7 +323,39 @@ describe("quoteShippingMethods", () => {
     ]);
   });
 
-  it("falls back when settings cannot be read", async () => {
+  it("quotes only flat methods when the courier token is unset", async () => {
+    const { options } = await quoteShippingMethods(fakeAdmin(), {
+      methods: [method({ id: "live", rate_source: "easyship" }), method({ id: "flat", base_rate: 5 })],
+      lines,
+      destination,
+      subtotal: 40,
+      loadSettings: async () => settings,
+      config: null,
+    });
+    expect(options.map((o) => [o.method.id, o.source])).toEqual([["flat", "flat"]]);
+  });
+
+  it("reads boxes from the courier account by default, and a type with no box gets no live call", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    h.readTypeBoxes.mockResolvedValue({});
+    const fetchImpl = okFetch();
+    const { rates, options } = await quoteShippingMethods(fakeAdmin(), {
+      methods: [method({ rate_source: "easyship" })],
+      lines,
+      destination,
+      subtotal: 40,
+      loadSettings: async () => settings,
+      config,
+      fetchImpl,
+    });
+    expect(h.readTypeBoxes).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(rates).toMatchObject({ ok: false, reason: "too_many_parcels" });
+    expect(options).toEqual([]);
+    spy.mockRestore();
+  });
+
+  it("hides live methods when settings cannot be read", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { options } = await quoteShippingMethods(fakeAdmin(), {
       methods: [method({ rate_source: "easyship" })],
@@ -295,7 +367,7 @@ describe("quoteShippingMethods", () => {
       },
       config,
     });
-    expect(options[0]).toMatchObject({ source: "fallback", amount: 8 });
+    expect(options).toEqual([]);
     spy.mockRestore();
   });
 });
