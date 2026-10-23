@@ -9,7 +9,9 @@ import type { EngineInputs, RuleFlow } from "./types";
 export const FLOW_ROUTE_EXPECTATION =
   "Upgrading to Mpillow takes about 2 minutes of extra measuring.";
 
-const CUSTOMIZE_KEYS = [
+const AGE_KEYS = ["gender", "age_group"] as const;
+
+const HEALTH_KEYS = [
   "sleep_position",
   "bed_firmness",
   "acid_reflux",
@@ -17,21 +19,28 @@ const CUSTOMIZE_KEYS = [
   "blood_pressure",
   "sleep_pain_areas",
   "uses_bolster",
-  "gender",
-  "age_group",
 ] as const;
 
 const STEP_INPUT_KEYS: Record<MpConfigStep, readonly string[] | null> = {
   welcome: null,
   "what-to-expect": null,
   name: null,
+  age: AGE_KEYS,
+  health: HEALTH_KEYS,
   "shoulder-length": ["shoulder_length_cm"],
   "neck-to-back": ["neck_to_back_cm"],
   "head-to-back": ["head_to_back_cm"],
   "neck-length": ["neck_length_cm"],
-  customize: CUSTOMIZE_KEYS,
+  photos: null,
   preview: null,
 };
+
+/**
+ * Where the questionnaire saves and loads its recommendation. Its photos are
+ * optional, so no carried answer completes it: a route back into the wizard
+ * always ends here rather than on a preview nothing has loaded.
+ */
+const SUBMIT_STEP: MpConfigStep = "photos";
 
 // ponytail: fixed pair table; upgrade path = derive from target catalog + step map
 const EXPECTED_MISSING: Partial<
@@ -39,13 +48,15 @@ const EXPECTED_MISSING: Partial<
 > = {
   "basic-mpillow->premium-mpillow": ["neck-to-back", "head-to-back", "neck-length"],
   "mbolster->premium-mpillow": [
+    "age",
+    "health",
     "shoulder-length",
     "neck-to-back",
     "head-to-back",
     "neck-length",
-    "customize",
+    "photos",
   ],
-  "mbolster->basic-mpillow": ["shoulder-length", "customize"],
+  "mbolster->basic-mpillow": ["age", "health", "shoulder-length", "photos"],
 };
 
 function pairKey(from: RuleFlow, to: RuleFlow): `${RuleFlow}->${RuleFlow}` {
@@ -60,6 +71,7 @@ function inputPresent(inputs: EngineInputs, key: string): boolean {
 }
 
 function stepComplete(step: MpConfigStep, inputs: EngineInputs): boolean {
+  if (step === SUBMIT_STEP) return false;
   const keys = STEP_INPUT_KEYS[step];
   if (!keys) return true;
   return keys.every((k) => inputPresent(inputs, k));
