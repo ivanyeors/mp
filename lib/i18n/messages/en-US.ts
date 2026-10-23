@@ -556,10 +556,11 @@ export const enUS: Messages = {
     },
     delivery: {
       title: "Delivery to your door",
-      subtitle: "We ship across Singapore and Southeast Asia. Enter your postal code for live courier rates.",
+      subtitle: "We ship from Singapore. Choose your country and enter your postal code for live courier rates.",
       country: "Country",
       postalCode: "Postal code",
       postalPlaceholder: "e.g. 018956",
+      postalOptional: "Not needed",
       check: "Check delivery",
       checking: "Checking…",
       free: "Free",

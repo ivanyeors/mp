@@ -390,6 +390,8 @@ export type Messages = {
       country: string;
       postalCode: string;
       postalPlaceholder: string;
+      /** Placeholder where the country has no postal codes (Hong Kong, the UAE…). */
+      postalOptional: string;
       check: string;
       checking: string;
       free: string;

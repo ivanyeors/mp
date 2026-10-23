@@ -525,11 +525,19 @@ _Avoid_: "template" for the layout or design (that is fixed); calling an **Email
 One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
 
-## Shipping (ADR 0020, ADR 0022)
+## Shipping (ADR 0020, ADR 0022, ADR 0031)
 
 **Shipping method**:
 A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express), scoped to `countries`. Its **Rate source** decides how it is priced; `free_above` and free-shipping coupons apply to either source. Edited in Settings → Shipping.
 _Avoid_: "courier" (a method may be served by different couriers per address)
+
+**Delivery country**:
+A country at least one active **Shipping method** lists. Checkout and the delivery checker offer exactly these, so adding a country to a method is what offers it; there is no other list. Countries come from the country catalog (`lib/shipping/countries.ts`): name, region, the main city a quote sends when the shopper has given none, and a sample postal code, or none where the country has no postal codes (Hong Kong, the UAE), in which case the postal code is optional.
+_Avoid_: a country list hardcoded in a page; "shipping zone" (methods list countries, not zones)
+
+**Courier coverage**:
+Whether the **Courier account** gets at least one courier rate for a country, checked live in Settings → Shipping → Coverage by quoting one boxed item to the country's main city. Shown, never stored: it answers which countries are safe to add to a live method, and each checkout still quotes its own address.
+_Avoid_: treating a covered country as offered (only a method's `countries` offers it); a stored coverage table
 
 **Rate source**:
 How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is its customisation order rate: Results charge it flat because they don't quote couriers. It is never charged at checkout.

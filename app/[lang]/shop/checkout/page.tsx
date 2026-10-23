@@ -41,6 +41,8 @@ import {
   isPostalReady,
   useShippingQuote,
 } from "@/lib/shop/use-shipping-quote";
+import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
+import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -92,15 +94,6 @@ interface FormData {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const COUNTRY_OPTIONS = [
-  { code: "MY", label: "Malaysia" },
-  { code: "SG", label: "Singapore" },
-  { code: "ID", label: "Indonesia" },
-  { code: "TH", label: "Thailand" },
-  { code: "PH", label: "Philippines" },
-  { code: "BN", label: "Brunei" },
-];
 
 function getShippingContent(
   content: ShippingMethod["content"],
@@ -155,6 +148,9 @@ export default function CheckoutPage() {
     country: "SG",
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  // Every country an active shipping method delivers to (Settings → Shipping).
+  const countryOptions = useDeliveryCountries(form.country);
+  const postalRequired = usesPostalCode(form.country);
 
   // Shipping
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
@@ -223,7 +219,7 @@ export default function CheckoutPage() {
   }, [form.country]);
 
   // Live rates for this cart once there is a postal code (debounced while typing).
-  const postalReady = isPostalReady(form.postal_code);
+  const postalReady = isPostalReady(form.postal_code, form.country);
   const quote = useShippingQuote(
     items.length > 0
       ? {
@@ -432,7 +428,7 @@ export default function CheckoutPage() {
     if (!form.recipient.trim()) next.recipient = "Recipient name is required";
     if (!form.line1.trim()) next.line1 = "Address is required";
     if (!form.city.trim()) next.city = "City is required";
-    if (!form.postal_code.trim()) next.postal_code = "Postal code is required";
+    if (postalRequired && !form.postal_code.trim()) next.postal_code = "Postal code is required";
     if (!form.country) next.country = "Country is required";
     if (!chosenShipping) next.shipping_method = "Please select a shipping method";
     else if (postalReady && quote.loading) {
@@ -957,13 +953,13 @@ export default function CheckoutPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="postal_code">
-                      Postcode <span className="text-destructive">*</span>
+                      Postcode {postalRequired && <span className="text-destructive">*</span>}
                     </Label>
                     <Input
                       id="postal_code"
                       type="text"
                       autoComplete="postal-code"
-                      placeholder="50000"
+                      placeholder={findCountry(form.country)?.postal ?? (postalRequired ? "" : "Optional")}
                       value={form.postal_code}
                       onChange={(e) => setField("postal_code", e.target.value)}
                       aria-invalid={!!errors.postal_code}
@@ -991,7 +987,7 @@ export default function CheckoutPage() {
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent>
-                      {COUNTRY_OPTIONS.map((c) => (
+                      {countryOptions.map((c) => (
                         <SelectItem key={c.code} value={c.code}>
                           {c.label}
                         </SelectItem>
