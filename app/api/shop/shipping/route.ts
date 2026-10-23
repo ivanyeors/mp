@@ -8,9 +8,7 @@ import {
   COURIER_PIN_ERROR,
   CountriesField,
   courierPinned,
-  LIVE_PRICE_ERROR,
   LiveRateFields,
-  livePriced,
   SelfCollectFields,
 } from "@/lib/shipping/method-schema";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
@@ -33,7 +31,7 @@ const CreateShippingMethodSchema = z.object({
   position: z.number().int().nonnegative().optional().default(0),
   ...LiveRateFields,
   ...SelfCollectFields,
-}).refine(courierPinned, COURIER_PIN_ERROR).refine(livePriced, LIVE_PRICE_ERROR)
+}).refine(courierPinned, COURIER_PIN_ERROR)
   .refine(collectIsFlat, COLLECT_FLAT_ERROR);
 
 export async function GET(req: Request) {

@@ -121,9 +121,16 @@ import {
 import {
   HOLD_SHIPPING_METHODS_PATH,
   HoldShippingFields,
+  holdShippingAmount,
+  holdShippingCheck,
+  HoldShippingTotalRow,
   isSelfCollectMethod,
+  useHoldShippingQuote,
+  usePairedShipping,
   type HoldShippingMethod,
 } from "@/components/shop/hold-shipping-fields";
+import { usesPostalCode } from "@/lib/shipping/countries";
+import type { PackageType } from "@/lib/shipping/types";
 import {
   displayHeight,
   normalizeHeightDraft,
@@ -181,6 +188,8 @@ const FLOW_UI_LABEL: Record<RuleFlow, string> = {
 
 /** Fallback capsule length until the recommendation resolves one. */
 const DEFAULT_BOLSTER_LENGTH: BolsterLength = "medium";
+/** An Mbolster on its own ships in one box. */
+const SHIPS_AS_MBOLSTER: PackageType[] = ["bolster"];
 
 function toNumber(value: string): number | null {
   const trimmed = value.trim();
@@ -324,6 +333,18 @@ export function MbolsterConfigClient({
   const [selectedShippingId, setSelectedShippingId] = React.useState("");
   /** Self-collect asks for no address: the server stores the studio's. */
   const selfCollect = isSelfCollectMethod(shippingMethods.find((m) => m.id === selectedShippingId));
+  // Each method priced for this Mbolster to this address — live courier rates
+  // with our markup — the same box the hold quotes (ADR 0032).
+  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
+    methods: shippingMethods,
+    address: holdAddress,
+    parcelTypes: SHIPS_AS_MBOLSTER,
+    selectedId: selectedShippingId,
+    onSelect: setSelectedShippingId,
+  });
+  const shippingStatus = selectedShippingOption?.status;
+  /** Paired: the Mpillow's shipping, re-quoted with this Mbolster in the box. */
+  const pairedShipping = usePairedShipping(paired);
   const [holdSubmitting, setHoldSubmitting] = React.useState(false);
   const [routeBusy, setRouteBusy] = React.useState(false);
   // Reference-photo session id (slice 04): bolster has no response record, so mint a UUID
@@ -710,16 +731,11 @@ export function MbolsterConfigClient({
           {
             key: "postal_code",
             touched: isNonEmptyString(holdAddress.postal_code),
-            valid: isNonEmptyString(holdAddress.postal_code),
+            valid: isNonEmptyString(holdAddress.postal_code) || !usesPostalCode(holdAddress.country),
             message: "Postal code is required",
           },
         ]),
-    {
-      key: "shipping",
-      touched: isNonEmptyString(selectedShippingId),
-      valid: isNonEmptyString(selectedShippingId),
-      message: "Choose a shipping method",
-    },
+    holdShippingCheck(shippingStatus),
   ], [
     selectedCase,
     holdEmail,
@@ -731,7 +747,8 @@ export function MbolsterConfigClient({
     holdAddress.line1,
     holdAddress.city,
     holdAddress.postal_code,
-    selectedShippingId,
+    holdAddress.country,
+    shippingStatus,
     selfCollect,
   ]);
 
@@ -954,7 +971,9 @@ export function MbolsterConfigClient({
       .then((r) => r.json())
       .then(async (d: { rows?: typeof shippingMethods }) => {
         let methods = d.rows ?? [];
-        if (methods.length === 0) {
+        // Fallback: methods may predate SG country tags. Only for Singapore —
+        // elsewhere it would offer methods that do not ship there.
+        if (methods.length === 0 && country === "SG") {
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
@@ -1248,6 +1267,21 @@ export function MbolsterConfigClient({
       : false;
     const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
+    const goodsSubtotal = shopBasePrice + addonTotal;
+    const bolsterBallpark = serviceLines ? goodsSubtotal + sumServiceLines(serviceLines) : null;
+    // Shipping joins the one price once it has one (free_above on goods alone).
+    // A pair's is the Mpillow's shipment with this Mbolster in it.
+    const shippingAmount = paired
+      ? (pairedShipping?.amount ?? null)
+      : holdShippingAmount(selectedShippingOption, goodsSubtotal);
+    const oneTotal =
+      bolsterBallpark == null
+        ? null
+        : paired
+          ? paired.pillow.ballpark == null
+            ? null
+            : paired.pillow.ballpark + bolsterBallpark + (shippingAmount ?? 0)
+          : bolsterBallpark + (shippingAmount ?? 0);
 
     return (
       <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
@@ -1601,7 +1635,8 @@ export function MbolsterConfigClient({
                 />
 
               <HoldShippingFields
-                methods={shippingMethods}
+                options={shippingOptions}
+                goodsSubtotal={goodsSubtotal}
                 selectedId={selectedShippingId}
                 onSelect={setSelectedShippingId}
                 address={holdAddress}
@@ -1664,14 +1699,38 @@ export function MbolsterConfigClient({
                   </span>
                 </div>
               ) : null}
+              {paired ? (
+                <div className="mb-1 flex justify-between text-sm">
+                  <span className="text-muted-foreground">Mbolster (ships with it)</span>
+                  <span className="tabular-nums">
+                    {bolsterBallpark != null ? `${shopCurrency} ${bolsterBallpark.toFixed(2)}` : "Not available"}
+                  </span>
+                </div>
+              ) : null}
+              {paired ? (
+                pairedShipping ? (
+                  <div className="mb-1 flex justify-between gap-4 text-sm">
+                    <span className="min-w-0 text-muted-foreground">Shipping · {pairedShipping.label}</span>
+                    <span className="shrink-0 whitespace-nowrap tabular-nums">
+                      {pairedShipping.amount != null
+                        ? pairedShipping.amount === 0
+                          ? "Free"
+                          : `${shopCurrency} ${pairedShipping.amount.toFixed(2)}`
+                        : pairedShipping.pending
+                          ? "Getting rate…"
+                          : "Unavailable"}
+                    </span>
+                  </div>
+                ) : null
+              ) : (
+                <HoldShippingTotalRow option={selectedShippingOption} goodsSubtotal={goodsSubtotal} />
+              )}
               <div className="mb-3 flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {paired ? "Mbolster (ships with it)" : "Ballpark (before shipping/tax)"}
+                  {shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)"}
                 </span>
                 <span className="font-medium tabular-nums">
-                  {serviceLines
-                    ? `${shopCurrency} ${(shopBasePrice + addonTotal + sumServiceLines(serviceLines)).toFixed(2)}`
-                    : "Not available"}
+                  {oneTotal != null ? `${shopCurrency} ${oneTotal.toFixed(2)}` : "Not available"}
                 </span>
               </div>
               {paired ? (

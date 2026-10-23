@@ -86,6 +86,7 @@ import {
   readPairedHandoff,
   runsPairedStepper,
   writePairedHandoff,
+  type PairedHandoff,
 } from "@/lib/configurator/paired-mbolster";
 import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
 import { UpsellCard } from "@/components/rules-engine/upsell-card";
@@ -115,9 +116,16 @@ import {
 import {
   HOLD_SHIPPING_METHODS_PATH,
   HoldShippingFields,
+  holdShippingAmount,
+  holdShippingCheck,
+  holdShippingName,
+  HoldShippingTotalRow,
   isSelfCollectMethod,
+  useHoldShippingQuote,
   type HoldShippingMethod,
 } from "@/components/shop/hold-shipping-fields";
+import { usesPostalCode } from "@/lib/shipping/countries";
+import type { PackageType } from "@/lib/shipping/types";
 import {
   configPathFor,
   newResponseId,
@@ -248,6 +256,8 @@ function pickDefaultComponent(
 /** Stable no-op setters: the account prefill is skipped on Staff devices (see its call). */
 const KEEP_EMAIL: Dispatch<SetStateAction<string>> = () => {};
 const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
+/** An Mpillow ships in its own box; a Paired build's Mbolster joins it at step 2. */
+const SHIPS_AS_MPILLOW: PackageType[] = ["pillow"];
 
 // Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline) and
 // is the pillow Size's registry outline since slice 02 — the shell and the
@@ -672,6 +682,16 @@ export function MpConfigClient({
   const selectedShipping = shippingMethods.find((m) => m.id === selectedShippingId);
   /** Self-collect asks for no address: the server stores the studio's. */
   const selfCollect = isSelfCollectMethod(selectedShipping);
+  // Each method priced for this Mpillow to this address — live courier rates
+  // with our markup — the same boxes the hold quotes (ADR 0032).
+  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
+    methods: shippingMethods,
+    address: holdAddress,
+    parcelTypes: SHIPS_AS_MPILLOW,
+    selectedId: selectedShippingId,
+    onSelect: setSelectedShippingId,
+  });
+  const shippingStatus = selectedShippingOption?.status;
   const [holdSubmitting, setHoldSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** Basic → Premium accept: collect only missing neck steps, then re-eval Premium. */
@@ -969,16 +989,11 @@ export function MpConfigClient({
           {
             key: "postal_code",
             touched: isNonEmptyString(holdAddress.postal_code),
-            valid: isNonEmptyString(holdAddress.postal_code),
+            valid: isNonEmptyString(holdAddress.postal_code) || !usesPostalCode(holdAddress.country),
             message: "Postal code is required",
           },
         ]),
-    {
-      key: "shipping",
-      touched: isNonEmptyString(selectedShippingId),
-      valid: isNonEmptyString(selectedShippingId),
-      message: "Choose a shipping method",
-    },
+    holdShippingCheck(shippingStatus),
   ], [
     selectedCover,
     selectedCase,
@@ -991,7 +1006,8 @@ export function MpConfigClient({
     holdAddress.line1,
     holdAddress.city,
     holdAddress.postal_code,
-    selectedShippingId,
+    holdAddress.country,
+    shippingStatus,
     selfCollect,
   ]);
 
@@ -1815,8 +1831,9 @@ export function MpConfigClient({
       .then((r) => r.json())
       .then(async (d: { rows?: typeof shippingMethods }) => {
         let methods = d.rows ?? [];
-        // Fallback: methods may predate SG country tags (seeded as MY).
-        if (methods.length === 0) {
+        // Fallback: methods may predate SG country tags (seeded as MY). Only
+        // for Singapore — elsewhere it would offer methods that do not ship there.
+        if (methods.length === 0 && country === "SG") {
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
@@ -2127,7 +2144,11 @@ export function MpConfigClient({
     // Self-collect needs only who collects, which falls back to the name.
     const addressComplete =
       selfCollect ||
-      Boolean(holdAddress.line1.trim() && holdAddress.city.trim() && holdAddress.postal_code.trim());
+      Boolean(
+        holdAddress.line1.trim() &&
+          holdAddress.city.trim() &&
+          (holdAddress.postal_code.trim() || !usesPostalCode(holdAddress.country)),
+      );
     const shipping =
       selectedShippingId && addressComplete
         ? {
@@ -2175,7 +2196,7 @@ export function MpConfigClient({
      * Paired build step 1 → 2 (ADR 0026): hand this finished hold to the
      * Mbolster page, which sends it with the Mbolster, instead of sending it.
      */
-    toMbolster?: { label: string; ballpark: number | null; currency: string };
+    toMbolster?: PairedHandoff["pillow"];
   }) => {
     const size =
       shopRecommendation?.pillow_product?.size ??
@@ -2569,6 +2590,11 @@ export function MpConfigClient({
     const serviceTotal = sumServiceLines(serviceLines);
     const quoteBlocked = (pricingInputs != null && quote?.ok !== true) || servicesBlocked;
     const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
+    // Shipping joins the one price once the address has one: free_above is
+    // earned by goods alone, as the hold applies it.
+    const shippingAmount = quoteBlocked
+      ? null
+      : holdShippingAmount(selectedShippingOption, basePrice + addonTotal);
     const coverStock = preferenceStockFor(
       selectedCover,
       shopRecommendation?.components.covers ?? [],
@@ -2620,6 +2646,18 @@ export function MpConfigClient({
           label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
           ballpark: quoteBlocked ? null : basePrice + addonTotal + serviceTotal,
           currency,
+          ...(selectedShippingOption
+            ? {
+                shipping: {
+                  label: holdShippingName(selectedShippingOption.method),
+                  live:
+                    selectedShippingOption.method.rate_source === "easyship" &&
+                    !selectedShippingOption.method.collect_location,
+                  amount: shippingAmount,
+                  free: shippingAmount === 0 && (selectedShippingOption.price ?? 0) > 0,
+                },
+              }
+            : {}),
         },
       });
     // One primary action for the preview, whichever mode opened it.
@@ -3063,7 +3101,8 @@ export function MpConfigClient({
                 )}
 
                 <HoldShippingFields
-                  methods={shippingMethods}
+                  options={shippingOptions}
+                  goodsSubtotal={quoteBlocked ? null : basePrice + addonTotal}
                   selectedId={selectedShippingId}
                   onSelect={setSelectedShippingId}
                   address={holdAddress}
@@ -3177,12 +3216,20 @@ export function MpConfigClient({
                       <span className="shrink-0 whitespace-nowrap tabular-nums">{`${currency} ${l.msrp.toFixed(2)}`}</span>
                     </div>
                   ))}
+                {!quoteBlocked && (
+                  <HoldShippingTotalRow
+                    option={selectedShippingOption}
+                    goodsSubtotal={basePrice + addonTotal}
+                  />
+                )}
                 <div className="mb-3 flex justify-between text-sm">
-                  <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
+                  <span className="text-muted-foreground">
+                    {shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)"}
+                  </span>
                   <span className="font-medium tabular-nums">
                     {quoteBlocked
                       ? "Not available"
-                      : `${currency} ${(basePrice + addonTotal + serviceTotal).toFixed(2)}`}
+                      : `${currency} ${(basePrice + addonTotal + serviceTotal + (shippingAmount ?? 0)).toFixed(2)}`}
                   </span>
                 </div>
                 <ConfiguratorStepActions

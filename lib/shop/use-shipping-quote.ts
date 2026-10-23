@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ShippingQuoteOptionView, ShippingQuoteResponse } from "@/lib/shipping/types";
+import type { PackageType, ShippingQuoteOptionView, ShippingQuoteResponse } from "@/lib/shipping/types";
 import { isPostalReady } from "@/lib/shipping/countries";
 
 export interface ShippingQuoteRequest {
   /** A cart; priced server-side from the variants. */
   items?: Array<{ variant_id: string; quantity: number }>;
-  /** No cart: one unit boxed as this product type (the estimator). */
-  profile?: "pillow" | "bolster" | "accessory";
+  /** No cart: one unit boxed as this product type (the estimator), or one of each (a customisation). */
+  profile?: PackageType | PackageType[];
   country: string;
   postalCode: string;
   city?: string;

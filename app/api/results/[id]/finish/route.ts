@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
 import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
+import { quoteResultShipping, resultParcelTypes } from "@/lib/results/shipping";
 import { AddonLineSchema, PreferenceLineSchema } from "@/lib/results/finish-schemas";
 import { ShippingAddressInputSchema, resolveShippingAddress } from "@/lib/shipping/self-collect";
 import {
@@ -12,6 +13,7 @@ import {
   itemMatchesPreferenceRole,
 } from "@/lib/shop/customization-inventory";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
+import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -120,6 +122,14 @@ export async function POST(
     }
   }
 
+  // The live rate the customer was just shown, kept for accept (ADR 0032).
+  const quoted = await quoteResultShipping(admin, {
+    method: shippingRow as ShippingMethod,
+    parcelTypes: resultParcelTypes(row),
+    destination: shippingAddress.address,
+  });
+  if (!quoted.ok) return NextResponse.json({ error: quoted.error }, { status: 400 });
+
   const finished = {
     preference_lines: input.preferenceLines.map((l) => ({
       item_id: l.item_id,
@@ -129,6 +139,7 @@ export async function POST(
     addon_lines: input.addonLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity })),
     shipping_method: shippingRow.slug as string,
     shipping_address: shippingAddress.address,
+    shipping_rate: quoted.rate,
   };
 
   const build = await loadAssignedBuild(admin, { ...row, ...finished });

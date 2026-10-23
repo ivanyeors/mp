@@ -51,5 +51,6 @@ countries it can actually serve.
   entered at checkout.
 - Results are unchanged. Customisation orders still charge a method's `base_rate` and do not
   quote couriers (ADR 0020). The configurator's address still defaults to Singapore.
+  _Superseded by ADR 0032: the configurator offers every Delivery country and quotes live methods._
 - International parcels go DDU by default (Settings → Shipping → Couriers → Customs & quotes),
   so the receiver pays any duties and import taxes. The storefront does not say so yet.

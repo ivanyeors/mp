@@ -57,9 +57,12 @@ export const REORDER_CARRIED_COLUMNS = [
   "preference_lines",
   "addon_lines",
   "recommendation_record",
-  // Where it goes and in what currency.
+  // Where it goes and in what currency. A live method keeps the rate it was
+  // quoted rather than asking couriers again: without it the clone would fall
+  // back to the method's base_rate, which a live method leaves at 0.
   "shipping_method",
   "shipping_address",
+  "shipping_rate",
   "currency",
   // Who it belongs to.
   "customer_email",

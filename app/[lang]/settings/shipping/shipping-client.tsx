@@ -358,11 +358,6 @@ export default function SettingsShippingPage({
             setSaving(false);
             return;
         }
-        if (!form.collect_location_id && form.rate_source === "easyship" && !(parseFloat(form.base_rate) > 0)) {
-            setError("Set a customisation order rate above 0. Customisation orders charge it instead of a courier quote.");
-            setSaving(false);
-            return;
-        }
 
         try {
             const url = editingId
@@ -525,16 +520,11 @@ export default function SettingsShippingPage({
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <span
-                                            className={
-                                                method.rate_source === "easyship" && Number(method.base_rate) <= 0
-                                                    ? "font-medium text-destructive"
-                                                    : "font-medium text-foreground"
-                                            }
-                                        >
-                                            {method.rate_source === "easyship" && "Customisation orders "}
-                                            {formatCurrency(method.base_rate, method.currency)}
-                                        </span>
+                                        {method.rate_source !== "easyship" && (
+                                            <span className="font-medium text-foreground">
+                                                {formatCurrency(method.base_rate, method.currency)}
+                                            </span>
+                                        )}
                                         <span>
                                             {method.free_above !== null
                                                 ? `Free above ${formatCurrency(method.free_above, method.currency)}`
@@ -811,25 +801,22 @@ export default function SettingsShippingPage({
 
                         {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
+                            {/* A live method is priced by couriers at checkout and on
+                                customisations alike (ADR 0032), so it has no flat price. */}
+                            {form.rate_source !== "easyship" && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="base_rate">
-                                    {form.rate_source === "easyship" ? "Customisation order rate" : "Base rate"} ({CURRENCY_SYMBOL})
-                                </Label>
+                                <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
                                 <Input
                                     id="base_rate"
                                     type="number"
-                                    min={form.rate_source === "easyship" ? "0.01" : "0"}
+                                    min="0"
                                     step="0.01"
                                     value={form.base_rate}
                                     onChange={(e) => setField("base_rate", e.target.value)}
                                     placeholder="e.g. 8.00"
                                 />
-                                {form.rate_source === "easyship" && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Customisation orders charge this flat price; they don&apos;t quote couriers.
-                                    </p>
-                                )}
                             </div>
+                            )}
 
                             <div className="space-y-1.5">
                                 <Label htmlFor="free_above">Free shipping above ({CURRENCY_SYMBOL})</Label>

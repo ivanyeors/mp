@@ -53,6 +53,7 @@ describe("reorder column allowlist", () => {
       "addon_lines",
       "shipping_method",
       "shipping_address",
+      "shipping_rate",
       "currency",
       "customer_email",
     ]) {

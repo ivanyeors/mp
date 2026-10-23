@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Product, ProductType, ProductVariant } from "@/lib/types/ecommerce";
-import type { ShippableLine } from "@/lib/shipping/types";
+import type { PackageType, ShippableLine } from "@/lib/shipping/types";
 
 type VariantWithProduct = Pick<ProductVariant, "id" | "sku" | "title" | "price" | "currency" | "weight_grams"> & {
   products?: Pick<Product, "product_type" | "slug" | "content"> | null;
@@ -28,6 +28,23 @@ export function toShippableLine(variant: VariantWithProduct, quantity: number): 
     description: productName(variant),
     sku: variant.sku ?? null,
   };
+}
+
+/**
+ * A quote without a cart: one unit of each product type, declared at the
+ * estimate value. The delivery checker and the customisation flows quote this
+ * way, and a Result's hold builds the same lines, so it reads the rate the page
+ * showed from the quote cache (ADR 0032).
+ */
+export function estimateLines(types: PackageType[], declaredValue: number, currency: string): ShippableLine[] {
+  return types.map((type) => ({
+    product_type: type,
+    quantity: 1,
+    weight_grams: null,
+    unit_value: declaredValue,
+    currency,
+    description: type === "bolster" ? "Mbolster" : type === "accessory" ? "Accessory" : "Mpillow",
+  }));
 }
 
 /** Load posted cart items (variant + quantity) as shippable lines. Unknown variants are skipped. */

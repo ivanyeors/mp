@@ -1,13 +1,26 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, type Dispatch, type SetStateAction } from "react";
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   SavedAddressSelect,
   type HoldShippingAddress,
 } from "@/components/shop/saved-address-select";
+import { formatDeliveryWindow, isPostalReady, useShippingQuote } from "@/lib/shop/use-shipping-quote";
+import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
+import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
+import { needsState } from "@/lib/shipping/states";
+import type { PackageType } from "@/lib/shipping/types";
+import type { PairedHandoff } from "@/lib/configurator/paired-mbolster";
 import type { CustomerAddress } from "@/lib/types/ecommerce";
 
 /** A row of `/api/shop/shipping?collect=1`, the configurator's method list. */
@@ -16,7 +29,10 @@ export type HoldShippingMethod = {
   slug: string;
   base_rate: number;
   free_above: number | null;
-  content: Record<string, { name?: string; description?: string }>;
+  currency?: string;
+  /** Live: priced by courier rates for the address (ADR 0032). Absent reads as flat. */
+  rate_source?: "flat" | "easyship";
+  content: Record<string, { name?: string; description?: string; estimated_days?: string }>;
   /** Self-collect: the studio it is collected from. Absent for a delivery method. */
   collect_location?: { id: string; name: string; address: string } | null;
 };
@@ -28,13 +44,191 @@ export function isSelfCollectMethod(method: HoldShippingMethod | undefined): boo
   return Boolean(method?.collect_location);
 }
 
+function isLiveMethod(method: HoldShippingMethod): boolean {
+  return method.rate_source === "easyship" && !method.collect_location;
+}
+
+/** One method as the customer sees it: its price for this build and address. */
+export type HoldShippingOption = {
+  method: HoldShippingMethod;
+  /**
+   * One price for the shipping: the courier rate with our markup and rounding
+   * for a live method, the base rate for a flat one, before free_above (see
+   * `holdShippingAmount`). Null until a live method has a rate for the address.
+   */
+  price: number | null;
+  status: "priced" | "needs_postal" | "quoting" | "unavailable";
+  currency: string;
+  /** Courier transit plus handling days, when quoted. */
+  window: string | null;
+};
+
 /**
- * Shipping on a configurator's customisation page: the method first, then the
- * address it needs. Self-collect asks only who collects; the server stores the
- * studio's address (lib/shipping/self-collect).
+ * Each configurator method priced for this build: live methods from the courier
+ * quote for the address, boxed as `parcelTypes` — the same boxes the hold
+ * quotes, so it charges the price shown here (ADR 0032). Keeps the selection on
+ * a method that can ship: one the address turns out to have no courier for is
+ * swapped for the first that has a price.
+ */
+export function useHoldShippingQuote({
+  methods,
+  address,
+  parcelTypes,
+  selectedId,
+  onSelect,
+}: {
+  methods: HoldShippingMethod[];
+  address: HoldShippingAddress;
+  parcelTypes: PackageType[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}): { options: HoldShippingOption[]; selected: HoldShippingOption | undefined } {
+  const country = address.country || "SG";
+  const wantsLive = parcelTypes.length > 0 && methods.some(isLiveMethod);
+  const quote = useShippingQuote(
+    wantsLive
+      ? // Couriers price by postal code, so the city and state are left out:
+        // typing them would only re-ask for the same rate.
+        { profile: parcelTypes, country, postalCode: address.postal_code }
+      : null,
+  );
+  const postalReady = isPostalReady(address.postal_code, country);
+  const quoted = new Map(quote.options.map((o) => [o.method_id, o]));
+
+  const options = methods.map((method): HoldShippingOption => {
+    const base = { method, currency: method.currency ?? "SGD", window: null };
+    if (!isLiveMethod(method)) return { ...base, price: Number(method.base_rate), status: "priced" };
+    if (!postalReady) return { ...base, price: null, status: "needs_postal" };
+    if (quote.loading) return { ...base, price: null, status: "quoting" };
+    const option = quoted.get(method.id);
+    if (quote.error || !option) return { ...base, price: null, status: "unavailable" };
+    return {
+      method,
+      price: option.price,
+      status: "priced",
+      currency: option.currency,
+      window: formatDeliveryWindow(option.min_days, option.max_days),
+    };
+  });
+
+  const statusKey = options.map((o) => `${o.method.id}:${o.status}`).join(",");
+  useEffect(() => {
+    const current = options.find((o) => o.method.id === selectedId);
+    if (current && current.status !== "unavailable") return;
+    // Nothing chosen yet: the store's first method that can ship, even before
+    // its rate is in. One that turned out not to ship: the first with a price.
+    const shippable = options.filter((o) => o.status !== "unavailable");
+    const next = current ? (shippable.find((o) => o.status === "priced") ?? shippable[0]) : shippable[0];
+    if (next && next.method.id !== selectedId) onSelect(next.method.id);
+    // `statusKey` stands for `options`, which is a new array every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusKey, selectedId, onSelect]);
+
+  return { options, selected: options.find((o) => o.method.id === selectedId) };
+}
+
+/**
+ * What the customer pays for this option: its price, or nothing once the goods
+ * reach the method's free_above — the rule every repricing of a Result applies.
+ */
+export function holdShippingAmount(option: HoldShippingOption | undefined, goodsSubtotal: number): number | null {
+  if (!option || option.price == null) return null;
+  const freeAbove = option.method.free_above == null ? null : Number(option.method.free_above);
+  return freeAbove != null && goodsSubtotal >= freeAbove ? 0 : option.price;
+}
+
+/** The shipping step's own check, from the chosen option's status: a method chosen, and a price for it. */
+export function holdShippingCheck(status: HoldShippingOption["status"] | undefined): {
+  key: "shipping";
+  touched: boolean;
+  valid: boolean;
+  message: string;
+} {
+  const message =
+    status === "needs_postal"
+      ? "Enter your postal code to see the shipping rate"
+      : status === "quoting"
+        ? "Getting the shipping rate for your address…"
+        : status === "unavailable"
+          ? "This method can't ship to your address. Choose another."
+          : "Choose a shipping method";
+  return { key: "shipping", touched: status != null, valid: status === "priced", message };
+}
+
+function optionPrice(option: HoldShippingOption, goodsSubtotal: number | null): string {
+  switch (option.status) {
+    case "needs_postal":
+      return "Enter postal code";
+    case "quoting":
+      return "Getting rate…";
+    case "unavailable":
+      return "Unavailable";
+    default: {
+      const amount = goodsSubtotal == null ? option.price : holdShippingAmount(option, goodsSubtotal);
+      return amount === 0 && (option.price ?? 0) > 0 ? "Free" : `${option.currency} ${(amount ?? 0).toFixed(2)}`;
+    }
+  }
+}
+
+/**
+ * A Paired build's shipping at step 2: the Mpillow's method, with the Mbolster
+ * in the same shipment. A live method is quoted again with both boxes, as the
+ * hold will quote it; a flat one, or one the Mpillow already ships free, keeps
+ * step 1's charge. Null when step 1 sent no shipping.
+ */
+export function usePairedShipping(
+  handoff: PairedHandoff | null,
+): { label: string; amount: number | null; pending: boolean } | null {
+  const shipping = handoff?.pillow.shipping;
+  const hold = handoff?.pillowHold as
+    | { shippingMethodId?: string; shippingAddress?: { country?: string; postal_code?: string } }
+    | undefined;
+  const methodId = hold?.shippingMethodId;
+  const country = hold?.shippingAddress?.country;
+  const requote = Boolean(shipping?.live && !shipping.free && methodId && country);
+  const quote = useShippingQuote(
+    requote ? { profile: SHIPS_AS_PAIR, country: country!, postalCode: hold?.shippingAddress?.postal_code ?? "" } : null,
+  );
+  if (!shipping) return null;
+  if (!requote) return { label: shipping.label, amount: shipping.amount, pending: false };
+  const option = quote.loading || quote.error ? undefined : quote.options.find((o) => o.method_id === methodId);
+  return { label: shipping.label, amount: option?.price ?? null, pending: quote.loading };
+}
+
+const SHIPS_AS_PAIR: PackageType[] = ["pillow", "bolster"];
+
+export function holdShippingName(method: HoldShippingMethod): string {
+  return method.content?.["en-US"]?.name ?? method.slug;
+}
+
+/**
+ * The preview footer's shipping row: what shipping adds to the one price, or
+ * why it is not in it yet.
+ */
+export function HoldShippingTotalRow({
+  option,
+  goodsSubtotal,
+}: {
+  option: HoldShippingOption | undefined;
+  goodsSubtotal: number | null;
+}) {
+  if (!option) return null;
+  return (
+    <div className="mb-1 flex justify-between gap-4 text-sm">
+      <span className="min-w-0 text-muted-foreground">Shipping · {holdShippingName(option.method)}</span>
+      <span className="shrink-0 whitespace-nowrap tabular-nums">{optionPrice(option, goodsSubtotal)}</span>
+    </div>
+  );
+}
+
+/**
+ * Shipping on a configurator's customisation page: where it goes, the method,
+ * then the address it needs. Self-collect asks only who collects; the server
+ * stores the studio's address (lib/shipping/self-collect).
  */
 export function HoldShippingFields({
-  methods,
+  options,
+  goodsSubtotal,
   selectedId,
   onSelect,
   address,
@@ -43,7 +237,9 @@ export function HoldShippingFields({
   savedAddresses,
   recipientPlaceholder,
 }: {
-  methods: HoldShippingMethod[];
+  options: HoldShippingOption[];
+  /** For free_above; null while the build cannot be priced. */
+  goodsSubtotal: number | null;
   selectedId: string;
   onSelect: (id: string) => void;
   address: HoldShippingAddress;
@@ -58,29 +254,58 @@ export function HoldShippingFields({
   };
   recipientPlaceholder: string;
 }) {
-  const selected = methods.find((m) => m.id === selectedId);
-  const collect = selected?.collect_location ?? null;
+  const country = address.country || "SG";
+  const countryOptions = useDeliveryCountries(country);
+  const selected = options.find((o) => o.method.id === selectedId);
+  const collect = selected?.method.collect_location ?? null;
+  const postalRequired = usesPostalCode(country);
+  const awaitingPostal = !collect && options.some((o) => o.status === "needs_postal");
 
   return (
     <div className="space-y-3">
       <Label className="text-base font-semibold">Shipping</Label>
       <div className="space-y-2">
+        <Label htmlFor="hold-country">Ship to</Label>
+        <Select
+          value={country}
+          // A state belongs to its country; the rest of the address is kept.
+          onValueChange={(code) => setAddress((a) => ({ ...a, country: code, state: "" }))}
+        >
+          <SelectTrigger id="hold-country">
+            <SelectValue placeholder="Select country" />
+          </SelectTrigger>
+          <SelectContent>
+            {countryOptions.map((c) => (
+              <SelectItem key={c.code} value={c.code}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
         <Label>Shipping method</Label>
-        {methods.length === 0 ? (
+        {options.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No shipping methods available. Add active methods under Settings → Shipping.
+            No shipping methods available for this country.
           </p>
         ) : (
           <div className="space-y-2">
-            {methods.map((m) => {
-              const label = m.content?.["en-US"]?.name ?? m.slug;
+            {options.map((option) => {
+              const m = option.method;
+              const label = holdShippingName(m);
               const isSelected = selectedId === m.id;
+              const unavailable = option.status === "unavailable";
+              const detail = unavailable
+                ? "No courier delivers this to your address"
+                : option.window;
               return (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => onSelect(m.id)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                  disabled={unavailable}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border ${
                     isSelected
                       ? "border-primary bg-primary/5"
                       : errors.shipping
@@ -88,9 +313,14 @@ export function HoldShippingFields({
                         : "border-border"
                   }`}
                 >
-                  <span className="min-w-0 flex-1 break-words text-sm font-medium">{label}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words text-sm font-medium">{label}</span>
+                    {detail ? (
+                      <span className="block text-xs text-muted-foreground">{detail}</span>
+                    ) : null}
+                  </span>
                   <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                    SGD {Number(m.base_rate).toFixed(2)}
+                    {optionPrice(option, goodsSubtotal)}
                     {isSelected && <Check className="ml-2 inline size-4 text-primary" />}
                   </span>
                 </button>
@@ -98,6 +328,11 @@ export function HoldShippingFields({
             })}
           </div>
         )}
+        {awaitingPostal ? (
+          <p className="text-xs text-muted-foreground">
+            Delivery is priced by courier for your address. Enter your postal code below to see the rate.
+          </p>
+        ) : null}
         {errors.shipping ? <p className="text-sm text-destructive">{errors.shipping}</p> : null}
       </div>
 
@@ -147,11 +382,16 @@ export function HoldShippingFields({
               {errors.city ? <p className="text-sm text-destructive">{errors.city}</p> : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hold-postal">Postal code</Label>
+              <Label htmlFor="hold-postal">
+                Postal code
+                {postalRequired ? null : <span className="font-normal text-muted-foreground"> (optional)</span>}
+              </Label>
               <Input
                 id="hold-postal"
                 value={address.postal_code}
                 onChange={(e) => setAddress((a) => ({ ...a, postal_code: e.target.value }))}
+                placeholder={findCountry(country)?.postal ?? ""}
+                autoComplete="postal-code"
                 aria-invalid={!!errors.postal_code}
               />
               {errors.postal_code ? (
@@ -159,6 +399,19 @@ export function HoldShippingFields({
               ) : null}
             </div>
           </div>
+          {needsState(country) ? (
+            <div className="space-y-2">
+              <Label htmlFor="hold-state">
+                State / Province <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="hold-state"
+                value={address.state ?? ""}
+                onChange={(e) => setAddress((a) => ({ ...a, state: e.target.value }))}
+                autoComplete="address-level1"
+              />
+            </div>
+          ) : null}
         </>
       )}
     </div>
