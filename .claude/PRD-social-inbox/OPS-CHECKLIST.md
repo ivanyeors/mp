@@ -123,9 +123,13 @@ from customers there never reach the API — they stay in the TikTok app.
    plain account can't use the API
    ([account entitlements](https://ads.tiktok.com/resources/help/article/about-tiktok-account-entitlements)).
    The account owner must be over 18.
-2. TikTok app → Settings and privacy → Privacy → **Direct messages → Everyone**. Otherwise a new
-   customer's first message is a message request, and nothing reaches the group until someone
-   accepts it in the app.
+2. TikTok app → Profile → ☰ → Settings and privacy → Privacy → **Direct messages → Everyone**.
+   Otherwise a new customer's first message is a message request, and nothing reaches the group
+   until someone accepts it in the app. If "Everyone" isn't offered, Ads Manager can switch it (TikTok
+   help: "Update your TikTok Direct Message permission").
+3. **TikTok Shop chats are separate.** Mpillow is a TikTok Shop seller; a customer who taps *Chat*
+   on a product or order writes to TikTok Shop's seller inbox, which this API does not reach. Those
+   stay in TikTok Shop Seller Center — only ordinary DMs to @thempillow come to the group.
 
 ### 2. A TikTok API for Business developer app
 
@@ -139,13 +143,16 @@ from customers there never reach the API — they stay in the TikTok app.
 4. **TikTok account holder redirect URL**:
    `https://custom.mpillow.com/api/social-inbox/tiktok/callback/` — **with the `/` at the end**;
    TikTok refuses it without. If the app has several, click this one so it is the active one.
-5. **Business Messaging access review** (the slow part). Fill in the intake form linked from
-   [Access to Business Messaging API](https://business-api.tiktok.com/portal/docs?id=1832184145137922).
+5. **Business Messaging access review** (the slow part) — once the app from step 1 is approved, as
+   the form wants its App ID. Fill in the
+   [intake form](https://bytedance.sg.larkoffice.com/share/base/form/shrlg7vFArGhg9V20neYCEwIKrb)
+   linked from [Access to Business Messaging API](https://business-api.tiktok.com/portal/docs?id=1832184145137922).
    Within about 10 working days TikTok emails the contact person a *"TikTok/ByteDance Third-Party
-   Due Diligence Questionnaire"* (data security & privacy review). Answer it fully and quickly,
-   attaching any security documents you have, and reply promptly to follow-ups. **Leave the US out
-   of the application** — it adds a separate US review, and the Mpillow account is in Singapore.
-   There is no progress tracker; approval arrives by email.
+   Due Diligence Questionnaire"* (data security & privacy review); the assessment normally takes
+   2–4 weeks after that. Answer it fully and quickly, attaching any security documents you have,
+   and reply promptly to follow-ups. **Leave the US out of the application** — it adds a separate
+   US review, and the Mpillow account is in Singapore. There is no progress tracker; approval
+   arrives by email.
 
 ### 3. Environment
 
@@ -236,7 +243,7 @@ Apply `supabase/migrations/20261003000000_social_inbox.sql` (`pnpm db:push`). It
   webhook check above.
 - **TikTok connected, but no cards ever** — Direct messages set to Everyone (part 2, step 1.2)?
   Message requests wait in the app until accepted. A customer in the EEA, Switzerland or the UK
-  never reaches the API.
+  never reaches the API, and neither does a TikTok Shop chat (part 2, step 1.3).
 - **TikTok sign-in shows an error page** — the app has no logo (part 2, step 2.2), or the redirect
   URL doesn't match: it must be exactly `…/api/social-inbox/tiktok/callback/`, ending in `/`.
 - **"Not sent — TikTok said: … (40001)"** — no permission: the access review isn't approved yet,
