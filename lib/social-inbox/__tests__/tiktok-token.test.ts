@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, type Row } from "@/lib/reviews/__tests__/fake-supabase";
 
 /**
@@ -10,7 +10,8 @@ import { createFakeSupabase, type Row } from "@/lib/reviews/__tests__/fake-supab
 const h = vi.hoisted(() => ({ db: null as unknown, tables: {} as Record<string, Record<string, unknown>[]> }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
 
-const { tiktokAccess } = await import("@/lib/social-inbox/tiktok");
+const { sendTikTokText, tiktokAccess } = await import("@/lib/social-inbox/tiktok");
+const { sendToCustomer } = await import("@/lib/social-inbox/send");
 
 const NOW = new Date("2026-10-03T12:00:00Z");
 const inHours = (n: number) => new Date(NOW.getTime() + n * 3_600_000).toISOString();
@@ -19,6 +20,11 @@ const row = () => h.tables.social_channel_tokens[0] as Row;
 function tiktokReply(body: unknown, status = 200) {
   return vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }));
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 beforeEach(() => {
   vi.stubEnv("TIKTOK_APP_ID", "app");
@@ -81,5 +87,36 @@ describe("tiktokAccess", () => {
     h.tables.social_channel_tokens = [];
     const none = await tiktokAccess({ now: NOW });
     expect(none).toMatchObject({ ok: false, error: expect.stringContaining("isn't connected yet") });
+  });
+});
+
+describe("sending on TikTok", () => {
+  it("retries once with a refreshed token when TikTok says the token is no longer valid", async () => {
+    const replies = [
+      { code: 40105, message: "Access token is invalid" },
+      { code: 0, data: { access_token: "access-2", refresh_token: "refresh-2", expires_in: 86_400, refresh_token_expires_in: 31_536_000 } },
+      { code: 0, data: { message: { message_id: "tt-out-1" } } },
+    ];
+    const fetch = vi.fn(async () => new Response(JSON.stringify(replies.shift()), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    // The send path reads the real clock: a token that is fresh right now.
+    row().access_expires_at = new Date(Date.now() + 6 * 3_600_000).toISOString();
+
+    const sent = await sendToCustomer({ platform: "tiktok", external_id: "conv-1" }, "Size M is in stock", null);
+    expect(sent).toEqual({ ok: true, messageId: "tt-out-1" });
+    const calls = fetch.mock.calls as unknown as [URL, RequestInit][];
+    expect(calls.map(([url]) => new URL(String(url)).pathname)).toEqual([
+      "/open_api/v1.3/business/message/send/",
+      "/open_api/v1.3/tt_user/oauth2/refresh_token/",
+      "/open_api/v1.3/business/message/send/",
+    ]);
+    expect((calls[2][1].headers as Record<string, string>)["Access-Token"]).toBe("access-2");
+    expect(JSON.parse(String(calls[2][1].body))).toMatchObject({ recipient_type: "CONVERSATION", recipient: "conv-1", text: { body: "Size M is in stock" } });
+  });
+
+  it("explains TikTok's messaging limit in words", async () => {
+    const fetch = tiktokReply({ code: 40064, message: "The message is blocked due to limitation of direct message rules" });
+    const sent = await sendTikTokText("BIZ", "access-1", "conv-1", "hello", { fetch });
+    expect(sent).toMatchObject({ ok: false, code: 40064, error: expect.stringContaining("reopens when the customer writes again") });
   });
 });

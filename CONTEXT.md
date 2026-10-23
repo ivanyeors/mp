@@ -375,11 +375,11 @@ _Avoid_: calling it a **Review card** — those carry buttons and a draft; a Mes
 A reply under a **Message card** that starts with `//`. It stays in the group and is never sent to the customer.
 
 **Reply window**:
-How long after a person's last **Customer message** the platform accepts our reply through the API: 24 hours on Facebook and Instagram (7 days with Meta's Human Agent permission), 48 hours on TikTok. Past it the bot refuses and says to answer from the platform's own app.
+How long after a person's last **Customer message** the platform accepts our reply through the API: 24 hours on Facebook and Instagram (7 days with Meta's Human Agent permission). Past it the bot refuses and says to answer from the platform's own app. TikTok has no time limit; it caps the number of messages instead (up to 10 in a new chat's first 48 hours, 3 once the person has been quiet for 48 hours, until they write again) and its refusal is passed on in words.
 _Avoid_: retrying a refused reply from Telegram — the platform will refuse it too
 
 **Echo**:
-A message our own account sent, reported back by the platform. The echo of a reply sent from Telegram is matched and ignored; one sent from Meta Business Suite, the Instagram app or the TikTok app is recorded and noted under the card as `↪️ Answered in …`.
+A message our own account sent, reported back by the platform. The echo of a reply sent from Telegram is matched and ignored; one sent from Meta Business Suite, the Instagram app or TikTok is recorded and noted under the card as `↪️ Answered in …`. TikTok's automatic messages (welcome message, suggested questions, keyword replies) are not echoes a person sent and are dropped.
 
 ## Shipping (ADR 0020)
 

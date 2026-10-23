@@ -10,8 +10,12 @@ import { getPublicOrigin } from "@/lib/site-url";
 export const TIKTOK_STATE_COOKIE = "tiktok_oauth_state";
 export const TIKTOK_COOKIE_PATH = "/api/social-inbox/tiktok";
 
+/**
+ * TikTok only registers redirect URLs that end in "/". Next.js redirects the
+ * slash away (keeping ?code=…&state=…) before the callback route runs.
+ */
 export function tiktokRedirectUri(req: Request): string {
-  return `${getPublicOrigin(req)}/api/social-inbox/tiktok/callback`;
+  return `${getPublicOrigin(req)}/api/social-inbox/tiktok/callback/`;
 }
 
 export function tiktokWebhookUrl(req: Request): string {

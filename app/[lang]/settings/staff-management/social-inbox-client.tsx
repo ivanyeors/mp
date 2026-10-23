@@ -99,7 +99,7 @@ export function SocialInboxCard() {
             connected={!!tiktok?.connected}
             detail={
               tiktok?.connected
-                ? `${tiktok.accountName ?? "Business account"}${tiktok.lastError ? ` · last refresh failed: ${tiktok.lastError}` : ""}`
+                ? `${tiktok.accountName ?? "Business account"}${reconnectNote(tiktok.refreshExpiresAt)}${tiktok.lastError ? ` · last refresh failed: ${tiktok.lastError}` : ""}`
                 : tiktok?.appConfigured
                   ? "Not connected yet."
                   : "Set TIKTOK_APP_ID and TIKTOK_APP_SECRET first (OPS checklist, part 2)."
@@ -124,11 +124,22 @@ export function SocialInboxCard() {
 
       <p className="text-xs text-muted-foreground">
         Replies go out within 24 hours of the customer&apos;s last message on Facebook and Instagram
-        {meta?.humanAgent ? " (7 days with Meta's Human Agent permission, which is on)" : ""}, and within 48 hours on
-        TikTok. After that, answer from the platform&apos;s own app — the card says so if you try.
+        {meta?.humanAgent ? " (7 days with Meta's Human Agent permission, which is on)" : ""} — after that, answer
+        from the platform&apos;s own app. TikTok has no time limit but caps how many messages go to a quiet customer;
+        the bot says so if a reply is refused.
       </p>
     </Card>
   );
+}
+
+/** TikTok's connection lasts a year; say when it ends once that is a month away. */
+function reconnectNote(refreshExpiresAt: string | null): string {
+  if (!refreshExpiresAt) return "";
+  const ends = new Date(refreshExpiresAt);
+  const days = (ends.getTime() - Date.now()) / 86_400_000;
+  if (days > 30) return "";
+  if (days <= 0) return " · connection expired — reconnect";
+  return ` · reconnect by ${ends.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
 function Row({

@@ -5,11 +5,11 @@
  *
  * - Facebook Messenger and Instagram (Meta): 24 hours. With Meta's Human Agent
  *   permission (App Review), a person may reply for 7 days with the
- *   HUMAN_AGENT tag — set META_HUMAN_AGENT_ENABLED once it is approved.
- * - TikTok: 48 hours.
- *
- * Past the window the platform refuses the message, so we refuse first and
- * say why; the platform's own app still lets a person answer.
+ *   HUMAN_AGENT tag — set META_HUMAN_AGENT_ENABLED once it is approved. Past
+ *   the window Meta refuses the message, so we refuse first and say why; the
+ *   platform's own app still lets a person answer.
+ * - TikTok: no cut-off. It counts messages instead (see `sendTikTokText`) and
+ *   its refusal reaches the agent in words.
  */
 
 export const SOCIAL_PLATFORMS = ["facebook", "instagram", "tiktok"] as const;
@@ -35,10 +35,11 @@ export const PLATFORM_APPS: Record<SocialPlatform, string> = {
 
 const HOUR_MS = 3_600_000;
 
-export const REPLY_WINDOW_HOURS: Record<SocialPlatform, number> = {
+/** null: no time limit of the platform's own for us to check. */
+export const REPLY_WINDOW_HOURS: Record<SocialPlatform, number | null> = {
   facebook: 24,
   instagram: 24,
-  tiktok: 48,
+  tiktok: null,
 };
 
 /** Meta's Human Agent tag: a person may reply for 7 days instead of 24 hours. */
@@ -70,7 +71,7 @@ export function replyWindow(
   }
   const ageHours = (now.getTime() - last) / HOUR_MS;
   const window = REPLY_WINDOW_HOURS[platform];
-  if (ageHours <= window) return { ok: true, tag: null };
+  if (window === null || ageHours <= window) return { ok: true, tag: null };
 
   const meta = platform === "facebook" || platform === "instagram";
   if (meta && opts.humanAgent && ageHours <= HUMAN_AGENT_WINDOW_HOURS) return { ok: true, tag: "HUMAN_AGENT" };
@@ -84,7 +85,7 @@ export function replyWindow(
 
 /**
  * Text limits the platform enforces on one message. Instagram counts UTF-8
- * bytes, not characters. TikTok's is left to the API to report.
+ * bytes, not characters. TikTok's (6,000) is above Telegram's own 4,096.
  */
 export function checkOutgoingText(platform: SocialPlatform, text: string): { ok: true } | { ok: false; message: string } {
   if (platform === "facebook" && text.length > 2000) {

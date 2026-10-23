@@ -1,6 +1,6 @@
 # PRD: Customer messages from Facebook, Instagram and TikTok through Telegram
 
-Status: Built (needs Meta App Review + TikTok app approval + ops setup — see `OPS-CHECKLIST.md`)
+Status: Built (needs Meta App Review + TikTok Business Messaging access review + ops setup — see `OPS-CHECKLIST.md`)
 
 ## Problem Statement
 
@@ -27,18 +27,24 @@ land, and where they should be answered from.
    Replying to that note continues the conversation. A reply that starts with `//` is a **team
    note** and is never sent. Anyone else who replies is told it was **not** sent.
 4. **Reply window.** Meta accepts API replies for 24 hours after the customer's last message (7 days
-   with the Human Agent permission, `META_HUMAN_AGENT_ENABLED`); TikTok for 48 hours. Past that the
-   bot refuses before calling the platform and says which app to answer from instead.
+   with the Human Agent permission, `META_HUMAN_AGENT_ENABLED`). Past that the bot refuses before
+   calling Meta and says which app to answer from instead. TikTok has no time limit but caps
+   messages to a customer who isn't a mutual follow — up to 10 in a new chat's first 48 hours, no
+   cap within 48 hours of each customer reply, then 3 more until they write again — and refuses
+   with code 40064, which the bot turns into a sentence.
 5. **Echoes.** A reply someone sends from Meta Business Suite, the Instagram app or the TikTok app
    comes back as an echo and is noted under the customer's card (`↪️ Answered in …`), so the group
-   never answers twice. The echo of our own Telegram reply is matched and ignored.
+   never answers twice. The echo of our own Telegram reply is matched and ignored. TikTok's
+   automatic messages (welcome message, suggested questions, keyword replies) and reactions are
+   dropped — neither is a person answering.
 6. **RBAC.** Same Telegram access tab as review cards (Staff Management → Telegram access), with a
    new role **Inbox agent** (customer messages only). Review managers can answer too; shop
    moderators cannot.
 7. **TikTok connect.** TikTok tokens expire daily and rotate, so they live in the database
    (`social_channel_tokens`), not env. An admin taps **Connect TikTok** on the Telegram access tab
-   once; on production the callback also points TikTok's webhook at the site. The daily cron
-   refreshes the token so it never lapses.
+   once; on production the callback also points TikTok's webhook at the site. The access token
+   is refreshed on use and daily by the cron; the connection itself lasts a year, and the tab says
+   "reconnect by …" in its last month.
 8. **Preview.** "Send preview" on the same tab now ends with a sample Instagram card; replying to it
    tells the person whether they can answer customers, and sends nothing.
 
@@ -86,7 +92,14 @@ land, and where they should be answered from.
 - **Webhook auth.** Meta: `X-Hub-Signature-256` with `META_APP_SECRET`; TikTok: `Tiktok-Signature`
   (`t=…,s=…`, HMAC of `t.body`) with `TIKTOK_APP_SECRET`, and `t` within TikTok's 72-hour retry
   period — a replay is a no-op (unique message ids), so a tighter window could only drop real
-  retries. Both fail closed in production.
+  retries. TikTok's sample signs the body re-serialised, so both the raw and the compact form are
+  checked. Both fail closed in production.
+- **TikTok, from its docs** (business-api.tiktok.com/portal/docs?id=1832183871604753 — not
+  developers.tiktok.com, whose only DM scopes are the EU/UK Data Portability export). The redirect
+  URL must end in `/`; the authorize link adds `disable_auto_auth=1` so a reconnect always gets a
+  code; scopes include `user.account.type`; an invalid-token reply (40105) is retried once with a
+  refreshed token. Customers in the EEA, Switzerland and the UK arrive as `im_receive_msg_eu` with
+  no content and stay in the TikTok app.
 - **Graph API version** `v24.0` by default (`META_GRAPH_VERSION` to change it). The WhatsApp code
   still pins `v21.0`; Meta retires versions about two years after release, so that one is due for a
   bump too.

@@ -46,8 +46,8 @@ export async function getSocialInboxStatus(): Promise<SocialInboxStatus> {
 
 /**
  * Daily, from the results-sla cron: card anything a webhook left uncarded, and
- * refresh TikTok's token so its refresh token keeps rotating even on days
- * nobody replies to a TikTok message.
+ * refresh TikTok's token, so a broken TikTok connection shows on the Telegram
+ * access tab before an agent's reply fails on it.
  */
 export async function runSocialInboxMaintenance(): Promise<{
   sweep: Awaited<ReturnType<typeof sweepUncarded>> | { error: string };

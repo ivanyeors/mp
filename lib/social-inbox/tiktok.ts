@@ -8,11 +8,14 @@ import type { InboundAttachment, SocialEvent } from "@/lib/social-inbox/types";
  * Messaging (open beta in APAC, Latin America, MENA and North America; not
  * available for users in the EEA, Switzerland or the UK).
  *
- * Unlike Meta's Page token, TikTok's access token lasts a day and every refresh
- * issues a new refresh token, so the tokens live in `social_channel_tokens`
+ * Unlike Meta's Page token, TikTok's access token lasts a day and a refresh
+ * may return a new refresh token, so the tokens live in `social_channel_tokens`
  * rather than env. An admin connects the account once (Settings → Staff
  * Management → Telegram access → Connect TikTok); after that the token is
- * refreshed on use and by the daily cron, which keeps the refresh token alive.
+ * refreshed on use and by the daily cron. The refresh token lasts a year from
+ * connecting — then the admin connects again (the tab says when).
+ *
+ * Docs: business-api.tiktok.com/portal/docs?id=1832183871604753
  *
  * Env: TIKTOK_APP_ID, TIKTOK_APP_SECRET (OAuth client and webhook signing).
  */
@@ -28,10 +31,12 @@ const REFRESH_MARGIN_MS = 10 * 60_000;
  */
 const SIGNATURE_TOLERANCE_S = 72 * 3600;
 
+/** What the account owner approves; TikTok lists all of these as needed for Business Messaging. */
 export const TIKTOK_SCOPES = [
   "user.info.basic",
   "user.info.username",
   "user.info.profile",
+  "user.account.type",
   "message.list.read",
   "message.list.send",
   "message.list.manage",
@@ -53,7 +58,9 @@ export function tiktokAppConfig(): { appId: string; secret: string } | null {
 
 /**
  * `Tiktok-Signature: t=<unix seconds>,s=<hex>` where s is HMAC-SHA256 of
- * "<t>.<raw body>" with the app secret, and t is within the retry window.
+ * "<t>.<body>" with the app secret, and t is within the retry window. TikTok's
+ * sample signs the body re-serialised (`JSON.stringify`), which is the raw body
+ * whenever TikTok sends it compact — both forms are accepted.
  * Fails closed in production; open only in development with no secret set.
  */
 export function verifyTikTokSignature(
@@ -72,8 +79,15 @@ export function verifyTikTokSignature(
   const t = Number(parts.t);
   if (!Number.isFinite(t) || !parts.s) return false;
   if (Math.abs(now.getTime() / 1000 - t) > SIGNATURE_TOLERANCE_S) return false;
-  const expected = createHmac("sha256", secret).update(`${parts.t}.${rawBody}`).digest("hex");
-  return secretMatches(expected, parts.s);
+  const signs = (body: string) =>
+    secretMatches(createHmac("sha256", secret).update(`${parts.t}.${body}`).digest("hex"), parts.s);
+  if (signs(rawBody)) return true;
+  try {
+    const compact = JSON.stringify(JSON.parse(rawBody));
+    return compact !== rawBody && signs(compact);
+  } catch {
+    return false;
+  }
 }
 
 type TikTokContent = {
@@ -83,7 +97,12 @@ type TikTokContent = {
   type?: string;
   text?: { body?: string };
   image?: { media_id?: string };
+  video?: { media_id?: string };
+  sticker?: { url?: string };
+  emoji?: { url?: string };
   share_post?: { embed_url?: string };
+  /** Set only on a welcome message, suggested-question answer or keyword reply. */
+  auto_message_type?: string;
   from?: string;
   from_user?: { id?: string };
   to?: string;
@@ -97,7 +116,10 @@ function toAttachments(content: TikTokContent): InboundAttachment[] {
     case "image":
       // Fetching it needs our token, so Telegram can't show it from a URL.
       return [{ kind: "image", url: null }];
+    case "video":
+      return [{ kind: "video", url: null }];
     case "sticker":
+    case "emoji":
       return [{ kind: "sticker", url: null }];
     case "share_post":
       return [{ kind: "share", url: content.share_post?.embed_url ?? null }];
@@ -108,8 +130,13 @@ function toAttachments(content: TikTokContent): InboundAttachment[] {
 
 /**
  * `im_receive_msg` (a customer wrote) and `im_send_msg` (our account sent —
- * through us or from the TikTok app). `user_openid` is the business account
- * the event belongs to; events for any other account are dropped.
+ * through us, the TikTok app or TikTok Business Center). `user_openid` is the
+ * business account the event belongs to; events for any other account are
+ * dropped. So are reactions (a ❤️ on a message isn't something to answer) and
+ * TikTok's automatic messages (welcome message, suggested questions, keyword
+ * replies), which would otherwise read as "already answered" under the card.
+ * Messages from customers in the EEA, Switzerland or the UK come as
+ * `im_receive_msg_eu` with no content at all; they stay in the TikTok app.
  */
 export function parseTikTokWebhook(payload: unknown, businessId: string | null): SocialEvent[] {
   const body = payload as { event?: string; user_openid?: string; content?: string | TikTokContent } | null;
@@ -123,6 +150,7 @@ export function parseTikTokWebhook(payload: unknown, businessId: string | null):
     return [];
   }
   if (!content?.conversation_id || !content.message_id) return [];
+  if (content.type === "reaction" || content.auto_message_type) return [];
 
   // The event name says who sent it; the user ids agree when present.
   const owner = body.user_openid ?? businessId;
@@ -145,11 +173,15 @@ export function parseTikTokWebhook(payload: unknown, businessId: string | null):
 
 type TikTokEnvelope<T> = { code?: number; message?: string; data?: T };
 
+/** Business Messaging return codes the inbox reacts to. */
+export const TIKTOK_INVALID_TOKEN = 40105;
+const TIKTOK_MESSAGING_LIMIT = 40064;
+
 async function callTikTok<T>(
   path: string,
   init: { method: "GET" | "POST"; token?: string; query?: Record<string, string>; body?: unknown },
   deps: { fetch?: typeof fetch } = {},
-): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+): Promise<{ ok: true; data: T } | { ok: false; error: string; code?: number }> {
   const url = new URL(`${apiBase()}${path}`);
   for (const [k, v] of Object.entries(init.query ?? {})) url.searchParams.set(k, v);
   try {
@@ -166,7 +198,11 @@ async function callTikTok<T>(
     });
     const json = (await res.json().catch(() => null)) as TikTokEnvelope<T> | null;
     if (!res.ok || !json || json.code !== 0) {
-      return { ok: false, error: json?.message ? `${json.message} (${json.code})` : `TikTok returned ${res.status}` };
+      return {
+        ok: false,
+        error: json?.message ? `${json.message} (${json.code})` : `TikTok returned ${res.status}`,
+        ...(typeof json?.code === "number" ? { code: json.code } : {}),
+      };
     }
     return { ok: true, data: json.data as T };
   } catch (e) {
@@ -185,6 +221,8 @@ export function tiktokAuthorizeUrl(state: string, redirectUri: string): string |
   url.searchParams.set("scope", TIKTOK_SCOPES.join(","));
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("state", state);
+  // Without it, an account that approved before (a reconnect) comes back with no code.
+  url.searchParams.set("disable_auto_auth", "1");
   return url.toString();
 }
 
@@ -296,13 +334,20 @@ export async function registerTikTokWebhook(
   return res.ok ? { ok: true } : res;
 }
 
+/**
+ * One text message (up to 6,000 characters — more than Telegram lets anyone
+ * type). TikTok limits how many messages a business may send a customer who
+ * isn't a mutual follow: up to 10 in the first 48 hours of a new chat, then no
+ * limit within 48 hours of each customer reply, then 3 more until they write
+ * again. It refuses with 40064 past that, which the agent is told in words.
+ */
 export async function sendTikTokText(
   businessId: string,
   token: string,
   conversationId: string,
   text: string,
   deps: { fetch?: typeof fetch } = {},
-): Promise<{ ok: true; messageId: string | null } | { ok: false; error: string }> {
+): Promise<{ ok: true; messageId: string | null } | { ok: false; error: string; code?: number }> {
   const res = await callTikTok<{ message?: { message_id?: string } }>(
     "/business/message/send/",
     {
@@ -318,7 +363,15 @@ export async function sendTikTokText(
     },
     deps,
   );
-  return res.ok ? { ok: true, messageId: res.data?.message?.message_id ?? null } : res;
+  if (res.ok) return { ok: true, messageId: res.data?.message?.message_id || null };
+  if (res.code === TIKTOK_MESSAGING_LIMIT) {
+    return {
+      ...res,
+      error:
+        "this chat has hit TikTok's messaging limit (10 messages in a new chat's first 48 hours; 3 once the customer has been quiet for 48 hours). It reopens when the customer writes again (40064)",
+    };
+  }
+  return res;
 }
 
 // ---------------------------------------------------------------------------

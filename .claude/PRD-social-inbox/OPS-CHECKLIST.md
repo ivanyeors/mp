@@ -1,7 +1,8 @@
 # OPS checklist: Facebook, Instagram and TikTok messages in Telegram
 
 Everything below happens outside the code. The slow parts are the platform approvals — Meta App
-Review (part 1, step 8) and TikTok's app review (part 2, step 2) — so start those first. Parts 3–4
+Review (part 1, step 8) and TikTok's Business Messaging access review (part 2, step 2.5) — so start
+those first. Parts 3–4
 work as soon as the migration is applied, and the Send preview lets the team practise before any
 real message arrives.
 
@@ -108,29 +109,49 @@ customer's last message instead of 24 hours.
 
 ## Part 2 — TikTok
 
-TikTok Business Messaging is in open beta in APAC (Singapore included), Latin America, MENA and
-North America. It does not deliver messages from users in the EEA, Switzerland or the UK.
+Everything here is on **TikTok API for Business** (business-api.tiktok.com/portal), not
+developers.tiktok.com — that portal is for TikTok login and video-posting apps and has no business
+inbox. Reference: [Business Messaging API](https://business-api.tiktok.com/portal/docs?id=1832183871604753).
+
+Business Messaging is in open beta in APAC (Singapore included), Latin America, MENA and North
+America. It can't manage TikTok accounts signed up in the EEA, Switzerland or the UK, and messages
+from customers there never reach the API — they stay in the TikTok app.
 
 ### 1. The TikTok account
 
-It must be a **TikTok Business Account** with direct messages switched on (TikTok app → Settings
-and privacy → Privacy → Direct messages).
+1. It must be a Business Account with **Advanced Access** or a **Verified Business Account** — a
+   plain account can't use the API
+   ([account entitlements](https://ads.tiktok.com/resources/help/article/about-tiktok-account-entitlements)).
+   The account owner must be over 18.
+2. TikTok app → Settings and privacy → Privacy → **Direct messages → Everyone**. Otherwise a new
+   customer's first message is a message request, and nothing reaches the group until someone
+   accepts it in the app.
 
-### 2. A TikTok for Business developer app
+### 2. A TikTok API for Business developer app
 
-1. https://business-api.tiktok.com/portal → sign up as a developer (same login as TikTok for
-   Business / Ads Manager) → **My Apps** → **Create app**.
-2. Request the **TikTok Accounts / Business Messaging** permissions — scopes `user.info.basic`,
-   `user.info.username`, `user.info.profile`, `message.list.read`, `message.list.send`,
-   `message.list.manage`.
-3. Redirect URL: `https://custom.mpillow.com/api/social-inbox/tiktok/callback`
-4. Submit for review and wait for approval.
+1. business-api.tiktok.com/portal → register as a developer (same login as TikTok for Business /
+   Ads Manager) → **My Apps** → **Create app**. TikTok's docs say a brand-new app is approved with
+   the **Ad Account Management**, **CTX Events Management** and **Measurement** permissions; ask for
+   those if the form wants a reason to exist.
+2. **App logo** (JPG/PNG, at most 512×512) — without it TikTok's sign-in page shows an error.
+3. App Detail → **Authorization → Scope of permission** → **TikTok Accounts** → tick **Business
+   Messaging** (and the account-info permissions it brings).
+4. **TikTok account holder redirect URL**:
+   `https://custom.mpillow.com/api/social-inbox/tiktok/callback/` — **with the `/` at the end**;
+   TikTok refuses it without. If the app has several, click this one so it is the active one.
+5. **Business Messaging access review** (the slow part). Fill in the intake form linked from
+   [Access to Business Messaging API](https://business-api.tiktok.com/portal/docs?id=1832184145137922).
+   Within about 10 working days TikTok emails the contact person a *"TikTok/ByteDance Third-Party
+   Due Diligence Questionnaire"* (data security & privacy review). Answer it fully and quickly,
+   attaching any security documents you have, and reply promptly to follow-ups. **Leave the US out
+   of the application** — it adds a separate US review, and the Mpillow account is in Singapore.
+   There is no progress tracker; approval arrives by email.
 
 ### 3. Environment
 
 ```
-TIKTOK_APP_ID=<the app's App ID>
-TIKTOK_APP_SECRET=<the app's Secret>
+TIKTOK_APP_ID=<App Detail → Basic Information → App ID>
+TIKTOK_APP_SECRET=<App Detail → Basic Information → Secret>
 ```
 
 Add to Vercel (and `.env.local`), **redeploy**.
@@ -138,10 +159,11 @@ Add to Vercel (and `.env.local`), **redeploy**.
 ### 4. Connect the account
 
 On **production**: Settings → Staff Management → **Telegram access** → Customer messages →
-**Connect TikTok** → sign in as the Mpillow TikTok business account → approve. You land back on the
-tab with "TikTok connected as @…". On production this also registers TikTok's message webhook at
-`https://custom.mpillow.com/api/webhooks/tiktok-messages` (a preview deployment never does, so it
-can't steal production's webhook).
+**Connect TikTok** → sign in as the Mpillow TikTok business account → approve **every** permission
+shown (send messages, read messages, read account type, read and manage messages). You land back on
+the tab with "TikTok connected as @…". On production this also registers TikTok's message webhook
+at `https://custom.mpillow.com/api/webhooks/tiktok-messages` (a preview deployment never does, so
+it can't steal production's webhook).
 
 Check (or repair) the webhook any time:
 
@@ -149,11 +171,19 @@ Check (or repair) the webhook any time:
 npx tsx --env-file=.env.local scripts/social-inbox-setup.ts --tiktok-webhook https://custom.mpillow.com/api/webhooks/tiktok-messages
 ```
 
-The token refreshes itself — on use, and daily from the `results-sla` cron. If the tab ever shows
-"last refresh failed", tap **Reconnect TikTok**.
+The access token refreshes itself — on use, and daily from the `results-sla` cron. The connection
+itself lasts **a year**: in its last month the tab shows "reconnect by …"; tap **Reconnect TikTok**
+before then. If it ever shows "last refresh failed", reconnect too.
 
-Limits to know: replies within **48 hours** of the customer's last message, and TikTok reports a
-cap of about **10 messages** per window until the customer writes again.
+Limits to know:
+
+- **No time limit**, but TikTok caps messages to a customer who isn't a mutual follow: up to **10**
+  in a new chat's first 48 hours, no cap within 48 hours of each customer reply, and only **3
+  more** once they've been quiet for 48 hours — until they write again. Past that the bot says
+  "❌ Not sent — TikTok said: this chat has hit TikTok's messaging limit…".
+- Image messages work only in some markets; a photo card always says to open the TikTok app.
+- TikTok's own automatic messages (welcome message, suggested questions, keyword replies) and
+  reactions don't appear in the group.
 
 ---
 
@@ -182,8 +212,9 @@ Apply `supabase/migrations/20261003000000_social_inbox.sql` (`pnpm db:push`). It
 - **Reply to a 💬 card** (or to the 📤 / ↪️ notes under it) → it goes to that customer, on that app.
 - **Start with `//`** → a note for the team; the customer never sees it.
 - **Text only.** Photos, files and voice notes: send them from the platform's own app.
-- **24 hours** (Facebook/Instagram) or **48 hours** (TikTok) after the customer's last message,
-  the bot will refuse and tell you to answer from the app instead.
+- **24 hours** after the customer's last message (Facebook/Instagram), the bot will refuse and tell
+  you to answer from the app instead. TikTok has no time limit, but once a customer has been quiet
+  for 48 hours only 3 more messages go through until they write again.
 - **↪️ Answered in …** means someone already replied from the app — don't answer twice.
 - **❌ Not sent — …** means exactly that; the reason follows.
 
@@ -203,5 +234,12 @@ Apply `supabase/migrations/20261003000000_social_inbox.sql` (`pnpm db:push`). It
   always need the app).
 - **TikTok cards stopped** — Telegram access tab shows the TikTok state; Reconnect, then re-run the
   webhook check above.
+- **TikTok connected, but no cards ever** — Direct messages set to Everyone (part 2, step 1.2)?
+  Message requests wait in the app until accepted. A customer in the EEA, Switzerland or the UK
+  never reaches the API.
+- **TikTok sign-in shows an error page** — the app has no logo (part 2, step 2.2), or the redirect
+  URL doesn't match: it must be exactly `…/api/social-inbox/tiktok/callback/`, ending in `/`.
+- **"Not sent — TikTok said: … (40001)"** — no permission: the access review isn't approved yet,
+  or a permission was left unticked when connecting (Reconnect TikTok and tick them all).
 - **A message arrived but no card** — the message is stored (`social_messages`, status `new`, with
   the Telegram error in `error`); the next incoming message, or the daily cron, posts it.

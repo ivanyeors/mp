@@ -28,7 +28,7 @@ export const TEAM_NOTE_PREFIX = "//";
 const ECHO_SOURCES: Record<SocialPlatform, string> = {
   facebook: "Meta Business Suite",
   instagram: "Instagram or Business Suite",
-  tiktok: "the TikTok app",
+  tiktok: "TikTok",
 };
 
 /** Telegram's limits: a message, and a photo caption. */
