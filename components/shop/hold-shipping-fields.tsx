@@ -1,16 +1,10 @@
 "use client";
 
-import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import dynamic from "next/dynamic";
 import {
   SavedAddressSelect,
   type HoldShippingAddress,
@@ -18,10 +12,16 @@ import {
 import { formatDeliveryWindow, isPostalReady, useShippingQuote } from "@/lib/shop/use-shipping-quote";
 import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
 import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
-import { needsState } from "@/lib/shipping/states";
+import { needsState } from "@/lib/shipping/state-countries";
 import type { PackageType } from "@/lib/shipping/types";
 import type { PairedHandoff } from "@/lib/configurator/paired-mbolster";
 import type { CustomerAddress } from "@/lib/types/ecommerce";
+
+// Loaded with the shipping section, not with the configurator's first screen:
+// the search and the flags only matter on its last step (bundle budget).
+const CountryPicker = dynamic(() => import("@/components/shop/country-picker").then((m) => m.CountryPicker), {
+  loading: () => <div className="h-9 w-full rounded-md border border-input max-md:min-h-11" />,
+});
 
 /** A row of `/api/shop/shipping?collect=1`, the configurator's method list. */
 export type HoldShippingMethod = {
@@ -256,6 +256,9 @@ export function HoldShippingFields({
 }) {
   const country = address.country || "SG";
   const countryOptions = useDeliveryCountries(country);
+  // The hook builds a new list every render; the picker regroups only when it changes.
+  const countryKey = countryOptions.map((c) => c.code).join(",");
+  const countryCodes = useMemo(() => (countryKey ? countryKey.split(",") : []), [countryKey]);
   const selected = options.find((o) => o.method.id === selectedId);
   const collect = selected?.method.collect_location ?? null;
   const postalRequired = usesPostalCode(country);
@@ -266,22 +269,13 @@ export function HoldShippingFields({
       <Label className="text-base font-semibold">Shipping</Label>
       <div className="space-y-2">
         <Label htmlFor="hold-country">Ship to</Label>
-        <Select
+        <CountryPicker
+          id="hold-country"
           value={country}
+          codes={countryCodes}
           // A state belongs to its country; the rest of the address is kept.
-          onValueChange={(code) => setAddress((a) => ({ ...a, country: code, state: "" }))}
-        >
-          <SelectTrigger id="hold-country">
-            <SelectValue placeholder="Select country" />
-          </SelectTrigger>
-          <SelectContent>
-            {countryOptions.map((c) => (
-              <SelectItem key={c.code} value={c.code}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(code) => setAddress((a) => ({ ...a, country: code, state: "" }))}
+        />
       </div>
       <div className="space-y-2">
         <Label>Shipping method</Label>

@@ -214,10 +214,8 @@ const RULES: Record<string, StateRule> = {
   VN: { mainCity: "Ho Chi Minh" },
 };
 
-/** Whether Easyship needs a state for this country, so an address form should ask for one. */
-export function needsState(country: string): boolean {
-  return country.trim().toUpperCase() in RULES;
-}
+/** The countries this file has a rule for; the tests check it is `STATE_COUNTRIES`. */
+export const STATE_RULE_COUNTRIES = Object.keys(RULES);
 
 /**
  * The state to send to Easyship: the shopper's own (as the abbreviation where

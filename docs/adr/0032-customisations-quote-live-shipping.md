@@ -42,7 +42,9 @@ and accept, days apart, so a live price needs to be stored on the Result.
   as `priceLiveRate` makes it, with its delivery window. Once the address has a rate, the
   preview footer adds a Shipping row and folds it into the total ("Total (before tax)").
 - **Where it ships is chosen on the page.** The configurator's shipping section opens with a
-  **Delivery country** picker (ADR 0031) and lists that country's methods. The postal code is
+  **Delivery country** picker (ADR 0031) and lists that country's methods. It defaults to
+  Singapore and lists Singapore, then the rest of Southeast Asia, then every other country A–Z,
+  each with its flag. A search matches name, code or a common other name ("USA", "UK"). The postal code is
   optional where the country has none. A State / Province field is offered where Easyship
   needs one (`needsState`). The "show every method" fallback for methods with no country tag
   now applies to Singapore only.
