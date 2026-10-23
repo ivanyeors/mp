@@ -41,6 +41,7 @@ import {
 } from "@/lib/points/spend";
 import type { BolsterVariant, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
+import { isSelfCollect } from "@/lib/shipping/self-collect";
 
 type CustomizationConfigRow = {
   config_lines: unknown[];
@@ -557,7 +558,8 @@ export async function POST(req: Request) {
     .eq("is_active", true)
     .single();
 
-  if (shippingError || !shippingMethodRow) {
+  // Self-collect is offered on customisations only; the shop delivers.
+  if (shippingError || !shippingMethodRow || isSelfCollect(shippingMethodRow)) {
     return NextResponse.json({ error: "Invalid or unavailable shipping method" }, { status: 400 });
   }
 

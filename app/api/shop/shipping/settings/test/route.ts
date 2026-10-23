@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
+import { isSelfCollect } from "@/lib/shipping/self-collect";
 import { buildParcels } from "@/lib/shipping/parcels";
 import type { TypeBoxes } from "@/lib/shipping/types";
 import { readTypeBoxes } from "@/lib/easyship/store";
@@ -44,7 +45,10 @@ export async function POST(req: Request) {
     settings = parseShippingSettings(data as Record<string, unknown> | null);
   }
 
-  const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]);
+  // What shop checkout would offer, which never includes Self-collect.
+  const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]).filter(
+    (m) => !isSelfCollect(m),
+  );
   const currency = methods.find((m) => m.rate_source === "easyship")?.currency ?? methods[0]?.currency ?? "SGD";
   let boxes: TypeBoxes;
   try {

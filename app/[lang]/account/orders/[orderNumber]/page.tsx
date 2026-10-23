@@ -36,6 +36,7 @@ import { getMessages } from "@/lib/i18n/messages";
 import type { ReadjustmentQuote } from "@/lib/readjustment/eligibility";
 import { quoteBadge } from "@/lib/readjustment/format";
 import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
+import { collectLocationOf } from "@/lib/shipping/self-collect";
 
 export default async function AccountOrderDetailPage({
   params,
@@ -320,7 +321,9 @@ export default async function AccountOrderDetailPage({
       {/* Shipping address */}
       {address ? (
         <section className="rounded-lg border p-4">
-          <h2 className="text-sm font-medium">Shipping address</h2>
+          <h2 className="text-sm font-medium">
+            {collectLocationOf(address) ? `Collect from ${collectLocationOf(address)!.name}` : "Shipping address"}
+          </h2>
           <address className="mt-2 text-sm not-italic leading-relaxed text-muted-foreground">
             {address.recipient}
             <br />

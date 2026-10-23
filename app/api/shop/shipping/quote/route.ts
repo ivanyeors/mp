@@ -5,6 +5,7 @@ import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
 import { loadShippableLines } from "@/lib/shipping/lines";
 import { quoteShippingMethods } from "@/lib/shipping/quote";
+import { isSelfCollect } from "@/lib/shipping/self-collect";
 import { QuoteDestinationSchema } from "@/lib/shipping/destination-schema";
 import { DEFAULT_SHIPPING_SETTINGS, readShippingSettings } from "@/lib/shipping/settings";
 import type { ShippableLine, ShippingQuoteResponse } from "@/lib/shipping/types";
@@ -46,7 +47,10 @@ export async function POST(req: Request) {
 
   let methods: ShippingMethod[];
   try {
-    methods = (await readShippingMethods(false, destination.country)) as ShippingMethod[];
+    // The shop delivers: Self-collect is a customisation option only.
+    methods = ((await readShippingMethods(false, destination.country)) as ShippingMethod[]).filter(
+      (m) => !isSelfCollect(m),
+    );
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not load shipping methods" },

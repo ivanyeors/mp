@@ -27,6 +27,8 @@ export type PairedHandoff = {
   /** The Mpillow's configurator: where Back returns, and Stripe's cancel too. */
   configPath: string;
   pillow: { label: string; ballpark: number | null; currency: string };
+  /** Self-collect: the studio the Mpillow is collected from, so step 2 says so. */
+  collectAt?: string;
   /** Step 2's own answers, kept so Back and forth does not lose them. */
   bolster?: {
     heightUnit?: string;
@@ -79,6 +81,7 @@ export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
       ballpark: typeof h.pillow?.ballpark === "number" ? h.pillow.ballpark : null,
       currency: h.pillow?.currency ?? "SGD",
     },
+    ...(typeof h.collectAt === "string" && h.collectAt ? { collectAt: h.collectAt } : {}),
     ...(h.bolster && typeof h.bolster === "object" ? { bolster: h.bolster } : {}),
   };
 }

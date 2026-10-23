@@ -107,14 +107,19 @@ function itemsTableHtml(data: OrderEmailData): string {
   });
 }
 
+/** A Self-collect order names the studio it is collected from, not a delivery. */
+function addressHeading(address: OrderEmailAddress): string {
+  return address.collectAt ? `Collect from ${address.collectAt}` : "Shipping to";
+}
+
 function addressBlockHtml(data: OrderEmailData): string {
   if (!data.shippingAddress) return "";
-  return addressBlock("Shipping to", formatAddressLines(data.shippingAddress));
+  return addressBlock(addressHeading(data.shippingAddress), formatAddressLines(data.shippingAddress));
 }
 
 function addressBlockText(data: OrderEmailData): string {
   if (!data.shippingAddress) return "";
-  return `\nShipping to:\n${formatAddressLines(data.shippingAddress).join("\n")}`;
+  return `\n${addressHeading(data.shippingAddress)}:\n${formatAddressLines(data.shippingAddress).join("\n")}`;
 }
 
 // ------------------------------------------------------------

@@ -68,6 +68,8 @@ export interface OrderEmailAddress {
   state?: string | null;
   postalCode: string;
   country: string;
+  /** Self-collect: the studio the customer collects from; the address is that studio's. */
+  collectAt?: string | null;
 }
 
 /**

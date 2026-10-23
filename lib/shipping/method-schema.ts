@@ -45,3 +45,18 @@ export const LIVE_PRICE_ERROR = {
   message: "Set a customisation order rate above 0 for a live method",
   path: ["base_rate"],
 };
+
+/** Self-collect: the studio (own Location) the method is collected from; null = delivered. */
+export const SelfCollectFields = {
+  collect_location_id: z.string().uuid().nullable().optional(),
+};
+
+/** Nothing is couriered when a customer collects, so there is no live rate to quote. */
+export function collectIsFlat(body: { rate_source?: string; collect_location_id?: string | null }): boolean {
+  return !body.collect_location_id || body.rate_source !== "easyship";
+}
+
+export const COLLECT_FLAT_ERROR = {
+  message: "A self-collect method charges a flat rate: set the rate source to Flat",
+  path: ["rate_source"],
+};

@@ -55,7 +55,7 @@ An **Mpillow** **Result** (the *anchor*) and an **Mbolster** **Result** (the *co
 _Avoid_: "bundle" (a storefront `product_type`, and a marketing claim the glossary forbids); two **Orders** for one hold; a companion accepted, released or charged shipping on its own
 
 **Result access token**:
-The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created (or at hold, for a Result that has none) and kept across re-submits, so an **Owner**'s retry never locks them out; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`).
+The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created (or at hold, for a Result that has none) and kept across re-submits, so an **Owner**'s retry never locks them out; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`). Unique across every Result except a **Paired build**'s companion, which carries its anchor's token so one link proves ownership of both builds; a companion a re-hold unlinks gives its token up.
 _Avoid_: Stripe checkout `session_id`; the **Result** id itself (an identifier, never a credential)
 
 **Owner**:
@@ -85,6 +85,10 @@ _Avoid_: **Location** (the operator-editable place a Result originated); **Disco
 **Location**:
 A physical place a **Result** can originate and an **Appointment** can be booked at. Stored in the `partners` table with `type: own | partner` — `own` = Mpillow studios; `partner` = an external clinic (**Local Ambassador**) shown on `/our-partners` when `visible`. A separate `bookable` flag (default on) says whether it takes **Appointment** bookings — `visible` never does (own studios are saved `visible=false`); the customer picker lists bookable Locations that have an address, and staff flip `bookable` from Settings → Appointments (gear sheet). Each booked event is stamped with the Location id (private extended property) and the Admin Panel calendar shows the Location as a coloured **dot** with a legend. Operators pick a Location per **Result** (distinct from the auto **Source** badge) and manage the list under Settings → **Locations**.
 _Avoid_: conflating with **Source** (auto channel provenance), **Discovery source**, or **Entry source**; calling an `own` studio a partner; a separate `locations` table (it is the `partners` table extended — ADR 0012)
+
+**Self-collect**:
+A shipping method whose `collect_location_id` names the own **Location** (studio) the customer collects from, instead of a courier delivering. Offered on customisations only (the configurators, the Assisted finish and Staff re-configure), never in shop checkout. The customer gives only who collects; the **Result**, and the **Order** made from it, carry the studio's address with the customer as recipient and a `collect_location` marker, so every "has an address" check holds, the Order is not born delivered, and no courier label can be bought for it. Always a flat rate. A **Paired build**'s Mbolster is collected with its Mpillow.
+_Avoid_: "pickup" (Easyship's word for where a courier collects parcels from us); a null shipping address (that means an in-store handover or an unfinished Assisted customisation)
 
 **Visitor**:
 A long-lived anonymous browser identity for journey analytics, distinct from **Customer** until a deterministic link (email or **Customer**) merges them.

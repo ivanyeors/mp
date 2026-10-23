@@ -109,10 +109,15 @@ import {
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
-  SavedAddressSelect,
   useSavedShippingPrefill,
   type HoldShippingAddress,
 } from "@/components/shop/saved-address-select";
+import {
+  HOLD_SHIPPING_METHODS_PATH,
+  HoldShippingFields,
+  isSelfCollectMethod,
+  type HoldShippingMethod,
+} from "@/components/shop/hold-shipping-fields";
 import {
   configPathFor,
   newResponseId,
@@ -662,10 +667,11 @@ export function MpConfigClient({
     assisted || staffAssist ? KEEP_EMAIL : setHoldEmail,
     assisted || staffAssist ? KEEP_ADDRESS : setHoldAddress,
   );
-  const [shippingMethods, setShippingMethods] = useState<
-    { id: string; slug: string; base_rate: number; free_above: number | null; content: Record<string, { name?: string }> }[]
-  >([]);
+  const [shippingMethods, setShippingMethods] = useState<HoldShippingMethod[]>([]);
   const [selectedShippingId, setSelectedShippingId] = useState("");
+  const selectedShipping = shippingMethods.find((m) => m.id === selectedShippingId);
+  /** Self-collect asks for no address: the server stores the studio's. */
+  const selfCollect = isSelfCollectMethod(selectedShipping);
   const [holdSubmitting, setHoldSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** Basic → Premium accept: collect only missing neck steps, then re-eval Premium. */
@@ -945,24 +951,28 @@ export function MpConfigClient({
       valid: isNonEmptyString(holdAddress.recipient),
       message: "Recipient is required",
     },
-    {
-      key: "line1",
-      touched: isNonEmptyString(holdAddress.line1),
-      valid: isNonEmptyString(holdAddress.line1),
-      message: "Address is required",
-    },
-    {
-      key: "city",
-      touched: isNonEmptyString(holdAddress.city),
-      valid: isNonEmptyString(holdAddress.city),
-      message: "City is required",
-    },
-    {
-      key: "postal_code",
-      touched: isNonEmptyString(holdAddress.postal_code),
-      valid: isNonEmptyString(holdAddress.postal_code),
-      message: "Postal code is required",
-    },
+    ...(selfCollect
+      ? []
+      : [
+          {
+            key: "line1",
+            touched: isNonEmptyString(holdAddress.line1),
+            valid: isNonEmptyString(holdAddress.line1),
+            message: "Address is required",
+          },
+          {
+            key: "city",
+            touched: isNonEmptyString(holdAddress.city),
+            valid: isNonEmptyString(holdAddress.city),
+            message: "City is required",
+          },
+          {
+            key: "postal_code",
+            touched: isNonEmptyString(holdAddress.postal_code),
+            valid: isNonEmptyString(holdAddress.postal_code),
+            message: "Postal code is required",
+          },
+        ]),
     {
       key: "shipping",
       touched: isNonEmptyString(selectedShippingId),
@@ -982,6 +992,7 @@ export function MpConfigClient({
     holdAddress.city,
     holdAddress.postal_code,
     selectedShippingId,
+    selfCollect,
   ]);
 
   const activeFields = useMemo((): FieldCheck[] => {
@@ -1800,13 +1811,13 @@ export function MpConfigClient({
     }
 
     const country = holdAddress.country || "SG";
-    fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
+    fetch(`${HOLD_SHIPPING_METHODS_PATH}&country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
       .then(async (d: { rows?: typeof shippingMethods }) => {
         let methods = d.rows ?? [];
         // Fallback: methods may predate SG country tags (seeded as MY).
         if (methods.length === 0) {
-          const all = await fetch("/api/shop/shipping").then((r) => r.json());
+          const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
         setShippingMethods(methods);
@@ -2113,9 +2124,10 @@ export function MpConfigClient({
     // Shipping travels only when it is complete. An Assisted customisation has
     // none yet and the customer supplies it at their finish — half an address
     // would fail the server's schema and block an otherwise valid edit.
-    const addressComplete = Boolean(
-      holdAddress.line1.trim() && holdAddress.city.trim() && holdAddress.postal_code.trim(),
-    );
+    // Self-collect needs only who collects, which falls back to the name.
+    const addressComplete =
+      selfCollect ||
+      Boolean(holdAddress.line1.trim() && holdAddress.city.trim() && holdAddress.postal_code.trim());
     const shipping =
       selectedShippingId && addressComplete
         ? {
@@ -2277,6 +2289,7 @@ export function MpConfigClient({
           reason: parsedRecord?.flowRoute?.reason ?? "",
           configPath,
           pillow: opts.toMbolster,
+          ...(selectedShipping?.collect_location ? { collectAt: selectedShipping.collect_location.name } : {}),
           ...((same || sameCustomer) && prior.bolster ? { bolster: prior.bolster } : {}),
         });
         router.push(withLocale("/mbolster-config?paired=1", locale));
@@ -2334,6 +2347,7 @@ export function MpConfigClient({
     holdNotes,
     holdAddress,
     selectedShippingId,
+    selectedShipping,
     selectedAddons,
     responseId,
     measurementData,
@@ -3048,118 +3062,23 @@ export function MpConfigClient({
                   />
                 )}
 
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Shipping</Label>
-                  <SavedAddressSelect
+                <HoldShippingFields
+                  methods={shippingMethods}
+                  selectedId={selectedShippingId}
+                  onSelect={setSelectedShippingId}
+                  address={holdAddress}
+                  setAddress={setHoldAddress}
+                  errors={fieldErrors}
+                  savedAddresses={{
                     // Hidden where the account prefill is off: those are the
                     // Staff member's own addresses, not the customer's.
-                    signedIn={shippingSignedIn && !(assisted || staffAssist)}
-                    addresses={savedAddresses}
-                    value={selectedAddressId}
-                    onValueChange={handleSelectAddress}
-                  />
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-recipient">Recipient</Label>
-                    <Input
-                      id="hold-recipient"
-                      value={holdAddress.recipient}
-                      onChange={(e) =>
-                        setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
-                      }
-                      placeholder={measurementData.name || "Name"}
-                      aria-invalid={!!fieldErrors.recipient}
-                    />
-                    {fieldErrors.recipient ? (
-                      <p className="text-sm text-destructive">{fieldErrors.recipient}</p>
-                    ) : null}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-line1">Address</Label>
-                    <Input
-                      id="hold-line1"
-                      value={holdAddress.line1}
-                      onChange={(e) =>
-                        setHoldAddress((a) => ({ ...a, line1: e.target.value }))
-                      }
-                      placeholder="Street address"
-                      aria-invalid={!!fieldErrors.line1}
-                    />
-                    {fieldErrors.line1 ? (
-                      <p className="text-sm text-destructive">{fieldErrors.line1}</p>
-                    ) : null}
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="hold-city">City</Label>
-                      <Input
-                        id="hold-city"
-                        value={holdAddress.city}
-                        onChange={(e) =>
-                          setHoldAddress((a) => ({ ...a, city: e.target.value }))
-                        }
-                        aria-invalid={!!fieldErrors.city}
-                      />
-                      {fieldErrors.city ? (
-                        <p className="text-sm text-destructive">{fieldErrors.city}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="hold-postal">Postal code</Label>
-                      <Input
-                        id="hold-postal"
-                        value={holdAddress.postal_code}
-                        onChange={(e) =>
-                          setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
-                        }
-                        aria-invalid={!!fieldErrors.postal_code}
-                      />
-                      {fieldErrors.postal_code ? (
-                        <p className="text-sm text-destructive">{fieldErrors.postal_code}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Shipping method</Label>
-                    {shippingMethods.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No shipping methods available. Add active methods under Settings → Shipping.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {shippingMethods.map((m) => {
-                          const label =
-                            m.content?.["en-US"]?.name ?? m.slug;
-                          const selected = selectedShippingId === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setSelectedShippingId(m.id)}
-                              className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
-                                selected
-                                  ? "border-primary bg-primary/5"
-                                  : fieldErrors.shipping
-                                    ? "border-destructive"
-                                    : "border-border"
-                              }`}
-                            >
-                              <span className="min-w-0 flex-1 break-words text-sm font-medium">{label}</span>
-                              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                                SGD {Number(m.base_rate).toFixed(2)}
-                                {selected && (
-                                  <Check className="ml-2 inline size-4 text-primary" />
-                                )}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {fieldErrors.shipping ? (
-                      <p className="text-sm text-destructive">{fieldErrors.shipping}</p>
-                    ) : null}
-                  </div>
-                </div>
+                    signedIn: shippingSignedIn && !(assisted || staffAssist),
+                    addresses: savedAddresses,
+                    value: selectedAddressId,
+                    onValueChange: handleSelectAddress,
+                  }}
+                  recipientPlaceholder={measurementData.name || "Name"}
+                />
 
                 {/*
                   Not rendered for an Assisted customisation: "Send to our build

@@ -44,8 +44,16 @@ export const rows = (table: string): Row[] => (db.tables[table] ??= []);
 export const row = (table: string, id: unknown): Row | undefined =>
   rows(table).find((r) => r.id === id);
 
-const UNIQUE: Record<string, string[][]> = {
-  mp_config_responses: [["id"]],
+/** A unique index, optionally partial: `where` is its predicate. */
+type UniqueKey = string[] | { cols: string[]; where: (r: Row) => boolean };
+
+const UNIQUE: Record<string, UniqueKey[]> = {
+  mp_config_responses: [
+    ["id"],
+    // A companion carries its anchor's Result access token, so the index leaves
+    // companions out (20261023140000_access_token_companion.sql).
+    { cols: ["access_token"], where: (r) => r.paired_build_id == null || r.paired_build_id === r.id },
+  ],
   orders: [["id"]],
   order_items: [["id"]],
   // Partial unique index: WHERE stripe_object_id IS NOT NULL.
@@ -53,6 +61,9 @@ const UNIQUE: Record<string, string[][]> = {
   stripe_webhook_failures: [["event_id"]],
   site_settings: [["key"]],
 };
+
+const uniqueKeys = (table: string) =>
+  (UNIQUE[table] ?? []).map((key) => (Array.isArray(key) ? { cols: key, where: () => true } : key));
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 0));
 
@@ -240,10 +251,10 @@ class Query {
   }
 
   private uniqueClash(candidate: Row, ignore: Row | null): PgError | null {
-    for (const cols of UNIQUE[this.table] ?? []) {
-      if (cols.some((c) => candidate[c] == null)) continue;
+    for (const { cols, where } of uniqueKeys(this.table)) {
+      if (cols.some((c) => candidate[c] == null) || !where(candidate)) continue;
       const clash = rows(this.table).find(
-        (r) => r !== ignore && cols.every((c) => sqlEq(r[c], candidate[c])),
+        (r) => r !== ignore && where(r) && cols.every((c) => sqlEq(r[c], candidate[c])),
       );
       if (clash) {
         return {
@@ -303,7 +314,7 @@ class Query {
         }
         const clash = this.uniqueClash(next, null);
         if (clash) return { data: null, error: clash };
-        if (staged.some((s) => s.target == null && (UNIQUE[this.table] ?? []).some((cols) => cols.every((c) => next[c] != null && sqlEq(s.next[c], next[c]))))) {
+        if (staged.some((s) => s.target == null && uniqueKeys(this.table).some(({ cols, where }) => where(next) && where(s.next) && cols.every((c) => next[c] != null && sqlEq(s.next[c], next[c]))))) {
           return { data: null, error: { code: "23505", message: "duplicate key within statement" } };
         }
         staged.push({ target: null, next });
