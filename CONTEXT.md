@@ -536,7 +536,7 @@ A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express)
 _Avoid_: "courier" (a method may be served by different couriers per address)
 
 **Delivery country**:
-A country at least one active **Shipping method** lists. Checkout and the delivery checker offer exactly these, so adding a country to a method is what offers it; there is no other list. Countries come from the country catalog (`lib/shipping/countries.ts`): name, region, the main city a quote sends when the shopper has given none, and a sample postal code, or none where the country has no postal codes (Hong Kong, the UAE), in which case the postal code is optional.
+A country at least one active **Shipping method** lists. Checkout and the delivery checker offer exactly these, so adding a country to a method is what offers it; there is no other list. Countries come from the country catalog (`lib/shipping/countries.ts`): name, region, the main city a quote sends when the shopper has given none (and, in the countries where Easyship needs a state, the state the postal code is in: `lib/shipping/states.ts`), and a sample postal code, or none where the country has no postal codes (Hong Kong, the UAE), in which case the postal code is optional.
 _Avoid_: a country list hardcoded in a page; "shipping zone" (methods list countries, not zones)
 
 **Courier coverage**:
