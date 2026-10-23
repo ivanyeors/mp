@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const h = vi.hoisted(() => ({
+  standing: vi.fn(),
   permissions: new Set<string>(),
   adjust: vi.fn(),
   audit: vi.fn(),
@@ -29,7 +30,8 @@ vi.mock("@/lib/points/server", () => ({
   readPendingOrders: vi.fn(async () => []),
   readPointsHistory: vi.fn(async () => []),
   isPartnerCustomer: vi.fn(async () => false),
-  readPointsSettings: vi.fn(async () => ({ enabled: false })),
+  readPointsSettings: vi.fn(async () => ({ enabled: false, milestones: [{ at: 1000, bonus: 100 }, { at: 2500, bonus: 300 }] })),
+  readMilestoneStanding: h.standing,
   adjustPoints: h.adjust,
 }));
 
@@ -43,6 +45,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.permissions = new Set(["customers", "customers-edit"]);
   h.adjust.mockResolvedValue({ ok: true, available: 1000 });
+  h.standing.mockResolvedValue({ earned: 1200, granted: 1 });
 });
 
 describe("GET", () => {
@@ -52,7 +55,18 @@ describe("GET", () => {
     h.permissions = new Set(["customers"]);
     const res = await GET(new Request("http://x"), { params });
     expect(res.status).toBe(200);
-    expect((await res.json()).view.balance.available).toBe(500);
+    const { view } = await res.json();
+    expect(view.balance.available).toBe(500);
+    expect(view.milestones).toEqual({ earned: 1200, reached: 1, total: 2 });
+  });
+
+  it("still returns the balance when the milestones can't be read", async () => {
+    h.standing.mockRejectedValue(new Error('relation "points_milestone_progress" does not exist'));
+    const res = await GET(new Request("http://x"), { params });
+    expect(res.status).toBe(200);
+    const { view } = await res.json();
+    expect(view.balance.available).toBe(500);
+    expect(view.milestones).toBeNull();
   });
 
   it("answers 404 for an id that is not one", async () => {

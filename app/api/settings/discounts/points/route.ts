@@ -10,10 +10,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Discounts → Points (PRD-loyalty-points slice 02): the eight `site_settings`
- * the programme reads, and what points cost now. Seeing and changing both
- * need `discounts`. 100 points = S$1 is not here: it is fixed in code
- * (ADR 0030 (a)).
+ * Discounts → Points (PRD-loyalty-points slices 02 and 09): the nine
+ * `site_settings` the programme reads, the milestone ladder among them, and
+ * what points cost now. Seeing and changing both need `discounts`. 100 points
+ * = S$1 is not here: it is fixed in code (ADR 0030 (a)).
  */
 export async function GET() {
   try {

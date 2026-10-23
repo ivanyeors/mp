@@ -6,8 +6,8 @@
 branch. Start building once it merges.
 **ADR:** `docs/adr/0030-loyalty-points.md`, written by slice 01 (0028 went to the CRM and 0029 to
 the migration; take the next free number if either moves).
-**Owner decisions:** all taken on 2026-10-21 and listed below. Nothing is open for the owner.
-Counsel and the accountant have questions in slice 08.
+**Owner decisions:** taken on 2026-10-21, plus bonus milestones on 2026-10-23, all listed below.
+Nothing is open for the owner. Counsel and the accountant have questions in slice 08.
 
 ## Problem statement
 
@@ -71,6 +71,12 @@ off a later shop order. The Claim gives each **Migrated customer** a starting ba
     feature as it is, with no account-bound variant.
 15. **Nothing is built for Shopify** (CLAUDE.md, *Shopify is being replaced*). Points exist on
     this platform only.
+
+**Bonus milestones (2026-10-23)**
+
+16. **Customers get a one-time bonus as the points they earn from orders add up,** on a ladder
+    the owner sets. The Profile shows it as a progress bar with the milestones on it. A milestone
+    is not a tier: nothing about earning or spending changes after it (slice 09).
 
 ## What the code already does, before designing anything
 
@@ -261,6 +267,21 @@ stored.
     (ADR 0029 (d)).
   - Each entry carries its kind, its signed points, and the Order or refund it is about.
   - Staff entries also carry the Staff profile and the reason.
+**Bonus milestones (slice 09)**
+
+- **(s) The ladder.** Up to five milestones, each a number of points earned and a bonus, both in
+  multiples of 100 and climbing. It is one setting, `points_milestones` ("1000:100,2500:300").
+  Missing, blank or malformed means no milestones, never a default.
+- **(t) What counts.** Points earned from orders: every `earn` less every `clawback`. Spending
+  and expiry don't set the bar back. The Claim bonus, Staff adjustments and milestone bonuses
+  don't move it.
+- **(u) How many.** One `milestone_bonus` per milestone reached, numbered from 1, never more, so
+  changing the ladder never pays a milestone twice. A new or lowered milestone is granted on the
+  next daily run to everyone already past it.
+- **(v) Never taken back.** A refund that takes a customer below a milestone leaves its bonus.
+- **(w) When.** The daily job grants them right after it releases earned points, only while
+  points are live, never to a partner.
+
 - **(r) Who counts as a partner.** A Customer is a partner when `partner_users` holds their login
   or their email, matched as `loadPartnerRow` matches (`lib/auth/partner.ts:41-63`), and that
   partner is approved. They hold no points:
@@ -312,6 +333,7 @@ terms are advertised anyway:
 | `points_expiry_months` | `24` |
 | `points_claim_bonus` | `1000` |
 | `points_claim_bonus_months` | `3` |
+| `points_milestones` | `1000:100,2500:300,5000:800,10000:2000` (slice 09) |
 
 ## User stories
 
@@ -338,12 +360,15 @@ terms are advertised anyway:
 12. As the owner, I see what points cost at any moment: outstanding, pending, spent and expired.
 13. As the owner, I know a balance can never be spent twice, even from two tabs at once.
 14. As a partner, my purchases neither earn nor spend points. My rewards are the partner tiers.
+15. As a customer, I see on my Profile how far I am to my next bonus milestone, and what it adds.
+16. As the owner, I set the milestones and their bonuses, and see what they cost.
 
 ## Non-goals
 
 - **Spending points on custom pillows, Re-adjustment fees or admin manual Orders.** It needs its
   own PRD (audit §2).
 - **Tiers, a rewards catalogue and birthday points.** Partners keep their own milestone tiers.
+  Bonus milestones (slice 09) are not tiers: each pays a one-time bonus and changes nothing else.
 - **Points for reviews.** Google's policy forbids rewarding reviews, and so does the CRM
   (*Review request*).
 - **Referral rewards.** They need their own PRD. Partner attribution (ADR 0015) already owns

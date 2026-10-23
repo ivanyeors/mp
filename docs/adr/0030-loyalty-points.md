@@ -99,3 +99,40 @@ The rules that implement them, (a) to (r), are the PRD's *Rules* section, unchan
 - The Shopify migration's incentive is the Claim bonus (ADR 0029 (g), amended 2026-10-21).
 - Counsel and the accountant review the terms and the liability before launch (PRD slice 08);
   their answers are added here, dated.
+
+## Amendment (2026-10-23): bonus milestones
+
+The owner wants points to make customers buy more: once a customer has earned a certain number of
+points, we add more, and the Profile shows it as a progress bar with the milestones on it.
+
+**Decision 16.** Customers get a one-time bonus as the points they earn from orders add up, on a
+ladder the owner sets (PRD slice 09). Decision 1 stands: a milestone is not a tier. Nothing about
+earning or spending changes after it, nothing is taken away, and the bonus is the whole reward.
+
+- **(s) The ladder.** Up to five milestones, each a number of points earned and a bonus, both in
+  multiples of 100 and climbing, in one setting (`points_milestones`). Missing, blank or
+  malformed is no milestones, never a default, so a bonus is only granted on a ladder that was
+  saved.
+- **(t) What counts.** Every `earn` less every `clawback`. Counting the balance would set a
+  customer back for using points, so spending and expiry don't. The Claim bonus, Staff
+  adjustments and milestone bonuses don't move the bar.
+- **(u) One bonus per milestone reached,** numbered from 1, held unique per Customer, so changing
+  the ladder never pays a milestone twice.
+- **(v) A bonus is never taken back,** even if a refund later takes the customer below its
+  milestone.
+- **(w) The daily job grants them** right after it releases earned points, only while points are
+  live, under the per-Customer lock, and never to a partner. Pending points show on the bar but
+  count only once written, so a bonus never rests on an order that can still be returned.
+
+**Considered.**
+
+- *Counting the balance:* rejected, because it punishes spending.
+- *A yearly reset:* rejected, because pillows are bought every two to four years.
+- *Granting at payment:* rejected, because a return inside the window would leave the bonus
+  behind.
+- *Keying a bonus on its number of points rather than its place on the ladder:* rejected,
+  because raising a milestone would then pay customers already past the old one a second time.
+
+**Consequences.** The ledger has an eighth kind, `milestone_bonus`, and a `milestone` column.
+The cost summary counts the bonuses. The terms gained a section and are dated 23 October 2026.
+The partner **Milestone track** is unchanged and separate.

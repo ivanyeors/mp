@@ -57,6 +57,12 @@ or spends. The demo: Staff add 500 points to a Customer with a note, and that cu
     the date;
   - a link to the terms page (slice 08).
 
+  Before the launch (`points_enabled` off, or the launch date not yet reached) the card says
+  **Coming soon** instead, with the earn rate, what 100 points are worth, and the terms link,
+  and no balance (owner, 2026-10-23). Once points are switched off after a launch it shows
+  nothing, since customers may hold points by then. Partners never see either card
+  (`profilePointsView` in `lib/points/settings.ts`).
+
   The data is read server-side with the service role, keyed by the session's own Customer
   (`app/[lang]/account/page.tsx:47-60`). The welcome-back voucher card stays until slice 05.
 
@@ -71,7 +77,8 @@ or spends. The demo: Staff add 500 points to a Customer with a note, and that cu
       not match a customer whose partner application was not approved.
 - [x] Adjust is refused for a role without `customers-edit`. Its audit row names the Staff
       profile.
-- [x] The Profile shows only the session's own balance, and nothing while `points_enabled` is off.
+- [x] The Profile shows only the session's own balance, and no balance before points are live:
+      "Coming soon" before the launch, nothing once switched off after it.
 - [x] `./scripts/graphify update .` is run in the same commit.
 
 ## Build notes

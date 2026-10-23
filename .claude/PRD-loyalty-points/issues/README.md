@@ -8,8 +8,8 @@ demoable path through all layers.
   link them in the table below.
 - **Base:** the migration merged to main (#293). Building on `claude/admiring-ride-40h2o6`
   (owner, 2026-10-21: "We shouldn't send anything at all yet. Build first").
-- **Owner decisions:** all 15 were taken on 2026-10-21 (PRD). Counsel and the accountant still
-  have questions in slice 08.
+- **Owner decisions:** 15 were taken on 2026-10-21 and the 16th, bonus milestones, on
+  2026-10-23 (PRD). Counsel and the accountant still have questions in slice 08.
 
 ## Slices
 
@@ -23,6 +23,7 @@ demoable path through all layers.
 | [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **built** | 05 | 7, 12 |
 | [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **built** | 02, 03 | 8 |
 | [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **signed off** (2026-10-22); live test after deploy | 03, 04, 05 | all |
+| [09](09-bonus-milestones.md) | Bonus milestones: a progress bar to one-time bonuses (owner, 2026-10-23) | AFK | **built**; migration not yet applied | 02, 03 | 15, 16 |
 
 ## Dependency graph
 
@@ -37,6 +38,7 @@ graph TD
   s06[06 Retire the voucher]
   s07[07 Expiry + reminders]
   s08[08 Terms + sign-off · HITL]
+  s09[09 Bonus milestones]
   m09[Migration 09: pilot and waves]
 
   mig --> s01
@@ -51,6 +53,8 @@ graph TD
   s03 --> s08
   s04 --> s08
   s05 --> s08
+  s02 --> s09
+  s03 --> s09
   s08 --> m09
 ```
 

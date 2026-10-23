@@ -30,7 +30,7 @@ import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock"
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
-import { runPointsEarn } from "@/lib/points/earn";
+import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
 import { runPointsExpiry } from "@/lib/points/expiry-server";
 import {
@@ -534,6 +534,12 @@ export async function GET(req: Request) {
   // comes back as `{ error }` and tomorrow's run writes what today's missed.
   const points = await runPointsEarn(admin, now);
 
+  // Chain: milestone bonuses (PRD-loyalty-points slice 09, ADR 0030 w), right
+  // after the release, so a bonus lands on the same run as the points that
+  // reached it. One per milestone reached, never twice; nothing while points
+  // are off or before the launch. Never throws.
+  const pointsMilestones = await runPointsMilestones(admin, now);
+
   // Chain: points reserved by a Checkout that was never paid (PRD-loyalty-points
   // slice 04, ADR 0030 j). The webhook gives them back when Stripe says the
   // session expired or failed; this catches what it missed. Never throws.
@@ -567,6 +573,7 @@ export async function GET(req: Request) {
     googleReviews,
     aftercare,
     points,
+    pointsMilestones,
     pointsReservations,
     pointsExpiry,
     crmTelegram,

@@ -14,7 +14,7 @@ export interface PointsTermsSection {
 }
 
 /** When the terms last changed. Changes come with 30 days' notice (the last section). */
-export const POINTS_TERMS_UPDATED = "21 October 2026";
+export const POINTS_TERMS_UPDATED = "23 October 2026";
 
 const share = (s: number) => (s === 0.5 ? "half" : `${Math.round(s * 100)}%`);
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
@@ -23,6 +23,7 @@ const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
   const min = formatDollarsShort(pointsToDollars(s.minRedeem));
   const bonus = s.claimBonus > 0 ? `${formatPointsCount(s.claimBonus)} (${formatDollarsShort(pointsToDollars(s.claimBonus))})` : null;
+  const worth = (points: number) => `${formatPointsCount(points)} (${formatDollarsShort(pointsToDollars(points))})`;
   return [
     {
       heading: "What a point is worth",
@@ -47,6 +48,20 @@ export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
         "If you leave checkout without paying, the points you chose come back to your account.",
       ],
     },
+    ...(s.milestones.length
+      ? [
+          {
+            heading: "Bonus milestones",
+            paragraphs: [
+              `When the points you've earned from orders add up to a milestone, we add bonus points to your account, once for each milestone: ${s.milestones
+                .map((m) => `at ${m.at.toLocaleString("en-SG")} points earned, ${worth(m.bonus)}`)
+                .join("; ")}.`,
+              "Only points earned on orders count towards a milestone, from the day they become usable. Bonus points, points for signing in and points we add for any other reason don't count. Using points or letting them expire doesn't set you back. If you return something after its points became usable, the points we take back come off your total.",
+              "A bonus you've received is yours to keep, even if a return later takes your total below its milestone. Each milestone gives its bonus once.",
+            ],
+          },
+        ]
+      : []),
     ...(bonus
       ? [
           {
