@@ -2,10 +2,22 @@ import { NextResponse } from "next/server";
 import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { COURIER_PIN_ERROR, courierPinned, LIVE_PRICE_ERROR, LiveRateFields, livePriced } from "@/lib/shipping/method-schema";
+import {
+  COLLECT_FLAT_ERROR,
+  collectIsFlat,
+  COURIER_PIN_ERROR,
+  courierPinned,
+  LIVE_PRICE_ERROR,
+  LiveRateFields,
+  livePriced,
+  SelfCollectFields,
+} from "@/lib/shipping/method-schema";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
+import { isSelfCollect } from "@/lib/shipping/self-collect";
+import { getLocations } from "@/lib/locations";
+import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 
@@ -19,7 +31,9 @@ const CreateShippingMethodSchema = z.object({
   is_active: z.boolean().optional().default(true),
   position: z.number().int().nonnegative().optional().default(0),
   ...LiveRateFields,
-}).refine(courierPinned, COURIER_PIN_ERROR).refine(livePriced, LIVE_PRICE_ERROR);
+  ...SelfCollectFields,
+}).refine(courierPinned, COURIER_PIN_ERROR).refine(livePriced, LIVE_PRICE_ERROR)
+  .refine(collectIsFlat, COLLECT_FLAT_ERROR);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -31,8 +45,22 @@ export async function GET(req: Request) {
   const canIncludeInactive =
     adminCtx != null && hasPermission(adminCtx, "shipping");
 
+  // Self-collect is a customisation option: the configurator asks for it, and
+  // gets the studio each one is collected from. The shop's lists never see it.
+  const collect = searchParams.get("collect") === "1";
+
   try {
-    const rows = await readShippingMethods(canIncludeInactive, country);
+    const all = (await readShippingMethods(canIncludeInactive, country)) as ShippingMethod[];
+    if (canIncludeInactive) return NextResponse.json({ ok: true, rows: all });
+    if (!collect) return NextResponse.json({ ok: true, rows: all.filter((m) => !isSelfCollect(m)) });
+    const studios = new Map((await getLocations()).map((l) => [l.id, l]));
+    const rows = all.flatMap((m) => {
+      if (!isSelfCollect(m)) return [m];
+      const studio = studios.get(m.collect_location_id!);
+      // A studio without an address cannot be collected from; the hold refuses it too.
+      if (!studio?.address?.trim()) return [];
+      return [{ ...m, collect_location: { id: studio.id, name: studio.name, address: studio.address } }];
+    });
     return NextResponse.json({ ok: true, rows });
   } catch (err) {
     return NextResponse.json(

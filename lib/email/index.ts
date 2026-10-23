@@ -89,6 +89,8 @@ interface OrderRow {
     state?: string | null;
     postal_code?: string;
     country?: string;
+    /** Self-collect marker (lib/shipping/self-collect). */
+    collect_location?: { id?: string; name?: string } | null;
   } | null;
   tracking_number?: string | null;
   tracking_url?: string | null;
@@ -147,6 +149,7 @@ export function buildOrderEmailData(
           state: addr.state ?? null,
           postalCode: addr.postal_code ?? "",
           country: addr.country ?? "",
+          collectAt: addr.collect_location?.name ?? null,
         }
       : null,
     trackingNumber: order.tracking_number ?? null,

@@ -67,6 +67,8 @@ type ResultPublic = {
   is_pre_order?: boolean | null;
   /** Assisted: fillings built, cover/case/shipping still to choose (ADR 0017). */
   needs_finish?: boolean;
+  /** Self-collect: the studio the customer collects from. */
+  collect_at?: string | null;
   build: BuildSummary | null;
   referenceImages?: { id: string; hostedUrl: string }[];
   /** A Paired build (ADR 0026): the other half, decided on the Mpillow's page. */
@@ -596,7 +598,9 @@ function ResultStatusPage() {
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Shipping</span>
+                <span className="text-muted-foreground">
+                  {result?.collect_at ? `Self-collect · ${result.collect_at}` : "Shipping"}
+                </span>
                 <span className="tabular-nums">
                   {currency} {build.pricing.shipping.toFixed(2)}
                 </span>

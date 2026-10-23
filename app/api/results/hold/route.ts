@@ -31,11 +31,8 @@ import {
 } from "@/lib/results/composed-sellable";
 import { priceCompanionBolster } from "@/lib/results/paired-hold";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
-import {
-  AddonLineSchema,
-  AddressSchema,
-  PreferenceLineSchema,
-} from "@/lib/results/finish-schemas";
+import { AddonLineSchema, PreferenceLineSchema } from "@/lib/results/finish-schemas";
+import { ShippingAddressInputSchema, resolveShippingAddress } from "@/lib/shipping/self-collect";
 import { normalizePhone } from "@/lib/appointments/phone";
 import {
   getDiscoverySourceCatalog,
@@ -166,7 +163,8 @@ const HoldSchema = z
     preferenceLines: z.array(PreferenceLineSchema).default([]),
     addonLines: z.array(AddonLineSchema).default([]),
     shippingMethodId: z.string().uuid().optional(),
-    shippingAddress: AddressSchema.optional(),
+    /** Full for a delivery method; the recipient alone for Self-collect. */
+    shippingAddress: ShippingAddressInputSchema.optional(),
     /** Present only for Staff assist holds; guests send nothing. */
     assistFilling: AssistFillingSchema.optional(),
     /** Locale-less return path when Stripe checkout is cancelled (default: /mp-config or /mbolster-config). */
@@ -542,6 +540,16 @@ export async function POST(req: Request) {
   if (input.shippingMethodId && !shippingRow) {
     return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
   }
+  // A paired Mbolster copies this address: it rides in the same shipment, or is
+  // collected with the Mpillow.
+  const shippingAddress =
+    shippingRow && input.shippingAddress
+      ? await resolveShippingAddress(admin, shippingRow, input.shippingAddress)
+      : null;
+  if (shippingAddress && !shippingAddress.ok) {
+    return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
+  }
+  const shippingCountry = shippingAddress?.ok ? shippingAddress.address.country : "SG";
 
   const itemById = new Map((items ?? []).map((i) => [i.id as number, i]));
   for (const line of input.preferenceLines) {
@@ -647,7 +655,7 @@ export async function POST(req: Request) {
   // Free shipping is earned by goods alone; tax is due on goods and services.
   const shippingMethod = shippingRow as ShippingMethod | null;
   const shippingAmount = shippingMethod ? calculateShippingRate(shippingMethod, goods.subtotal) : 0;
-  const taxRule = await resolveTaxRuleForRegion(input.shippingAddress?.country ?? "SG");
+  const taxRule = await resolveTaxRuleForRegion(shippingCountry);
   const tax = computeTax(
     { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
     taxRule,
@@ -670,7 +678,7 @@ export async function POST(req: Request) {
         preferenceLines: paired.preferenceLines,
         addonLines: paired.addonLines,
         measuredByType: measuredBy.type,
-        country: input.shippingAddress?.country ?? "SG",
+        country: shippingCountry,
       })
     : null;
   if (companion && !companion.ok) {
@@ -843,7 +851,7 @@ export async function POST(req: Request) {
     // Null on an Assisted submit from the questionnaire — needsCustomerFinish()
     // reads exactly that until the customer picks their finish.
     shipping_method: shippingMethod?.slug ?? null,
-    shipping_address: input.shippingAddress ?? null,
+    shipping_address: shippingAddress?.ok ? shippingAddress.address : null,
     // No card was taken for an Assisted customisation, so there is no authorized
     // amount. The price is still computed above — an unpriced Composed sellable
     // must refuse here exactly as on the hold path, or Staff inherit a
@@ -976,6 +984,9 @@ export async function POST(req: Request) {
   // took money (the anchor gate above refuses a paid one) goes; one that ended
   // with the pair stays as a record but is unlinked, so this anchor never has
   // two companions for Accept, the endings or the status page to choose from.
+  // Unlinked, it no longer shares the anchor's access token either: the token is
+  // unique among Results that are not companions, and an Owner retry keeps it on
+  // the anchor.
   if (assisted?.paired_build_id === resultId) {
     const keep = paired?.responseId ?? resultId;
     const { error: dropErr } = await admin
@@ -989,7 +1000,7 @@ export async function POST(req: Request) {
     if (dropErr) return NextResponse.json({ error: dropErr.message }, { status: 500 });
     const { error: unlinkErr } = await admin
       .from("mp_config_responses")
-      .update({ paired_build_id: null })
+      .update({ paired_build_id: null, access_token: null })
       .eq("paired_build_id", resultId)
       .neq("id", resultId)
       .neq("id", keep)

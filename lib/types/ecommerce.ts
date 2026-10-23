@@ -462,6 +462,8 @@ export interface ShippingMethod {
   markup_fixed?: number;
   /** Round the marked-up live rate up to this increment; 0 = no rounding. */
   rate_rounding?: number;
+  /** Self-collect: the studio (`partners` Location) it is collected from. Null = delivered. */
+  collect_location_id?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -70,6 +70,7 @@ import { CELLS } from "@/lib/spatial-fillings/cells";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 import { orderEarnLine, pointsUsedRow, type OrderEarn } from "@/lib/points/order-lines";
+import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1399,6 +1400,12 @@ export default function OrderDetailPage({
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
+                            {collectLocationOf(order.shipping_address) && (
+                                <p className="font-medium">
+                                    Self-collect at {collectLocationOf(order.shipping_address)!.name}: no courier.
+                                    Hand it over at the studio.
+                                </p>
+                            )}
                             <div className="text-muted-foreground leading-relaxed">
                                 <p>{order.shipping_address.recipient}</p>
                                 <p>{order.shipping_address.line1}</p>

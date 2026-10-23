@@ -15,6 +15,7 @@ import {
 import { formatCurrency } from "@/lib/i18n/currencies";
 import type { Order } from "@/lib/types/ecommerce";
 import type { CourierRate } from "@/lib/shipping/types";
+import { isSelfCollectAddress } from "@/lib/shipping/self-collect";
 
 type ShipmentInfo = {
     courier_service_id: string | null;
@@ -187,7 +188,10 @@ export function EasyshipFulfilment({
                         <ExternalLink className="ml-auto h-3.5 w-3.5" />
                     </a>
                 </Button>
-            ) : connected && SHIPPABLE.has(order.status) && order.shipping_address ? (
+            ) : connected &&
+              SHIPPABLE.has(order.status) &&
+              order.shipping_address &&
+              !isSelfCollectAddress(order.shipping_address) ? (
                 <Button
                     size="sm"
                     className="w-full"

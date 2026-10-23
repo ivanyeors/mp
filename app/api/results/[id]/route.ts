@@ -8,6 +8,7 @@ import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/l
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
+import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
@@ -343,6 +344,8 @@ export async function GET(
   }
   // Read before the address is stripped: the page needs the answer, not the address.
   const needs_finish = needsCustomerFinish(row);
+  /** Self-collect: the studio's name, never its address line (the customer's own). */
+  const collect_at = collectLocationOf(row.shipping_address)?.name ?? null;
   const publicRow = { ...row };
   delete (publicRow as { access_token?: string }).access_token;
   delete (publicRow as { customer_id?: string }).customer_id;
@@ -350,5 +353,7 @@ export async function GET(
   delete (publicRow as { source?: string | null }).source;
   delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
-  return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages, paired } });
+  return NextResponse.json({
+    result: { ...publicRow, needs_finish, collect_at, build, referenceImages, paired },
+  });
 }

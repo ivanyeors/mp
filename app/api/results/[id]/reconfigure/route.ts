@@ -5,11 +5,8 @@ import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { decideFillingAssign } from "@/lib/results/filling-assign";
-import {
-  AddonLineSchema,
-  AddressSchema,
-  PreferenceLineSchema,
-} from "@/lib/results/finish-schemas";
+import { AddonLineSchema, PreferenceLineSchema } from "@/lib/results/finish-schemas";
+import { ShippingAddressInputSchema, resolveShippingAddress } from "@/lib/shipping/self-collect";
 import { staffEditableResult } from "@/lib/results/staff-edit";
 import {
   isCaseInventoryCategory,
@@ -40,7 +37,7 @@ const ReconfigureSchema = z.object({
   addonLines: z.array(AddonLineSchema).default([]),
   /** Both or neither — a method without an address cannot be rated or taxed. */
   shippingMethodId: z.string().uuid().optional(),
-  shippingAddress: AddressSchema.optional(),
+  shippingAddress: ShippingAddressInputSchema.optional(),
   /** Spatial Result snapshot. Empty means "leave the stored mix alone". */
   placements: z
     .array(
@@ -143,7 +140,7 @@ export async function POST(
     input.shippingMethodId
       ? admin
           .from("shipping_methods")
-          .select("slug")
+          .select("*")
           .eq("id", input.shippingMethodId)
           .eq("is_active", true)
           .maybeSingle()
@@ -151,6 +148,12 @@ export async function POST(
   ]);
   if (input.shippingMethodId && !shippingRow) {
     return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
+  }
+  const shippingAddress = shippingRow
+    ? await resolveShippingAddress(admin, shippingRow, input.shippingAddress!)
+    : null;
+  if (shippingAddress && !shippingAddress.ok) {
+    return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
   }
 
   // Same category rules as the hold submit and the customer's finish.
@@ -212,12 +215,13 @@ export async function POST(
   // Staff may leave shipping alone (an Assisted customisation has none yet, and
   // the customer's own finish is where it lands); only a method actually sent
   // rewrites the stored pair.
-  const shippingPatch = shippingRow
-    ? {
-        shipping_method: shippingRow.slug as string,
-        shipping_address: input.shippingAddress! as Record<string, unknown>,
-      }
-    : null;
+  const shippingPatch =
+    shippingRow && shippingAddress?.ok
+      ? {
+          shipping_method: shippingRow.slug as string,
+          shipping_address: shippingAddress.address as Record<string, unknown>,
+        }
+      : null;
 
   const rewritten = {
     assigned_size: input.assignedSize,

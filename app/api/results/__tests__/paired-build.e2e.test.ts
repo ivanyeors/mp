@@ -1365,3 +1365,82 @@ describe("Paired build — adversarial money paths", () => {
     expect(f.stripe.calls.cancel).toHaveLength(1);
   });
 });
+
+describe("Paired build — Self-collect", () => {
+  const SELF = "5c5c5c5c-5c5c-4c5c-8c5c-5c5c5c5c5c5c";
+  const STUDIO = "57575757-5757-4757-8757-575757575757";
+
+  beforeEach(() => {
+    seed({
+      shipping_methods: [
+        { id: SHIP, slug: "standard", is_active: true, base_rate: 10, free_above: null, content: {} },
+        {
+          id: SELF,
+          slug: "self-collect",
+          is_active: true,
+          base_rate: 0,
+          free_above: null,
+          content: {},
+          collect_location_id: STUDIO,
+        },
+      ],
+      partners: [
+        { id: STUDIO, name: "Mpillow Singapore", type: "own", address: "512 Chai Chee Lane #02-10", postal_code: "469028" },
+      ],
+    });
+  });
+
+  it("asks only who collects; both builds carry the studio, and the Order waits to be handed over", async () => {
+    // The configurator hides the address fields, so they arrive empty.
+    const res = await holdPair({
+      shippingMethodId: SELF,
+      shippingAddress: { recipient: "Ada", line1: "", city: "", postal_code: "", country: "SG" },
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const studioAddress = {
+      recipient: "Ada",
+      line1: "512 Chai Chee Lane #02-10",
+      city: "Singapore",
+      postal_code: "469028",
+      country: "SG",
+      collect_location: { id: STUDIO, name: "Mpillow Singapore" },
+    };
+    expect(R(ANCHOR)).toMatchObject({ shipping_method: "self-collect", shipping_address: studioAddress });
+    // The Mbolster is collected with its Mpillow, and still shares its token.
+    expect(R(COMP)).toMatchObject({
+      shipping_method: "self-collect",
+      shipping_address: studioAddress,
+      access_token: TOKEN,
+    });
+
+    const session = f.completeCheckout(lastSessionId());
+    expect((await webhook(f.sessionEvent(session))).status).toBe(200);
+    expect((await assignPillow()).status).toBe(200);
+    expect((await assignBolster()).status).toBe(200);
+
+    const st = await status(ANCHOR);
+    expect(st.body.result.collect_at).toBe("Mpillow Singapore");
+    expect(st.body.result.build.pricing).toMatchObject({ shipping: 0 });
+    expect(st.body.result.shipping_address).toBeUndefined();
+
+    const acc = await accept();
+    expect(acc.status, JSON.stringify(acc.body)).toBe(200);
+    // Not born "delivered": it is still to be built and collected.
+    expect(orders()).toHaveLength(1);
+    expect(orders()[0]).toMatchObject({
+      status: "confirmed",
+      delivered_at: null,
+      shipping_amount: 0,
+      shipping_address: studioAddress,
+    });
+  });
+
+  it("still requires a full address for a delivery method", async () => {
+    const res = await holdPair({
+      shippingAddress: { recipient: "Ada", line1: "", city: "", postal_code: "", country: "SG" },
+    });
+    expect(res.status).toBe(400);
+    expect(R(ANCHOR).status).toBeNull();
+    expect(R(COMP)).toBeUndefined();
+  });
+});
