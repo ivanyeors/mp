@@ -123,10 +123,12 @@ from customers there never reach the API — they stay in the TikTok app.
    plain account can't use the API
    ([account entitlements](https://ads.tiktok.com/resources/help/article/about-tiktok-account-entitlements)).
    The account owner must be over 18.
-2. TikTok app → Profile → ☰ → Settings and privacy → Privacy → **Direct messages → Everyone**.
-   Otherwise a new customer's first message is a message request, and nothing reaches the group
-   until someone accepts it in the app. If "Everyone" isn't offered, Ads Manager can switch it (TikTok
-   help: "Update your TikTok Direct Message permission").
+2. TikTok app → Profile → ☰ → Settings and privacy → Privacy → Direct messages → **Permission
+   settings** → set both **Potential connections** and **Others on TikTok** to **Inbox** (older
+   app versions: "Allow direct messages from → Everyone"). Otherwise a new customer's first
+   message is a message request, and nothing reaches the group until someone accepts it in the app.
+   Leave **Safe mode** on; it can move a message from a sender TikTok thinks is unsafe to *filtered
+   requests*, so check there if a customer says they wrote and no card came.
 3. **TikTok Shop chats are separate.** Mpillow is a TikTok Shop seller; a customer who taps *Chat*
    on a product or order writes to TikTok Shop's seller inbox, which this API does not reach. Those
    stay in TikTok Shop Seller Center — only ordinary DMs to @thempillow come to the group.
@@ -241,7 +243,7 @@ Apply `supabase/migrations/20261003000000_social_inbox.sql` (`pnpm db:push`). It
   always need the app).
 - **TikTok cards stopped** — Telegram access tab shows the TikTok state; Reconnect, then re-run the
   webhook check above.
-- **TikTok connected, but no cards ever** — Direct messages set to Everyone (part 2, step 1.2)?
+- **TikTok connected, but no cards ever** — both message permissions set to Inbox (part 2, step 1.2)?
   Message requests wait in the app until accepted. A customer in the EEA, Switzerland or the UK
   never reaches the API, and neither does a TikTok Shop chat (part 2, step 1.3).
 - **TikTok sign-in shows an error page** — the app has no logo (part 2, step 2.2), or the redirect
