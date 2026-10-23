@@ -6,8 +6,9 @@ import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { AccountSecurity } from "@/components/auth/account-security";
-import { PointsCard } from "@/components/account/points-card";
+import { PointsCard, PointsComingSoonCard } from "@/components/account/points-card";
 import { isPartnerCustomer, readPendingOrders, readPointsBalance, readPointsSettings } from "@/lib/points/server";
+import { profilePointsView } from "@/lib/points/settings";
 import { AftercarePreferences } from "./aftercare-preferences";
 import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
 import { MarketingEmailPreference } from "./marketing-email-preference";
@@ -27,16 +28,20 @@ function initialsFrom(name: string, email: string): string {
 }
 
 /**
- * The session's own points (PRD-loyalty-points slice 02), only while points
- * are on and the Customer is not a partner (rule r). Read with the service role, keyed by the Customer this session just
- * linked, never by anything the request names. A failed read hides the card.
+ * The session's own points (PRD-loyalty-points slice 02) once points are live,
+ * or "coming soon" before the launch; nothing for a partner (rule r) or once
+ * points are switched off after it. Read with the service role, keyed by the
+ * Customer this session just linked, never by anything the request names. A
+ * failed read hides the card.
  */
 async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId: string) {
   try {
     const settings = await readPointsSettings(admin);
-    if (!settings.enabled || (await isPartnerCustomer(admin, customerId))) return null;
+    const view = profilePointsView(settings);
+    if (view === "off" || (await isPartnerCustomer(admin, customerId))) return null;
+    if (view === "soon") return { view, earnPerDollar: settings.earnPerDollar } as const;
     const [balance, pending] = await Promise.all([readPointsBalance(admin, customerId), readPendingOrders(admin, customerId)]);
-    return { balance, pending };
+    return { view, balance, pending } as const;
   } catch {
     return null;
   }
@@ -98,13 +103,15 @@ export default async function AccountProfilePage({
         </div>
       </div>
 
-      {points ? (
+      {points?.view === "live" ? (
         <PointsCard
           balance={points.balance}
           pending={points.pending}
           termsHref={withLocale("/points", locale)}
           shopHref={withLocale("/shop", locale)}
         />
+      ) : points?.view === "soon" ? (
+        <PointsComingSoonCard earnPerDollar={points.earnPerDollar} termsHref={withLocale("/points", locale)} />
       ) : null}
 
       <AccountSecurity googleLinked={googleLinked} />

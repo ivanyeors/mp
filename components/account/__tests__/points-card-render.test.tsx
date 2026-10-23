@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PointsCard } from "../points-card";
+import { PointsCard, PointsComingSoonCard } from "../points-card";
 
 describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
   it("shows the balance in points and dollars, what is pending and when, the expiry, and the two exclusions", () => {
@@ -21,5 +21,15 @@ describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
     expect(html).toContain("usable 30 days after it&#x27;s delivered");
     expect(html).toContain("can&#x27;t be used on custom pillows, and points used are not refunded");
     expect(html).toContain('href="/en-US/points"');
+  });
+
+  it("before the launch, says coming soon with the earn rate and no balance", () => {
+    const html = renderToStaticMarkup(<PointsComingSoonCard earnPerDollar={3} termsHref="/en-US/points" />);
+    expect(html).toContain("Coming soon");
+    expect(html).toContain("You&#x27;ll earn 3 points for every S$1 you pay for products, before GST.");
+    expect(html).toContain("100 points take S$1 off.");
+    expect(html).toContain('href="/en-US/points"');
+    expect(html).not.toContain("Your points");
+    expect(html).not.toMatch(/shopify|migrat|moving/i);
   });
 });

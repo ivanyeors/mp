@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import { isPartnerMatch, type PartnerMatchRow } from "../partner";
 import { claimBonusOffer } from "../offer";
-import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSettingsToRows } from "../settings";
+import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSettingsToRows, profilePointsView } from "../settings";
 import { POINTS_PER_DOLLAR, formatDollars, formatPoints, formatPointsCount, pointsToDollars } from "../value";
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021120000_points_ledger.sql"), "utf8");
@@ -56,6 +56,17 @@ describe("settings", () => {
     expect(PointsSettingsSchema.safeParse({ ...base, claimBonus: 1050 }).success).toBe(false);
     expect(PointsSettingsSchema.safeParse({ ...base, maxShare: 0 }).success).toBe(false);
     expect(PointsSettingsSchema.safeParse({ ...base, maxShare: 1.2 }).success).toBe(false);
+  });
+
+  it("shows the Profile 'coming soon' before the launch, the balance once live, and nothing when switched off after it", () => {
+    const now = new Date("2026-11-15T00:00:00Z");
+    const past = "2026-11-01T00:00:00+08:00";
+    const future = "2026-12-01T00:00:00+08:00";
+    expect(profilePointsView({ enabled: false, launchAt: null }, now)).toBe("soon");
+    expect(profilePointsView({ enabled: false, launchAt: future }, now)).toBe("soon");
+    expect(profilePointsView({ enabled: true, launchAt: future }, now)).toBe("soon");
+    expect(profilePointsView({ enabled: true, launchAt: past }, now)).toBe("live");
+    expect(profilePointsView({ enabled: false, launchAt: past }, now)).toBe("off");
   });
 
   it("writes every key, and deletes the launch date when it is cleared", () => {

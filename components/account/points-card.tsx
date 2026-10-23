@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Coins } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { PendingOrderPoints, PointsBalance } from "@/lib/points/server";
-import { formatPoints } from "@/lib/points/value";
+import { POINTS_PER_DOLLAR, formatPoints, formatPointsCount } from "@/lib/points/value";
 
 const sgDate = (iso: string) =>
   new Date(iso.length === 10 ? `${iso}T00:00:00+08:00` : iso).toLocaleDateString("en-SG", {
@@ -66,6 +67,37 @@ export function PointsCard({
           How points work
         </Link>
       </p>
+    </section>
+  );
+}
+
+/**
+ * Profile → Points before the launch: what points will be, with the live
+ * earn rate, and no balance. Shown until points are live; partners never see it.
+ */
+export function PointsComingSoonCard({ earnPerDollar, termsHref }: { earnPerDollar: number; termsHref: string }) {
+  return (
+    <section aria-labelledby="points-title" className="rounded-lg border p-5 sm:p-6" data-section="points">
+      <div className="flex items-start gap-3">
+        <Coins className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="points-title" className="font-medium leading-snug">
+              Mpillow Points
+            </h2>
+            <Badge variant="outline">Coming soon</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {earnPerDollar > 0 ? `You'll earn ${earnPerDollar} points for every S$1 you pay for products, before GST. ` : null}
+            {`Use them as money off a later order: ${formatPointsCount(POINTS_PER_DOLLAR)} take S$1 off.`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <Link href={termsHref} className="underline">
+              How points will work
+            </Link>
+          </p>
+        </div>
+      </div>
     </section>
   );
 }

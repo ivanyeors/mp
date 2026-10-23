@@ -66,6 +66,16 @@ export function pointsLive(s: Pick<PointsSettings, "enabled" | "launchAt">, now:
   return s.enabled && s.launchAt !== null && Date.parse(s.launchAt) <= now.getTime();
 }
 
+/**
+ * Pure — the Profile's Points card: the balance once points are live, "coming
+ * soon" before the launch, and nothing once they are switched off after it
+ * (customers may hold points then, so "coming soon" would be wrong).
+ */
+export function profilePointsView(s: Pick<PointsSettings, "enabled" | "launchAt">, now: Date = new Date()): "live" | "soon" | "off" {
+  if (pointsLive(s, now)) return "live";
+  return s.launchAt === null || Date.parse(s.launchAt) > now.getTime() ? "soon" : "off";
+}
+
 /** What the Settings card saves, checked on the server. */
 export const PointsSettingsSchema = z
   .object({
