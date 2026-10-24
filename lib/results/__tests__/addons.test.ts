@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   accessoryFitsProduct,
   addonMatchRank,
+  addonsForAnswers,
   suggestAddons,
 } from "@/lib/results/addons";
 
@@ -74,5 +75,25 @@ describe("suggestAddons", () => {
     expect(addonMatchRank({ size: "medium" }, "bolster", "medium")).toBeGreaterThan(
       addonMatchRank({ size: "BOLSTER" }, "bolster", "medium"),
     );
+  });
+});
+
+describe("addonsForAnswers", () => {
+  const offered = [
+    { item_id: 62, name: "Cervical Neck Support" },
+    { item_id: 41, name: "Ear Comfort Pad" },
+    { item_id: 93, name: "Slope Mattress" },
+  ];
+
+  it("offers the Ear Comfort Pad on a yes to ear discomfort", () => {
+    expect(addonsForAnswers(offered, { earDiscomfortSideSleep: "yes" })).toEqual(offered);
+  });
+
+  it("hides it on a no or no answer, and keeps everything else", () => {
+    for (const answer of ["no", "", undefined, null]) {
+      expect(
+        addonsForAnswers(offered, { earDiscomfortSideSleep: answer }).map((a) => a.name),
+      ).toEqual(["Cervical Neck Support", "Slope Mattress"]);
+    }
   });
 });

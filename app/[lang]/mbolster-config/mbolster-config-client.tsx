@@ -61,6 +61,7 @@ import {
 import { ConfigImageUpload } from "@/components/configurator/config-image-upload";
 import {
   AddonOptionButton,
+  AddonReviewNotice,
   SelectedAddonPreviews,
   type AddonOption,
 } from "@/components/configurator/addon-cards";
@@ -1096,7 +1097,7 @@ export function MbolsterConfigClient({
           label: `Mbolster · ${suggestedLength}`,
           lines: [
             ...(caseName ? [`Case: ${caseName}`] : []),
-            ...(addonNames.length ? [`Add-ons: ${addonNames.join(", ")}`] : []),
+            ...(addonNames.length ? [`Add-ons, subject to advisor review: ${addonNames.join(", ")}`] : []),
           ],
           ballpark: serviceLines ? shopBasePrice + addonTotal + sumServiceLines(serviceLines) : null,
           currency: shopCurrency,
@@ -1614,6 +1615,10 @@ export function MbolsterConfigClient({
                       />
                     ))}
                   </div>
+                  {/* Staff are the advisor. */}
+                  {!staffAssist && addons.some((a) => selectedAddons.has(a.item_id)) ? (
+                    <AddonReviewNotice chargedAfterReview />
+                  ) : null}
                 </div>
               )}
 

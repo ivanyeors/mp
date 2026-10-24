@@ -108,6 +108,26 @@ export function addonMatchRank(
 }
 
 /**
+ * An Ear Comfort Pad: an accessory for ear discomfort during side sleep. Matched
+ * by name, as a neck support is (`isNeckSupportItem`) — inventory has no
+ * category of its own for it.
+ */
+export const EAR_COMFORT = /ear comfort/i;
+
+/**
+ * The add-ons a shopper's answers make relevant. An Ear Comfort Pad is offered
+ * only to a shopper who said yes to ear discomfort during side sleep; every
+ * other add-on (Cervical Neck Support included) is always offered. Pure.
+ */
+export function addonsForAnswers<T extends { name: string }>(
+  addons: T[],
+  answers: { earDiscomfortSideSleep?: string | null },
+): T[] {
+  if (answers.earDiscomfortSideSleep === "yes") return addons;
+  return addons.filter((a) => !EAR_COMFORT.test(a.name));
+}
+
+/**
  * Pick one accessory per display name, preferring the best size/length match.
  * Pure — no I/O.
  */
