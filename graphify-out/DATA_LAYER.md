@@ -684,7 +684,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `deleteInventoryItem()` [delete] — app/[lang]/settings/inventory/actions.ts:850
 - Read by:
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:397
-  - `GET()` [select] — app/api/results/addons/route.ts:74
+  - `GET()` [select] — app/api/results/addons/route.ts:77
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:302
   - `POST()` [select] — app/api/results/hold/route.ts:528
   - `POST()` [select] — app/api/shop/checkout/route.ts:413
@@ -733,7 +733,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:546
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
-  - `GET()` [select] — app/api/results/addons/route.ts:40
+  - `GET()` [select] — app/api/results/addons/route.ts:41
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:296
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:94
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:140
@@ -813,7 +813,7 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/discou
   - `touchLastUsed()` [update] — lib/media-assets/index.ts:291
   - `updateMediaAsset()` [update] — lib/media-assets/index.ts:168
 - Read by:
-  - `GET()` [select] — app/api/results/addons/route.ts:76
+  - `GET()` [select] — app/api/results/addons/route.ts:79
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:924
   - `getMediaAsset()` [select] — lib/media-assets/index.ts:106
   - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:120
