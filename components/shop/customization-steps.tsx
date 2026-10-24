@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { QuantitySelector } from "@/components/shop/quantity-selector";
 
 import type {
@@ -420,6 +421,15 @@ export interface CustomizationStepComponentsProps {
   /** Hide back/continue row when the parent owns navigation. */
   hideNav?: boolean;
   continueLabel?: string;
+  /**
+   * A switch beside "Cover Style" that draws the chosen cover on the pillow
+   * preview instead of the case. Disabled when that cover has no overlay.
+   */
+  coverPreview?: {
+    checked: boolean;
+    onCheckedChange: (checked: boolean) => void;
+    disabled?: boolean;
+  };
 }
 
 function ComponentOptionButton({
@@ -489,13 +499,26 @@ export function CustomizationStepComponents({
   caseOnly = false,
   hideNav = false,
   continueLabel = "Review & Add to Cart",
+  coverPreview,
 }: CustomizationStepComponentsProps) {
   return (
     <div className="space-y-6">
       {/* Cover style picker */}
       {!caseOnly && (
         <div className="space-y-3">
-          <Label className="text-base font-semibold">Cover Style</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-base font-semibold">Cover Style</Label>
+            {coverPreview ? (
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                Show on pillow
+                <Switch
+                  checked={coverPreview.checked}
+                  onCheckedChange={coverPreview.onCheckedChange}
+                  disabled={coverPreview.disabled}
+                />
+              </label>
+            ) : null}
+          </div>
           {components.covers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No covers available for this size.

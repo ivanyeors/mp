@@ -180,6 +180,7 @@ import {
 } from "@/components/configurator/preview-contact-fields";
 import {
   AddonOptionButton,
+  AddonReviewNotice,
   SelectedAddonPreviews,
   type AddonOption,
 } from "@/components/configurator/addon-cards";
@@ -231,6 +232,7 @@ import {
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
+import { addonsForAnswers, keepOfferedAddons } from "@/lib/results/addons";
 import type { StaffEditResult } from "@/lib/results/staff-edit";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
@@ -523,6 +525,8 @@ export function MpConfigClient({
     () => new Set(staffEdit?.addonItemIds ?? []),
   );
   const [addons, setAddons] = useState<AddonOption[]>([]);
+  /** "Show on pillow" beside Cover Style: the stage draws the cover, not the case. */
+  const [showCoverOnPillow, setShowCoverOnPillow] = useState(false);
 
   // --- Staff assist mode (slice 04) — top-level so the mix survives step navigation ---
   const [assistPlacements, setAssistPlacements] = useState<PillowPlacement[]>(() =>
@@ -1864,6 +1868,9 @@ export function MpConfigClient({
       suggestion?.recommended?.size ??
       suggestion?.product?.size ??
       "";
+    // A restored hold cancel runs this first without a size, then again once
+    // the recommendation lands; the earlier list must not overwrite the later.
+    let cancelled = false;
     // Assisted runs offer no add-ons (AC3) — skip the fetch entirely.
     if (!partnerAssisted) {
       const qs = new URLSearchParams({ productType: "pillow" });
@@ -1871,14 +1878,20 @@ export function MpConfigClient({
       fetch(`/api/results/addons?${qs.toString()}`)
         .then((r) => r.json())
         .then((d: { addons?: AddonOption[] }) => {
-          const list = d.addons ?? [];
+          if (cancelled) return;
+          // An Ear Comfort Pad only on a yes to ear discomfort. Staff advise on
+          // add-ons themselves, so they are offered every one.
+          const list = staffAssist
+            ? (d.addons ?? [])
+            : addonsForAnswers(d.addons ?? [], {
+                earDiscomfortSideSleep: measurementData.earDiscomfortSideSleep,
+              });
           setAddons(list);
-          setSelectedAddons((prev) => {
-            const valid = new Set(list.map((a) => a.item_id));
-            return new Set([...prev].filter((id) => valid.has(id)));
-          });
+          setSelectedAddons((prev) => keepOfferedAddons(prev, list, size));
         })
-        .catch(() => setAddons([]));
+        .catch(() => {
+          if (!cancelled) setAddons([]);
+        });
     }
 
     const country = holdAddress.country || "SG";
@@ -1905,6 +1918,9 @@ export function MpConfigClient({
         });
       })
       .catch(() => setShippingMethods([]));
+    return () => {
+      cancelled = true;
+    };
   }, [
     currentStep,
     shopRecommendation?.pillow_product?.size,
@@ -1912,6 +1928,8 @@ export function MpConfigClient({
     suggestion?.product?.size,
     holdAddress.country,
     staffEdit,
+    staffAssist,
+    measurementData.earDiscomfortSideSleep,
   ]);
 
   // Fetch alt-tier price while a Flow route awaits Upgrade / Keep.
@@ -2769,14 +2787,17 @@ export function MpConfigClient({
       selectedCase,
       shopRecommendation?.components.cases ?? [],
     );
-    // Product Builder overlay (slice 10): case wins over cover; unmapped → plain silhouette.
+    // Product Builder overlay (slice 10): case wins over cover, unless the shopper
+    // switched on "Show on pillow" beside Cover Style; unmapped → plain silhouette.
     // An overlay is an image (url + fit) or a solid color.
-    const selectedOverlay =
+    const caseOverlay =
       (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)
-        ?.overlay ??
+        ?.overlay ?? null;
+    const coverOverlay =
       (shopRecommendation?.components.covers ?? []).find((c) => c.item_id === selectedCover)
-        ?.overlay ??
-      null;
+        ?.overlay ?? null;
+    const selectedOverlay =
+      (showCoverOnPillow ? coverOverlay ?? caseOverlay : caseOverlay ?? coverOverlay) ?? null;
     const preferenceStocks = [coverStock, caseStock].filter(
       (s): s is number => s !== null,
     );
@@ -2870,7 +2891,7 @@ export function MpConfigClient({
           lines={[
             ...(coverName ? [`Cover: ${coverName}`] : []),
             ...(caseName ? [`Case: ${caseName}`] : []),
-            ...(addonNames.length ? [`Add-ons: ${addonNames.join(", ")}`] : []),
+            ...(addonNames.length ? [`Add-ons, subject to advisor review: ${addonNames.join(", ")}`] : []),
           ]}
           amount={pillowTotal != null ? money(pillowTotal) : null}
           actions={[{ label: "Edit", onClick: () => setPairedPhase("customize") }]}
@@ -3341,6 +3362,11 @@ export function MpConfigClient({
                       onContinue={onPreviewContinue}
                       preferencesOnly
                       hideNav
+                      coverPreview={{
+                        checked: showCoverOnPillow && coverOverlay != null,
+                        onCheckedChange: setShowCoverOnPillow,
+                        disabled: coverOverlay == null,
+                      }}
                     />
                   </div>
                 ) : (
@@ -3378,6 +3404,10 @@ export function MpConfigClient({
                         />
                       ))}
                     </div>
+                    {/* Staff are the advisor; a finish link pays on the spot. */}
+                    {!staffAssist && addons.some((a) => selectedAddons.has(a.item_id)) ? (
+                      <AddonReviewNotice chargedAfterReview={!resumeFinish} />
+                    ) : null}
                   </div>
                 )}
 

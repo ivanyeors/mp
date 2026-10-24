@@ -108,6 +108,43 @@ export function addonMatchRank(
 }
 
 /**
+ * An Ear Comfort Pad: an accessory for ear discomfort during side sleep. Matched
+ * by name, as a neck support is (`isNeckSupportItem`) — inventory has no
+ * category of its own for it.
+ */
+export const EAR_COMFORT = /ear comfort/i;
+
+/**
+ * The add-ons a shopper's answers make relevant. An Ear Comfort Pad is offered
+ * only to a shopper who said yes to ear discomfort during side sleep; every
+ * other add-on (Cervical Neck Support included) is always offered. Pure.
+ */
+export function addonsForAnswers<T extends { name: string }>(
+  addons: T[],
+  answers: { earDiscomfortSideSleep?: string | null },
+): T[] {
+  if (answers.earDiscomfortSideSleep === "yes") return addons;
+  return addons.filter((a) => !EAR_COMFORT.test(a.name));
+}
+
+/**
+ * A shopper's add-on picks, kept to those still offered. Only a list scoped to
+ * the build's size or length can rule a pick out: without one,
+ * `suggestAddons` offers an arbitrary size of each sized add-on, so a pick
+ * restored after a cancelled payment (Cervical Neck Support M) would be
+ * dropped for the L the unscoped list happened to carry. Pure.
+ */
+export function keepOfferedAddons(
+  selected: ReadonlySet<number>,
+  offered: { item_id: number }[],
+  sizeKey: string | null,
+): Set<number> {
+  if (!sizeKey) return new Set(selected);
+  const valid = new Set(offered.map((a) => a.item_id));
+  return new Set([...selected].filter((id) => valid.has(id)));
+}
+
+/**
  * Pick one accessory per display name, preferring the best size/length match.
  * Pure — no I/O.
  */

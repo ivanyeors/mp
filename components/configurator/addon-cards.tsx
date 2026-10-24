@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, UserCheck } from "lucide-react";
 
 /** Add-on option as served by /api/results/addons (image from the Item's primary Media Asset). */
 export type AddonOption = {
@@ -76,6 +76,28 @@ export function SelectedAddonPreviews({
           className="size-14 rounded-lg border border-white/40 bg-white object-cover shadow-sm"
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Shown once a shopper picks an add-on: every add-on is the pillow advisor's
+ * call, made against the shopper's measurements before the build is made.
+ * `chargedAfterReview` adds the money half only where it holds — a build paid
+ * after Staff have reviewed it, never a finish link paid on the spot.
+ */
+export function AddonReviewNotice({ chargedAfterReview }: { chargedAfterReview: boolean }) {
+  return (
+    <div role="note" className="flex gap-2.5 rounded-lg bg-muted/50 p-3 text-sm">
+      <UserCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="space-y-0.5">
+        <p className="font-medium">Add-ons are reviewed by your pillow advisor</p>
+        <p className="text-muted-foreground">
+          Each one is checked against your measurements before your build is made, and
+          your advisor has the final say.
+          {chargedAfterReview ? " If one is left out, you are not charged for it." : null}
+        </p>
+      </div>
     </div>
   );
 }

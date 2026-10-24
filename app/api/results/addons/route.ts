@@ -7,6 +7,7 @@ import {
   type AddonProductType,
 } from "@/lib/results/addons";
 import { resolveAddonImageUrls, type AddonMediaAsset } from "@/lib/results/addon-images";
+import { familyKey } from "@/lib/ecommerce/shop-listings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,10 +59,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ addons: [], productType, sizeKey });
   }
 
-  // Add-on card imagery from the Item's primary Media Asset (slice 12).
+  // Add-on card imagery from the Item's primary Media Asset (slice 12), or its
+  // family's when this size has none (Cervical Neck Support has one photo, on S).
   const mediaRefs = (items ?? []).map((i) => ({
     id: i.id as number,
     primary_media_asset_id: (i.primary_media_asset_id as string | null) ?? null,
+    family: familyKey(String(i.category), String(i.name)),
   }));
   const assetIds = [
     ...new Set(
