@@ -15,6 +15,7 @@ import { JourneyTracker } from "@/components/analytics/journey-tracker";
 import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
 import { BookAppointmentOverlay } from "@/components/slide-in-pages/book-appointment-overlay";
+import { SupportChatRoot } from "@/components/support/support-chat-root";
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
 import { Haptics } from "@/components/haptics";
 import { RegisterSW } from "@/components/register-sw";
@@ -124,6 +125,8 @@ export default async function RootLayout({
               <BookAppointmentOverlay />
               <AppDock />
               <CartShell />
+              {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
+              <SupportChatRoot />
             </CartProvider>
           </CurrencyProvider>
           <SonnerProvider />
