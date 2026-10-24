@@ -128,6 +128,23 @@ export function addonsForAnswers<T extends { name: string }>(
 }
 
 /**
+ * A shopper's add-on picks, kept to those still offered. Only a list scoped to
+ * the build's size or length can rule a pick out: without one,
+ * `suggestAddons` offers an arbitrary size of each sized add-on, so a pick
+ * restored after a cancelled payment (Cervical Neck Support M) would be
+ * dropped for the L the unscoped list happened to carry. Pure.
+ */
+export function keepOfferedAddons(
+  selected: ReadonlySet<number>,
+  offered: { item_id: number }[],
+  sizeKey: string | null,
+): Set<number> {
+  if (!sizeKey) return new Set(selected);
+  const valid = new Set(offered.map((a) => a.item_id));
+  return new Set([...selected].filter((id) => valid.has(id)));
+}
+
+/**
  * Pick one accessory per display name, preferring the best size/length match.
  * Pure — no I/O.
  */

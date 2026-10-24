@@ -3,6 +3,7 @@ import {
   accessoryFitsProduct,
   addonMatchRank,
   addonsForAnswers,
+  keepOfferedAddons,
   suggestAddons,
 } from "@/lib/results/addons";
 
@@ -95,5 +96,28 @@ describe("addonsForAnswers", () => {
         addonsForAnswers(offered, { earDiscomfortSideSleep: answer }).map((a) => a.name),
       ).toEqual(["Cervical Neck Support", "Slope Mattress"]);
     }
+  });
+});
+
+describe("keepOfferedAddons", () => {
+  // Cervical Neck Support M (62) and L (63); the Ear Comfort Pad (41) is one-size.
+  const picked = new Set([62, 41]);
+
+  it("keeps a sized pick while the build's size is unknown", () => {
+    // The unscoped list carries the L: the restored M must survive it.
+    const unscoped = [{ item_id: 63 }, { item_id: 41 }];
+    expect([...keepOfferedAddons(picked, unscoped, null)].sort()).toEqual([41, 62]);
+    expect([...keepOfferedAddons(picked, unscoped, "")].sort()).toEqual([41, 62]);
+  });
+
+  it("drops picks the size-scoped list no longer offers", () => {
+    expect([...keepOfferedAddons(picked, [{ item_id: 62 }, { item_id: 41 }], "M")].sort()).toEqual([
+      41, 62,
+    ]);
+    expect([...keepOfferedAddons(picked, [{ item_id: 63 }], "L")]).toEqual([]);
+  });
+
+  it("never hands back the caller's set", () => {
+    expect(keepOfferedAddons(picked, [], null)).not.toBe(picked);
   });
 });

@@ -232,7 +232,7 @@ import {
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
-import { addonsForAnswers } from "@/lib/results/addons";
+import { addonsForAnswers, keepOfferedAddons } from "@/lib/results/addons";
 import type { StaffEditResult } from "@/lib/results/staff-edit";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
@@ -1868,6 +1868,9 @@ export function MpConfigClient({
       suggestion?.recommended?.size ??
       suggestion?.product?.size ??
       "";
+    // A restored hold cancel runs this first without a size, then again once
+    // the recommendation lands; the earlier list must not overwrite the later.
+    let cancelled = false;
     // Assisted runs offer no add-ons (AC3) — skip the fetch entirely.
     if (!partnerAssisted) {
       const qs = new URLSearchParams({ productType: "pillow" });
@@ -1875,6 +1878,7 @@ export function MpConfigClient({
       fetch(`/api/results/addons?${qs.toString()}`)
         .then((r) => r.json())
         .then((d: { addons?: AddonOption[] }) => {
+          if (cancelled) return;
           // An Ear Comfort Pad only on a yes to ear discomfort. Staff advise on
           // add-ons themselves, so they are offered every one.
           const list = staffAssist
@@ -1883,12 +1887,11 @@ export function MpConfigClient({
                 earDiscomfortSideSleep: measurementData.earDiscomfortSideSleep,
               });
           setAddons(list);
-          setSelectedAddons((prev) => {
-            const valid = new Set(list.map((a) => a.item_id));
-            return new Set([...prev].filter((id) => valid.has(id)));
-          });
+          setSelectedAddons((prev) => keepOfferedAddons(prev, list, size));
         })
-        .catch(() => setAddons([]));
+        .catch(() => {
+          if (!cancelled) setAddons([]);
+        });
     }
 
     const country = holdAddress.country || "SG";
@@ -1915,6 +1918,9 @@ export function MpConfigClient({
         });
       })
       .catch(() => setShippingMethods([]));
+    return () => {
+      cancelled = true;
+    };
   }, [
     currentStep,
     shopRecommendation?.pillow_product?.size,

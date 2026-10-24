@@ -1092,9 +1092,9 @@
     "semantic_hash": ""
   },
   "lib/results/__tests__/addons.test.ts": {
-    "mtime": 1792810945.4794388,
-    "seen": 1792811469.9065185,
-    "ast_hash": "695a99cf4d78884849fa9a878c87f555",
+    "mtime": 1792812994.679179,
+    "seen": 1792813399.0843594,
+    "ast_hash": "1639049550f529c36297f6597b476123",
     "semantic_hash": ""
   },
   "lib/results/__tests__/composed-sellable.test.ts": {
@@ -1140,9 +1140,9 @@
     "semantic_hash": ""
   },
   "lib/results/addons.ts": {
-    "mtime": 1792810945.4799788,
-    "seen": 1792811469.9065537,
-    "ast_hash": "bc399a838e1972d4f16101318e5d1f3b",
+    "mtime": 1792812988.9431787,
+    "seen": 1792813399.084401,
+    "ast_hash": "6cf8ed1e4d27bf03750a38d1d85411ae",
     "semantic_hash": ""
   },
   "lib/results/assign-prep.ts": {
@@ -6786,8 +6786,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792811317.662857,
-    "seen": 1792811469.9084167,
+    "mtime": 1792813219.8431923,
+    "seen": 1792813399.0861673,
     "ast_hash": "25b69f597c8a0f47a500f6a6ad921237",
     "semantic_hash": ""
   },
