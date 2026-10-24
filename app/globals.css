@@ -388,6 +388,22 @@ body.dock-hidden .app-dock {
   }
 }
 
+/* Website chat (components/support/support-chat.tsx): the slow lights behind the glass. */
+@keyframes mp-chat-aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(40px, 30px, 0) scale(1.15); }
+}
+@keyframes mp-chat-aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-50px, -20px, 0) scale(0.92); }
+}
+.mp-chat-aurora-a { animation: mp-chat-aurora-a 14s ease-in-out infinite; }
+.mp-chat-aurora-b { animation: mp-chat-aurora-b 18s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mp-chat-aurora-a,
+  .mp-chat-aurora-b { animation: none; }
+}
+
 /* UIW React MD Editor overrides */
 .w-md-editor, 
 [data-color-mode*='light'] .w-md-editor, 

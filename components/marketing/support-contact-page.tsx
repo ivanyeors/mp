@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { CalendarDays, MessageCircleMore } from "lucide-react";
 
-import { SupportContactForm } from "@/app/[lang]/support/support-contact-form";
 import { BookAppointmentButton } from "@/components/book-appointment-button";
 import { InfoCallout } from "@/components/marketing/info-callout";
+import { SupportChat } from "@/components/support/support-chat";
 import { Separator } from "@/components/ui/separator";
 import {
   SUPPORT_WHATSAPP_DISPLAY,
@@ -13,7 +13,7 @@ import {
 const QUICK_LINKS = [
   { href: "#book-appointment", label: "Book appointment" },
   { href: "#important", label: "Important" },
-  { href: "#contact", label: "Contact" },
+  { href: "#contact", label: "Chat with us" },
 ] as const;
 
 const IMPORTANT_NOTES = [
@@ -33,7 +33,7 @@ export async function generateSupportMetadata({ params }: SupportContactPageProp
   return {
     title: "Contact Us",
     description:
-      "Book an appointment, chat on WhatsApp, or send us a message. Learn how to schedule customisation, adjustments, and fitting sessions at Mpillow.",
+      "Book an appointment, chat with our team here or on WhatsApp. Learn how to schedule customisation, adjustments, and fitting sessions at Mpillow.",
   };
 }
 
@@ -45,8 +45,8 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Contact Us</h1>
         <p className="leading-relaxed text-muted-foreground">
-          Need help? Chat with us on WhatsApp for the fastest reply, book an appointment below, or send
-          us a message and we&apos;ll get back to you by email.
+          Need help? Chat with our team right here on the page or on WhatsApp, or book an appointment
+          below.
         </p>
       </div>
 
@@ -99,9 +99,11 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">Get in touch</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Prefer to message us directly? Use WhatsApp or the form below.
+            Start a chat and our team replies right here. Prefer WhatsApp? That works too.
           </p>
         </div>
+
+        <SupportChat />
 
         <a
           href={SUPPORT_WHATSAPP_URL}
@@ -119,8 +121,6 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
             </span>
           </span>
         </a>
-
-        <SupportContactForm />
       </section>
     </main>
   );
