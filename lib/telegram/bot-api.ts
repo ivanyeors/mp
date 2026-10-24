@@ -41,16 +41,24 @@ async function callTelegram<T>(
   }
 }
 
-/** Posts a message to the measurements group, reporting why when it can't. */
+/**
+ * Posts a message to the measurements group, reporting why when it can't.
+ * `replyToMessageId` threads it under that message (a website chat's later
+ * messages under its first).
+ */
 export async function sendGroupMessage(
   text: string,
   replyMarkup?: InlineKeyboardMarkup,
+  opts: { replyToMessageId?: number } = {},
 ): Promise<{ ok: true; chatId: number; messageId: number } | { ok: false; error: string }> {
   const res = await callTelegram<{ message_id: number }>("sendMessage", {
     chat_id: MP_CONFIG_TELEGRAM_CHAT_ID,
     text,
     reply_markup: replyMarkup,
     link_preview_options: { is_disabled: true },
+    ...(opts.replyToMessageId
+      ? { reply_parameters: { message_id: opts.replyToMessageId, allow_sending_without_reply: true } }
+      : {}),
   });
   if (!res.ok) return { ok: false, error: res.error };
   return { ok: true, chatId: MP_CONFIG_TELEGRAM_CHAT_ID, messageId: res.result.message_id };
@@ -120,6 +128,17 @@ export async function replyInChat(chatId: number, text: string, replyToMessageId
       ? { reply_parameters: { message_id: replyToMessageId, allow_sending_without_reply: true } }
       : {}),
   });
+}
+
+/** A quiet acknowledgement on a group message, instead of another message. */
+export async function reactInGroup(messageId: number, emoji: string): Promise<boolean> {
+  const res = await callTelegram("setMessageReaction", {
+    chat_id: MP_CONFIG_TELEGRAM_CHAT_ID,
+    message_id: messageId,
+    reaction: [{ type: "emoji", emoji }],
+  });
+  if (!res.ok) console.error("[telegram] reaction failed", res.error);
+  return res.ok;
 }
 
 /** Stops the button spinner; `showAlert` pops a dialog only the tapper sees. */

@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "lib/email/contact.ts": {
-    "mtime": 1792808489.3589427,
-    "seen": 1792808711.708944,
-    "ast_hash": "050514694a0aca993b131cfde90da614",
+    "mtime": 1792809558.8360112,
+    "seen": 1792810820.7154386,
+    "ast_hash": "1ce9c7a477804e6399fa8c3d31129d70",
     "semantic_hash": ""
   },
   "lib/email/index.ts": {
@@ -2393,16 +2393,10 @@
     "ast_hash": "01577cc6d458a87c62306d922930c4c9",
     "semantic_hash": ""
   },
-  "app/api/support/contact/route.ts": {
-    "mtime": 1792808556.3209932,
-    "seen": 1792808711.7082174,
-    "ast_hash": "61af3b258d3754c802376be9d3baec38",
-    "semantic_hash": ""
-  },
   "app/api/telegram/webhook/route.ts": {
-    "mtime": 1792768558.9237576,
-    "seen": 1792771532.122688,
-    "ast_hash": "7b27c0840db8acbbe836938e298e0001",
+    "mtime": 1792809769.4910765,
+    "seen": 1792810820.7147036,
+    "ast_hash": "8f55259f89a0a6a9f01fa7537878128b",
     "semantic_hash": ""
   },
   "app/api/webhooks/whatsapp/route.ts": {
@@ -6786,8 +6780,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792768558.8746533,
-    "seen": 1792771532.1257565,
+    "mtime": 1792810628.4800746,
+    "seen": 1792810820.7174878,
     "ast_hash": "25b69f597c8a0f47a500f6a6ad921237",
     "semantic_hash": ""
   },
@@ -7050,9 +7044,9 @@
     "semantic_hash": ""
   },
   "lib/email/__fixtures__/samples.ts": {
-    "mtime": 1792768559.0976322,
-    "seen": 1792771532.1233008,
-    "ast_hash": "07666146078b8bd60f81bb491daa60a4",
+    "mtime": 1792809573.8157756,
+    "seen": 1792810820.7153847,
+    "ast_hash": "45135812aec010c4fcba2b34441857f1",
     "semantic_hash": ""
   },
   "lib/email/__tests__/contact-sheet.test.ts": {
@@ -7170,9 +7164,9 @@
     "semantic_hash": ""
   },
   "lib/email/registry.ts": {
-    "mtime": 1792808489.376654,
-    "seen": 1792808711.7089663,
-    "ast_hash": "973839f838aa7b262a697893f328e9aa",
+    "mtime": 1792809573.8164167,
+    "seen": 1792810820.7154608,
+    "ast_hash": "d0fa3c734dee983cc17e61e069f2b080",
     "semantic_hash": ""
   },
   "lib/email/results.ts": {
@@ -7206,9 +7200,9 @@
     "semantic_hash": ""
   },
   "docs/email-templates-preview.html": {
-    "mtime": 1792768558.9455779,
-    "seen": 1792771532.125866,
-    "ast_hash": "16a5e47c312c9a528601b89d067fc719",
+    "mtime": 1792810783.720084,
+    "seen": 1792810820.717554,
+    "ast_hash": "87eb52cffff0d3ce9add3964cde37680",
     "semantic_hash": ""
   },
   "supabase/templates/README.md": {
@@ -7794,9 +7788,9 @@
     "semantic_hash": ""
   },
   "lib/rate-limit.ts": {
-    "mtime": 1792768559.110173,
-    "seen": 1792771532.1236296,
-    "ast_hash": "aaeaf0778643564bec70db92a6c12df4",
+    "mtime": 1792809651.2656078,
+    "seen": 1792810820.7157059,
+    "ast_hash": "ca14dc04446a6ed3106ade21409ae042",
     "semantic_hash": ""
   },
   "lib/results/__tests__/owner-result-payload.test.ts": {
@@ -10224,9 +10218,9 @@
     "semantic_hash": ""
   },
   "lib/telegram/bot-api.ts": {
-    "mtime": 1792768559.1269743,
-    "seen": 1792771532.1243556,
-    "ast_hash": "9480ead70a12d82ec777e17ef0e3489f",
+    "mtime": 1792809651.2659416,
+    "seen": 1792810820.7162356,
+    "ast_hash": "73b071062cb1ca9d7a1985cdf0a1b1a3",
     "semantic_hash": ""
   },
   "lib/telegram/link-codes.ts": {
@@ -14909,22 +14903,88 @@
     "ast_hash": "769bbe3b4a4bc871327f90e35cc3b962",
     "semantic_hash": ""
   },
-  "lib/support/__tests__/contact.test.ts": {
-    "mtime": 1792808513.5025206,
-    "seen": 1792808711.7096493,
-    "ast_hash": "504c833b7294a1003a1506482da1001a",
+  "app/api/support/chat/[id]/claim/route.ts": {
+    "mtime": 1792809825.7645438,
+    "seen": 1792810820.7146893,
+    "ast_hash": "ae0a367774e502b801b11c2f2b5e4394",
     "semantic_hash": ""
   },
-  "lib/support/contact.ts": {
-    "mtime": 1792808513.4897025,
-    "seen": 1792808711.7096508,
-    "ast_hash": "ee86b6f6fd0bd21e4f5a6dd64bc81774",
+  "app/api/support/chat/[id]/end/route.ts": {
+    "mtime": 1792809817.0040264,
+    "seen": 1792810820.7146924,
+    "ast_hash": "6cd18a48e6e25b024c18947ea7a07ca7",
     "semantic_hash": ""
   },
-  "lib/email/__tests__/contact.test.ts": {
-    "mtime": 1792808529.99595,
-    "seen": 1792808711.7089002,
-    "ast_hash": "219f43e73338e4fa40db7df122e23bd0",
+  "app/api/support/chat/[id]/leave/route.ts": {
+    "mtime": 1792809821.6600268,
+    "seen": 1792810820.7146935,
+    "ast_hash": "d31c1215362b333a577d195dd054af9b",
+    "semantic_hash": ""
+  },
+  "app/api/support/chat/[id]/messages/route.ts": {
+    "mtime": 1792809814.2070005,
+    "seen": 1792810820.7146947,
+    "ast_hash": "f087fd14b8d087e9422f0d576c166a80",
+    "semantic_hash": ""
+  },
+  "app/api/support/chat/[id]/route.ts": {
+    "mtime": 1792809809.6555433,
+    "seen": 1792810820.7146957,
+    "ast_hash": "dc31581e3a28ec4271af5efdd23c5bae",
+    "semantic_hash": ""
+  },
+  "app/api/support/chat/route.ts": {
+    "mtime": 1792809802.4552257,
+    "seen": 1792810820.7146971,
+    "ast_hash": "67e49647ae2cd79b33094fcdf84bcb94",
+    "semantic_hash": ""
+  },
+  "lib/email/__tests__/support-chat.test.ts": {
+    "mtime": 1792810227.1680508,
+    "seen": 1792810820.715419,
+    "ast_hash": "fd26670a3ba427af185978c532d375fe",
+    "semantic_hash": ""
+  },
+  "lib/email/support-chat.ts": {
+    "mtime": 1792809546.5960104,
+    "seen": 1792810820.7154658,
+    "ast_hash": "7538ebc4960368f17acce877c9dd695c",
+    "semantic_hash": ""
+  },
+  "lib/support/__tests__/chat.test.ts": {
+    "mtime": 1792810381.6060042,
+    "seen": 1792810820.7162278,
+    "ast_hash": "5ed04cb10be468035aef629feee84725",
+    "semantic_hash": ""
+  },
+  "lib/support/chat-http.ts": {
+    "mtime": 1792809791.760025,
+    "seen": 1792810820.7162297,
+    "ast_hash": "9773265937b2cd41f5348905e456f2b8",
+    "semantic_hash": ""
+  },
+  "lib/support/chat-notices.ts": {
+    "mtime": 1792809781.861534,
+    "seen": 1792810820.7162306,
+    "ast_hash": "f086508eaa2b12174191f75941b4813c",
+    "semantic_hash": ""
+  },
+  "lib/support/chat-telegram.ts": {
+    "mtime": 1792809761.0920231,
+    "seen": 1792810820.7162313,
+    "ast_hash": "5d3ee6b0326e7ef7d506010896439eee",
+    "semantic_hash": ""
+  },
+  "lib/support/chat.ts": {
+    "mtime": 1792810357.6658893,
+    "seen": 1792810820.7162325,
+    "ast_hash": "44e92b89bdf407e58ee938d6007952ad",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261024120000_support_chats.sql": {
+    "mtime": 1792809521.8094988,
+    "seen": 1792810820.7166724,
+    "ast_hash": "048b1ff4d11add0110caa7922b456711",
     "semantic_hash": ""
   }
 }

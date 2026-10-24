@@ -1,0 +1,325 @@
+"use client";
+
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { ArrowUp, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { PendingMessage } from "./use-support-chat";
+
+/**
+ * The website chat's building blocks: bubbles, the assistant cards the chat
+ * offers (email copy, account), and the composer. Brand palette: the navy to
+ * blue of the dock and the spotlight cards (#001736 → #2B69BC), with the
+ * progress bar's bright blue (#1298ff → #a5d8ff) for the customer's side.
+ */
+
+export const NAVY_GRADIENT = "linear-gradient(160deg, #001736 0%, #06275a 45%, #18478f 78%, #2B69BC 100%)";
+export const NAVY_GLOW = "inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5), inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.5)";
+const CUSTOMER_GRADIENT = "linear-gradient(135deg, #1298ff 0%, #1f74e0 55%, #2B69BC 100%)";
+const SEND_GRADIENT = "linear-gradient(135deg, #a5d8ff 0%, #1298ff 55%, #1f5fc0 100%)";
+
+const TIME = new Intl.DateTimeFormat("en-SG", { hour: "numeric", minute: "2-digit" });
+
+export function timeOf(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : TIME.format(d);
+}
+
+/** The mpillow mark in a glass ring, with an optional "here" dot. */
+export function BrandAvatar({ size = 40, live = false }: { size?: number; live?: boolean }) {
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur"
+      style={{ width: size, height: size, boxShadow: NAVY_GLOW }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- a 40px mark, not worth next/image's loader */}
+      <img src="/mpillow_logo_2026-inv.png" alt="" className="h-[62%] w-[62%] object-contain" />
+      {live ? (
+        <span className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-[#001736]">
+          <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] motion-safe:animate-pulse" />
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function AssistantAvatar() {
+  return (
+    <span
+      className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-white"
+      style={{ backgroundImage: NAVY_GRADIENT, boxShadow: NAVY_GLOW }}
+      aria-hidden="true"
+    >
+      <Sparkles className="size-4 text-[#a5d8ff]" />
+    </span>
+  );
+}
+
+function StaffAvatar({ name }: { name: string }) {
+  return (
+    <span
+      className="mt-5 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+      style={{ backgroundImage: NAVY_GRADIENT, boxShadow: NAVY_GLOW }}
+      aria-hidden="true"
+    >
+      {name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+/** A note from the chat itself (not a person): the greeting, confirmations, offers. */
+export function AssistantNote({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex items-start gap-2.5", className)}>
+      <AssistantAvatar />
+      <div className="min-w-0 max-w-[88%] rounded-2xl rounded-tl-md border border-[#cfe3ff] bg-[#eaf3ff] px-4 py-3 text-sm leading-relaxed text-[#0b2a55] dark:border-white/10 dark:bg-[#0b2550]/60 dark:text-[#d7e9ff]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function MessageBubble({
+  message,
+  showMeta,
+  onRetry,
+}: {
+  message: PendingMessage;
+  /** The last bubble of a run from one side shows its time (and send state). */
+  showMeta: boolean;
+  onRetry?: (id: string) => void;
+}) {
+  if (message.sender === "staff") {
+    const name = message.staffName?.trim() || "mpillow";
+    return (
+      <div className="flex items-start gap-2.5">
+        <StaffAvatar name={name} />
+        <div className="min-w-0 max-w-[80%]">
+          <p className="mb-1 pl-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            {name} <span className="text-slate-400 dark:text-slate-500">· mpillow team</span>
+          </p>
+          <div className="whitespace-pre-wrap break-words rounded-2xl rounded-tl-md border border-slate-200/80 bg-white px-4 py-2.5 text-[15px] leading-relaxed text-slate-800 shadow-[0_6px_20px_-14px_rgba(0,23,54,0.45)] dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100">
+            {message.body}
+          </div>
+          {showMeta ? <p className="mt-1 pl-1 text-[11px] text-slate-400">{timeOf(message.createdAt)}</p> : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-end">
+      <div
+        className={cn(
+          "max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed text-white shadow-[0_10px_28px_-14px_rgba(18,152,255,0.9)] transition-opacity",
+          message.pending && "opacity-70",
+          message.failed && "opacity-60 ring-2 ring-rose-400/70",
+        )}
+        style={{ backgroundImage: CUSTOMER_GRADIENT, boxShadow: "inset 1px 1px 1.5px rgba(214,236,255,0.55)" }}
+      >
+        {message.body}
+      </div>
+      {message.failed ? (
+        <button
+          type="button"
+          onClick={() => onRetry?.(message.id)}
+          className="mt-1 inline-flex min-h-8 items-center gap-1 pr-1 text-xs font-medium text-rose-500 hover:text-rose-600 max-md:min-h-11"
+        >
+          <RotateCcw className="size-3" aria-hidden="true" /> Not sent · Try again
+        </button>
+      ) : showMeta ? (
+        <p className="mt-1 pr-1 text-[11px] text-slate-400">
+          {message.pending ? "Sending…" : `Sent ${timeOf(message.createdAt)}`}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** A light-surface card inside the thread: email copy, account offer, code entry. */
+export function ChatCard({
+  icon,
+  title,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <AssistantAvatar />
+      <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl rounded-tl-md border border-[#cfe3ff] bg-white p-4 shadow-[0_12px_32px_-18px_rgba(18,152,255,0.55)] dark:border-white/10 dark:bg-[#071a3a]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-10 -top-12 size-32 rounded-full bg-[#1298ff]/15 blur-2xl"
+        />
+        <p className="relative flex items-center gap-2 text-sm font-semibold text-[#0b2a55] dark:text-white">
+          <span className="text-[#1f74e0] dark:text-[#7cc2ff]">{icon}</span>
+          {title}
+        </p>
+        <div className="relative mt-1.5 space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export function GradientButton({
+  children,
+  busy,
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean }) {
+  return (
+    <button
+      {...props}
+      disabled={props.disabled || busy}
+      className={cn(
+        "inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-white transition-[filter,transform] hover:brightness-110 active:scale-[0.98] disabled:opacity-60 max-md:min-h-11",
+        className,
+      )}
+      style={{ backgroundImage: CUSTOMER_GRADIENT, boxShadow: "inset 1px 1px 1.5px rgba(214,236,255,0.6), 0 8px 20px -10px rgba(18,152,255,0.9)" }}
+    >
+      {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+      {children}
+    </button>
+  );
+}
+
+export function QuietButton({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className={cn(
+        "inline-flex h-10 items-center justify-center rounded-full px-3 text-sm font-medium text-slate-500 transition-colors hover:text-[#0b2a55] max-md:min-h-11 dark:text-slate-400 dark:hover:text-white",
+        className,
+      )}
+    />
+  );
+}
+
+export function ChatInput({ label, className, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  const id = useId();
+  return (
+    <div className={cn("min-w-0 flex-1", className)}>
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <input
+        id={id}
+        {...props}
+        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-base text-slate-900 outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-[#1298ff] focus:bg-white focus:shadow-[0_0_0_4px_rgba(18,152,255,0.15)] md:text-sm dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10"
+      />
+    </div>
+  );
+}
+
+/**
+ * The message box: grows with its text up to a few lines; Enter sends,
+ * Shift+Enter starts a new line. `tone` picks the glass-on-navy look of the
+ * launcher or the light look inside a chat.
+ */
+export function Composer({
+  onSend,
+  disabled,
+  placeholder,
+  tone,
+  maxLength,
+  autoFocus,
+  draft,
+  onDraftChange,
+}: {
+  onSend: (text: string) => Promise<boolean>;
+  disabled?: boolean;
+  placeholder: string;
+  tone: "glass" | "light";
+  maxLength: number;
+  autoFocus?: boolean;
+  draft: string;
+  onDraftChange: (text: string) => void;
+}) {
+  const id = useId();
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [draft]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!autoFocus || !el) return;
+    el.focus({ preventScroll: true });
+    // A suggestion fills the box: keep typing after it, not before.
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [autoFocus]);
+
+  const submit = async () => {
+    const text = draft.trim();
+    if (!text || sending || disabled) return;
+    setSending(true);
+    onDraftChange("");
+    const ok = await onSend(text);
+    if (!ok) onDraftChange(text);
+    setSending(false);
+    ref.current?.focus({ preventScroll: true });
+  };
+
+  const glass = tone === "glass";
+  const empty = !draft.trim();
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+      className={cn(
+        "group relative flex items-end gap-2 rounded-[22px] p-2 pl-4 transition-[box-shadow,border-color]",
+        glass
+          ? "border border-white/20 bg-white/[0.08] backdrop-blur-md focus-within:border-[#a5d8ff]/70 focus-within:shadow-[0_0_0_4px_rgba(18,152,255,0.25),0_20px_50px_-20px_rgba(18,152,255,0.8)]"
+          : "border border-slate-200 bg-white shadow-[0_8px_30px_-18px_rgba(0,23,54,0.35)] focus-within:border-[#1298ff]/60 focus-within:shadow-[0_0_0_4px_rgba(18,152,255,0.12),0_8px_30px_-18px_rgba(0,23,54,0.35)] dark:border-white/10 dark:bg-white/[0.06]",
+      )}
+    >
+      <label htmlFor={id} className="sr-only">
+        Your message
+      </label>
+      <textarea
+        id={id}
+        ref={ref}
+        rows={1}
+        value={draft}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => onDraftChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            void submit();
+          }
+        }}
+        className={cn(
+          "max-h-[140px] min-h-11 flex-1 resize-none bg-transparent py-2.5 text-base leading-6 outline-none md:text-[15px]",
+          glass ? "text-white placeholder:text-[#bcd8ff]/70" : "text-slate-900 placeholder:text-slate-400 dark:text-white",
+        )}
+      />
+      <button
+        type="submit"
+        aria-label="Send message"
+        disabled={empty || sending || disabled}
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-white transition-[transform,opacity,filter] hover:brightness-110 active:scale-95 disabled:opacity-40"
+        style={{ backgroundImage: SEND_GRADIENT, boxShadow: "inset 1px 1px 1.8px rgba(255,255,255,0.6), 0 8px 22px -8px rgba(18,152,255,0.9)" }}
+      >
+        {sending ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <ArrowUp className="size-5" aria-hidden="true" />}
+      </button>
+      {draft.length > maxLength - 200 ? (
+        <span className={cn("absolute -top-6 right-3 text-[11px]", glass ? "text-[#bcd8ff]" : "text-slate-400")}>
+          {draft.length}/{maxLength}
+        </span>
+      ) : null}
+    </form>
+  );
+}

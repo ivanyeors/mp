@@ -176,7 +176,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:203
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
   - `getBolsterBaseQuantities()` [select] — lib/shop/customization-inventory.ts:413
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:391
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:394
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:156
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:34
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:263
@@ -447,7 +447,7 @@ Changed from pages: `/settings/customers`
 
 ### customers
 Defined in supabase/migrations/0028_ecommerce.sql:212
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/customers/[id]/route.ts:47
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
@@ -631,8 +631,8 @@ Defined in supabase/migrations/0001_inventory.sql:45
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:262
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:155
   - `getAvailableFillings()` [select] — lib/shop/customization-llm.ts:54
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:398
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:273
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:401
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:276
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:183
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:213
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:33
@@ -753,8 +753,8 @@ Changed from pages: `/settings/inventory`
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:100
   - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:230
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:916
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:427
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:267
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:430
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:270
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:167
   - `linkPartToShopifyVariant()` [select] — app/[lang]/settings/inventory/actions.ts:1473
   - `listOverlayMappingItems()` [select] — lib/product-builder/overlay-mappings.ts:24
@@ -778,7 +778,7 @@ Changed from pages: `/settings/inventory`
   - `publishAllUnpublishedAccessories()` [select] — lib/ecommerce/from-inventory.ts:193
   - `quoteCustomization()` [select] — lib/shop/customization-quote.ts:62
   - `receiveStock()` [select] — app/[lang]/settings/inventory/actions.ts:314
-  - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:193
+  - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:196
   - `sellBolster()` [select] — app/[lang]/settings/inventory/actions.ts:371
   - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:310
   - `validateBolsterConfig()` [select] — lib/shop/customization-inventory.ts:473
@@ -1019,7 +1019,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, 
 ### orders
 Defined in supabase/migrations/0028_ecommerce.sql:384
 References: `coupons`, `customers`, `partners`, `shipping_methods`
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [update] — app/api/shop/orders/[id]/route.ts:65
   - `POST()` [select,update] — app/api/account/orders/[orderNumber]/refund-request/route.ts:34
@@ -1214,8 +1214,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:333
   - `getPillowXsFromPriceLabel()` [select] — lib/landing-page-data.ts:51
   - `handleApply()` [select] — app/api/shop/customize/route.ts:579
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:336
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:246
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:339
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:249
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:337
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:177
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:195
@@ -1234,8 +1234,8 @@ Defined in supabase/migrations/0014_pillow_kinds.sql:45
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:56
   - `GET()` [select] — app/api/shopify/diagnostics/route.ts:20
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:93
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:344
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:254
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:347
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:257
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:393
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:32
   - `loadPreOrderTriggerAtHold()` [select] — lib/configurator/pre-order-persist.ts:45
@@ -1773,6 +1773,30 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
 Defined in supabase/migrations/20261020120000_marketing_consent.sql:155
 - Called by:
   - `setMarketingEmail()` — lib/marketing-consent/consent.ts:48
+
+### support_chat_messages
+Defined in supabase/migrations/20261024120000_support_chats.sql:79
+References: `support_chats`
+Changed from pages: `/support`
+- Written by:
+  - `insertMessage()` [insert] — lib/support/chat.ts:195
+  - `setTelegramId()` [update] — lib/support/chat.ts:209
+- Read by:
+  - `chatIdForTelegramMessage()` [select] — lib/support/chat.ts:477
+  - `countMessages()` [select] — lib/support/chat.ts:175
+  - `readMessages()` [select] — lib/support/chat.ts:163
+
+### support_chats
+Defined in supabase/migrations/20261024120000_support_chats.sql:40
+References: `customers`
+Changed from pages: `/support`
+- Written by:
+  - `emailTranscriptIfNew()` [update] — lib/support/chat.ts:385
+  - `listCustomerChats()` [select,update] — lib/support/chat.ts:454
+  - `startChat()` [insert] — lib/support/chat.ts:266
+  - `updateChat()` [update] — lib/support/chat.ts:184
+- Read by:
+  - `loadChat()` [select] — lib/support/chat.ts:157
 
 ### undo_shopify_import
 Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.sql:455
@@ -2686,7 +2710,9 @@ app/[lang]/shop/checkout/confirmation/page.tsx
 
 ### /support
 app/[lang]/support/page.tsx
-- Endpoints: `/api/support/contact [POST]`
+- Endpoints: `/api/support/chat`, `/api/support/chat/[id]`, `/api/support/chat/[id]/claim`, `/api/support/chat/[id]/end`, `/api/support/chat/[id]/leave`, `/api/support/chat/[id]/messages`
+- Changes, through its actions, endpoints and their calls: `customers`, `orders`, `support_chat_messages`, `support_chats`
+- Reads, through the same: `points_ledger`
 
 ### /unsubscribe
 app/[lang]/unsubscribe/page.tsx

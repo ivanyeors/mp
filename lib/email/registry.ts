@@ -14,7 +14,7 @@ import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, rend
 import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
 import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderComposedCampaignEmail } from "./campaigns";
-import { renderContactEmail } from "./contact";
+import { renderChatTranscriptEmail } from "./support-chat";
 import {
   renderMigrationAnnouncementEmail,
   renderMigrationReminderEmail,
@@ -48,7 +48,7 @@ import { ORDER_EMAIL_COPY, ORDER_EMAIL_TEMPLATES, renderOrderEmail } from "./tem
 import {
   sampleApplication,
   HOSTILE,
-  sampleContact,
+  sampleChatTranscript,
   sampleHeldReminder,
   sampleHoldExpired,
   sampleHoldExpiredUnpaid,
@@ -717,11 +717,11 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
 
   // --- Support / staff ---
   {
-    id: "support.contact",
-    label: "Contact Us message (support inbox, customer on Cc)",
+    id: "support.chat_transcript",
+    label: "Website chat transcript (support inbox and sg@ on Cc)",
     group: "support",
     audience: "customer",
-    render: (f) => renderContactEmail(sampleContact(f)),
+    render: (f) => renderChatTranscriptEmail(sampleChatTranscript(f)),
   },
   {
     id: "ops.partner_listing_updated",
