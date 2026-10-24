@@ -1,76 +1,32 @@
-import { getEmailTransport } from "./index";
-import { renderEmailShell } from "./base";
-import { card, infoList, preformatted } from "./components";
+import { emailAddressOf } from "./campaign-transport";
 import { getDefaultFromAddress } from "./transport";
-import type { RenderedEmail, SendOutcome } from "./types";
 
 // ============================================================
-// Support contact form → email
+// Support inbox
 // ============================================================
 //
-// A customer-facing contact form delivers a message to the support inbox. We
-// reuse the same swappable transport as the order emails, so this works with
-// Resend in production and falls back to the console transport in dev.
-
-export interface ContactMessage {
-  name: string;
-  email: string;
-  subject?: string | null;
-  message: string;
-}
+// Where customer replies and support mail go. The website chat's transcripts
+// (lib/email/support-chat.ts) Cc it, with CONTACT_CC.
 
 /**
- * Where contact-form messages are delivered. Defaults to the configured
- * from-address (i.e. your own inbox) when SUPPORT_EMAIL is not set, so the
- * form never silently drops messages.
+ * The support inbox. Defaults to the configured from-address (i.e. your own
+ * inbox) when SUPPORT_EMAIL is not set, so support mail is never silently
+ * dropped.
  */
 export function getSupportInbox(): string {
   return process.env.SUPPORT_EMAIL || getDefaultFromAddress();
 }
 
-export function renderContactEmail(msg: ContactMessage): RenderedEmail {
-  const subjectLine = msg.subject?.trim()
-    ? `Support: ${msg.subject.trim()}`
-    : "New support message";
+/** A second staff inbox copied on every chat transcript. */
+export const CONTACT_CC = "sg@mpillow.com";
 
-  const text = `New message from the support form
-
-Name: ${msg.name}
-Email: ${msg.email}
-${msg.subject ? `Subject: ${msg.subject}\n` : ""}
-Message:
-${msg.message}`;
-
-  const bodyHtml = `${infoList([
-    { label: "From", value: msg.name },
-    { label: "Email", value: msg.email },
-    ...(msg.subject?.trim() ? [{ label: "Subject", value: msg.subject.trim() }] : []),
-  ])}
-${card({ bodyHtml: preformatted(msg.message) })}`;
-
-  const html = renderEmailShell({
-    title: "New support message",
-    preheader: `${msg.name} sent a message through the support form.`,
-    bodyHtml,
-    footer: "mpillow support",
-    audience: "staff",
+/** Each address once, compared without case or display name; the first spelling wins. */
+export function uniqueAddresses(list: string[]): string[] {
+  const seen = new Set<string>();
+  return list.filter((address) => {
+    const key = emailAddressOf(address) ?? address.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
-
-  return { subject: subjectLine, html, text };
-}
-
-/**
- * Send a contact-form message to the support inbox. The sender's address is set
- * as Reply-To so staff can reply directly. Throws if the transport throws.
- */
-export async function sendContactMessage(msg: ContactMessage): Promise<SendOutcome> {
-  const transport = getEmailTransport();
-  const rendered = renderContactEmail(msg);
-  const result = await transport.send({
-    ...rendered,
-    to: getSupportInbox(),
-    from: getDefaultFromAddress(),
-    replyTo: msg.email,
-  });
-  return { sent: true, transport: transport.name, id: result.id };
 }

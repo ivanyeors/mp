@@ -15,7 +15,7 @@ export class ConsoleTransport implements EmailTransport {
 
   async send(email: OutgoingEmail): Promise<TransportResult> {
     console.info(
-      `[email:console] to=${email.to} from=${email.from} subject="${email.subject}"`
+      `[email:console] to=${email.to}${email.cc?.length ? ` cc=${email.cc.join(",")}` : ""} from=${email.from} subject="${email.subject}"`
     );
     return { id: `console_${Date.now()}` };
   }
@@ -40,7 +40,8 @@ export class ResendTransport implements EmailTransport {
       body: JSON.stringify({
         from: email.from,
         to: [email.to],
-        ...(email.replyTo ? { reply_to: email.replyTo } : {}),
+        ...(email.cc?.length ? { cc: email.cc } : {}),
+        ...(email.replyTo?.length ? { reply_to: email.replyTo } : {}),
         subject: email.subject,
         html: email.html,
         text: email.text,
@@ -150,13 +151,21 @@ export function extraHeaders(headers: Record<string, string> | undefined): Array
   });
 }
 
+/** An address header's value, one address or a list. A line break could add headers, so it throws. */
+function addressHeader(value: string | string[]): string {
+  const list = typeof value === "string" ? [value] : value;
+  if (list.some((address) => /[\r\n]/.test(address))) throw new Error("Email address has a line break in it");
+  return list.join(", ");
+}
+
 /** Build a base64url-encoded MIME message for the Gmail API. Exported for tests. */
 export function buildRawMessage(email: OutgoingEmail): string {
   const boundary = `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
   const headers = [
     `From: ${email.from}`,
     `To: ${email.to}`,
-    ...(email.replyTo ? [`Reply-To: ${email.replyTo}`] : []),
+    ...(email.cc?.length ? [`Cc: ${addressHeader(email.cc)}`] : []),
+    ...(email.replyTo?.length ? [`Reply-To: ${addressHeader(email.replyTo)}`] : []),
     `Subject: ${encodeHeaderValue(email.subject)}`,
     ...extraHeaders(email.headers).map(([name, value]) => `${name}: ${encodeHeaderValue(value)}`),
     "MIME-Version: 1.0",

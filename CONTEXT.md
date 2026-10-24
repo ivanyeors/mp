@@ -198,7 +198,8 @@ Shopper-chosen **Item**s on a customisation preview. **Mpillow** (full/basic): c
 _Avoid_: showing a Cover Style picker on mbolster-config; treating bolster protector as a shopper choice
 
 **Add-on**:
-An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Visualize** overlays).
+An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Visualize** overlays), or, when that size has none, its family’s — another size of the same (category, name). Offered by size, and by answer: an Ear Comfort Pad only to a shopper who answered yes to ear discomfort during side sleep; every other Add-on, Cervical Neck Support included, always. **Staff** are offered every one. A selected Add-on is never final on the shopper’s say-so: the pillow advisor reviews each against the shopper’s measurements before the build is made and decides whether it goes in, and the preview tells the shopper so as soon as they pick one.
+_Avoid_: promising a picked Add-on will ship; gating an Add-on on an answer in the hold route (the advisor’s review is the gate, the preview only declutters)
 
 **Service**:
 A priced act of labour Mpillow performs that consumes no inventory. Exactly three: Measurement (Premium), Measurement (Basic) and Re-adjustment, keyed `measurement_premium` / `measurement_basic` / `readjustment`. Priced in **Costings** (`service_prices`) and never an **Item**; a fourth is a migration plus a rule in code, never a row an operator invents (ADR 0024).
@@ -691,7 +692,7 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 > **Domain expert:** "If it’s not offered for that size, clear it and make them re-pick. If it’s offered but stock is 0, keep it and use the normal out-of-stock / **Pre-order** path."
 >
 > **Dev:** "Where do cover overlays get assigned?"
-> **Domain expert:** "**Product Visualize** on the Products page — pick a **Media Asset** per cover/case **Item**. The Your Custom Mpillow preview shows that overlay when the shopper selects the option."
+> **Domain expert:** "**Product Visualize** on the Products page — pick a **Media Asset** per cover/case **Item**. The Your Custom Mpillow preview shows that overlay when the shopper selects the option: the case's, since the case is what the pillow wears, unless the shopper switches on **Show on pillow** beside Cover Style to see the cover instead."
 >
 > **Dev:** "Pre-order waiting — do we show weeks?"
 > **Domain expert:** "No numeric ETA in v1. Fixed copy: we’ll reach out shortly via WhatsApp. Restock automation email is separate."

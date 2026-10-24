@@ -10,6 +10,7 @@
 
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
+import type { ChatTranscript } from "../support-chat";
 
 export type EmailFixture = "happy" | "hostile";
 
@@ -270,15 +271,30 @@ export function sampleRestock(fixture: EmailFixture = "happy") {
   };
 }
 
-export function sampleContact(fixture: EmailFixture = "happy") {
+export function sampleChatTranscript(fixture: EmailFixture = "happy"): ChatTranscript {
   return {
+    ref: "3F9A2C",
+    chatId: "3f9a2c41-7d0e-4b8a-9c55-1e2f3a4b5c6d",
     name: pick(fixture, "Tan Wei Ling"),
-    email: pick(fixture, "wei.ling@example.com"),
-    subject: pick(fixture, "Question about bolster sizing"),
-    message: pick(
-      fixture,
-      "Hi team,\n\nI bought a medium bolster last month and I'm wondering whether the long size would suit a 1.8m frame better.\n\nThanks!",
-    ),
+    email: "wei.ling@example.com",
+    hasAccount: false,
+    reason: "staff_reply",
+    messages: [
+      {
+        sender: "customer",
+        body: pick(
+          fixture,
+          "Hi team,\n\nI bought a medium bolster last month. Would the long size suit a 1.8m frame better?",
+        ),
+        createdAt: "2026-10-24T02:14:00Z",
+      },
+      {
+        sender: "staff",
+        staffName: pick(fixture, "Darren"),
+        body: pick(fixture, "Hi Wei Ling! For a 1.8m frame the long (1.2m) bolster is the better fit. Happy to swap it for you."),
+        createdAt: "2026-10-24T02:31:00Z",
+      },
+    ],
   };
 }
 

@@ -49,8 +49,8 @@ function replyTo(messageId: number | null | undefined) {
 
 /**
  * Posts a message to the measurements group, reporting why when it can't.
- * `replyToMessageId` threads it under an earlier message (a customer's next
- * message under their last card).
+ * `replyToMessageId` threads it under that message (a customer's next message
+ * under their last card, a website chat's later messages under its first).
  */
 export async function sendGroupMessage(
   text: string,
@@ -148,6 +148,17 @@ export async function replyInGroup(text: string, replyToMessageId?: number): Pro
 /** A direct reply in whatever chat the person wrote from (used for /link). */
 export async function replyInChat(chatId: number, text: string, replyToMessageId?: number): Promise<void> {
   await callTelegram("sendMessage", { chat_id: chatId, text, ...replyTo(replyToMessageId) });
+}
+
+/** A quiet acknowledgement on a group message, instead of another message. */
+export async function reactInGroup(messageId: number, emoji: string): Promise<boolean> {
+  const res = await callTelegram("setMessageReaction", {
+    chat_id: MP_CONFIG_TELEGRAM_CHAT_ID,
+    message_id: messageId,
+    reaction: [{ type: "emoji", emoji }],
+  });
+  if (!res.ok) console.error("[telegram] reaction failed", res.error);
+  return res.ok;
 }
 
 /** Stops the button spinner; `showAlert` pops a dialog only the tapper sees. */

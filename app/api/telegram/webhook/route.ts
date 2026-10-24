@@ -3,9 +3,11 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { secretMatches } from '@/lib/auth/secret'
 import { handleReviewUpdate, isReviewUpdate } from '@/lib/reviews/telegram-handler'
 import { handleInboxUpdate, isInboxUpdate } from '@/lib/social-inbox/telegram-handler'
+import { handleChatReplyUpdate, isChatReplyCandidate } from '@/lib/support/chat-telegram'
 
 export const runtime = 'nodejs'
-// Review buttons can redraft with Claude after the response (see below).
+// Review buttons can redraft with Claude, and a website chat reply waits for a
+// follow-up before emailing, both after the response (see below).
 export const maxDuration = 120
 
 type TelegramUpdate = {
@@ -13,7 +15,7 @@ type TelegramUpdate = {
   message?: {
     message_id: number
     chat: { id: number; type: string; title?: string; username?: string; first_name?: string; last_name?: string }
-    from?: { id: number; username?: string; first_name?: string; last_name?: string }
+    from?: { id: number; is_bot?: boolean; username?: string; first_name?: string; last_name?: string }
     text?: string
     caption?: string
     reply_to_message?: { message_id: number; text?: string; caption?: string }
@@ -539,9 +541,18 @@ export async function POST(req: NextRequest) {
     // Replies to customer message cards (Facebook / Instagram / TikTok) go back
     // to the customer. Same gate and timing as review cards: the measurements
     // group, a person allowed `telegram.social-inbox-reply`, work after the 200
-    // (lib/social-inbox/telegram-handler.ts).
+    // (lib/social-inbox/telegram-handler.ts). Before the website chat's check:
+    // that one takes any reply in the group, this one only replies to a card.
     if (isInboxUpdate(update)) {
       after(() => handleInboxUpdate(update))
+      return NextResponse.json({ ok: true })
+    }
+
+    // A staff reply to a website chat message (lib/support/chat-telegram.ts):
+    // the measurements group only, gated there. Not a command, so nothing below
+    // would have handled it.
+    if (isChatReplyCandidate(update)) {
+      after(() => handleChatReplyUpdate(update))
       return NextResponse.json({ ok: true })
     }
 

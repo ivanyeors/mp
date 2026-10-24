@@ -232,7 +232,7 @@ Limits to know:
 
 ## Part 3 — Database
 
-Apply `supabase/migrations/20261024120000_social_inbox.sql` (`pnpm db:push`). It adds
+Apply `supabase/migrations/20261024130000_social_inbox.sql` (`pnpm db:push`). It adds
 `social_conversations`, `social_messages` and `social_channel_tokens`. Until it is applied the
 feature stays off: the daily cron reports the missing tables and the Telegram tab shows nothing
 connected; nothing else is affected.

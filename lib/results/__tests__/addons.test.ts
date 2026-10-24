@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   accessoryFitsProduct,
   addonMatchRank,
+  addonsForAnswers,
+  keepOfferedAddons,
   suggestAddons,
 } from "@/lib/results/addons";
 
@@ -74,5 +76,48 @@ describe("suggestAddons", () => {
     expect(addonMatchRank({ size: "medium" }, "bolster", "medium")).toBeGreaterThan(
       addonMatchRank({ size: "BOLSTER" }, "bolster", "medium"),
     );
+  });
+});
+
+describe("addonsForAnswers", () => {
+  const offered = [
+    { item_id: 62, name: "Cervical Neck Support" },
+    { item_id: 41, name: "Ear Comfort Pad" },
+    { item_id: 93, name: "Slope Mattress" },
+  ];
+
+  it("offers the Ear Comfort Pad on a yes to ear discomfort", () => {
+    expect(addonsForAnswers(offered, { earDiscomfortSideSleep: "yes" })).toEqual(offered);
+  });
+
+  it("hides it on a no or no answer, and keeps everything else", () => {
+    for (const answer of ["no", "", undefined, null]) {
+      expect(
+        addonsForAnswers(offered, { earDiscomfortSideSleep: answer }).map((a) => a.name),
+      ).toEqual(["Cervical Neck Support", "Slope Mattress"]);
+    }
+  });
+});
+
+describe("keepOfferedAddons", () => {
+  // Cervical Neck Support M (62) and L (63); the Ear Comfort Pad (41) is one-size.
+  const picked = new Set([62, 41]);
+
+  it("keeps a sized pick while the build's size is unknown", () => {
+    // The unscoped list carries the L: the restored M must survive it.
+    const unscoped = [{ item_id: 63 }, { item_id: 41 }];
+    expect([...keepOfferedAddons(picked, unscoped, null)].sort()).toEqual([41, 62]);
+    expect([...keepOfferedAddons(picked, unscoped, "")].sort()).toEqual([41, 62]);
+  });
+
+  it("drops picks the size-scoped list no longer offers", () => {
+    expect([...keepOfferedAddons(picked, [{ item_id: 62 }, { item_id: 41 }], "M")].sort()).toEqual([
+      41, 62,
+    ]);
+    expect([...keepOfferedAddons(picked, [{ item_id: 63 }], "L")]).toEqual([]);
+  });
+
+  it("never hands back the caller's set", () => {
+    expect(keepOfferedAddons(picked, [], null)).not.toBe(picked);
   });
 });

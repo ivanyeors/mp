@@ -61,10 +61,12 @@ import {
 import { ConfigImageUpload } from "@/components/configurator/config-image-upload";
 import {
   AddonOptionButton,
+  AddonReviewNotice,
   SelectedAddonPreviews,
   type AddonOption,
 } from "@/components/configurator/addon-cards";
 import { CoBrandBanner } from "@/components/configurator/co-brand-banner";
+import { keepOfferedAddons } from "@/lib/results/addons";
 import {
   holdCtaLabel,
   isPreOrder,
@@ -964,6 +966,12 @@ export function MbolsterConfigClient({
   React.useEffect(() => {
     if (state.step !== "preview") return;
 
+    // A restored hold cancel runs this first without a length, then again once
+    // the recommendation lands; the earlier list must not overwrite the later.
+    let cancelled = false;
+    const stale = () => {
+      cancelled = true;
+    };
     // Assisted runs offer no add-ons (AC3) — skip the fetch entirely.
     if (!partnerAssisted) {
       const length = shopRecommendation?.bolster_variant ?? "";
@@ -972,18 +980,18 @@ export function MbolsterConfigClient({
       fetch(`/api/results/addons?${qs.toString()}`)
         .then((r) => r.json())
         .then((d: { addons?: typeof addons }) => {
+          if (cancelled) return;
           const list = d.addons ?? [];
           setAddons(list);
-          setSelectedAddons((prev) => {
-            const valid = new Set(list.map((a) => a.item_id));
-            return new Set([...prev].filter((id) => valid.has(id)));
-          });
+          setSelectedAddons((prev) => keepOfferedAddons(prev, list, length));
         })
-        .catch(() => setAddons([]));
+        .catch(() => {
+          if (!cancelled) setAddons([]);
+        });
     }
 
     // A paired Mbolster ships with its Mpillow: no shipping choice of its own.
-    if (paired) return;
+    if (paired) return stale;
     const country = holdAddress.country || "SG";
     fetch(`${HOLD_SHIPPING_METHODS_PATH}&country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
@@ -1001,6 +1009,7 @@ export function MbolsterConfigClient({
         );
       })
       .catch(() => setShippingMethods([]));
+    return stale;
   }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant, paired]);
 
   const handleKeepFlowRoute = React.useCallback(() => {
@@ -1096,7 +1105,7 @@ export function MbolsterConfigClient({
           label: `Mbolster · ${suggestedLength}`,
           lines: [
             ...(caseName ? [`Case: ${caseName}`] : []),
-            ...(addonNames.length ? [`Add-ons: ${addonNames.join(", ")}`] : []),
+            ...(addonNames.length ? [`Add-ons, subject to advisor review: ${addonNames.join(", ")}`] : []),
           ],
           ballpark: serviceLines ? shopBasePrice + addonTotal + sumServiceLines(serviceLines) : null,
           currency: shopCurrency,
@@ -1614,6 +1623,10 @@ export function MbolsterConfigClient({
                       />
                     ))}
                   </div>
+                  {/* Staff are the advisor. */}
+                  {!staffAssist && addons.some((a) => selectedAddons.has(a.item_id)) ? (
+                    <AddonReviewNotice chargedAfterReview />
+                  ) : null}
                 </div>
               )}
 

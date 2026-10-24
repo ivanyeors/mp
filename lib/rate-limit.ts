@@ -6,8 +6,8 @@
  * upgrade path is shared storage (Redis/Upstash) behind the same signature —
  * swap the store, leave every call site alone.
  *
- * Lifted from app/api/support/contact/route.ts, which was the only limiter in the
- * codebase and is now one of its callers.
+ * Lifted from the old Contact Us form's route (since replaced by the website
+ * chat, app/api/support/chat), which was the only limiter in the codebase.
  */
 
 const buckets = new Map<string, Map<string, number[]>>();
