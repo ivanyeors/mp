@@ -3783,11 +3783,11 @@ export function MpConfigClient({
               </Button>
               {studioMeasureFee != null && (
                 <p className="text-sm text-muted-foreground">
-                  Prefer our team to measure you?{" "}
+                  Prefer our team to measure you? Get it customised, adjusted and bring home immediately for
+                  SGD {studioMeasureFee.toFixed(2)}.{" "}
                   <Link href={studioMeasureHref} className="font-medium text-foreground underline underline-offset-4">
-                    Book a studio measurement
-                  </Link>{" "}
-                  — SGD {studioMeasureFee.toFixed(2)}, paid with your pillow.
+                    Book here
+                  </Link>
                 </p>
               )}
             </div>
@@ -3874,11 +3874,11 @@ export function MpConfigClient({
                     </p>
                     {studioMeasureFee != null && (
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Prefer our team to measure you?{" "}
+                        Prefer our team to measure you? Get it customised, adjusted and bring home immediately for
+                        SGD {studioMeasureFee.toFixed(2)}.{" "}
                         <Link href={studioMeasureHref} className="font-medium text-foreground underline underline-offset-4">
-                          Book a studio measurement
-                        </Link>{" "}
-                        — SGD {studioMeasureFee.toFixed(2)}, paid with your pillow, not today.
+                          Book here
+                        </Link>
                       </p>
                     )}
                   </div>
