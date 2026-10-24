@@ -1,20 +1,67 @@
 import { getEmailTransport } from "./index";
 import { renderEmailShell } from "./base";
-import { card, mutedText, paragraph, preformatted } from "./components";
+import { card, codeBlock, mutedText, paragraph, preformatted } from "./components";
 import { CONTACT_CC, getSupportInbox, uniqueAddresses } from "./contact";
 import { getDefaultFromAddress } from "./transport";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { RenderedEmail, SendOutcome } from "./types";
 
 // ============================================================
-// Website chat → transcript email
+// Website chat → code and transcript emails
 // ============================================================
 //
-// A visitor who gives the chat an email gets the whole conversation there:
-// when they end the chat, when they leave the page, and when a staff reply
-// arrives after they have gone (lib/support/chat.ts decides when). Every
-// transcript of one chat has the same subject, so the mail client threads
-// them.
+// A visitor without an account proves their email with a 6-digit code before
+// their first message goes out (lib/support/chat-codes.ts). From then on the
+// chat's transcript goes to that address with no second code: when they end
+// the chat, when they leave the page, and when a staff reply arrives after
+// they have gone (lib/support/chat.ts decides when). Every transcript of one
+// chat has the same subject, so the mail client threads them.
+
+/**
+ * The code email. Nothing in it comes from the visitor, so typing someone
+ * else's address sends them only a code they can ignore.
+ */
+export function renderChatCodeEmail(p: { code: string; minutes?: number }): RenderedEmail {
+  const minutes = p.minutes ?? 10;
+  const intro = "Here's your code for the chat on our website.";
+  const expiry = `Enter it in the chat to send your message. It works for ${minutes} minutes.`;
+  const after = "We'll email you a copy of the chat at this address when you're done, and any reply we send after you've left the page.";
+  const notYou = "Didn't start a chat with us? Someone typed your email address in the chat on our website. You can ignore this email: without the code, we send nothing else.";
+
+  const text = `${intro}
+
+${p.code}
+
+${expiry}
+
+${after}
+
+${notYou}`;
+
+  const html = renderEmailShell({
+    title: "Your chat code",
+    preheader: `Your code is ${p.code}. It works for ${minutes} minutes.`,
+    bodyHtml: `${paragraph(intro)}
+${codeBlock(p.code, { caption: expiry })}
+${paragraph(after)}
+${mutedText(notYou)}`,
+    footer: "mpillow support",
+    audience: "customer",
+  });
+
+  return { subject: "Your mpillow chat code", html, text };
+}
+
+/** Sends a code to the visitor alone. Throws if the transport throws. */
+export async function sendChatCodeEmail(email: string, code: string, minutes?: number): Promise<SendOutcome> {
+  const transport = getEmailTransport();
+  const result = await transport.send({
+    ...renderChatCodeEmail({ code, minutes }),
+    to: email,
+    from: getDefaultFromAddress(),
+  });
+  return { sent: true, transport: transport.name, id: result.id };
+}
 
 /** Why this transcript is going out; only the opening line differs. */
 export type TranscriptReason = "ended" | "left" | "staff_reply";
@@ -31,6 +78,7 @@ export interface ChatTranscript {
   ref: string;
   chatId: string;
   name?: string | null;
+  /** Verified: the account's sign-in email, or one proved with a chat code. */
   email: string;
   /** Signed in: the email links back to the chat in their account. */
   hasAccount: boolean;
@@ -76,7 +124,6 @@ export function renderChatTranscriptEmail(t: ChatTranscript): RenderedEmail {
   const greeting = t.name?.trim() ? `Hi ${t.name.trim()},` : "Hi,";
   const opening = OPENING[t.reason];
   const replyNote = "Reply to this email and it reaches our team.";
-  const notYou = "Didn't chat with us? Someone entered your email address in the chat on our website. You can ignore this email.";
   const chatUrl = `${getSiteOrigin()}/support?chat=${encodeURIComponent(t.chatId)}#contact`;
 
   const text = `${greeting}
@@ -85,9 +132,7 @@ ${opening}
 
 ${t.messages.map((m) => `${speaker(m)} · ${when(m.createdAt)}\n${m.body}`).join("\n\n")}
 
-${replyNote}${t.hasAccount ? `\nYour chat: ${chatUrl}` : ""}
-
-${notYou}`;
+${replyNote}${t.hasAccount ? `\nYour chat: ${chatUrl}` : ""}`;
 
   const bodyHtml = `${paragraph(greeting)}
 ${paragraph(opening)}
@@ -100,8 +145,7 @@ ${t.messages
     }),
   )
   .join("\n")}
-${paragraph(replyNote, { top: 8 })}
-${mutedText(notYou)}`;
+${paragraph(replyNote, { top: 8 })}`;
 
   const html = renderEmailShell({
     title: "Your chat with mpillow",

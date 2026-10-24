@@ -1774,29 +1774,36 @@ Defined in supabase/migrations/20261020120000_marketing_consent.sql:155
 - Called by:
   - `setMarketingEmail()` — lib/marketing-consent/consent.ts:48
 
+### support_chat_codes
+Defined in supabase/migrations/20261024120000_support_chats.sql:110
+Changed from pages: `/support`
+- Written by:
+  - `issueChatCode()` [delete,insert,select] — lib/support/chat-codes.ts:43
+  - `redeemChatCode()` [select,update] — lib/support/chat-codes.ts:90
+
 ### support_chat_messages
-Defined in supabase/migrations/20261024120000_support_chats.sql:79
+Defined in supabase/migrations/20261024120000_support_chats.sql:88
 References: `support_chats`
 Changed from pages: `/support`
 - Written by:
-  - `insertMessage()` [insert] — lib/support/chat.ts:195
-  - `setTelegramId()` [update] — lib/support/chat.ts:209
+  - `insertMessage()` [insert] — lib/support/chat.ts:191
+  - `setTelegramId()` [update] — lib/support/chat.ts:205
 - Read by:
-  - `chatIdForTelegramMessage()` [select] — lib/support/chat.ts:477
-  - `countMessages()` [select] — lib/support/chat.ts:175
-  - `readMessages()` [select] — lib/support/chat.ts:163
+  - `chatIdForTelegramMessage()` [select] — lib/support/chat.ts:448
+  - `countMessages()` [select] — lib/support/chat.ts:171
+  - `readMessages()` [select] — lib/support/chat.ts:159
 
 ### support_chats
-Defined in supabase/migrations/20261024120000_support_chats.sql:40
+Defined in supabase/migrations/20261024120000_support_chats.sql:49
 References: `customers`
 Changed from pages: `/support`
 - Written by:
-  - `emailTranscriptIfNew()` [update] — lib/support/chat.ts:385
-  - `listCustomerChats()` [select,update] — lib/support/chat.ts:454
-  - `startChat()` [insert] — lib/support/chat.ts:266
-  - `updateChat()` [update] — lib/support/chat.ts:184
+  - `emailTranscriptIfNew()` [update] — lib/support/chat.ts:373
+  - `listCustomerChats()` [select,update] — lib/support/chat.ts:425
+  - `startChat()` [insert] — lib/support/chat.ts:268
+  - `updateChat()` [update] — lib/support/chat.ts:180
 - Read by:
-  - `loadChat()` [select] — lib/support/chat.ts:157
+  - `loadChat()` [select] — lib/support/chat.ts:153
 
 ### undo_shopify_import
 Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.sql:455
@@ -2710,8 +2717,8 @@ app/[lang]/shop/checkout/confirmation/page.tsx
 
 ### /support
 app/[lang]/support/page.tsx
-- Endpoints: `/api/support/chat`, `/api/support/chat/[id]`, `/api/support/chat/[id]/claim`, `/api/support/chat/[id]/end`, `/api/support/chat/[id]/leave`, `/api/support/chat/[id]/messages`
-- Changes, through its actions, endpoints and their calls: `customers`, `orders`, `support_chat_messages`, `support_chats`
+- Endpoints: `/api/support/chat`, `/api/support/chat/[id]`, `/api/support/chat/[id]/end`, `/api/support/chat/[id]/leave`, `/api/support/chat/[id]/messages`, `/api/support/chat/code`
+- Changes, through its actions, endpoints and their calls: `customers`, `orders`, `support_chat_codes`, `support_chat_messages`, `support_chats`
 - Reads, through the same: `points_ledger`
 
 ### /unsubscribe

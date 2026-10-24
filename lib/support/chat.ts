@@ -3,14 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import { sendChatTranscript, type TranscriptReason } from "@/lib/email/support-chat";
 import { replyInGroup, sendGroupMessage } from "@/lib/telegram/bot-api";
-import {
-  chatRef,
-  renderChatClaimNote,
-  renderChatContactNote,
-  renderChatEndedNote,
-  renderChatFollowUp,
-  renderChatRootNotice,
-} from "./chat-notices";
+import { chatRef, renderChatEndedNote, renderChatFollowUp, renderChatRootNotice } from "./chat-notices";
 
 /**
  * The website chat (the "Get in touch" chat on /support).
@@ -25,10 +18,13 @@ import {
  * in sessionStorage — so without an account it is gone with the tab), and the
  * signed-in customer it belongs to, from anywhere.
  *
- * A chat with an email gets its transcript emailed when the customer ends it,
- * when they leave the page (and don't come straight back), and when a staff
- * reply arrives after they've gone. Each transcript is the whole chat, and only
- * goes when there is something it hasn't sent yet.
+ * Every chat has a verified email from its first message: the signed-in
+ * customer's, or one a visitor proved with a 6-digit code
+ * (lib/support/chat-codes.ts). The transcript goes there, with no second
+ * code, when the customer ends the chat, when they leave the page (and don't
+ * come straight back), and when a staff reply arrives after they've gone.
+ * Each transcript is the whole chat, and only goes when there is something it
+ * hasn't sent yet.
  *
  * Telegram and email are best-effort: nothing here throws because either is
  * down. The stored chat is the record.
@@ -49,7 +45,7 @@ export type SupportChatRow = {
   customer_id: string | null;
   auth_user_id: string | null;
   name: string | null;
-  email: string | null;
+  email: string;
   status: "open" | "ended";
   preview: string;
   telegram_root_message_id: number | null;
@@ -80,7 +76,7 @@ export type ChatView = {
   ref: string;
   status: "open" | "ended";
   name: string | null;
-  email: string | null;
+  email: string;
   hasAccount: boolean;
   createdAt: string;
   endedAt: string | null;
@@ -88,7 +84,7 @@ export type ChatView = {
 
 export type ChatSummary = ChatView & { preview: string; lastMessageAt: string };
 
-/** The signed-in customer a chat is started by, claimed by, or adopted into. */
+/** The signed-in customer a chat is started by or adopted into. */
 export type ChatCustomer = { customerId: string; authUserId: string; email: string; name: string | null };
 
 type MessageRow = {
@@ -251,17 +247,23 @@ function clean(value: string | null | undefined, max: number): string | null {
   return v ? v.slice(0, max) : null;
 }
 
-export async function startChat(input: {
-  body: string;
-  name?: string | null;
-  email?: string | null;
-  customer?: ChatCustomer | null;
-  now?: Date;
-}): Promise<{ chat: SupportChatRow; token: string; message: ChatMessageView; delivered: boolean }> {
+/**
+ * Starts a chat as a signed-in customer, or with an email the visitor has
+ * proved (redeemChatCode, or the chat this tab started before). Never with an
+ * email nobody checked.
+ */
+export async function startChat(
+  input: { body: string; name?: string | null; now?: Date } & (
+    | { customer: ChatCustomer; verifiedEmail?: undefined }
+    | { customer?: undefined; verifiedEmail: string }
+  ),
+): Promise<{ chat: SupportChatRow; token: string; message: ChatMessageView; delivered: boolean }> {
   const now = (input.now ?? new Date()).toISOString();
   const body = input.body.trim().slice(0, CHAT_MESSAGE_MAX_CHARS);
   const { token, tokenHash } = newChatToken();
   const customer = input.customer ?? null;
+  const email = customer?.email ?? clean(input.verifiedEmail, 320);
+  if (!email) throw new Error("a support chat needs a verified email");
 
   const { data, error } = await supabaseAdmin()
     .from("support_chats")
@@ -271,7 +273,7 @@ export async function startChat(input: {
       customer_id: customer?.customerId ?? null,
       auth_user_id: customer?.authUserId ?? null,
       name: clean(input.name, 200) ?? customer?.name ?? null,
-      email: customer?.email ?? clean(input.email, 320),
+      email,
       status: "open",
       preview: body.replace(/\s+/g, " ").slice(0, 200),
       telegram_root_message_id: null,
@@ -327,19 +329,6 @@ export async function addCustomerMessage(chat: SupportChatRow, text: string, now
   return { ok: true, chat: updated, message: toMessageView(message), delivered };
 }
 
-/** The visitor gave (or changed) their email and name. */
-export async function setChatContact(
-  chat: SupportChatRow,
-  contact: { email: string; name?: string | null },
-): Promise<SupportChatRow> {
-  const email = contact.email.trim().slice(0, 320);
-  const name = clean(contact.name, 200) ?? chat.name;
-  if (email.toLowerCase() === chat.email?.toLowerCase() && name === chat.name) return chat;
-  const updated = await updateChat(chat.id, { email, name });
-  await noteInGroup(updated, renderChatContactNote(updated));
-  return updated;
-}
-
 /** A poll: the customer is on the page. Writes at most every TOUCH_EVERY_MS. */
 export async function touchChat(chat: SupportChatRow, now: Date = new Date()): Promise<SupportChatRow> {
   const stale = !chat.last_seen_at || now.getTime() - Date.parse(chat.last_seen_at) >= TOUCH_EVERY_MS;
@@ -366,7 +355,7 @@ export async function settleLeave(chatId: string): Promise<TranscriptResult> {
   return emailTranscriptIfNew(chatId, "left");
 }
 
-export type TranscriptResult = "sent" | "nothing_new" | "no_email" | "failed" | "skipped";
+export type TranscriptResult = "sent" | "nothing_new" | "failed" | "skipped";
 
 /**
  * Emails the whole chat when it has messages the last transcript didn't
@@ -377,7 +366,6 @@ export async function emailTranscriptIfNew(chatId: string, reason: TranscriptRea
   try {
     const chat = await loadChat(chatId);
     if (!chat) return "skipped";
-    if (!chat.email) return "no_email";
     const messages = await readMessages(chatId);
     const covered = chat.transcript_message_count;
     if (messages.length <= covered) return "nothing_new";
@@ -427,27 +415,10 @@ export async function endChat(chat: SupportChatRow, now: Date = new Date()): Pro
 }
 
 /**
- * The visitor signed in from the chat (or was already, on another chat): the
- * chat moves into their account, under the account's email. A chat already in
- * another account stays where it is.
- */
-export async function claimChat(chat: SupportChatRow, customer: ChatCustomer): Promise<SupportChatRow | null> {
-  if (chat.auth_user_id === customer.authUserId) return chat;
-  if (chat.auth_user_id) return null;
-  const claimed = await updateChat(chat.id, {
-    customer_id: customer.customerId,
-    auth_user_id: customer.authUserId,
-    email: customer.email,
-    name: chat.name ?? customer.name,
-  });
-  await noteInGroup(claimed, renderChatClaimNote(claimed));
-  return claimed;
-}
-
-/**
  * A signed-in customer's chats, newest first. Chats nobody owns that carry
- * their verified sign-in email are adopted first: their transcripts already
- * went to that address, so showing them in the account reveals nothing new.
+ * their sign-in email are adopted first: that address was proved with a code
+ * before the chat began, and its transcripts already went there, so showing
+ * them in the account reveals nothing new.
  */
 export async function listCustomerChats(customer: ChatCustomer, limit = 30): Promise<ChatSummary[]> {
   const admin = supabaseAdmin();

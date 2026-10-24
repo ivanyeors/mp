@@ -4,10 +4,12 @@ import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-ad
 import type { SupportChatRow } from "@/lib/support/chat";
 
 /**
- * The website chat: a visitor's messages post to the staff Telegram group,
+ * The website chat: a visitor proves their email with a 6-digit code before
+ * the first message goes out; their messages post to the staff Telegram group,
  * threaded under the chat's first notice; a staff reply to any of them comes
- * back as the chat's next message; the transcript is emailed when the customer
- * ends the chat, leaves it, or is away when staff reply — once per new message.
+ * back as the chat's next message; the transcript is emailed to the proved
+ * address when the customer ends the chat, leaves it, or is away when staff
+ * reply — once per new message, with no second code.
  */
 
 const h = vi.hoisted(() => ({
@@ -27,6 +29,7 @@ vi.mock("@/lib/telegram/bot-api", () => ({
 
 const { setEmailTransport } = await import("@/lib/email");
 const chat = await import("@/lib/support/chat");
+const codes = await import("@/lib/support/chat-codes");
 const { handleChatReplyUpdate, isChatReplyCandidate } = await import("@/lib/support/chat-telegram");
 const { CHAT_NOTICE_HEADER } = await import("@/lib/support/chat-notices");
 const { MP_CONFIG_TELEGRAM_CHAT_ID } = await import("@/lib/telegram/notify");
@@ -50,7 +53,7 @@ const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
 let savedSupport: string | undefined;
 
 beforeEach(() => {
-  h.db = { support_chats: [], support_chat_messages: [] };
+  h.db = { support_chats: [], support_chat_messages: [], support_chat_codes: [] };
   h.nextTelegramId = 100;
   h.sendGroupMessage.mockReset();
   h.sendGroupMessage.mockImplementation(async () => ({ ok: true, chatId: -1, messageId: h.nextTelegramId++ }));
@@ -87,9 +90,13 @@ function staffUpdate(replyTo: number, text: string, messageId: number, name = "D
 
 const noWait = { wait: async () => {} };
 
+/** A visitor's chat, started with the email their code proved. */
+const start = (body: string, opts: { now?: Date; name?: string } = {}) =>
+  chat.startChat({ body, verifiedEmail: "jane@example.com", now: opts.now ?? T0, name: opts.name });
+
 describe("starting a chat", () => {
   it("stores it, posts the root notice, and opens only with its token", async () => {
-    const { chat: c, token, message, delivered } = await chat.startChat({ body: "  Which size fits me?  ", now: T0 });
+    const { chat: c, token, message, delivered } = await start("  Which size fits me?  ");
 
     expect(delivered).toBe(true);
     expect(message).toMatchObject({ sender: "customer", body: "Which size fits me?" });
@@ -99,7 +106,7 @@ describe("starting a chat", () => {
 
     const [text, , opts] = h.sendGroupMessage.mock.calls[0];
     expect(text.split("\n")[0]).toBe(`${CHAT_NOTICE_HEADER} #${chat.toChatView(c).ref}`);
-    expect(text).toContain("Visitor · no email yet");
+    expect(text).toContain("Visitor · jane@example.com");
     expect(text).toContain("Which size fits me?");
     expect(opts).toEqual({ replyToMessageId: undefined });
 
@@ -107,6 +114,10 @@ describe("starting a chat", () => {
     expect(chat.canAccessChat(c, { token: "nope" })).toBe(false);
     expect(chat.canAccessChat(c, {})).toBe(false);
     expect(c.token_hash).not.toContain(token);
+  });
+
+  it("needs an email somebody proved", async () => {
+    await expect(chat.startChat({ body: "Hi", verifiedEmail: "  " })).rejects.toThrow(/verified email/);
   });
 
   it("belongs to a signed-in customer from the start", async () => {
@@ -121,7 +132,7 @@ describe("starting a chat", () => {
 
 describe("customer messages", () => {
   it("thread under the root notice", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
+    const { chat: c } = await start("Hi");
     const res = await chat.addCustomerMessage(c, "Are you open on Sunday?", at(10));
     expect(res).toMatchObject({ ok: true, delivered: true });
     const [text, , opts] = h.sendGroupMessage.mock.calls[1];
@@ -132,7 +143,7 @@ describe("customer messages", () => {
 
   it("post the root later, carrying every message, when Telegram was down at the start", async () => {
     h.sendGroupMessage.mockResolvedValueOnce({ ok: false, error: "Bad Gateway" });
-    const { chat: c, delivered } = await chat.startChat({ body: "First", now: T0 });
+    const { chat: c, delivered } = await start("First");
     expect(delivered).toBe(false);
     expect(c.telegram_root_message_id).toBeNull();
 
@@ -145,7 +156,7 @@ describe("customer messages", () => {
   });
 
   it("are refused once the chat has ended", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
+    const { chat: c } = await start("Hi");
     const { chat: ended } = await chat.endChat(c, at(1));
     await expect(chat.addCustomerMessage(ended, "Hello?")).resolves.toEqual({ ok: false, reason: "ended" });
   });
@@ -167,8 +178,7 @@ describe("staff replies from Telegram", () => {
   it("reach a customer on the page, with a 👍 and no email", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
-    const { chat: c } = await chat.startChat({ body: "Hi", now: new Date() });
-    await chat.setChatContact(c, { email: "jane@example.com" });
+    const { chat: c } = await start("Hi", { now: new Date() });
 
     await handleChatReplyUpdate(staffUpdate(100, "Hi Jane, how can we help?", 300), noWait);
 
@@ -179,7 +189,7 @@ describe("staff replies from Telegram", () => {
   });
 
   it("also route a reply to a later message of the chat", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: new Date() });
+    const { chat: c } = await start("Hi", { now: new Date() });
     await chat.addCustomerMessage(c, "Anyone there?");
     await handleChatReplyUpdate(staffUpdate(101, "Yes!", 301), noWait);
     expect(messagesOf(c.id).at(-1)).toMatchObject({ sender: "staff", body: "Yes!" });
@@ -188,9 +198,8 @@ describe("staff replies from Telegram", () => {
   it("are emailed with the whole chat when the customer has left, once", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
-    const { chat: c } = await chat.startChat({ body: "Do you ship to Malaysia?", now: new Date() });
-    const withEmail = await chat.setChatContact(c, { email: "jane@example.com", name: "Jane" });
-    await chat.markChatLeft(withEmail);
+    const { chat: c } = await start("Do you ship to Malaysia?", { now: new Date(), name: "Jane" });
+    await chat.markChatLeft(c);
 
     await handleChatReplyUpdate(staffUpdate(100, "We do! 3–5 days.", 300), noWait);
 
@@ -216,9 +225,8 @@ describe("staff replies from Telegram", () => {
   it("send one email for two quick replies: the earlier one leaves it to the later", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
-    const { chat: c } = await chat.startChat({ body: "Hi", now: new Date() });
-    await chat.markChatLeft(await chat.setChatContact(c, { email: "jane@example.com" }));
-    h.replyInGroup.mockClear();
+    const { chat: c } = await start("Hi", { now: new Date() });
+    await chat.markChatLeft(c);
 
     // The first handler records its reply, then (while it waits) the second arrives.
     await handleChatReplyUpdate(staffUpdate(100, "One sec", 300), {
@@ -232,12 +240,13 @@ describe("staff replies from Telegram", () => {
     expect(h.replyInGroup.mock.calls[0][1]).toBe(301);
   });
 
-  it("tell staff when the customer left without an email", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: new Date() });
+  it("tell staff when the email to an absent customer fails", async () => {
+    setEmailTransport(transport(true).transport);
+    const { chat: c } = await start("Hi", { now: new Date() });
     await chat.markChatLeft(c);
     await handleChatReplyUpdate(staffUpdate(100, "Hello?", 300), noWait);
     expect(h.replyInGroup).toHaveBeenLastCalledWith(
-      "⚠️ They've left the page and they gave no email, so your reply can't reach them unless they come back to that tab.",
+      "⚠️ They've left the page and the email to jane@example.com failed. Reply to them by email directly.",
       300,
     );
   });
@@ -249,7 +258,7 @@ describe("staff replies from Telegram", () => {
   });
 
   it("say only text goes through, for a photo under a chat message", async () => {
-    await chat.startChat({ body: "Hi", now: new Date() });
+    await start("Hi", { now: new Date() });
     const update = staffUpdate(100, "", 300);
     delete (update.message as { text?: string }).text;
     await handleChatReplyUpdate(update, noWait);
@@ -259,7 +268,7 @@ describe("staff replies from Telegram", () => {
 
 describe("presence", () => {
   it("is a recent poll on an open chat the page hasn't left", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
+    const { chat: c } = await start("Hi");
     expect(chat.isCustomerPresent(c, at(30))).toBe(true);
     expect(chat.isCustomerPresent(c, at(120))).toBe(false);
     const left = await chat.markChatLeft(c, at(31));
@@ -270,7 +279,7 @@ describe("presence", () => {
   });
 
   it("writes a poll at most every 20 seconds", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
+    const { chat: c } = await start("Hi");
     expect((await chat.touchChat(c, at(5))).last_seen_at).toBe(T0.toISOString());
     expect((await chat.touchChat(c, at(25))).last_seen_at).toBe(at(25).toISOString());
   });
@@ -280,8 +289,8 @@ describe("leaving the page", () => {
   it("emails the transcript when the page doesn't come back", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
-    await chat.markChatLeft(await chat.setChatContact(c, { email: "jane@example.com" }));
+    const { chat: c } = await start("Hi");
+    await chat.markChatLeft(c);
     await expect(chat.settleLeave(c.id)).resolves.toBe("sent");
     expect(sent[0].text).toContain("so far");
   });
@@ -289,8 +298,8 @@ describe("leaving the page", () => {
   it("sends nothing after a reload, which polls again", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
-    const left = await chat.markChatLeft(await chat.setChatContact(c, { email: "jane@example.com" }), at(10));
+    const { chat: c } = await start("Hi");
+    const left = await chat.markChatLeft(c, at(10));
     await chat.touchChat(left, at(12));
     await expect(chat.settleLeave(c.id)).resolves.toBe("skipped");
     expect(sent).toHaveLength(0);
@@ -298,8 +307,8 @@ describe("leaving the page", () => {
 
   it("gives the claim back when the email fails, so the next trigger retries", async () => {
     setEmailTransport(transport(true).transport);
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
-    await chat.markChatLeft(await chat.setChatContact(c, { email: "jane@example.com" }));
+    const { chat: c } = await start("Hi");
+    await chat.markChatLeft(c);
     await expect(chat.settleLeave(c.id)).resolves.toBe("failed");
     expect(chatRow(c.id).transcript_message_count).toBe(0);
   });
@@ -309,8 +318,8 @@ describe("ending a chat", () => {
   it("emails the transcript and notes it in the group", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
-    const { chat: c } = await chat.startChat({ body: "Thanks!", now: T0 });
-    const { chat: ended, emailed } = await chat.endChat(await chat.setChatContact(c, { email: "jane@example.com" }), at(60));
+    const { chat: c } = await start("Thanks!");
+    const { chat: ended, emailed } = await chat.endChat(c, at(60));
     expect(emailed).toBe(true);
     expect(ended).toMatchObject({ status: "ended", ended_at: at(60).toISOString() });
     expect(sent[0].text).toContain("Here's a copy of your chat with us.");
@@ -320,39 +329,93 @@ describe("ending a chat", () => {
     );
   });
 
-  it("says the chat is gone for a visitor without an email", async () => {
-    const { chat: c } = await chat.startChat({ body: "Bye", now: T0 });
-    const { emailed } = await chat.endChat(c);
+  it("sends no second copy when nothing is new since the last one", async () => {
+    const { transport: t, sent } = transport();
+    setEmailTransport(t);
+    const { chat: c } = await start("Bye");
+    await chat.markChatLeft(c);
+    await chat.settleLeave(c.id);
+    const { emailed } = await chat.endChat(chatRow(c.id));
     expect(emailed).toBe(false);
-    expect(h.replyInGroup.mock.calls.at(-1)![0]).toContain("They gave no email, so the chat is gone for them.");
+    expect(sent).toHaveLength(1);
+    expect(h.replyInGroup.mock.calls.at(-1)![0]).toBe(`✅ #${chat.toChatView(c).ref}: the customer ended the chat.`);
   });
 });
 
 describe("accounts", () => {
   const jane = { customerId: "cust-1", authUserId: "user-1", email: "jane@example.com", name: "Jane Tan" };
 
-  it("claims a visitor's chat into the account that signed in from it", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", now: T0 });
-    const claimed = await chat.claimChat(await chat.setChatContact(c, { email: "JANE@example.com" }), jane);
-    expect(claimed).toMatchObject({ auth_user_id: "user-1", customer_id: "cust-1", email: "jane@example.com" });
-    expect(h.replyInGroup.mock.calls.at(-1)![0]).toContain("signed in");
-  });
-
-  it("never moves a chat out of another account", async () => {
-    const { chat: c } = await chat.startChat({ body: "Hi", customer: { ...jane, authUserId: "user-2" }, now: T0 });
-    await expect(chat.claimChat(c, jane)).resolves.toBeNull();
-  });
-
   it("lists the account's chats, adopting unowned ones with its email", async () => {
-    const { chat: mine } = await chat.startChat({ body: "Mine", now: T0 });
-    await chat.setChatContact(mine, { email: "Jane@Example.com" });
-    const { chat: other } = await chat.startChat({ body: "Not mine", now: at(1) });
-    await chat.setChatContact(other, { email: "someone@example.com" });
+    const { chat: mine } = await chat.startChat({ body: "Mine", verifiedEmail: "Jane@Example.com", now: T0 });
+    const { chat: other } = await chat.startChat({ body: "Not mine", verifiedEmail: "someone@example.com", now: at(1) });
     const { chat: started } = await chat.startChat({ body: "Signed in", customer: jane, now: at(2) });
 
     const list = await chat.listCustomerChats(jane);
     expect(list.map((c) => c.id)).toEqual([started.id, mine.id]);
     expect(list[1]).toMatchObject({ preview: "Mine", hasAccount: true });
     expect(chatRow(other.id).auth_user_id).toBeNull();
+  });
+});
+
+describe("email codes", () => {
+  const codeIn = (email: OutgoingEmail) => /\b(\d{6})\b/.exec(email.text)?.[1] ?? "";
+
+  it("email the visitor alone a code that proves the address once", async () => {
+    const { transport: t, sent } = transport();
+    setEmailTransport(t);
+    const issued = await codes.issueChatCode("  Jane@Example.com ", T0);
+    if (!issued.ok) throw new Error("expected a code");
+    expect(issued.email).toBe("jane@example.com");
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ to: "jane@example.com", subject: "Your mpillow chat code" });
+    expect(sent[0].cc).toBeUndefined();
+    const code = codeIn(sent[0]);
+    expect(code).toMatch(/^\d{6}$/);
+    expect(JSON.stringify(h.db.support_chat_codes)).not.toContain(`"${code}"`);
+
+    await expect(codes.redeemChatCode(issued.codeId, code, at(60))).resolves.toEqual({ ok: true, email: "jane@example.com" });
+    await expect(codes.redeemChatCode(issued.codeId, code, at(61))).resolves.toEqual({ ok: false, reason: "expired" });
+  });
+
+  it("allow five tries, then refuse even the right code", async () => {
+    const { transport: t, sent } = transport();
+    setEmailTransport(t);
+    const issued = await codes.issueChatCode("jane@example.com", T0);
+    if (!issued.ok) throw new Error("expected a code");
+    const code = codeIn(sent[0]);
+    const wrong = code === "000000" ? "111111" : "000000";
+
+    for (let left = 4; left >= 1; left--) {
+      await expect(codes.redeemChatCode(issued.codeId, wrong, at(5))).resolves.toEqual({ ok: false, reason: "wrong", attemptsLeft: left });
+    }
+    await expect(codes.redeemChatCode(issued.codeId, wrong, at(5))).resolves.toEqual({ ok: false, reason: "too_many_tries" });
+    await expect(codes.redeemChatCode(issued.codeId, code, at(6))).resolves.toEqual({ ok: false, reason: "too_many_tries" });
+  });
+
+  it("stop working after 10 minutes", async () => {
+    const { transport: t, sent } = transport();
+    setEmailTransport(t);
+    const issued = await codes.issueChatCode("jane@example.com", T0);
+    if (!issued.ok) throw new Error("expected a code");
+    await expect(codes.redeemChatCode(issued.codeId, codeIn(sent[0]), at(601))).resolves.toEqual({ ok: false, reason: "expired" });
+    await expect(codes.redeemChatCode("not-a-code-id", "123456")).resolves.toEqual({ ok: false, reason: "expired" });
+  });
+
+  it("go to one address at most three times in ten minutes, and are swept after a day", async () => {
+    setEmailTransport(transport().transport);
+    for (let i = 0; i < 3; i++) expect((await codes.issueChatCode("jane@example.com", at(i))).ok).toBe(true);
+    await expect(codes.issueChatCode("JANE@example.com", at(30))).resolves.toEqual({ ok: false, reason: "too_many" });
+    expect((await codes.issueChatCode("someone@example.com", at(30))).ok).toBe(true);
+    expect((await codes.issueChatCode("jane@example.com", at(601))).ok).toBe(true);
+
+    await codes.issueChatCode("someone@example.com", at(24 * 3600 + 300));
+    expect(h.db.support_chat_codes.map((r) => r.email)).toEqual(["jane@example.com", "someone@example.com"]);
+  });
+
+  it("don't count a code whose email never went", async () => {
+    setEmailTransport(transport(true).transport);
+    await expect(codes.issueChatCode("jane@example.com", T0)).resolves.toEqual({ ok: false, reason: "send_failed" });
+    expect(h.db.support_chat_codes).toHaveLength(0);
   });
 });

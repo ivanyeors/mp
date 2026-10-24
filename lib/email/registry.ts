@@ -14,7 +14,7 @@ import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, rend
 import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
 import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderComposedCampaignEmail } from "./campaigns";
-import { renderChatTranscriptEmail } from "./support-chat";
+import { renderChatCodeEmail, renderChatTranscriptEmail } from "./support-chat";
 import {
   renderMigrationAnnouncementEmail,
   renderMigrationReminderEmail,
@@ -722,6 +722,13 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "support",
     audience: "customer",
     render: (f) => renderChatTranscriptEmail(sampleChatTranscript(f)),
+  },
+  {
+    id: "support.chat_code",
+    label: "Website chat code (checks the email before the first message)",
+    group: "support",
+    audience: "customer",
+    render: (f) => renderChatCodeEmail({ code: f === "hostile" ? HOSTILE : "482913" }),
   },
   {
     id: "ops.partner_listing_updated",

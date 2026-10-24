@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 import type { PendingMessage } from "./use-support-chat";
 
 /**
- * The website chat's building blocks: bubbles, the assistant cards the chat
- * offers (email copy, account), and the composer. Brand palette: the navy to
+ * The website chat's building blocks: bubbles, the assistant cards (the
+ * email check before the first message), the code boxes and the composer. Brand palette: the navy to
  * blue of the dock and the spotlight cards (#001736 → #2B69BC), with the
  * progress bar's bright blue (#1298ff → #a5d8ff) for the customer's side.
  */
@@ -111,7 +111,7 @@ export function MessageBubble({
       <div
         className={cn(
           "max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed text-white shadow-[0_10px_28px_-14px_rgba(18,152,255,0.9)] transition-opacity",
-          message.pending && "opacity-70",
+          (message.pending || message.held) && "opacity-70",
           message.failed && "opacity-60 ring-2 ring-rose-400/70",
         )}
         style={{ backgroundImage: CUSTOMER_GRADIENT, boxShadow: "inset 1px 1px 1.5px rgba(214,236,255,0.55)" }}
@@ -128,14 +128,14 @@ export function MessageBubble({
         </button>
       ) : showMeta ? (
         <p className="mt-1 pr-1 text-[11px] text-slate-400">
-          {message.pending ? "Sending…" : `Sent ${timeOf(message.createdAt)}`}
+          {message.held ? "Not sent yet" : message.pending ? "Sending…" : `Sent ${timeOf(message.createdAt)}`}
         </p>
       ) : null}
     </div>
   );
 }
 
-/** A light-surface card inside the thread: email copy, account offer, code entry. */
+/** A light-surface card inside the thread: the email check and its code. */
 export function ChatCard({
   icon,
   title,
@@ -210,6 +210,78 @@ export function ChatInput({ label, className, ...props }: React.InputHTMLAttribu
         {...props}
         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-base text-slate-900 outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-[#1298ff] focus:bg-white focus:shadow-[0_0_0_4px_rgba(18,152,255,0.15)] md:text-sm dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10"
       />
+    </div>
+  );
+}
+
+/**
+ * Six code boxes over one real input, so pasting, the phone's code suggestion
+ * and autofill all work as in a plain field. Calls `onComplete` once all six
+ * digits are in.
+ */
+export function CodeInput({
+  value,
+  onChange,
+  onComplete,
+  disabled,
+  autoFocus,
+  length = 6,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+  onComplete?: (code: string) => void;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  length?: number;
+}) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus({ preventScroll: true });
+  }, [autoFocus]);
+
+  return (
+    <div className="relative w-full max-w-[19rem]">
+      <input
+        ref={ref}
+        aria-label="6-digit code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]*"
+        maxLength={length}
+        value={value}
+        disabled={disabled}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => {
+          const next = e.target.value.replace(/\D/g, "").slice(0, length);
+          onChange(next);
+          if (next.length === length && value.length !== length) onComplete?.(next);
+        }}
+        className="absolute inset-0 z-10 h-full w-full cursor-text text-base opacity-0 disabled:cursor-not-allowed"
+      />
+      <div aria-hidden="true" className="flex gap-1.5 sm:gap-2">
+        {Array.from({ length }, (_, i) => {
+          const digit = value[i];
+          const current = focused && (i === value.length || (i === length - 1 && value.length === length));
+          return (
+            <span
+              key={i}
+              className={cn(
+                "flex h-12 min-w-0 max-w-11 flex-1 items-center justify-center rounded-xl border text-lg font-semibold tabular-nums transition-[border-color,box-shadow,background-color]",
+                digit
+                  ? "border-[#1298ff]/40 bg-[#eaf3ff] text-[#0b2a55] dark:border-[#7cc2ff]/30 dark:bg-[#0b2550]/70 dark:text-white"
+                  : "border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-white/5",
+                current && "border-[#1298ff] bg-white shadow-[0_0_0_4px_rgba(18,152,255,0.15)] dark:bg-white/10",
+                disabled && "opacity-60",
+              )}
+            >
+              {digit ?? (current ? <span className="h-5 w-px bg-[#1298ff] motion-safe:animate-pulse" /> : null)}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

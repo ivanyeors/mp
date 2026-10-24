@@ -1,20 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  CheckCircle2,
-  ChevronRight,
-  History,
-  Loader2,
-  Lock,
-  Mail,
-  MoreHorizontal,
-  PartyPopper,
-  Plus,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { CheckCircle2, ChevronRight, History, Loader2, Lock, MailCheck, MoreHorizontal, Plus, X } from "lucide-react";
 import { authCallbackUrl } from "@/lib/site-url";
 import { authErrorMessage } from "@/lib/auth/error-message";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -27,11 +15,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import {
   AssistantNote,
   BrandAvatar,
   ChatCard,
   ChatInput,
+  CodeInput,
   Composer,
   GradientButton,
   MessageBubble,
@@ -39,17 +29,19 @@ import {
   NAVY_GRADIENT,
   QuietButton,
 } from "./support-chat-parts";
-import { useSupportChat, type ActiveChat, type Me } from "./use-support-chat";
+import { ChatRequestError, useSupportChat, type ActiveChat, type Me, type Verified } from "./use-support-chat";
 
 /**
  * The "Get in touch" chat on /support. It starts as a composer on the brand
  * gradient; the first message turns it into a chat with the mpillow team,
  * whose replies come from the staff Telegram group (lib/support/chat.ts).
  *
- * Without an account the chat lasts as long as the tab. Giving an email gets
- * the chat sent there, and the chat then offers an account (a 6-digit code,
- * no password), which keeps it — and every later chat — in the customer's
- * account.
+ * Before a visitor without an account sends their first message, the chat
+ * checks their email with a 6-digit code; the message waits, unsent, in the
+ * chat meanwhile. That checked address then gets the chat by email when
+ * they're done, with no second code. In the same step they can choose an
+ * account instead (Supabase's own sign-in code), which keeps this chat and
+ * every later one. Without an account the chat lasts as long as the tab.
  */
 
 const MESSAGE_MAX = 2000;
@@ -122,6 +114,8 @@ export function SupportChat() {
             >
               <Launcher
                 me={chat.me}
+                verified={chat.verified}
+                onForgetVerified={chat.forgetVerified}
                 error={chat.error}
                 draft={draft}
                 setDraft={setDraft}
@@ -167,6 +161,8 @@ function Aurora() {
 
 function Launcher({
   me,
+  verified,
+  onForgetVerified,
   error,
   draft,
   setDraft,
@@ -174,6 +170,8 @@ function Launcher({
   onShowHistory,
 }: {
   me: Me;
+  verified: Verified | null;
+  onForgetVerified: () => void;
   error: string | null;
   draft: string;
   setDraft: (text: string) => void;
@@ -261,10 +259,22 @@ function Launcher({
             Signed in as <span className="font-medium text-white">{me.email}</span>. Your chats are saved to your
             account.
           </span>
+        ) : verified ? (
+          <span>
+            Chatting as <span className="font-medium text-white">{verified.email}</span>. We&apos;ll email you a copy of
+            each chat.{" "}
+            <button
+              type="button"
+              onClick={onForgetVerified}
+              className="font-medium text-white underline decoration-white/40 underline-offset-2 hover:decoration-white"
+            >
+              Use a different email
+            </button>
+          </span>
         ) : (
           <span>
-            No account needed. Without one, the chat stays in this tab until you close it. Add your email in the
-            chat and we&apos;ll send you a copy.
+            No account needed. Before your first message goes out, we&apos;ll email you a 6-digit code to check
+            it&apos;s you, then send you a copy of the chat when you&apos;re done.
           </span>
         )}
       </p>
@@ -274,24 +284,21 @@ function Launcher({
 
 type Controller = ReturnType<typeof useSupportChat>;
 
-type Offers = {
-  chatId: string;
-  emailDismissed: boolean;
-  accountStep: "offer" | "dismissed" | "done";
-  /** Set when the customer ends the chat: whether the transcript went. */
-  endedEmailed: boolean | null;
-};
-
-function freshOffers(chatId: string): Offers {
-  return { chatId, emailDismissed: false, accountStep: "offer", endedEmailed: null };
-}
-
 function headerStatus(active: ActiveChat): string {
+  if (active.awaitingCode) return "Check your email to send this";
   if (!active.chat.id) return "Starting your chat…";
   if (active.chat.status === "ended") return `Chat #${active.chat.ref} · ended`;
   const last = active.messages.at(-1);
   if (last?.sender === "staff") return `${last.staffName?.trim() || "The team"} replied · Chat #${active.chat.ref}`;
   return `Sent · we usually reply within a few hours`;
+}
+
+/** Where the chat goes once it's over, said once under the first message. */
+function afterNote(active: ActiveChat): string {
+  const { email, hasAccount } = active.chat;
+  if (active.signedInHere) return "You're signed in, so this chat is saved to your account, and we'll email you a copy when you're done.";
+  if (hasAccount) return `It's saved to your account, and we'll email a copy to ${email} when you're done.`;
+  return `When you're done, we'll email this chat to ${email}, and any reply that arrives after you've left.`;
 }
 
 function Session({
@@ -312,21 +319,16 @@ function Session({
   const threadRef = useRef<HTMLDivElement | null>(null);
   const [ending, setEnding] = useState(false);
   const { chat } = active;
-  // What this chat's offers have done; a different chat starts them afresh.
-  const [offerState, setOfferState] = useState<Offers>(() => freshOffers(chat.id));
-  const offers = offerState.chatId === chat.id ? offerState : freshOffers(chat.id);
-  const setOffers = (patch: Partial<Offers>) => setOfferState({ ...offers, ...patch });
-  const { emailDismissed, accountStep, endedEmailed } = offers;
+  // Whether this chat's transcript went when the customer ended it.
+  const [ended, setEnded] = useState<{ chatId: string; emailed: boolean } | null>(null);
+  const endedEmailed = ended?.chatId === chat.id ? ended.emailed : null;
   const signedIn = me.status === "signed-in";
   const creating = !chat.id;
   const open = chat.status === "open";
-
   const firstCustomer = active.messages.findIndex((m) => m.sender === "customer");
-  const showEmailCard = open && !creating && !signedIn && !chat.hasAccount && !chat.email && !emailDismissed;
-  const showAccountCard = open && !creating && !chat.hasAccount && !signedIn && Boolean(chat.email) && accountStep === "offer";
 
   // Keep the newest message (or card) in view.
-  const tail = `${active.messages.length}:${showEmailCard}:${showAccountCard}:${chat.email}:${accountStep}:${chat.status}`;
+  const tail = `${active.messages.length}:${active.awaitingCode}:${chat.id}:${chat.status}`;
   useEffect(() => {
     const el = threadRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
@@ -336,7 +338,7 @@ function Session({
     setEnding(true);
     try {
       const { emailed } = await controller.end();
-      setOffers({ endedEmailed: emailed });
+      setEnded({ chatId: chat.id, emailed });
     } catch (e) {
       controller.setError(e instanceof Error ? e.message : "We couldn't end the chat.");
     } finally {
@@ -424,7 +426,7 @@ function Session({
                           <CheckCircle2 className="size-4 text-emerald-500" aria-hidden="true" /> Sent to our team
                         </span>
                         <br />
-                        We usually reply within a few hours, right here in this chat.
+                        We usually reply within a few hours, right here in this chat. {afterNote(active)}
                       </AssistantNote>
                     ) : (
                       <AssistantNote>
@@ -437,43 +439,14 @@ function Session({
             })}
           </AnimatePresence>
 
-          {showEmailCard ? (
-            <EmailOffer onSave={controller.saveEmail} onDismiss={() => setOffers({ emailDismissed: true })} defaultName={chat.name ?? ""} />
-          ) : null}
-
-          {chat.email && !signedIn && !chat.hasAccount && !creating ? (
-            <AssistantNote>
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <Mail className="size-4 text-[#1f74e0] dark:text-[#7cc2ff]" aria-hidden="true" /> We&apos;ll email
-                this chat to {chat.email}
-              </span>
-              <br />
-              When you leave or end the chat, and with any reply that arrives after you&apos;ve gone.
-            </AssistantNote>
-          ) : null}
-
-          {showAccountCard && chat.email ? (
-            <AccountOffer
-              email={chat.email}
-              name={chat.name}
-              chatId={chat.id}
-              onDismiss={() => setOffers({ accountStep: "dismissed" })}
-              onSignedIn={async () => {
-                await controller.claim();
-                setOffers({ accountStep: "done" });
-              }}
-            />
-          ) : null}
-
-          {accountStep === "done" ? (
-            <AssistantNote>
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <PartyPopper className="size-4 text-[#1f74e0] dark:text-[#7cc2ff]" aria-hidden="true" /> You&apos;re
-                signed in
-              </span>
-              <br />
-              This chat is saved to your account. Find it, and every chat after it, under Past chats.
-            </AssistantNote>
+          {active.awaitingCode ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <EmailCheck controller={controller} onEdit={() => setDraft(controller.cancelHeld())} />
+            </motion.div>
           ) : null}
         </div>
 
@@ -482,18 +455,18 @@ function Session({
             <>
               <Composer
                 tone="light"
-                placeholder="Write a message…"
+                placeholder={active.awaitingCode ? "Check your email first…" : "Write a message…"}
                 maxLength={MESSAGE_MAX}
                 draft={draft}
                 onDraftChange={setDraft}
                 disabled={creating}
-                autoFocus
+                autoFocus={!active.awaitingCode}
                 onSend={(text) => controller.send(text)}
               />
               {controller.error ? <p className="mt-2 px-2 text-xs text-rose-600 dark:text-rose-300">{controller.error}</p> : null}
             </>
           ) : (
-            <EndedFooter chat={chat} emailed={endedEmailed} signedIn={signedIn} onNew={controller.startNew} />
+            <EndedFooter chat={chat} emailed={endedEmailed} onNew={controller.startNew} />
           )}
         </div>
       </div>
@@ -501,24 +474,12 @@ function Session({
   );
 }
 
-function EndedFooter({
-  chat,
-  emailed,
-  signedIn,
-  onNew,
-}: {
-  chat: ChatView;
-  emailed: boolean | null;
-  signedIn: boolean;
-  onNew: () => void;
-}) {
+function EndedFooter({ chat, emailed, onNew }: { chat: ChatView; emailed: boolean | null; onNew: () => void }) {
   const note = emailed
     ? `A copy is on its way to ${chat.email}.`
-    : chat.hasAccount || signedIn
+    : chat.hasAccount
       ? "It's saved to your account."
-      : chat.email
-        ? `We've emailed this chat to ${chat.email}.`
-        : "We didn't get an email, so this chat won't be kept after you close the tab.";
+      : `We've emailed this chat to ${chat.email}.`;
   return (
     <div className="flex flex-col items-center gap-3 px-2 py-2 text-center sm:flex-row sm:text-left">
       <p className="flex-1 text-sm text-slate-600 dark:text-slate-300">
@@ -531,35 +492,136 @@ function EndedFooter({
   );
 }
 
-function EmailOffer({
-  onSave,
-  onDismiss,
-  defaultName,
-}: {
-  onSave: (email: string, name?: string) => Promise<void>;
-  onDismiss: () => void;
-  defaultName: string;
-}) {
-  const [name, setName] = useState(defaultName);
+const RESEND_AFTER_S = 30;
+
+/**
+ * The step before the first message goes out: an email and a 6-digit code.
+ * Without an account it's our own code (./code), which checks the address and
+ * nothing more. With "Save my chats" on it's Supabase's sign-in, the same as
+ * the login page, which makes the account the first time.
+ */
+function EmailCheck({ controller, onEdit }: { controller: Controller; onEdit: () => void }) {
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [account, setAccount] = useState(false);
+  const [codeId, setCodeId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+  const switchId = useId();
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const sendCode = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (account) {
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            emailRedirectTo: authCallbackUrl("/support#contact"),
+            ...(name.trim() ? { data: { full_name: name.trim() } } : {}),
+          },
+        });
+        if (error) throw new Error(authErrorMessage(error));
+        setCodeId(null);
+      } else {
+        const res = await controller.requestCode(email.trim());
+        setCodeId(res.codeId);
+        setEmail(res.email);
+      }
+      setCode("");
+      setStep("code");
+      setResendIn(RESEND_AFTER_S);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "We couldn't send the code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async (value: string) => {
+    if (busy || value.length !== 6) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (account) {
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: value, type: "email" });
+        if (error) throw new Error(authErrorMessage(error));
+        await controller.startHeld({ signedIn: true, name: name.trim() || undefined });
+      } else if (codeId) {
+        await controller.startHeld({ codeId, code: value, name: name.trim() || undefined });
+      }
+    } catch (e) {
+      setCode("");
+      setError(e instanceof Error ? e.message : "We couldn't check that code.");
+      if (e instanceof ChatRequestError && e.data.codeError && e.data.codeError !== "wrong") setResendIn(0);
+      setBusy(false);
+    }
+  };
+
+  if (step === "code") {
+    return (
+      <ChatCard icon={<MailCheck className="size-4" aria-hidden="true" />} title="Enter your code">
+        <p>
+          We sent a 6-digit code to <span className="font-medium text-[#0b2a55] dark:text-white">{email}</span>.
+          {account ? " It signs you in to your mpillow account too." : " Enter it here and your message goes to our team."}
+        </p>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void verify(code);
+          }}
+        >
+          <CodeInput value={code} onChange={setCode} onComplete={(v) => void verify(v)} disabled={busy} autoFocus />
+          {error ? (
+            <p role="alert" className="text-xs text-rose-600 dark:text-rose-300">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-1">
+            <GradientButton type="submit" busy={busy} disabled={code.length !== 6}>
+              Verify and send
+            </GradientButton>
+            <QuietButton onClick={() => void sendCode()} disabled={busy || resendIn > 0}>
+              {resendIn > 0 ? `New code in ${resendIn}s` : "Send a new code"}
+            </QuietButton>
+            <QuietButton
+              onClick={() => {
+                setStep("email");
+                setError(null);
+              }}
+              disabled={busy}
+            >
+              Change email
+            </QuietButton>
+          </div>
+        </form>
+      </ChatCard>
+    );
+  }
+
   return (
-    <ChatCard icon={<Mail className="size-4" aria-hidden="true" />} title="Want a copy by email?">
-      <p>We&apos;ll send you this chat, and any reply that arrives after you&apos;ve left the page.</p>
+    <ChatCard icon={<MailCheck className="size-4" aria-hidden="true" />} title="First, check your email">
+      <p>
+        Before this goes to our team, we&apos;ll email you a 6-digit code. That way our replies, and the copy of this
+        chat we send when you&apos;re done, reach the right inbox.
+      </p>
       <form
-        className="space-y-2"
-        onSubmit={async (e) => {
+        className="space-y-3"
+        onSubmit={(e) => {
           e.preventDefault();
-          setBusy(true);
-          setError(null);
-          try {
-            await onSave(email, name);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "We couldn't save your email.");
-          } finally {
-            setBusy(false);
-          }
+          void sendCode();
         }}
       >
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -575,127 +637,38 @@ function EmailOffer({
             className="sm:flex-[1.4]"
           />
         </div>
-        {error ? <p className="text-xs text-rose-600 dark:text-rose-300">{error}</p> : null}
+        <label
+          htmlFor={switchId}
+          className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#cfe3ff] bg-[#f3f8ff] px-3.5 py-3 transition-colors hover:border-[#9ccaff] dark:border-white/10 dark:bg-white/[0.04]"
+        >
+          <Switch
+            id={switchId}
+            checked={account}
+            onCheckedChange={setAccount}
+            className={cn("mt-0.5", account ? "bg-[#1298ff]" : "bg-slate-300 dark:bg-white/20")}
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-[#0b2a55] dark:text-white">Save my chats to an account</span>
+            <span className="block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Come back to this chat, and every one after it, any time. We&apos;ll make a free mpillow account with this
+              email, or sign you in to yours. No password.
+            </span>
+          </span>
+        </label>
+        {error ? (
+          <p role="alert" className="text-xs text-rose-600 dark:text-rose-300">
+            {error}
+          </p>
+        ) : null}
         <div className="flex items-center gap-1">
           <GradientButton type="submit" busy={busy}>
-            Send me a copy
+            Send code
           </GradientButton>
-          <QuietButton onClick={onDismiss}>Not now</QuietButton>
+          <QuietButton onClick={onEdit} disabled={busy}>
+            Edit message
+          </QuietButton>
         </div>
       </form>
-    </ChatCard>
-  );
-}
-
-/**
- * "Create an account?" — the same Supabase sign-in as the login page: one
- * request emails a 6-digit code and a magic link, and either signs them in
- * (creating the account the first time). The code keeps them in this chat.
- */
-function AccountOffer({
-  email,
-  name,
-  chatId,
-  onDismiss,
-  onSignedIn,
-}: {
-  email: string;
-  name: string | null;
-  chatId: string;
-  onDismiss: () => void;
-  onSignedIn: () => Promise<void>;
-}) {
-  const [step, setStep] = useState<"offer" | "code">("offer");
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const requestCode = async () => {
-    setBusy(true);
-    setError(null);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: authCallbackUrl(`/support?chat=${encodeURIComponent(chatId)}#contact`),
-        ...(name ? { data: { full_name: name } } : {}),
-      },
-    });
-    setBusy(false);
-    if (error) {
-      setError(authErrorMessage(error));
-      return;
-    }
-    setStep("code");
-  };
-
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "email" });
-    if (error) {
-      setBusy(false);
-      setError(authErrorMessage(error));
-      return;
-    }
-    try {
-      await onSignedIn();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "You're signed in, but we couldn't save the chat to your account.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (step === "code") {
-    return (
-      <ChatCard icon={<Mail className="size-4" aria-hidden="true" />} title="Check your inbox">
-        <p>
-          We sent a 6-digit code to <span className="font-medium text-[#0b2a55] dark:text-white">{email}</span>. Enter
-          it here, or tap the link in the email.
-        </p>
-        <form onSubmit={verify} className="space-y-2">
-          <div className="flex gap-2">
-            <ChatInput
-              label="6-digit code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6,10}"
-              maxLength={10}
-              required
-              placeholder="123456"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              className="max-w-[11rem] [&_input]:text-center [&_input]:font-semibold [&_input]:tracking-[0.4em]"
-            />
-            <GradientButton type="submit" busy={busy} className="h-11">
-              Verify
-            </GradientButton>
-          </div>
-          {error ? <p className="text-xs text-rose-600 dark:text-rose-300">{error}</p> : null}
-          <QuietButton onClick={() => void requestCode()} disabled={busy} className="px-0">
-            Send a new code
-          </QuietButton>
-        </form>
-      </ChatCard>
-    );
-  }
-
-  return (
-    <ChatCard icon={<UserPlus className="size-4" aria-hidden="true" />} title="Save your chats with an account?">
-      <p>
-        Create a free mpillow account with {email} and you can come back to this chat, and every chat after it, any
-        time. No password: we&apos;ll email you a code.
-      </p>
-      {error ? <p className="text-xs text-rose-600 dark:text-rose-300">{error}</p> : null}
-      <div className="flex items-center gap-1">
-        <GradientButton type="button" busy={busy} onClick={() => void requestCode()}>
-          Create account
-        </GradientButton>
-        <QuietButton onClick={onDismiss}>No thanks</QuietButton>
-      </div>
     </ChatCard>
   );
 }

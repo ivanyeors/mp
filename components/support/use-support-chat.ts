@@ -9,9 +9,15 @@ import type { ChatMessageView, ChatSummary, ChatView } from "@/lib/support/chat"
  * The open chat's id and token live in sessionStorage: a reload keeps the
  * chat, closing the tab loses it — which is all a visitor without an account
  * gets. A signed-in customer's chats come back from the server instead.
+ *
+ * A visitor without an account checks their email with a 6-digit code before
+ * the first message goes out; the message waits in the chat meanwhile. The
+ * chat that code started then vouches for the email (VERIFIED_KEY), so a new
+ * chat in the same tab needs no second code.
  */
 
 const STORAGE_KEY = "mp.supportChat";
+const VERIFIED_KEY = "mp.supportChatVerified";
 const POLL_VISIBLE_MS = 3_000;
 const POLL_HIDDEN_MS = 15_000;
 const TOKEN_HEADER = "x-chat-token";
@@ -21,7 +27,8 @@ export type Me =
   | { status: "anon" }
   | { status: "signed-in"; email: string; name: string | null; chats: ChatSummary[] };
 
-export type PendingMessage = ChatMessageView & { pending?: boolean; failed?: boolean };
+/** `held`: the first message, not sent until the visitor's email is checked. */
+export type PendingMessage = ChatMessageView & { pending?: boolean; failed?: boolean; held?: boolean };
 
 export type ActiveChat = {
   chat: ChatView;
@@ -30,27 +37,61 @@ export type ActiveChat = {
   messages: PendingMessage[];
   /** False when the last message didn't reach the staff Telegram group. */
   delivered: boolean;
+  /** The chat isn't started yet: its first message waits for the email code. */
+  awaitingCode?: boolean;
+  /** The visitor signed in (or made an account) to start this chat, just now. */
+  signedInHere?: boolean;
 };
+
+/** The email this tab proved with a code, and the chat that proves it. */
+export type Verified = { email: string; name: string | null; chatId: string; token: string };
 
 type Stored = { id: string; token: string };
 
-function readStored(): Stored | null {
+function readJson<T>(key: string): Partial<T> | null {
   try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Partial<Stored>) : null;
-    return parsed?.id && parsed.token ? { id: parsed.id, token: parsed.token } : null;
+    const raw = window.sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Partial<T>) : null;
   } catch {
     return null;
   }
 }
 
-function writeStored(value: Stored | null): void {
+function writeJson(key: string, value: unknown): void {
   try {
-    if (value) window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    else window.sessionStorage.removeItem(STORAGE_KEY);
+    if (value) window.sessionStorage.setItem(key, JSON.stringify(value));
+    else window.sessionStorage.removeItem(key);
   } catch {
     // Private mode or blocked storage: the chat still works until the page goes.
   }
+}
+
+function readStored(): Stored | null {
+  const parsed = readJson<Stored>(STORAGE_KEY);
+  return parsed?.id && parsed.token ? { id: parsed.id, token: parsed.token } : null;
+}
+
+const writeStored = (value: Stored | null) => writeJson(STORAGE_KEY, value);
+
+function readVerified(): Verified | null {
+  const v = readJson<Verified>(VERIFIED_KEY);
+  return v?.email && v.chatId && v.token ? { email: v.email, name: v.name ?? null, chatId: v.chatId, token: v.token } : null;
+}
+
+/** A request the server refused, with what it said (`codeError`, `needsCode`). */
+export class ChatRequestError extends Error {
+  constructor(
+    message: string,
+    readonly data: { codeError?: "wrong" | "expired" | "too_many_tries"; needsCode?: boolean },
+  ) {
+    super(message);
+  }
+}
+
+type Started = { chat: ChatView; token: string; messages: ChatMessageView[]; delivered: boolean };
+
+function placeholderChat(signedIn: boolean, createdAt: string): ChatView {
+  return { id: "", ref: "", status: "open", name: null, email: "", hasAccount: signedIn, createdAt, endedAt: null };
 }
 
 async function call<T>(url: string, init: RequestInit & { token?: string | null } = {}): Promise<T> {
@@ -65,13 +106,18 @@ async function call<T>(url: string, init: RequestInit & { token?: string | null 
     cache: "no-store",
   });
   const json = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!res.ok) throw new Error(json?.error || "Something went wrong. Please try again.");
+  if (!res.ok) {
+    throw new ChatRequestError(json?.error || "Something went wrong. Please try again.", (json ?? {}) as ChatRequestError["data"]);
+  }
   return json as T;
 }
 
 export function useSupportChat() {
   const [me, setMe] = useState<Me>({ status: "loading" });
   const [active, setActive] = useState<ActiveChat | null>(null);
+  const [verified, setVerifiedState] = useState<Verified | null>(null);
+  // The launcher's honeypot, sent with the code request and the first message.
+  const honeypotRef = useRef("");
   const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const activeRef = useRef<ActiveChat | null>(null);
@@ -106,6 +152,7 @@ export function useSupportChat() {
     let cancelled = false;
     void (async () => {
       const [who] = await Promise.all([loadMe()]);
+      if (!cancelled) setVerifiedState(readVerified());
       const stored = readStored();
       // A transcript email's "Open your chat" link names the chat.
       const wanted = new URLSearchParams(window.location.search).get("chat");
@@ -185,11 +232,41 @@ export function useSupportChat() {
     return () => window.removeEventListener("pagehide", onLeave);
   }, [chatId, chatOpen]);
 
+  const setVerified = useCallback((value: Verified | null) => {
+    writeJson(VERIFIED_KEY, value);
+    setVerifiedState(value);
+  }, []);
+
+  /** Starts the chat on the server and swaps it in for whatever the page showed meanwhile. */
+  const startOnServer = useCallback(
+    async (body: string, extra: Record<string, unknown>): Promise<Started> => {
+      const res = await call<Started>("/api/support/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: body, company: honeypotRef.current, ...extra }),
+      });
+      writeStored({ id: res.chat.id, token: res.token });
+      return res;
+    },
+    [],
+  );
+
+  /** The first message waits in the chat while the visitor checks their email. */
+  const holdForCode = useCallback((message: PendingMessage) => {
+    setActive({
+      chat: placeholderChat(false, message.createdAt),
+      token: null,
+      messages: [{ ...message, pending: false, held: true }],
+      delivered: true,
+      awaitingCode: true,
+    });
+  }, []);
+
   const send = useCallback(
-    async (text: string, extra: { name?: string; company?: string } = {}): Promise<boolean> => {
+    async (text: string, extra: { company?: string } = {}): Promise<boolean> => {
       const body = text.trim();
       if (!body) return false;
       setError(null);
+      if (extra.company !== undefined) honeypotRef.current = extra.company;
       const tempId = `local-${Date.now()}`;
       const optimistic: PendingMessage = {
         id: tempId,
@@ -200,33 +277,30 @@ export function useSupportChat() {
         pending: true,
       };
       const current = activeRef.current;
+      if (current?.awaitingCode) return false;
       if (!current) {
-        // The first message starts the chat; show it while the chat is created.
-        setActive({
-          chat: {
-            id: "",
-            ref: "",
-            status: "open",
-            name: null,
-            email: null,
-            hasAccount: me.status === "signed-in",
-            createdAt: optimistic.createdAt,
-            endedAt: null,
-          },
-          token: null,
-          messages: [optimistic],
-          delivered: true,
-        });
+        const signedIn = me.status === "signed-in";
+        if (!signedIn && !verified) {
+          holdForCode(optimistic);
+          return true;
+        }
+        // Signed in, or this tab already proved its email: start straight away.
+        setActive({ chat: placeholderChat(signedIn, optimistic.createdAt), token: null, messages: [optimistic], delivered: true });
         try {
-          const res = await call<{ chat: ChatView; token: string; messages: ChatMessageView[]; delivered: boolean }>(
-            "/api/support/chat",
-            { method: "POST", body: JSON.stringify({ message: body, ...extra }) },
+          const res = await startOnServer(
+            body,
+            signedIn || !verified ? {} : { after: { id: verified.chatId, token: verified.token } },
           );
-          writeStored({ id: res.chat.id, token: res.token });
           setActive({ chat: res.chat, token: res.token, messages: res.messages, delivered: res.delivered });
-          if (me.status === "signed-in") void loadMe();
+          if (signedIn) void loadMe();
           return true;
         } catch (e) {
+          if (e instanceof ChatRequestError && e.data.needsCode) {
+            // The chat that vouched for the email is gone: check the email again.
+            setVerified(null);
+            holdForCode(optimistic);
+            return true;
+          }
           setActive(null);
           setError(e instanceof Error ? e.message : "We couldn't start the chat.");
           return false;
@@ -260,7 +334,7 @@ export function useSupportChat() {
         return false;
       }
     },
-    [me.status, loadMe],
+    [me.status, verified, loadMe, startOnServer, holdForCode, setVerified],
   );
 
   const retry = useCallback(
@@ -273,15 +347,58 @@ export function useSupportChat() {
     [send],
   );
 
-  const saveEmail = useCallback(async (email: string, name?: string) => {
-    const current = activeRef.current;
-    if (!current) return;
-    const res = await call<{ chat: ChatView }>(`/api/support/chat/${current.chat.id}`, {
-      method: "PATCH",
-      token: current.token,
-      body: JSON.stringify({ email, ...(name?.trim() ? { name } : {}) }),
+  /** Emails the visitor a code for their address (not a sign-in). */
+  const requestCode = useCallback(async (email: string) => {
+    return call<{ codeId: string; email: string }>("/api/support/chat/code", {
+      method: "POST",
+      body: JSON.stringify({ email, company: honeypotRef.current }),
     });
-    setActive((prev) => (prev ? { ...prev, chat: res.chat } : prev));
+  }, []);
+
+  /**
+   * Sends the held first message with the visitor's way in: the code they
+   * were emailed, or (`signedIn`) the session they just signed in with.
+   * Throws a ChatRequestError for a wrong or expired code; the message stays held.
+   */
+  const startHeld = useCallback(
+    async (how: { codeId: string; code: string; name?: string } | { signedIn: true; name?: string }) => {
+      const held = activeRef.current;
+      const message = held?.awaitingCode ? held.messages[0] : null;
+      if (!message) return;
+      const mark = (pending: boolean) =>
+        setActive((prev) => (prev?.awaitingCode ? { ...prev, messages: [{ ...message, pending, held: !pending }] } : prev));
+      mark(true);
+      try {
+        if ("signedIn" in how) {
+          // The server has to see the new session, or it would ask for a code again.
+          if ((await loadMe()).status !== "signed-in") {
+            throw new Error("You're signed in, but this page can't tell yet. Refresh it and send your message again.");
+          }
+          const res = await startOnServer(message.body, { name: how.name });
+          setActive({ chat: res.chat, token: res.token, messages: res.messages, delivered: res.delivered, signedInHere: true });
+          void loadMe();
+          return;
+        }
+        const res = await startOnServer(message.body, {
+          name: how.name,
+          verification: { codeId: how.codeId, code: how.code },
+        });
+        setVerified({ email: res.chat.email, name: res.chat.name, chatId: res.chat.id, token: res.token });
+        setActive({ chat: res.chat, token: res.token, messages: res.messages, delivered: res.delivered });
+      } catch (e) {
+        mark(false);
+        throw e;
+      }
+    },
+    [startOnServer, loadMe, setVerified],
+  );
+
+  /** Back to the start, with the held message in the box again. */
+  const cancelHeld = useCallback((): string => {
+    const held = activeRef.current;
+    setActive(null);
+    setError(null);
+    return held?.awaitingCode ? (held.messages[0]?.body ?? "") : "";
   }, []);
 
   const end = useCallback(async () => {
@@ -295,19 +412,6 @@ export function useSupportChat() {
     if (me.status === "signed-in") void loadMe();
     return { emailed: res.emailed };
   }, [me.status, loadMe]);
-
-  /** After signing in from the chat: move the chat into the account, then reload the account's chats. */
-  const claim = useCallback(async () => {
-    const current = activeRef.current;
-    if (current?.token) {
-      const res = await call<{ chat: ChatView }>(`/api/support/chat/${current.chat.id}/claim`, {
-        method: "POST",
-        token: current.token,
-      });
-      setActive((prev) => (prev ? { ...prev, chat: res.chat } : prev));
-    }
-    await loadMe();
-  }, [loadMe]);
 
   const startNew = useCallback(() => {
     writeStored(null);
@@ -329,5 +433,21 @@ export function useSupportChat() {
     [fetchChat],
   );
 
-  return { me, active, restoring, error, setError, send, retry, saveEmail, end, claim, startNew, openChat };
+  return {
+    me,
+    active,
+    verified,
+    restoring,
+    error,
+    setError,
+    send,
+    retry,
+    requestCode,
+    startHeld,
+    cancelHeld,
+    forgetVerified: () => setVerified(null),
+    end,
+    startNew,
+    openChat,
+  };
 }

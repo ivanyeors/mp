@@ -12,18 +12,27 @@
 --     sessionStorage, so a visitor without an account loses the chat when
 --     they close the tab). Only its SHA-256 is stored.
 --   - the signed-in customer it belongs to (`auth_user_id`), from any device:
---     a chat started while signed in, claimed after signing in from the chat,
---     or one whose email matches the customer's verified sign-in email.
+--     a chat started while signed in, or one whose email matches the
+--     customer's sign-in email.
 --
--- `email` is whatever the visitor typed, unverified. A transcript goes there
--- when they end the chat, leave the page, or get a staff reply while away
--- (lib/support/chat.ts). `transcript_message_count` is how many messages the
--- last transcript covered, so nothing is emailed twice for no new message.
--- Messages are never deleted, so their count is also the page's poll version.
+-- `email` is always verified before the first message goes out: the signed-in
+-- customer's own, or one a visitor without an account proved with a 6-digit
+-- code (support_chat_codes, below). A transcript goes there when they end the
+-- chat, leave the page, or get a staff reply while away (lib/support/chat.ts).
+-- `transcript_message_count` is how many messages the last transcript covered,
+-- so nothing is emailed twice for no new message. Messages are never deleted,
+-- so their count is also the page's poll version.
 --
 -- `last_seen_at` is the visitor's last poll and `left_at` the page's pagehide
 -- beacon: together they say whether a staff reply is seen on the page or
 -- needs the email.
+--
+-- support_chat_codes: the 6-digit code a visitor without an account is
+-- emailed before their first message goes out, which proves the address the
+-- chat's transcripts will go to. It is not a sign-in: no auth user, no
+-- session. `code_hash` is `salt:sha256(salt:code)` (lib/partner-backup-email.ts).
+-- A code works for 10 minutes and 5 tries, once. Rows older than a day are
+-- deleted whenever a new code is issued.
 --
 -- support_chat_messages: what each side wrote, plain text. `telegram_message_id`
 -- is the group message carrying it (the bot's notice for a customer message,
@@ -43,7 +52,7 @@ create table if not exists public.support_chats (
   customer_id               uuid null references public.customers(id) on delete set null,
   auth_user_id              uuid null references auth.users(id) on delete set null,
   name                      text null check (name is null or length(btrim(name)) between 1 and 200),
-  email                     text null check (email is null or length(email) between 3 and 320),
+  email                     text not null check (length(email) between 3 and 320),
   status                    text not null default 'open' check (status in ('open', 'ended')),
   -- The start of the first message, for the signed-in customer's list of chats.
   preview                   text not null check (length(preview) between 1 and 200),
@@ -66,7 +75,7 @@ create index if not exists support_chats_auth_user_idx
 -- Adopting a visitor's chats into the account with the same email.
 create index if not exists support_chats_unowned_email_idx
   on public.support_chats (lower(email))
-  where auth_user_id is null and email is not null;
+  where auth_user_id is null;
 
 alter table public.support_chats enable row level security;
 revoke all on public.support_chats from anon, authenticated;
@@ -97,3 +106,22 @@ create unique index if not exists support_chat_messages_telegram_idx
 
 alter table public.support_chat_messages enable row level security;
 revoke all on public.support_chat_messages from anon, authenticated;
+
+create table if not exists public.support_chat_codes (
+  id          uuid primary key default gen_random_uuid(),
+  email       text not null check (length(email) between 3 and 320),
+  code_hash   text not null check (code_hash ~ '^[0-9a-f]+:[0-9a-f]{64}$'),
+  attempts    integer not null default 0 check (attempts >= 0),
+  expires_at  timestamptz not null,
+  used_at     timestamptz null,
+  created_at  timestamptz not null default now()
+);
+
+-- How many codes an address got lately, and the day-old sweep.
+create index if not exists support_chat_codes_email_idx
+  on public.support_chat_codes (email, created_at desc);
+create index if not exists support_chat_codes_created_idx
+  on public.support_chat_codes (created_at);
+
+alter table public.support_chat_codes enable row level security;
+revoke all on public.support_chat_codes from anon, authenticated;

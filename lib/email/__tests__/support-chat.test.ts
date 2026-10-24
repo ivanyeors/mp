@@ -2,12 +2,13 @@ process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONTACT_CC, uniqueAddresses } from "../contact";
-import { chatTranscriptRecipients, renderChatTranscriptEmail, type ChatTranscript } from "../support-chat";
+import { chatTranscriptRecipients, renderChatCodeEmail, renderChatTranscriptEmail, type ChatTranscript } from "../support-chat";
 import { ResendTransport, buildRawMessage } from "../transport";
 import type { OutgoingEmail } from "../types";
 
 /**
- * A website chat's transcript goes to the customer, with the support inbox and
+ * A website chat's code goes to the visitor alone and carries nothing they
+ * wrote. Its transcript goes to the customer, with the support inbox and
  * sg@mpillow.com on Cc and Reply-To the inbox and the customer. Every
  * transcript of one chat has the same subject, so they thread.
  */
@@ -69,6 +70,18 @@ describe("chatTranscriptRecipients", () => {
   });
 });
 
+describe("renderChatCodeEmail", () => {
+  it("shows the code, how long it works, and what the address is for", () => {
+    const { subject, text, html } = renderChatCodeEmail({ code: "482913" });
+    expect(subject).toBe("Your mpillow chat code");
+    expect(text).toContain("\n482913\n");
+    expect(text).toContain("It works for 10 minutes.");
+    expect(text).toContain("We'll email you a copy of the chat at this address");
+    expect(text).toContain("Didn't start a chat with us?");
+    expect(html).toContain("482913");
+  });
+});
+
 describe("renderChatTranscriptEmail", () => {
   it("carries the whole chat, both sides, under one subject per chat", () => {
     const { subject, text, html } = renderChatTranscriptEmail(TRANSCRIPT);
@@ -79,7 +92,6 @@ describe("renderChatTranscriptEmail", () => {
     expect(text).toContain("Can I come in on Saturday for an adjustment?");
     expect(text).toContain("Darren (mpillow team)");
     expect(text).toContain("Yes, 11am works.");
-    expect(text).toContain("Didn't chat with us?");
     expect(html).toContain("Your chat with mpillow");
     expect(renderChatTranscriptEmail({ ...TRANSCRIPT, reason: "ended" }).subject).toBe(subject);
   });

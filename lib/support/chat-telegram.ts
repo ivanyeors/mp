@@ -98,14 +98,9 @@ export async function handleChatReplyUpdate(
       return;
     }
 
-    let delivery: StaffReplyDelivery;
-    if (chat.email) {
-      // `nothing_new`: another trigger (they left the page meanwhile) already sent it.
-      const sent = await emailTranscriptIfNew(chat.id, "staff_reply");
-      delivery = sent === "sent" || sent === "nothing_new" ? "emailed" : "email_failed";
-    } else {
-      delivery = chat.auth_user_id ? "saved_to_account" : "unreachable";
-    }
+    // `nothing_new`: another trigger (they left the page meanwhile) already sent it.
+    const sent = await emailTranscriptIfNew(chat.id, "staff_reply");
+    const delivery: StaffReplyDelivery = sent === "sent" || sent === "nothing_new" ? "emailed" : "email_failed";
     await replyInGroup(renderStaffReplyOutcome(chat, delivery), message.message_id);
   } catch (error) {
     console.error("[support/chat] telegram reply failed", error);
