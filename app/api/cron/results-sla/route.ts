@@ -33,6 +33,7 @@ import { runAftercareMessages } from "@/lib/aftercare/job";
 import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
 import { runPointsExpiry } from "@/lib/points/expiry-server";
+import { runSocialInboxMaintenance } from "@/lib/social-inbox/status";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -562,6 +563,16 @@ export async function GET(req: Request) {
     crmTelegram = { ok: false, error: e instanceof Error ? e.message : "crm telegram updates failed" };
   }
 
+  // Chain: customer messages (PRD-social-inbox). Re-cards any message a
+  // webhook stored but could not post to Telegram, and refreshes the TikTok
+  // token so its rotating refresh token never lapses. No-op until connected.
+  let socialInbox: Awaited<ReturnType<typeof runSocialInboxMaintenance>> | { ok: false; error: string };
+  try {
+    socialInbox = await runSocialInboxMaintenance();
+  } catch (e) {
+    socialInbox = { ok: false, error: e instanceof Error ? e.message : "social inbox maintenance failed" };
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
@@ -577,6 +588,7 @@ export async function GET(req: Request) {
     pointsReservations,
     pointsExpiry,
     crmTelegram,
+    socialInbox,
   });
 }
 

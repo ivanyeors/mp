@@ -66,33 +66,22 @@ export function HomeHeader() {
         className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 w-fit max-w-[calc(100%-0.5rem)] -translate-x-1/2 px-2 py-2 transition-all duration-200 ease-out sm:max-w-full sm:px-4 ${isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none invisible"
           }`}
       >
+        {/* `dark` pins the pill's contents to dark-mode tokens in both themes, so
+            they stay legible on the blue. The cart popover portals to <body>
+            and keeps the page theme. */}
         <div
-          className="relative flex max-w-full items-center justify-between gap-2 rounded-[35px] px-2 py-1.5 sm:gap-3 sm:px-3"
+          className="dark relative flex max-w-full items-center justify-between gap-2 rounded-[35px] px-2 py-1.5 sm:gap-3 sm:px-3"
         >
-          {/* Dock-like background (matches `components/ui/shadcn-io/dock/index.tsx`) */}
+          {/* Dock background (matches `components/ui/shadcn-io/dock/index.tsx`) */}
           <div
-            className="absolute inset-0 -z-10 rounded-[35px] dark:hidden"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgb(226, 232, 240) 0%, rgb(203, 213, 225) 100%), linear-gradient(90deg, rgb(241, 245, 249) 0%, rgb(241, 245, 249) 100%)",
-            }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none -z-10 rounded-[35px] dark:hidden"
-            style={{
-              boxShadow:
-                "inset 1px 1px 1.8px 0px rgba(255, 255, 255, 0.8), inset -4px 13px 28.4px 0px rgba(148, 163, 184, 0.3)",
-            }}
-          />
-          <div
-            className="absolute inset-0 -z-10 hidden rounded-[35px] dark:block"
+            className="absolute inset-0 -z-10 rounded-[35px]"
             style={{
               backgroundImage:
                 "linear-gradient(rgb(0, 23, 54) 0%, rgb(43, 105, 188) 100%), linear-gradient(90deg, rgb(7, 55, 120) 0%, rgb(7, 55, 120) 100%)",
             }}
           />
           <div
-            className="absolute inset-0 pointer-events-none -z-10 hidden rounded-[35px] dark:block"
+            className="absolute inset-0 pointer-events-none -z-10 rounded-[35px]"
             style={{
               boxShadow:
                 "inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5), inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.5)",

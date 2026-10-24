@@ -44,7 +44,12 @@ on:
     - cron: "0 */3 * * *"
 
 concurrency:
-  group: pr-guard-${{ github.ref }}
+  # Keyed by pull request, not by ref alone: under pull_request_target
+  # `github.ref` is the BASE branch, so every pull request's run would share
+  # one group and a run for one would cancel the run for another — leaving
+  # that one unguarded. The event name keeps a push and the
+  # pull_request_target it fires alongside from cancelling each other too.
+  group: pr-guard-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -54,7 +59,9 @@ permissions:
 jobs:
   guard:
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    # A pinned image, not ubuntu-latest: these jobs need only bash and gh, and
+    # the label's move to Ubuntu 26 put a notice on every run.
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
 
     env:
@@ -118,6 +125,10 @@ jobs:
 
           base="$(gh pr view "$pr" --json baseRefName --jq .baseRefName)"
 
+          # The annotation is what the pull request and the run summary show;
+          # without it they say only "exit code 1" and the reason is in the log.
+          echo "::error title=Pull request #$pr conflicts with $base::Merge $base into this branch and push. Until then ci.yml and graphify-freshness.yml cannot run, so this pull request has no real checks."
+
           cat <<MSG
 
           ---------------------------------------------------------------
@@ -153,7 +164,7 @@ jobs:
           # every pair of open pull requests overlaps there. Including it would
           # make this warning fire always and mean nothing.
           # `gh pr view --json files` silently caps at 100 and does not
-           # paginate; a large refactor would under-report its own overlap.
+          # paginate; a large refactor would under-report its own overlap.
           mine="$(gh api --paginate "repos/$GH_REPO/pulls/$pr/files" --jq '.[].path' \
             | grep -v '^graphify-out/' | sort || true)"
 
@@ -213,7 +224,7 @@ jobs:
     # notice is to go and look. A failing scheduled run mails the repository
     # owner, which is why this fails rather than logging politely.
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     env:
@@ -235,6 +246,8 @@ jobs:
             echo "Every open pull request can still be merged."
             exit 0
           fi
+
+          echo "::error title=Open pull requests that can no longer be merged::$(printf ' #%s' $conflicting | sed 's/^ //') — merge each one's base into it and push."
 
           cat <<MSG
 

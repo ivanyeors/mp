@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { secretMatches } from '@/lib/auth/secret'
 import { handleReviewUpdate, isReviewUpdate } from '@/lib/reviews/telegram-handler'
+import { handleInboxUpdate, isInboxUpdate } from '@/lib/social-inbox/telegram-handler'
 import { handleChatReplyUpdate, isChatReplyCandidate } from '@/lib/support/chat-telegram'
 
 export const runtime = 'nodejs'
@@ -17,7 +18,7 @@ type TelegramUpdate = {
     from?: { id: number; is_bot?: boolean; username?: string; first_name?: string; last_name?: string }
     text?: string
     caption?: string
-    reply_to_message?: { message_id: number; text?: string }
+    reply_to_message?: { message_id: number; text?: string; caption?: string }
   }
   callback_query?: {
     id: string
@@ -534,6 +535,16 @@ export async function POST(req: NextRequest) {
     // retry the update.
     if (isReviewUpdate(update)) {
       after(() => handleReviewUpdate(update))
+      return NextResponse.json({ ok: true })
+    }
+
+    // Replies to customer message cards (Facebook / Instagram / TikTok) go back
+    // to the customer. Same gate and timing as review cards: the measurements
+    // group, a person allowed `telegram.social-inbox-reply`, work after the 200
+    // (lib/social-inbox/telegram-handler.ts). Before the website chat's check:
+    // that one takes any reply in the group, this one only replies to a card.
+    if (isInboxUpdate(update)) {
+      after(() => handleInboxUpdate(update))
       return NextResponse.json({ ok: true })
     }
 
