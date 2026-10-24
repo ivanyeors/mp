@@ -5,10 +5,10 @@ import { getSocialInboxStatus } from "@/lib/social-inbox/status";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Settings → Staff Management → Telegram access: which platforms are connected. Owners/admins only. */
+/** Users & permissions → Telegram: which platforms are connected. Needs the `users` permission. */
 export async function GET() {
   try {
-    await requireAdminContext("staff");
+    await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }

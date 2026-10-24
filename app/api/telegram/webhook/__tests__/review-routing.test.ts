@@ -14,12 +14,6 @@ vi.mock("next/server", async (orig) => ({
   ...(await orig<typeof import("next/server")>()),
   after: h.after,
 }));
-vi.mock("@/app/[lang]/settings/inventory/actions", () => ({
-  sellPillow: vi.fn(),
-  sellPart: vi.fn(),
-  receiveStock: vi.fn(),
-  sellBolster: vi.fn(),
-}));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({ from: h.from }) }));
 vi.mock("@/lib/reviews/telegram-handler", async (orig) => ({
   ...(await orig<typeof import("@/lib/reviews/telegram-handler")>()),

@@ -3,7 +3,8 @@ import { z } from "zod";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEmailTransport } from "@/lib/email";
-import { renderBackupEmailOtpEmail } from "@/lib/email/auth";
+import { AUTH_EMAIL_COPY, renderBackupEmailOtpEmail } from "@/lib/email/auth";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { generateOtpCode, hashOtp, otpExpiry } from "@/lib/partner-backup-email";
@@ -63,10 +64,11 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   try {
+    const copy = await loadEmailCopy(AUTH_EMAIL_COPY.backup_email_otp);
     await getEmailTransport().send({
       to: email,
       from: getDefaultFromAddress(),
-      ...renderBackupEmailOtpEmail({ code }),
+      ...renderBackupEmailOtpEmail({ code }, copy),
     });
   } catch (e) {
     return NextResponse.json({ error: `Could not send code: ${(e as Error).message}` }, { status: 502 });

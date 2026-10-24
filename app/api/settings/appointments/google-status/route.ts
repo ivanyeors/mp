@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * returns the token itself. `nextStep` names the fix when something is wrong.
  */
 export async function GET() {
-  const denied = await requireAdmin("results");
+  const denied = await requireAdmin("appointments");
   if (denied) return denied;
 
   const status = await checkGoogleStatus();

@@ -25,7 +25,7 @@ const UpdateSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, { params }: RouteParams) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   const { id } = await params;
@@ -71,7 +71,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   const { id } = await params;
@@ -80,6 +80,17 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   const { error } = await admin.from("partners").delete().eq("id", id);
 
   if (error) {
+    // Still referenced: a Result records this Location, or a Self-collect
+    // shipping method is collected from it.
+    if (error.code === "23503") {
+      return NextResponse.json(
+        {
+          error:
+            "This Location is still in use, by Results recorded there or by a Self-collect shipping method (Settings → Shipping).",
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

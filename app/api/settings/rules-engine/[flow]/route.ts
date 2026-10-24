@@ -23,7 +23,7 @@ type Ctx = { params: Promise<{ flow: string }> };
 /** GET draft for a flow (Staff, page-builder). */
 export async function GET(_req: Request, ctx: Ctx) {
   try {
-    await requireAdminContext("page-builder");
+    await requireAdminContext("rules-engine");
   } catch (res) {
     return res as NextResponse;
   }
@@ -41,7 +41,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 export async function PUT(req: Request, ctx: Ctx) {
   let authorId: string | null = null;
   try {
-    const admin = await requireAdminContext("page-builder");
+    const admin = await requireAdminContext("rules-engine");
     authorId = admin.userId;
   } catch (res) {
     return res as NextResponse;

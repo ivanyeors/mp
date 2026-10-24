@@ -4,6 +4,8 @@ import type {
   ShippingSettings,
 } from "@/lib/shipping/types";
 import type { EasyshipAddress } from "@/lib/easyship/schema";
+import { quoteCity } from "@/lib/shipping/countries";
+import { destinationState } from "@/lib/shipping/states";
 
 /**
  * Easyship Public API client (https://developers.easyship.com).
@@ -131,26 +133,17 @@ export function originAddressBody(origin: EasyshipAddress) {
  * blank"), but most quotes are made from a country and postal code alone: the
  * delivery checker, the checkout before the address is finished, Settings' test.
  * Couriers zone rates by postal code (which is why `quoteCacheKey` leaves the city
- * out), so those quotes send the country's main city. A country not listed here
- * sends none, Easyship refuses it, and the method charges its Fallback rate.
+ * out), so those quotes send the country's main city from the country catalog. A
+ * country outside it sends none, Easyship refuses it, and live methods are hidden.
  */
-const QUOTE_CITY: Record<string, string> = {
-  SG: "Singapore",
-  HK: "Hong Kong",
-  MO: "Macau",
-  MY: "Kuala Lumpur",
-  ID: "Jakarta",
-  TH: "Bangkok",
-  PH: "Manila",
-  VN: "Ho Chi Minh City",
-  BN: "Bandar Seri Begawan",
-  AU: "Sydney",
-};
-
 function destinationCity(destination: Pick<ShippingDestination, "country" | "city">): string | undefined {
-  return destination.city?.trim() || QUOTE_CITY[destination.country.toUpperCase()];
+  return destination.city?.trim() || quoteCity(destination.country);
 }
 
+/**
+ * A label (`contact` given) carries the shopper's state or the one their postal
+ * code is in; only a quote falls back to the main city's (`destinationState`).
+ */
 export function destinationAddressBody(
   destination: ShippingDestination,
   contact?: { name?: string | null; email?: string | null; phone?: string | null },
@@ -162,7 +155,7 @@ export function destinationAddressBody(
     line_1: destination.line1 ?? undefined,
     line_2: destination.line2 ?? undefined,
     city: destinationCity(destination),
-    state: destination.state ?? undefined,
+    state: destinationState(destination, { guess: !contact }),
     postal_code: destination.postal_code,
     country_alpha2: destination.country.toUpperCase(),
   });

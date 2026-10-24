@@ -2,6 +2,7 @@
 
 import type { BuildLine, BuildLineRole } from "@/lib/build-assembly";
 import type { PriceResultOutput } from "@/lib/result-pricing";
+import type { ServiceLine } from "@/lib/pricing/service-lines";
 import type { BolsterPlacementRow, PillowPlacementRow } from "@/lib/spatial-fillings/core";
 
 export type NamedBuildLine = BuildLine & { name: string };
@@ -23,6 +24,8 @@ export type ResultOrderBuildSnapshot = {
   build_lines: NamedBuildLine[];
   cogs: number;
   pricing: PriceResultOutput;
+  /** Service fees charged with this build, frozen at Accept (ADR 0024). Absent before it. */
+  service_lines?: ServiceLine[];
 };
 
 const ROLE_LABELS: Record<BuildLineRole, string> = {
@@ -61,6 +64,7 @@ export function buildResultOrderSnapshot(input: {
   nameByItem: Map<number, string>;
   cogs: number;
   pricing: PriceResultOutput;
+  serviceLines?: ServiceLine[];
 }): ResultOrderBuildSnapshot {
   const named = (line: BuildLine): NamedBuildLine => ({
     ...line,
@@ -81,6 +85,7 @@ export function buildResultOrderSnapshot(input: {
     build_lines,
     cogs: input.cogs,
     pricing: input.pricing,
+    ...(input.serviceLines?.length ? { service_lines: input.serviceLines } : {}),
   };
 }
 

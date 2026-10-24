@@ -1,0 +1,108 @@
+import raw from "@/mpillow-office/model/midview_08_83_viewer.json";
+import { viewerModelSchema, type ShowroomUnit } from "./types";
+
+/**
+ * Midview City Blk 22 #08-83 (Sin Ming Lane), the showroom unit, as a bare
+ * shell. The geometry is built from `mpillow-office/plans/midview-08-83.yaml`
+ * by `tools/build_massing.py`; everything below only says how to show it.
+ * Coordinates are the spec's: X east, Z south, metres from the outer faces of
+ * the west and north walls.
+ */
+export const MIDVIEW_08_83: ShowroomUnit = {
+  slug: "midview-08-83",
+  title: "Midview #08-83",
+  subtitle: "Blk 22 Sin Ming Lane, bare shell",
+  model: viewerModelSchema.parse(raw),
+  home: { dir: [-0.85, 1.25, 0.9], target: [7.8, 0, 4.0], halfW: 11.6, halfH: 8.6, fov: 34 },
+  figures: [
+    { label: "West inner face to GD2", value: "12.08 m" },
+    { label: "Depth, inner faces", value: "7.89 m" },
+    { label: "Floor to soffit", value: "3.40 m" },
+    { label: "Patio to parapet face", value: "3.24 m" },
+  ],
+  dims: [
+    { a: [0.199, 0.002, 9.0], b: [12.274, 0.002, 9.0], slash: [0, 0, 1], text: "12.08" },
+    { a: [12.274, 0.002, 9.0], b: [15.513, 0.002, 9.0], slash: [0, 0, 1], text: "3.24" },
+    { a: [-0.9, 0.002, 0.1], b: [-0.9, 0.002, 7.987], slash: [1, 0, 0], text: "7.89" },
+    { a: [-0.55, 0, -0.55], b: [-0.55, 3.4, -0.55], slash: [1, 0, 0], text: "3.40" },
+  ],
+  extensions: [
+    [[0.199, 0.002, 8.25], [0.199, 0.002, 9.15]],
+    [[12.274, 0.002, 8.25], [12.274, 0.002, 9.15]],
+    [[15.513, 0.002, 8.25], [15.513, 0.002, 9.15]],
+    [[-0.3, 0.002, 0.1], [-1.05, 0.002, 0.1]],
+    [[-0.3, 0.002, 7.987], [-1.05, 0.002, 7.987]],
+    [[0, 3.4, 0], [-0.7, 3.4, -0.7]],
+  ],
+  tags: [
+    { text: "Shop floor", at: [5.6, 0.05, 4.4] },
+    { text: "Store", at: [5.3, 3.45, 1.0] },
+    { text: "WC", at: [11.15, 3.45, 1.0] },
+    { text: "Patio", at: [14.0, 0.05, 4.9] },
+    { text: "A/C ledge", at: [12.97, 2.15, 1.0] },
+    { text: "FD2", at: [0.2, 0.05, 2.0] },
+    { text: "GD2", at: [12.32, 3.45, 4.0] },
+  ],
+  zoneNames: ["Shop floor", "WC", "Patio and A/C ledge"],
+  legend: [
+    { label: "Walls", item: "west_wall" },
+    { label: "Columns, RWDP", item: "col_nw" },
+    { label: "Floor slab", item: "floor" },
+    { label: "Glass", item: "gd2_transom" },
+    { label: "Parapets, screens", item: "patio_parapet" },
+  ],
+  cutaway: {
+    label: "Lift off the north wall",
+    hint: "Hides the north party wall, its two columns and the meter box.",
+  },
+  partNames: {
+    floor: "Floor slab",
+    col_nw: "Column",
+    col_sw: "Column",
+    col_n_mid: "Column",
+    col_s_mid: "Column",
+    col_se: "Column",
+    meter_cab: "Meter box and FD2 jamb, DB on its inner face",
+    fd2_head: "Bulkhead over the FD2 entrance",
+    fd2_jamb: "FD2 jamb",
+    fd2_return: "Wall return beside FD2",
+    west_wall: "West party wall",
+    north_wall: "North party wall",
+    south_wall: "South party wall",
+    store_west: "Store room wall",
+    store_south: "Store room wall, display side",
+    wc_west: "WC west wall",
+    wc_south: "WC south wall",
+    wc_east: "WC east wall",
+    gd2: "GD2 window wall",
+    gd2_transom: "Fixed glass over the GD2 door",
+    patio_north: "Patio parapet, north",
+    patio_south: "Patio parapet, south",
+    patio_parapet: "Patio parapet, east",
+    ac_south: "A/C ledge screen",
+    ac_east: "A/C ledge screen",
+  },
+  pieceNames: {
+    "wc_south:head": "Wall over the WC door",
+    "store_west:head": "Wall over the store door",
+    "wc_east:glass": "W3 high window",
+    "wc_east:sill": "WC wall below W3",
+    "wc_east:head": "WC wall above W3",
+    "gd2:sill": "GD2 upstand under the glazing",
+    "gd2:glass": "GD2 glazing",
+    "gd2:head": "Beam over GD2",
+    "gd2:wall": "Solid pier beside the GD2 door",
+  },
+  partNotes: {
+    gd2: "Heights scaled off the site video (frames 300, 900, 960), ±0.1 m.",
+    gd2_transom: "Scaled off the site video, ±0.1 m. The door below is 1.00 m wide (ID plan).",
+    meter_cab: "From the ID plan: the meter box stands west of the door line; the DB is surface-mounted on its inner face.",
+    wc_east: "W3 sill 2.10 m, head 2.70 m, as confirmed.",
+  },
+  notes: [
+    "GD2 heights (upstand 0.95, transom 1.95, head 3.00) are scaled off the site video, ±0.1 m.",
+    "Not modelled: the ceiling slab, the glass door just inside FD2, fittings and finishes.",
+    "Plan from the ID's furniture plan A-01 (re-issue 4-10-26), measured off the PDF at 1:50.",
+    "Built from mpillow-office/plans/midview-08-83.yaml.",
+  ],
+};

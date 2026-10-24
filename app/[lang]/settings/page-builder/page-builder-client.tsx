@@ -25,6 +25,7 @@ import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move
 import { describePending, type PendingSummary } from "@/lib/page-builder/draft";
 import type { LandingSection } from "@/lib/types/landing-sections";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
+import { InfoTip } from "@/components/ui/info-tip";
 
 function slugify(text: string): string {
   return text
@@ -486,11 +487,12 @@ export default function PageBuilderPage({
   const header = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Drag to reorder, toggle visibility, and edit section content. Changes stay in a
-          draft until you publish.
-        </p>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
+          <InfoTip label="About Page Builder">
+            <p>Drag to reorder, toggle visibility, and edit section content. Changes stay in a draft until you publish.</p>
+          </InfoTip>
+        </div>
       </div>
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         {/*

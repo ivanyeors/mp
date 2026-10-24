@@ -15,6 +15,8 @@ import { notifyPartnerWhatsApp } from "@/lib/whatsapp/partner-notify";
 import { getEmailTransport } from ".";
 import { renderEmailShell } from "./base";
 import { amountPanel, infoList, paragraph, statusPill } from "./components";
+import { defaultEmailCopy, defineEmailCopy, fillCopy, type CopyField, type EmailCopy } from "./copy";
+import { loadEmailCopy } from "./copy-store";
 import { formatSgDate } from "./format";
 import { formatMoney } from "./templates";
 import { getDefaultFromAddress } from "./transport";
@@ -115,111 +117,239 @@ export async function partnerRecipientEmail(
 /** Re-exported: this was the original home of the SG date formatter. */
 export { formatSgDate };
 
-/** The DATED release line — never an undated amount (AC). Both branches state timing. */
-function releaseLine(releaseAtIso: string | null): string {
-  return releaseAtIso
-    ? `This commission releases on ${formatSgDate(releaseAtIso)} (30 days after delivery).`
-    : `This commission releases 30 days after your customer's order is delivered.`;
+// ------------------------------------------------------------
+// The words of each partner email (PRD-email-templates)
+// ------------------------------------------------------------
+//
+// Amounts, dates, the tier and the agreement version are data: they fill the
+// placeholders, and the panels and rows that show them stay in code. Each
+// plain-text version is built from the same fields as its HTML.
+
+const SIGNOFF: CopyField = { label: "Sign-off", default: "— The Mpillow team", optional: true };
+const RELEASE_HINT = "Say when it releases: a commission email never states an amount without its timing.";
+
+export const PARTNER_EMAIL_COPY = {
+  referral_earned: defineEmailCopy({
+    id: "partner.referral_earned",
+    name: "Commission earned",
+    description: "Sent to a partner when a customer they referred pays for an order, with the commission earned and when it releases.",
+    placeholders: {
+      amount: "The commission earned, e.g. SGD 48.00",
+      release_date: "The day the commission releases, e.g. 4 September 2026",
+    },
+    fields: {
+      subject: { label: "Subject", default: "You earned {amount} in commission" },
+      preheader: { label: "Inbox preview line", default: "{amount} in commission from a referred order." },
+      heading: { label: "Heading", default: "You earned a commission" },
+      intro: { label: "Message", default: "Good news — you've earned commission from a referred order." },
+      release_dated: {
+        label: "Under the amount",
+        default: "This commission releases on {release_date} (30 days after delivery).",
+        hint: RELEASE_HINT,
+        group: "Order delivered",
+      },
+      release_undated: {
+        label: "Under the amount",
+        default: "This commission releases 30 days after your customer's order is delivered.",
+        hint: `${RELEASE_HINT} The order isn't delivered yet, so there is no date to name.`,
+        group: "Order not yet delivered",
+      },
+      button: { label: "Button", default: "Track it in your Partner Hub" },
+      signoff: SIGNOFF,
+    },
+  }),
+  milestone_reached: defineEmailCopy({
+    id: "partner.milestone_reached",
+    name: "Milestone reached",
+    description: "Sent to a partner when they reach a new tier of the Partner programme, with the bonus and perk it brings.",
+    placeholders: { tier: "The tier reached, e.g. 2" },
+    fields: {
+      subject: { label: "Subject", default: "You reached a new partner milestone" },
+      preheader: { label: "Inbox preview line", default: "You've reached tier {tier} in the Mpillow Partner programme." },
+      heading: { label: "Heading", default: "New milestone reached" },
+      intro: { label: "Message", default: "Congratulations — you've reached tier {tier} in the Mpillow Partner programme." },
+      button: { label: "Button", default: "Open your Partner Hub" },
+      signoff: SIGNOFF,
+    },
+  }),
+  payout_made: defineEmailCopy({
+    id: "partner.payout_made",
+    name: "Payout sent",
+    description: "Sent to a partner when Staff record a payout to them, with the amount and the proof of payment.",
+    placeholders: {
+      amount: "The amount paid out, e.g. SGD 240.00",
+      paid_on: "The payment date Staff recorded, e.g. 2026-08-01",
+    },
+    fields: {
+      subject: { label: "Subject", default: "Your payout of {amount} has been sent" },
+      preheader: { label: "Inbox preview line", default: "Your partner payout of {amount} is on its way." },
+      heading: { label: "Heading", default: "Payout sent" },
+      intro: { label: "Message", default: "We've sent your partner payout." },
+      button_proof: {
+        label: "Button, with a proof of payment",
+        default: "View your proof of payment",
+        hint: "The button when Staff attached a proof of payment: it opens it.",
+      },
+      button_hub: {
+        label: "Button, without a proof of payment",
+        default: "Open your Partner Hub",
+        hint: "The button when there is no proof of payment: it opens the Partner Hub instead.",
+      },
+      signoff: SIGNOFF,
+    },
+  }),
+  reaccept_terms: defineEmailCopy({
+    id: "partner.reaccept_terms",
+    name: "Agreement re-accepted",
+    description: "Sent to a partner when they accept an updated Partner Agreement, confirming the version they accepted.",
+    placeholders: { agreement_version: "The version of the agreement accepted, e.g. 2026-07-28" },
+    fields: {
+      subject: { label: "Subject", default: "You've re-accepted the Mpillow Partner Agreement" },
+      preheader: { label: "Inbox preview line", default: "We've recorded your acceptance of the updated Partner Agreement." },
+      heading: { label: "Heading", default: "Agreement re-accepted" },
+      intro: { label: "Message", default: "Thanks — we've recorded your acceptance of the updated Mpillow Partner Agreement." },
+      button: { label: "Button", default: "Open your Partner Hub" },
+      signoff: SIGNOFF,
+    },
+  }),
+};
+
+type CopyOf<T extends keyof typeof PARTNER_EMAIL_COPY> = EmailCopy<keyof (typeof PARTNER_EMAIL_COPY)[T]["fields"] & string>;
+
+/** Fill every field of `copy` from `values`. */
+function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
+  const out = {} as EmailCopy<K>;
+  for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
+  return out;
 }
 
-/** Referral-earned copy. `money` is pre-formatted; `releaseAtIso` null ⇒ undelivered. */
-export function renderReferralEarnedEmail(p: { money: string; releaseAtIso: string | null }): RenderedEmail {
-  const line = releaseLine(p.releaseAtIso);
-  const subject = `You earned ${p.money} in commission`;
-  const text = `Good news — you've earned ${p.money} in commission from a referred order.
+/** The sign-off, as the last lines of a plain-text body; none when Staff removed it. */
+const signoffText = (signoff: string) => (signoff ? ["", signoff] : []);
 
-${line}
-
-Track it in your Partner Hub: ${HUB_URL()}
-
-— The Mpillow team`;
-  const html = renderEmailShell({
-    title: "You earned a commission",
-    preheader: `${p.money} in commission from a referred order.`,
-    audience: "partner",
-    bodyHtml: `${paragraph("Good news — you've earned commission from a referred order.")}
-${amountPanel({ label: "Commission earned", amount: p.money, caption: line })}
-${paragraph("— The Mpillow team", { muted: true })}`,
-    cta: { href: HUB_URL(), label: "Track it in your Partner Hub" },
+/**
+ * Referral-earned copy. `money` is pre-formatted; `releaseAtIso` null ⇒ undelivered.
+ * Both release lines state timing; the delivered one is DATED (AC).
+ */
+export function renderReferralEarnedEmail(
+  p: { money: string; releaseAtIso: string | null },
+  copy: CopyOf<"referral_earned"> = defaultEmailCopy(PARTNER_EMAIL_COPY.referral_earned),
+): RenderedEmail {
+  const t = filled(copy, {
+    amount: p.money,
+    release_date: p.releaseAtIso ? formatSgDate(p.releaseAtIso) : null,
   });
-  return { subject, text, html };
+  const line = p.releaseAtIso ? t.release_dated : t.release_undated;
+  const text = [
+    t.intro,
+    "",
+    `Commission earned: ${p.money}`,
+    line,
+    "",
+    `${t.button}: ${HUB_URL()}`,
+    ...signoffText(t.signoff),
+  ].join("\n");
+  const html = renderEmailShell({
+    title: t.heading,
+    preheader: t.preheader,
+    audience: "partner",
+    bodyHtml: `${paragraph(t.intro)}
+${amountPanel({ label: "Commission earned", amount: p.money, caption: line })}
+${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
+    cta: { href: HUB_URL(), label: t.button },
+  });
+  return { subject: t.subject, text, html };
 }
 
-export function renderMilestoneEmail(p: {
-  tier: number;
-  bonus: string | null;
-  perk: string | null;
-}): RenderedEmail {
-  const parts = [`Congratulations — you've reached tier ${p.tier} in the Mpillow Partner programme.`];
-  if (p.bonus) parts.push(`You've earned a one-time bonus of ${p.bonus}.`);
-  if (p.perk) parts.push(`Your new perk: ${p.perk}.`);
-  const subject = "You reached a new partner milestone";
-  const text = `${parts.join("\n\n")}
-
-Open your Partner Hub: ${HUB_URL()}
-
-— The Mpillow team`;
+export function renderMilestoneEmail(
+  p: {
+    tier: number;
+    bonus: string | null;
+    perk: string | null;
+  },
+  copy: CopyOf<"milestone_reached"> = defaultEmailCopy(PARTNER_EMAIL_COPY.milestone_reached),
+): RenderedEmail {
+  const t = filled(copy, { tier: p.tier });
+  const text = [
+    t.intro,
+    ...(p.bonus ? ["", `One-time bonus: ${p.bonus}`] : []),
+    ...(p.perk ? ["", `New perk: ${p.perk}`] : []),
+    "",
+    `${t.button}: ${HUB_URL()}`,
+    ...signoffText(t.signoff),
+  ].join("\n");
   const html = renderEmailShell({
-    title: "New milestone reached",
-    preheader: `You've reached tier ${p.tier} in the Mpillow Partner programme.`,
+    title: t.heading,
+    preheader: t.preheader,
     audience: "partner",
     bodyHtml: `${statusPill(`Tier ${p.tier}`, "success")}
-${paragraph(
-      `Congratulations — you've reached tier ${p.tier} in the Mpillow Partner programme.`,
-      { top: 16 },
-    )}
+${paragraph(t.intro, { top: 16 })}
 ${p.bonus ? amountPanel({ label: "One-time bonus", amount: p.bonus }) : ""}
 ${p.perk ? infoList([{ label: "New perk", value: p.perk, strong: true }]) : ""}
-${paragraph("— The Mpillow team", { muted: true })}`,
-    cta: { href: HUB_URL(), label: "Open your Partner Hub" },
+${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
+    cta: { href: HUB_URL(), label: t.button },
   });
-  return { subject, text, html };
+  return { subject: t.subject, text, html };
 }
 
 /** Payout copy. `proofUrl` (a long-lived signed URL) links the proof of payment (AC5). */
-export function renderPayoutEmail(p: {
-  money: string;
-  paidOn: string;
-  proofUrl: string | null;
-}): RenderedEmail {
-  const subject = `Your payout of ${p.money} has been sent`;
-  const proofText = p.proofUrl ? `\n\nView your proof of payment: ${p.proofUrl}` : "";
-  const text = `We've sent your partner payout of ${p.money} on ${p.paidOn}.${proofText}
-
-— The Mpillow team`;
+export function renderPayoutEmail(
+  p: {
+    money: string;
+    paidOn: string;
+    proofUrl: string | null;
+  },
+  copy: CopyOf<"payout_made"> = defaultEmailCopy(PARTNER_EMAIL_COPY.payout_made),
+): RenderedEmail {
+  const t = filled(copy, { amount: p.money, paid_on: p.paidOn });
+  // `proofUrl` is a signed storage URL; safeUrl() inside button() validates it,
+  // and a rejected URL degrades to plain text rather than a dead button.
+  const cta = p.proofUrl
+    ? { href: p.proofUrl, label: t.button_proof, variant: "secondary" as const }
+    : { href: HUB_URL(), label: t.button_hub };
+  const text = [
+    t.intro,
+    "",
+    `Payout sent: ${p.money}`,
+    `Paid on ${p.paidOn}`,
+    "",
+    `${cta.label}: ${cta.href}`,
+    ...signoffText(t.signoff),
+  ].join("\n");
   const html = renderEmailShell({
-    title: "Payout sent",
-    preheader: `Your partner payout of ${p.money} is on its way.`,
+    title: t.heading,
+    preheader: t.preheader,
     audience: "partner",
-    bodyHtml: `${paragraph("We've sent your partner payout.")}
+    bodyHtml: `${paragraph(t.intro)}
 ${amountPanel({ label: "Payout sent", amount: p.money, caption: `Paid on ${p.paidOn}` })}
-${paragraph("— The Mpillow team", { muted: true })}`,
-    // `proofUrl` is a signed storage URL; safeUrl() inside button() validates it,
-    // and a rejected URL degrades to plain text rather than a dead button.
-    cta: p.proofUrl
-      ? { href: p.proofUrl, label: "View your proof of payment", variant: "secondary" }
-      : { href: HUB_URL(), label: "Open your Partner Hub" },
+${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
+    cta,
   });
-  return { subject, text, html };
+  return { subject: t.subject, text, html };
 }
 
-export function renderReacceptEmail(p: { agreementVersion: string }): RenderedEmail {
-  const subject = "You've re-accepted the Mpillow Partner Agreement";
-  const text = `Thanks — we've recorded your acceptance of the updated Mpillow Partner Agreement (version ${p.agreementVersion}).
-
-— The Mpillow team`;
+export function renderReacceptEmail(
+  p: { agreementVersion: string },
+  copy: CopyOf<"reaccept_terms"> = defaultEmailCopy(PARTNER_EMAIL_COPY.reaccept_terms),
+): RenderedEmail {
+  const t = filled(copy, { agreement_version: p.agreementVersion });
+  const text = [
+    t.intro,
+    "",
+    `Agreement version: ${p.agreementVersion}`,
+    "",
+    `${t.button}: ${HUB_URL()}`,
+    ...signoffText(t.signoff),
+  ].join("\n");
   const html = renderEmailShell({
-    title: "Agreement re-accepted",
-    preheader: "We've recorded your acceptance of the updated Partner Agreement.",
+    title: t.heading,
+    preheader: t.preheader,
     audience: "partner",
-    bodyHtml: `${paragraph(
-      "Thanks — we've recorded your acceptance of the updated Mpillow Partner Agreement.",
-    )}
+    bodyHtml: `${paragraph(t.intro)}
 ${infoList([{ label: "Agreement version", value: p.agreementVersion, strong: true }])}
-${paragraph("— The Mpillow team", { muted: true })}`,
-    cta: { href: HUB_URL(), label: "Open your Partner Hub" },
+${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
+    cta: { href: HUB_URL(), label: t.button },
   });
-  return { subject, text, html };
+  return { subject: t.subject, text, html };
 }
 
 // ------------------------------------------------------------
@@ -254,7 +384,8 @@ export async function sendReferralEarnedEmail(
   const releaseAtIso = rows.find((r) => r.release_at)?.release_at ?? null;
 
   const money = formatMoney(amount, input.currency);
-  const rendered = renderReferralEarnedEmail({ money, releaseAtIso });
+  const copy = await loadEmailCopy(PARTNER_EMAIL_COPY.referral_earned);
+  const rendered = renderReferralEarnedEmail({ money, releaseAtIso }, copy);
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,
     template: "referral_earned",
@@ -278,11 +409,15 @@ export async function sendMilestoneReachedEmail(
 ): Promise<void> {
   const to = await partnerRecipientEmail(admin, input.partnerId);
   if (!to) return;
-  const rendered = renderMilestoneEmail({
-    tier: input.tier,
-    bonus: input.cashBonus > 0 ? formatMoney(input.cashBonus, "SGD") : null,
-    perk: input.perkLabel.trim() || null,
-  });
+  const copy = await loadEmailCopy(PARTNER_EMAIL_COPY.milestone_reached);
+  const rendered = renderMilestoneEmail(
+    {
+      tier: input.tier,
+      bonus: input.cashBonus > 0 ? formatMoney(input.cashBonus, "SGD") : null,
+      perk: input.perkLabel.trim() || null,
+    },
+    copy,
+  );
   const entityId = `${input.partnerId}:tier${input.tier}`;
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,
@@ -306,11 +441,15 @@ export async function sendPayoutMadeEmail(
 ): Promise<void> {
   const to = await partnerRecipientEmail(admin, input.partnerId);
   if (!to) return;
-  const rendered = renderPayoutEmail({
-    money: formatMoney(input.amount, "SGD"),
-    paidOn: input.paidOn,
-    proofUrl: input.proofUrl,
-  });
+  const copy = await loadEmailCopy(PARTNER_EMAIL_COPY.payout_made);
+  const rendered = renderPayoutEmail(
+    {
+      money: formatMoney(input.amount, "SGD"),
+      paidOn: input.paidOn,
+      proofUrl: input.proofUrl,
+    },
+    copy,
+  );
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,
     template: "payout_made",
@@ -332,7 +471,8 @@ export async function sendReacceptEmail(
   input: { partnerId: string; agreementVersion: string; to: string },
 ): Promise<void> {
   if (!input.to) return;
-  const rendered = renderReacceptEmail({ agreementVersion: input.agreementVersion });
+  const copy = await loadEmailCopy(PARTNER_EMAIL_COPY.reaccept_terms);
+  const rendered = renderReacceptEmail({ agreementVersion: input.agreementVersion }, copy);
   const entityId = `${input.partnerId}:${input.agreementVersion}`;
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,

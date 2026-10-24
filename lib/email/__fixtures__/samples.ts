@@ -60,6 +60,11 @@ export function sampleOrder(fixture: EmailFixture = "happy"): OrderEmailData {
   };
 }
 
+/** The same order with 2,000 points (S$20) spent beside a S$20 coupon, earning 1,233 points, for a guest. */
+export function sampleOrderWithPoints(fixture: EmailFixture = "happy"): OrderEmailData {
+  return { ...sampleOrder(fixture), pointsSpent: 2000, pointsEarn: { points: 1233, guest: true } };
+}
+
 export function sampleRma(fixture: EmailFixture = "happy"): RmaEmailData {
   return {
     orderNumber: pick(fixture, "MP-10428"),
@@ -203,6 +208,18 @@ export function sampleBalanceDue(fixture: EmailFixture = "happy") {
   };
 }
 
+export function sampleReadjustmentReschedule(fixture: EmailFixture = "happy") {
+  return {
+    guestName: pick(fixture, "Ada Tan"),
+    productLabel: pick(fixture, "Premium Mpillow · Size M"),
+    wanted: "Fri, 14 Nov, 2:30 pm",
+    locationName: pick(fixture, "Mpillow Studio"),
+    amount: 30,
+    currency: "SGD",
+    orderNumber: "1077",
+  };
+}
+
 export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
   return { ...sampleBalanceDue(fixture), needsFinish: true };
 }
@@ -210,6 +227,23 @@ export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
 /** The build was priced and the hold died unpaid — the other expiry voice. */
 export function sampleHoldExpiredUnpaid(fixture: EmailFixture = "happy") {
   return { ...sampleHoldExpired(fixture), reason: "unpaid" as const };
+}
+
+/** A Paired build's Mbolster ended on its own while the Mpillow is still being built. */
+export function samplePairedMbolsterRemoved(fixture: EmailFixture = "happy") {
+  return {
+    origin: ORIGIN,
+    anchorId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
+    anchorReady: false,
+    amount: null,
+    currency: "SGD",
+  };
+}
+
+/** The same, once the Mpillow is assigned: this email is its "ready" email. */
+export function samplePairedMbolsterRemovedReady(fixture: EmailFixture = "happy") {
+  return { ...samplePairedMbolsterRemoved(fixture), anchorReady: true, amount: 428 };
 }
 
 export function sampleResultDeclined(fixture: EmailFixture = "happy") {
@@ -269,5 +303,137 @@ export function sampleApplication(fixture: EmailFixture = "happy") {
     partnerSignInUrl: `${ORIGIN}/partner`,
     // The support address lands in a mailto: href and in link text.
     supportEmail: pick(fixture, "sg@mpillow.com"),
+  };
+}
+
+/** PRD-loyalty-points slice 05: the Claim bonus, 1,000 points. */
+export function sampleClaimBonus(fixture: EmailFixture = "happy") {
+  return { firstName: pick(fixture, "Wei Ling"), points: 1000, shopUrl: `${ORIGIN}/en-US/shop`, termsUrl: `${ORIGIN}/en-US/points` };
+}
+
+/** CRM slice 07: the Review request, 14 days after delivery. */
+export function sampleReviewRequest(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    product: pick(fixture, "Premium Mpillow"),
+    orderNumber: pick(fixture, "MP-20261020-0042"),
+    deliveredOn: pick(fixture, "3 Nov 2026"),
+    reviewUrl: `${ORIGIN}/r/review?t=Zx81kQpL0aVb3nRt7yUe2w`,
+    accountUrl: `${ORIGIN}/en-US/account/login?next=%2Fen-US%2Faccount`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+  };
+}
+
+/** The same email for a customer with no first name on file. */
+export function sampleReviewRequestNoName(fixture: EmailFixture = "happy") {
+  return { ...sampleReviewRequest(fixture), firstName: null };
+}
+
+/**
+ * CRM slice 08: the yearly Check-up reminder for a Premium Mpillow. The fee is
+ * Costings' seeded S$30; the job reads the live one at send time.
+ */
+export function sampleCheckup(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    product: pick(fixture, "Premium Mpillow"),
+    orderNumber: pick(fixture, "MP-20251103-0042"),
+    deliveredOn: pick(fixture, "3 Nov 2025"),
+    fee: pick(fixture, "S$30"),
+    bookingUrl: `${ORIGIN}/en-US/appointments?type=readjustment&item=6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b`,
+    accountUrl: `${ORIGIN}/en-US/account/login?next=%2Fen-US%2Faccount`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+  };
+}
+
+/**
+ * PRD-loyalty-points slice 07: a points expiry reminder, `months` before the
+ * balance expires. 2,130 points (S$21.30), expiring on 12 March 2028.
+ */
+export function samplePointsExpiry(fixture: EmailFixture = "happy", months: 1 | 2 | 3 = 3) {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    points: 2130,
+    expiresOn: pick(fixture, "12 March 2028"),
+    months,
+    shopUrl: `${ORIGIN}/en-US/shop`,
+    termsUrl: `${ORIGIN}/en-US/points`,
+    accountUrl: `${ORIGIN}/en-US/account`,
+  };
+}
+
+// Migration slice 08: the campaign emails. Each link is what the wave sender
+// builds for one Customer (a Claim link with the campaign's UTMs, and the
+// unsubscribe confirm page); the tokens here are made up.
+const CAMPAIGN_CUSTOMER = "0f8fad5b-d9cb-469f-a165-70867728950e";
+const sampleUnsubscribeUrl = `${ORIGIN}/en-US/unsubscribe?u=${CAMPAIGN_CUSTOMER}&t=Qm9vbGVhbi1zZWNyZXQtcHJldmlldy10b2tlbg`;
+const sampleClaimUrl = (template: string) =>
+  `${ORIGIN}/en-US/account/welcome?c=k3V9xQe2LmP0aRt7yUb4wZc8nDf1hJg6sKo5vXi2qEw&utm_source=new_website&utm_medium=email&utm_campaign=${template}`;
+
+/** The Claim bonus as the wave sender states it (claimBonusOffer). */
+function sampleCampaignBonus(fixture: EmailFixture) {
+  return { points: pick(fixture, "1,000 points"), amount: pick(fixture, "S$10"), months: 3 };
+}
+
+export function sampleMigrationAnnouncement(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    claimUrl: sampleClaimUrl("migration_announcement"),
+    bonus: sampleCampaignBonus(fixture),
+    termsUrl: `${ORIGIN}/en-US/points`,
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+/** A customer with no first name: the greeting is the sentence that changes. */
+export function sampleMigrationAnnouncementNoName(fixture: EmailFixture = "happy") {
+  return { ...sampleMigrationAnnouncement(fixture), firstName: null };
+}
+
+export function sampleMigrationReminder(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    claimUrl: sampleClaimUrl("migration_reminder"),
+    bonus: sampleCampaignBonus(fixture),
+    termsUrl: `${ORIGIN}/en-US/points`,
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+export function sampleMigrationServiceNotice(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    email: pick(fixture, "wei.ling@example.com"),
+    signInUrl: sampleClaimUrl("migration_service_notice"),
+    siteHost: "custom.mpillow.com",
+    readjustmentUrl: `${ORIGIN}/en-US/appointments?type=readjustment`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+/** A campaign Staff wrote (PRD-email-marketing): a heading, a bullet list, a link, and the sign-in button. */
+export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Wei Ling"),
+    subject: pick(fixture, "Our new website is here, with points waiting for you"),
+    preheader: pick(fixture, "Sign in within 3 months to collect 1,000 points."),
+    body: [
+      "We have a new website, and your Mpillow account is ready on it.",
+      "",
+      "## What your account does",
+      `- ${pick(fixture, "Saves your delivery addresses")}`,
+      "- Books a re-adjustment for your pillow",
+      "",
+      `Questions? Read more at ${ORIGIN}/en-US/faq or just reply to this email.`,
+    ].join("\n"),
+    greeting: true,
+    button: { label: "Sign in and collect your points", href: sampleClaimUrl("campaign:3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f") },
+    unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }

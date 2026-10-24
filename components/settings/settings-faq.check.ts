@@ -67,7 +67,7 @@ assert.match(panel, /zh-CN/);
 assert.match(panel, /productSurfaceKey/);
 assert.match(panel, /\/api\/page-faq\/items\/reorder/);
 
-// --- Admin APIs: same page-builder gate as Global FAQ (public cannot mutate) ---
+// --- Admin APIs: same faq gate as Global FAQ (public cannot mutate) ---
 const apiFiles = [
   "app/api/page-faq/sets/route.ts",
   "app/api/page-faq/sets/[id]/route.ts",
@@ -77,10 +77,10 @@ const apiFiles = [
 ];
 for (const file of apiFiles) {
   const src = read(file);
-  assert.match(src, /requireAdmin\("page-builder"\)/, `${file} must gate page-builder`);
+  assert.match(src, /requireAdmin\("faq"\)/, `${file} must gate faq`);
 }
-assert.equal(roleHasPermission("owner", "page-builder"), true);
-assert.equal(roleHasPermission("viewer", "page-builder"), false);
+assert.equal(roleHasPermission("owner", "faq"), true);
+assert.equal(roleHasPermission("viewer", "faq"), false);
 
 async function main() {
   // --- Product surface ensure + CRUD roundtrip (throwaway surface) ---

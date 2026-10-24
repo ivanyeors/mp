@@ -1,5 +1,6 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { classifyCrawler, recordCrawlerHit } from "@/lib/analytics/ai-crawlers";
+import { blogSlugFate } from "@/lib/blog-redirects";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
@@ -35,6 +36,20 @@ function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
   return DEFAULT_LOCALE;
 }
 
+function safeDecode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+function blogGoneResponse(locale: Locale): NextResponse {
+  const blog = withLocale("/blog", locale);
+  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>This article has been removed | Mpillow</title></head><body style="font-family:system-ui,sans-serif;max-width:36rem;margin:15vh auto;padding:0 1rem;line-height:1.5"><h1>This article has been removed</h1><p>It is no longer part of the Mpillow blog.</p><p><a href="${blog}">Browse the blog</a></p></body></html>`;
+  return new NextResponse(html, { status: 410, headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
 const LEGACY_HOST = "work.mpillow.com";
 const CANONICAL_ORIGIN = "https://custom.mpillow.com";
 
@@ -66,6 +81,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     // normal locale handling.
     pathname === "/dev" ||
     pathname.startsWith("/dev/") ||
+    // Short redirects (app/r): the review link is one hop to Google, with no
+    // locale bounce or cookie (CRM slice 07).
+    pathname.startsWith("/r/") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.includes(".")
@@ -93,6 +111,16 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       url.pathname = pathname.replace("/settings/categories", "/settings/products");
       return NextResponse.redirect(url, 308);
     }
+
+    // Consolidated blog posts (content-audit.md): merged → the post that absorbed them, retired → 410.
+    const blogSlug = pathname.match(/^\/[^/]+\/blog\/([^/]+)\/?$/)?.[1];
+    const fate = blogSlug ? blogSlugFate(safeDecode(blogSlug)) : null;
+    if (fate?.kind === "merged") {
+      const url = request.nextUrl.clone();
+      url.pathname = withLocale(`/blog/${fate.into}`, pathLocale);
+      return NextResponse.redirect(url, 308);
+    }
+    if (fate?.kind === "gone") return blogGoneResponse(pathLocale);
 
     const res = NextResponse.next();
     clearLegacySettingsSession(request, res);

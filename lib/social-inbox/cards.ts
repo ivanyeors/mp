@@ -18,7 +18,7 @@ export const INBOX_CARD_HEADERS: Record<SocialPlatform, string> = {
   tiktok: "💬 TIKTOK DM",
 };
 
-/** After an Inbox agent's reply went out. */
+/** After a reply from Telegram went out to the customer. */
 export const SENT_NOTE_PREFIX = "📤 Sent to ";
 /** Someone answered from the platform's own app instead. */
 export const ECHO_NOTE_PREFIX = "↪️ Answered in ";

@@ -1,6 +1,8 @@
 "use client";
 
 import { placedChargeLines, priceComposedBuild } from "@/lib/pricing/composed-price";
+import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
+import type { ServicePrices } from "@/lib/pricing/service-prices";
 
 import {
   useEffect,
@@ -23,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   Dialog,
   DialogClose,
@@ -45,6 +48,7 @@ import {
 import {
   ConfiguratorExitDialog,
   ConfiguratorMobileCloseBar,
+  ConfiguratorStepActions,
   configuratorCardPadClassName,
   configuratorMobileCloseClearanceClassName,
   configuratorOuterPadClassName,
@@ -56,6 +60,8 @@ import {
   ArrowRight,
   ArrowLeft,
   User,
+  Cake,
+  HeartPulse,
   Sparkles,
   CheckCircle,
   Camera,
@@ -73,16 +79,32 @@ import {
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
+import { PairedStepperBar } from "@/components/configurator/paired-stepper";
+import { ReviewCard } from "@/components/configurator/review-card";
+import {
+  bolsterSleepPosition,
+  clearPairedHandoff,
+  opensPairedDetails,
+  PAIRED_MBOLSTER_PATH,
+  pairedHoldBody,
+  readPairedHandoff,
+  reanchorPairedHandoff,
+  runsPairedStepper,
+  writePairedHandoff,
+  type PairedChoice,
+  type PairedHandoff,
+} from "@/lib/configurator/paired-mbolster";
+import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
 import { UpsellCard } from "@/components/rules-engine/upsell-card";
 import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
   assertPreStripeRouteResolved,
   carryOverAnswers,
+  HEAD_TO_BACK_MIN_CM,
   incompleteEngineInputs,
   isFlowRoutePending,
   missingStepsAfterCarryOver,
   parseRecommendationRecord,
-  plainLanguageWhy,
   shouldRevealRecommendation,
   stampAcceptedTargetRecord,
   wizardToEngineInputs,
@@ -94,10 +116,22 @@ import {
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
-  SavedAddressSelect,
   useSavedShippingPrefill,
   type HoldShippingAddress,
 } from "@/components/shop/saved-address-select";
+import {
+  HOLD_SHIPPING_METHODS_PATH,
+  HoldShippingFields,
+  holdShippingAmount,
+  holdShippingCheck,
+  holdShippingName,
+  HoldShippingTotalRow,
+  isSelfCollectMethod,
+  useHoldShippingQuote,
+  type HoldShippingMethod,
+} from "@/components/shop/hold-shipping-fields";
+import { countryName, usesPostalCode } from "@/lib/shipping/countries";
+import type { PackageType } from "@/lib/shipping/types";
 import {
   configPathFor,
   newResponseId,
@@ -158,15 +192,25 @@ import {
   preOrderWaitingCopy,
 } from "@/lib/configurator/pre-order-trigger";
 import {
+  mixAfterTierChange,
   recheckSelectionsForSize,
   sessionTemplateId,
+  startingTemplateId,
+  templateSuggestion,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
-import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
+import {
+  fetchPillowTemplate,
+  StaffAssistPanel,
+  type FillingItem,
+} from "@/components/configurator/staff-assist-panel";
+import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
+import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { stageGeometry } from "@/components/spatial/xray-assets";
@@ -176,12 +220,14 @@ import {
   resolveItemDims,
   type DimensionOverridesPayload,
 } from "@/lib/spatial-fillings/dimension-overrides";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import {
   flattenToPackList,
   pillowPlacementsToRows,
   rowsToPillowPlacements,
   type PillowPlacement,
   type PillowPlacementRow,
+  type Section,
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
@@ -195,6 +241,11 @@ const EMPTY_MEASURE_DRAFTS: Record<MeasureKey, string> = {
   neckToBack: "",
   headToBack: "",
   neckLength: "",
+};
+
+/** Lowest accepted value per measurement; a key left out must be positive. */
+const MEASURE_MIN_CM: Partial<Record<MeasureKey, number>> = {
+  headToBack: HEAD_TO_BACK_MIN_CM,
 };
 
 /** Prefer BOM default, else first in-stock option, else first row. */
@@ -211,6 +262,16 @@ function pickDefaultComponent(
 /** Stable no-op setters: the account prefill is skipped on Staff devices (see its call). */
 const KEEP_EMAIL: Dispatch<SetStateAction<string>> = () => {};
 const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
+/** An Mpillow ships in its own box; a Paired build's Mbolster, added at step 2, joins it. */
+const SHIPS_AS_MPILLOW: PackageType[] = ["pillow"];
+const SHIPS_AS_PAIR: PackageType[] = ["pillow", "bolster"];
+
+/**
+ * A Paired build's part of the preview (ADR 0026): its finish (step 1), then —
+ * after the Mbolster's own page (step 2) — contact and shipping (step 3), then
+ * the summary of both that is paid from (step 4).
+ */
+type PairedPhase = "customize" | "details" | "review";
 
 // Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline) and
 // is the pillow Size's registry outline since slice 02 — the shell and the
@@ -218,15 +279,26 @@ const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
 const pillowPath = (size: string | null | undefined) =>
   stageGeometry(pillowDimensions(size).dims.size).silhouettePath;
 
+// Every block on the preview stage shares the x-ray's width, so the Staff
+// toolbar, the pillow, the fit banner, the cut and the pack list read as one
+// column. Below lg: the full column, capped at 500px so cells and dive chips
+// are big enough to tap. From lg: sized to the viewport so the pillow and its
+// cut stay in view together, and never wider than the column it sits in.
+const STAGE_BLOCK_CLASS = "w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-full";
+// Panels on the starfield take the Staff toolbox rail's frosted surface.
+const STAGE_PANEL_CLASS = "border-border/60 bg-background/70 shadow-xl backdrop-blur-xl";
+
 type Step =
   | "welcome"
   | "what-to-expect"
   | "name"
+  | "age"
+  | "health"
   | "shoulder-length"
   | "neck-to-back"
   | "head-to-back"
   | "neck-length"
-  | "customize"
+  | "photos"
   | "preview";
 
 interface MeasurementData {
@@ -303,8 +375,14 @@ export function MpConfigClient({
   assistCode = null,
   resumeFinish = null,
   staffEdit = null,
+  servicePrices = null,
+  measuredByStaff = false,
 }: {
   info: MpConfigInfo;
+  /** Costings → Service fees (ADR 0024), for the Measurement service row. */
+  servicePrices?: ServicePrices | null;
+  /** Staff measured this customer — the server charges the Measurement service. */
+  measuredByStaff?: boolean;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
   staffAssist?: boolean;
   /** Admin Panel `results` permission. Gates the completion dialog's link into
@@ -360,8 +438,25 @@ export function MpConfigClient({
   const tokenStorageKey = tokenKeyFor(variant);
   const configPath = configPathFor(variant);
   const to = (href: string) => withLocale(href, locale);
+  // "Have us measure you" (ADR 0024): a studio measurement instead of measuring at
+  // home. The fee is not charged here — it is charged when Staff measure, with the
+  // pillow. Hidden wherever someone is already measuring or the session is not the
+  // shopper's own (Staff device, Assist link, partner run, a live Result).
+  const studioMeasureFee =
+    servicePrices &&
+    !staffAssist &&
+    !measuredByStaff &&
+    !assistCode &&
+    !partnerAssisted &&
+    !resumeFinish &&
+    !staffEdit
+      ? servicePrices[isBasic ? "measurement_basic" : "measurement_premium"].msrp
+      : null;
+  const studioMeasureHref = to("/appointments?type=customisation");
 
   const isMobile = useIsMobile();
+  // Phones: each step's Back / Continue render in the bottom bar's slot.
+  const [mobileActionsSlot, setMobileActionsSlot] = useState<HTMLDivElement | null>(null);
   // Both reopened modes start on the preview: there is already a build to look
   // at, so the questionnaire would only be in the way.
   const [currentStep, setCurrentStep] = useState<Step>(
@@ -468,6 +563,11 @@ export function MpConfigClient({
     [assistDimensionOverrides, shopDimensionOverrides],
   );
   const assistItemDims = useMemo(() => resolveItemDims(assistItems, assistRegistry), [assistItems, assistRegistry]);
+  // ADR 0025: the soft cut's settings ride the same payload, picked the same way as the allowance.
+  const assistSoftBody = useMemo(
+    () => softBodyFromPayload(assistDimensionOverrides ?? shopDimensionOverrides),
+    [assistDimensionOverrides, shopDimensionOverrides],
+  );
   // Slice 04: the physical fit of the session mix at the Size on screen —
   // computed once here and shared by the x-ray, the banner and the hold /
   // save confirm (and the cross-section, slice 05). The same Size expression
@@ -485,6 +585,20 @@ export function MpConfigClient({
   );
   // Slice 05: where the cross-section is cut; the x-ray draws the line, an along cut follows the dive.
   const { cut, setCut, onDiveChange } = useCut();
+  // Staff: the dived Section's controls dock off the pillow, as on Configure →
+  // Filling Template — in a Section editor column beside the x-ray on wide
+  // screens, in a panel under it on tablets. Phones keep XrayPillow's own dock.
+  const wideStage = useMediaQuery("(min-width: 1280px)");
+  const [sideSlot, setSideSlot] = useState<HTMLElement | null>(null);
+  const [inlineSlot, setInlineSlot] = useState<HTMLElement | null>(null);
+  const [divedSection, setDivedSection] = useState<Section | null>(null);
+  const onStageDive = useCallback(
+    (section: Section | null) => {
+      onDiveChange(section);
+      setDivedSection(section);
+    },
+    [onDiveChange],
+  );
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -500,6 +614,50 @@ export function MpConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
+  // The engine's Filling Template for the size it recommended. Staff start from
+  // it and edit, rather than from an empty pillow.
+  const engineSuggestion = useMemo(
+    () =>
+      templateSuggestion(
+        parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null),
+      ),
+    [shopRecommendation?.recommendation_record],
+  );
+  const suggestedTemplateId = engineSuggestion?.templateId ?? null;
+  const suggestedSize = engineSuggestion?.size ?? null;
+  const productSize = shopRecommendation?.pillow_product?.size ?? null;
+  const seededSuggestionRef = useRef<number | null>(null);
+  useEffect(() => {
+    // A reopened Result keeps its own mix. A fresh session takes the suggestion
+    // once: emptying the pillow afterwards is a choice, not a gap to refill.
+    if (!staffAssist || staffEdit || resumeFinish || suggestedTemplateId == null) return;
+    if (productSize !== suggestedSize) return;
+    if (assistLoadedTemplate || assistPlacements.length > 0) return;
+    if (seededSuggestionRef.current === suggestedTemplateId) return;
+    seededSuggestionRef.current = suggestedTemplateId;
+    let cancelled = false;
+    fetchPillowTemplate(suggestedTemplateId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setAssistLoadedTemplate(loaded);
+        setAssistPlacements(loaded.placements);
+      })
+      .catch(() => {
+        // The picker still lists every template for this size.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    staffAssist,
+    staffEdit,
+    resumeFinish,
+    suggestedTemplateId,
+    suggestedSize,
+    productSize,
+    assistLoadedTemplate,
+    assistPlacements.length,
+  ]);
   const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? staffEdit?.email ?? "");
   const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? staffEdit?.phone ?? "");
   const [discoverySource, setDiscoverySource] = useState(
@@ -533,10 +691,16 @@ export function MpConfigClient({
     assisted || staffAssist ? KEEP_EMAIL : setHoldEmail,
     assisted || staffAssist ? KEEP_ADDRESS : setHoldAddress,
   );
-  const [shippingMethods, setShippingMethods] = useState<
-    { id: string; slug: string; base_rate: number; free_above: number | null; content: Record<string, { name?: string }> }[]
-  >([]);
+  const [shippingMethods, setShippingMethods] = useState<HoldShippingMethod[]>([]);
   const [selectedShippingId, setSelectedShippingId] = useState("");
+  const selectedShipping = shippingMethods.find((m) => m.id === selectedShippingId);
+  /** Self-collect asks for no address: the server stores the studio's. */
+  const selfCollect = isSelfCollectMethod(selectedShipping);
+  const [pairedPhase, setPairedPhase] = useState<PairedPhase>("customize");
+  /** Step 2's answer, read back from the hand-off for steps 3 and 4. */
+  const [pairedChoice, setPairedChoice] = useState<PairedChoice | null>(null);
+  /** Back from step 2: paired before the recommendation reloads and says so. */
+  const [pairedRestored, setPairedRestored] = useState(false);
   const [holdSubmitting, setHoldSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** Basic → Premium accept: collect only missing neck steps, then re-eval Premium. */
@@ -561,12 +725,51 @@ export function MpConfigClient({
   const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
   const showNeckSteps = !isBasic || upsoldToPremium;
   const soldAsPremium = upsoldToPremium || !isBasic;
+  const routeTarget = useMemo(
+    () =>
+      parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null)?.flowRoute
+        ?.targetFlow ?? null,
+    [shopRecommendation?.recommendation_record],
+  );
+  // A route to Mbolster ADDS a product (a Paired build, ADR 0026) rather than
+  // switching flows, so it is answered by the stepper's step 2 — or, where there
+  // is no stepper, declined at hold — and never blocks the hold itself.
   const flowRouteBlocksHold = useMemo(() => {
     const r = parseRecommendationRecord(
       shopRecommendation?.recommendation_record ?? null,
     );
-    return Boolean(r && isFlowRoutePending(r));
+    return Boolean(r && isFlowRoutePending(r) && r.flowRoute?.targetFlow !== "mbolster");
   }, [shopRecommendation?.recommendation_record]);
+  const pairedStepper = runsPairedStepper({
+    routeTarget,
+    assisted,
+    partnerAssisted,
+    reopened: Boolean(staffEdit || resumeFinish),
+  });
+  // While the recommendation reloads on the way back from step 2, nothing yet
+  // says this is a pair — but contact and shipping must not flash up at step 1.
+  // Once it has reloaded, a route that no longer fires is an ordinary preview.
+  const pairedFlow = pairedStepper || (pairedRestored && !shopRecommendation);
+  // Each method priced for this Mpillow to this address — live courier rates
+  // with our markup — the same boxes the hold quotes (ADR 0032). A Paired
+  // build's Mbolster rides in the same shipment.
+  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
+    methods: shippingMethods,
+    address: holdAddress,
+    parcelTypes: pairedFlow && pairedChoice?.bolster ? SHIPS_AS_PAIR : SHIPS_AS_MPILLOW,
+    selectedId: selectedShippingId,
+    onSelect: setSelectedShippingId,
+  });
+  const shippingStatus = selectedShippingOption?.status;
+  // Each paired step starts at its top, not where the last one was scrolled to.
+  const previewPanelRef = useRef<HTMLDivElement | null>(null);
+  const shownPairedPhaseRef = useRef(pairedPhase);
+  useEffect(() => {
+    if (shownPairedPhaseRef.current === pairedPhase) return;
+    shownPairedPhaseRef.current = pairedPhase;
+    previewPanelRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  }, [pairedPhase]);
 
   const patchRecommendationRecord = useCallback((next: RecommendationRecord) => {
     setShopRecommendation((prev) =>
@@ -663,25 +866,30 @@ export function MpConfigClient({
       valid: isNonEmptyString(measurementData.name),
       message: "Enter your name",
     },
-    {
-      key: "gender",
-      touched: isNonEmptyString(measurementData.gender),
-      valid: isNonEmptyString(measurementData.gender),
-      message: "Select a gender",
-    },
+  ], [measurementData.name]);
+
+  const ageFields = useMemo((): FieldCheck[] => [
     {
       key: "ageGroup",
       touched: isNonEmptyString(measurementData.ageGroup),
       valid: isNonEmptyString(measurementData.ageGroup),
       message: "Select an age group",
     },
-  ], [measurementData.name, measurementData.gender, measurementData.ageGroup]);
+    {
+      key: "gender",
+      touched: isNonEmptyString(measurementData.gender),
+      valid: isNonEmptyString(measurementData.gender),
+      message: "Select a gender",
+    },
+  ], [measurementData.ageGroup, measurementData.gender]);
 
   const measureField = (key: MeasureKey): FieldCheck[] => [
     {
       key,
       touched: measurementDrafts[key].trim() !== "",
-      valid: normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]) !== null,
+      valid:
+        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key], MEASURE_MIN_CM[key]) !==
+        null,
       message: "Enter a valid measurement",
     },
   ];
@@ -691,7 +899,11 @@ export function MpConfigClient({
   };
 
   const commitMeasureDraft = (key: MeasureKey) => {
-    const cm = normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]);
+    const cm = normalizeMeasurementDraft(
+      measurementUnit,
+      measurementDrafts[key],
+      MEASURE_MIN_CM[key],
+    );
     if (cm === null) return;
     updateMeasurement(key, cm);
     setMeasureDraft(key, displayMeasurement(measurementUnit, cm));
@@ -702,7 +914,7 @@ export function MpConfigClient({
     const nextData = { ...measurementData };
     for (const key of Object.keys(EMPTY_MEASURE_DRAFTS) as MeasureKey[]) {
       const cm =
-        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]) ??
+        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key], MEASURE_MIN_CM[key]) ??
         measurementData[key];
       nextData[key] = cm;
       nextDrafts[key] = displayMeasurement(next, cm);
@@ -712,7 +924,7 @@ export function MpConfigClient({
     setMeasurementUnit(next);
   };
 
-  const customizeFields = useMemo((): FieldCheck[] => [
+  const healthFields = useMemo((): FieldCheck[] => [
     {
       key: "bloodPressureLevel",
       touched: isNonEmptyString(measurementData.bloodPressureLevel),
@@ -792,30 +1004,29 @@ export function MpConfigClient({
       valid: isNonEmptyString(holdAddress.recipient),
       message: "Recipient is required",
     },
-    {
-      key: "line1",
-      touched: isNonEmptyString(holdAddress.line1),
-      valid: isNonEmptyString(holdAddress.line1),
-      message: "Address is required",
-    },
-    {
-      key: "city",
-      touched: isNonEmptyString(holdAddress.city),
-      valid: isNonEmptyString(holdAddress.city),
-      message: "City is required",
-    },
-    {
-      key: "postal_code",
-      touched: isNonEmptyString(holdAddress.postal_code),
-      valid: isNonEmptyString(holdAddress.postal_code),
-      message: "Postal code is required",
-    },
-    {
-      key: "shipping",
-      touched: isNonEmptyString(selectedShippingId),
-      valid: isNonEmptyString(selectedShippingId),
-      message: "Choose a shipping method",
-    },
+    ...(selfCollect
+      ? []
+      : [
+          {
+            key: "line1",
+            touched: isNonEmptyString(holdAddress.line1),
+            valid: isNonEmptyString(holdAddress.line1),
+            message: "Address is required",
+          },
+          {
+            key: "city",
+            touched: isNonEmptyString(holdAddress.city),
+            valid: isNonEmptyString(holdAddress.city),
+            message: "City is required",
+          },
+          {
+            key: "postal_code",
+            touched: isNonEmptyString(holdAddress.postal_code),
+            valid: isNonEmptyString(holdAddress.postal_code) || !usesPostalCode(holdAddress.country),
+            message: "Postal code is required",
+          },
+        ]),
+    holdShippingCheck(shippingStatus),
   ], [
     selectedCover,
     selectedCase,
@@ -828,13 +1039,19 @@ export function MpConfigClient({
     holdAddress.line1,
     holdAddress.city,
     holdAddress.postal_code,
-    selectedShippingId,
+    holdAddress.country,
+    shippingStatus,
+    selfCollect,
   ]);
 
   const activeFields = useMemo((): FieldCheck[] => {
     switch (currentStep) {
       case "name":
         return nameFields;
+      case "age":
+        return ageFields;
+      case "health":
+        return healthFields;
       case "shoulder-length":
         return measureField("shoulderLength");
       case "neck-to-back":
@@ -843,14 +1060,12 @@ export function MpConfigClient({
         return measureField("headToBack");
       case "neck-length":
         return measureField("neckLength");
-      case "customize":
-        return customizeFields;
       case "preview":
         return holdFields;
       default:
         return [];
     }
-  }, [currentStep, nameFields, customizeFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
+  }, [currentStep, nameFields, ageFields, healthFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
 
   useEffect(() => {
     setFieldErrors({});
@@ -980,6 +1195,25 @@ export function MpConfigClient({
     setCurrentStep("preview");
     setRestoringHoldCancel(true);
 
+    // Paired build, this Mpillow's hand-off only: an answered step 2 sends the
+    // shopper on to step 3, and a cancelled Checkout of the pair comes back to
+    // step 4, the summary it was paid from.
+    const opensDetails = opensPairedDetails(window.location.search);
+    const handoff = readPairedHandoff(window.sessionStorage);
+    if (handoff && handoff.anchorId === draft?.responseId) {
+      setPairedRestored(true);
+      if (handoff.choice && (opensDetails || holdCancelled)) {
+        setPairedChoice(handoff.choice);
+        setPairedPhase(holdCancelled ? "review" : "details");
+      }
+    }
+    if (opensDetails) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("paired");
+      const rest = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+    }
+
     if (holdCancelled) {
       toast.message(HOLD_CANCELLED_NOTICE.title, {
         description: HOLD_CANCELLED_NOTICE.description,
@@ -1091,6 +1325,15 @@ export function MpConfigClient({
     setSelectedAddons(new Set());
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
+    // A shared device's next customer must not inherit this one's Mbolster.
+    try {
+      clearPairedHandoff(window.sessionStorage);
+    } catch {
+      // private mode — nothing was stored
+    }
+    setPairedPhase("customize");
+    setPairedChoice(null);
+    setPairedRestored(false);
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
   };
@@ -1428,12 +1671,13 @@ export function MpConfigClient({
 
   /**
    * Staff assist: confirmed size×tier change. Updates the product context as if
-   * the recommendation had that size×tier, clears the mix and loads the new
-   * size's Default Filling Template, then rechecks cover/case/add-on
+   * the recommendation had that size×tier. A tier-only change keeps the mix; a
+   * size change replaces it with that size's starting template (the engine's
+   * pick on the size it recommended, else the default), then rechecks cover/case/add-on
    * eligibility (wrong size → clear + note; stock 0 → keep, existing
    * OOS/Pre-order signals apply).
    */
-  const applyAssistSizeTier = async (next: SizeTier) => {
+  const applyAssistSizeTier = async (next: SizeTier, from: SizeTier) => {
     const res = await fetch(
       `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
     );
@@ -1465,13 +1709,38 @@ export function MpConfigClient({
       composed_buildable: data.composed_buildable,
     }));
 
-    const tplPlacements = rowsToPillowPlacements(
-      (data.default_template?.placements ?? []) as PillowPlacementRow[],
+    // Templates are scoped by size, so only a size change replaces the mix.
+    const neckSupportIds = new Set(
+      assistItems
+        .filter((i) => isNeckSupportItem({ category: i.category, name: i.name }))
+        .map((i) => i.id),
     );
-    setAssistPlacements(tplPlacements);
-    setAssistLoadedTemplate(
-      data.default_template ? { id: data.default_template.id, placements: tplPlacements } : null,
-    );
+    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => neckSupportIds.has(id));
+    if (kept) {
+      setAssistPlacements(kept.placements);
+      if (kept.removed > 0) {
+        toast.message("Neck support removed", {
+          description: "A neck support is for Premium pillows only.",
+        });
+      }
+    } else {
+      // A new size starts from the engine's pick when it is the size the engine
+      // recommended, else from that size's default.
+      const startId = startingTemplateId(next.size, engineSuggestion, data.default_template?.id ?? null);
+      const loaded =
+        startId == null
+          ? null
+          : startId === data.default_template?.id
+            ? {
+                id: startId,
+                placements: rowsToPillowPlacements(
+                  (data.default_template?.placements ?? []) as PillowPlacementRow[],
+                ),
+              }
+            : await fetchPillowTemplate(startId).catch(() => null);
+      setAssistPlacements(loaded?.placements ?? []);
+      setAssistLoadedTemplate(loaded);
+    }
 
     const newAddons: AddonOption[] = await fetch(
       `/api/results/addons?productType=pillow&size=${encodeURIComponent(next.size)}`,
@@ -1613,13 +1882,14 @@ export function MpConfigClient({
     }
 
     const country = holdAddress.country || "SG";
-    fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
+    fetch(`${HOLD_SHIPPING_METHODS_PATH}&country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
       .then(async (d: { rows?: typeof shippingMethods }) => {
         let methods = d.rows ?? [];
-        // Fallback: methods may predate SG country tags (seeded as MY).
-        if (methods.length === 0) {
-          const all = await fetch("/api/shop/shipping").then((r) => r.json());
+        // Fallback: methods may predate SG country tags (seeded as MY). Only
+        // for Singapore — elsewhere it would offer methods that do not ship there.
+        if (methods.length === 0 && country === "SG") {
+          const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
         setShippingMethods(methods);
@@ -1731,7 +2001,8 @@ export function MpConfigClient({
     fetchShopRecommendation,
   ]);
 
-  const finishPostUpsellNeck = useCallback(async () => {
+  /** Ends a route into Premium: the target's recommendation, stamped with the journey. */
+  const finishPostUpsell = useCallback(async () => {
     const rec = await fetchShopRecommendation({ preserveSelections: false });
     if (rec?.recommendation_record && entryJourneyRef.current) {
       const stamped = stampAcceptedTargetRecord(
@@ -1772,7 +2043,7 @@ export function MpConfigClient({
    * the stored row's `source`, never by this flag.
    */
   const handleSendToBuildTeam = () =>
-    tryAdvance([...customizeFields, ...previewContactFieldChecks(contactValues)], async () => {
+    tryAdvance(previewContactFieldChecks(contactValues), async () => {
       setHoldSubmitting(true);
       try {
         const saved = await upsertToDb();
@@ -1925,9 +2196,14 @@ export function MpConfigClient({
     // Shipping travels only when it is complete. An Assisted customisation has
     // none yet and the customer supplies it at their finish — half an address
     // would fail the server's schema and block an otherwise valid edit.
-    const addressComplete = Boolean(
-      holdAddress.line1.trim() && holdAddress.city.trim() && holdAddress.postal_code.trim(),
-    );
+    // Self-collect needs only who collects, which falls back to the name.
+    const addressComplete =
+      selfCollect ||
+      Boolean(
+        holdAddress.line1.trim() &&
+          holdAddress.city.trim() &&
+          (holdAddress.postal_code.trim() || !usesPostalCode(holdAddress.country)),
+      );
     const shipping =
       selectedShippingId && addressComplete
         ? {
@@ -1970,7 +2246,13 @@ export function MpConfigClient({
     }
   };
 
-  const handleAuthorizeHold = useCallback(async () => {
+  const handleAuthorizeHold = useCallback(async (opts?: {
+    /**
+     * Paired build step 4 (ADR 0026): step 2's answer, as the review showed it.
+     * The one hold sends the Mbolster the hand-off carries, or none on Skip.
+     */
+    paired?: PairedChoice;
+  }) => {
     const size =
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
@@ -1988,12 +2270,20 @@ export function MpConfigClient({
       return;
     }
 
-    const journeyRecord = parseRecommendationRecord(
+    const parsedRecord = parseRecommendationRecord(
       shopRecommendation?.recommendation_record ?? null,
     );
-    const routeGate = assertPreStripeRouteResolved(
-      journeyRecord ?? { flowRoute: null },
-    );
+    // The Mbolster route is answered by the shopper at step 2, and goes to
+    // `pairedHoldBody` still pending; a session with no stepper declines it.
+    const journeyRecord =
+      !opts?.paired &&
+      parsedRecord?.flowRoute?.targetFlow === "mbolster" &&
+      isFlowRoutePending(parsedRecord)
+        ? withJourneyOnDecline(parsedRecord)
+        : parsedRecord;
+    const routeGate = opts?.paired
+      ? ({ ok: true } as const)
+      : assertPreStripeRouteResolved(journeyRecord ?? { flowRoute: null });
     if (!routeGate.ok) {
       toast.error(routeGate.reason);
       return;
@@ -2002,6 +2292,8 @@ export function MpConfigClient({
     const errors = buildFieldErrorMap(holdFields);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      // The review shows no fields: back to the step whose field needs fixing.
+      if (opts?.paired) setPairedPhase(errors.cover || errors.case ? "customize" : "details");
       return;
     }
     // Slice 04: a Staff-assisted mix with a cell that cannot close is a
@@ -2010,56 +2302,74 @@ export function MpConfigClient({
 
     setHoldSubmitting(true);
     try {
-      await upsertToDb();
+      const saved = await upsertToDb();
+      const holdBody = {
+        responseId: responseId ?? undefined,
+        // Re-submitting an existing Result needs its access token (ownership).
+        token: readToken(tokenStorageKey),
+        // Assisted customisation: no card. The server honours this only if the
+        // row it already stored is `source = 'staff_assisted'`, so the flag is
+        // a request, not a grant.
+        ...(assisted ? { deferred: true } : {}),
+        email: holdEmail.trim(),
+        phone: holdPhone.trim(),
+        discoverySource,
+        discoverySourceOther:
+          discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+        referralCode: referralCode.trim() || undefined,
+        // Assist priority (#78): server re-resolves this code → partner id.
+        ...(partner ? { partnerAssistCode: partner.code } : {}),
+        measurements: {
+          ...measurementData,
+          ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
+        },
+        suggestedSize: size,
+        suggestedTier: tier,
+        preferenceLines: [
+          { item_id: selectedCover!, quantity: 1, category: "cover" },
+          { item_id: selectedCase!, quantity: 1, category: "case" },
+        ],
+        addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+        // Staff assist snapshot (slice 05): session mix + still-matching template claim.
+        ...(staffAssist && assistPlacements.length > 0
+          ? {
+              assistFilling: {
+                placements: pillowPlacementsToRows(assistPlacements),
+                templateId: sessionFillingTemplateId,
+              },
+            }
+          : {}),
+        shippingMethodId: selectedShippingId,
+        shippingAddress: {
+          ...holdAddress,
+          recipient: holdAddress.recipient || measurementData.name,
+        },
+        cancelPath: configPath,
+        ...(journeyRecord
+          ? { recommendationRecord: journeyRecord }
+          : {}),
+      };
+      let body: Record<string, unknown> = holdBody;
+      if (opts?.paired) {
+        // Re-anchored first: after a cancelled Checkout this Mpillow carries on
+        // under a fresh id, and its Mbolster needs one too.
+        const anchorId = saved?.id ?? responseId;
+        const stored = readPairedHandoff(window.sessionStorage);
+        const handoff = stored && anchorId ? reanchorPairedHandoff(stored, anchorId, newResponseId) : stored;
+        if (handoff && handoff !== stored) writePairedHandoff(window.sessionStorage, handoff);
+        // The review decides whether there is an Mbolster; the hand-off only
+        // carries it (with its re-anchored id). One the shopper removed or
+        // skipped is never held, and one the review showed is never dropped.
+        const bolster = opts.paired.bolster ? (handoff?.choice?.bolster ?? null) : null;
+        if (opts.paired.bolster && !bolster) {
+          throw new Error("Your Mbolster was not saved on this device. Go back and add it again.");
+        }
+        body = pairedHoldBody(holdBody, bolster);
+      }
       const res = await fetch("/api/results/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          responseId: responseId ?? undefined,
-          // Re-submitting an existing Result needs its access token (ownership).
-          token: readToken(tokenStorageKey),
-          // Assisted customisation: no card. The server honours this only if the
-          // row it already stored is `source = 'staff_assisted'`, so the flag is
-          // a request, not a grant.
-          ...(assisted ? { deferred: true } : {}),
-          email: holdEmail.trim(),
-          phone: holdPhone.trim(),
-          discoverySource,
-          discoverySourceOther:
-            discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-          referralCode: referralCode.trim() || undefined,
-          // Assist priority (#78): server re-resolves this code → partner id.
-          ...(partner ? { partnerAssistCode: partner.code } : {}),
-          measurements: {
-            ...measurementData,
-            ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
-          },
-          suggestedSize: size,
-          suggestedTier: tier,
-          preferenceLines: [
-            { item_id: selectedCover!, quantity: 1, category: "cover" },
-            { item_id: selectedCase!, quantity: 1, category: "case" },
-          ],
-          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
-          // Staff assist snapshot (slice 05): session mix + still-matching template claim.
-          ...(staffAssist && assistPlacements.length > 0
-            ? {
-                assistFilling: {
-                  placements: pillowPlacementsToRows(assistPlacements),
-                  templateId: sessionFillingTemplateId,
-                },
-              }
-            : {}),
-          shippingMethodId: selectedShippingId,
-          shippingAddress: {
-            ...holdAddress,
-            recipient: holdAddress.recipient || measurementData.name,
-          },
-          cancelPath: configPath,
-          ...(journeyRecord
-            ? { recommendationRecord: journeyRecord }
-            : {}),
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -2071,6 +2381,16 @@ export function MpConfigClient({
       // customer goes straight to the status page to wait for Staff.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
+      // Held with no stepper: a stale hand-off must not offer an Mbolster again.
+      // A pair's stays, so a cancelled Checkout returns to its review; the
+      // status page clears it once held.
+      if (!opts?.paired) {
+        try {
+          clearPairedHandoff(window.sessionStorage);
+        } catch {
+          // private mode — nothing was stored
+        }
+      }
       // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
       trackGaEventThen(
         {
@@ -2102,6 +2422,7 @@ export function MpConfigClient({
     holdNotes,
     holdAddress,
     selectedShippingId,
+    selectedShipping,
     selectedAddons,
     responseId,
     measurementData,
@@ -2117,6 +2438,120 @@ export function MpConfigClient({
     partner,
     tokenStorageKey,
   ]);
+
+  /** Paired build step 1's own check: the finish. Contact and shipping are step 3's. */
+  const pairedFinishReady = () => {
+    const errors = buildFieldErrorMap(
+      holdFields.filter((f) => f.key === "cover" || f.key === "case"),
+    );
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return false;
+    }
+    return true;
+  };
+
+  /**
+   * The hand-off as step 1 leaves it: this Mpillow as the anchor, with step 2's
+   * answers kept from an earlier visit. `choice` is given only by step 1's own
+   * Skip; going on to step 2 leaves it to be answered there.
+   */
+  const writeStep1Handoff = (
+    anchorId: string,
+    pillow: PairedHandoff["pillow"],
+    choice?: PairedChoice,
+  ) => {
+    const prior = readPairedHandoff(window.sessionStorage);
+    const base = prior ? reanchorPairedHandoff(prior, anchorId, newResponseId) : null;
+    const record = parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null);
+    writePairedHandoff(window.sessionStorage, {
+      v: 2,
+      anchorId,
+      companionId: base?.companionId ?? newResponseId(),
+      sleepPosition: bolsterSleepPosition(deriveSleepPosition(measurementData.sleepPositionType)),
+      reason: record?.flowRoute?.reason ?? "",
+      configPath,
+      pillow,
+      ...(base?.bolster ? { bolster: base.bolster } : {}),
+      ...(choice ? { choice } : {}),
+    });
+  };
+
+  /**
+   * Paired build step 1 → 2 (ADR 0026): save the Mpillow's answers and open the
+   * Mbolster page. Both builds are customised before anything else is asked;
+   * its answer comes back here, to step 3.
+   */
+  const handleToMbolster = async (pillow: PairedHandoff["pillow"]) => {
+    if (!pairedFinishReady()) return;
+    setHoldSubmitting(true);
+    try {
+      const saved = await upsertToDb();
+      const anchorId = saved?.id ?? responseId;
+      if (!anchorId) throw new Error("Could not save your answers. Please try again.");
+      writeStep1Handoff(anchorId, pillow);
+      router.push(withLocale(PAIRED_MBOLSTER_PATH, locale));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open the Mbolster step");
+      setHoldSubmitting(false);
+    }
+  };
+
+  /** Paired build: Skip at step 1 — no Mbolster, straight on to step 3. */
+  const handleSkipMbolster = (pillow: PairedHandoff["pillow"]) => {
+    if (!pairedFinishReady()) return;
+    const choice: PairedChoice = { bolster: null };
+    if (responseId) {
+      try {
+        writeStep1Handoff(responseId, pillow, choice);
+      } catch {
+        // private mode — the answer lives in state for this visit
+      }
+    }
+    setPairedChoice(choice);
+    setPairedPhase("details");
+  };
+
+  /**
+   * Paired build, step 2 already answered (the shopper came back from the
+   * review to change the Mpillow): on to step 3 with that answer kept.
+   */
+  const handlePairedContinue = (pillow: PairedHandoff["pillow"]) => {
+    if (!pairedFinishReady()) return;
+    try {
+      const handoff = readPairedHandoff(window.sessionStorage);
+      // Step 2's running total reads the Mpillow's price from here.
+      if (handoff) writePairedHandoff(window.sessionStorage, { ...handoff, pillow });
+    } catch {
+      // private mode — nothing was stored
+    }
+    setPairedPhase("details");
+  };
+
+  /** Paired build step 3 → 4: everything the hold needs, then the summary. */
+  const handlePairedReview = () => {
+    const errors = buildFieldErrorMap(holdFields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setPairedPhase("review");
+  };
+
+  /** Paired build: back to step 2's own page, which reopens on its customisation. */
+  const openPairedMbolster = () => router.push(withLocale(PAIRED_MBOLSTER_PATH, locale));
+
+  /** Paired build, at the review: take the Mbolster out of this order. */
+  const handleRemoveMbolster = () => {
+    const choice: PairedChoice = { bolster: null };
+    try {
+      const handoff = readPairedHandoff(window.sessionStorage);
+      if (handoff) writePairedHandoff(window.sessionStorage, { ...handoff, choice });
+    } catch {
+      // private mode — the answer lives in state for this visit
+    }
+    setPairedChoice(choice);
+  };
 
   const saveLabel:
     | { text: string; className: string }
@@ -2216,6 +2651,7 @@ export function MpConfigClient({
         registryFromPayload(shopRecommendation?.dimension_overrides ?? null),
       ),
       guestLoftAllowance: registryFromPayload(shopRecommendation?.dimension_overrides ?? null).loftAllowance,
+      guestSoftBody: softBodyFromPayload(shopRecommendation?.dimension_overrides ?? null),
     };
   }, [shopRecommendation, resumeFinish]);
   // The guest's fit of the recommended (or finished) mix: read-only x-ray and cross-section.
@@ -2248,7 +2684,7 @@ export function MpConfigClient({
       requiredInputsComplete: Boolean(shopRecommendation && size),
       flowRouteUnresolved: routePending,
     });
-    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims, guestLoftAllowance } = guestPreview;
+    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims, guestLoftAllowance, guestSoftBody } = guestPreview;
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
     // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
@@ -2299,8 +2735,32 @@ export function MpConfigClient({
     // came to show 170 while the server authorised 245: the fallback looked like a
     // price, so nothing stopped the shopper submitting. If this build cannot be
     // priced the CTA is blocked and the amount is withheld.
-    const quoteBlocked = pricingInputs != null && quote?.ok !== true;
+    // Measurement service (ADR 0024): the rule the hold route applies, on the tier
+    // the hold will submit. Shown as its own row, never folded into the pillow.
+    const feeTier = soldAsPremium ? "premium" : isBasic ? "basic" : (tier ?? null);
+    let serviceLines: ServiceLine[] = [];
+    let servicesBlocked = false;
+    try {
+      serviceLines = resultServiceLines(
+        {
+          measured_by_type: measuredByStaff ? "staff" : "by_user",
+          product_type: "pillow",
+          suggested_tier: feeTier,
+        },
+        servicePrices,
+      );
+    } catch {
+      // Owed but unpriced: withhold the amount, exactly like a refused goods quote.
+      servicesBlocked = true;
+    }
+    const serviceTotal = sumServiceLines(serviceLines);
+    const quoteBlocked = (pricingInputs != null && quote?.ok !== true) || servicesBlocked;
     const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
+    // Shipping joins the one price once the address has one: free_above is
+    // earned by goods alone, as the hold applies it.
+    const shippingAmount = quoteBlocked
+      ? null
+      : holdShippingAmount(selectedShippingOption, basePrice + addonTotal);
     const coverStock = preferenceStockFor(
       selectedCover,
       shopRecommendation?.components.covers ?? [],
@@ -2310,6 +2770,7 @@ export function MpConfigClient({
       shopRecommendation?.components.cases ?? [],
     );
     // Product Builder overlay (slice 10): case wins over cover; unmapped → plain silhouette.
+    // An overlay is an image (url + fit) or a solid color.
     const selectedOverlay =
       (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)
         ?.overlay ??
@@ -2326,6 +2787,26 @@ export function MpConfigClient({
           composedBuildable: shopRecommendation.composed_buildable ?? 0,
         }).isPreOrder
       : false;
+    // Which step of a Paired build this preview is, when it is one (ADR 0026).
+    const phase: PairedPhase | null = pairedFlow ? pairedPhase : null;
+    const money = (n: number) => `${currency} ${n.toFixed(2)}`;
+    // Outside a Paired build, every part shows at once, as it always has.
+    const customizing = phase == null || phase === "customize";
+    const askingDetails = phase == null || phase === "details";
+    const pillowTotal =
+      quoteBlocked || !shopRecommendation ? null : basePrice + addonTotal + serviceTotal;
+    const pairedPillow: PairedHandoff["pillow"] = {
+      label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
+      ballpark: pillowTotal,
+      currency,
+    };
+    const pairedBolster = pairedChoice?.bolster ? pairedChoice.summary : null;
+    // Steps 3 and 4 price the whole order: the Mbolster as its page priced it,
+    // and the anchor's shipping for both boxes, free_above on the Mpillow's goods.
+    const orderTotal =
+      pillowTotal == null || (pairedBolster && pairedBolster.ballpark == null)
+        ? null
+        : pillowTotal + (pairedBolster?.ballpark ?? 0) + (shippingAmount ?? 0);
     const holdCta = holdSubmitting
       ? staffEdit
         ? "Saving…"
@@ -2333,21 +2814,125 @@ export function MpConfigClient({
       : staffEdit
         ? "Save configuration"
         : resumeFinish
-          ? "Continue to payment"
-          : holdCtaLabel(preOrder, assisted);
+          ? "Pay"
+          : phase === "customize"
+            ? pairedChoice
+              ? "Next: Details"
+              : "Next: Mbolster"
+            : phase === "details"
+              ? "Review order"
+              : // The summary is where the shopper pays from (a Pre-order says so instead).
+                phase === "review" && !preOrder
+                ? "Pay"
+                : holdCtaLabel(preOrder, assisted);
     const returnPath = staffEditResultPath ?? resumeStatusPath;
     const backFromPreview = returnPath
       ? () => {
           window.location.href = returnPath;
         }
-      : goToPreviousStep;
-    // One primary action for the preview, whichever mode opened it.
+      : phase === "details"
+        ? pairedChoice?.bolster
+          ? openPairedMbolster
+          : () => setPairedPhase("customize")
+        : phase === "review"
+          ? () => setPairedPhase("details")
+          : goToPreviousStep;
+    // One primary action for the preview, whichever mode opened it. A Paired
+    // build customises both builds first, then asks for details, then shows the
+    // summary it is paid from.
     const onPreviewContinue = () =>
       void (staffEdit
         ? handleStaffEditSave()
         : resumeFinish
           ? handleFinishAndPay()
-          : handleAuthorizeHold());
+          : phase === "customize"
+            ? pairedChoice
+              ? handlePairedContinue(pairedPillow)
+              : handleToMbolster(pairedPillow)
+            : phase === "details"
+              ? handlePairedReview()
+              : phase === "review"
+                ? handleAuthorizeHold({ paired: pairedChoice ?? { bolster: null } })
+                : handleAuthorizeHold());
+    // Step 4: every part of the order as it will be held, each with its way back.
+    const optionName = (id: number | null, options: Array<{ item_id: number; name: string }>) =>
+      options.find((o) => o.item_id === id)?.name ?? null;
+    const coverName = optionName(selectedCover, shopRecommendation?.components.covers ?? []);
+    const caseName = optionName(selectedCase, shopRecommendation?.components.cases ?? []);
+    const addonNames = addons.filter((a) => selectedAddons.has(a.item_id)).map((a) => a.name);
+    const shippingMethod = selectedShippingOption?.method;
+    const collect = shippingMethod?.collect_location ?? null;
+    const editDetails = { label: "Edit", onClick: () => setPairedPhase("details") };
+    const pairedReview = (
+      <div className="space-y-3">
+        <ReviewCard
+          title={pairedPillow.label}
+          lines={[
+            ...(coverName ? [`Cover: ${coverName}`] : []),
+            ...(caseName ? [`Case: ${caseName}`] : []),
+            ...(addonNames.length ? [`Add-ons: ${addonNames.join(", ")}`] : []),
+          ]}
+          amount={pillowTotal != null ? money(pillowTotal) : null}
+          actions={[{ label: "Edit", onClick: () => setPairedPhase("customize") }]}
+        />
+        {pairedBolster ? (
+          <ReviewCard
+            title={pairedBolster.label}
+            detail="Ships with your Mpillow. You can still drop it later, when you accept the finished builds."
+            lines={pairedBolster.lines}
+            amount={
+              pairedBolster.ballpark != null
+                ? `${pairedBolster.currency} ${pairedBolster.ballpark.toFixed(2)}`
+                : "Not available"
+            }
+            actions={[
+              { label: "Edit", onClick: openPairedMbolster },
+              { label: "Remove", onClick: handleRemoveMbolster },
+            ]}
+          />
+        ) : (
+          <ReviewCard
+            title="Mbolster"
+            detail="Not added"
+            lines={[]}
+            actions={[{ label: "Add an Mbolster", onClick: () => void handleToMbolster(pairedPillow) }]}
+          />
+        )}
+        <ReviewCard
+          title={collect ? "Collection" : "Delivery"}
+          detail={
+            shippingMethod
+              ? [holdShippingName(shippingMethod), selectedShippingOption?.window].filter(Boolean).join(" · ")
+              : null
+          }
+          lines={
+            collect
+              ? [`Collect from ${collect.name}`, collect.address, `Collected by ${holdAddress.recipient}`]
+              : [
+                  holdAddress.recipient,
+                  holdAddress.line1,
+                  holdAddress.line2,
+                  [holdAddress.city, holdAddress.state, holdAddress.postal_code].filter(Boolean).join(" "),
+                  countryName(holdAddress.country || "SG"),
+                ].filter((l): l is string => Boolean(l))
+          }
+          amount={
+            shippingAmount == null
+              ? null
+              : shippingAmount === 0
+                ? "Free"
+                : money(shippingAmount)
+          }
+          actions={[editDetails]}
+        />
+        <ReviewCard
+          title="Contact"
+          detail={measurementData.name || null}
+          lines={[holdEmail, holdPhone, ...(holdNotes.trim() ? [`Notes: ${holdNotes.trim()}`] : [])]}
+          actions={[editDetails]}
+        />
+      </div>
+    );
     // A pending Upgrade/Keep route is a question for the shopper. Staff pick the
     // tier outright in the assist panel, so it must not freeze their save.
     const continueBlocked =
@@ -2355,7 +2940,9 @@ export function MpConfigClient({
       shopLoading ||
       !shopRecommendation ||
       quoteBlocked ||
-      (!staffEditing && flowRouteBlocksHold);
+      (!staffEditing && flowRouteBlocksHold) ||
+      // Removing the Mbolster at the review re-quotes shipping for one box.
+      (phase === "review" && shippingStatus === "quoting");
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
@@ -2367,7 +2954,12 @@ export function MpConfigClient({
           description="This will clear your saved session and return to the start."
           onConfirmExit={exitToStart}
         />
-        <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
+        {/* An app surface on a public route: the editor copy and the finish form set
+            their own sizes, which the marketing typography would force to 18px. */}
+        <div
+          className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background"
+          data-typography-scope="app"
+        >
           {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
           <div
             key={currentStep}
@@ -2403,15 +2995,41 @@ export function MpConfigClient({
                 </Button>
               )}
             </div>
+            {/* A Paired build's steps, at the top of every one of them. */}
+            {phase ? (
+              <PairedStepperBar
+                className="border-t"
+                step={phase === "customize" ? 1 : phase === "details" ? 3 : 4}
+                bolsterSkipped={pairedChoice != null && !pairedChoice.bolster}
+              />
+            ) : null}
           </header>
 
-          <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
-            {/* Left: product visual (mp-maker style) */}
-            {/* Below lg the stage flows at its natural height: a fixed 40vh cap
-                with overflow-hidden clipped the pillow's top and cut the staff
-                toolbox (Size / Tier / Filling Template) clean off on phones, so
-                fillings could not be configured on mobile at all. */}
-            <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:overflow-hidden">
+          <div
+            className={cn(
+              "grid grid-cols-1 lg:grid-cols-[1fr_460px]",
+              phase ? "min-h-[calc(100dvh-100px)]" : "min-h-[calc(100dvh-56px)]",
+            )}
+          >
+            {/* Left: the stage. Dark in both themes: the white silhouette, the
+                starfield and the x-ray's shell paint (xray-theme.ts) are drawn for
+                a dark ground, and `dark` flips the tokens and `dark:` variants
+                inside to match, so nothing here goes white-on-white in light mode. */}
+            {/* Desktop: a sticky full-height box whose content scrolls inside it.
+                It used to centre an overflow-hidden column instead, which clipped a
+                Staff stage at both ends — the pillow under the header, the toolbox
+                and pack list off the bottom — with no way to scroll to either.
+                Below lg the stage flows at its natural height above the finish panel. */}
+            {/* A Paired build's details and review are forms: on phones the pillow
+                would only push them below the fold, so it stays on step 1. */}
+            <div
+              className={cn(
+                "dark relative bg-background text-foreground lg:sticky lg:overflow-hidden",
+                // Under the header, and the stepper bar when there is one.
+                phase ? "lg:top-[100px] lg:h-[calc(100dvh-100px)]" : "lg:top-[56px] lg:h-[calc(100dvh-56px)]",
+                (phase === "details" || phase === "review") && "max-lg:hidden",
+              )}
+            >
               {!isMobile && (
                 <>
                   <Particles
@@ -2433,184 +3051,263 @@ export function MpConfigClient({
                   />
                 </>
               )}
-              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 p-4 max-md:px-3 md:gap-6">
+              <div className="relative z-10 flex flex-col p-4 max-md:px-3 lg:absolute lg:inset-0 lg:overflow-y-auto lg:overscroll-contain">
+                {/* `my-auto`: centred while the content fits, top-aligned once it does not. */}
                 <div
-                  // ponytail: below lg the stage takes the full column width (capped at
-                  // 500px) so the x-ray cells and dive chips are big enough to tap;
-                  // +30% stage only from lg up.
-                  className="relative w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
-                  // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
-                  style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
+                  className={cn(
+                    "my-auto w-full",
+                    // Staff on wide screens: Configure → Filling Template's workbench,
+                    // with the Section editor column on the left of the x-ray.
+                    staffAssist && wideStage && "grid grid-cols-[20rem_minmax(0,1fr)] items-start gap-6",
+                  )}
                 >
-                  <svg
-                    className={cn(
-                      "absolute inset-0 pointer-events-none",
-                      // x-ray art direction: shell desaturates so fillings read inside
-                      xrayVisible && "opacity-80 saturate-50",
-                    )}
-                    viewBox="0 0 664 374"
-                    xmlns="http://www.w3.org/2000/svg"
-                    preserveAspectRatio="xMidYMid meet"
-                  >
-                    <path d={pillowPath(size)} fill="white" />
-                    {selectedOverlay && (
-                      <>
-                        <defs>
-                          <clipPath id="mp-config-overlay-clip">
-                            <path d={pillowPath(size)} />
-                          </clipPath>
-                        </defs>
-                        <image
-                          href={selectedOverlay.url}
-                          clipPath="url(#mp-config-overlay-clip)"
-                          preserveAspectRatio="xMidYMid slice"
-                          {...overlayFrame(selectedOverlay.fit)}
-                        />
-                      </>
-                    )}
-                    <path
-                      d={pillowPath(size)}
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-                  {xrayVisible && (
-                    <XrayPillow
-                      placements={staffAssist ? assistPlacements : guestPlacements}
-                      itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
-                      itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
-                      itemDims={staffAssist ? assistItemDims : guestItemDims}
-                      pillowSize={pillowDimensions(size).dims.size}
-                      loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
-                      fit={staffAssist ? assistFit : guestFit}
-                      onDiveChange={onDiveChange}
-                      // read-only for guests: no items / no change handler → no edit affordances
-                      items={staffAssist ? assistItems : undefined}
-                      onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
-                      className="absolute inset-0"
+                  {staffAssist && wideStage && (
+                    <XraySectionDock
+                      dived={divedSection}
+                      onSlot={setSideSlot}
+                      className={cn(
+                        "sticky top-0 flex",
+                        phase ? "max-h-[calc(100dvh-100px-2rem)]" : "max-h-[calc(100dvh-56px-2rem)]",
+                        STAGE_PANEL_CLASS,
+                      )}
                     />
                   )}
-                  {(shopLoading || suggestionLoading) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    </div>
-                  )}
-                </div>
-                {/* Slice 04: a loaded template or a Size change that no longer
-                    fits is flagged here as well as on the cells. Advisory. */}
-                {staffAssist && xrayVisible && (
-                  <FitBanner fit={assistFit} className="w-full max-w-md text-white [&_p]:text-white/80 [&_li]:text-white/80" />
-                )}
-                {/* Slice 05: the live cut under the pillow — Staff get the
-                    controls, a guest the across cut alone, read-only. */}
-                {xrayVisible && (
-                  <XrayCrossSection
-                    fit={staffAssist ? assistFit : guestFit}
-                    itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
-                    cut={cut}
-                    onCutChange={staffAssist ? setCut : undefined}
-                    colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
-                    themed={false}
-                    className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
-                  />
-                )}
-                {(() => {
-                  const sleepPos = measurementData.sleepPositionType[0];
-                  const why = record
-                    ? plainLanguageWhy(record, { sleep_position: sleepPos })
-                    : shopRecommendation?.recommendation?.explanation ?? "";
-                  // x-ray already shows the mix → suppress the text summary here
-                  // (template name + specialists line stay in the reveal).
-                  const mixLines = guestXray
-                    ? []
-                    : (tpl?.lines ?? []).map((l) => {
-                        const filling = shopRecommendation?.available_fillings?.find(
-                          (f) => f.item_id === l.item_id,
-                        );
-                        return {
-                          label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
-                          qty: l.quantity,
-                        };
-                      });
-                  const soldTierLabel = soldAsPremium ? "premium" : tier;
-                  const showTierAdvice =
-                    record?.tierSuggestion &&
-                    record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
-                  return (
-                    <>
-                      {soldTierLabel ? (
-                        <Badge variant="outline" className="text-xs capitalize text-white">
-                          {soldTierLabel} tier
-                        </Badge>
-                      ) : null}
-                      {showTierAdvice && record?.tierSuggestion ? (
-                        <TierSuggestion tier={record.tierSuggestion} />
-                      ) : null}
-                      {routePending && record?.flowRoute && !partnerAssisted ? (
-                        <UpsellCard
-                          reason={record.flowRoute.reason}
-                          fromLabel={FLOW_UI_LABEL[record.flow]}
-                          toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
-                          fromPrice={basePrice}
-                          toPrice={routeAltPrice}
-                          currency={currency}
-                          onUpgrade={() => void handleUpgradeFlowRoute()}
-                          onKeep={handleKeepFlowRoute}
-                          busy={routeBusy}
-                        />
-                      ) : null}
-                      <RecommendationReveal
-                        reveal={revealNow}
-                        sizeLabel={size ? `Size ${size}` : ""}
-                        why={why}
-                        // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
-                        templateName={partnerAssisted ? null : tpl?.name ?? null}
-                        mixLines={partnerAssisted ? [] : mixLines}
+                  <div className="flex min-w-0 flex-col items-center gap-4 md:gap-6">
+                    {/* Staff: Size, Tier and Filling Template first — the pillow below
+                        is drawn in that context, and changing it reloads the mix. */}
+                    {staffAssist && size && tier ? (
+                      <StaffAssistPanel
+                        current={{
+                          size: size as SizeTier["size"],
+                          tier: tier as SizeTier["tier"],
+                        }}
+                        placements={assistPlacements}
+                        onPlacementsChange={setAssistPlacements}
+                        loadedTemplate={assistLoadedTemplate}
+                        onLoadTemplate={setAssistLoadedTemplate}
+                        suggestedTemplateId={size === suggestedSize ? suggestedTemplateId : null}
+                        sessionFillingTemplateId={sessionFillingTemplateId}
+                        onApplySizeTier={applyAssistSizeTier}
+                        onItemsChange={setAssistItems}
+                        onColorOverridesChange={setAssistColorOverrides}
+                        onDimensionOverridesChange={setAssistDimensionOverrides}
+                        // Spans the column at every width (the rail fits its content by default).
+                        className={cn(STAGE_BLOCK_CLASS, "md:w-full")}
                       />
-                    </>
-                  );
-                })()}
-                <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-                {staffAssist && size && tier ? (
-                  <StaffAssistPanel
-                    current={{
-                      size: size as SizeTier["size"],
-                      tier: tier as SizeTier["tier"],
-                    }}
-                    placements={assistPlacements}
-                    onPlacementsChange={setAssistPlacements}
-                    loadedTemplate={assistLoadedTemplate}
-                    onLoadTemplate={setAssistLoadedTemplate}
-                    sessionFillingTemplateId={sessionFillingTemplateId}
-                    onApplySizeTier={applyAssistSizeTier}
-                    onItemsChange={setAssistItems}
-                    onColorOverridesChange={setAssistColorOverrides}
-                    onDimensionOverridesChange={setAssistDimensionOverrides}
-                  />
-                ) : !shopRecommendation ? (
-                  <p className="max-w-xs text-center text-xs text-white/80">
-                    Fillings and protector are chosen by our team after review.
-                  </p>
-                ) : null}
+                    ) : null}
+                    <div
+                      className={cn("relative", STAGE_BLOCK_CLASS)}
+                      // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
+                      style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
+                    >
+                      <svg
+                        className={cn(
+                          "absolute inset-0 pointer-events-none",
+                          // x-ray art direction: shell desaturates so fillings read inside
+                          xrayVisible && "opacity-80 saturate-50",
+                        )}
+                        viewBox="0 0 664 374"
+                        xmlns="http://www.w3.org/2000/svg"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <path d={pillowPath(size)} fill="white" />
+                        {/* Color overlay: the silhouette itself is the fabric. */}
+                        {selectedOverlay?.color && (
+                          <path d={pillowPath(size)} fill={selectedOverlay.color} />
+                        )}
+                        {selectedOverlay?.url && (
+                          <>
+                            <defs>
+                              <clipPath id="mp-config-overlay-clip">
+                                <path d={pillowPath(size)} />
+                              </clipPath>
+                            </defs>
+                            <image
+                              href={selectedOverlay.url}
+                              clipPath="url(#mp-config-overlay-clip)"
+                              preserveAspectRatio="xMidYMid slice"
+                              {...overlayFrame(selectedOverlay.fit)}
+                            />
+                          </>
+                        )}
+                        <path
+                          d={pillowPath(size)}
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="3"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                      {xrayVisible && (
+                        <XrayPillow
+                          placements={staffAssist ? assistPlacements : guestPlacements}
+                          itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                          itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                          itemDims={staffAssist ? assistItemDims : guestItemDims}
+                          pillowSize={pillowDimensions(size).dims.size}
+                          loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
+                          fit={staffAssist ? assistFit : guestFit}
+                          onDiveChange={onStageDive}
+                          // read-only for guests: no items / no change handler → no edit affordances
+                          items={staffAssist ? assistItems : undefined}
+                          onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                          // Staff: the dived Section's controls render in the stage's Section
+                          // editor dock, off the pillow art (phones keep their own dock).
+                          controlsSlot={staffAssist ? (wideStage ? sideSlot : inlineSlot) : undefined}
+                          className="absolute inset-0"
+                        />
+                      )}
+                      {(shopLoading || suggestionLoading) && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Tablets: the dived Section's controls in a panel under the
+                        pillow, shown only while a Section is dived. */}
+                    {staffAssist && !wideStage && (
+                      <XraySectionDock
+                        dived={divedSection}
+                        onSlot={setInlineSlot}
+                        className={cn(STAGE_BLOCK_CLASS, STAGE_PANEL_CLASS, "max-md:hidden", divedSection ? "flex" : "hidden")}
+                      />
+                    )}
+                    {/* Slice 04: a loaded template or a Size change that no longer
+                        fits is flagged here as well as on the cells. Advisory. */}
+                    {staffAssist && xrayVisible && <FitBanner fit={assistFit} className={STAGE_BLOCK_CLASS} />}
+                    {/* Slice 05: the live cut under the pillow — Staff get the
+                        controls, a guest the across cut alone, read-only. */}
+                    {xrayVisible && (
+                      <XrayCrossSection
+                        fit={staffAssist ? assistFit : guestFit}
+                        itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                        itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                        itemDims={staffAssist ? assistItemDims : guestItemDims}
+                        cut={cut}
+                        onCutChange={staffAssist ? setCut : undefined}
+                        // Staff drag pouches between columns, Layers and Sections on the cut too — the same session mix.
+                        placements={staffAssist ? assistPlacements : undefined}
+                        onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                        items={staffAssist ? assistItems : undefined}
+                        colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
+                        softBody={staffAssist ? assistSoftBody : guestSoftBody}
+                        themed={false}
+                        className={STAGE_BLOCK_CLASS}
+                      />
+                    )}
+                    {/* The list Staff read is the list they edit, in its own card as
+                        on Configure; removing a filling there removes all its pieces. */}
+                    {staffAssist && (
+                      <section className={cn("space-y-1 rounded-xl border p-3", STAGE_BLOCK_CLASS, STAGE_PANEL_CLASS)}>
+                        <div className="text-sm font-medium">Derived pack list</div>
+                        <XrayPackList
+                          placements={assistPlacements}
+                          onPlacementsChange={setAssistPlacements}
+                          items={assistItems}
+                        />
+                      </section>
+                    )}
+                    {(() => {
+                      // x-ray already shows the mix → suppress the text summary here
+                      // (template name + specialists line stay in the reveal).
+                      const mixLines = guestXray
+                        ? []
+                        : (tpl?.lines ?? []).map((l) => {
+                            const filling = shopRecommendation?.available_fillings?.find(
+                              (f) => f.item_id === l.item_id,
+                            );
+                            return {
+                              label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                              qty: l.quantity,
+                            };
+                          });
+                      const soldTierLabel = soldAsPremium ? "premium" : tier;
+                      const showTierAdvice =
+                        record?.tierSuggestion &&
+                        record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
+                      return (
+                        <>
+                          {soldTierLabel ? (
+                            <Badge variant="outline" className="text-xs capitalize text-white">
+                              {soldTierLabel} tier
+                            </Badge>
+                          ) : null}
+                          {showTierAdvice && record?.tierSuggestion ? (
+                            <TierSuggestion tier={record.tierSuggestion} />
+                          ) : null}
+                          {routePending &&
+                          record?.flowRoute &&
+                          record.flowRoute.targetFlow !== "mbolster" &&
+                          !partnerAssisted ? (
+                            <UpsellCard
+                              reason={record.flowRoute.reason}
+                              fromLabel={FLOW_UI_LABEL[record.flow]}
+                              toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                              fromPrice={basePrice}
+                              toPrice={routeAltPrice}
+                              currency={currency}
+                              onUpgrade={() => void handleUpgradeFlowRoute()}
+                              onKeep={handleKeepFlowRoute}
+                              busy={routeBusy}
+                            />
+                          ) : null}
+                          <RecommendationReveal
+                            reveal={revealNow}
+                            sizeLabel={size ? `Size ${size}` : ""}
+                            // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
+                            templateName={partnerAssisted ? null : tpl?.name ?? null}
+                            mixLines={partnerAssisted ? [] : mixLines}
+                          />
+                        </>
+                      );
+                    })()}
+                    <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
+                    {!staffAssist && !shopRecommendation ? (
+                      <p className="max-w-xs text-center text-xs text-white/80">
+                        Fillings and protector are chosen by our team after review.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Right: customization panel */}
-            <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100vh-56px)] lg:border-l">
-              <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
+            <div
+              className={cn(
+                "flex min-h-0 flex-col bg-background lg:border-l",
+                phase ? "lg:h-[calc(100dvh-100px)]" : "lg:h-[calc(100dvh-56px)]",
+              )}
+            >
+              <div
+                ref={previewPanelRef}
+                className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}
+              >
                 {partner ? <CoBrandBanner partner={partner} /> : null}
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">
-                    {staffEdit ? "Edit configuration" : "Customize finish"}
+                    {staffEdit
+                      ? "Edit configuration"
+                      : phase === "details"
+                        ? "Your details"
+                        : phase === "review"
+                          ? "Review your order"
+                          : "Customize finish"}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {staffEdit
                       ? "Change size, tier, fillings, cover, case, add-ons or shipping for this Result. Saving reprices the build — send the customer the new quote with Request payment."
                       : resumeFinish
                         ? "Our team has built your fillings. Choose cover and case, optional add-ons and shipping, then pay to confirm your order."
-                        : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
+                        : phase === "customize"
+                          ? pairedChoice
+                            ? "Choose cover and case, and any add-ons. Your details and a review of your order come next, before you pay."
+                            : "Choose cover and case, and any add-ons. A matching Mbolster is next, then your details and a review of your order before you pay."
+                          : phase === "details"
+                            ? "How to reach you, and where your order goes. You will see a summary of everything before you pay."
+                            : phase === "review"
+                              ? `Check everything before you pay. You are not charged until you accept the final ${pairedBolster ? "builds" : "build"}.`
+                              : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
                   </p>
                   {staffEdit ? (
                     <p className="text-xs text-muted-foreground">
@@ -2622,7 +3319,7 @@ export function MpConfigClient({
                   ) : null}
                 </div>
 
-                {shopRecommendation ? (
+                {!customizing ? null : shopRecommendation ? (
                   <div className="space-y-2">
                     {(fieldErrors.cover || fieldErrors.case) && (
                       <p className="text-sm text-destructive">
@@ -2659,7 +3356,7 @@ export function MpConfigClient({
                   </div>
                 )}
 
-                {addons.length > 0 && !partnerAssisted && (
+                {customizing && addons.length > 0 && !partnerAssisted && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">
                       Add-ons for your Mpillow (optional)
@@ -2684,7 +3381,7 @@ export function MpConfigClient({
                   </div>
                 )}
 
-                {staffAssist ? (
+                {customizing && staffAssist ? (
                   <ConfigImageUpload
                     sessionId={responseId}
                     ensureSessionId={ensureResponseId}
@@ -2694,7 +3391,7 @@ export function MpConfigClient({
                 {/* A finish link already has contact from the questionnaire submit,
                     and a re-configuration edits the build, not who it belongs to —
                     contact and Discovery source stay on the Result detail page. */}
-                {!resumeFinish && !staffEdit && (
+                {askingDetails && !resumeFinish && !staffEdit && (
                 <PreviewContactFields
                     locale={locale}
                     fieldErrors={fieldErrors}
@@ -2716,118 +3413,28 @@ export function MpConfigClient({
                   />
                 )}
 
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Shipping</Label>
-                  <SavedAddressSelect
+                {askingDetails && (
+                <HoldShippingFields
+                  options={shippingOptions}
+                  goodsSubtotal={quoteBlocked ? null : basePrice + addonTotal}
+                  selectedId={selectedShippingId}
+                  onSelect={setSelectedShippingId}
+                  address={holdAddress}
+                  setAddress={setHoldAddress}
+                  errors={fieldErrors}
+                  savedAddresses={{
                     // Hidden where the account prefill is off: those are the
                     // Staff member's own addresses, not the customer's.
-                    signedIn={shippingSignedIn && !(assisted || staffAssist)}
-                    addresses={savedAddresses}
-                    value={selectedAddressId}
-                    onValueChange={handleSelectAddress}
-                  />
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-recipient">Recipient</Label>
-                    <Input
-                      id="hold-recipient"
-                      value={holdAddress.recipient}
-                      onChange={(e) =>
-                        setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
-                      }
-                      placeholder={measurementData.name || "Name"}
-                      aria-invalid={!!fieldErrors.recipient}
-                    />
-                    {fieldErrors.recipient ? (
-                      <p className="text-sm text-destructive">{fieldErrors.recipient}</p>
-                    ) : null}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-line1">Address</Label>
-                    <Input
-                      id="hold-line1"
-                      value={holdAddress.line1}
-                      onChange={(e) =>
-                        setHoldAddress((a) => ({ ...a, line1: e.target.value }))
-                      }
-                      placeholder="Street address"
-                      aria-invalid={!!fieldErrors.line1}
-                    />
-                    {fieldErrors.line1 ? (
-                      <p className="text-sm text-destructive">{fieldErrors.line1}</p>
-                    ) : null}
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="hold-city">City</Label>
-                      <Input
-                        id="hold-city"
-                        value={holdAddress.city}
-                        onChange={(e) =>
-                          setHoldAddress((a) => ({ ...a, city: e.target.value }))
-                        }
-                        aria-invalid={!!fieldErrors.city}
-                      />
-                      {fieldErrors.city ? (
-                        <p className="text-sm text-destructive">{fieldErrors.city}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="hold-postal">Postal code</Label>
-                      <Input
-                        id="hold-postal"
-                        value={holdAddress.postal_code}
-                        onChange={(e) =>
-                          setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
-                        }
-                        aria-invalid={!!fieldErrors.postal_code}
-                      />
-                      {fieldErrors.postal_code ? (
-                        <p className="text-sm text-destructive">{fieldErrors.postal_code}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Shipping method</Label>
-                    {shippingMethods.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No shipping methods available. Add active methods under Settings → Shipping.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {shippingMethods.map((m) => {
-                          const label =
-                            m.content?.["en-US"]?.name ?? m.slug;
-                          const selected = selectedShippingId === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setSelectedShippingId(m.id)}
-                              className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
-                                selected
-                                  ? "border-primary bg-primary/5"
-                                  : fieldErrors.shipping
-                                    ? "border-destructive"
-                                    : "border-border"
-                              }`}
-                            >
-                              <span className="min-w-0 flex-1 break-words text-sm font-medium">{label}</span>
-                              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                                SGD {Number(m.base_rate).toFixed(2)}
-                                {selected && (
-                                  <Check className="ml-2 inline size-4 text-primary" />
-                                )}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {fieldErrors.shipping ? (
-                      <p className="text-sm text-destructive">{fieldErrors.shipping}</p>
-                    ) : null}
-                  </div>
-                </div>
+                    signedIn: shippingSignedIn && !(assisted || staffAssist),
+                    addresses: savedAddresses,
+                    value: selectedAddressId,
+                    onValueChange: handleSelectAddress,
+                  }}
+                  recipientPlaceholder={measurementData.name || "Name"}
+                />
+                )}
+
+                {phase === "review" ? pairedReview : null}
 
                 {/*
                   Not rendered for an Assisted customisation: "Send to our build
@@ -2837,7 +3444,7 @@ export function MpConfigClient({
                   shouldCreateInstoreReviewOnly() — see lib/results/instore-finalize.
                   Nor for a finish link: that Result is already submitted and assigned.
                 */}
-                {!assisted && !resumeFinish && (
+                {!assisted && !resumeFinish && askingDetails && (
                 <div className="text-center">
                   <Button
                     variant="ghost"
@@ -2919,16 +3526,91 @@ export function MpConfigClient({
                   configuratorMobileCloseClearanceClassName,
                 )}
               >
-                <div className="mb-3 flex justify-between text-sm">
-                  <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
-                  <span className="font-medium tabular-nums">
-                    {quoteBlocked
-                      ? "Not available"
-                      : `${currency} ${(basePrice + addonTotal).toFixed(2)}`}
-                  </span>
-                </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={backFromPreview} className="flex-1">
+                {phase === "details" || phase === "review" ? (
+                  // The whole order: both builds, then the one shipment.
+                  <>
+                    <div className="mb-1 flex justify-between gap-4 text-sm">
+                      <span className="min-w-0 text-muted-foreground">{pairedPillow.label}</span>
+                      <span className="shrink-0 whitespace-nowrap tabular-nums">
+                        {pillowTotal != null
+                          ? money(basePrice + addonTotal)
+                          : shopLoading || restoringHoldCancel
+                            ? "…"
+                            : "Not available"}
+                      </span>
+                    </div>
+                    {pillowTotal != null &&
+                      serviceLines.map((l) => (
+                        <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
+                          <span className="min-w-0 text-muted-foreground">{l.label}</span>
+                          <span className="shrink-0 whitespace-nowrap tabular-nums">{money(l.msrp)}</span>
+                        </div>
+                      ))}
+                    {pairedBolster ? (
+                      <div className="mb-1 flex justify-between gap-4 text-sm">
+                        <span className="min-w-0 text-muted-foreground">{pairedBolster.label}</span>
+                        <span className="shrink-0 whitespace-nowrap tabular-nums">
+                          {pairedBolster.ballpark != null
+                            ? `${pairedBolster.currency} ${pairedBolster.ballpark.toFixed(2)}`
+                            : "Not available"}
+                        </span>
+                      </div>
+                    ) : null}
+                    {pillowTotal != null && (
+                      <HoldShippingTotalRow
+                        option={selectedShippingOption}
+                        goodsSubtotal={basePrice + addonTotal}
+                      />
+                    )}
+                    <div className="mb-3 flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)"}
+                      </span>
+                      <span className="font-medium tabular-nums">
+                        {orderTotal != null
+                          ? money(orderTotal)
+                          : shopLoading || restoringHoldCancel
+                            ? "…"
+                            : "Not available"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {!quoteBlocked &&
+                      serviceLines.map((l) => (
+                        <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
+                          <span className="min-w-0 text-muted-foreground">{l.label}</span>
+                          <span className="shrink-0 whitespace-nowrap tabular-nums">{`${currency} ${l.msrp.toFixed(2)}`}</span>
+                        </div>
+                      ))}
+                    {/* A Paired build's step 1 has no shipping yet: it is chosen at step 3. */}
+                    {!quoteBlocked && phase !== "customize" && (
+                      <HoldShippingTotalRow
+                        option={selectedShippingOption}
+                        goodsSubtotal={basePrice + addonTotal}
+                      />
+                    )}
+                    <div className="mb-3 flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {shippingAmount == null || phase === "customize"
+                          ? "Ballpark (before shipping/tax)"
+                          : "Total (before tax)"}
+                      </span>
+                      <span className="font-medium tabular-nums">
+                        {quoteBlocked
+                          ? "Not available"
+                          : `${currency} ${(basePrice + addonTotal + serviceTotal + (phase === "customize" ? 0 : (shippingAmount ?? 0))).toFixed(2)}`}
+                      </span>
+                    </div>
+                  </>
+                )}
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex gap-3"
+                >
+                  <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:flex-none">
                     <ArrowLeft className="size-4" />
                     Back
                   </Button>
@@ -2941,12 +3623,25 @@ export function MpConfigClient({
                     {holdCta}
                     <ArrowRight className="size-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
+                {phase === "customize" && !pairedChoice ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSkipMbolster(pairedPillow)}
+                    disabled={continueBlocked}
+                    className="mt-2 w-full text-muted-foreground"
+                  >
+                    Skip the Mbolster — just my Mpillow
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>
         </div>
-        {isMobile && <ConfiguratorMobileCloseBar onClose={requestExit} />}
+        {isMobile && (
+          <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
+        )}
       </>
     );
   }
@@ -3004,7 +3699,7 @@ export function MpConfigClient({
       )}
 
       {currentStep !== "welcome" && isMobile && (
-        <ConfiguratorMobileCloseBar onClose={requestExit} />
+        <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
       )}
 
       {/* Content Container */}
@@ -3056,6 +3751,15 @@ export function MpConfigClient({
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
+              {studioMeasureFee != null && (
+                <p className="text-sm text-muted-foreground">
+                  Prefer our team to measure you? Get it customised, adjusted and bring home immediately for
+                  SGD {studioMeasureFee.toFixed(2)}.{" "}
+                  <Link href={studioMeasureHref} className="font-medium text-foreground underline underline-offset-4">
+                    Book here
+                  </Link>
+                </p>
+              )}
             </div>
           )}
 
@@ -3121,7 +3825,9 @@ export function MpConfigClient({
                   </div>
                   <div>
                     <h3 className="font-semibold">Tell us about yourself</h3>
-                    <p className="text-sm text-muted-foreground">Provide us helpful information for us to work with</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your name, your age and a few questions about your health and sleep
+                    </p>
                   </div>
                 </div>
 
@@ -3136,12 +3842,33 @@ export function MpConfigClient({
                         ? "We'll guide you through 1 simple measurement"
                         : "We'll guide you through 4 simple measurements"}
                     </p>
+                    {studioMeasureFee != null && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Prefer our team to measure you? Get it customised, adjusted and bring home immediately for
+                        SGD {studioMeasureFee.toFixed(2)}.{" "}
+                        <Link href={studioMeasureHref} className="font-medium text-foreground underline underline-offset-4">
+                          Book here
+                        </Link>
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     3
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Add photos</h3>
+                    <p className="text-sm text-muted-foreground">
+                      A front and a side photo of you, if you&apos;d like
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                    4
                   </div>
                   <div>
                     <h3 className="font-semibold">See your results</h3>
@@ -3152,8 +3879,12 @@ export function MpConfigClient({
                 </div>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3162,7 +3893,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3203,32 +3934,14 @@ export function MpConfigClient({
                     <p className="text-sm text-destructive">{fieldErrors.name}</p>
                   ) : null}
                 </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Gender</div>
-                  <SingleSelectOptionRows
-                    options={GENDER_OPTIONS}
-                    value={measurementData.gender}
-                    onChange={(v) => updateMeasurement("gender", v)}
-                    invalid={!!fieldErrors.gender}
-                    error={fieldErrors.gender}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Age group</div>
-                  <SingleSelectOptionRows
-                    options={AGE_GROUP_OPTIONS}
-                    value={measurementData.ageGroup}
-                    onChange={(v) => updateMeasurement("ageGroup", v)}
-                    invalid={!!fieldErrors.ageGroup}
-                    error={fieldErrors.ageGroup}
-                  />
-                </div>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3240,7 +3953,275 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
+                </ConfiguratorStepActions>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Age Step */}
+          {currentStep === "age" && (
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
+              <div className="text-center space-y-2">
+                <Cake className="h-12 w-12 mx-auto text-primary" />
+                <h2 className="text-3xl font-bold">
+                  {measurementData.name ? `Nice to meet you, ${measurementData.name}` : "A little about you"}
+                </h2>
+                <p className="text-muted-foreground">How old are you?</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Age group</div>
+                  <SingleSelectOptionRows
+                    options={AGE_GROUP_OPTIONS}
+                    value={measurementData.ageGroup}
+                    onChange={(v) => updateMeasurement("ageGroup", v)}
+                    invalid={!!fieldErrors.ageGroup}
+                    error={fieldErrors.ageGroup}
+                  />
                 </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Gender</div>
+                  <SingleSelectOptionRows
+                    options={GENDER_OPTIONS}
+                    value={measurementData.gender}
+                    onChange={(v) => updateMeasurement("gender", v)}
+                    invalid={!!fieldErrors.gender}
+                    error={fieldErrors.gender}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => tryAdvance(ageFields, goToNextStep)}
+                    disabled={!hybridCtaEnabled(ageFields)}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </ConfiguratorStepActions>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Health Step — answered before any measuring */}
+          {currentStep === "health" && (
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
+              <div className="text-center space-y-2">
+                <HeartPulse className="h-12 w-12 mx-auto text-primary" />
+                <h2 className="text-3xl font-bold">Your health &amp; sleep</h2>
+                <p className="text-muted-foreground">A few quick questions before we measure</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Blood Pressure levels</h3>
+                  <SingleSelectOptionRows
+                    options={BLOOD_PRESSURE_OPTIONS}
+                    value={measurementData.bloodPressureLevel}
+                    onChange={(v) => updateMeasurement("bloodPressureLevel", v)}
+                    invalid={!!fieldErrors.bloodPressureLevel}
+                    error={fieldErrors.bloodPressureLevel}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
+                  <Tabs
+                    value={measurementData.earDiscomfortSideSleep}
+                    onValueChange={(v) =>
+                      updateMeasurement("earDiscomfortSideSleep", v as "yes" | "no")
+                    }
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="yes" className="px-4">
+                        Yes
+                      </TabsTrigger>
+                      <TabsTrigger value="no" className="px-4">
+                        No
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {fieldErrors.earDiscomfortSideSleep ? (
+                    <p className="text-sm text-destructive">{fieldErrors.earDiscomfortSideSleep}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Bed firmness</h3>
+                  <SingleSelectOptionRows
+                    options={BED_FIRMNESS_OPTIONS}
+                    value={measurementData.bedFirmness}
+                    onChange={(v) => updateMeasurement("bedFirmness", v)}
+                    invalid={!!fieldErrors.bedFirmness}
+                    error={fieldErrors.bedFirmness}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Acid Reflux?</h3>
+                  <Tabs
+                    value={measurementData.acidReflux}
+                    onValueChange={(v) => updateMeasurement("acidReflux", v as "yes" | "no")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="yes" className="px-4">
+                        Yes
+                      </TabsTrigger>
+                      <TabsTrigger value="no" className="px-4">
+                        No
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {fieldErrors.acidReflux ? (
+                    <p className="text-sm text-destructive">{fieldErrors.acidReflux}</p>
+                  ) : null}
+                </div>
+
+                {/* Sleep pain areas (multi-select; None exclusive) */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">I experience one of the following during/after sleep</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {PAIN_AREA_OPTIONS.map((opt) => {
+                      const isSelected = measurementData.sleepPainAreas.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setMeasurementData((prev) => ({
+                              ...prev,
+                              sleepPainAreas: togglePainArea(prev.sleepPainAreas, opt.value),
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
+                            isSelected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.sleepPainAreas ? (
+                    <p className="text-sm text-destructive">{fieldErrors.sleepPainAreas}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Select all that apply, or None</p>
+                  )}
+                </div>
+
+                {/* Sleep position type (multi-select) */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">I&apos;m a</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: "side-and-back", label: "Side & Back sleeper" },
+                      { value: "side", label: "Side Sleeper" },
+                      { value: "back", label: "Back Sleeper" },
+                      { value: "stomach", label: "Stomach Sleeper" },
+                    ].map((opt) => {
+                      const isSelected = measurementData.sleepPositionType.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setMeasurementData((prev) => ({
+                              ...prev,
+                              sleepPositionType: isSelected
+                                ? prev.sleepPositionType.filter((v) => v !== opt.value)
+                                : [...prev.sleepPositionType, opt.value],
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
+                            isSelected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.sleepPositionType ? (
+                    <p className="text-sm text-destructive">{fieldErrors.sleepPositionType}</p>
+                  ) : null}
+                </div>
+
+                {/* Uses bolster */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
+                  <Tabs
+                    value={measurementData.usesBolster}
+                    onValueChange={(v) => updateMeasurement("usesBolster", v as "yes" | "no")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="yes" className="px-4">
+                        Yes
+                      </TabsTrigger>
+                      <TabsTrigger value="no" className="px-4">
+                        No
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {fieldErrors.usesBolster ? (
+                    <p className="text-sm text-destructive">{fieldErrors.usesBolster}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => tryAdvance(healthFields, goToNextStep)}
+                    disabled={!hybridCtaEnabled(healthFields)}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3306,8 +4287,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3324,7 +4309,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3390,8 +4375,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3408,7 +4397,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3474,8 +4463,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3492,7 +4485,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3558,8 +4551,12 @@ export function MpConfigClient({
                 </p>
               </div>
 
-              <div className="pt-4">
-                <div className="flex justify-between">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3568,8 +4565,10 @@ export function MpConfigClient({
                     onClick={() =>
                       tryAdvance(measureField("neckLength"), () => {
                         commitMeasureDraft("neckLength");
-                        if (upsoldToPremium) {
-                          void finishPostUpsellNeck();
+                        // Basic → Premium has already been through photos; a
+                        // route from Mbolster still has them ahead of it.
+                        if (upsoldToPremium && !stepOrder.includes("photos")) {
+                          void finishPostUpsell();
                           return;
                         }
                         goToNextStep();
@@ -3580,7 +4579,7 @@ export function MpConfigClient({
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span
@@ -3594,12 +4593,14 @@ export function MpConfigClient({
             </Card>
           )}
 
-          {/* Customize Button Step */}
-          {currentStep === "customize" && (
+          {/* Photos — the questionnaire's last step and its submit */}
+          {currentStep === "photos" && (
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
-                <h2 className="text-3xl font-bold">Great job, {measurementData.name}!</h2>
+                <h2 className="text-3xl font-bold">
+                  Great job{measurementData.name ? `, ${measurementData.name}` : ""}!
+                </h2>
                 <p className="text-muted-foreground">
                   {isBasic
                     ? "Almost there — confirm your fit and finish your Basic Mpillow"
@@ -3638,172 +4639,6 @@ export function MpConfigClient({
                       </div>
                     </>
                   )}
-                </div>
-              </div>
-
-              <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-semibold text-lg">A few more questions</h4>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Blood Pressure levels</h3>
-                    <SingleSelectOptionRows
-                      options={BLOOD_PRESSURE_OPTIONS}
-                      value={measurementData.bloodPressureLevel}
-                      onChange={(v) => updateMeasurement("bloodPressureLevel", v)}
-                      invalid={!!fieldErrors.bloodPressureLevel}
-                      error={fieldErrors.bloodPressureLevel}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
-                    <Tabs
-                      value={measurementData.earDiscomfortSideSleep}
-                      onValueChange={(v) =>
-                        updateMeasurement("earDiscomfortSideSleep", v as "yes" | "no")
-                      }
-                    >
-                      <TabsList className="h-12">
-                        <TabsTrigger value="yes" className="px-4">
-                          Yes
-                        </TabsTrigger>
-                        <TabsTrigger value="no" className="px-4">
-                          No
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {fieldErrors.earDiscomfortSideSleep ? (
-                      <p className="text-sm text-destructive">{fieldErrors.earDiscomfortSideSleep}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Bed firmness</h3>
-                    <SingleSelectOptionRows
-                      options={BED_FIRMNESS_OPTIONS}
-                      value={measurementData.bedFirmness}
-                      onChange={(v) => updateMeasurement("bedFirmness", v)}
-                      invalid={!!fieldErrors.bedFirmness}
-                      error={fieldErrors.bedFirmness}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Acid Reflux?</h3>
-                    <Tabs
-                      value={measurementData.acidReflux}
-                      onValueChange={(v) => updateMeasurement("acidReflux", v as "yes" | "no")}
-                    >
-                      <TabsList className="h-12">
-                        <TabsTrigger value="yes" className="px-4">
-                          Yes
-                        </TabsTrigger>
-                        <TabsTrigger value="no" className="px-4">
-                          No
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {fieldErrors.acidReflux ? (
-                      <p className="text-sm text-destructive">{fieldErrors.acidReflux}</p>
-                    ) : null}
-                  </div>
-
-                  {/* Sleep pain areas (multi-select; None exclusive) */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">I experience one of the following during/after sleep</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {PAIN_AREA_OPTIONS.map((opt) => {
-                        const isSelected = measurementData.sleepPainAreas.includes(opt.value);
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setMeasurementData((prev) => ({
-                                ...prev,
-                                sleepPainAreas: togglePainArea(prev.sleepPainAreas, opt.value),
-                              }));
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
-                              isSelected
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {fieldErrors.sleepPainAreas ? (
-                      <p className="text-sm text-destructive">{fieldErrors.sleepPainAreas}</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Select all that apply, or None</p>
-                    )}
-                  </div>
-
-                  {/* Sleep position type (multi-select) */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">I&apos;m a</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "side-and-back", label: "Side & Back sleeper" },
-                        { value: "side", label: "Side Sleeper" },
-                        { value: "back", label: "Back Sleeper" },
-                        { value: "stomach", label: "Stomach Sleeper" },
-                      ].map((opt) => {
-                        const isSelected = measurementData.sleepPositionType.includes(opt.value);
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setMeasurementData((prev) => ({
-                                ...prev,
-                                sleepPositionType: isSelected
-                                  ? prev.sleepPositionType.filter((v) => v !== opt.value)
-                                  : [...prev.sleepPositionType, opt.value],
-                              }));
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
-                              isSelected
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {fieldErrors.sleepPositionType ? (
-                      <p className="text-sm text-destructive">{fieldErrors.sleepPositionType}</p>
-                    ) : null}
-                  </div>
-
-                  {/* Uses bolster */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
-                    <Tabs
-                      value={measurementData.usesBolster}
-                      onValueChange={(v) => updateMeasurement("usesBolster", v as "yes" | "no")}
-                    >
-                      <TabsList className="h-12">
-                        <TabsTrigger value="yes" className="px-4">
-                          Yes
-                        </TabsTrigger>
-                        <TabsTrigger value="no" className="px-4">
-                          No
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {fieldErrors.usesBolster ? (
-                      <p className="text-sm text-destructive">{fieldErrors.usesBolster}</p>
-                    ) : null}
-                  </div>
                 </div>
               </div>
 
@@ -3998,8 +4833,12 @@ export function MpConfigClient({
                 </div>
               )}
 
-              <div className="pt-4">
-                <div className="flex justify-between gap-3">
+              <div className="pt-4 empty:hidden">
+                <ConfiguratorStepActions
+                  mobile={isMobile}
+                  slot={mobileActionsSlot}
+                  className="flex justify-between gap-3"
+                >
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -4008,8 +4847,14 @@ export function MpConfigClient({
                     onClick={() =>
                       assisted
                         ? handleSendToBuildTeam()
-                        : tryAdvance(customizeFields, async () => {
+                        : tryAdvance([], async () => {
+                            // Photos are optional; every answer was checked on its own step.
                             await upsertToDb();
+                            if (upsoldToPremium) {
+                              // A route in from Mbolster finishes here, after its photos.
+                              await finishPostUpsell();
+                              return;
+                            }
                             if (isBasic) {
                               const rec = shopRecommendation ?? (await fetchBasicRecommendation());
                               if (!rec) return;
@@ -4020,20 +4865,13 @@ export function MpConfigClient({
                           })
                     }
                     disabled={
-                      !hybridCtaEnabled(customizeFields) ||
                       photoUploading.front ||
                       photoUploading.side ||
                       shopLoading ||
                       holdSubmitting
                     }
                     size="lg"
-                    // The assisted label is long: on phones it wraps inside the
-                    // button instead of pushing it off the right edge.
-                    className={cn(
-                      "group",
-                      assisted &&
-                        "max-md:h-auto max-md:min-w-0 max-md:shrink max-md:whitespace-normal max-md:py-2 max-md:text-left",
-                    )}
+                    className="group"
                   >
                     <Sparkles className={cn("mr-2 h-5 w-5", assisted && "max-md:hidden")} />
                     {holdSubmitting
@@ -4043,7 +4881,7 @@ export function MpConfigClient({
                         : isBasic ? "Continue" : "Customise"}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
-                </div>
+                </ConfiguratorStepActions>
                 {saveLabel && (
                   <div className="mt-2 flex items-center justify-start">
                     <span

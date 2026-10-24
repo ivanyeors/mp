@@ -24,6 +24,8 @@ export type HoldShippingAddress = {
   line1: string;
   line2: string;
   city: string;
+  /** Asked only where couriers need one (lib/shipping/states). */
+  state?: string;
   postal_code: string;
   country: string;
 };
@@ -34,6 +36,7 @@ export function toHoldShippingAddress(a: CustomerAddress): HoldShippingAddress {
     line1: a.line1,
     line2: a.line2 ?? "",
     city: a.city,
+    state: a.state ?? "",
     postal_code: a.postal_code,
     country: a.country || "SG",
   };

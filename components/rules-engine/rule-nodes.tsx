@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { Fragment, createContext, useContext, type ReactNode } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { catalogDef } from "@/lib/rules-engine/catalog";
-import type { RuleFlow, RuleNode } from "@/lib/rules-engine/types";
+import { BOLSTER_LENGTHS, PILLOW_SIZES, type RuleFlow, type RuleNode } from "@/lib/rules-engine/types";
 import type { RuleNodeData } from "@/lib/rules-engine/graph-rf";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +77,7 @@ export function makeNodeTypes(flow: RuleFlow) {
     combine: wrap(CombineNodeView),
     "size-output": wrap(SizeOutView),
     "template-output": wrap(TemplateOutView),
+    "template-by-size": wrap(TemplateBySizeView),
     "tier-suggestion": wrap(TierView),
     "flow-route": wrap(FlowRouteView),
     fallback: wrap(FallbackView),
@@ -171,8 +172,16 @@ function MatchNodeView({ data, selected, flow }: Props) {
 }
 
 function CombineNodeView({ data, selected }: Props) {
+  const rule = data.rule;
+  if (rule.type !== "combine") return null;
   return (
-    <Shell title="Combine (AND)" error={data.error} fired={data.fired} selected={selected}>
+    <Shell
+      title={rule.mode === "any" ? "Combine (OR)" : "Combine (AND)"}
+      subtitle={rule.label}
+      error={data.error}
+      fired={data.fired}
+      selected={selected}
+    >
       <Target />
       <Handle type="source" position={Position.Right} className="!h-2.5 !w-2.5 !bg-muted-foreground" />
     </Shell>
@@ -210,6 +219,35 @@ function TemplateOutView({ data, selected }: Props) {
       selected={selected}
     >
       <Target />
+    </Shell>
+  );
+}
+
+function TemplateBySizeView({ data, selected, flow }: Props) {
+  const names = useContext(TemplateNamesContext);
+  const rule = data.rule;
+  if (rule.type !== "template-by-size") return null;
+  const sizes = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
+  return (
+    <Shell
+      title="Template by size"
+      subtitle={rule.label}
+      error={data.error}
+      fired={data.fired}
+      selected={selected}
+    >
+      <Target />
+      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 text-[10px]">
+        {sizes.map((s) => {
+          const id = rule.templates[s];
+          return (
+            <Fragment key={s}>
+              <dt className="text-muted-foreground">{s}</dt>
+              <dd className="truncate">{id ? (names[id] ?? id) : "—"}</dd>
+            </Fragment>
+          );
+        })}
+      </dl>
     </Shell>
   );
 }

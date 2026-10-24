@@ -4,17 +4,16 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
 import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
-import {
-  AddonLineSchema,
-  AddressSchema,
-  PreferenceLineSchema,
-} from "@/lib/results/finish-schemas";
+import { quoteResultShipping, resultParcelTypes } from "@/lib/results/shipping";
+import { AddonLineSchema, PreferenceLineSchema } from "@/lib/results/finish-schemas";
+import { ShippingAddressInputSchema, resolveShippingAddress } from "@/lib/shipping/self-collect";
 import {
   isCaseInventoryCategory,
   isProtectorInventoryCategory,
   itemMatchesPreferenceRole,
 } from "@/lib/shop/customization-inventory";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
+import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +23,7 @@ const FinishSchema = z.object({
   preferenceLines: z.array(PreferenceLineSchema).min(1),
   addonLines: z.array(AddonLineSchema).default([]),
   shippingMethodId: z.string().uuid(),
-  shippingAddress: AddressSchema,
+  shippingAddress: ShippingAddressInputSchema,
 });
 
 /**
@@ -95,13 +94,17 @@ export async function POST(
     admin.from("items").select("id, category").in("id", itemIds),
     admin
       .from("shipping_methods")
-      .select("slug")
+      .select("*")
       .eq("id", input.shippingMethodId)
       .eq("is_active", true)
       .maybeSingle(),
   ]);
   if (!shippingRow) {
     return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
+  }
+  const shippingAddress = await resolveShippingAddress(admin, shippingRow, input.shippingAddress);
+  if (!shippingAddress.ok) {
+    return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
   }
 
   // Same category rules as the hold submit.
@@ -119,6 +122,14 @@ export async function POST(
     }
   }
 
+  // The live rate the customer was just shown, kept for accept (ADR 0032).
+  const quoted = await quoteResultShipping(admin, {
+    method: shippingRow as ShippingMethod,
+    parcelTypes: resultParcelTypes(row),
+    destination: shippingAddress.address,
+  });
+  if (!quoted.ok) return NextResponse.json({ error: quoted.error }, { status: 400 });
+
   const finished = {
     preference_lines: input.preferenceLines.map((l) => ({
       item_id: l.item_id,
@@ -127,7 +138,8 @@ export async function POST(
     })),
     addon_lines: input.addonLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity })),
     shipping_method: shippingRow.slug as string,
-    shipping_address: input.shippingAddress,
+    shipping_address: shippingAddress.address,
+    shipping_rate: quoted.rate,
   };
 
   const build = await loadAssignedBuild(admin, { ...row, ...finished });

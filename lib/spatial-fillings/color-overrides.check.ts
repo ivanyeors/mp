@@ -25,7 +25,7 @@ assert.deepEqual(
 assert.deepEqual(xrayColorVarStyle([]), {}, "cleared → variable absent, var() falls back");
 
 // --- Product Builder: shape thumbnail read-only, color editable ---------------
-const page = readFileSync("app/[lang]/settings/products/product-visualize.tsx", "utf8");
+const page = readFileSync("app/[lang]/settings/inventory/configure/product-visualize.tsx", "utf8");
 assert.match(page, /FILLING_SHAPE_PATHS\[row\.shape\]/, "thumbnail uses the one asset pipeline");
 assert.match(page, /Read-only fluid-shape thumbnail/, "shape rendered as read-only thumbnail");
 assert.match(page, /type="color"/, "native color input edits the override");
@@ -36,7 +36,7 @@ assert.doesNotMatch(page, /onChange[^\n]*shape/i, "no control writes shape");
 const route = readFileSync("app/[lang]/settings/product-builder/filling-visuals/route.ts", "utf8");
 assert.doesNotMatch(route, /shape\s*:/i, "API accepts no shape field — color only");
 assert.equal(
-  route.match(/const denied = await requireAdmin\('page-builder'\)/g)?.length,
+  route.match(/const denied = await requireAdmin\('configure'\)/g)?.length,
   3,
   "GET, POST, and DELETE are admin-gated (settings-route policy)",
 );

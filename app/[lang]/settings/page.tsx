@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { Sun, Moon, Monitor, LogOut, Loader2 } from "lucide-react";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { AccessDeniedNotice } from "@/components/settings/access-denied-notice";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -26,9 +28,16 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <Suspense fallback={null}>
+        <AccessDeniedNotice />
+      </Suspense>
       <div>
-        <h1>General</h1>
-        <p className="text-muted-foreground mt-2">Basic preferences for your account.</p>
+        <div className="flex items-center gap-1.5">
+          <h1>General</h1>
+          <InfoTip label="About General">
+            <p>Basic preferences for your account.</p>
+          </InfoTip>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -97,10 +106,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-medium">Session</h2>
-        <p className="text-muted-foreground text-sm">
-          Signed in with your staff account. Sign out to end this session on this device.
-        </p>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-sm font-medium">Session</h2>
+          <InfoTip label="About Session">
+            <p>Signed in with your staff account. Sign out to end this session on this device.</p>
+          </InfoTip>
+        </div>
         <Button
           variant="outline"
           onClick={async () => {

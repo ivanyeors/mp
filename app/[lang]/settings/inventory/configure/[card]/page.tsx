@@ -14,6 +14,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +42,9 @@ import {
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { useBolsterFit, useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import {
@@ -816,11 +819,11 @@ export default function ConfigureCardPage() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h1>Configure {productLabel} — {sizeLabel}</h1>
-        <p className="text-sm text-muted-foreground">
+        <InfoTip label="About Configure">
           Product tab: non-filling BOM and warehouse presets. Filling Config: filling mixes for this {open ? "size" : "length"}.
-        </p>
+        </InfoTip>
       </div>
       <Separator />
       {selectedSize && selectedPillowKind && (
@@ -1832,7 +1835,9 @@ function FillingConfigPanel({
     },
     [onCutDive],
   );
-  const { itemSubtypes: gridItemSubtypes } = useItemMaps(gridItems, dimensionOverrides);
+  const { itemSubtypes: gridItemSubtypes, itemSizes: gridItemSizes, itemDims: gridItemDims } = useItemMaps(gridItems, dimensionOverrides);
+  // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
+  const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
   // Slice 09: the Mbolster's fit at this card's length (a pillow card's empty mix costs nothing).
   const bolsterLength = BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength, gridItems, dimensionOverrides);
@@ -1954,15 +1959,11 @@ function FillingConfigPanel({
       </p>
       <div className={WORKBENCH_GRID}>
       {kind === "pillow" ? (
-        <aside className="hidden flex-col rounded-xl border lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]">
-          <div className="border-b p-3 text-sm font-medium capitalize">
-            {divedSection ? `Editing ${divedSection} section` : "Section editor"}
-          </div>
-          {!divedSection && (
-            <p className="p-3 text-sm text-muted-foreground">Click a section on the x-ray to edit its fillings.</p>
-          )}
-          <div ref={setControlsSlot} className="min-h-0 flex-1 overflow-y-auto p-2" />
-        </aside>
+        <XraySectionDock
+          dived={divedSection}
+          onSlot={setControlsSlot}
+          className="hidden lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]"
+        />
       ) : (
         templateRail
       )}
@@ -2133,7 +2134,13 @@ function FillingConfigPanel({
                 cut={cut}
                 onCutChange={setCut}
                 itemSubtypes={gridItemSubtypes}
+                itemSizes={gridItemSizes}
+                itemDims={gridItemDims}
+                placements={placements}
+                onPlacementsChange={setPlacements}
+                items={gridItems}
                 colorOverrides={colorOverrides}
+                softBody={softBody}
               />
             </Section>
           ) : (

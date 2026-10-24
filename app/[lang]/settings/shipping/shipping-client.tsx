@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight, AlertTriangle, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,10 @@ import {
 import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
 import type { EasyshipStrategy, ShippingRateSource } from "@/lib/types/ecommerce";
 import { apiErrorMessage } from "./couriers/easyship-panel";
+import { InfoTip } from "@/components/ui/info-tip";
+import { findCountry, summarizeCountries } from "@/lib/shipping/countries";
+import { CountryPicker } from "./country-picker";
+import { CoverageCheck } from "./coverage-check";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
@@ -69,13 +73,21 @@ export type ShippingMethod = {
     markup_percent?: number;
     markup_fixed?: number;
     rate_rounding?: number;
+    /** Self-collect: the studio it is collected from; null = delivered. */
+    collect_location_id?: string | null;
 };
+
+/** An own studio a Self-collect method can name. */
+export type CollectStudio = { id: string; name: string };
+
+/** The Delivery select's value for "couriered to the customer". */
+const DELIVERED = "deliver";
 
 type ShippingForm = {
     slug: string;
     base_rate: string;
     free_above: string;
-    countries: string;
+    countries: string[];
     is_active: boolean;
     rate_source: ShippingRateSource;
     easyship_strategy: EasyshipStrategy;
@@ -83,6 +95,10 @@ type ShippingForm = {
     markup_percent: string;
     markup_fixed: string;
     rate_rounding: string;
+    /** "" = delivered by courier. */
+    collect_location_id: string;
+    /** Whether the saved method was Self-collect, so switching it back sends a null. */
+    had_collect: boolean;
     en: LocaleContent;
     zh: LocaleContent;
 };
@@ -108,11 +124,6 @@ const ROUNDING_OPTIONS = [
     { value: "1", label: "Up to the next 1.00" },
 ];
 
-const COMMON_COUNTRIES = [
-    "MY", "SG", "ID", "TH", "PH", "BN", "VN", "MM", "KH", "LA",
-    "HK", "TW", "CN", "JP", "KR", "AU", "NZ", "IN",
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getMethodName(method: ShippingMethod): string {
@@ -136,7 +147,7 @@ function methodToForm(m: ShippingMethod): ShippingForm {
         slug: m.slug,
         base_rate: String(m.base_rate),
         free_above: m.free_above !== null ? String(m.free_above) : "",
-        countries: (m.countries ?? []).join(", "),
+        countries: [...(m.countries ?? [])],
         is_active: m.is_active,
         rate_source: m.rate_source ?? "flat",
         easyship_strategy: m.easyship_strategy ?? "cheapest",
@@ -144,6 +155,8 @@ function methodToForm(m: ShippingMethod): ShippingForm {
         markup_percent: String(m.markup_percent ?? 0),
         markup_fixed: String(m.markup_fixed ?? 0),
         rate_rounding: String(m.rate_rounding ?? 0),
+        collect_location_id: m.collect_location_id ?? "",
+        had_collect: Boolean(m.collect_location_id),
         en: { name: en.name ?? "", description: en.description ?? "", estimated_days: en.estimated_days ?? "" },
         zh: { name: zh.name ?? "", description: zh.description ?? "", estimated_days: zh.estimated_days ?? "" },
     };
@@ -153,7 +166,7 @@ const DEFAULT_FORM: ShippingForm = {
     slug: "",
     base_rate: "",
     free_above: "",
-    countries: "SG",
+    countries: ["SG"],
     is_active: true,
     rate_source: "easyship",
     easyship_strategy: "cheapest",
@@ -161,6 +174,8 @@ const DEFAULT_FORM: ShippingForm = {
     markup_percent: "0",
     markup_fixed: "0",
     rate_rounding: "0",
+    collect_location_id: "",
+    had_collect: false,
     en: { name: "", description: "", estimated_days: "" },
     zh: { name: "", description: "", estimated_days: "" },
 };
@@ -173,24 +188,27 @@ function formToPayload(form: ShippingForm): Record<string, unknown> {
     if (form.zh.name || form.zh.description || form.zh.estimated_days) {
         content["zh-CN"] = form.zh;
     }
-    const countries = form.countries
-        .split(/[\s,]+/)
-        .map((c) => c.trim().toUpperCase())
-        .filter(Boolean);
+    const countries = [...new Set(form.countries.map((c) => c.trim().toUpperCase()).filter(Boolean))];
 
     return {
         slug: form.slug.trim().toLowerCase().replace(/\s+/g, "-"),
         content,
         base_rate: parseFloat(form.base_rate) || 0,
         free_above: form.free_above !== "" ? parseFloat(form.free_above) : null,
-        countries: countries.length > 0 ? countries : ["SG"],
+        countries,
         is_active: form.is_active,
-        rate_source: form.rate_source,
+        // Nothing is couriered on Self-collect, so it is always a flat rate.
+        rate_source: form.collect_location_id ? "flat" : form.rate_source,
         easyship_strategy: form.easyship_strategy,
         easyship_courier_service_id: form.easyship_courier_service_id.trim() || null,
         markup_percent: parseFloat(form.markup_percent) || 0,
         markup_fixed: parseFloat(form.markup_fixed) || 0,
         rate_rounding: parseFloat(form.rate_rounding) || 0,
+        // Sent only when it says something, so a method saves the same as before
+        // on a database without the column.
+        ...(form.collect_location_id || form.had_collect
+            ? { collect_location_id: form.collect_location_id || null }
+            : {}),
     };
 }
 
@@ -208,13 +226,15 @@ function liveRateSummary(m: ShippingMethod): string {
 // ─── Subcomponents ────────────────────────────────────────────────────────────
 
 function CountryBadges({ countries }: { countries: string[] }) {
-    const shown = countries.slice(0, 6);
-    const rest = countries.length - shown.length;
+    // Whole regions read as the region ("Europe"), every country as "Worldwide".
+    const labels = summarizeCountries(countries);
+    const shown = labels.slice(0, 6);
+    const rest = labels.length - shown.length;
     return (
         <div className="flex flex-wrap gap-1">
-            {shown.map((c) => (
-                <Badge key={c} variant="outline" className="text-xs px-1.5 py-0">
-                    {c}
+            {shown.map((label) => (
+                <Badge key={label} variant="outline" className="text-xs px-1.5 py-0">
+                    {label}
                 </Badge>
             ))}
             {rest > 0 && (
@@ -252,9 +272,12 @@ function couriersSummary(c: CouriersStatus): string {
 export default function SettingsShippingPage({
     initialData,
     couriers,
+    studios,
 }: {
     initialData?: ShippingInitialData;
     couriers: CouriersStatus;
+    /** Own Locations with an address: where a Self-collect method can be collected. */
+    studios: CollectStudio[];
 }) {
     const [methods, setMethods] = useState<ShippingMethod[]>(initialData?.rows ?? []);
     const [loading, setLoading] = useState(!initialData);
@@ -267,6 +290,8 @@ export default function SettingsShippingPage({
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<ShippingForm>(DEFAULT_FORM);
+
+    const [coverageOpen, setCoverageOpen] = useState(false);
 
     // Delete dialog state
     const [deleteTarget, setDeleteTarget] = useState<ShippingMethod | null>(null);
@@ -328,8 +353,8 @@ export default function SettingsShippingPage({
         setError(null);
         setSaving(true);
         const payload = formToPayload(form);
-        if (form.rate_source === "easyship" && !(parseFloat(form.base_rate) > 0)) {
-            setError("Set a customisation order rate above 0. Customisation orders charge it instead of a courier quote.");
+        if (form.countries.length === 0) {
+            setError("Choose at least one country this method delivers to.");
             setSaving(false);
             return;
         }
@@ -379,19 +404,33 @@ export default function SettingsShippingPage({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Shipping
                     </h1>
-                    <p className="text-muted-foreground mt-1 text-sm">
+                    <InfoTip label="About Shipping">
                         Shipping methods and delivery areas, with live courier rates and labels.
-                    </p>
+                    </InfoTip>
                 </div>
-                <Button size="sm" onClick={openCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Method
-                </Button>
+                <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setCoverageOpen(true)}>
+                        <Globe className="mr-2 h-4 w-4" />
+                        Coverage
+                    </Button>
+                    <Button size="sm" onClick={openCreate}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Method
+                    </Button>
+                </div>
             </div>
+
+            <CoverageCheck
+                open={coverageOpen}
+                onOpenChange={setCoverageOpen}
+                methods={methods}
+                environment={couriers.environment}
+                onMethodsChanged={fetchMethods}
+            />
 
             {/* Couriers */}
             <Link href={couriers.href} className="block">
@@ -438,7 +477,9 @@ export default function SettingsShippingPage({
             ) : (
                 <div className="space-y-3">
                     {/* Live methods are hidden when couriers can't quote, so only a flat method guarantees an option. */}
-                    {!methods.some((m) => m.is_active && (m.rate_source ?? "flat") !== "easyship") && (
+                    {!methods.some(
+                        (m) => m.is_active && (m.rate_source ?? "flat") !== "easyship" && !m.collect_location_id,
+                    ) && (
                         <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                             <p>If couriers can&apos;t be reached, checkout shows no shipping option.</p>
@@ -461,6 +502,15 @@ export default function SettingsShippingPage({
                                         {method.rate_source === "easyship" && (
                                             <Badge variant="outline">Live rate</Badge>
                                         )}
+                                        {method.collect_location_id && (
+                                            <Badge variant="outline">
+                                                Self-collect
+                                                {(() => {
+                                                    const studio = studios.find((st) => st.id === method.collect_location_id);
+                                                    return studio ? ` · ${studio.name}` : "";
+                                                })()}
+                                            </Badge>
+                                        )}
                                     </div>
 
                                     {method.rate_source === "easyship" && (
@@ -470,16 +520,11 @@ export default function SettingsShippingPage({
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <span
-                                            className={
-                                                method.rate_source === "easyship" && Number(method.base_rate) <= 0
-                                                    ? "font-medium text-destructive"
-                                                    : "font-medium text-foreground"
-                                            }
-                                        >
-                                            {method.rate_source === "easyship" && "Customisation orders "}
-                                            {formatCurrency(method.base_rate, method.currency)}
-                                        </span>
+                                        {method.rate_source !== "easyship" && (
+                                            <span className="font-medium text-foreground">
+                                                {formatCurrency(method.base_rate, method.currency)}
+                                            </span>
+                                        )}
                                         <span>
                                             {method.free_above !== null
                                                 ? `Free above ${formatCurrency(method.free_above, method.currency)}`
@@ -610,135 +655,168 @@ export default function SettingsShippingPage({
                             </p>
                         </div>
 
-                        {/* Pricing source */}
-                        <div className="space-y-4 rounded-lg border p-4">
-                            <div className="space-y-1.5">
-                                <Label>Pricing</Label>
-                                <Select
-                                    value={form.rate_source}
-                                    onValueChange={(v) => setField("rate_source", v as ShippingRateSource)}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="flat">Flat rate</SelectItem>
-                                        <SelectItem value="easyship">Live courier rate</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground">
-                                    {form.rate_source === "easyship"
-                                        ? "Priced per cart and address from live courier rates. Set up the connection in Shipping › Couriers."
-                                        : "Everyone in the method's countries pays the same rate."}
-                                </p>
-                            </div>
-
-                            {form.rate_source === "easyship" && (
-                                <>
-                                    <div className="space-y-1.5">
-                                        <Label>Courier</Label>
-                                        <Select
-                                            value={form.easyship_strategy}
-                                            onValueChange={(v) => setField("easyship_strategy", v as EasyshipStrategy)}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {(Object.keys(STRATEGY_LABELS) as EasyshipStrategy[]).map((k) => (
-                                                    <SelectItem key={k} value={k}>
-                                                        {STRATEGY_LABELS[k]}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {form.easyship_strategy === "courier" && (
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="easyship_courier_service_id">Courier service id</Label>
-                                            <Input
-                                                id="easyship_courier_service_id"
-                                                value={form.easyship_courier_service_id}
-                                                onChange={(e) => setField("easyship_courier_service_id", e.target.value)}
-                                                placeholder="Copy one from Couriers → Test a quote"
-                                                className="font-mono text-base md:text-sm"
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                The method is hidden for addresses this courier does not serve.
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="markup_percent">Markup (%)</Label>
-                                            <Input
-                                                id="markup_percent"
-                                                type="number"
-                                                step="1"
-                                                value={form.markup_percent}
-                                                onChange={(e) => setField("markup_percent", e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="markup_fixed">Markup ({CURRENCY_SYMBOL})</Label>
-                                            <Input
-                                                id="markup_fixed"
-                                                type="number"
-                                                step="0.5"
-                                                value={form.markup_fixed}
-                                                onChange={(e) => setField("markup_fixed", e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="-mt-2 text-xs text-muted-foreground">
-                                        Negative values subsidise shipping; the price never goes below zero.
-                                    </p>
-
-                                    <div className="space-y-1.5">
-                                        <Label>Rounding</Label>
-                                        <Select
-                                            value={form.rate_rounding}
-                                            onValueChange={(v) => setField("rate_rounding", v)}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {ROUNDING_OPTIONS.map((o) => (
-                                                    <SelectItem key={o.value} value={o.value}>
-                                                        {o.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </>
-                            )}
+                        {/* Delivery: a courier, or the customer collects from a studio */}
+                        <div className="space-y-1.5">
+                            <Label>Delivery</Label>
+                            <Select
+                                value={form.collect_location_id || DELIVERED}
+                                onValueChange={(v) =>
+                                    setForm((prev) =>
+                                        v === DELIVERED
+                                            ? { ...prev, collect_location_id: "" }
+                                            : { ...prev, collect_location_id: v, rate_source: "flat" },
+                                    )
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={DELIVERED}>Delivered to the customer&apos;s address</SelectItem>
+                                    {studios.map((st) => (
+                                        <SelectItem key={st.id} value={st.id}>
+                                            Self-collect at {st.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                {form.collect_location_id
+                                    ? "Offered on customisations only. The customer gives a name instead of an address, and the order carries the studio's address, so no courier label is bought."
+                                    : studios.length === 0
+                                      ? "Self-collect needs an own studio with an address (Settings → Locations)."
+                                      : "Self-collect is offered on customisations only, never in shop checkout."}
+                            </p>
                         </div>
+
+                        {/* Pricing source */}
+                        {!form.collect_location_id && (
+                            <div className="space-y-4 rounded-lg border p-4">
+                                <div className="space-y-1.5">
+                                    <Label>Pricing</Label>
+                                    <Select
+                                        value={form.rate_source}
+                                        onValueChange={(v) => setField("rate_source", v as ShippingRateSource)}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="flat">Flat rate</SelectItem>
+                                            <SelectItem value="easyship">Live courier rate</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        {form.rate_source === "easyship"
+                                            ? "Priced per cart and address from live courier rates. Set up the connection in Shipping › Couriers."
+                                            : "Everyone in the method's countries pays the same rate."}
+                                    </p>
+                                </div>
+
+                                {form.rate_source === "easyship" && (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            <Label>Courier</Label>
+                                            <Select
+                                                value={form.easyship_strategy}
+                                                onValueChange={(v) => setField("easyship_strategy", v as EasyshipStrategy)}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {(Object.keys(STRATEGY_LABELS) as EasyshipStrategy[]).map((k) => (
+                                                        <SelectItem key={k} value={k}>
+                                                            {STRATEGY_LABELS[k]}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {form.easyship_strategy === "courier" && (
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="easyship_courier_service_id">Courier service id</Label>
+                                                <Input
+                                                    id="easyship_courier_service_id"
+                                                    value={form.easyship_courier_service_id}
+                                                    onChange={(e) => setField("easyship_courier_service_id", e.target.value)}
+                                                    placeholder="Copy one from Couriers → Test a quote"
+                                                    className="font-mono text-base md:text-sm"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    The method is hidden for addresses this courier does not serve.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="markup_percent">Markup (%)</Label>
+                                                <Input
+                                                    id="markup_percent"
+                                                    type="number"
+                                                    step="1"
+                                                    value={form.markup_percent}
+                                                    onChange={(e) => setField("markup_percent", e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="markup_fixed">Markup ({CURRENCY_SYMBOL})</Label>
+                                                <Input
+                                                    id="markup_fixed"
+                                                    type="number"
+                                                    step="0.5"
+                                                    value={form.markup_fixed}
+                                                    onChange={(e) => setField("markup_fixed", e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="-mt-2 text-xs text-muted-foreground">
+                                            Negative values subsidise shipping; the price never goes below zero.
+                                        </p>
+
+                                        <div className="space-y-1.5">
+                                            <Label>Rounding</Label>
+                                            <Select
+                                                value={form.rate_rounding}
+                                                onValueChange={(v) => setField("rate_rounding", v)}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {ROUNDING_OPTIONS.map((o) => (
+                                                        <SelectItem key={o.value} value={o.value}>
+                                                            {o.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
 
                         {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
+                            {/* A live method is priced by couriers at checkout and on
+                                customisations alike (ADR 0032), so it has no flat price. */}
+                            {form.rate_source !== "easyship" && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="base_rate">
-                                    {form.rate_source === "easyship" ? "Customisation order rate" : "Base rate"} ({CURRENCY_SYMBOL})
-                                </Label>
+                                <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
                                 <Input
                                     id="base_rate"
                                     type="number"
-                                    min={form.rate_source === "easyship" ? "0.01" : "0"}
+                                    min="0"
                                     step="0.01"
                                     value={form.base_rate}
                                     onChange={(e) => setField("base_rate", e.target.value)}
                                     placeholder="e.g. 8.00"
                                 />
-                                {form.rate_source === "easyship" && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Customisation orders charge this flat price; they don&apos;t quote couriers.
-                                    </p>
-                                )}
                             </div>
+                            )}
 
                             <div className="space-y-1.5">
                                 <Label htmlFor="free_above">Free shipping above ({CURRENCY_SYMBOL})</Label>
@@ -759,57 +837,19 @@ export default function SettingsShippingPage({
 
                         {/* Countries */}
                         <div className="space-y-2">
-                            <Label htmlFor="countries">Countries</Label>
-                            <Input
-                                id="countries"
-                                value={form.countries}
-                                onChange={(e) => setField("countries", e.target.value)}
-                                placeholder="MY, SG, ID, ..."
-                                className="font-mono text-base md:text-sm"
-                            />
+                            <Label>Countries</Label>
+                            <CountryPicker key={editingId ?? "new"} value={form.countries} onChange={(next) => setField("countries", next)} />
+                            {form.rate_source === "flat" &&
+                                new Set(form.countries.map((c) => findCountry(c)?.region)).size > 1 && (
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        A flat rate charges every one of these countries the same, and couriers charge
+                                        far countries several times more. Use a live courier rate for these.
+                                    </p>
+                                )}
                             <p className="text-xs text-muted-foreground">
-                                Comma-separated ISO country codes (e.g. MY, SG, ID).
+                                Checkout offers every country an active method lists. Use Coverage to see where your
+                                couriers deliver.
                             </p>
-                            {/* Quick-add common countries */}
-                            <div className="flex flex-wrap gap-1">
-                                {COMMON_COUNTRIES.map((c) => {
-                                    const currentList = form.countries
-                                        .split(/[\s,]+/)
-                                        .map((x) => x.trim().toUpperCase())
-                                        .filter(Boolean);
-                                    const isIncluded = currentList.includes(c);
-                                    return (
-                                        <button
-                                            key={c}
-                                            type="button"
-                                            onClick={() => {
-                                                const list = form.countries
-                                                    .split(/[\s,]+/)
-                                                    .map((x) => x.trim().toUpperCase())
-                                                    .filter(Boolean);
-                                                if (isIncluded) {
-                                                    setField(
-                                                        "countries",
-                                                        list.filter((x) => x !== c).join(", ")
-                                                    );
-                                                } else {
-                                                    setField(
-                                                        "countries",
-                                                        [...list, c].join(", ")
-                                                    );
-                                                }
-                                            }}
-                                            className={`rounded border px-2 py-0.5 text-xs transition-colors ${
-                                                isIncluded
-                                                    ? "border-primary bg-primary text-primary-foreground"
-                                                    : "border-border bg-background hover:bg-muted"
-                                            }`}
-                                        >
-                                            {c}
-                                        </button>
-                                    );
-                                })}
-                            </div>
                         </div>
 
                         {/* Active toggle */}

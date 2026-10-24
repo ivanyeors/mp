@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AppointmentType } from "./settings";
-import type { ReminderStatus } from "./state";
+import { LIVE_STATUSES, type ReminderStatus } from "./state";
 import type { SlotOffer } from "./slots";
 
 export type ReminderRow = {
@@ -16,6 +16,9 @@ export type ReminderRow = {
   morning_wa_id: string | null;
   last_wa_id: string | null;
   last_outbound_at: string | null;
+  /** Provider error from the last failed send; cleared by the next success. */
+  last_error: string | null;
+  last_error_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -33,20 +36,48 @@ export async function getReminderByEventId(
   return data as ReminderRow | null;
 }
 
+/**
+ * The guest's next appointment that a WhatsApp reply can act on: one we have
+ * messaged about (so not `pending`), still on, and still ahead. Without the
+ * time bound, yesterday's visit — left `morning_sent` for good — sorts first and
+ * a Confirm for tomorrow's lands on it.
+ */
 export async function getOpenReminderByPhone(
   e164: string,
+  now: Date = new Date(),
 ): Promise<ReminderRow | null> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("appointment_reminders")
     .select("*")
     .eq("phone", e164)
-    .in("status", ["reminded", "offering_slots", "morning_sent"])
+    .in(
+      "status",
+      LIVE_STATUSES.filter((s) => s !== "pending"),
+    )
+    .gt("starts_at", now.toISOString())
     .order("starts_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as ReminderRow | null;
+}
+
+/** Live rows for visits still ahead, soonest first — the cron's cancellation sweep. */
+export async function listLiveUpcomingReminders(
+  now: Date,
+  limit: number,
+): Promise<ReminderRow[]> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("appointment_reminders")
+    .select("*")
+    .in("status", [...LIVE_STATUSES])
+    .gt("starts_at", now.toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ReminderRow[];
 }
 
 export async function upsertPendingReminder(input: {
@@ -97,6 +128,8 @@ export async function updateReminder(
     morning_wa_id: string | null;
     last_wa_id: string | null;
     last_outbound_at: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
   }>,
   /** Optional optimistic lock on current status. */
   expectStatus?: ReminderStatus,
@@ -110,4 +143,107 @@ export async function updateReminder(
   const { data, error } = await q.select("id");
   if (error) throw new Error(error.message);
   return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Note why a send failed, without moving the row: it stays where it was, so the
+ * next run can still pick it up, and the reason is on the row for whoever asks.
+ */
+export async function recordReminderError(
+  calendarEventId: string,
+  message: string,
+): Promise<void> {
+  await updateReminder(calendarEventId, {
+    last_error: message.slice(0, 1000),
+    last_error_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Record a send Meta accepted but could not deliver, on whichever row it was
+ * for. Messages that belong to no row (an auto-reply) only reach the log.
+ */
+export async function recordDeliveryFailure(waId: string, reason: string): Promise<number> {
+  const admin = supabaseAdmin();
+  // wamid values are base64-ish; quoting keeps PostgREST's or() parser off them.
+  const id = `"${waId.replace(/"/g, "")}"`;
+  const { data, error } = await admin
+    .from("appointment_reminders")
+    .update({
+      last_error: reason.slice(0, 1000),
+      last_error_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .or(`day_before_wa_id.eq.${id},morning_wa_id.eq.${id},last_wa_id.eq.${id}`)
+    .select("id");
+  if (error) throw new Error(error.message);
+  return data?.length ?? 0;
+}
+
+/**
+ * Claim an inbound message id. Meta redelivers until it gets a 200 and can
+ * deliver twice regardless; only the first claim returns true. The row is also
+ * the durable trace that a message arrived at all — logs last an hour.
+ */
+export async function claimInboundMessage(
+  messageId: string,
+  e164: string,
+  kind: string,
+): Promise<boolean> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("whatsapp_inbound")
+    .upsert(
+      { message_id: messageId, phone: e164, kind },
+      { onConflict: "message_id", ignoreDuplicates: true },
+    )
+    .select("message_id");
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+}
+
+/** What the webhook did with a claimed message, for whoever asks later. */
+export async function recordInboundOutcome(messageId: string, outcome: string): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from("whatsapp_inbound")
+    .update({ outcome: outcome.slice(0, 500) })
+    .eq("message_id", messageId);
+  if (error) throw new Error(error.message);
+}
+
+/** When the guest last messaged us — what opens Meta's 24h service window. */
+export async function lastInboundAt(e164: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("whatsapp_inbound")
+    .select("received_at")
+    .eq("phone", e164)
+    .order("received_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.received_at as string | undefined) ?? null;
+}
+
+/**
+ * True when `e164` has not been auto-replied to within `cooldownMs`, recording
+ * that it is about to be. ponytail: read-then-write, so two messages landing in
+ * the same instant can both claim and get two replies; a conditional upsert
+ * behind an RPC would close that if it ever matters.
+ */
+export async function claimAutoReply(e164: string, cooldownMs: number): Promise<boolean> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("whatsapp_auto_replies")
+    .select("sent_at")
+    .eq("phone", e164)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const last = data ? Date.parse(data.sent_at as string) : NaN;
+  if (Number.isFinite(last) && Date.now() - last < cooldownMs) return false;
+
+  const { error: upErr } = await admin
+    .from("whatsapp_auto_replies")
+    .upsert({ phone: e164, sent_at: new Date().toISOString() }, { onConflict: "phone" });
+  if (upErr) throw new Error(upErr.message);
+  return true;
 }

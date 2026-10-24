@@ -3,12 +3,13 @@ import type { OverlayFit, OverlayMappingItem } from "./overlays";
 
 export type { OverlayMappingItem };
 
-/** Slice 10: cover/case Item → overlay Media Asset mappings for Product Builder. */
+/** Slice 10: cover/case Item → overlay (Media Asset or color) mappings for Product Builder. */
 export const OVERLAY_CATEGORIES = ["cover", "pillow_case", "bolster_case", "case"];
 
 type MappingRow = {
   item_id: number;
-  media_asset_id: string;
+  media_asset_id: string | null;
+  color: string | null;
   fit: unknown;
   media_assets: { hosted_url: string | null } | { hosted_url: string | null }[] | null;
 };
@@ -29,7 +30,7 @@ export async function listOverlayMappingItems(): Promise<OverlayMappingItem[]> {
       .order("name"),
     admin
       .from("item_overlay_mappings")
-      .select("item_id, media_asset_id, fit, media_assets ( hosted_url )"),
+      .select("item_id, media_asset_id, color, fit, media_assets ( hosted_url )"),
   ]);
   if (items.error) throw new Error(items.error.message);
   if (mappings.error) throw new Error(mappings.error.message);
@@ -42,6 +43,7 @@ export async function listOverlayMappingItems(): Promise<OverlayMappingItem[]> {
         {
           media_asset_id: m.media_asset_id,
           hosted_url: asset?.hosted_url ?? null,
+          color: m.color ?? null,
           fit: (m.fit ?? null) as OverlayFit | null,
         },
       ];

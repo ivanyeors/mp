@@ -3,7 +3,7 @@ import { metaAccountIds, metaConfigured } from "@/lib/social-inbox/meta";
 import { humanAgentEnabled } from "@/lib/social-inbox/platforms";
 import { getTikTokTokenRow, tiktokAccess, tiktokAppConfig } from "@/lib/social-inbox/tiktok";
 
-/** What Settings → Telegram access shows about each platform. Never includes a token. */
+/** What Users & permissions → Telegram shows about each platform. Never includes a token. */
 export type SocialInboxStatus = {
   meta: {
     connected: boolean;

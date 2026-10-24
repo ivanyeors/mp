@@ -60,6 +60,14 @@ export function inputsFromMpConfigData(data: Record<string, unknown>): EngineInp
     out.ear_discomfort_side_sleep = false;
   }
   if (data.bloodPressureLevel) out.blood_pressure = String(data.bloodPressureLevel);
+  if (Array.isArray(data.sleepPositionType) && data.sleepPositionType.length > 0) {
+    out.sleep_position = deriveSleepPosition(data.sleepPositionType.map(String));
+  }
+  if (Array.isArray(data.sleepPainAreas) && data.sleepPainAreas.length > 0) {
+    out.sleep_pain_areas = data.sleepPainAreas.map(String);
+  }
+  if (data.usesBolster === "yes" || data.usesBolster === true) out.uses_bolster = true;
+  else if (data.usesBolster === "no" || data.usesBolster === false) out.uses_bolster = false;
   if (data.gender) out.gender = String(data.gender);
   if (data.ageGroup) out.age_group = String(data.ageGroup);
   return out;

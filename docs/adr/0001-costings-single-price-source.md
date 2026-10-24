@@ -15,3 +15,4 @@ We sell only what inventory can supply, and we price only from Costings. Free-fo
 - Operators set price only in Costings; the Products page never accepts a sell price for inventory-linked products.
 - Clearing an item's MSRP archives its product on the next inventory sync; restoring MSRP returns it to draft.
 - Shopify channel pricing remains a separate path (out of scope).
+- Amended by ADR 0024: Costings also prices **Services** (`service_prices`), which are not **Items** and are never projected as storefront products.

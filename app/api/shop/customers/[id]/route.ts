@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminCustomer } from "@/lib/ecommerce/admin/customers";
-import { requireAdmin } from "@/lib/auth/admin";
+import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
+import { UpdateCustomerSchema, changedCustomerFields } from "@/lib/crm/customer-patch";
 
 export const runtime = "nodejs";
-
-const UpdateCustomerSchema = z.object({
-  email: z.string().trim().email().optional(),
-  first_name: z.string().trim().min(1).optional(),
-  last_name: z.string().trim().min(1).optional(),
-  phone: z.string().trim().optional(),
-  locale: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  notes: z.string().optional(),
-}).partial();
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers");
@@ -27,22 +18,49 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({ ok: true, row: result.row });
 }
 
+/**
+ * Saves the fields the client says changed. Only fields whose value really
+ * differs are written, and the audit entry holds just those, before and after.
+ *
+ * A new email voids the Customer's Claim links unless they have Claimed, so
+ * an old campaign email cannot prefill or claim for the new address
+ * (migration slice 06). A trigger on `customers` does it, for every write path.
+ */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin("customers");
+  const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
 
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = UpdateCustomerSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    const issue = parsed.error.issues[0];
+    const field = issue?.path.join(".");
+    return NextResponse.json(
+      { error: issue ? `${field ? `${field}: ` : ""}${issue.message}` : "Invalid input" },
+      { status: 400 },
+    );
   }
 
   const admin = supabaseAdmin();
 
+  const { data: current, error: readError } = await admin
+    .from("customers")
+    .select("email, first_name, last_name, phone, locale, tags")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 });
+  if (!current) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+
+  const changed = changedCustomerFields(current, parsed.data);
+  if (Object.keys(changed.after).length === 0) {
+    const result = await getAdminCustomer(id);
+    return NextResponse.json({ ok: true, row: result.ok ? result.row : null });
+  }
+
   const { data, error } = await admin
     .from("customers")
-    .update(parsed.data)
+    .update(changed.after)
     .eq("id", id)
     .select("*")
     .single();
@@ -54,5 +72,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       { status: isDup ? 409 : 500 }
     );
   }
+
+  await recordAdminAction({
+    actor: await getAdminContext(),
+    action: "customer.update",
+    entityType: "customer",
+    entityId: id,
+    before: changed.before,
+    after: changed.after,
+  });
+
   return NextResponse.json({ ok: true, row: data });
 }

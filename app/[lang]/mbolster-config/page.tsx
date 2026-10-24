@@ -1,13 +1,16 @@
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
 import { getAdminContext } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
 import { getPartnerByCode } from "@/lib/referrals";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { loadServicePrices } from "@/lib/pricing/service-prices";
+import { getWorkingAs } from "@/lib/staff/working-as";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { MbolsterConfigClient } from "./mbolster-config-client";
 
 const INTRO: Record<Locale, { h1: string; lede: string }> = {
@@ -42,6 +45,13 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
   ]);
 
+  // Service fees (ADR 0024): a Staff device working as a profile is measuring this
+  // customer, and the hold stamps the new Result `staff` — so the preview shows the fee.
+  const [servicePrices, workingAs] = await Promise.all([
+    loadServicePrices(supabaseAdmin()).catch(() => null),
+    staffCtx ? getWorkingAs(staffCtx.memberId) : Promise.resolve(null),
+  ]);
+
   const jsonLd = buildConfiguratorProductJsonLd({
     lang: locale,
     path: "/mbolster-config",
@@ -66,7 +76,9 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
           faqItems: faq?.items ?? [],
         }}
         // Same gate as /mp-config: assist edits a Result, `viewer` is read-only.
-        staffAssist={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
+        staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
+        servicePrices={servicePrices}
+        measuredByStaff={Boolean(workingAs)}
         partner={
           partner
             ? {

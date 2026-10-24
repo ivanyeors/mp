@@ -1,93 +1,61 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
-import { recordAdminAction } from "@/lib/auth/audit";
-import { ADMIN_ROLES } from "@/lib/auth/permissions";
+import { requireAdminContext } from "@/lib/auth/admin";
+import { revokeInvite, updateMember } from "@/lib/auth/members";
 
 export const runtime = "nodejs";
 
 const UpdateSchema = z
   .object({
-    role: z.enum(ADMIN_ROLES).optional(),
+    role_id: z.string().uuid().optional(),
     is_active: z.boolean().optional(),
   })
-  .refine((v) => v.role !== undefined || v.is_active !== undefined, {
+  .refine((v) => v.role_id !== undefined || v.is_active !== undefined, {
     message: "Nothing to update",
   });
 
-/** Change a staff member's role or active status. */
+/**
+ * Change a Member's role or active state. The role policy decides
+ * (`lib/auth/role-policy.ts`): not yourself, Owner only by an Owner, at least
+ * one active Owner, and never a role with pages the actor lacks.
+ */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin("staff");
-  if (denied) return denied;
-  const ctx = await getAdminContext();
+  let ctx;
+  try {
+    ctx = await requireAdminContext("users");
+  } catch (denied) {
+    return denied as NextResponse;
+  }
 
   const { id } = await params;
-  const body = await req.json().catch(() => null);
-  const parsed = UpdateSchema.safeParse(body);
+  const parsed = UpdateSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const admin = supabaseAdmin();
-  const { data: target, error: findError } = await admin
-    .from("admin_users")
-    .select("id, email, role, is_active")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (findError) return NextResponse.json({ error: findError.message }, { status: 500 });
-  if (!target) return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
-
-  // Prevent locking yourself out: you can't change your own role or deactivate
-  // your own account.
-  if (ctx && target.email.toLowerCase() === ctx.email.toLowerCase()) {
-    return NextResponse.json(
-      { error: "You cannot change your own role or active status." },
-      { status: 400 },
-    );
+  try {
+    const result = await updateMember(ctx, id, { roleId: parsed.data.role_id, isActive: parsed.data.is_active });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true, member: result.member });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Update failed" }, { status: 500 });
   }
+}
 
-  // Never leave the back office without an active owner.
-  const losingOwner =
-    target.role === "owner" &&
-    ((parsed.data.role !== undefined && parsed.data.role !== "owner") ||
-      parsed.data.is_active === false);
-  if (losingOwner) {
-    const { count } = await admin
-      .from("admin_users")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "owner")
-      .eq("is_active", true)
-      .neq("id", id);
-    if (!count) {
-      return NextResponse.json(
-        { error: "There must be at least one active owner." },
-        { status: 400 },
-      );
-    }
+/** Revoke an invite. Only while the Member is still Invited; an Active Member is deactivated instead. */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  let ctx;
+  try {
+    ctx = await requireAdminContext("users");
+  } catch (denied) {
+    return denied as NextResponse;
   }
-
-  const { data, error } = await admin
-    .from("admin_users")
-    .update(parsed.data)
-    .eq("id", id)
-    .select("id, email, role, is_active, auth_user_id, created_at, updated_at")
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  await recordAdminAction({
-    actor: ctx,
-    action: "admin_user.update",
-    entityType: "admin_user",
-    entityId: id,
-    before: target,
-    after: data,
-  });
-
-  return NextResponse.json({ ok: true, row: data });
+  const { id } = await params;
+  try {
+    const result = await revokeInvite(ctx, id);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Revoke failed" }, { status: 500 });
+  }
 }

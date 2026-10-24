@@ -21,7 +21,7 @@
  */
 
 import { getAdminContext } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -117,7 +117,7 @@ export async function loadStaffEditResult(
 ): Promise<StaffEditResult | null> {
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return null;
   const staff = await getAdminContext();
-  if (!staff || !roleHasPermission(staff.role, "results")) return null;
+  if (!staff || !hasPermission(staff, "results")) return null;
 
   const admin = supabaseAdmin();
   const { data: row } = await admin

@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  TELEGRAM_ACTIONS,
-  TELEGRAM_ROLES,
-  isTelegramRole,
-  telegramRoleCan,
-} from "@/lib/telegram/roles";
+import { TELEGRAM_ACTIONS, describeActions, isTelegramAction, telegramActionLabel } from "@/lib/telegram/roles";
 import {
   LINK_CODE_LENGTH,
   generateLinkCode,
@@ -13,35 +8,26 @@ import {
   normalizeLinkCode,
 } from "@/lib/telegram/link-codes";
 
-describe("Telegram role matrix", () => {
-  it("only review managers can reply on Google", () => {
-    expect(telegramRoleCan("review_manager", "google_review.reply")).toBe(true);
-    expect(telegramRoleCan("shop_moderator", "google_review.reply")).toBe(false);
+describe("Telegram actions", () => {
+  it("are the catalog's Telegram keys", () => {
+    expect(TELEGRAM_ACTIONS).toEqual([
+      "telegram.google-review-reply",
+      "telegram.shop-review-moderate",
+      "telegram.social-inbox-reply",
+    ]);
+    expect(isTelegramAction("telegram.shop-review-moderate")).toBe(true);
+    expect(isTelegramAction("orders")).toBe(false);
+    expect(isTelegramAction("review_manager")).toBe(false);
   });
 
-  it("review managers and shop moderators moderate shop reviews; inbox agents don't", () => {
-    expect(telegramRoleCan("review_manager", "shop_review.moderate")).toBe(true);
-    expect(telegramRoleCan("shop_moderator", "shop_review.moderate")).toBe(true);
-    expect(telegramRoleCan("inbox_agent", "shop_review.moderate")).toBe(false);
-  });
-
-  it("inbox agents and review managers answer customer messages; shop moderators don't", () => {
-    expect(telegramRoleCan("inbox_agent", "social_inbox.reply")).toBe(true);
-    expect(telegramRoleCan("review_manager", "social_inbox.reply")).toBe(true);
-    expect(telegramRoleCan("shop_moderator", "social_inbox.reply")).toBe(false);
-    expect(telegramRoleCan("inbox_agent", "google_review.reply")).toBe(false);
-  });
-
-  it("every role grants only known actions", () => {
-    for (const role of TELEGRAM_ROLES) {
-      for (const action of TELEGRAM_ACTIONS) expect(typeof telegramRoleCan(role, action)).toBe("boolean");
-    }
-    expect(isTelegramRole("review_manager")).toBe(true);
-    expect(isTelegramRole("inbox_agent")).toBe(true);
-    expect(isTelegramRole("owner")).toBe(false);
+  it("read as their catalog labels", () => {
+    expect(telegramActionLabel("telegram.google-review-reply")).toBe("Reply to Google reviews");
+    expect(describeActions(["telegram.google-review-reply", "telegram.shop-review-moderate"])).toBe(
+      "Reply to Google reviews, Moderate shop reviews",
+    );
+    expect(describeActions([])).toBe("no actions");
   });
 });
-
 describe("link codes", () => {
   it("are 8 unambiguous characters", () => {
     for (let i = 0; i < 50; i += 1) {

@@ -14,7 +14,7 @@ import { sendGroupMessage } from "@/lib/telegram/bot-api";
 /**
  * A preview of review cards for the measurements Telegram group: sample
  * reviews rendered by the production card code, so the group sees exactly what
- * real reviews will look like. Sent from Staff Management → Telegram access
+ * real reviews will look like. Sent from Users & permissions → Telegram
  * ("Send preview") or scripts/telegram-review-preview.ts.
  *
  * Nothing here touches the database or Google. Every card opens with a PREVIEW
@@ -29,7 +29,7 @@ export const PREVIEW_INTRO = [
   "🧪 REVIEW & MESSAGE CARDS — PREVIEW",
   "Sample cards showing how new Google Maps and shop reviews, and customer messages from Facebook, Instagram and TikTok, will arrive here. None of them are real, nothing will be posted to Google, and nothing is sent to a customer.",
   "",
-  "Tap any button to check your access: it tells you whether you're set up, and as what. Reply to a Google card with your own wording to see how editing a draft works, or to the Instagram message to see how answering a customer works. Not set up yet? An admin adds you under Settings → Staff Management → Telegram access.",
+  "Tap any button to check your access: it tells you whether you're set up, and as what. Reply to a Google card with your own wording to see how editing a draft works, or to the Instagram message to see how answering a customer works. Not set up yet? An admin adds you under Settings → Users & permissions → Telegram.",
 ].join("\n");
 
 export type PreviewCard = { what: string; card: Card };

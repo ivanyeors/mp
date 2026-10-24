@@ -22,9 +22,9 @@ export function tiktokWebhookUrl(req: Request): string {
   return `${getPublicOrigin(req)}/api/webhooks/tiktok-messages`;
 }
 
-/** Back to Staff Management → Telegram access, with an outcome the tab toasts. */
+/** Back to Users & permissions → Telegram, with an outcome the tab toasts. */
 export function settingsReturnUrl(req: Request, params: Record<string, string>): URL {
-  const url = new URL(`/${DEFAULT_LOCALE}/settings/staff-management`, req.url);
+  const url = new URL(`/${DEFAULT_LOCALE}/settings/users`, req.url);
   url.searchParams.set("tab", "telegram");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v.slice(0, 300));
   return url;

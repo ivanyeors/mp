@@ -1,10 +1,11 @@
 "use client";
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   PageActions,
   pageActionClassName,
@@ -13,6 +14,7 @@ import {
 import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { SheetGrid, type SheetColumn, type SheetEdit } from "@/components/ui/sheet-grid";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -208,8 +210,6 @@ const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "a
 const FILTER_TAG_COLLAPSED_ROW_LIMIT = 3;
 
 /** Money columns: wide enough for "$ 123.45" on a phone, fluid on desktop. */
-const MONEY_HEAD = "min-w-[7.5rem] whitespace-nowrap sm:w-1/5 sm:min-w-0";
-const MONEY_CELL = "min-w-[7.5rem] sm:min-w-0";
 
 const toCents = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
@@ -294,81 +294,17 @@ const computeProductComponentsCostCents = (
 
 const EMPTY_DRAFT_ROW: DraftRow = { costPrice: "", msrp: "", compareAt: "" };
 
-type PartRowProps = {
-  item: ItemRow;
-  costPrice: string;
-  msrp: string;
-  compareAt: string;
-  onChange: (rowKey: string, field: keyof DraftRow, raw: string) => void;
-  onBlur: (rowKey: string, field: keyof DraftRow) => void;
-};
+const PART_COLUMNS: SheetColumn[] = [
+  { key: "costPrice", label: "Cost Price", placeholder: "$0.00", prefix: "$" },
+  { key: "msrp", label: "MSRP", placeholder: "$0.00", prefix: "$" },
+  { key: "compareAt", label: "Compare-at", placeholder: "(optional)", prefix: "$" },
+];
 
-/**
- * One row of the parts table. Memoised on primitive props with stable
- * callbacks, so typing in one row leaves every other row untouched.
- */
-const PartRow = memo(function PartRow({ item, costPrice, msrp, compareAt, onChange, onBlur }: PartRowProps) {
-  const rowKey = itemKey(item.id);
-  const itemLabel = getInventoryItemDisplayLabel(item);
-  return (
-    <TableRow>
-      <TableCell className={STICKY_PART_CELL}>
-        <InventoryItemLabel item={item} />
-      </TableCell>
-      <TableCell className={MONEY_CELL}>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            $
-          </span>
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={costPrice}
-            placeholder="0.00"
-            onChange={(event) => onChange(rowKey, "costPrice", event.target.value)}
-            onBlur={() => onBlur(rowKey, "costPrice")}
-            className="pl-6"
-            aria-label={`Cost price for ${itemLabel}`}
-          />
-        </div>
-      </TableCell>
-      <TableCell className={MONEY_CELL}>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            $
-          </span>
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={msrp}
-            placeholder="0.00"
-            onChange={(event) => onChange(rowKey, "msrp", event.target.value)}
-            onBlur={() => onBlur(rowKey, "msrp")}
-            className="pl-6"
-            aria-label={`MSRP for ${itemLabel}`}
-          />
-        </div>
-      </TableCell>
-      <TableCell className={MONEY_CELL}>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            $
-          </span>
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={compareAt}
-            placeholder="(optional)"
-            onChange={(event) => onChange(rowKey, "compareAt", event.target.value)}
-            onBlur={() => onBlur(rowKey, "compareAt")}
-            className="pl-6"
-            aria-label={`Compare-at price for ${itemLabel}`}
-          />
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-});
+const BASELINE_FIELD: Record<keyof DraftRow, "cost" | "msrp" | "compareAt"> = {
+  costPrice: "cost",
+  msrp: "msrp",
+  compareAt: "compareAt",
+};
 
 export default function CostingsPage() {
   const pathname = usePathname() ?? "/";
@@ -1177,6 +1113,32 @@ export default function CostingsPage() {
     [applyDraft, flushDraft],
   );
 
+  /** Grid edits land formatted to cents, like a blurred input. */
+  const handleGridChange = useCallback(
+    (edits: SheetEdit[]) => {
+      applyDraft((prev) => {
+        const next = { ...prev };
+        for (const { rowId, colKey, value } of edits) {
+          const cents = parseToCents(sanitizeCurrencyInput(value));
+          const current = next[rowId] ?? EMPTY_DRAFT_ROW;
+          next[rowId] = { ...current, [colKey]: cents === null ? "" : (cents / 100).toFixed(2) };
+        }
+        return next;
+      });
+      flushDraft();
+    },
+    [applyDraft, flushDraft],
+  );
+
+  const isPartCellDirty = useCallback(
+    (rowKey: string, colKey: string) => {
+      const field = colKey as keyof DraftRow;
+      const cents = parseToCents((draft[rowKey] ?? EMPTY_DRAFT_ROW)[field]);
+      return cents !== (baseline[rowKey]?.[BASELINE_FIELD[field]] ?? null);
+    },
+    [draft, baseline],
+  );
+
   const handleAddFilter = useCallback((category: string) => {
     if (!category) return;
     setPartFilters((prev) => (prev.includes(category) ? prev : [...prev, category]));
@@ -1374,11 +1336,11 @@ export default function CostingsPage() {
   return (
     <div className={isDirty ? `space-y-6 ${mobileStickyActionBarSpacerClassName}` : "space-y-6"}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h1>Costings</h1>
-          <p className="text-sm text-muted-foreground">
+          <InfoTip label="About Costings">
             Track cost price and MSRP for each part to keep your pricing consistent.
-          </p>
+          </InfoTip>
         </div>
         <PageActions>
           <Button
@@ -1411,11 +1373,11 @@ export default function CostingsPage() {
 
       {onHandKpis && (
         <div className="space-y-2">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h2 className="text-base font-medium">On-hand stock value</h2>
-            <p className="text-sm text-muted-foreground">
+            <InfoTip label="About On-hand stock value">
               As of now — current warehouse stock × Costings prices (not a sales date range).
-            </p>
+            </InfoTip>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
             <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
@@ -1463,11 +1425,11 @@ export default function CostingsPage() {
       <div className="space-y-10">
         {products.length > 0 && (
           <section className="space-y-4">
-            <div>
+            <div className="flex items-center gap-1.5">
               <h2>Products</h2>
-              <p className="text-sm text-muted-foreground">
+              <InfoTip label="About Products">
                 Cost price is calculated from configured components. Enter MSRP and (optionally) compare-at for Shopify strikethrough pricing.
-              </p>
+              </InfoTip>
             </div>
             <div className="space-y-4">
               {groupedProducts.map((group) => (
@@ -1485,11 +1447,11 @@ export default function CostingsPage() {
         )}
 
         <section className="space-y-4">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h2>Parts</h2>
-            <p className="text-sm text-muted-foreground">
+            <InfoTip label="About Parts">
               Enter values as dollars. Leave blank to clear existing pricing for a part.
-            </p>
+            </InfoTip>
           </div>
           <div className="space-y-6">
             <div className="space-y-3">
@@ -1613,32 +1575,19 @@ export default function CostingsPage() {
             ) : (
               filteredGroups.map((group) => (
                 <Section key={group.category} title={group.title} sticky>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className={STICKY_PART_HEAD}>Part</TableHead>
-                        <TableHead className={MONEY_HEAD}>Cost Price</TableHead>
-                        <TableHead className={MONEY_HEAD}>MSRP</TableHead>
-                        <TableHead className={MONEY_HEAD}>Compare-at</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.items.map((item) => {
-                        const current = draft[itemKey(item.id)] ?? EMPTY_DRAFT_ROW;
-                        return (
-                          <PartRow
-                            key={item.id}
-                            item={item}
-                            costPrice={current.costPrice}
-                            msrp={current.msrp}
-                            compareAt={current.compareAt}
-                            onChange={handleInputChange}
-                            onBlur={handleBlur}
-                          />
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                  <SheetGrid
+                    label={`${group.title} prices`}
+                    leadHead="Part"
+                    columns={PART_COLUMNS}
+                    rows={group.items.map((item) => ({
+                      id: itemKey(item.id),
+                      label: getInventoryItemDisplayLabel(item),
+                      header: <InventoryItemLabel item={item} />,
+                    }))}
+                    value={(rowKey, colKey) => (draft[rowKey] ?? EMPTY_DRAFT_ROW)[colKey as keyof DraftRow]}
+                    isDirty={isPartCellDirty}
+                    onChange={handleGridChange}
+                  />
                 </Section>
               ))
             )}

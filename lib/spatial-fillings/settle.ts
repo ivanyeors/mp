@@ -2,19 +2,22 @@
  * Natural settle (X-ray pillow UX slice 11, ADR 0019): what the chamber does
  * with an empty sub-section. The protector walls the three Sections and
  * nothing else, so a pouch beside an empty neighbouring sub-section of its
- * own Section and Layer spreads front-to-back into it, thinning by volume
- * and never below its minimum thickness. Display-and-fit only: the authored
+ * own Section and Layer reaches front-to-back into it — as far as its own
+ * length and its fabric allow, thinning a little as it does, never below its
+ * minimum thickness. Display-and-fit only: the authored
  * Placements — the cell each pouch was put in, the pack list, the fingerprint
  * — are never touched.
  *
  * The rule, per Section × plane (Layer depth): the empty columns form voids;
  * each void is claimed by the occupied column(s) touching it; every claimant
  * piece spreads into it up to the smaller of the void's length and its own
- * spread capacity, `V / (across × minThickness) − along` (the fabric's flat
- * length caps that lower when the registry has it). A void claimed from both
- * ends is split pro rata by the two offers, a seam between them, so the two
- * pouches meet and stay two. A pouch that cannot fill its void stays anchored
- * at its authored end and leaves the remainder at the far end.
+ * reach. A pouch is cloth around fill, not a rubber band (Ivan, 17-10-2026):
+ * beside an empty column it relaxes back to its own length (its cell had cut
+ * it short), and pressed flat it gets only as much longer as its fabric gives
+ * — `spreadCapacityMm`. It never stretches to fill a gap. A void claimed from
+ * both ends is split pro rata by the two offers, a seam between them, so the
+ * two pouches meet and stay two. A pouch that cannot fill its void stays
+ * anchored at its authored end and leaves the remainder at the far end.
  *
  * ponytail: static, per plane, pro rata — the simplest deterministic rule;
  * slice 10 photographs a real slumped pouch against it. Pure + browser-safe.
@@ -62,6 +65,7 @@ export type PieceSettle = {
   /** Where the settled pouch starts and ends, mm from the Section's front, cut to the columns it spans. */
   startMm: number;
   endMm: number;
+  /** Its footprint once settled: the authored extent (at most a cell) plus the spread each way, mm. */
   settledLengthMm: number;
   thicknessMm: number;
   minThicknessMm: number;
@@ -94,20 +98,43 @@ export function alongMm(d: PouchDimensions): number {
 }
 
 /**
- * How much further a pouch can spread along the Section before its fill is
- * fully compressed — the fit model's compression variable read the other way
- * — or before its fabric lies flat, whichever comes first.
+ * How much longer a pouch's side-on outline gets for each mm it is pressed
+ * thinner. Seen side-on a stuffed pouch is about a stadium whose perimeter is
+ * its fabric, `2·length + (π − 2)·thickness`, and fabric does not stretch: give
+ * up a mm of thickness and the length gains π/2 − 1 ≈ 0.57 mm, no more.
+ */
+export const FABRIC_GIVE = Math.PI / 2 - 1;
+
+/**
+ * The most a pouch's fabric lets it lengthen past its relaxed size along one
+ * axis: `flat` (Settings' flat length / width, the longest it lies pressed
+ * flat) when measured, else the stadium's give down to its minimum thickness.
+ */
+function fabricGiveMm(relaxedMm: number, thicknessMm: number, minThicknessMm: number, flat: number | undefined): number {
+  if (flat !== undefined) return Math.max(flat - relaxedMm, 0);
+  return FABRIC_GIVE * Math.max(thicknessMm - minThicknessMm, 0);
+}
+
+/**
+ * How much further than its relaxed length a pouch can spread along the
+ * Section: what its fabric gives as it is pressed flat (`FABRIC_GIVE`, or the
+ * measured flat length), never past the point its fill is fully compressed.
+ * A few mm for a stuffed pouch — never the gap beside it.
  */
 export function spreadCapacityMm(d: PouchDimensions): number {
   const along = alongMm(d);
   const minT = Math.min(d.minThicknessMm, d.thicknessMm);
   const byVolume = minT > 0 ? along * (d.thicknessMm / minT - 1) : 0;
-  const flat = d.flatLengthMm;
-  const byFabric = flat === undefined ? Infinity : Math.max(flat - along, 0);
+  const byFabric = fabricGiveMm(along, d.thicknessMm, minT, d.flatLengthMm);
   return Math.max(Math.min(byVolume, byFabric), 0);
 }
 
-/** The thickness a pouch stands at once spread to `settledLengthMm`: volume conserved, never below the minimum. */
+/**
+ * The thickness a pouch stands at once its footprint is `settledLength`: as
+ * relaxed up to its own length (a pouch its cell cut short only gets its
+ * length back), then thinner by volume over the fabric's give, never below
+ * the minimum.
+ */
 export function settledThicknessMm(d: PouchDimensions, settledLength: number): number {
   const along = alongMm(d);
   if (settledLength <= along + EPS) return d.thicknessMm;
@@ -237,13 +264,15 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
         layers[depth]
           ? layers[depth].map((p): Work => {
               const dims = dimsOf(p.itemId);
+              const along = alongMm(dims);
               return {
                 p,
-                anchor: anchorAlong((p.offsetYMm ?? 0) * alongScale, cellLen, alongMm(dims)),
+                anchor: anchorAlong((p.offsetYMm ?? 0) * alongScale, cellLen, along),
                 col,
                 depth,
                 dims,
-                capacity: active ? spreadCapacityMm(dims) : 0,
+                // Its length back (the cell cut it to a cell's length), then the fabric's give.
+                capacity: active ? Math.max(along - cellLen, 0) + spreadCapacityMm(dims) : 0,
                 offerFront: 0,
                 offerBack: 0,
                 front: 0,
@@ -260,11 +289,11 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
       const along = alongMm(w.dims);
       const front = w.front > EPS ? w.front : 0;
       const back = w.back > EPS ? w.back : 0;
-      const settledLength = along + front + back;
-      const cellsFront = front > 0 ? Math.ceil(front / cellLen - EPS) : 0;
-      const cellsBack = back > 0 ? Math.ceil(back / cellLen - EPS) : 0;
       // The authored extent as the x-ray draws it: cut to one cell's length, moved by its fine offset, kept in the Section.
       const len = Math.min(along, cellLen);
+      const settledLength = len + front + back;
+      const cellsFront = front > 0 ? Math.ceil(front / cellLen - EPS) : 0;
+      const cellsBack = back > 0 ? Math.ceil(back / cellLen - EPS) : 0;
       const authored = Math.min(
         Math.max(w.col * cellLen + (cellLen - len) / 2 + (w.p.offsetYMm ?? 0) * alongScale, 0),
         SUB_SECTIONS.length * cellLen - len,
@@ -308,11 +337,11 @@ export function spans(s: PieceSettle, subSection: SubSection): boolean {
 
 // --- Mbolster: the same rule in one dimension, along the capsule (slice 09) ----
 
-/** How much further a pouch can spread along the capsule (its width axis) before its fill is fully compressed or its fabric lies flat. */
+/** How much further a pouch can spread along the capsule (its width axis): what its fabric gives pressed flat, never past fully compressed. */
 export function bolsterSpreadCapacityMm(d: PouchDimensions): number {
   const minT = Math.min(d.minThicknessMm, d.thicknessMm);
   const byVolume = minT > 0 ? d.widthMm * (d.thicknessMm / minT - 1) : 0;
-  const byFabric = d.flatWidthMm === undefined ? Infinity : Math.max(d.flatWidthMm - d.widthMm, 0);
+  const byFabric = fabricGiveMm(d.widthMm, d.thicknessMm, minT, d.flatWidthMm);
   return Math.max(Math.min(byVolume, byFabric), 0);
 }
 

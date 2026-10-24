@@ -1,25 +1,34 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/admin";
-import { listStaffRows } from "@/lib/staff/admin";
+import { getAdminContext, requireAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
+import { createStaffProfile, listStaffProfiles, withoutLoginEmails } from "@/lib/staff/admin";
 
 export const runtime = "nodejs";
 
-const CreateStaffSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Name is required")
-    .max(120, "Name is too long"),
+const CreateSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120, "Name is too long"),
+  memberId: z.string().uuid(),
 });
 
-export async function GET() {
-  const denied = await requireAdmin("results");
+/**
+ * Staff profiles with the login each works under. Results reads this for its
+ * "measured by" picker (`results`); Users & permissions manages them
+ * (`users`). `?includeArchived=1` adds archived profiles, so old Results can
+ * still be labelled. Login emails are for `users` holders only.
+ */
+export async function GET(req: Request) {
+  const denied = await requireAnyAdmin(["results", "users"]);
   if (denied) return denied;
 
+  const includeArchived = new URL(req.url).searchParams.get("includeArchived") === "1";
   try {
-    return NextResponse.json({ ok: true, rows: await listStaffRows() });
+    const ctx = await getAdminContext();
+    const rows = await listStaffProfiles({ includeArchived });
+    return NextResponse.json({
+      ok: true,
+      rows: ctx && hasPermission(ctx, "users") ? rows : withoutLoginEmails(rows),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
@@ -28,30 +37,24 @@ export async function GET() {
   }
 }
 
+/** Add a Staff profile under a login. */
 export async function POST(req: Request) {
-  const denied = await requireAdmin("results");
-  if (denied) return denied;
+  let ctx;
+  try {
+    ctx = await requireAdminContext("users");
+  } catch (denied) {
+    return denied as NextResponse;
+  }
 
-  const body = await req.json().catch(() => null);
-  const parsed = CreateStaffSchema.safeParse(body);
+  const parsed = CreateSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
-
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("mp_staff")
-    .insert({ name: parsed.data.name })
-    .select("id,name,created_at,updated_at")
-    .single();
-
-  // `idx_mp_staff_name_unique` enforces uniqueness (case-insensitive).
-  if (error) {
-    const isDup = /duplicate key|unique/i.test(error.message);
-    const msg = isDup ? "A staff member with this name already exists" : error.message;
-    return NextResponse.json({ error: msg }, { status: isDup ? 409 : 500 });
+  try {
+    const result = await createStaffProfile(ctx, parsed.data.memberId, parsed.data.name);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true, row: result.profile }, { status: 201 });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true, row: data });
 }
-

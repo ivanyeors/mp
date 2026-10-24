@@ -63,7 +63,7 @@ describe("slice 09 — mbolster composed sellable", () => {
   });
 
   it("prices a hold from the goods subtotal plus shipping and tax", () => {
-    const priced = priceResult({ subtotal: 140, shipping: 8, tax: 12 });
+    const priced = priceResult({ goods: 140, shipping: 8, tax: 12 });
     expect(priced.subtotal).toBe(140);
     expect(priced.total).toBe(160);
   });

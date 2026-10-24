@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { User, Search, Loader2 } from "lucide-react";
+import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Table,
     TableBody,
@@ -22,10 +23,46 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Customer } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
+import { customerDisplayName, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
+import {
+    CUSTOMER_FILTER_KEYS,
+    CUSTOMER_FILTER_PARAMS,
+    DEFAULT_CUSTOMER_FILTERS,
+    clearCustomerFilter,
+    clearCustomerFilters,
+    customerFilterParams,
+    isCustomerFilterActive,
+    type AccountFilter,
+    type CustomerFilterKey,
+    type CustomerFilterParam,
+    type CustomerListFilters,
+    type CustomerSort,
+    type FollowUpFilter,
+    type GoogleFilter,
+    type MobileFilter,
+    type SourceFilter,
+} from "@/lib/crm/customer-filters";
+import type { MigrationSummary } from "@/lib/customer-migration/overview";
+import { reviewFacts } from "@/lib/crm/reviews";
+import {
+    chosenSegmentFilters,
+    sameSegmentFilters,
+    segmentParams,
+    type CustomerSegment,
+} from "@/lib/crm/segment-rules";
+import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
+import { MigrationCard } from "./migration-card";
+import { SegmentsRow } from "./segments-row";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,10 +70,13 @@ const LIMIT = 20;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** Exactly the JSON `GET /api/shop/customers?page=1&limit=20` returns. */
+/**
+ * Exactly the JSON `GET /api/shop/customers?page=1&limit=20` returns: rows of
+ * the Customer overview (`admin_customer_overview`, migration slice 12).
+ */
 export type CustomersListResponse = {
     ok: true;
-    rows: Customer[];
+    rows: CustomerOverviewRow[];
     total: number;
     page: number;
     limit: number;
@@ -55,42 +95,182 @@ function formatSGD(amount: number): string {
     }).format(amount);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
     return formatAdminDateMY(dateStr);
 }
 
-function getCustomerName(customer: Customer): string {
-    const parts = [customer.first_name, customer.last_name].filter(Boolean);
-    return parts.length > 0 ? parts.join(" ") : "—";
+function getCustomerName(customer: CustomerOverviewRow): string {
+    return customerDisplayName(customer) ?? "—";
+}
+
+/**
+ * The filters that live in the Filters panel rather than the toolbar: CRM
+ * slice 04's, Points (PRD-loyalty-points slice 06), migration slice 07's
+ * Email consent, and CRM slice 12's reviews.
+ */
+const PANEL_FILTERS: CustomerFilterKey[] = [
+    "bought",
+    "last_order",
+    "readjusted",
+    "min_spend",
+    "consent",
+    "points",
+    "tags",
+    "google_review",
+    "shop_review",
+    "rating",
+];
+
+/**
+ * The Review column (CRM slice 12): the strongest fact first (*★5 Google*,
+ * *★4 shop (2)*, *Asked 3 Nov · clicked*, *Asked 3 Nov*), then the rest,
+ * muted. *—* with none. A Google review counts only once Staff have linked it.
+ */
+function ReviewCell({ customer }: { customer: CustomerOverviewRow }) {
+    const [first, ...rest] = reviewFacts(customer);
+    if (!first) return <span className="text-sm text-muted-foreground">—</span>;
+    return (
+        <span className="text-sm whitespace-nowrap">
+            {first}
+            {rest.length > 0 && <span className="block text-xs text-muted-foreground">{rest.join(" · ")}</span>}
+        </span>
+    );
+}
+
+/**
+ * Contact status as small marks (CRM slice 11): how they sign in (an envelope
+ * for the emailed code, G for Google) and a phone when a valid number is on
+ * file. Each says what it means to a screen reader and on hover.
+ */
+function ContactMarks({ customer }: { customer: CustomerOverviewRow }) {
+    const providers = customer.account_providers ?? [];
+    const marks: { key: string; label: string; mark: ReactNode }[] = [];
+    if (providers.includes("email")) {
+        marks.push({ key: "email", label: "Signs in with an email code", mark: <Mail className="h-3.5 w-3.5" /> });
+    }
+    if (providers.includes("google")) {
+        marks.push({ key: "google", label: "Signs in with Google", mark: <span className="text-xs font-bold leading-none">G</span> });
+    }
+    if (customer.phone_valid) {
+        marks.push({ key: "mobile", label: "Valid number on file", mark: <Smartphone className="h-3.5 w-3.5" /> });
+    }
+    if (marks.length === 0) return null;
+    return (
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            {marks.map((m) => (
+                <span key={m.key} role="img" aria-label={m.label} title={m.label} className="inline-flex items-center">
+                    {m.mark}
+                </span>
+            ))}
+        </span>
+    );
+}
+
+/** The Account status: *Signed up* with its date, or a muted *No account*, then the Contact marks. */
+function AccountStatus({ customer, compact = false }: { customer: CustomerOverviewRow; compact?: boolean }) {
+    if (!customer.has_account) {
+        return compact ? (
+            <span className="inline-flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                    No account
+                </Badge>
+                <ContactMarks customer={customer} />
+            </span>
+        ) : (
+            <span className="text-sm text-muted-foreground">
+                No account
+                <span className="block">
+                    <ContactMarks customer={customer} />
+                </span>
+            </span>
+        );
+    }
+    const since = formatAdminDateMY(customer.account_linked_at);
+    return compact ? (
+        <span className="inline-flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs font-normal">
+                Signed up {since}
+            </Badge>
+            <ContactMarks customer={customer} />
+        </span>
+    ) : (
+        <span className="text-sm">
+            Signed up
+            <span className="block text-xs text-muted-foreground">{since}</span>
+            <span className="block">
+                <ContactMarks customer={customer} />
+            </span>
+        </span>
+    );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CustomersClient({ initialData }: { initialData?: CustomersInitialData }) {
+export function CustomersClient({
+    initialData,
+    initialFilters,
+    ignoredFilters = [],
+    migration = null,
+    initialSegments,
+    canEdit = false,
+}: {
+    initialData?: CustomersInitialData;
+    /** The filters the page's URL asked for; `initialData` is page 1 of them. */
+    initialFilters?: Partial<CustomerListFilters>;
+    /** URL parameters the page dropped as invalid; the list says so. */
+    ignoredFilters?: readonly CustomerFilterParam[];
+    /** The Migration card's numbers, or null when they could not be read. */
+    migration?: MigrationSummary | null;
+    /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
+    initialSegments?: CustomerSegment[];
+    /** `customers-edit`: saving, updating, renaming and archiving Segments. */
+    canEdit?: boolean;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    // Filter state
-    const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
+    // Filter state: one object, read through the list's one schema
+    // (lib/crm/customer-filters.ts). All of it lives in the URL too, so a
+    // filtered list can be shared (migration slice 12, CRM slice 04). Search
+    // is typed into `search` and reaches `filters` once typing pauses.
+    // Paging is the list's own `page` state; any page or limit in here is unused.
+    const [filters, setFilters] = useState<CustomerListFilters>(() => ({ ...DEFAULT_CUSTOMER_FILTERS, ...initialFilters }));
+    const [search, setSearch] = useState(filters.search ?? "");
     const [page, setPage] = useState(1);
+    // Open when a link arrives with a panel filter set, so it shows its controls.
+    const [panelOpen, setPanelOpen] = useState(() => PANEL_FILTERS.some((k) => isCustomerFilterActive(filters, k)));
+    // The Segment chosen on this list (CRM slice 05): a Segment's own link
+    // opens with it chosen, so changing a filter offers *Update {name}*.
+    const [segmentId, setSegmentId] = useState<string | null>(() => {
+        const now = segmentParams(filters);
+        if (!Object.keys(now).length) return null;
+        return initialSegments?.find((s) => sameSegmentFilters(s.params, now))?.id ?? null;
+    });
 
     // Data state
-    const [customers, setCustomers] = useState<Customer[]>(initialData?.customers.rows ?? []);
+    const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
     const [total, setTotal] = useState(initialData?.customers.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
 
     // The RSC page already fetched page 1 — skip the mount fetch once.
     const hydratedFromServer = useRef(Boolean(initialData));
 
+    /** Every change to the filters starts again at page 1. */
+    const applyFilters = (next: (f: CustomerListFilters) => CustomerListFilters) => {
+        setFilters(next);
+        setPage(1);
+    };
+    const changeFilters = (patch: Partial<CustomerListFilters>) => applyFilters((f) => ({ ...f, ...patch }));
+
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            setDebouncedSearch(search);
+            const next = search.trim() || null;
+            setFilters((f) => (f.search === next ? f : { ...f, search: next }));
             setPage(1);
         }, 350);
         return () => {
@@ -98,11 +278,57 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
         };
     }, [search]);
 
+    const filtersQuery = customerFilterParams(filters).toString();
+    const panelCount = PANEL_FILTERS.filter((k) => isCustomerFilterActive(filters, k)).length;
+    const filtered = CUSTOMER_FILTER_KEYS.some((k) => isCustomerFilterActive(filters, k));
+
+    // Keep the address bar in step without a server round trip, so the list's
+    // filters survive a reload and can be shared. Only the filters' own keys
+    // are rewritten: `?view=` belongs to CustomersPageTabs.
+    useEffect(() => {
+        const url = new URL(window.location.href);
+        for (const key of CUSTOMER_FILTER_PARAMS) url.searchParams.delete(key);
+        new URLSearchParams(filtersQuery).forEach((value, key) => url.searchParams.set(key, value));
+        if (url.href !== window.location.href) window.history.replaceState(null, "", url);
+    }, [filtersQuery]);
+
+    const changeAccount = (value: string) => changeFilters({ account: value as AccountFilter });
+    const changeSource = (value: string) => changeFilters({ source: value as SourceFilter });
+    const changeGoogle = (value: string) => changeFilters({ google: value as GoogleFilter });
+    const changeMobile = (value: string) => changeFilters({ mobile: value as MobileFilter });
+    const changeFollowups = (value: string) => changeFilters({ followups: value as FollowUpFilter });
+    const changeSort = (value: string) => changeFilters({ sort: value as CustomerSort });
+
+    // The summary's × and Clear all. Search is also the box's text.
+    const clearFilter = (key: CustomerFilterKey) => {
+        if (key === "search") setSearch("");
+        applyFilters((f) => clearCustomerFilter(f, key));
+    };
+    const clearAll = () => {
+        setSearch("");
+        setSegmentId(null);
+        applyFilters(clearCustomerFilters);
+    };
+
+    // Choosing a Segment puts exactly its filters on the list, and in the URL;
+    // the list keeps its sort.
+    const chooseSegment = (segment: CustomerSegment) => {
+        setSearch(segment.params.search ?? "");
+        setSegmentId(segment.id);
+        applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
+    };
+
+    // The Migration card's link: from Shopify, not signed up yet.
+    const showNotSignedUp = () => changeFilters({ account: "no-account", source: "shopify" });
+    const notSignedUpHref = `${to("/settings/customers")}?${customerFilterParams({
+        account: "no-account",
+        source: "shopify",
+    }).toString()}`;
+
     // Fetch customers
     const fetchCustomers = useCallback(async () => {
         setLoading(true);
-        const params = new URLSearchParams();
-        if (debouncedSearch) params.set("search", debouncedSearch);
+        const params = new URLSearchParams(filtersQuery);
         params.set("page", String(page));
         params.set("limit", String(LIMIT));
 
@@ -117,7 +343,7 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearch, page]);
+    }, [filtersQuery, page]);
 
     useEffect(() => {
         if (hydratedFromServer.current) {
@@ -144,17 +370,28 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    Browse and manage your customer accounts.
-                </p>
-            </div>
+            {/* The page header and tabs are CustomersPageTabs'; this is the list tab. */}
+            {migration && (
+                <MigrationCard
+                    summary={migration}
+                    notSignedUpHref={notSignedUpHref}
+                    onShowNotSignedUp={showNotSignedUp}
+                />
+            )}
+
+            <SegmentsRow
+                initialSegments={initialSegments}
+                canEdit={canEdit}
+                params={segmentParams(filters)}
+                activeId={segmentId}
+                listPath={to("/settings/customers")}
+                onChoose={chooseSegment}
+                onSelect={setSegmentId}
+            />
 
             {/* Toolbar */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
                         placeholder="Search by name or email..."
@@ -163,7 +400,106 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
                         className="pl-9"
                     />
                 </div>
+
+                <Select value={filters.account} onValueChange={changeAccount}>
+                    <SelectTrigger className="w-full sm:w-40" aria-label="Account">
+                        <SelectValue placeholder="Account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All accounts</SelectItem>
+                        {/* An account is bound by the email they signed in with (CRM 11). */}
+                        <SelectItem value="signed-up">Signed up · email verified</SelectItem>
+                        <SelectItem value="no-account">No account · email not verified</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.source} onValueChange={changeSource}>
+                    <SelectTrigger className="w-full sm:w-40" aria-label="Source">
+                        <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All sources</SelectItem>
+                        <SelectItem value="shopify">From Shopify</SelectItem>
+                        <SelectItem value="platform">Platform</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.google} onValueChange={changeGoogle}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Google">
+                        <SelectValue placeholder="Google" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any sign-in</SelectItem>
+                        <SelectItem value="linked">Google linked</SelectItem>
+                        <SelectItem value="not-linked">Google not linked</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.mobile} onValueChange={changeMobile}>
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Mobile">
+                        <SelectValue placeholder="Mobile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any mobile</SelectItem>
+                        <SelectItem value="on-file">Valid mobile on file</SelectItem>
+                        <SelectItem value="missing">Mobile missing</SelectItem>
+                        <SelectItem value="invalid">Mobile invalid</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.followups} onValueChange={changeFollowups}>
+                    <SelectTrigger className="w-full sm:w-52" aria-label="Follow-ups">
+                        <SelectValue placeholder="Follow-ups" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Any follow-ups</SelectItem>
+                        <SelectItem value="open">Has an open follow-up</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={filters.sort} onValueChange={changeSort}>
+                    <SelectTrigger className="w-full sm:w-48" aria-label="Sort">
+                        <SelectValue placeholder="Sort" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="newest">Newest first</SelectItem>
+                        <SelectItem value="oldest">Oldest first</SelectItem>
+                        <SelectItem value="name-asc">Name A–Z</SelectItem>
+                        <SelectItem value="name-desc">Name Z–A</SelectItem>
+                        <SelectItem value="signed-up">Recently signed up</SelectItem>
+                        <SelectItem value="last-order">Last order</SelectItem>
+                        <SelectItem value="spend">Most spent</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Button
+                    type="button"
+                    variant={panelOpen ? "secondary" : "outline"}
+                    className="w-full sm:w-auto"
+                    aria-expanded={panelOpen}
+                    aria-controls="customer-filters-panel"
+                    onClick={() => setPanelOpen((o) => !o)}
+                >
+                    <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+                    Filters
+                    {panelCount > 0 && (
+                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">{panelCount}</Badge>
+                    )}
+                </Button>
             </div>
+
+            {panelOpen && (
+                <div id="customer-filters-panel">
+                    <CustomerFiltersPanel filters={filters} onChange={changeFilters} />
+                </div>
+            )}
+
+            <CustomerFilterSummary
+                filters={filters}
+                ignored={ignoredFilters}
+                onClear={clearFilter}
+                onClearAll={clearAll}
+            />
 
             {/* Content */}
             {loading ? (
@@ -174,8 +510,8 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
                 <div className="rounded-xl border border-dashed p-14 text-center">
                     <User className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
                     <p className="text-sm font-medium text-muted-foreground">
-                        {debouncedSearch
-                            ? "No customers match your search."
+                        {filtered
+                            ? "No customers match these filters."
                             : "No customers yet."}
                     </p>
                 </div>
@@ -186,12 +522,15 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
                                 <TableHead className="px-4">Name</TableHead>
                                 <TableHead className="px-4 hidden sm:table-cell">Email</TableHead>
+                                <TableHead className="px-4 hidden md:table-cell">Account</TableHead>
                                 <TableHead className="px-4 text-right hidden md:table-cell">
                                     Orders
                                 </TableHead>
                                 <TableHead className="px-4 text-right hidden md:table-cell">
                                     Total Spent
                                 </TableHead>
+                                <TableHead className="px-4 hidden lg:table-cell">Last order</TableHead>
+                                <TableHead className="px-4 hidden lg:table-cell">Review</TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell">Tags</TableHead>
                                 <TableHead className="px-4 hidden xl:table-cell">Joined</TableHead>
                             </TableRow>
@@ -209,18 +548,50 @@ export function CustomersClient({ initialData }: { initialData?: CustomersInitia
                                     >
                                         <TableCell className="px-4 py-3">
                                             <span className="font-medium">{name}</span>
+                                            {customer.from_shopify && (
+                                                <Badge variant="outline" className="ml-2 text-xs font-normal">
+                                                    Shopify
+                                                </Badge>
+                                            )}
+                                            {customer.open_followups > 0 && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-2 text-xs font-normal"
+                                                    title={`${customer.open_followups} open follow-up${customer.open_followups === 1 ? "" : "s"}`}
+                                                >
+                                                    {customer.open_followups} to follow up
+                                                </Badge>
+                                            )}
                                             <span className="block text-xs text-muted-foreground mt-0.5 sm:hidden">
                                                 {customer.email}
+                                            </span>
+                                            {/* The Account column is hidden below md: show it here instead. */}
+                                            <span className="mt-1 block md:hidden">
+                                                <AccountStatus customer={customer} compact />
                                             </span>
                                         </TableCell>
                                         <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground">
                                             {customer.email}
+                                        </TableCell>
+                                        <TableCell className="px-4 hidden md:table-cell">
+                                            <AccountStatus customer={customer} />
                                         </TableCell>
                                         <TableCell className="px-4 text-right hidden md:table-cell text-sm">
                                             {customer.total_orders}
                                         </TableCell>
                                         <TableCell className="px-4 text-right hidden md:table-cell text-sm font-medium">
                                             {formatSGD(customer.total_spent)}
+                                        </TableCell>
+                                        {/* Formatted in the viewer's timezone, which the server render cannot know. */}
+                                        <TableCell
+                                            className="px-4 hidden lg:table-cell text-sm text-muted-foreground whitespace-nowrap"
+                                            suppressHydrationWarning
+                                        >
+                                            {formatDate(customer.last_paid_at)}
+                                        </TableCell>
+                                        {/* Dates in Singapore time, so the server render and the browser agree. */}
+                                        <TableCell className="px-4 hidden lg:table-cell">
+                                            <ReviewCell customer={customer} />
                                         </TableCell>
                                         <TableCell className="px-4 hidden lg:table-cell">
                                             <div className="flex flex-wrap gap-1">

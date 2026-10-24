@@ -224,21 +224,24 @@ body.dock-hidden .app-dock {
     Marketing typography overrides
     - Applies only on public routes (see `components/route-scope.tsx`)
     - Forces font-size even when elements use Tailwind `text-*` classes
+    - Skips app surfaces on those routes, marked `data-typography-scope="app"`
+      (the configurator preview: x-ray editor copy, finish form), whose
+      components set their own sizes and overlap when forced to 18px
   */
-  [data-typography-scope="marketing"] h2 {
+  [data-typography-scope="marketing"] h2:not([data-typography-scope="app"] h2) {
     font-size: 24px !important;
   }
 
-  [data-typography-scope="marketing"] p {
+  [data-typography-scope="marketing"] p:not([data-typography-scope="app"] p) {
     font-size: 16px !important;
   }
 
   @media (min-width: 768px) {
-    [data-typography-scope="marketing"] h2 {
+    [data-typography-scope="marketing"] h2:not([data-typography-scope="app"] h2) {
       font-size: 28px !important;
     }
 
-    [data-typography-scope="marketing"] p {
+    [data-typography-scope="marketing"] p:not([data-typography-scope="app"] p) {
       font-size: 18px !important;
     }
   }

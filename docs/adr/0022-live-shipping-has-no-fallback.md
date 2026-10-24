@@ -33,6 +33,6 @@ Flat methods were also described as a fallback, though nothing ties them to a co
   couriers answer again. One active flat method keeps the store selling.
 - The method form hides `base_rate` for live methods, so a new live method saves `base_rate` 0.
   **Results** still price shipping from `base_rate` at hold, assign, finish and accept (ADR 0020,
-  Consequences). A live method offered on the customisation flow therefore needs a `base_rate`
+  Consequences). _Superseded by ADR 0032: Results quote live methods and store the rate._ A live method offered on the customisation flow therefore needs a `base_rate`
   set while it is flat, or those holds charge no shipping. Live-pricing Results is still a
   separate slice.

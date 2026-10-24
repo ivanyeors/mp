@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { previewContactFieldChecks } from "@/components/configurator/preview-contact-fields";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { permissionForHref, roleHasPermission } from "@/lib/auth/permissions";
 import { OTHER_DISCOVERY_SOURCE_ID } from "@/lib/discovery-source";
 
 const ROOT = process.cwd();
@@ -62,7 +62,7 @@ assert.ok(
 const nav = read("components/settings/settings-sidebar-nav.tsx");
 assert.match(nav, /\/settings\/forms/);
 assert.match(nav, /label: "Forms"/);
-assert.match(nav, /perm: "page-builder"/);
+assert.equal(permissionForHref("/settings/forms"), "forms");
 
 const formsPage = read("app/[lang]/settings/forms/forms-client.tsx");
 assert.match(formsPage, /data-settings-forms/);
@@ -72,7 +72,7 @@ assert.match(formsPage, /zh-CN/);
 assert.match(formsPage, /OTHER_DISCOVERY_SOURCE_ID/);
 assert.match(formsPage, /Archive/);
 
-assert.equal(roleHasPermission("viewer", "page-builder"), false);
+assert.equal(roleHasPermission("viewer", "forms"), false);
 
 // --- Shared preview component wired into both clients ---
 const preview = read("components/configurator/preview-contact-fields.tsx");

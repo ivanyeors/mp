@@ -14,6 +14,15 @@ export const LiveRateFields = {
   rate_rounding: z.number().min(0).max(100).optional(),
 };
 
+/**
+ * The ISO alpha-2 countries a method delivers to. Checkout offers every country an
+ * active method lists, so a method with none would be invisible.
+ */
+export const CountriesField = z
+  .array(z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "Use two-letter country codes"))
+  .min(1, "Choose at least one country")
+  .max(300);
+
 /** A pinned-courier strategy needs the courier it pins. */
 export function courierPinned(body: {
   easyship_strategy?: string;
@@ -27,12 +36,17 @@ export const COURIER_PIN_ERROR = {
   path: ["easyship_courier_service_id"],
 };
 
-/** Customisation orders charge a live method's base_rate (they don't quote couriers), so it can't be free. */
-export function livePriced(body: { rate_source?: string; base_rate?: number }): boolean {
-  return body.rate_source !== "easyship" || body.base_rate === undefined || body.base_rate > 0;
+/** Self-collect: the studio (own Location) the method is collected from; null = delivered. */
+export const SelfCollectFields = {
+  collect_location_id: z.string().uuid().nullable().optional(),
+};
+
+/** Nothing is couriered when a customer collects, so there is no live rate to quote. */
+export function collectIsFlat(body: { rate_source?: string; collect_location_id?: string | null }): boolean {
+  return !body.collect_location_id || body.rate_source !== "easyship";
 }
 
-export const LIVE_PRICE_ERROR = {
-  message: "Set a customisation order rate above 0 for a live method",
-  path: ["base_rate"],
+export const COLLECT_FLAT_ERROR = {
+  message: "A self-collect method charges a flat rate: set the rate source to Flat",
+  path: ["rate_source"],
 };

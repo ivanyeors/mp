@@ -12,6 +12,7 @@ import {
 } from "@/lib/shipping/easyship";
 import { loadOrderShippableLines } from "@/lib/shipping/lines";
 import { buildParcels } from "@/lib/shipping/parcels";
+import { isSelfCollectAddress } from "@/lib/shipping/self-collect";
 import { fetchCourierRates } from "@/lib/shipping/quote";
 import { readShippingSettings } from "@/lib/shipping/settings";
 import { readEasyshipConfig, readSenderAddress, readTypeBoxes } from "@/lib/easyship/store";
@@ -40,6 +41,9 @@ export type OrderForShipping = {
   shipping_courier: string | null;
   shipped_at: string | null;
 };
+
+/** The customer collects it from the studio (Self-collect): there is nothing to courier. */
+const SELF_COLLECT_ERROR = "This order is collected from the studio, so it needs no courier label";
 
 /** Orders that can still get a label: paid, not yet shipped, not unwound. */
 const SHIPPABLE_STATUSES = new Set(["confirmed", "processing"]);
@@ -94,6 +98,7 @@ export async function quoteOrderShipment(
   config: EasyshipConfig | null = easyshipConfig(),
 ): Promise<OrderRatesResult> {
   if (!config) return { ok: false, status: 503, error: "Easyship is not connected (EASYSHIP_API_TOKEN is not set)" };
+  if (isSelfCollectAddress(order.shipping_address)) return { ok: false, status: 409, error: SELF_COLLECT_ERROR };
   const destination = orderDestination(order);
   if (!destination) return { ok: false, status: 400, error: "This order has no shipping address" };
 
@@ -187,6 +192,7 @@ export async function buyOrderLabel(
   if (!SHIPPABLE_STATUSES.has(order.status)) {
     return { ok: false, status: 409, error: `An order that is ${order.status} cannot be shipped` };
   }
+  if (isSelfCollectAddress(order.shipping_address)) return { ok: false, status: 409, error: SELF_COLLECT_ERROR };
   const destination = orderDestination(order);
   if (!destination) return { ok: false, status: 400, error: "This order has no shipping address" };
 

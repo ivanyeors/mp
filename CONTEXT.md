@@ -33,7 +33,7 @@ A priced, stocked unit of a **Storefront product**, linked to inventory via `ite
 _Avoid_: option (UI option values are not the variant itself)
 
 **Costings**:
-The single write surface for item and product prices: cost, MSRP, and compare-at (`item_prices`, `product_prices`).
+The single write surface for item and product prices: cost, MSRP, and compare-at (`item_prices`, `product_prices`), and for **Service** prices (`service_prices`, edited at Costings → Service fees).
 _Avoid_: pricing page, product editor (those only display mirrors)
 
 **MSRP**:
@@ -50,8 +50,12 @@ A customisation submission with optional **Authorization hold** and operator ass
 A **Result** that has not entered the money path: `mp_config_responses.status` is null. Measurements typed into the configurator and autosaved, before any **Authorization hold** and before in-store finalization. The only state a guest may write — `/api/results/hold` writes `held`, and in-store finalization writes `held` via `buildInstoreReviewOnlyPatch`, so a non-null status means the submission is live and configurator writes are refused.
 _Avoid_: "unsaved" (a Draft Result is persisted); "unfinalised" (`is_final` records that the Telegram message was sent, not a lifecycle state); cart
 
+**Paired build**:
+An **Mpillow** **Result** (the *anchor*) and an **Mbolster** **Result** (the *companion*) bought together when the Rule graph's **Flow route** to Mbolster fires: the configurator's stepper, where step 2 is the Mbolster configurator in paired mode (height only, then its own customisation page, Staff x-ray included) and can be skipped, and only once both builds are customised does the Mpillow page ask for contact and shipping (step 3) and show the summary the pair is paid from (step 4). Linked by `paired_build_id`, the anchor's id on both rows. The two share one **Authorization hold** and one checkout. Each **Result** is assigned on its own, but the shopper accepts them together into one **Order**, and may drop the Mbolster at that point. Shipping is charged once, on the anchor. Ending the anchor ends the pair; ending the companion leaves the anchor and its hold alone — until money has moved for the pair (a Balance payment paid, or the hold captured), after which the companion can no longer be dropped on its own (ADR 0026).
+_Avoid_: "bundle" (a storefront `product_type`, and a marketing claim the glossary forbids); two **Orders** for one hold; a companion accepted, released or charged shipping on its own
+
 **Result access token**:
-The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created (or at hold, for a Result that has none) and kept across re-submits, so an **Owner**'s retry never locks them out; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`).
+The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created (or at hold, for a Result that has none) and kept across re-submits, so an **Owner**'s retry never locks them out; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`). Unique across every Result except a **Paired build**'s companion, which carries its anchor's token so one link proves ownership of both builds; a companion a re-hold unlinks gives its token up.
 _Avoid_: Stripe checkout `session_id`; the **Result** id itself (an identifier, never a credential)
 
 **Owner**:
@@ -81,6 +85,10 @@ _Avoid_: **Location** (the operator-editable place a Result originated); **Disco
 **Location**:
 A physical place a **Result** can originate and an **Appointment** can be booked at. Stored in the `partners` table with `type: own | partner` — `own` = Mpillow studios; `partner` = an external clinic (**Local Ambassador**) shown on `/our-partners` when `visible`. A separate `bookable` flag (default on) says whether it takes **Appointment** bookings — `visible` never does (own studios are saved `visible=false`); the customer picker lists bookable Locations that have an address, and staff flip `bookable` from Settings → Appointments (gear sheet). Each booked event is stamped with the Location id (private extended property) and the Admin Panel calendar shows the Location as a coloured **dot** with a legend. Operators pick a Location per **Result** (distinct from the auto **Source** badge) and manage the list under Settings → **Locations**.
 _Avoid_: conflating with **Source** (auto channel provenance), **Discovery source**, or **Entry source**; calling an `own` studio a partner; a separate `locations` table (it is the `partners` table extended — ADR 0012)
+
+**Self-collect**:
+A shipping method whose `collect_location_id` names the own **Location** (studio) the customer collects from, instead of a courier delivering. Offered on customisations only (the configurators, the Assisted finish and Staff re-configure), never in shop checkout. The customer gives only who collects; the **Result**, and the **Order** made from it, carry the studio's address with the customer as recipient and a `collect_location` marker, so every "has an address" check holds, the Order is not born delivered, and no courier label can be bought for it. Always a flat rate. A **Paired build**'s Mbolster is collected with its Mpillow.
+_Avoid_: "pickup" (Easyship's word for where a courier collects parcels from us); a null shipping address (that means an in-store handover or an unfinished Assisted customisation)
 
 **Visitor**:
 A long-lived anonymous browser identity for journey analytics, distinct from **Customer** until a deterministic link (email or **Customer**) merges them.
@@ -143,7 +151,7 @@ _Avoid_: treating it as a stored flag, a **triage** state, or something **Staff*
 
 **X-ray editor** (pillow fillings):
 The editable **Placement** surface: the pillow silhouette with dive-into-a-**Section**, the radial filling picker, add/remove/drag-to-reorder **Layers**, and per-piece removal. One component, three surfaces — the configurator under **Staff assist mode**, Configure → **Filling Template**, and **Result** detail assign — so **Staff** learn the interaction once. Renders read-only (no edit affordances) when given no filling **Items** and no change handler, which is how the shopper's completed-preview x-ray uses the same renderer. Visual guardrails are ADR 0009; **Mbolster** uses its ordered compartment list instead and never the 3×3 pillow metaphor.
-Every surface shows the **Derived pack list** beside it, and removing a filling there removes all of its pieces.
+Every surface shows the **Derived pack list** beside it, and removing a filling there removes all of its pieces. Configure → **Filling Template** and the configurator under **Staff assist mode** dock the dived **Section**'s controls off the pillow art in the same Section editor panel (`XraySectionDock`) on a desktop or tablet; **Result** detail assign still edits them on the pillow, and phones keep them in the dock under it.
 _Avoid_: calling the shopper's read-only preview x-ray an **X-ray editor**; the retired 3×3 **cell** grid of dropdowns (deleted — it was a second, divergent filling editor); assuming "editor" implies a separate component from the preview renderer
 
 **Neck support** (Cervical Neck Support):
@@ -166,13 +174,17 @@ _Avoid_: refusing a save on `over`; storing the status; a second rule set for th
 A live cut of the pillow beside every x-ray, on all three surfaces and the shopper's read-only preview: **Across** (left, centre, right **Sections** at a chosen **sub-section**) or **Along** (front, middle, back of the dived **Section**). The shell is a lens per **Section** at that Section's max **Loft**; each **Layer** a slab of its compressed thickness in the filling's colour, hatched when compressed, through the loft line in red when `over`. Reads the same fit object the x-ray uses; recomputes nothing.
 _Avoid_: a second fit computation for the cut; edit affordances on the shopper's cut
 
+**Soft cut**:
+How the **Cross-section view** draws its pieces (ADR 0025): the fit's pieces, stacked gravity-first one **Layer** at a time from the back panel up, settled as soft bodies — each pouch fixed-length fabric held out by its fill, a **Neck support** a roll that flattens where it rests and is pressed — a little when firm; set soft, it shares a crowded cell's squeeze as far as fully squashed — inside a case that behaves as cloth: slack and sagging below its sewn outline when under-filled, standing to it when full. Display only: the spans, **Layers**, thicknesses and **Fit status** are the fit's, and nothing it draws feeds back. Deterministic, one outline per piece with a gap between. Tuned and switched off in Settings → Inventory → Configure → **Soft body**, one stored value for every surface.
+_Avoid_: reading a loft or fit number off the soft shapes; "physics" for the fit model (the fit is arithmetic; only the drawing is physical); merging pieces into one mass
+
 **Nudge**:
 A fine, millimetre-step move of one piece within its **cell** (slice 08, gated on the calibration sign-off), persisted as visual-only offsets that never change the **cell**, the **Layer** or the **Insert order** — so the pack list and the fingerprint cannot see it. Distinct from a move, which changes the **cell** or **Layer**.
 _Avoid_: letting a nudge cross a cell edge; reading offsets into anything but the drawing
 
 **Natural settle**:
 A display-and-fit pass between layout and fit: a pouch spreads front-to-back into an empty neighbouring **sub-section** of its own **Section** and **Layer**, thinning by volume (never below its minimum thickness), on screen and in the **Loft** arithmetic. The pillow's protector walls the three **Sections** and nothing else, so settle never crosses a Section and applies to every pillow **Size**; a product whose sub-sections are physically walled turns it off. Two views of one recipe: **Authored** — the **cells** as **Staff** placed them, shown in the dived **Section** with the settled outline as a ghost — and **Settled** — what the chamber does, the default everywhere else. It writes nothing: the **Placement** rows, the pack list, the fingerprint and **Promote** grouping are untouched.
-_Avoid_: rewriting a **Placement**'s cell because it settled; spreading across a **Section** wall or a **Layer**; dynamic physics (gravity, sag between Layers) — settle is static and per plane
+_Avoid_: rewriting a **Placement**'s cell because it settled; spreading across a **Section** wall or a **Layer**; dynamic physics (gravity, sag between Layers) — settle is static and per plane (the **Soft cut** draws the physics, after settle, without changing it)
 
 **Size membership** (Filling Templates):
 The set of size keys a **Filling Template** serves, stored in `bom_template_keys` and the single authority for "does this recipe apply here". `bom_templates.key` survives as the **primary** key and is kept in step with the canonically-first member by the one writer that changes membership, so it is always a real member — a partial answer, never a divergent one. At least one size is required; a template serving none would be invisible in every list with no way back. Editing a shared recipe edits it for every size it serves, so the editor warns and offers a per-size copy (the **Fork**) rather than letting a size diverge by accident. Deleting is likewise not scoped to the size on screen. Past **Results** are unaffected either way: a **Filling configuration** is a snapshot, so a build already assigned keeps the mix it was built with.
@@ -187,6 +199,18 @@ _Avoid_: showing a Cover Style picker on mbolster-config; treating bolster prote
 
 **Add-on**:
 An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Visualize** overlays).
+
+**Service**:
+A priced act of labour Mpillow performs that consumes no inventory. Exactly three: Measurement (Premium), Measurement (Basic) and Re-adjustment, keyed `measurement_premium` / `measurement_basic` / `readjustment`. Priced in **Costings** (`service_prices`) and never an **Item**; a fourth is a migration plus a rule in code, never a row an operator invents (ADR 0024).
+_Avoid_: an **Item** with a "service" category; an **Add-on**; "product"
+
+**Service fee**:
+The amount charged for a **Service** on a **Result** or an **Order**: the **Service**'s MSRP in **Costings**, never typed by **Staff** and never taken from a client. On an **Order** it is its own line (`order_items.kind = 'service'`) — never shipped, never stock-deducted, never returnable through RMA, outside the commission base and the free-shipping threshold, inside the taxable base.
+_Avoid_: "fee" alone in money-ledger context (`order_payments.type = 'fee'` is Stripe's dispute fee — a cost to us, not a charge to the customer); "surcharge"
+
+**Measurement service**:
+**Staff** measuring a customer for a customisation. Charged automatically when the **Result**'s `measured_by_type = 'staff'`, at the rate for its **Tier** (`assigned_tier ?? suggested_tier`): Premium → Measurement (Premium), Basic → Measurement (Basic). **Mbolster** carries no measurement fee, whoever measured (owner, 2026-10-13). Self-measurement online is free. Derived on every repricing from who measured — never stored as its own flag.
+_Avoid_: a customer-ticked option in the configurator; treating the "Have us measure you" link as the charge (the link books the visit; the charge follows who measured); "customisation charge"
 
 **Authorization hold**:
 An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
@@ -206,8 +230,8 @@ Same money path: hold → **Result** → assign → Accept → capture → **Ord
 _Avoid_: conflating soft “low stock” badges with Pre-order; calling the held **Result** an **Order** before Accept + capture; “Purchase” as the hold CTA (payment is still an **Authorization hold**); UI-only Pre-order that vanishes after Stripe; bolster-only rules; CMS editing of waiting-time copy in v1; manual restock notice as the v1 path; inventing a per-SKU ETA field in v1
 
 **Appointment**:
-A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013).
-_Avoid_: Order, Result, Customer journey (appointments are not linked to Orders in v1); the retired Google Appointment-Scheduling iframe (booking is now first-party)
+A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013). A **Re-adjustment appointment** is linked to a **Customer**, a purchase and (when paid) an **Order** through its **Re-adjustment booking**; a **Customisation appointment** is still linked to nothing.
+_Avoid_: Order, Result, Customer journey (a Customisation appointment is not linked to an Order); the retired Google Appointment-Scheduling iframe (booking is now first-party)
 
 **Appointment reminder**:
 A WhatsApp utility message for an **Appointment** — day-before Confirm/Reschedule, optional morning-of nudge, or cancel + rebook link.
@@ -219,6 +243,18 @@ _Avoid_: mp-config **Result** (digital submission flow)
 
 **Re-adjustment appointment**:
 An **Appointment** for post-purchase fitting/adjustment; type inferred from calendar event summary match strings.
+
+**Re-adjustment**:
+A post-purchase visit to re-tune one purchased pillow or bolster — booked as a **Re-adjustment appointment** by a signed-in **Customer** against one purchase, recorded as a **Re-adjustment booking**. Costs the Re-adjustment **Service fee** unless it is a **Complimentary re-adjustment**. One booking re-adjusts one pillow.
+_Avoid_: an anonymous **Appointment** (the pre-ADR-0024 state); "readjust" in UI copy
+
+**Complimentary re-adjustment**:
+A **Re-adjustment** charged nothing. **Premium Mpillow only**; `readjustment_free_visits` (default 1) per unit, while the booking date is within `readjustment_free_window_days` (default 60) of the purchase's `orders.paid_at`, counted in Singapore calendar days with the purchase day as day 0. A booking that is booked, attended or a no-show uses one; one that is cancelled or expired gives it back. Decided server-side by `evaluateReadjustment` (`lib/readjustment/eligibility.ts`).
+_Avoid_: "warranty" (the 10-year fillings warranty is separate and still charges the fee); computing it on the client; Basic Mpillow or **Mbolster** (always charged)
+
+**Re-adjustment booking**:
+The `readjustment_bookings` row linking a **Customer**, one purchase (an `order_item`, or "not listed"), a slot, a **Location**, and either *complimentary* or a paid service **Order**. What **Staff** read at the visit; its id rides on the calendar event as a private extended property.
+_Avoid_: conflating with `appointment_reminders` (WhatsApp reminder state keyed by calendar event — unchanged); a payment recorded on the booking instead of an **Order**
 
 **Appointment RSVP status**:
 The customer's Google Calendar invite response on an **Appointment** event — `accepted | declined | tentative | needsAction` (mirrors Google's `responseStatus`). Read live from the guest attendee on the central-calendar event (no local store) and shown in the **Admin Panel** calendar as a status **icon** + left-border accent (`accepted`→**Confirmed** tick green, `declined`→**Declined** cross red, `tentative`→**Tentative** question amber, `needsAction`→**Invited** envelope gray; a Google-cancelled event, listed only when the admin opts in, shows **Cancelled** ban struck-through), alongside the event **type** icon (Customise sparkle / Readjust refresh) — two visual channels: fill + icon = type, icon + accent = RSVP. The chip is one line (type icon · guest name · status icon; no time, no type text). Icon + label are spelled out in the legend and the event click-detail sheet. Requires **email** to be required (so the guest is always an attendee) and `sendUpdates: "all"` on `events.insert`/reschedule (so Google actually sends the invite the customer responds to). Applies to the customer even when Staff books on their behalf — the invite still lands on the customer's email.
@@ -237,8 +273,36 @@ The signed-in **Customer** account entry from the storefront Menu pill (opens `/
 _Avoid_: adding a second Profile control on the landing dock
 
 **Staff**:
-An authorized back-office actor: active row in `admin_users`, or bootstrap allowlist. Shares the same Supabase session as a possible **Customer** record; when both apply, **Staff** wins for Menu chrome.
+An authorized back-office actor: a signed-in, active **Member** (or bootstrap allowlist). Shares the same Supabase session as a possible **Customer** record; when both apply, **Staff** wins for Menu chrome.
 _Avoid_: treating every signed-in user as staff; calling the back office “Settings” in UI copy; saying “admin” in product language when you mean **Staff**
+
+**Users & permissions**:
+The **Admin Panel** page at `/settings/users` that manages **Members**, **Roles**, **Staff profiles** and **Telegram links** in one place, built like GitHub's organisation settings (ADR 0023). Tabs: Members, Staff profiles, Roles (the permission matrix) and Telegram. Guarded by the `users` **Permission**.
+_Avoid_: "Admin Users" and "Staff Management" (retired page names — their URLs redirect to the matching tab)
+
+**Member**:
+One **Admin Panel** login: an `admin_users` row, bound to an auth user on first sign-in with the invited email. Holds exactly one **Role**. States: **Invited** (no auth user bound yet), **Active**, **Deactivated**. A signed-in active Member is **Staff**. A Member can hold several **Staff profiles** (a shared studio account) or one (a personal login).
+_Avoid_: "admin user" (collides with the **Admin** role); "user" in code (collides with **Customer** and `by_user`); a Member as a person — the person is the **Staff profile**
+
+**Role**:
+A named set of **Permissions** (`admin_roles`). **Owner** and **Admin** are built in, locked, and grant every permission, including pages added later. Every other role is a **custom role**: editable on **Users & permissions** → Roles, and granted a new page only when someone ticks it. Nobody who is not Owner or Admin can create, edit or assign a role that holds a permission they lack.
+_Avoid_: treating the role name as the authority — code checks **Permissions**, never role names; per-member exceptions (a one-off access pattern is a new custom role)
+
+**Permission**:
+One entry in the code catalog (`lib/auth/permissions.ts`): an **Admin Panel** page (one sidebar entry, its URL and every API behind it) or a **Telegram action**. A **Role** either has it or does not; there is no per-member override, and no view-only level except on Customers, where `customers` is seeing the page and `customers-edit` is making changes (ADR 0028 i). Some pages require another (Page Builder, Blogs, Partners and Products pick images, so they require Media); ticking one ticks its requirements.
+_Avoid_: "scope"; a key that gates several pages (the catalog is one key per page); hiding a page in the sidebar as the only protection — its URL and APIs refuse too
+
+**Owner**:
+The built-in **Role** that can grant or remove Owner. There is always at least one active Owner; the last one cannot be demoted or deactivated. A bootstrap-allowlisted email that signs in with no **Member** row is provisioned as Owner.
+_Avoid_: using Owner for day-to-day access — **Admin** has every page too
+
+**Staff profile**:
+A named person who works under a **Member** (`mp_staff`). A **Result** is "measured by" a Staff profile, and a **Telegram link** belongs to one. A profile cannot sign in and never has more access than its Member. Archived, never deleted, so historical attribution survives; archived profiles drop out of pickers but keep their name on old **Results**. On a shared login, the person at the device can pick who they are "working as", which defaults new Results' measured-by and names them in the Audit Log — attribution, never authorisation.
+_Avoid_: "staff member" (ambiguous with **Staff**); treating a profile as a login
+
+**Telegram link**:
+A **Staff profile**'s bound Telegram user id (redeemed with a one-time `/link` code) plus the **Telegram actions** granted to it (reply to Google reviews, moderate **Shop reviews**). Effective access = the Member's **Role** permissions ∩ the link's granted actions, and only while the profile and the **Member** are both active — deactivating a login silences every Telegram account under it.
+_Avoid_: a list of Telegram people separate from logins (the retired **Telegram operator** list); granting a link an action its login's role does not hold
 
 **Staff assist mode**:
 Extra configuration controls on the customisation preview (**Your Custom Mpillow** / parallel bolster preview) that appear only when **Staff** is signed in. Used on a shared in-store device — the shopper uses Staff’s device; no separate customer session or multi-device sync. Guests (no **Staff** session) see the normal preview with no filling editors — cover/case/**Add-on** flow unchanged. Layout: **left** = pillow silhouette (cover/case overlays + selected **Add-on** preview images under it) and, when Staff, the **x-ray filling editor**; **right** = shopper controls including **Add-on** selection, cover, case, contact, discovery, shipping, hold CTA.
@@ -257,7 +321,7 @@ A **Customisation session** a **Staff** member originates with an **Assist link*
 _Avoid_: **Staff assist mode** (a shared in-store device with **Staff** at the controls and extra editors on the preview, gated on the `results` permission — the assisted customer is not **Staff**, is not in the room, and sees none of that chrome); **Partner-assisted customisation** (the partner's device, launched from **Partner Hub**, an **Authorization hold** taken up front, a **Referral** stamped for **Commission**); "staff assist" as shorthand for this in commit messages, code, or copy — it names the other thing; calling the unpaid submission an **Order**
 
 **Customer**:
-A shopper account identity after Sign in when the session is not **Staff**. Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
+A shopper's record (`customers` row), created at checkout, at **Sign in**, or by the Shopify import. It **has an account** once a **Sign in** is bound to it (`auth_user_id`). Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
 _Avoid_: conflating with **Customer preference** (cover/case choices only)
 
 **Order**:
@@ -270,11 +334,37 @@ _Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-sto
 
 **Shopify order mirror**:
 Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Distinct from `shopify_sales_queue` (ops inventory commit). Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only.
-_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth
+_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
 
 **Others**:
 Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
 _Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
+
+## Shopify customer migration (ADR 0029)
+
+**Migrated customer**:
+A **Customer** whose row was created or enriched from the Shopify customer export. It carries one `migrated_customers` row: Shopify customer id, Shopify-era order count and spend, Shopify tags and note, the consent snapshot, the **Import batch** and `claimed_at`. Readable by the service role only.
+_Avoid_: "imported account" or "migrated account" — no login moved, and Shopify credentials never leave Shopify; until it is **Claimed**, a Migrated customer is a row, not an account; writing Shopify-era figures into `customers.total_orders` / `total_spent` — those are platform-derived and recomputed by `updateCustomerStats`
+
+**Claim**:
+The first **Sign in**, after import, by the person who owns a **Migrated customer**'s email. `linkCustomerToAuthUser` binds `auth_user_id` as it would for any customer row. The Claim stamps `claimed_at` and grants the **Claim bonus** (ADR 0030), both in one transaction and both exactly once.
+_Avoid_: "invite" or "activation" — nothing is created in `auth.users` before the person signs in, and no Supabase invite is sent
+
+**Claim link**:
+The per-customer link in a campaign email, `/account/welcome?c=<token>`. The token is opaque; only its hash is stored. It prefills the email on the welcome page and attributes the click.
+_Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
+
+**Marketing consent**:
+Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is appended to `customer_consent_events`.
+_Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked"
+
+**Import batch**:
+One import that wrote to the database, run from **Admin Panel** → Customers → Import from Shopify. It records the file's name and SHA-256, the counts by outcome, the **Staff** who ran it, and when. It is the unit of reconciliation, of resume, and of undo.
+_Avoid_: "upload" — the file itself is never uploaded or stored; the browser reads it and sends rows
+
+**Account status**:
+Whether a **Customer** row is bound to a login: *Signed up* (since `account_linked_at`) or *No account*. It is derived from `auth_user_id` in the Customer overview (`admin_customer_overview`), never stored as text. It applies to every **Customer**, not only Migrated ones. For a **Migrated customer**, *Signed up* and **Claimed** usually coincide. They differ when the person already had an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their next **Sign in**.
+_Avoid_: "registered", "member" (a **Member** is **Staff**) or "active" for this; reading *Signed up* as **Claimed**
 
 ## Rules Engine (recommendations)
 
@@ -297,11 +387,11 @@ Maps a numeric input to a named band via ordered ranges that must be contiguous 
 Branches on an enum/boolean input, one edge per value.
 
 **Combine node**:
-ANDs multiple branches (e.g. three measurement ranges must all match). Disjunction is expressed with parallel **Match** branches, not an OR node.
+ANDs multiple branches (e.g. three measurement ranges must all match) — or, set to **any**, fires on the first branch that does (e.g. "not stomach" = side, back or mixed). Use **any** for a disjunction that feeds an AND; parallel branches into a terminal still OR on their own (ADR 0027).
 
 **Terminal**:
-A leaf that resolves the evaluation: **Size output** (size or bolster length), **Template output** (a **Filling Template** scoped to the resolved size), **Tier suggestion** (advisory copy only — never changes the sold product), or **Flow route** (upsell/cross-sell to another flow via the **Upsell card**).
-_Avoid_: a Template output pointing across sizes; Tier suggestion mutating the held product or amount
+A leaf that resolves the evaluation: **Size output** (size or bolster length), **Template output** (a **Filling Template** scoped to the resolved size — either one size, or **by size**: one template per size, the resolved size picking the slot, so the branches before it need not split by size; with no slot for that size it has not fired, ADR 0027), **Tier suggestion** (advisory copy only — never changes the sold product), or **Flow route** (upsell/cross-sell to another flow via the **Upsell card**).
+_Avoid_: a Template output pointing across sizes; threading size through Combines only to reach per-size Template outputs (use one by size); Tier suggestion mutating the held product or amount
 
 **Fallback**:
 The per-graph default terminal when no path matches. Publish requires it reachable, and every **Flow route** terminal needs a same-flow fallback sibling so declining an upsell always lands on a sellable result.
@@ -311,7 +401,7 @@ The engine's output persisted on the configurator response and copied to the **R
 _Avoid_: conflating with **Filling configuration** snapshot; treating it as binding on production
 
 **Evaluation trace**:
-The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to shoppers in plain language, to operators at assign, and replayable on the canvas.
+The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to operators at assign, and replayable on the canvas. Shoppers see no why line: band and match detail is lost once answers meet a **Combine node**, so a trace-built line named only the shoulder band and never what chose the template. It returns when a reason covering the whole decision replaces it.
 
 **Upsell card**:
 The consent surface on the completed preview when a **Flow route** fires: reason from the fired path, both prices, Upgrade / Keep. Accept carries shared answers over and collects only the missing target-flow steps; Decline keeps the same-flow fallback result. All routing resolves before the Stripe hold.
@@ -358,8 +448,86 @@ Which kind of reply a **Google review** gets, chosen from its star rating in cod
 _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
 
 **Telegram operator**:
-A person allowed to press buttons on **Review cards** or answer **Message cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Three roles: **Review manager** (replies on Google, moderates **Shop reviews**, answers **Customer messages**), **Shop moderator** (**Shop reviews** only) and **Inbox agent** (**Customer messages** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
-_Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login
+Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards**, or answer **Message cards**, only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action (Reply to Google reviews, Moderate shop reviews, Answer customer messages) can act. The old **Review manager** maps to replying on Google and moderating **Shop reviews**, **Shop moderator** to moderating **Shop reviews** only; nobody has Answer customer messages until a role and a link are given it.
+_Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
+
+## Customer CRM (ADR 0028)
+
+**Customer note**:
+A dated, authored remark by **Staff** about a **Customer**, in `customer_notes`. Only the service role can read it. Notes are never edited; a correction is a new note.
+_Avoid_: `customers.notes` — the **Customer** can read their own row (`0037_customer_auth.sql:14-18`), so that column is retired
+
+**Customer timeline**:
+Everything that happened with a **Customer**, newest first, merged when it is read from the tables that already record it: **Orders**, **Results**, **Re-adjustment bookings**, **Returns**, reviews, emails, **Customer notes** and **Follow-ups**. Each kind is shown only to **Staff** holding that source's **Permission**.
+_Avoid_: "activity log" or "events table" — nothing is copied
+
+**Segment**:
+A named, saved set of Customers-list filters, shared by all **Staff** with `customers` and counted live. A **Segment** and the same filters in the URL always return the same **Customers**.
+_Avoid_: "list" (a Segment is a query, not a frozen set of people); "audience" (that is email marketing's word for a Segment narrowed by consent)
+
+**Follow-up**:
+A dated to-do about one **Customer**, assigned to a **Staff profile**, and done or not done.
+_Avoid_: "task" or "ticket" (it is not a support queue); assigning it to a **Member** or a login — a person works as a profile
+
+**Aftercare message**:
+A service message, by email and WhatsApp, about something the **Customer** bought. There are two: the **Review request**, once per Customer, 14 days after delivery; and the **Check-up reminder**, yearly, stating that the visit is paid and its fee. Email uses the transactional transport and is on unless switched off (`aftercare_email`). WhatsApp is off until the customer opts in (`aftercare_whatsapp`). Every change is recorded with who made it and how. Neither ever carries an offer.
+_Avoid_: calling it marketing, or gating it on **Marketing consent** (migration PRD) — the one exception is the **Check-up reminder**, which offers a paid visit and so goes only to customers who agreed (ADR 0028 h); anything promotional belongs to `PRD-email-marketing`; an email about the free re-adjustment window (there is none, owner, 2026-10-20)
+
+**Review request**:
+The one message, by email and (when they opted in) WhatsApp, that asks a **Customer** for a **Google review**, with an unconditional *"need anything else? message us"* line. It goes once per Customer, ever, to every eligible Customer alike.
+_Avoid_: choosing who is asked by satisfaction, returns or ratings, or offering anything for a review — both break Google's review policy
+
+**Linked Google review**:
+A **Google review** that **Staff** have confirmed belongs to a **Customer**. Google never says who wrote a review, so the code only suggests a match, from the name and the timing of a **Review request**.
+_Avoid_: linking automatically; treating a review-link click as proof of a review
+
+**Contact status**:
+What is known about how to reach a **Customer**, each part derived from a fact: *Verified email* (they have signed in with it); *Sign-in methods* (emailed code, Google); *Valid mobile* (the number on file passes `isValidPhone`); *Replied on WhatsApp* (the number has written to our WhatsApp line, as recorded in `whatsapp_inbound`).
+_Avoid_: "verified mobile" — nothing verifies a phone number by code; letting **Staff** tick "verified"
+
+## Loyalty points (ADR 0030)
+
+**Points**:
+A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, and from a one-time **Claim bonus**. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
+_Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
+
+**Points ledger**:
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
+_Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
+
+**Pending points**:
+What a paid **Order** will earn once its return window closes, 30 days after delivery. They are computed from the Order and are not in the ledger until then.
+_Avoid_: letting pending points be spent, or counting them in the balance
+
+**Claim bonus**:
+1,000 points a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
+_Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
+
+**Milestone bonus**:
+Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, expiry, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
+_Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the bonus); conflating it with the partner **Milestone track** (units, cash and rate bumps); counting the balance towards it
+
+**Points expiry**:
+The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.
+_Avoid_: expiring points per batch, or describing expiry as fixed at earning time
+
+## Email marketing (PRD-email-marketing)
+
+**Email campaign**:
+A marketing email **Staff** write in **Admin Panel** → Email campaigns (`email_campaigns`): a subject, an inbox preview line, a plain-text body and at most one button, sent to one **Audience** in **Waves**. Its sends are rows of the campaign ledger, `customer_campaign_sends`, under `campaign:<id>`, so no **Customer** gets the same campaign twice. Once its first Wave starts, its email and Audience are fixed; a changed email is a duplicate.
+_Avoid_: "newsletter" or "blast"; sending one through the transactional mailbox (never: campaign mail goes through its own Resend subdomain); putting a **Review request** or an **Aftercare message** in one
+
+**Audience**:
+Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
+_Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
+
+**Email template**:
+The words of one email the platform sends (an order confirmation, a return update, a customisation notice…): its subject, inbox preview line, heading, messages and button labels, with placeholders such as `{order_number}`. Owner and Admin edit them on **Admin Panel** → Email templates (`email_template_copy`); the layout, the data (items, amounts, addresses, codes, links) and the footer stay in code. An unedited email sends its original words, and any failure to read an edit falls back to them.
+_Avoid_: "template" for the layout or design (that is fixed); calling an **Email campaign** a template (each campaign is written once, on its own page)
+
+**Wave**:
+One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
+_Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
 
 ## Customer messages (PRD-social-inbox)
 
@@ -368,7 +536,7 @@ A direct message someone sends Mpillow on Facebook Messenger, Instagram or TikTo
 _Avoid_: "chat" or "lead" for the stored row; mixing these with WhatsApp (the staffed WhatsApp line is answered in the Business app, and the Cloud API number only sends appointment reminders)
 
 **Message card**:
-The Telegram message in the measurements group for one inbound **Customer message**, headed `💬 FACEBOOK MESSAGE`, `💬 INSTAGRAM DM` or `💬 TIKTOK DM` and the person's name, threaded under their previous card. An **Inbox agent**'s reply to it (or to the bot's `📤 Sent` / `↪️ Answered in` notes under it) is sent to that person on that platform.
+The Telegram message in the measurements group for one inbound **Customer message**, headed `💬 FACEBOOK MESSAGE`, `💬 INSTAGRAM DM` or `💬 TIKTOK DM` and the person's name, threaded under their previous card. A reply to it (or to the bot's `📤 Sent` / `↪️ Answered in` notes under it) from someone allowed to **Answer customer messages** is sent to that person on that platform.
 _Avoid_: calling it a **Review card** — those carry buttons and a draft; a Message card is answered by replying
 
 **Team note**:
@@ -381,19 +549,31 @@ _Avoid_: retrying a refused reply from Telegram — the platform will refuse it 
 **Echo**:
 A message our own account sent, reported back by the platform. The echo of a reply sent from Telegram is matched and ignored; one sent from Meta Business Suite, the Instagram app or TikTok is recorded and noted under the card as `↪️ Answered in …`. TikTok's automatic messages (welcome message, suggested questions, keyword replies) are not echoes a person sent and are dropped.
 
-## Shipping (ADR 0020, ADR 0022)
+## Shipping (ADR 0020, ADR 0022, ADR 0031)
 
 **Shipping method**:
 A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express), scoped to `countries`. Its **Rate source** decides how it is priced; `free_above` and free-shipping coupons apply to either source. Edited in Settings → Shipping.
 _Avoid_: "courier" (a method may be served by different couriers per address)
 
+**Delivery country**:
+A country at least one active **Shipping method** lists. Checkout and the delivery checker offer exactly these, so adding a country to a method is what offers it; there is no other list. Countries come from the country catalog (`lib/shipping/countries.ts`): name, region, the main city a quote sends when the shopper has given none (and, in the countries where Easyship needs a state, the state the postal code is in: `lib/shipping/states.ts`), and a sample postal code, or none where the country has no postal codes (Hong Kong, the UAE), in which case the postal code is optional.
+_Avoid_: a country list hardcoded in a page; "shipping zone" (methods list countries, not zones)
+
+**Courier coverage**:
+Whether the **Courier account** gets at least one courier rate for a country, checked live in Settings → Shipping → Coverage by quoting one boxed item to the country's main city. Shown, never stored: it answers which countries are safe to add to a live method, and each checkout still quotes its own address.
+_Avoid_: treating a covered country as offered (only a method's `countries` offers it); a stored coverage table
+
 **Rate source**:
-How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is its customisation order rate: Results charge it flat because they don't quote couriers. It is never charged at checkout.
+How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**, the default for new methods). A live method's `base_rate` is never charged: checkout and the customisation flows both quote couriers, and a Result keeps its **Result shipping rate**.
 _Avoid_: "fallback rate" — a live method with no quote is hidden, not priced flat (ADR 0022)
 
 **Live rate**:
 The price of an Easyship **Shipping method** for one cart to one postal code: Easyship's courier price for the courier the method's strategy picks (`cheapest`, `fastest`, `best_value`, or one pinned **Courier service**), plus the method's markup, rounded up to its increment. Quoted by the server from the **Variants** in the database — never from a client price — and cached as a **Rate quote**.
 _Avoid_: treating it as a stored price on the method; showing a live rate the checkout route would not charge
+
+**Result shipping rate**:
+The **Live rate** a customisation was quoted for its address when its shipping was chosen (hold, finish, or a Staff re-configure that changed the method or postal code), stored on the Result as `shipping_rate`, before `free_above`. Every later repricing charges it, so assign and accept ask for the figure the customer saw. A Paired build's is quoted for both boxes on the anchor (ADR 0032). Null for a flat method, Self-collect, or a companion: those charge `base_rate`.
+_Avoid_: re-quoting couriers at assign or accept; charging a live method's `base_rate` on a Result
 
 **Hidden live method**:
 A live method with no quote for this cart and address (no token, couriers down, wrong currency, no box for an item type, or no allowed courier serves it) is left out of checkout. Only an active flat method guarantees the shopper an option, and the Shipping page warns when there is none.
@@ -434,6 +614,8 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 - Fillings live only in **Filling Templates** — never in composed sellable BOM or warehouse presets. Legacy filling rows are migrated into Filling Templates (seed defaults per product card), then removed from live BOMs
 - Fillings affect COGS/fulfillment only; sell price is **Costings** **MSRP** for the composed sellable plus preference/add-on item **MSRP**s, plus shipping and tax
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
+- A **Result** measured by **Staff** carries a **Measurement service** **Service fee**; on its **Order** that fee is a second line beside the build
+- A paid **Re-adjustment** is an **Order** with one **Service fee** line; a **Complimentary re-adjustment** has a **Re-adjustment booking** and no **Order**
 - An **Assisted customisation** takes **no Authorization hold**; its **Result** reaches **Order** through a **Balance payment** for the full price after **Staff** assign the build in the **Admin Panel** — same Accept, same **Order**, no **Referral** and no **Commission** (ADR 0016)
 - A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Visualize** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
 - **Product Visualize** (tab on Store → Products) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Visualize when needed).

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ExternalLink, Package, Truck } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -18,6 +19,7 @@ import {
   isResultCustomisedOrder,
 } from "@/lib/results/post-delivery-refund";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { orderEarnLine, pointsUsedRow, readOrderPoints } from "@/lib/points/order";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   evaluateEligibility,
@@ -30,6 +32,11 @@ import {
   type RmaIneligibleItem,
 } from "./rma-actions";
 import { OrderRefundActions } from "./refund-actions";
+import { getMessages } from "@/lib/i18n/messages";
+import type { ReadjustmentQuote } from "@/lib/readjustment/eligibility";
+import { quoteBadge } from "@/lib/readjustment/format";
+import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
+import { collectLocationOf } from "@/lib/shipping/self-collect";
 
 export default async function AccountOrderDetailPage({
   params,
@@ -42,11 +49,48 @@ export default async function AccountOrderDetailPage({
   const user = await getAuthUser();
   if (!user) redirect(withLocale("/account/login", locale));
 
-  await linkCustomerToAuthUser(user);
+  const customer = await linkCustomerToAuthUser(user);
   const order = await getCustomerOrderByNumber(decodeURIComponent(orderNumber));
   if (!order) notFound();
 
   const items = order.items ?? [];
+
+  // Re-adjustment (ADR 0024): each pillow or bolster line can start a booking,
+  // with the same server quote the booking page shows; a line with one coming up
+  // shows it instead. Best-effort — the order page never fails on this.
+  const readjustT = getMessages(locale).slides.bookAppointment.readjust;
+  const [readjustCtx, upcoming] = await Promise.all([
+    loadReadjustmentContext(supabaseAdmin(), customer.id).catch(() => null),
+    (async () => {
+      const { data } = await supabaseAdmin()
+        .from("readjustment_bookings")
+        .select("order_item_id, start_at, location_name")
+        .eq("customer_id", customer.id)
+        .eq("status", "booked")
+        .gt("start_at", new Date().toISOString())
+        .in("order_item_id", items.map((i) => i.id))
+        .order("start_at", { ascending: true });
+      return data ?? [];
+    })().catch(() => []),
+  ]);
+  const quoteByItem = new Map<string, ReadjustmentQuote>(
+    (readjustCtx?.purchases ?? []).map((p) => [p.orderItemId, p.quote] as const),
+  );
+  const upcomingByItem = new Map<string, { start_at: string; location_name: string }>();
+  for (const b of upcoming) {
+    if (b.order_item_id && !upcomingByItem.has(b.order_item_id as string)) {
+      upcomingByItem.set(b.order_item_id as string, { start_at: b.start_at as string, location_name: b.location_name as string });
+    }
+  }
+  const visitLabel = (iso: string) =>
+    new Intl.DateTimeFormat(locale === "zh-CN" ? "zh-CN" : "en-SG", {
+      timeZone: "Asia/Singapore",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iso));
   const address = order.shipping_address;
   const isResultOrder = isResultCustomisedOrder(items);
   const canRequestRefund =
@@ -56,10 +100,15 @@ export default async function AccountOrderDetailPage({
   // Per-item RMA eligibility (ADR 0011). Same pure rule set the server insert
   // uses; alreadyReturnedQty comes from open RMAs on this order (service role).
   const admin = supabaseAdmin();
-  const [alreadyReturned, settings] = await Promise.all([
+  // Points (PRD-loyalty-points slices 03, 04): what the order spent and what
+  // it earns. A failed read only leaves the lines out.
+  const [alreadyReturned, settings, points] = await Promise.all([
     openReturnedQtyByOrder(admin, order.id),
     getSiteSettings(["rma_return_window_days"]),
+    readOrderPoints(admin, order).catch(() => null),
   ]);
+  const pointsUsed = pointsUsedRow(Number(order.points_spent ?? 0));
+  const couponDiscount = Math.round((order.discount_amount - (pointsUsed?.dollars ?? 0)) * 100) / 100;
   const returnWindowDays =
     Number(settings.rma_return_window_days) || DEFAULT_RETURN_WINDOW_DAYS;
   const now = new Date();
@@ -69,7 +118,7 @@ export default async function AccountOrderDetailPage({
   for (const item of items) {
     const r = evaluateEligibility({
       order: { delivered_at: order.delivered_at, status: order.status },
-      item: { quantity: item.quantity },
+      item: { quantity: item.quantity, kind: item.kind },
       alreadyReturnedQty: alreadyReturned[item.id] ?? 0,
       returnWindowDays,
       now,
@@ -181,6 +230,25 @@ export default async function AccountOrderDetailPage({
                   <p className="mt-1 text-xs text-muted-foreground">
                     Qty {item.quantity}
                   </p>
+                  {upcomingByItem.has(item.id) ? (
+                    <p className="mt-2 text-xs font-medium text-primary">
+                      Re-adjustment booked · {visitLabel(upcomingByItem.get(item.id)!.start_at)} ·{" "}
+                      {upcomingByItem.get(item.id)!.location_name}
+                    </p>
+                  ) : quoteByItem.has(item.id) ? (
+                    <Link
+                      href={withLocale(
+                        `/appointments?type=readjustment&item=${encodeURIComponent(item.id)}`,
+                        locale,
+                      )}
+                      className="mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      Book a re-adjustment
+                      <span className="rounded-full border px-2 py-0.5 font-normal text-muted-foreground">
+                        {quoteBadge(quoteByItem.get(item.id)!, readjustT, locale)}
+                      </span>
+                    </Link>
+                  ) : null}
                 </div>
                 <p className="shrink-0 text-sm font-medium">
                   {formatOrderPrice(item.total_price, order.currency)}
@@ -202,10 +270,16 @@ export default async function AccountOrderDetailPage({
               <span>{formatOrderPrice(order.shipping_amount, order.currency)}</span>
             </div>
           ) : null}
-          {order.discount_amount > 0 ? (
+          {couponDiscount > 0 ? (
             <div className="flex justify-between text-green-600 dark:text-green-400">
               <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ""}</span>
-              <span>-{formatOrderPrice(order.discount_amount, order.currency)}</span>
+              <span>-{formatOrderPrice(couponDiscount, order.currency)}</span>
+            </div>
+          ) : null}
+          {pointsUsed ? (
+            <div className="flex justify-between text-green-600 dark:text-green-400">
+              <span>{pointsUsed.label}</span>
+              <span>-{formatOrderPrice(pointsUsed.dollars, order.currency)}</span>
             </div>
           ) : null}
           {order.tax_amount > 0 ? (
@@ -218,6 +292,7 @@ export default async function AccountOrderDetailPage({
             <span>Total</span>
             <span>{formatOrderPrice(order.total, order.currency)}</span>
           </div>
+          {points?.earn ? <p className="pt-1 text-muted-foreground">{orderEarnLine(points.earn)}</p> : null}
         </div>
       </section>
 
@@ -246,7 +321,9 @@ export default async function AccountOrderDetailPage({
       {/* Shipping address */}
       {address ? (
         <section className="rounded-lg border p-4">
-          <h2 className="text-sm font-medium">Shipping address</h2>
+          <h2 className="text-sm font-medium">
+            {collectLocationOf(address) ? `Collect from ${collectLocationOf(address)!.name}` : "Shipping address"}
+          </h2>
           <address className="mt-2 text-sm not-italic leading-relaxed text-muted-foreground">
             {address.recipient}
             <br />

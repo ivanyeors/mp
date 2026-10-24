@@ -9,8 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { type ApptType } from "@/lib/appointments/appt-type";
+import { isFreeVisit } from "@/lib/readjustment/eligibility";
+import { formatSgd } from "@/lib/readjustment/format";
+import {
+  ReadjustmentPurchasePicker,
+  UNLISTED,
+  type PurchaseSelection,
+  type ReadjustmentPurchaseOption,
+  type UnlistedWhere,
+} from "@/components/slide-in-pages/readjustment-purchase-picker";
 import { cn } from "@/lib/utils";
 import { trackGaEvent } from "@/lib/analytics/ga-events";
 
@@ -75,10 +86,50 @@ function icsHref(loc: Location, slot: Slot, summaryType: string, eventId: string
   return `/api/appointments/ics?${params.toString()}`;
 }
 
-export function BookingFlow({ type }: { type: ApptType }) {
-  const { m } = useI18n();
+/**
+ * A signed-in re-adjustment (ADR 0024): the customer's purchases with today's
+ * server quote, the fee for "not listed", and their account details.
+ */
+export type ReadjustmentBooking = {
+  purchases: ReadjustmentPurchaseOption[];
+  fee: number;
+  preselect: string | null;
+  prefill: { name: string; phone: string; email: string };
+};
+
+export function BookingFlow({
+  type,
+  readjustment,
+}: {
+  type: ApptType;
+  readjustment?: ReadjustmentBooking;
+}) {
+  const { m, locale } = useI18n();
+  const router = useRouter();
   const t = m.slides.bookAppointment.flow;
+  const rt = m.slides.bookAppointment.readjust;
   const typeLabel = type === "customisation" ? t.customisation : t.readjustment;
+
+  // Re-adjustment: which purchase, and — when not listed — where it came from.
+  const [selection, setSelection] = React.useState<PurchaseSelection>(() => {
+    if (!readjustment) return null;
+    const pre = readjustment.purchases.find((p) => p.orderItemId === readjustment.preselect);
+    if (pre) return pre.orderItemId;
+    return readjustment.purchases.length === 1 ? readjustment.purchases[0].orderItemId : null;
+  });
+  const [unlistedWhere, setUnlistedWhere] = React.useState<UnlistedWhere | "">("");
+  const [unlistedReference, setUnlistedReference] = React.useState("");
+  const selectedPurchase =
+    readjustment && selection && selection !== UNLISTED
+      ? (readjustment.purchases.find((p) => p.orderItemId === selection) ?? null)
+      : null;
+  // The price the server quoted; it re-quotes on submit and refuses a stale one.
+  const quote = readjustment
+    ? selection === UNLISTED
+      ? ({ complimentary: false, fee: readjustment.fee } as const)
+      : selectedPurchase?.quote ?? null
+    : null;
+  const purchaseReady = !readjustment || (selection === UNLISTED ? unlistedWhere !== "" : !!selectedPurchase);
 
   const [locations, setLocations] = React.useState<Location[]>([]);
   const [locationId, setLocationId] = React.useState<string>("");
@@ -89,12 +140,13 @@ export function BookingFlow({ type }: { type: ApptType }) {
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [slotsLoading, setSlotsLoading] = React.useState(false);
   const [slot, setSlot] = React.useState<Slot | null>(null);
-  const [name, setName] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [email, setEmail] = React.useState("");
+  const [name, setName] = React.useState(readjustment?.prefill.name ?? "");
+  const [phone, setPhone] = React.useState(readjustment?.prefill.phone ?? "");
+  const [email, setEmail] = React.useState(readjustment?.prefill.email ?? "");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [confirmed, setConfirmed] = React.useState<Location | null>(null);
+  const [redirecting, setRedirecting] = React.useState(false);
   const [confirmedEventId, setConfirmedEventId] = React.useState<string | null>(null);
 
   // Load visible locations once.
@@ -146,13 +198,76 @@ export function BookingFlow({ type }: { type: ApptType }) {
     name.trim().length > 0 &&
     phone.trim().length > 0 &&
     emailValid &&
+    purchaseReady &&
     !submitting;
+
+  /** Re-adjustment submit: free → book now; charged → Stripe Checkout, booked on payment. */
+  async function submitReadjustment() {
+    if (!readjustment || !slot || !location || !quote) return;
+    const purchase =
+      selection === UNLISTED
+        ? { unlisted: { where: unlistedWhere, reference: unlistedReference.trim() || undefined } }
+        : { order_item_id: selection };
+    const res = await fetch(isFreeVisit(quote) ? "/api/readjustments/book" : "/api/readjustments/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...purchase,
+        location_id: locationId,
+        start_iso: slot.startIso,
+        end_iso: slot.endIso,
+        guest_name: name.trim(),
+        phone: phone.trim(),
+        locale,
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    if (res.ok && body?.url) {
+      // Paid: Stripe Checkout, then /appointments/confirmed once the webhook books it.
+      setRedirecting(true);
+      window.location.assign(body.url);
+      return;
+    }
+    if (res.ok) {
+      setConfirmedEventId(body?.eventId ?? null);
+      setConfirmed(location);
+      trackGaEvent({
+        name: "book_appointment",
+        params: { location_id: String(locationId), location_name: location.name, appointment_type: type },
+      });
+      router.refresh();
+      return;
+    }
+    if (res.status === 409 && ["not_complimentary", "complimentary", "free_visit_taken"].includes(body?.code)) {
+      // The price moved under the customer: refresh the quotes, never book at the old one.
+      setError(rt.errorRequote);
+      router.refresh();
+      return;
+    }
+    if (res.status === 409) {
+      setError(t.errorSlotTaken);
+      setSlot(null);
+      setRefreshKey((k) => k + 1);
+      return;
+    }
+    setError(body?.error ?? t.errorGeneric);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit || !slot || !location) return;
     setSubmitting(true);
     setError(null);
+    if (readjustment) {
+      try {
+        await submitReadjustment();
+      } catch {
+        setError(t.errorGeneric);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     try {
       const res = await fetch("/api/appointments/book", {
         method: "POST",
@@ -205,6 +320,9 @@ export function BookingFlow({ type }: { type: ApptType }) {
         <p className="text-sm text-muted-foreground">
           {slot ? slotLabel(slot.startIso) : ""} {t.confirmedAt} {confirmed.name}
         </p>
+        {readjustment ? (
+          <p className="text-sm font-medium text-primary">{rt.confirmedFree}</p>
+        ) : null}
         {confirmed.address ? (
           <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
             <MapPin className="size-4 shrink-0" />
@@ -229,9 +347,9 @@ export function BookingFlow({ type }: { type: ApptType }) {
             setSlots([]);
             setSuggestions([]);
             setDate("");
-            setName("");
-            setPhone("");
-            setEmail("");
+            setName(readjustment?.prefill.name ?? "");
+            setPhone(readjustment?.prefill.phone ?? "");
+            setEmail(readjustment?.prefill.email ?? "");
             setError(null);
           }}
         >
@@ -243,6 +361,21 @@ export function BookingFlow({ type }: { type: ApptType }) {
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col gap-5">
+      {readjustment ? (
+        <ReadjustmentPurchasePicker
+          purchases={readjustment.purchases}
+          fee={readjustment.fee}
+          selection={selection}
+          onSelect={setSelection}
+          where={unlistedWhere}
+          onWhere={setUnlistedWhere}
+          reference={unlistedReference}
+          onReference={setUnlistedReference}
+          t={rt}
+          locale={locale}
+        />
+      ) : null}
+
       {/* Location picker */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-location">{t.locationLabel}</Label>
@@ -376,13 +509,42 @@ export function BookingFlow({ type }: { type: ApptType }) {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           required
+          // A re-adjustment's invite goes to the account that owns the purchase.
+          readOnly={!!readjustment}
+          aria-describedby={readjustment ? "booking-email-hint" : undefined}
         />
+        {readjustment ? (
+          <p id="booking-email-hint" className="text-xs text-muted-foreground">
+            {rt.emailLocked}
+          </p>
+        ) : null}
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {readjustment ? (
+        <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+          <span className="min-w-0 text-muted-foreground">
+            {rt.priceLabel}
+            {selectedPurchase ? ` · ${selectedPurchase.label}` : ""}
+          </span>
+          <span className="shrink-0 whitespace-nowrap font-medium tabular-nums">
+            {quote ? (quote.complimentary ? rt.complimentary : formatSgd(quote.fee)) : "—"}
+          </span>
+        </div>
+      ) : null}
 
-      <Button type="submit" disabled={!canSubmit} className="mt-1 h-12 text-base">
-        {submitting ? t.submitting : t.submit}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {readjustment && !purchaseReady ? (
+        <p className="text-sm text-muted-foreground">{rt.pickFirst}</p>
+      ) : null}
+
+      <Button type="submit" disabled={!canSubmit || redirecting} className="mt-1 h-12 text-base">
+        {redirecting
+          ? rt.redirecting
+          : submitting
+            ? t.submitting
+            : readjustment && quote && !isFreeVisit(quote)
+              ? rt.payAndBook.replace("{fee}", formatSgd(quote.fee))
+              : t.submit}
       </Button>
     </form>
   );

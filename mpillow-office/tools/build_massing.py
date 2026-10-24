@@ -1,130 +1,84 @@
 """
-Build the dimensioned massing model of the Mpillow showroom.
+Build a dimensioned massing model from a plan spec.
 
 This is the "floor plan -> 3D" step. No image-to-3D model can do it (they all
 reconstruct single objects, not rooms), so the geometry is computed: every
-dimension in DIMS comes from the brief, every position in the ZONES section is
-read off the page-4 plan (ref-img/floorplan/plan-p4-300dpi.png).
+number lives in a spec, plans/<name>.yaml, read off the drawing and the brief,
+and this script only turns the spec into meshes. The showroom is
+plans/showroom.yaml; a new plan is a new spec, checked against its drawing by
+tools/plan_check.py before it is built.
 
-Axes while authoring: X = length (0 = west / entry wall), Y = up, Z = width
-(0 = south / box store wall), metres -- i.e. the plan as drawn, north up. On
-export Z is mirrored (z' = W - z) so the GLB is right-handed with X east and
-Z south, which is what every Y-up viewer (ComfyUI Load3D, three.js) expects.
+    python tools/build_massing.py                       # plans/showroom.yaml
+    python tools/build_massing.py plans/<name>.yaml
 
-    python tools/build_massing.py
+Writes, into the spec's `output.dir` (model/), and copies into
+ComfyUI/input/3d/ so the Load3D nodes in the workflows can open them:
 
-Writes model/showroom_massing.glb (+ .obj) and three companions, and copies
-the GLBs into ComfyUI/input/3d/ so the Load3D nodes in the workflow can open
-them:
+  <base>.glb           the model, as drawn (+ <base>.obj)
+  <base>_cut.glb       the `cutaway` parts removed (as the iso cameras see it)
+  <base>_ids.glb       every part cut along the zone regions and painted with
+                       its zone colour (the ID model: ComfyUI's RenderMesh bakes
+                       an ID pass from it for any camera)
+  <base>_cut_ids.glb   the ID model, cutaway
+  <base>_viewer.json   every part's mesh with its item, role, colour, zone and
+                       cutaway flag, for the Admin Panel's 3D viewer
+                       (app/[lang]/settings/showroom)
 
-  showroom_massing.glb          the model, as drawn
-  showroom_massing_cut.glb      north wall and patio roof removed (cutaway, as
-                                the iso cameras see it)
-  showroom_massing_ids.glb      every part cut along the area boundaries and
-                                painted with its area colour (the ID model:
-                                ComfyUI's RenderMesh bakes an ID pass from it
-                                for any camera -- the free camera of the zoned
-                                workflow)
-  showroom_massing_cut_ids.glb  the ID model, cutaway
+Spec format
+-----------
+Axes while authoring: X = east, Y = up, Z = the plan's other axis, metres.
+With `mirror_z: <width>` Z is measured from the south wall (north up, as
+drawn) and mirrored on export (z' = width - z); without it Z already points
+south (image down). Either way the GLB is right-handed with X east and Z
+south, which is what every Y-up viewer (ComfyUI Load3D, three.js) expects.
+
+  name, vars, palette, mirror_z, output: {dir, base}, cutaway: [names]
+  zones:        [{slug, label}]  -- index n is colour ZONE_RGB[n], suffix __z<n>
+  zone_regions: [{zone, x: [x0, x1], z: [z0, z1]}]  disjoint plan boxes that
+                tile the plan; null = open. Order is the order pieces are cut.
+  items: one part each (or several, with `for`):
+    box      {name, x: [x0, x1], z: [z0, z1], y: [y0, y1], color}
+    segment  {type: segment, name, p0: [x, z], p1: [x, z], y, t, color}
+               a bar of thickness t between two plan points
+    prism    {type: prism, name, poly: [[x, z], ...], y, color}
+               any plan outline, extruded (L-shaped columns, odd floors)
+    wall     {type: wall, name, p0, p1, t, y, color, side: center|left|right,
+              openings: [{at, w, kind: door|window|opening, head, sill, glass}]}
+               `at` = distance from p0 to the opening's near edge. Pieces are
+               <name>_<k>; a head above an opening <name>_head<k>, a window
+               sill <name>_sill<k>, its pane <name>_glass<k>.
+    group    {type: group, items: [...]}
+  every item may carry  for: {var: iterable, ...}  (nested, outer first),
+  let: {var: expr}, if: expr; `name` is a str.format template over them.
+  check: wall | furniture | overhead | none  overrides how plan_check treats
+  the part (default: wall if it stands on the floor, is >= 2 m tall and not a
+  thin post; wall pieces are walls, heads overhead, sills and panes furniture).
+  A plan is a cut at about 1 m: overhead and none parts are not drawn on it.
 """
 
+import argparse
+import fnmatch
+import json
 import math
 import os
 import shutil
+import sys
 
 import numpy as np
 import trimesh
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import spec as S  # noqa: E402
+
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "comfy_nodes", "mp_blocking"))
+import blocks as BL  # noqa: E402
+
 COMFY_3D = r"D:\AI\ComfyUI\input\3d"
+DEFAULT_SPEC = os.path.join(os.path.dirname(HERE), "plans", "showroom.yaml")
 
-# --------------------------------------------------------------------------
-# DIMENSIONS -- from the brief, pages 3-6
-# --------------------------------------------------------------------------
-DIMS = dict(
-    overall_len=17.75,      # as-built overall
-    width=7.90,
-    ceiling=3.40,           # floor to ceiling clear
-    main_floor_len=10.45,   # to the pantry line
-    patio_len=4.55,
-    # store strip through the workshop = 0.80 rack + 0.76 aisle + 0.44 shelf
-    shelf_depth=0.44,
-    aisle=0.76,
-    rack_depth=0.80,
-    rack_bay=1.70,          # 5 bays, 1.70 m beams on 0.80 m frames
-    rack_levels=3,
-    rack_pitch=0.95,
-    box=0.78,
-    inv_bay_w=0.95,
-    backlit_top=2.80,
-    sign_band=(2.85, 3.40),
-    workbench_len=7.20,
-    workbench_h=0.90,
-    workbench_d=0.60,
-    sewing_len=2.75,
-    sewing_h=0.75,
-    bed_w=1.07,             # super single
-    bed_l=1.90,
-    bed_h=0.45,
-    photo_w=1.40,
-    photo_l=1.80,
-    feature_wall=2.10,
-    door_w=1.80,            # double door
-    door_recess=0.70,
-    door_h=2.40,
-    walk_in=0.95,           # opening in the inventory wall
-    wall_t=0.15,
-    store_a=(1.82, 2.60),
-    store_b=(1.40, 2.60),
-    store_c=(4.42, 1.16),
-)
-D = DIMS
-
-SERVICE_BAND = D["overall_len"] - D["main_floor_len"] - D["patio_len"]  # 2.75
-X_PANTRY = D["main_floor_len"]          # 10.45
-X_PATIO = X_PANTRY + SERVICE_BAND       # 13.20
-
-# --------------------------------------------------------------------------
-# ZONES -- positions read off the page-4 plan.
-# West wall, north to south: 2.80 (door + fitting bays) / 2.08 (seats) /
-# 0.96 (bench) / 0.44 (shelf) / 1.00 (aisle) / 0.62 (box row) = 7.90.
-# --------------------------------------------------------------------------
-Z_RACK = (0.0, D["rack_depth"])                         # 0.00 - 0.80
-Z_AISLE = (Z_RACK[1], Z_RACK[1] + D["aisle"])           # 0.80 - 1.56
-Z_INV = (Z_AISLE[1], Z_AISLE[1] + D["shelf_depth"])     # 1.56 - 2.00
-Z_BENCH = (2.05, 2.05 + D["workbench_d"])               # 2.05 - 2.65
-
-X_WEST_BAY = (0.15, 1.85)           # one rack bay + two shelf bays west of the walk-in
-X_WALK_IN = (1.85, 2.80)            # walk-in through the inventory wall
-X_STRIP = 2.80                      # main run starts here
-X_BENCH = 2.90
-DOOR_Z = (5.15, 5.15 + D["door_w"])                     # 5.15 - 6.95, NW corner
-SEATS = (0.15, 2.20, 0.85, 4.90)                        # x0 z0 x1 z1, along the west wall
-FEATURE_X = 3.10                                        # N-S panel next to the door
-BED_X = (4.55, 7.10)                                    # bed 1, bed 2 west edges
-BED_Z = (5.55, 5.55 + D["bed_l"])                       # 5.55 - 7.45
-TRACK = (6.05, 6.45, 2.75, 1.35)                        # ellipse cx cz rx rz
-PHOTO_X = 8.95
-PANTRY_X = (X_PANTRY, 11.30)
-WC_X = (11.30, 12.85)
-AC_X = (12.85, 13.75)
-NORTH_ROOMS_Z = 5.75                                    # pantry / WC / A/C ledge front
-WORK_TABLE = (12.30, 2.70, 13.10, 5.20)
-GLASS_DOOR_Z = (1.35, 2.70)
-COLUMNS_X = ((2.30, 2.80), (9.60, 10.10), (13.15, 13.65))
-
-PALETTE = {
-    "shell": (196, 193, 188),
-    "floor": (176, 173, 168),
-    "joinery": (205, 178, 133),     # pale ash / oak
-    "rack": (120, 124, 130),        # steel
-    "soft": (150, 152, 160),        # beds, seating
-    "glass": (150, 190, 205),
-    "accent": (196, 150, 90),       # signage band, backlit panels
-    "service": (168, 166, 162),
-    "patio": (140, 142, 145),
-}
-
-parts = {}
+ZONE_RGB = [(255, 0, 0), (0, 255, 0), (0, 0, 255),
+            (255, 255, 0), (255, 0, 255), (0, 255, 255)]
 
 
 def _paint(m, color):
@@ -133,194 +87,242 @@ def _paint(m, color):
     return m
 
 
-def add(name, x0, z0, x1, z1, y0, y1, color):
+def box(x0, z0, x1, z1, y0, y1, name="?"):
     """Axis-aligned box from a plan footprint plus a height range."""
     ex, ey, ez = abs(x1 - x0), abs(y1 - y0), abs(z1 - z0)
     if min(ex, ey, ez) <= 0:
-        raise ValueError("degenerate box: " + name)
+        raise S.SpecError("degenerate box: " + name)
     m = trimesh.creation.box(extents=(ex, ey, ez))
     m.apply_translation(((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2))
-    parts[name] = _paint(m, color)
+    return m
 
 
-def add_segment(name, p0, p1, y0, y1, t, color):
+def segment(p0, p1, y0, y1, t, name="?"):
     """Thin bar between two plan points, rotated about Y."""
     (x0, z0), (x1, z1) = p0, p1
     length = math.hypot(x1 - x0, z1 - z0)
+    if min(length, y1 - y0, t) <= 0:
+        raise S.SpecError("degenerate segment: " + name)
     m = trimesh.creation.box(extents=(length, y1 - y0, t))
     ang = math.atan2(-(z1 - z0), (x1 - x0))
     m.apply_transform(trimesh.transformations.rotation_matrix(ang, (0, 1, 0)))
     m.apply_translation(((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2))
-    parts[name] = _paint(m, color)
+    return m
 
 
-L, W, H, T = D["overall_len"], D["width"], D["ceiling"], D["wall_t"]
+def prism(poly, y0, y1, name="?"):
+    from shapely.geometry import Polygon
+    pg = Polygon([(x, -z) for x, z in poly])      # extrude in XY, then lay it down
+    if not pg.is_valid or pg.area <= 0:
+        raise S.SpecError("bad outline: " + name)
+    m = trimesh.creation.extrude_polygon(pg, y1 - y0)
+    m.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2, (1, 0, 0)))
+    m.apply_translation((0, y0, 0))
+    return m
 
-# ---- shell ---------------------------------------------------------------
-add("floor", 0, 0, L, W, -0.12, 0.0, PALETTE["floor"])
-add("wall_south", 0, -T, X_PATIO, 0, 0, H, PALETTE["shell"])
-add("wall_north", 0, W, X_PATIO, W + T, 0, H, PALETTE["shell"])
 
-# West wall in three pieces around the recessed double door (NW corner).
-add("wall_west_s", -T, 0, 0, DOOR_Z[0], 0, H, PALETTE["shell"])
-add("wall_west_n", -T, DOOR_Z[1], 0, W, 0, H, PALETTE["shell"])
-add("wall_west_head", -T, DOOR_Z[0], 0, DOOR_Z[1], D["door_h"], H, PALETTE["shell"])
-add("recess_s", 0, DOOR_Z[0] - T, D["door_recess"], DOOR_Z[0], 0, H, PALETTE["shell"])
-add("recess_n", 0, DOOR_Z[1], D["door_recess"], DOOR_Z[1] + T, 0, H, PALETTE["shell"])
-add("door_leaf", D["door_recess"] - 0.06, DOOR_Z[0], D["door_recess"],
-    DOOR_Z[1], 0, D["door_h"], PALETTE["glass"])
+def bar(p0, p1, y0, y1, t, offset, name):
+    """A wall piece from p0 to p1 (plan points), thickness t, shifted sideways by
+    `offset` x t (0 = centred on the line). Axis-aligned pieces become exact boxes."""
+    (x0, z0), (x1, z1) = p0, p1
+    L = math.hypot(x1 - x0, z1 - z0)
+    nx, nz = -(z1 - z0) / L, (x1 - x0) / L          # left of the direction p0 -> p1
+    cx, cz = offset * t * nx, offset * t * nz
+    if abs(z1 - z0) < 1e-9:
+        zc = z0 + cz
+        return box(min(x0, x1), zc - t / 2, max(x0, x1), zc + t / 2, y0, y1, name)
+    if abs(x1 - x0) < 1e-9:
+        xc = x0 + cx
+        return box(xc - t / 2, min(z0, z1), xc + t / 2, max(z0, z1), y0, y1, name)
+    return segment((x0 + cx, z0 + cz), (x1 + cx, z1 + cz), y0, y1, t, name)
 
-# Structural columns on the north and south walls.
-for i, (cx0, cx1) in enumerate(COLUMNS_X):
-    add("col_s_%d" % i, cx0, 0, cx1, 0.35, 0, H, PALETTE["shell"])
-    add("col_n_%d" % i, cx0, W - 0.35, cx1, W, 0, H, PALETTE["shell"])
 
-# ---- box store (south strip) --------------------------------------------
-# 5 bays x 1.70 m: one west of the walk-in, four in the main run.
-bays = [(X_WEST_BAY[0], X_WEST_BAY[0] + D["rack_bay"])]
-for b in range(4):
-    bays.append((X_STRIP + b * D["rack_bay"], X_STRIP + (b + 1) * D["rack_bay"]))
+def wall(it, env, name, add, openings):
+    p0, p1 = ev2(it["p0"], env), ev2(it["p1"], env)
+    t = S.ev(it["t"], env)
+    y0, y1 = S.ev(it["y"], env)
+    offset = {"center": 0.0, "left": 0.5, "right": -0.5}[it.get("side", "center")]
+    L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+    d = ((p1[0] - p0[0]) / L, (p1[1] - p0[1]) / L)
 
-for bi, (bx0, bx1) in enumerate(bays):
-    for lvl in range(D["rack_levels"]):
-        y = 0.05 + lvl * D["rack_pitch"]
-        add("rack_deck_%d_%d" % (bi, lvl), bx0, Z_RACK[0], bx1, Z_RACK[1],
-            y, y + 0.04, PALETTE["rack"])
-    for side, x in (("a", bx0), ("b", bx1 - 0.06)):
-        add("rack_post_%d%s" % (bi, side), x, Z_RACK[0], x + 0.06, Z_RACK[1],
-            0, 2.85, PALETTE["rack"])
+    def at(s):
+        return (p0[0] + d[0] * s, p0[1] + d[1] * s)
 
-slot = 0
-for bi, (bx0, bx1) in enumerate(bays):
-    for lvl in range(D["rack_levels"]):
-        y = 0.09 + lvl * D["rack_pitch"]
-        for k in range(2):
-            slot += 1
-            if slot == 15:                          # the cleared position -> 29 boxes
+    ops = sorted((S.ev(o["at"], env), S.ev(o["w"], env), o) for o in it.get("openings") or [])
+    s, k = 0.0, 0
+    for i, (a, w, o) in enumerate(ops):
+        if a < s - 1e-6 or a + w > L + 1e-6:
+            raise S.SpecError("%s: opening %d (at %.3f, w %.3f) overlaps or runs past the "
+                              "wall (length %.3f)" % (name, i, a, w, L))
+        if a - s > 1e-6:
+            add("%s_%d" % (name, k), bar(at(s), at(a), y0, y1, t, offset, name), kind="wall", role="wall")
+            k += 1
+        kind = o.get("kind", "door")
+        head = S.ev(o.get("head", env.get("door_h", 2.1) if kind != "window"
+                         else env.get("window_head", 2.1)), env)
+        if head < y1 - 1e-6:
+            add("%s_head%d" % (name, i), bar(at(a), at(a + w), head, y1, t, offset, name),
+                kind="overhead", role="head")
+        sill = None
+        if kind == "window":
+            sill = S.ev(o.get("sill", env.get("sill_h", 0.9)), env)
+            if sill > y0 + 1e-6:
+                add("%s_sill%d" % (name, i), bar(at(a), at(a + w), y0, sill, t, offset, name),
+                    kind="furniture", role="sill")
+            if o.get("glass", True):
+                add("%s_glass%d" % (name, i),
+                    bar(at(a), at(a + w), sill, head, min(t, 0.03), offset, name), "glass", "furniture", "glass")
+        nx, nz = -d[1], d[0]                      # left of the wall direction
+        c0 = (at(a)[0] + offset * t * nx, at(a)[1] + offset * t * nz)
+        c1 = (at(a + w)[0] + offset * t * nx, at(a + w)[1] + offset * t * nz)
+        openings.append(dict(wall=name, index=i, kind=kind, at=a, w=w, sill=sill, head=head,
+                             p0=c0, p1=c1, normal=(nx, nz), t=t,
+                             glass=kind == "window" and o.get("glass", True)))
+        s = a + w
+    if L - s > 1e-6:
+        add("%s_%d" % (name, k), bar(at(s), at(L), y0, y1, t, offset, name), kind="wall", role="wall")
+
+
+def ev2(v, env):
+    p = S.ev(v, env)
+    return (float(p[0]), float(p[1]))
+
+
+def build(spec):
+    """Spec -> (parts, id_parts, info), meshes in authoring coordinates."""
+    env0 = spec["_env"]
+    palette = {k: tuple(S.ev(v, env0)) for k, v in (spec.get("palette") or {}).items()}
+    parts, kinds, origin, openings = {}, {}, {}, []
+
+    def colour(c):
+        if isinstance(c, str):
+            if c not in palette:
+                raise S.SpecError("unknown palette colour %r" % c)
+            return palette[c]
+        return tuple(c)
+
+    def emit(item, env):
+        typ = item.get("type", "box")
+        if typ == "group":
+            for sub in item["items"]:
+                for e in S.expand(sub, env):
+                    emit(sub, e)
+            return
+        name = item["name"].format(**env)
+        col = colour(item.get("color", "shell"))
+        check = item.get("check")
+
+        def add(n, mesh, col_override=None, kind=None, role=None):
+            if n in parts:
+                raise S.SpecError("duplicate part name: " + n)
+            parts[n] = _paint(mesh, palette.get(col_override, col) if col_override else col)
+            kinds[n] = check or kind
+            origin[n] = (name, typ, role or typ, item.get("color", "shell"))
+
+        if typ == "box":
+            x0, x1 = S.ev(item["x"], env)
+            z0, z1 = S.ev(item["z"], env)
+            y0, y1 = S.ev(item["y"], env)
+            add(name, box(x0, z0, x1, z1, y0, y1, name))
+        elif typ == "segment":
+            y0, y1 = S.ev(item["y"], env)
+            add(name, segment(ev2(item["p0"], env), ev2(item["p1"], env), y0, y1,
+                              S.ev(item["t"], env), name))
+        elif typ == "prism":
+            y0, y1 = S.ev(item["y"], env)
+            add(name, prism([ev2(p, env) for p in item["poly"]], y0, y1, name))
+        elif typ == "wall":
+            wall(item, env, name, add, openings)
+        else:
+            raise S.SpecError("%s: unknown type %r" % (name, typ))
+
+    for item in spec["items"]:
+        for env in S.expand(item, env0):
+            emit(item, env)
+
+    for b, mesh in spec_blocks(spec):
+        n = "blk_" + b.name
+        if n in parts:
+            raise S.SpecError("duplicate part name: " + n)
+        parts[n] = _paint(mesh, BLOCK_RGB)
+        kinds[n] = "none"
+        origin[n] = (b.name, "block", "block", "block")
+
+    for n, m in parts.items():                     # default classification for plan_check:
+        if kinds[n] is None:                       # a wall stands on the floor, is full
+            lo, hi = m.bounds                      # height and is not a thin post or fin
+            thin = min(hi[0] - lo[0], hi[2] - lo[2]) < 0.08
+            kinds[n] = "wall" if lo[1] <= 0.05 and hi[1] - lo[1] >= 2.0 and not thin else "furniture"
+
+    regions = zone_regions(spec)
+    id_parts = {}
+    for name, mesh in parts.items():
+        for (x0, x1, z0, z1), zone in regions:
+            piece = clip_box(mesh, x0, x1, z0, z1)
+            if piece is None:
                 continue
-            x = bx0 + 0.07 + k * (D["box"] + 0.05)
-            add("box_%02d" % slot, x, 0.01, x + D["box"], 0.79, y, y + D["box"],
-                PALETTE["joinery"])
+            key = "%s__z%d" % (name, zone)
+            if key in id_parts:          # a zone made of several regions: join, don't overwrite
+                piece = trimesh.util.concatenate([id_parts[key], piece])
+            id_parts[key] = _paint(piece, ZONE_RGB[zone])
+    return parts, id_parts, {"kinds": kinds, "palette": palette, "origin": origin, "openings": openings}
 
-# ---- inventory wall (customer face of the store) -------------------------
-inv_x1 = X_PANTRY - 0.05
-add("inv_wall_w", X_WEST_BAY[0], Z_INV[0], X_WALK_IN[0], Z_INV[1], 0, H, PALETTE["joinery"])
-add("inv_wall_head", X_WALK_IN[0], Z_INV[0], X_WALK_IN[1], Z_INV[1], 2.10, H, PALETTE["joinery"])
-add("inv_wall_e", X_STRIP, Z_INV[0], inv_x1, Z_INV[1], 0, H, PALETTE["joinery"])
-add("backlit_panel", X_STRIP, Z_INV[1], inv_x1, Z_INV[1] + 0.04, 1.10, D["backlit_top"], PALETTE["accent"])
-add("sign_band", X_STRIP, Z_INV[1], inv_x1, Z_INV[1] + 0.06,
-    D["sign_band"][0], D["sign_band"][1], PALETTE["accent"])
-n_bays = int(round((inv_x1 - X_STRIP) / D["inv_bay_w"]))
-for b in range(n_bays + 1):
-    x = X_STRIP + b * (inv_x1 - X_STRIP) / n_bays
-    add("inv_fin_%d" % b, x - 0.02, Z_INV[0], x + 0.02, Z_INV[1] + 0.10, 0, H, PALETTE["shell"])
-add("inv_fin_w", X_WEST_BAY[0] + (X_WALK_IN[0] - X_WEST_BAY[0]) / 2 - 0.02, Z_INV[0],
-    X_WEST_BAY[0] + (X_WALK_IN[0] - X_WEST_BAY[0]) / 2 + 0.02, Z_INV[1] + 0.10, 0, H, PALETTE["shell"])
 
-# ---- workshop ------------------------------------------------------------
-bx1 = X_BENCH + D["workbench_len"]
-add("workbench", X_BENCH, Z_BENCH[0], bx1, Z_BENCH[1], 0, D["workbench_h"], PALETTE["joinery"])
-add("workbench_top", X_BENCH - 0.05, Z_BENCH[0] - 0.05, bx1 + 0.05, Z_BENCH[1] + 0.05,
-    D["workbench_h"], D["workbench_h"] + 0.05, PALETTE["joinery"])
-add("light_panel", X_BENCH, Z_BENCH[0] - 0.10, bx1, Z_BENCH[1] + 0.10,
-    H - 0.30, H - 0.26, PALETTE["accent"])
-# sewing table sits in the service band against the south wall
-add("sewing_table", X_PANTRY + 0.05, 0.10, X_PANTRY + 0.05 + D["sewing_len"], 0.65,
-    0, D["sewing_h"], PALETTE["joinery"])
+BLOCK_RGB = (205, 200, 190)
 
-# ---- entry + waiting -----------------------------------------------------
-add("seat_bench", SEATS[0], SEATS[1], SEATS[2], SEATS[3], 0, 0.42, PALETTE["soft"])
-add("rug", 0.95, 2.30, 2.60, 4.80, 0.0, 0.02, PALETTE["soft"])
-add("feature_wall", FEATURE_X, W - 0.05 - D["feature_wall"], FEATURE_X + 0.15, W - 0.05,
-    0, 2.40, PALETTE["joinery"])
 
-# ---- fitting bays --------------------------------------------------------
-for i, x0 in enumerate(BED_X):
-    add("bed_%d" % i, x0, BED_Z[0], x0 + D["bed_w"], BED_Z[1], 0.12, D["bed_h"], PALETTE["soft"])
-    add("pillow_%d" % i, x0 + 0.12, BED_Z[1] - 0.55, x0 + D["bed_w"] - 0.12, BED_Z[1] - 0.10,
-        D["bed_h"], D["bed_h"] + 0.14, PALETTE["soft"])
-    add("cove_%d" % i, x0 + 0.10, BED_Z[0] + 0.10, x0 + D["bed_w"] - 0.10, BED_Z[1] - 0.10,
-        0.0, 0.12, PALETTE["accent"])
+def spec_blocks(spec):
+    """[(Block, mesh in authoring coordinates)] from the spec's `blocks:` file.
+    Blocks are written in the GLB frame, so with mirror_z each mesh is mirrored
+    here and comes back into place when export() mirrors the model."""
+    if not spec.get("blocks"):
+        return []
+    path = S.resolve_path(spec, spec["blocks"])
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        try:
+            layout = BL.parse(f.read())
+        except BL.LayoutError as e:
+            raise S.SpecError("%s: %s" % (path, e))
+    out_dir = S.resolve_path(spec, (spec.get("output") or {}).get("dir", "../model"))
+    asset_dir = os.path.join(out_dir, "assets", spec["name"])
+    out = []
+    for b in layout:
+        mesh, _ = BL.block_mesh(b, os.path.dirname(path), asset_dir)
+        if spec.get("mirror_z") is not None:
+            mirror = np.diag([1.0, 1.0, -1.0, 1.0])
+            mirror[2, 3] = S.ev(spec["mirror_z"], spec["_env"])
+            mesh.apply_transform(mirror)
+        out.append((b, mesh))
+    return out
 
-# one oval curtain track around both beds, plus a divider between them
-cx, cz, rx, rz = TRACK
-pts = [(cx + rx * math.cos(2 * math.pi * k / 40), cz + rz * math.sin(2 * math.pi * k / 40))
-       for k in range(40)]
-for k in range(40):
-    add_segment("track_%02d" % k, pts[k], pts[(k + 1) % 40], H - 0.10, H - 0.05, 0.05, PALETTE["rack"])
-add("track_divider", cx + 0.25, cz - rz, cx + 0.30, cz + rz, H - 0.10, H - 0.05, PALETTE["rack"])
 
-# photo station: floor mat + camera positions front and back
-add("photo_floor", PHOTO_X, W - 0.20 - D["photo_l"], PHOTO_X + D["photo_w"], W - 0.20,
-    0.0, 0.03, PALETTE["accent"])
-add("photo_cam_a", PHOTO_X + 0.62, W - 0.24 - D["photo_l"], PHOTO_X + 0.78,
-    W - 0.16 - D["photo_l"], 1.30, 1.55, PALETTE["rack"])
-add("photo_cam_b", PHOTO_X + 0.62, W - 0.24, PHOTO_X + 0.78, W - 0.16, 1.30, 1.55, PALETTE["rack"])
+def zone_regions(spec):
+    """[((x0, x1, z0, z1), zone index)], open sides as +-INF, in spec order."""
+    INF = S.CONSTS["INF"]
+    out = []
+    for reg in spec.get("zone_regions") or []:
+        x0, x1 = S.ev(reg.get("x", [None, None]), spec["_env"])
+        z0, z1 = S.ev(reg.get("z", [None, None]), spec["_env"])
+        out.append(((-INF if x0 is None else x0, INF if x1 is None else x1,
+                     -INF if z0 is None else z0, INF if z1 is None else z1),
+                    zone_index(spec, reg["zone"])))
+    return out
 
-# ---- service band: pantry, WC, A/C ledge, work table --------------------
-zf = NORTH_ROOMS_Z
-add("north_rooms_front", PANTRY_X[0], zf - T, WC_X[1], zf, 0, H, PALETTE["shell"])
-add("pantry_wall_e", PANTRY_X[1] - T, zf, PANTRY_X[1], W, 0, H, PALETTE["shell"])
-add("wc_wall_e", WC_X[1] - T, zf, WC_X[1], W, 0, H, PALETTE["shell"])
-add("pantry_counter", PANTRY_X[1] - T - 0.30, zf + 0.10, PANTRY_X[1] - T, W - 0.10,
-    0, 0.90, PALETTE["joinery"])
-add("wc_fixtures", WC_X[0] + 0.10, W - 0.80, WC_X[1] - T - 0.10, W - 0.10, 0, 0.90, PALETTE["service"])
-add("ac_ledge", AC_X[0], zf, AC_X[1], W, 0, 0.60, PALETTE["patio"])
-add("work_table", WORK_TABLE[0], WORK_TABLE[1], WORK_TABLE[2], WORK_TABLE[3], 0, 0.75, PALETTE["joinery"])
 
-# patio line: glazing with the glass door, solid head above
-gd0, gd1 = GLASS_DOOR_Z
-add("patio_glazing_s", X_PATIO - 0.06, 0, X_PATIO, gd0, 0, 2.55, PALETTE["glass"])
-add("glass_door", X_PATIO - 0.05, gd0, X_PATIO, gd1, 0, 2.40, PALETTE["glass"])
-add("patio_glazing_n", X_PATIO - 0.06, gd1, X_PATIO, zf, 0, 2.55, PALETTE["glass"])
-add("patio_head", X_PATIO - T, 0, X_PATIO, zf, 2.55, H, PALETTE["shell"])
-
-# ---- patio ---------------------------------------------------------------
-add("patio_deck", X_PATIO, 0, L, W, -0.06, 0.0, PALETTE["patio"])
-add("patio_parapet_s", X_PATIO, -T, L, 0, 0, 1.10, PALETTE["shell"])
-add("ziptrack_s", X_PATIO, -0.08, L, -0.02, 1.10, 2.55, PALETTE["glass"])
-add("patio_parapet_e", L, 0, L + T, W, 0, 1.10, PALETTE["shell"])
-add("patio_wall_n", AC_X[1], W, L, W + T, 0, 2.60, PALETTE["shell"])
-sa, sb, sc = D["store_a"], D["store_b"], D["store_c"]
-add("store_a", X_PATIO + 0.10, 3.00, X_PATIO + 0.10 + sa[0], 3.00 + sa[1], 0, 2.20, PALETTE["service"])
-add("store_b", L - sb[0], 3.00, L, 3.00 + sb[1], 0, 2.20, PALETTE["service"])
-add("store_c", L - sc[0], 0.10, L, 0.10 + sc[1], 0, 2.20, PALETTE["service"])
-for k in range(3):
-    add("drying_rack_%d" % k, X_PATIO + 0.90, W - 0.20, L - 0.45, W - 0.14,
-        1.40 + 0.30 * k, 1.46 + 0.30 * k, PALETTE["rack"])
-# poly roof from the door head over the whole patio, open over the A/C bay
-add("poly_roof", X_PATIO, 0, L, zf, 2.55, 2.62, PALETTE["glass"])
-add("poly_roof_n", AC_X[1], zf, L, W, 2.55, 2.62, PALETTE["glass"])
-
-# ---- zone ID model ---------------------------------------------------------
-# A second copy of every part, cut along the showroom area boundaries and
-# painted with the flat area colour -- the same rules and colours as
-# render_views.zone_ids -- so ComfyUI's RenderMesh (mode "vertex colors") can
-# bake an ID pass for ANY camera, including the free camera of the zoned
-# workflow (stage 5.13). Each piece lies in one area, so its vertex colours are
-# uniform and the render stays exact-colour for ImageColorToMask.
-ZONE_RGB = [(255, 0, 0), (0, 255, 0), (0, 0, 255),
-            (255, 255, 0), (255, 0, 255), (0, 255, 255)]
-X_ENTRY, Z_INV_TOP, Z_BENCH_TOP = 4.40, 2.08, 2.90      # = render_views plan constants
-INF = 1e3
-# Disjoint plan boxes (x0, x1, z0, z1) -> area index. Together they tile the
-# plan; the order is irrelevant because they do not overlap.
-ZONE_BOXES = [
-    ((X_PATIO, INF, -INF, INF), 5),                     # patio
-    ((X_PANTRY, X_PATIO, -INF, 1.0), 3),                # sewing table: workshop prompt
-    ((X_PANTRY, X_PATIO, 1.0, INF), 4),                 # service band
-    ((-INF, X_PANTRY, -INF, Z_INV_TOP), 2),             # south strip
-    ((-INF, X_PANTRY, Z_INV_TOP, Z_BENCH_TOP), 3),      # workbench
-    ((-INF, X_ENTRY, Z_BENCH_TOP, INF), 0),             # west end
-    ((X_ENTRY, X_PANTRY, Z_BENCH_TOP, INF), 1),         # fitting bays
-]
-# Parts dropped for the cutaway copies (= render_views.CUT_N): the wall nearest
-# the iso cameras and the patio roof, so a camera outside the box sees in.
-CUTAWAY = ["wall_north", "patio_wall_n", "poly_roof", "poly_roof_n"]
+def zone_index(spec, z):
+    if isinstance(z, int):
+        return z
+    for i, zone in enumerate(spec.get("zones") or []):
+        if zone["slug"] == z:
+            return i
+    raise S.SpecError("unknown zone %r" % z)
 
 
 def clip_box(mesh, x0, x1, z0, z1):
     """The part of `mesh` inside the plan box, cut faces capped; None if empty."""
+    INF = S.CONSTS["INF"]
     lo, hi = mesh.bounds
     if lo[0] >= x1 or hi[0] <= x0 or lo[2] >= z1 or hi[2] <= z0:
         return None
@@ -340,55 +342,99 @@ def clip_box(mesh, x0, x1, z0, z1):
     return m
 
 
-id_parts = {}
-for name, mesh in parts.items():
-    for (x0, x1, z0, z1), zone in ZONE_BOXES:
-        piece = clip_box(mesh, x0, x1, z0, z1)
-        if piece is not None:
-            id_parts["%s__z%d" % (name, zone)] = _paint(piece, ZONE_RGB[zone])
+def viewer_json(spec, parts, id_parts, info, cut_match):
+    """The model as plain JSON for the web viewer: one entry per part, with the
+    item it came from, its role (wall / head / sill / glass / box ...), its
+    painted colour, and the same per-zone pieces as the ID model."""
+    def piece(name, mesh):
+        base, _, zone = name.partition("__z")
+        item, _, role, colour = info["origin"][base]
+        out = {"name": base, "item": item, "role": role,
+               "glass": role == "glass" or colour == "glass", "cut": cut_match(base)}
+        if zone:
+            out["zone"] = int(zone)
+        else:
+            out["rgb"] = [int(c) for c in mesh.visual.face_colors[0][:3]]
+        out["position"] = [round(float(v), 4) for v in mesh.vertices.flatten()]
+        out["index"] = [int(i) for i in mesh.faces.flatten()]
+        return out
 
-# ---- export --------------------------------------------------------------
-# Mirror Z so the model is right-handed (X east, Y up, Z south). trimesh
-# re-orients the faces itself when a transform has a negative determinant.
-MIRROR = np.diag([1.0, 1.0, -1.0, 1.0])
-MIRROR[2, 3] = W
-for mesh in parts.values():
-    mesh.apply_transform(MIRROR)
-    assert mesh.volume > 0, "inverted winding: " + str(mesh)
-for mesh in id_parts.values():
-    mesh.apply_transform(MIRROR)
-
-root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-out_dir = os.path.join(root, "model")
-os.makedirs(out_dir, exist_ok=True)
-
-
-def export_glb(filename, items):
-    scene = trimesh.Scene()
-    for name, mesh in items.items():
-        scene.add_geometry(mesh, geom_name=name, node_name=name)
-    path = os.path.join(out_dir, filename)
-    scene.export(path)
-    if os.path.isdir(COMFY_3D):
-        shutil.copy(path, os.path.join(COMFY_3D, filename))
-    print("glb:     %s  (%s bytes, %d parts)" % (path, format(os.path.getsize(path), ","), len(items)))
-    return path
+    return {"name": spec["name"],
+            "zones": [z["slug"] for z in spec.get("zones") or []],
+            "parts": [piece(n, m) for n, m in parts.items()],
+            "zonePieces": [piece(n, m) for n, m in id_parts.items()]}
 
 
-def without(items, dropped):
-    return {n: m for n, m in items.items() if n.split("__z")[0] not in dropped}
+def export(spec, parts, id_parts, info=None):
+    env = spec["_env"]
+    if spec.get("mirror_z") is not None:
+        # Mirror Z so the model is right-handed (X east, Y up, Z south). trimesh
+        # re-orients the faces itself when a transform has a negative determinant.
+        mirror = np.diag([1.0, 1.0, -1.0, 1.0])
+        mirror[2, 3] = S.ev(spec["mirror_z"], env)
+        for mesh in parts.values():
+            mesh.apply_transform(mirror)
+        for mesh in id_parts.values():
+            mesh.apply_transform(mirror)
+    for n, mesh in parts.items():
+        if mesh.is_watertight:
+            assert mesh.volume > 0, "inverted winding: " + n
+
+    out = spec.get("output") or {}
+    out_dir = S.resolve_path(spec, out.get("dir", "../model"))
+    base = out.get("base", spec["name"])
+    os.makedirs(out_dir, exist_ok=True)
+    comfy = os.environ.get("MP_COMFY_3D", COMFY_3D)
+    cut = spec.get("cutaway") or []
+
+    def export_glb(filename, items):
+        scene = trimesh.Scene()
+        for name, mesh in items.items():
+            scene.add_geometry(mesh, geom_name=name, node_name=name)
+        path = os.path.join(out_dir, filename)
+        scene.export(path)
+        if os.path.isdir(comfy):
+            shutil.copy(path, os.path.join(comfy, filename))
+        print("glb:     %s  (%s bytes, %d parts)" % (path, format(os.path.getsize(path), ","), len(items)))
+        return path
+
+    def is_cut(name):
+        return any(fnmatch.fnmatchcase(name.split("__z")[0], c) for c in cut)
+
+    def without(items):
+        return {n: m for n, m in items.items() if not is_cut(n)}
+
+    export_glb(base + ".glb", parts)
+    export_glb(base + "_cut.glb", without(parts))
+    if id_parts:
+        export_glb(base + "_ids.glb", id_parts)
+        export_glb(base + "_cut_ids.glb", without(id_parts))
+
+    if info is not None:
+        path = os.path.join(out_dir, base + "_viewer.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(viewer_json(spec, parts, id_parts, info, is_cut), f, separators=(",", ":"))
+            f.write("\n")
+        print("viewer:  %s  (%s bytes)" % (path, format(os.path.getsize(path), ",")))
+
+    merged = trimesh.util.concatenate(list(parts.values()))
+    obj = os.path.join(out_dir, base + ".obj")
+    merged.export(obj)
+
+    print("parts:   %d  (+ %d zone pieces)" % (len(parts), len(id_parts)))
+    print("extents: %s  (X len, Y height, Z width)" % merged.extents.round(2))
+    print("centre:  %s" % merged.bounds.mean(axis=0).round(2))
+    print("obj:     %s  (%s bytes)" % (obj, format(os.path.getsize(obj), ",")))
 
 
-glb = export_glb("showroom_massing.glb", parts)                  # full, as drawn
-export_glb("showroom_massing_cut.glb", without(parts, CUTAWAY))  # north wall + roof off
-export_glb("showroom_massing_ids.glb", id_parts)                 # area colours, full
-export_glb("showroom_massing_cut_ids.glb", without(id_parts, CUTAWAY))
+def main():
+    ap = argparse.ArgumentParser(description="plan spec -> massing GLBs")
+    ap.add_argument("spec", nargs="?", default=DEFAULT_SPEC)
+    a = ap.parse_args()
+    spec = S.load(a.spec)
+    parts, id_parts, info = build(spec)
+    export(spec, parts, id_parts, info)
 
-merged = trimesh.util.concatenate(list(parts.values()))
-obj = os.path.join(out_dir, "showroom_massing.obj")
-merged.export(obj)
 
-print("parts:   %d  (+ %d zone pieces)" % (len(parts), len(id_parts)))
-print("extents: %s  (X len, Y height, Z width)" % merged.extents.round(2))
-print("centre:  %s" % merged.bounds.mean(axis=0).round(2))
-print("obj:     %s  (%s bytes)" % (obj, format(os.path.getsize(obj), ",")))
+if __name__ == "__main__":
+    main()

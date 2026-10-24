@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { freeBusy } from "@/lib/appointments/calendar";
+import { liveSlotHolds } from "@/lib/appointments/book-slot";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
@@ -18,13 +19,17 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** freeBusy over `days` SGT days starting at `from`. */
-function busyFrom(from: SgtDay, days: number) {
+/**
+ * freeBusy over `days` SGT days starting at `from`, plus the re-adjustment slots
+ * a customer is paying for right now (ADR 0024) — held in our database, not on
+ * the calendar, so no Google invite goes out before the money is in.
+ */
+async function busyFrom(from: SgtDay, days: number) {
   const end = addSgtDays(from.y, from.m, from.d, days);
-  return freeBusy(
-    new Date(sgtLocalToUtcMs(from.y, from.m, from.d, 0, 0)).toISOString(),
-    new Date(sgtLocalToUtcMs(end.y, end.m, end.d, 0, 0)).toISOString(),
-  );
+  const fromIso = new Date(sgtLocalToUtcMs(from.y, from.m, from.d, 0, 0)).toISOString();
+  const toIso = new Date(sgtLocalToUtcMs(end.y, end.m, end.d, 0, 0)).toISOString();
+  const [busy, holds] = await Promise.all([freeBusy(fromIso, toIso), liveSlotHolds(fromIso, toIso)]);
+  return [...busy, ...holds];
 }
 
 /**

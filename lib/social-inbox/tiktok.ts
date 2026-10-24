@@ -10,8 +10,8 @@ import type { InboundAttachment, SocialEvent } from "@/lib/social-inbox/types";
  *
  * Unlike Meta's Page token, TikTok's access token lasts a day and a refresh
  * may return a new refresh token, so the tokens live in `social_channel_tokens`
- * rather than env. An admin connects the account once (Settings → Staff
- * Management → Telegram access → Connect TikTok); after that the token is
+ * rather than env. An admin connects the account once (Settings → Users &
+ * permissions → Telegram → Connect TikTok); after that the token is
  * refreshed on use and by the daily cron. The refresh token lasts a year from
  * connecting — then the admin connects again (the tab says when).
  *
@@ -439,7 +439,7 @@ export async function tiktokAccess(
 ): Promise<{ ok: true; businessId: string; token: string } | { ok: false; error: string }> {
   const now = opts.now ?? new Date();
   const row = await getTikTokTokenRow();
-  if (!row) return { ok: false, error: "TikTok isn't connected yet — an admin connects it under Settings → Staff Management → Telegram access." };
+  if (!row) return { ok: false, error: "TikTok isn't connected yet — an admin connects it under Settings → Users & permissions → Telegram." };
 
   const fresh = new Date(row.access_expires_at).getTime() - REFRESH_MARGIN_MS > now.getTime();
   if (fresh && !opts.force) return { ok: true, businessId: row.account_id, token: row.access_token };

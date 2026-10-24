@@ -11,7 +11,8 @@ const ValidateCouponSchema = z.object({
   product_ids: z.array(z.string().uuid()).optional(),
   category_ids: z.array(z.string().uuid()).optional(),
   email: z.string().email().optional(),
-  customer_id: z.string().uuid().optional(),
+  // No customer_id: a coupon is a bearer code, and the per-customer limit
+  // counts by the email. A stale client still sending one has it stripped by zod.
   line_items: z
     .array(
       z.object({
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { code, subtotal, product_ids, email, customer_id, line_items } = parsed.data;
+  const { code, subtotal, product_ids, email, line_items } = parsed.data;
   let { category_ids } = parsed.data;
 
   // Enrich category IDs from products when not supplied (cart only has productId).
@@ -51,7 +52,6 @@ export async function POST(req: Request) {
 
   const result = await validateCoupon(code, subtotal, product_ids, category_ids, {
     customerEmail: email,
-    customerId: customer_id,
     lineItems: line_items?.map((item) => ({
       productId: item.product_id,
       categoryId: item.category_id,

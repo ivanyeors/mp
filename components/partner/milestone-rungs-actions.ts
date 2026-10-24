@@ -13,7 +13,7 @@ import { recordAdminAction } from "@/lib/auth/audit";
  * Partner Commissions page without editing a shared file.
  */
 export async function upsertMilestoneRung(formData: FormData): Promise<void> {
-  const actor = await assertAdmin("page-builder");
+  const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();
 
   const tier = Number(formData.get("tier"));

@@ -15,16 +15,20 @@ function entry(
     lastModified?: string | Date;
     changeFrequency?: ChangeFrequency;
     priority?: number;
+    /** Locales the page has real content in; defaults to every supported locale. */
+    locales?: readonly string[];
   } = {},
 ): MetadataRoute.Sitemap[number] {
   const siteUrl = getSiteOrigin();
+  const locales: readonly string[] = options.locales?.length ? options.locales : SUPPORTED_LOCALES;
   const languages: Record<string, string> = {};
-  for (const locale of SUPPORTED_LOCALES) {
+  for (const locale of locales) {
     languages[locale] = `${siteUrl}/${locale}${path}`;
   }
+  const primary = locales.includes(DEFAULT_LOCALE) ? DEFAULT_LOCALE : locales[0];
 
   return {
-    url: `${siteUrl}/${DEFAULT_LOCALE}${path}`,
+    url: `${siteUrl}/${primary}${path}`,
     lastModified: options.lastModified,
     changeFrequency: options.changeFrequency,
     priority: options.priority,
@@ -86,9 +90,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const posts = await getBlogPostsFromDb({ status: "published" });
     blogEntries = posts.map((post) =>
       entry(`/blog/${post.slug}`, {
-        lastModified: post.updated_at ?? post.published_at ?? undefined,
+        // Editorial edits only: the row's updated_at moves on every bulk sync (slice 17).
+        lastModified: post.content_updated_at ?? post.published_at ?? undefined,
         changeFrequency: "monthly",
         priority: 0.6,
+        locales: post.locales,
       }),
     );
   } catch (error) {

@@ -24,7 +24,7 @@ const CreateSchema = z.object({
 });
 
 export async function GET() {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   // Returns all locations (own + partner); the /our-partners projection filters own out.
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("partners");
   if (denied) return denied;
 
   try {

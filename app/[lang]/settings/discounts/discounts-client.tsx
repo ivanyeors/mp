@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -18,6 +19,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
+import { PointsSettingsCard } from "./points-settings-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,7 +96,11 @@ function formatDateRange(starts_at: string | null, expires_at: string | null): s
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function DiscountsClient({ initialData }: { initialData?: DiscountsInitialData }) {
+export function DiscountsClient({
+    initialData,
+}: {
+    initialData?: DiscountsInitialData;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -134,11 +140,11 @@ export function DiscountsClient({ initialData }: { initialData?: DiscountsInitia
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">Discounts</h1>
-                    <p className="text-muted-foreground mt-1 text-sm">
+                    <InfoTip label="About Discounts">
                         Manage discount codes and promotions for your store.
-                    </p>
+                    </InfoTip>
                 </div>
                 <Button asChild size="sm" className="w-full sm:w-auto">
                     <Link href={to("/settings/discounts/new")}>
@@ -147,6 +153,8 @@ export function DiscountsClient({ initialData }: { initialData?: DiscountsInitia
                     </Link>
                 </Button>
             </div>
+
+            <PointsSettingsCard />
 
             {/* Content */}
             {loading ? (

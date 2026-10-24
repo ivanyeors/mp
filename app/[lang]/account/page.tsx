@@ -3,7 +3,15 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { AccountSecurity } from "@/components/auth/account-security";
+import { PointsCard, PointsComingSoonCard } from "@/components/account/points-card";
+import { isPartnerCustomer, readMilestoneStanding, readPendingOrders, readPointsBalance, readPointsSettings } from "@/lib/points/server";
+import { profilePointsView } from "@/lib/points/settings";
+import { AftercarePreferences } from "./aftercare-preferences";
+import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
+import { MarketingEmailPreference } from "./marketing-email-preference";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +25,33 @@ function initialsFrom(name: string, email: string): string {
     return parts[0]!.slice(0, 2).toUpperCase();
   }
   return (email.slice(0, 2) || "?").toUpperCase();
+}
+
+/**
+ * The session's own points (PRD-loyalty-points slice 02) and their place on
+ * the bonus milestones (slice 09) once points are live, or "coming soon" with
+ * the milestones before the launch; nothing for a partner (rule r) or once
+ * points are switched off after it. Read with the service role, keyed by the
+ * Customer this session just linked, never by anything the request names. A
+ * failed read hides the card.
+ */
+async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId: string) {
+  try {
+    const settings = await readPointsSettings(admin);
+    const view = profilePointsView(settings);
+    if (view === "off" || (await isPartnerCustomer(admin, customerId))) return null;
+    if (view === "soon") return { view, earnPerDollar: settings.earnPerDollar, milestones: settings.milestones } as const;
+    const [balance, pending, standing] = await Promise.all([
+      readPointsBalance(admin, customerId),
+      readPendingOrders(admin, customerId),
+      // A failed milestone read only hides the bar, never the balance.
+      settings.milestones.length ? readMilestoneStanding(admin, customerId).catch(() => null) : null,
+    ]);
+    const milestones = standing ? { ladder: settings.milestones, earned: standing.earned } : null;
+    return { view, balance, pending, milestones } as const;
+  } catch {
+    return null;
+  }
 }
 
 export default async function AccountProfilePage({
@@ -37,6 +72,19 @@ export default async function AccountProfilePage({
   const phone = customer.phone?.trim() || null;
   const googleLinked = (user.identities ?? []).some((i) => i.provider === "google");
   const initials = initialsFrom(displayName, email);
+  // Read server-side by the session's own Customer (CRM slice 13), so the card
+  // does not depend on the customer's column grants on `customers`. A failed
+  // read hides the card rather than the whole Profile.
+  const admin = supabaseAdmin();
+  // Points (PRD-loyalty-points slice 02) are read after linkCustomerToAuthUser,
+  // whose Claim may have just granted the Claim bonus. A failed read only
+  // hides the card. Marketing consent (migration slice 07) is read the same
+  // way as the aftercare switches.
+  const [aftercare, marketingEmail, points] = await Promise.all([
+    readProfileAftercare(admin, customer.id).catch(() => null),
+    readMarketingEmailState(admin, customer.id).catch(() => null),
+    readOwnPoints(admin, customer.id),
+  ]);
 
   return (
     <div className="w-full max-w-3xl space-y-8">
@@ -62,7 +110,33 @@ export default async function AccountProfilePage({
         </div>
       </div>
 
+      {points?.view === "live" ? (
+        <PointsCard
+          balance={points.balance}
+          pending={points.pending}
+          milestones={points.milestones}
+          termsHref={withLocale("/points", locale)}
+          shopHref={withLocale("/shop", locale)}
+        />
+      ) : points?.view === "soon" ? (
+        <PointsComingSoonCard
+          earnPerDollar={points.earnPerDollar}
+          milestones={points.milestones}
+          termsHref={withLocale("/points", locale)}
+        />
+      ) : null}
+
       <AccountSecurity googleLinked={googleLinked} />
+
+      {aftercare ? (
+        <AftercarePreferences
+          email={aftercare.email}
+          whatsapp={aftercare.whatsapp}
+          phone={aftercare.phone}
+        />
+      ) : null}
+
+      {marketingEmail ? <MarketingEmailPreference state={marketingEmail} /> : null}
 
       <Separator />
 

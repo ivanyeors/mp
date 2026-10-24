@@ -5,6 +5,7 @@ import type { AppointmentSettings, AppointmentType } from "./settings";
 import type { BusyInterval, EventGuest } from "./slots";
 import {
   LOCATION_ID_PROP,
+  READJUSTMENT_BOOKING_PROP,
   addSgtDays,
   buildEventInsertBody,
   sgtLocalToUtcMs,
@@ -26,7 +27,16 @@ export type CalendarGuestEvent = {
   appointmentType: AppointmentType;
   bookingUrl: string;
   typeLabel: string;
+  /** The guest answered No to the invite: the event stays, the guest won't come. */
+  guestDeclined: boolean;
 };
+
+/**
+ * Whether an appointment is still on: `live`, `declined` (the guest said No to
+ * the invite, the event is still there), `cancelled` (deleted, Google keeps a
+ * tombstone) or `gone` (purged, or never on this calendar).
+ */
+export type EventState = "live" | "declined" | "cancelled" | "gone";
 
 /** Admin calendar view — includes events without parsed phone/guest. */
 export type CalendarRangeEvent = {
@@ -60,6 +70,8 @@ export type CalendarRangeEvent = {
    * admin opts in (`settings.showCancelled`); drawn struck-through in the grid.
    */
   cancelled: boolean;
+  /** The Re-adjustment booking behind this event (ADR 0024), from its private property. */
+  readjustmentBookingId: string | null;
 };
 
 type GCalEvent = {
@@ -204,6 +216,9 @@ export function mapGCalItemToRangeEvent(
     // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → none.
     rsvp: busy ? null : guestRsvp(ev),
     cancelled,
+    readjustmentBookingId: busy
+      ? null
+      : (ev.extendedProperties?.private?.[READJUSTMENT_BOOKING_PROP] ?? null),
   };
 }
 
@@ -356,7 +371,14 @@ export function mapGCalItemToGuestEvent(
     appointmentType: resolved.type,
     bookingUrl: resolved.bookingUrl,
     typeLabel: resolved.label,
+    guestDeclined: guestRsvp(ev) === "declined",
   };
+}
+
+/** Pure: one GCal item's EventState. */
+export function eventStateOf(ev: GCalEvent): EventState {
+  if (ev.status === "cancelled") return "cancelled";
+  return guestRsvp(ev) === "declined" ? "declined" : "live";
 }
 
 /**
@@ -495,6 +517,93 @@ export async function deleteEvent(eventId: string): Promise<void> {
   // 404/410 = already gone — treat as success (idempotent)
   if (!res.ok && res.status !== 404 && res.status !== 410) {
     throw new Error(`events.delete failed (${res.status}): ${await res.text()}`);
+  }
+}
+
+/** One event's EventState, read fresh. */
+export async function getEventState(eventId: string): Promise<EventState> {
+  const id = encodeURIComponent(calendarId());
+  const eid = encodeURIComponent(eventId);
+  const res = await calFetch(`/calendars/${id}/events/${eid}`);
+  if (res.status === 404 || res.status === 410) return "gone";
+  if (!res.ok) {
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
+  }
+  return eventStateOf((await res.json()) as GCalEvent);
+}
+
+/**
+ * Every event changed since `updatedMinIso`, deleted ones included — what a
+ * push notification ("something changed") is followed up with.
+ */
+export async function listChangedEventStates(
+  updatedMinIso: string,
+): Promise<Array<{ id: string; state: EventState }>> {
+  const id = encodeURIComponent(calendarId());
+  const out: Array<{ id: string; state: EventState }> = [];
+  let pageToken: string | undefined;
+  do {
+    const qs = new URLSearchParams({
+      updatedMin: toGCalRfc3339(updatedMinIso),
+      showDeleted: "true",
+      singleEvents: "true",
+      maxResults: "250",
+    });
+    if (pageToken) qs.set("pageToken", pageToken);
+    const res = await calFetch(`/calendars/${id}/events?${qs}`);
+    if (!res.ok) {
+      throw new Error(formatGoogleCalendarError(res.status, await res.text()));
+    }
+    const json = (await res.json()) as { items?: GCalEvent[]; nextPageToken?: string };
+    for (const ev of json.items ?? []) {
+      if (ev.id) out.push({ id: ev.id, state: eventStateOf(ev) });
+    }
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+  return out;
+}
+
+/**
+ * Ask Google to POST to `address` whenever an event on the calendar changes
+ * (Calendar push notifications). Returns the channel's resource id and the
+ * expiry Google granted, which may be shorter than asked.
+ */
+export async function watchCalendarEvents(input: {
+  channelId: string;
+  token: string;
+  address: string;
+  ttlSeconds: number;
+}): Promise<{ resourceId: string; expirationMs: number }> {
+  const id = encodeURIComponent(calendarId());
+  const res = await calFetch(`/calendars/${id}/events/watch`, {
+    method: "POST",
+    body: JSON.stringify({
+      id: input.channelId,
+      type: "web_hook",
+      address: input.address,
+      token: input.token,
+      params: { ttl: String(input.ttlSeconds) },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`events.watch failed (${res.status}): ${await res.text()}`);
+  }
+  const json = (await res.json()) as { resourceId?: string; expiration?: string };
+  const expirationMs = Number(json.expiration);
+  if (!json.resourceId || !Number.isFinite(expirationMs)) {
+    throw new Error("events.watch returned no resourceId / expiration");
+  }
+  return { resourceId: json.resourceId, expirationMs };
+}
+
+/** Stop a push channel. Unknown or already-expired channels are not an error. */
+export async function stopCalendarChannel(channelId: string, resourceId: string): Promise<void> {
+  const res = await calFetch("/channels/stop", {
+    method: "POST",
+    body: JSON.stringify({ id: channelId, resourceId }),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`channels.stop failed (${res.status}): ${await res.text()}`);
   }
 }
 

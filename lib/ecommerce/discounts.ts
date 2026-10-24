@@ -16,7 +16,12 @@ export interface CouponLineItem {
 }
 
 export interface ValidateCouponOptions {
+  /** The email typed at checkout. */
   customerEmail?: string;
+  /**
+   * The Customer that email resolves to (checkout's `findCustomerByEmail`).
+   * Never an id from a request body.
+   */
   customerId?: string;
   lineItems?: CouponLineItem[];
 }
@@ -184,6 +189,7 @@ export async function validateCoupon(
   }
 
   const coupon = data as Coupon;
+
   const now = new Date();
 
   if (coupon.starts_at && new Date(coupon.starts_at) > now) {

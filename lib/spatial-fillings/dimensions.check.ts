@@ -62,10 +62,10 @@ if (unmeasured.length) {
   console.warn(`dimensions.check: ${unmeasured.length} entries still resolve as fallback (Ivan's measurements pending):\n  ${unmeasured.join("\n  ")}`);
 }
 
-// --- Products › Dimensions tab (slice 12) ------------------------------------
-const page = readFileSync("app/[lang]/settings/products/products-client.tsx", "utf8");
-assert.match(page, /<DimensionsSection settingsPath=\{to\} \/>/, "Products mounts the Dimensions tab");
-const section = readFileSync("app/[lang]/settings/products/dimensions-section.tsx", "utf8");
+// --- Configure › Dimensions tab (slice 12) -----------------------------------
+const page = readFileSync("app/[lang]/settings/inventory/configure/configure-client.tsx", "utf8");
+assert.match(page, /<DimensionsSection settingsPath=\{settingsPath\} \/>/, "Configure mounts the Dimensions tab");
+const section = readFileSync("app/[lang]/settings/inventory/configure/dimensions-section.tsx", "utf8");
 assert.match(section, /Unmeasured/, "an unmeasured entry is labelled, never presented as measured");
 assert.match(section, /Use default/, "Reset restores the code default");
 assert.match(section, /Loft allowance/, "the allowance is editable");
@@ -73,7 +73,7 @@ assert.doesNotMatch(section, /kind:\s*"pillow"|sectionWidthsMm|scaledOutline|SIL
 
 // --- Route: admin-gated, validated, never writes pillow geometry --------------
 const route = readFileSync("app/[lang]/settings/product-builder/dimensions/route.ts", "utf8");
-assert.equal(route.match(/const denied = await requireAdmin\('page-builder'\)/g)?.length, 3, "GET, POST and DELETE are admin-gated");
+assert.equal(route.match(/const denied = await requireAdmin\('configure'\)/g)?.length, 3, "GET, POST and DELETE are admin-gated");
 assert.match(route, /min_thickness_mm <= d\.thickness_mm/, "the route enforces min thickness ≤ thickness");
 assert.match(route, /min_width_mm <= d\.width_mm/, "the route enforces min width ≤ width");
 assert.match(route, /LOFT_ALLOWANCE_MAX_PCT/, "the allowance is capped");

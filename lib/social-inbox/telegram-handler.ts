@@ -1,7 +1,7 @@
 import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 import { replyInGroup } from "@/lib/telegram/bot-api";
-import { authorizeTelegramAction } from "@/lib/telegram/operators";
-import { TELEGRAM_ROLE_LABELS } from "@/lib/telegram/roles";
+import { authorizeTelegramAction, type TelegramDenial } from "@/lib/telegram/operators";
+import { describeActions } from "@/lib/telegram/roles";
 import {
   TEAM_NOTE_PREFIX,
   inboxPreviewPlatform,
@@ -29,8 +29,9 @@ import {
  * to the bot's "Sent" / "Answered in" notes under it) is sent to that customer
  * on the platform they wrote from.
  *
- * - Only in the measurements group, only from a linked, active operator whose
- *   role grants `social_inbox.reply` (Inbox agent or Review manager).
+ * - Only in the measurements group, only from a linked Staff profile whose
+ *   Telegram link and login's role both grant Answer customer messages
+ *   (`telegram.social-inbox-reply`, Users & permissions → Telegram and → Roles).
  * - A reply that starts with `//` is a team note and is never sent.
  * - Anyone else who replies is told it was NOT sent — a silent no would leave
  *   them thinking the customer got their answer.
@@ -60,19 +61,30 @@ export function isInboxUpdate(update: InboxTelegramUpdate): boolean {
   return isInboxBotText(replied.text ?? replied.caption);
 }
 
-function deniedMessage(reason: "not_linked" | "inactive" | "forbidden", user: TelegramUser, roleLabel?: string): string {
-  if (reason === "inactive") return "Not sent — your Telegram access is switched off. Ask an admin to turn it back on.";
-  if (reason === "forbidden") {
-    return `Not sent — ${roleLabel ?? "your role"}s can't answer customer messages. Ask an admin to make you an Inbox agent.`;
+/** Why a reply was not sent: always says so, since a silent no reads as answered. */
+function deniedMessage(reason: TelegramDenial, user: TelegramUser, roleName?: string): string {
+  switch (reason) {
+    case "inactive":
+      return "Not sent — your Telegram access is switched off. Ask an admin to turn it back on.";
+    case "profile_archived":
+      return "Not sent — your staff profile is archived, so your Telegram access is off. Ask an admin if this is a mistake.";
+    case "member_inactive":
+      return "Not sent — your Admin Panel login is deactivated, so your Telegram access is off. Ask an admin if this is a mistake.";
+    case "member_invited":
+      return "Not sent — your Admin Panel login hasn't been accepted yet. Sign in to the Admin Panel once with the invited email, then try again.";
+    case "role_forbidden":
+      return `Not sent — your login's role${roleName ? ` (${roleName})` : ""} doesn't include "answer customer messages". Ask an Owner to turn it on under Users & permissions → Roles.`;
+    case "forbidden":
+      return `Not sent — your Telegram access doesn't include "answer customer messages". Ask an admin to turn it on under Users & permissions → Telegram.`;
+    case "not_linked":
+      return `Not sent — you're not set up to answer customers yet. Ask an admin to link your staff profile under Settings → Users & permissions → Telegram, then send /link with your code. (Your Telegram ID: ${user.id}) To talk to the team under a card, start with ${TEAM_NOTE_PREFIX}.`;
   }
-  return `Not sent — you're not set up to answer customers yet. Ask an admin to add you under Settings → Staff Management → Telegram access, then send /link with your code. (Your Telegram ID: ${user.id}) To talk to the team under a card, start with ${TEAM_NOTE_PREFIX}.`;
 }
 
 async function authorize(user: TelegramUser) {
-  const auth = await authorizeTelegramAction(user.id, "social_inbox.reply");
-  if (auth.ok) return { ok: true as const, operator: auth.operator };
-  const label = auth.operator ? TELEGRAM_ROLE_LABELS[auth.operator.role] : undefined;
-  return { ok: false as const, message: deniedMessage(auth.reason, user, label) };
+  const auth = await authorizeTelegramAction(user.id, "telegram.social-inbox-reply");
+  if (auth.ok) return { ok: true as const, name: auth.name, actions: auth.actions };
+  return { ok: false as const, message: deniedMessage(auth.reason, user, auth.roleName) };
 }
 
 async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>, now: Date): Promise<void> {
@@ -83,14 +95,14 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
   if (text.startsWith(TEAM_NOTE_PREFIX)) return;
   const say = (reply: string) => replyInGroup(reply, message.message_id);
 
-  // A preview card (Settings → Telegram access → Send preview): show what a
+  // A preview card (Users & permissions → Telegram → Send preview): show what a
   // reply would do, and the replier's access. Nothing is sent.
   const previewPlatform = inboxPreviewPlatform(replied.text ?? replied.caption);
   if (previewPlatform) {
     const auth = await authorize(from);
     await say(
       auth.ok
-        ? `🧪 On a real card, this reply would be sent to the customer on ${PLATFORM_NAMES[previewPlatform]}. You're set up as ${auth.operator.display_name} (${TELEGRAM_ROLE_LABELS[auth.operator.role]}).`
+        ? `🧪 On a real card, this reply would be sent to the customer on ${PLATFORM_NAMES[previewPlatform]}. You're set up as ${auth.name} (${describeActions(auth.actions)}).`
         : auth.message,
     );
     return;
@@ -135,7 +147,7 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
     sent_at: now.toISOString(),
     status: "sending",
     sent_by_telegram_user_id: from.id,
-    sent_by_name: auth.operator.display_name,
+    sent_by_name: auth.name,
     telegram_chat_id: message.chat.id,
     telegram_source_message_id: message.message_id,
   });
@@ -160,7 +172,7 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
     renderSentNote(
       conversation.platform,
       { displayName: conversation.display_name, username: conversation.username },
-      auth.operator.display_name,
+      auth.name,
     ),
   );
   if (noteId) await updateMessage(outbound.id, { telegram_message_id: noteId });

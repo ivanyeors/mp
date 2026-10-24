@@ -40,6 +40,7 @@ import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move
 import type { FaqItemContent, FaqLocalizedText } from "@/lib/faq/types";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export type CategoryRow = {
   id: string;
@@ -470,10 +471,12 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     return (
       <div className="space-y-8" data-settings-faq>
         <div>
-          <h1>FAQ Management</h1>
-          <p className="mt-1 text-muted-foreground">
-            Manage Global FAQ and page-local FAQ embeds from one place.
-          </p>
+          <div className="flex items-center gap-1.5">
+            <h1>FAQ Management</h1>
+            <InfoTip label="About FAQ Management">
+              <p>Manage Global FAQ and page-local FAQ embeds from one place.</p>
+            </InfoTip>
+          </div>
         </div>
         <Tabs defaultValue="global" className="space-y-6">
           <TabsList data-settings-faq-tabs>
@@ -496,10 +499,12 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
   return (
     <div className="space-y-8" data-settings-faq>
       <div>
-        <h1>FAQ Management</h1>
-        <p className="mt-1 text-muted-foreground">
-          Manage Global FAQ and page-local FAQ embeds from one place.
-        </p>
+        <div className="flex items-center gap-1.5">
+          <h1>FAQ Management</h1>
+          <InfoTip label="About FAQ Management">
+            <p>Manage Global FAQ and page-local FAQ embeds from one place.</p>
+          </InfoTip>
+        </div>
       </div>
 
       <Tabs defaultValue="global" className="space-y-6">

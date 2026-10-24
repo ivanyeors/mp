@@ -109,7 +109,7 @@ if ZONED:
 # Free camera (zoned, 5.13): files in ComfyUI/input/3d, written by build_massing.py.
 FREE_MODEL = "3d/showroom_massing.glb"         # full model; parts are hidden on the canvas (5.13)
 FREE_ID_MODEL = "3d/showroom_massing_ids.glb"  # its zone-coloured twin: same part names + __z<n>
-FREE_HIDE = "wall_north\npatio_wall_n\npoly_roof\npoly_roof_n"   # default = build_massing.CUTAWAY
+FREE_HIDE = "wall_north\npatio_wall_n\npoly_roof\npoly_roof_n"   # default = `cutaway` in plans/showroom.yaml
 FREE_SEED_OFFSET, SECTION_SEED_OFFSET = 20, 10
 
 # --------------------------------------------------------------------------

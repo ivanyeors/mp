@@ -11,6 +11,7 @@ import { draftInputFor, draftReviewReply } from "@/lib/reviews/draft-reply";
 import { renderGoogleReviewCard } from "@/lib/reviews/cards";
 import { replyStyleFor } from "@/lib/reviews/reply-style";
 import { editGroupCard, sendGroupCard } from "@/lib/telegram/bot-api";
+import { customerMatchLinkFor } from "@/lib/crm/google-review-match-server";
 import {
   GOOGLE_REVIEW_COLUMNS,
   type GoogleReviewRow,
@@ -54,6 +55,12 @@ export type ReviewSyncDeps = {
   draft?: typeof draftReviewReply;
   send?: typeof sendGroupCard;
   edit?: typeof editGroupCard;
+  /**
+   * CRM slice 12: the card's *Possible customer match* link, when a Customer
+   * may have written the review. A read only: the sync never links a review
+   * to a Customer (CRM README, seventh hazard).
+   */
+  matchLink?: typeof customerMatchLinkFor;
 };
 
 export type ReviewSyncSummary = {
@@ -178,11 +185,12 @@ async function writeClaudeDraft(
  */
 export async function deliverGoogleReviewCard(
   row: GoogleReviewRow,
-  deps: Pick<ReviewSyncDeps, "draft" | "send"> = {},
+  deps: Pick<ReviewSyncDeps, "draft" | "send" | "matchLink"> = {},
 ): Promise<boolean> {
   const admin = supabaseAdmin();
   const draft = deps.draft ?? draftReviewReply;
   const send = deps.send ?? sendGroupCard;
+  const matchLink = deps.matchLink ?? customerMatchLinkFor;
   let current = row;
 
   if (current.status === "new") {
@@ -199,7 +207,7 @@ export async function deliverGoogleReviewCard(
 
   if (!current.draft_reply) current = await writeClaudeDraft(current, draft, "keep");
 
-  const card = renderGoogleReviewCard(current);
+  const card = renderGoogleReviewCard(current, { possibleCustomerMatch: await matchLink(current.id) });
   const sent = await send(card.text, card.replyMarkup);
   // Left pending with no message id: the next run past STALE_MS retries it.
   if (!sent) return false;
@@ -210,9 +218,13 @@ export async function deliverGoogleReviewCard(
   return true;
 }
 
-async function refreshCard(row: GoogleReviewRow, edit: typeof editGroupCard): Promise<void> {
+async function refreshCard(
+  row: GoogleReviewRow,
+  edit: typeof editGroupCard,
+  matchLink: typeof customerMatchLinkFor,
+): Promise<void> {
   if (!row.telegram_message_id) return;
-  const card = renderGoogleReviewCard(row);
+  const card = renderGoogleReviewCard(row, { possibleCustomerMatch: await matchLink(row.id) });
   await edit(row.telegram_message_id, card.text, card.replyMarkup);
 }
 
@@ -220,6 +232,7 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
   const now = deps.now ?? new Date();
   const edit = deps.edit ?? editGroupCard;
   const draft = deps.draft ?? draftReviewReply;
+  const matchLink = deps.matchLink ?? customerMatchLinkFor;
   const summary: ReviewSyncSummary = {
     ok: true,
     fetched: 0,
@@ -345,7 +358,7 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
       summary.redrafted += 1;
     }
     // An open card shows the reviewer's edit (or that it was answered elsewhere).
-    if (row.status === "pending") await refreshCard(current, edit);
+    if (row.status === "pending") await refreshCard(current, edit, matchLink);
   }
 
   // A Post that died mid-flight: hand the card back so someone can tap again.
@@ -358,7 +371,7 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
     .select(GOOGLE_REVIEW_COLUMNS);
   for (const row of (stuck ?? []) as GoogleReviewRow[]) {
     summary.recovered += 1;
-    await refreshCard(row, edit);
+    await refreshCard(row, edit, matchLink);
   }
 
   summary.carded = await deliverPendingCards({ ...deps, now });

@@ -14,6 +14,9 @@ export const runtime = "nodejs";
  * (`GET /api/shop/coupons?limit=100`) is read here instead, so the table
  * renders in the first paint. The API route stays in place for refreshes and
  * mutations.
+ *
+ * Every coupon is a bearer code (ADR 0030, decision 14): any code-based
+ * incentive is an ordinary Discounts code, bound to no account.
  */
 export default async function SettingsDiscountsPage({
     params,

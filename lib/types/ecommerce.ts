@@ -142,12 +142,44 @@ export interface Customer {
   last_name: string | null;
   phone: string | null;
   locale: string;
+  /** Staff-only: the customer's own key is not granted it. */
   tags: string[];
+  /**
+   * Retired (ADR 0028 (a)): moved into `customer_notes`, and never written.
+   * Staff-only, like `tags`. Dropped by a later migration.
+   */
   notes: string | null;
   total_orders: number;
   total_spent: number;
   created_at: string;
   updated_at: string;
+  /**
+   * When the current login was bound to this row; null without one. Set by a
+   * trigger, never by app code (migration slice 12). Staff-only: read through
+   * the service role, not granted to the customer's own key.
+   */
+  account_linked_at: string | null;
+  /**
+   * The last time they opened an account page while signed in, to the hour
+   * (`touchCustomerLastSeen`). Not the last site visit. Staff-only.
+   */
+  account_last_seen_at: string | null;
+  /**
+   * The sign-in methods on the current login, sorted (`{email,google}`); empty
+   * without one (CRM slice 11). Written by `linkCustomerToAuthUser` from the
+   * signed-in user's identities, and emptied by a trigger when the login goes.
+   * Staff-only.
+   */
+  account_providers: string[];
+  /**
+   * **Marketing consent** (migration slice 07). Written only by
+   * `set_marketing_email()`; the customer's own key reads the state, not its
+   * provenance.
+   */
+  marketing_email?: "subscribed" | "not_subscribed" | "unsubscribed";
+  /** Staff-only: what set the state, and when. Null while `not_subscribed`. */
+  marketing_email_source?: string | null;
+  marketing_email_updated_at?: string | null;
   addresses?: CustomerAddress[];
 }
 
@@ -223,16 +255,22 @@ export interface Order {
   subtotal: number;
   shipping_amount: number;
   tax_amount: number;
+  /** Includes the points' dollars, when points were spent. */
   discount_amount: number;
   total: number;
   amount_captured?: number;
   amount_refunded?: number;
+  /** Points spent at checkout (PRD-loyalty-points slice 04); 0 for none. */
+  points_spent?: number;
+  /** Their dollars, `points_spent / 100`, also inside `discount_amount`. */
+  points_discount?: number;
   shipping_address: ShippingAddress;
   billing_address: ShippingAddress | null;
   shipping_method_id: string | null;
   coupon_id: string | null;
   coupon_code: string | null;
   notes: string | null;
+  /** Staff-only: the customer's own key is not granted it (CustomerOrder omits it). */
   internal_notes: string | null;
   payment_method: string | null;
   payment_reference: string | null;
@@ -337,6 +375,10 @@ export interface OrderItem {
   total_cost?: number | null;
   customization_id?: string | null;
   customization_snapshot?: OrderItemCustomizationSnapshot | null;
+  /** `service` for a Service fee line (ADR 0024): never shipped, stocked or returned. */
+  kind?: "goods" | "service";
+  /** Which Service a `service` line charges (`service_prices.key`). */
+  service_key?: string | null;
   created_at: string;
 }
 
@@ -420,6 +462,8 @@ export interface ShippingMethod {
   markup_fixed?: number;
   /** Round the marked-up live rate up to this increment; 0 = no rounding. */
   rate_rounding?: number;
+  /** Self-collect: the studio (`partners` Location) it is collected from. Null = delivered. */
+  collect_location_id?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -69,6 +69,8 @@ import {
 import { CELLS } from "@/lib/spatial-fillings/cells";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
+import { orderEarnLine, pointsUsedRow, type OrderEarn } from "@/lib/points/order-lines";
+import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -157,6 +159,8 @@ export type OrderDetailInitialData = {
         row: Record<string, unknown>;
         margin: OrderMargin | null;
     } | null;
+    /** What the order earns (PRD-loyalty-points slice 03); null when nothing or unread. */
+    pointsEarn?: OrderEarn | null;
     timeline: { ok: true; rows: OrderTimelineEvent[]; events: OrderTimelineEvent[] } | null;
     mpConfigLinks: {
         ok: true;
@@ -634,6 +638,10 @@ export default function OrderDetailPage({
 
     const customClass = orderStatusBadgeClass(order.status);
     const badgeVariant = orderStatusBadgeVariant(order.status);
+    // Points used are their own line, apart from the coupon; their dollars are
+    // inside discount_amount (PRD-loyalty-points slice 04).
+    const pointsUsed = pointsUsedRow(Number(order.points_spent ?? 0));
+    const couponDiscount = Math.round((order.discount_amount - (pointsUsed?.dollars ?? 0)) * 100) / 100;
     const hasUnitCost = (order.items ?? []).some(
         (item) => item.unit_cost != null && item.unit_cost > 0
     );
@@ -710,6 +718,11 @@ export default function OrderDetailPage({
                                             <TableCell className="px-4 py-3">
                                                 <p className="font-medium text-sm">
                                                     {item.product_title}
+                                                    {item.kind === "service" && (
+                                                        <Badge variant="outline" className="ml-2 text-[10px] align-middle">
+                                                            Service
+                                                        </Badge>
+                                                    )}
                                                 </p>
                                                 {item.variant_title && (
                                                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -753,10 +766,16 @@ export default function OrderDetailPage({
                                     <span>Shipping</span>
                                     <span>{formatSGD(order.shipping_amount)}</span>
                                 </div>
-                                {order.discount_amount > 0 && (
+                                {couponDiscount > 0 && (
                                     <div className="flex justify-between text-green-600 dark:text-green-400">
                                         <span>Discount</span>
-                                        <span>-{formatSGD(order.discount_amount)}</span>
+                                        <span>-{formatSGD(couponDiscount)}</span>
+                                    </div>
+                                )}
+                                {pointsUsed && (
+                                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                                        <span>{pointsUsed.label}</span>
+                                        <span>-{formatSGD(pointsUsed.dollars)}</span>
                                     </div>
                                 )}
                                 {order.tax_amount > 0 && (
@@ -775,6 +794,9 @@ export default function OrderDetailPage({
                                         <span>-{formatSGD(Number(order.amount_refunded))}</span>
                                     </div>
                                 )}
+                                {initialData?.pointsEarn ? (
+                                    <p className="pt-1 text-xs text-muted-foreground">{orderEarnLine(initialData.pointsEarn)}</p>
+                                ) : null}
                             </div>
                             {canRestock && (
                                 <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
@@ -1378,6 +1400,12 @@ export default function OrderDetailPage({
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
+                            {collectLocationOf(order.shipping_address) && (
+                                <p className="font-medium">
+                                    Self-collect at {collectLocationOf(order.shipping_address)!.name}: no courier.
+                                    Hand it over at the studio.
+                                </p>
+                            )}
                             <div className="text-muted-foreground leading-relaxed">
                                 <p>{order.shipping_address.recipient}</p>
                                 <p>{order.shipping_address.line1}</p>

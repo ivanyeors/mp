@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const denied = await requireAdmin("results");
+  const denied = await requireAdmin("appointments");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);

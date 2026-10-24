@@ -4,9 +4,11 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { releaseHold } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
-import { renderResultDeclinedEmail } from "@/lib/email/results";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import { RESULT_EMAIL_COPY, renderResultDeclinedEmail } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { authorizeResultAccess } from "@/lib/results/access";
+import { cascadeEnding, companionLockReason, loadEndingPlan } from "@/lib/results/pair-ending";
 import { getPublicOrigin } from "@/lib/site-url";
 import { sendTelegram } from "@/lib/telegram/notify";
 
@@ -33,7 +35,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, filling_template_id, payment_intent_id, access_token, customer_id, customer_email, order_id, product_type, authorized_amount, currency, assigned_size, assigned_tier, assigned_length, final_amount",
+      "id, status, filling_template_id, payment_intent_id, access_token, customer_id, customer_email, order_id, product_type, authorized_amount, currency, assigned_size, assigned_tier, assigned_length, final_amount, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -54,6 +56,10 @@ export async function POST(
     );
   }
 
+  // "Remove Mbolster" is refused once money has moved for the whole pair.
+  const locked = await companionLockReason(admin, row);
+  if (locked) return NextResponse.json({ error: locked, code: "pair_paid" }, { status: 409 });
+
   const life = transitionResult(
     {
       status: (row.status as "assigned") ?? "assigned",
@@ -66,7 +72,12 @@ export async function POST(
     return NextResponse.json({ error: life.error }, { status: 400 });
   }
 
-  if (life.releaseHold && row.payment_intent_id) {
+  // A Paired build shares one hold (ADR 0026): declining the Mbolster keeps it
+  // for the Mpillow, and declining the Mpillow declines the Mbolster with it.
+  const plan = await loadEndingPlan(admin, row);
+  const releasesHold = life.releaseHold && plan.releaseHold;
+
+  if (releasesHold && row.payment_intent_id) {
     try {
       await releaseHold(row.payment_intent_id);
     } catch (e) {
@@ -83,6 +94,7 @@ export async function POST(
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
+  await cascadeEnding(admin, plan, "declined");
 
   const restartPath =
     row.product_type === "bolster" ? "/mbolster-config" : "/mp-config";
@@ -100,21 +112,23 @@ export async function POST(
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
   if (row.customer_email) {
     try {
+      const copy = await loadEmailCopy(RESULT_EMAIL_COPY.declined);
       await getEmailTransport().send({
         to: row.customer_email,
         from: getDefaultFromAddress(),
-        ...renderResultDeclinedEmail({
-          origin: getPublicOrigin(req),
-          resultId: id,
-          accessToken: row.access_token,
-          productType: row.product_type,
-          // Only claim a release when one actually happened.
-          releasedAmount:
-            life.releaseHold && row.authorized_amount != null
-              ? Number(row.authorized_amount)
-              : null,
-          currency: row.currency ?? "SGD",
-        }),
+        ...renderResultDeclinedEmail(
+          {
+            origin: getPublicOrigin(req),
+            resultId: id,
+            accessToken: row.access_token,
+            productType: row.product_type,
+            // Only claim a release when one actually happened, and name what it
+            // freed: the whole hold, which for a pair covered both builds.
+            releasedAmount: releasesHold ? plan.intentAmount : null,
+            currency: row.currency ?? "SGD",
+          },
+          copy,
+        ),
       });
       emailStatus = "sent";
     } catch (e) {
@@ -144,7 +158,12 @@ export async function POST(
       spec || "(no assignment recorded)",
       `Email: ${row.customer_email ?? "—"}`,
       amount != null ? `Was: ${currency} ${amount.toFixed(2)}` : "No amount recorded",
-      life.releaseHold ? "Authorization hold released." : "No card was taken.",
+      releasesHold
+        ? "Authorization hold released."
+        : plan.cascadeTo == null && row.paired_build_id && row.payment_intent_id
+          ? "Paired Mbolster dropped — the hold stays for its Mpillow."
+          : "No card was taken.",
+      ...(plan.cascadeTo ? [`Its paired Mbolster was declined with it: ${getPublicOrigin(req)}/settings/results/${plan.cascadeTo}`] : []),
       "",
       `Platform: ${getPublicOrigin(req)}/settings/results/${id}`,
     ].join("\n"),
@@ -160,7 +179,7 @@ export async function POST(
   return NextResponse.json({
     ok: true,
     status: life.status,
-    holdReleased: life.releaseHold,
+    holdReleased: releasesHold,
     restartPath,
     emailStatus,
     telegramStatus,

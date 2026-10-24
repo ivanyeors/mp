@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
+import { getWorkingAs } from "@/lib/staff/working-as";
 
 /**
  * Admin audit logging (#38).
@@ -12,8 +13,11 @@ import type { AdminContext } from "@/lib/auth/admin";
  */
 
 export interface AdminActionInput {
-  /** The staff member performing the action (from `getAdminContext`). */
-  actor: Pick<AdminContext, "userId" | "email"> | null;
+  /**
+   * The staff member performing the action (from `getAdminContext`). With a
+   * `memberId`, the entry also names the Staff profile they are working as.
+   */
+  actor: (Pick<AdminContext, "userId" | "email"> & { memberId?: string }) | null;
   /** Dotted action name, e.g. "order.status_change" or "admin_user.invite". */
   action: string;
   /** The kind of entity affected, e.g. "order", "product", "admin_user". */
@@ -28,7 +32,10 @@ export interface AdminActionInput {
 export async function recordAdminAction(input: AdminActionInput): Promise<void> {
   try {
     const admin = supabaseAdmin();
+    const workingAs = input.actor?.memberId ? await getWorkingAs(input.actor.memberId) : null;
     await admin.from("admin_audit_log").insert({
+      // Only when chosen, so a row never names a column an older schema lacks.
+      ...(workingAs ? { actor_profile_id: workingAs.id } : {}),
       actor_id: input.actor?.userId ?? null,
       actor_email: input.actor?.email ?? null,
       action: input.action,

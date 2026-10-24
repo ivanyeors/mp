@@ -1,0 +1,40 @@
+{
+  "about": "Who may receive which campaign email (PRD-shopify-customer-migration slice 08). One table, two readers: lib/customer-migration/__tests__/campaign.test.ts runs campaignBlocker over it, and assert-08-campaign-sends.sql runs campaign_send_blocker() over it in Postgres. `expected` is the blocker, or null when the Customer may receive the template. `days_ago` dates a send relative to `now`. Synthetic: invented Customers, no real data.",
+  "now": "2026-10-21T04:00:00Z",
+  "cases": [
+    { "name": "announcement: subscribed, unclaimed, never emailed", "template": "migration_announcement", "customer": { "marketing_email": "subscribed" }, "expected": null },
+    { "name": "announcement: not a Migrated customer", "template": "migration_announcement", "customer": { "migrated": false, "marketing_email": "subscribed" }, "expected": "not_migrated" },
+    { "name": "announcement: already Claimed", "template": "migration_announcement", "customer": { "claimed": true, "marketing_email": "subscribed" }, "expected": "claimed" },
+    { "name": "announcement: unsubscribed", "template": "migration_announcement", "customer": { "marketing_email": "unsubscribed" }, "expected": "unsubscribed" },
+    { "name": "announcement: Claimed and unsubscribed reads as Claimed", "template": "migration_announcement", "customer": { "claimed": true, "marketing_email": "unsubscribed" }, "expected": "claimed" },
+    { "name": "announcement: not subscribed", "template": "migration_announcement", "customer": { "marketing_email": "not_subscribed" }, "expected": "not_subscribed" },
+    { "name": "announcement: a bounce on another template suppresses", "template": "migration_announcement", "customer": { "marketing_email": "subscribed", "sends": { "migration_service_notice": { "status": "bounced", "days_ago": 20 } } }, "expected": "suppressed" },
+    { "name": "announcement: its own complaint suppresses", "template": "migration_announcement", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "complained", "days_ago": 3 } } }, "expected": "suppressed" },
+    { "name": "reminder: a complaint after a bounce suppresses", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "complained", "days_ago": 10, "bounced": true } } }, "expected": "suppressed" },
+    { "name": "announcement: sent once already", "template": "migration_announcement", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 1 } } }, "expected": "already_sent" },
+    { "name": "announcement: in flight", "template": "migration_announcement", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "pending", "days_ago": 0 } } }, "expected": "already_sent" },
+    { "name": "announcement: failed, not retrying", "template": "migration_announcement", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "failed", "days_ago": 1 } } }, "expected": "failed" },
+    { "name": "announcement: failed, retrying", "template": "migration_announcement", "retryFailed": true, "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "failed", "days_ago": 1 } } }, "expected": null },
+    { "name": "announcement: retrying never resends a sent one", "template": "migration_announcement", "retryFailed": true, "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 1 } } }, "expected": "already_sent" },
+
+    { "name": "reminder: announcement sent 8 days ago", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 8 } } }, "expected": null },
+    { "name": "reminder: announcement sent exactly 7 days ago", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 7 } } }, "expected": null },
+    { "name": "reminder: announcement sent 6.9 days ago", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 6.9 } } }, "expected": "announcement_too_recent" },
+    { "name": "reminder: no announcement", "template": "migration_reminder", "customer": { "marketing_email": "subscribed" }, "expected": "no_announcement" },
+    { "name": "reminder: the announcement failed", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "failed", "days_ago": 9 } } }, "expected": "no_announcement" },
+    { "name": "reminder: the announcement is in flight", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "pending", "days_ago": 9 } } }, "expected": "no_announcement" },
+    { "name": "reminder: once", "template": "migration_reminder", "customer": { "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 15 }, "migration_reminder": { "status": "sent", "days_ago": 7 } } }, "expected": "already_sent" },
+    { "name": "reminder: unsubscribed after the announcement", "template": "migration_reminder", "customer": { "marketing_email": "unsubscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 9 } } }, "expected": "unsubscribed" },
+    { "name": "reminder: Claimed after the announcement", "template": "migration_reminder", "customer": { "claimed": true, "marketing_email": "subscribed", "sends": { "migration_announcement": { "status": "sent", "days_ago": 9 } } }, "expected": "claimed" },
+    { "name": "reminder: not subscribed", "template": "migration_reminder", "customer": { "marketing_email": "not_subscribed" }, "expected": "not_subscribed" },
+
+    { "name": "service notice: not subscribed, never emailed", "template": "migration_service_notice", "customer": { "marketing_email": "not_subscribed" }, "expected": null },
+    { "name": "service notice: subscribed gets the announcement instead", "template": "migration_service_notice", "customer": { "marketing_email": "subscribed" }, "expected": "subscribed" },
+    { "name": "service notice: never to the unsubscribed", "template": "migration_service_notice", "customer": { "marketing_email": "unsubscribed" }, "expected": "unsubscribed" },
+    { "name": "service notice: once", "template": "migration_service_notice", "customer": { "marketing_email": "not_subscribed", "sends": { "migration_service_notice": { "status": "sent", "days_ago": 2 } } }, "expected": "already_sent" },
+    { "name": "service notice: its own bounce suppresses", "template": "migration_service_notice", "customer": { "marketing_email": "not_subscribed", "sends": { "migration_service_notice": { "status": "bounced", "days_ago": 2 } } }, "expected": "suppressed" },
+    { "name": "service notice: failed, retrying", "template": "migration_service_notice", "retryFailed": true, "customer": { "marketing_email": "not_subscribed", "sends": { "migration_service_notice": { "status": "failed", "days_ago": 2 } } }, "expected": null },
+    { "name": "service notice: already Claimed", "template": "migration_service_notice", "customer": { "claimed": true, "marketing_email": "not_subscribed" }, "expected": "claimed" },
+    { "name": "service notice: not a Migrated customer", "template": "migration_service_notice", "customer": { "migrated": false, "marketing_email": "not_subscribed" }, "expected": "not_migrated" }
+  ]
+}

@@ -10,10 +10,13 @@ import type { SocialEvent } from "@/lib/social-inbox/types";
  */
 
 const GROUP = -1001279910218;
-const IVAN = { id: 111, first_name: "Ivan" }; // inbox agent
-const SAM = { id: 222, first_name: "Sam" }; // shop moderator
-const RITA = { id: 333, first_name: "Rita" }; // review manager
+const IVAN = { id: 111, first_name: "Ivan" }; // answers customers only
+const SAM = { id: 222, first_name: "Sam" }; // moderates shop reviews; his role can't answer customers
+const RITA = { id: 333, first_name: "Rita" }; // every Telegram action
 const STRANGER = { id: 999, first_name: "Who" };
+const REPLY = "telegram.google-review-reply";
+const MODERATE = "telegram.shop-review-moderate";
+const INBOX = "telegram.social-inbox-reply";
 
 const h = vi.hoisted(() => ({
   db: null as unknown,
@@ -88,10 +91,24 @@ beforeEach(() => {
   h.send.mockResolvedValue({ ok: true, messageId: "out-1" });
   h.profile.mockResolvedValue({ displayName: "Jane Tan", username: "janetan" });
   h.tables = {
+    // Telegram links (ADR 0023): effective access = the login's role ∩ the link's actions.
+    admin_roles: [
+      { id: "r-owner", name: "Owner", grants_all: true, permissions: [] },
+      { id: "r-shop", name: "Shop desk", grants_all: false, permissions: ["orders", MODERATE] },
+    ],
+    admin_users: [
+      { id: "m-sg", email: "sg@mpillow.com", role_id: "r-owner", is_active: true, auth_user_id: "u-sg" },
+      { id: "m-shop", email: "shop@x.test", role_id: "r-shop", is_active: true, auth_user_id: "u-shop" },
+    ],
+    mp_staff: [
+      { id: "p-ivan", name: "Ivan", admin_user_id: "m-sg", archived_at: null },
+      { id: "p-sam", name: "Sam", admin_user_id: "m-shop", archived_at: null },
+      { id: "p-rita", name: "Rita", admin_user_id: "m-sg", archived_at: null },
+    ],
     telegram_operators: [
-      { id: "op-ivan", display_name: "Ivan", role: "inbox_agent", is_active: true, telegram_user_id: IVAN.id },
-      { id: "op-sam", display_name: "Sam", role: "shop_moderator", is_active: true, telegram_user_id: SAM.id },
-      { id: "op-rita", display_name: "Rita", role: "review_manager", is_active: true, telegram_user_id: RITA.id },
+      { id: "op-ivan", staff_profile_id: "p-ivan", actions: [INBOX], is_active: true, telegram_user_id: IVAN.id },
+      { id: "op-sam", staff_profile_id: "p-sam", actions: [MODERATE, INBOX], is_active: true, telegram_user_id: SAM.id },
+      { id: "op-rita", staff_profile_id: "p-rita", actions: [REPLY, MODERATE, INBOX], is_active: true, telegram_user_id: RITA.id },
     ],
     social_conversations: [],
     social_messages: [],
@@ -177,7 +194,7 @@ describe("answering from Telegram", () => {
     await ingestSocialEvents([igMessage("in.1", "Do you open on Sundays?")]);
   });
 
-  it("sends an Inbox agent's reply to the customer and confirms it in the group", async () => {
+  it("sends a reply from someone allowed to answer customers, and confirms it in the group", async () => {
     await reply(IVAN, "Yes — Sundays 11am to 6pm!", cardOf("in.1"));
 
     expect(h.send).toHaveBeenCalledWith(
@@ -220,7 +237,9 @@ describe("answering from Telegram", () => {
     expect(lastReply()).toContain("Your Telegram ID: 999");
 
     await reply(SAM, "Hi! Yes we are", cardOf("in.1"), 503);
-    expect(lastReply()).toBe("Not sent — Shop moderators can't answer customer messages. Ask an admin to make you an Inbox agent.");
+    expect(lastReply()).toBe(
+      'Not sent — your login\'s role (Shop desk) doesn\'t include "answer customer messages". Ask an Owner to turn it on under Users & permissions → Roles.',
+    );
     expect(h.send).not.toHaveBeenCalled();
 
     await reply(RITA, "Hi! Yes we are", cardOf("in.1"), 504);

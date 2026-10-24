@@ -1,52 +1,39 @@
 /**
- * Telegram RBAC: who may act on review cards and customer message cards in the
- * measurements group.
+ * Telegram actions: what a linked person can do on review and customer message
+ * cards in the measurements group (ADR 0023).
  *
- * Same shape as lib/auth/permissions.ts — the role → action matrix lives in
- * code so it is deterministic and unit-testable; the people, their role and
- * whether they are active live in `telegram_operators`, managed from
- * Staff Management → Telegram access.
+ * Each action is a permission catalog key (`telegram.*` in
+ * lib/auth/permissions.ts), so a role grants it on Users & permissions →
+ * Roles like any page. A Telegram link (a Staff profile's bound Telegram
+ * account) lists the actions turned on for that person; a tap needs both.
  *
- * Everyone in the group can SEE the cards. Only a linked, active operator
- * whose role grants the action can press a button that changes something.
+ * Everyone in the group can SEE the cards. Only a linked person whose link and
+ * whose login's role both grant the action can press a button that changes
+ * something.
  */
+import { catalogForSurface, isPermission, permissionEntry, type Permission } from "@/lib/auth/permissions";
 
-export const TELEGRAM_ACTIONS = ["google_review.reply", "shop_review.moderate", "social_inbox.reply"] as const;
-export type TelegramAction = (typeof TELEGRAM_ACTIONS)[number];
+export type TelegramAction = Extract<Permission, `telegram.${string}`>;
 
-export const TELEGRAM_ROLES = ["review_manager", "shop_moderator", "inbox_agent"] as const;
-export type TelegramRole = (typeof TELEGRAM_ROLES)[number];
+export const TELEGRAM_ACTIONS = catalogForSurface("telegram").map((e) => e.key) as TelegramAction[];
 
-/**
- * Review managers speak for the business on Google Maps, so they can also
- * moderate the website's own reviews and answer customer messages. Shop
- * moderators only approve or reject website reviews — nothing they do is
- * visible outside mpillow.com. Inbox agents only answer Facebook, Instagram
- * and TikTok messages (PRD-social-inbox).
- */
-export const TELEGRAM_ROLE_ACTIONS: Record<TelegramRole, TelegramAction[]> = {
-  review_manager: ["google_review.reply", "shop_review.moderate", "social_inbox.reply"],
-  shop_moderator: ["shop_review.moderate"],
-  inbox_agent: ["social_inbox.reply"],
-};
-
-export const TELEGRAM_ROLE_LABELS: Record<TelegramRole, string> = {
-  review_manager: "Review manager",
-  shop_moderator: "Shop moderator",
-  inbox_agent: "Inbox agent",
-};
-
-export const TELEGRAM_ROLE_DESCRIPTIONS: Record<TelegramRole, string> = {
-  review_manager:
-    "Posts replies to Google reviews, approves or rejects shop reviews, and answers Facebook, Instagram and TikTok messages.",
-  shop_moderator: "Approves or rejects shop reviews only.",
-  inbox_agent: "Answers Facebook, Instagram and TikTok messages only.",
-};
-
-export function isTelegramRole(value: unknown): value is TelegramRole {
-  return typeof value === "string" && (TELEGRAM_ROLES as readonly string[]).includes(value);
+export function isTelegramAction(value: unknown): value is TelegramAction {
+  return isPermission(value) && value.startsWith("telegram.");
 }
 
-export function telegramRoleCan(role: TelegramRole, action: TelegramAction): boolean {
-  return TELEGRAM_ROLE_ACTIONS[role]?.includes(action) ?? false;
+export function telegramActionLabel(action: TelegramAction): string {
+  return permissionEntry(action).label;
+}
+
+export const TELEGRAM_ACTION_DESCRIPTIONS: Record<TelegramAction, string> = {
+  "telegram.google-review-reply":
+    "Post replies to Google reviews (and edit a draft by replying to its card). Speaks for the business on Google Maps.",
+  "telegram.shop-review-moderate": "Approve or reject reviews left on the website. Nothing outside mpillow.com.",
+  "telegram.social-inbox-reply":
+    "Answer Facebook, Instagram and TikTok messages by replying to their cards. Speaks to customers for the business.",
+};
+
+/** "Reply to Google reviews, Moderate shop reviews", or "no actions". */
+export function describeActions(actions: readonly TelegramAction[]): string {
+  return actions.length ? actions.map(telegramActionLabel).join(", ") : "no actions";
 }

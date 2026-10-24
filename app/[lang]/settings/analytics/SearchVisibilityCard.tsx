@@ -28,6 +28,7 @@ import {
   addTargetQuery,
   removeTargetQuery,
 } from "./seo-actions";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
 const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.ChannelMixVisx), { ssr: false });
@@ -908,12 +909,14 @@ export function SearchVisibilityCard() {
   return (
     <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-        <CardTitle>Search &amp; AI visibility</CardTitle>
-        <CardDescription>
-          Google web search from Search Console (synced daily; the last 3 days are partial while Google revises them), and
-          first-party visits by channel.
-          {data?.lastDate ? ` Latest data: ${data.lastDate}.` : null}
-        </CardDescription>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>Search &amp; AI visibility</CardTitle>
+          <InfoTip label="About Search & AI visibility">
+            Google web search from Search Console (synced daily; the last 3 days are partial while Google revises them), and
+            first-party visits by channel.
+          </InfoTip>
+        </div>
+        {data?.lastDate ? <CardDescription>Latest data: {data.lastDate}.</CardDescription> : null}
         {/* Not a CardAction: seven tabs beside the description squeeze it to a sliver below
             ~1280px, so they get their own row. On a phone each strip is a full-width row of its
             own, like the other analytics cards' tabs. */}

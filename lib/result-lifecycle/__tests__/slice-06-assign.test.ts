@@ -68,7 +68,7 @@ describe("slice 06 assign path", () => {
   it("final amount is the goods subtotal plus shipping and tax (fillings ignored)", () => {
     // The goods subtotal comes from priceComposedBuild — the Costings row for the
     // chosen case family, moved only by components differing from it, plus add-ons.
-    const priced = priceResult({ subtotal: 140, shipping: 5, tax: 3 });
+    const priced = priceResult({ goods: 140, shipping: 5, tax: 3 });
     expect(priced.total).toBe(148);
   });
 });

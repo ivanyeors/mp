@@ -201,7 +201,7 @@ Add to Vercel (and `.env.local`), **redeploy**.
 
 ### 4. Connect the account
 
-On **production**: Settings → Staff Management → **Telegram access** → Customer messages →
+On **production**: Settings → **Users & permissions** → **Telegram** → Customer messages →
 **Connect TikTok** → sign in as the Mpillow TikTok business account → approve **every** permission
 shown (send messages, read messages, read account type, read and manage messages). You land back on
 the tab with "TikTok connected as @…". On production this also registers TikTok's message webhook
@@ -232,18 +232,23 @@ Limits to know:
 
 ## Part 3 — Database
 
-Apply `supabase/migrations/20261003000000_social_inbox.sql` (`pnpm db:push`). It adds
-`social_conversations`, `social_messages`, `social_channel_tokens`, and the **Inbox agent** role.
+Apply `supabase/migrations/20261024120000_social_inbox.sql` (`pnpm db:push`). It adds
+`social_conversations`, `social_messages` and `social_channel_tokens`. Until it is applied the
+feature stays off: the daily cron reports the missing tables and the Telegram tab shows nothing
+connected; nothing else is affected.
 
 ## Part 4 — Telegram access and a dry run
 
-1. Settings → Staff Management → **Telegram access** → add each person who answers customers with
-   role **Inbox agent** (Review managers can already answer) → copy their `/link CODE` → they send
-   it to the bot (privately, or `/link@<bot_username> CODE` in the group).
-2. **Send preview** → the last card is a sample Instagram message. Each person replies to it; the
+1. Settings → **Users & permissions** → **Roles**: give the role of each person who answers
+   customers **Answer customer messages** (Owner and Admin already have every action).
+2. **Users & permissions** → **Telegram**: link each of them (or edit their existing link) with
+   **Answer customer messages** ticked → copy their `/link CODE` → they send it to the bot
+   (privately, or `/link@<bot_username> CODE` in the group). A reply is sent only when both the
+   role and the link allow it.
+3. **Send preview** → the last card is a sample Instagram message. Each person replies to it; the
    bot answers "On a real card, this reply would be sent…" with their role, or tells them they're
    not set up. Nothing is sent to anyone.
-3. Real test, per platform: message the business from a personal account → a `💬` card appears in
+4. Real test, per platform: message the business from a personal account → a `💬` card appears in
    the group within seconds → reply to it → the message arrives on the phone → `📤 Sent to …`
    appears under the reply. Then answer from the platform's own app → `↪️ Answered in …` appears
    under the card.
@@ -275,7 +280,7 @@ Apply `supabase/migrations/20261003000000_social_inbox.sql` (`pnpm db:push`). It
   the conversation.
 - **A card shows "Photo — open … to see it"** — Telegram couldn't fetch the image (TikTok images
   always need the app).
-- **TikTok cards stopped** — Telegram access tab shows the TikTok state; Reconnect, then re-run the
+- **TikTok cards stopped** — the Users & permissions → Telegram tab shows the TikTok state; Reconnect, then re-run the
   webhook check above.
 - **TikTok connected, but no cards ever** — both message permissions set to Inbox (part 2, step 1.2)?
   Message requests wait in the app until accepted. A customer in the EEA, Switzerland or the UK

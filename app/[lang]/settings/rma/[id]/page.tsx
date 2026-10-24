@@ -84,7 +84,7 @@ export default async function RmaDetailPage({
   const { lang, id } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  await requireAdminPage("orders", locale);
+  await requireAdminPage("returns", locale);
 
   const admin = supabaseAdmin();
   const to = (href: string) => withLocale(href, locale);

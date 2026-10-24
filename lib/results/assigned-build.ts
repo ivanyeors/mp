@@ -3,7 +3,13 @@
 import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-assembly";
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
-import { calculateShippingRate } from "@/lib/ecommerce/shipping";
+import {
+  loadResultServiceLines,
+  sumServiceLines,
+  type ServiceLine,
+} from "@/lib/pricing/service-lines";
+import { shipsWithAnchor } from "@/lib/results/paired-build";
+import { resultShippingAmount } from "@/lib/results/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import {
   isBolsterLength,
@@ -32,7 +38,11 @@ export type AssignedBuildRow = {
   addon_lines: unknown;
   shipping_method: string | null;
   shipping_address: unknown;
+  /** A live method's rate, quoted when the shipping was chosen (ADR 0032). */
+  shipping_rate: number | string | null;
   currency: string | null;
+  /** Who measured — decides the Measurement service fee (ADR 0024). */
+  measured_by_type: string | null;
 };
 
 /**
@@ -54,7 +64,7 @@ export type AssignedBuildRow = {
  * `_NoMissingBuildColumns` below is what keeps it honest instead.
  */
 export const ASSIGNED_BUILD_COLUMNS =
-  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency" as const;
+  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, paired_build_id" as const;
 
 type TrimCol<S extends string> = S extends ` ${infer R}`
   ? TrimCol<R>
@@ -85,6 +95,8 @@ export type AssignedBuildOk = {
   lines: BuildLine[];
   cogs: number;
   pricing: PriceResultOutput;
+  /** Service fees on this build (the Measurement service when Staff measured). */
+  serviceLines: ServiceLine[];
   /** Composed sellable MSRP for the assigned size×tier / length — the pillow/bolster
    * BASE price (excludes preference + add-on MSRPs). Commission base (#77). */
   basePrice: number;
@@ -269,6 +281,18 @@ export async function loadAssignedBuild(
   });
   if (!goods.ok) return { ok: false, error: goods.error };
 
+  let serviceLines: ServiceLine[];
+  try {
+    serviceLines = await loadResultServiceLines(admin, {
+      measured_by_type: row.measured_by_type,
+      product_type: productType,
+      assigned_tier: row.assigned_tier,
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Service fees could not be priced" };
+  }
+  const services = sumServiceLines(serviceLines);
+
   let shippingAmount = 0;
   let taxAmount = 0;
   const address = row.shipping_address as { country?: string } | null;
@@ -279,17 +303,22 @@ export async function loadAssignedBuild(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
+      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
+      shippingAmount = shipsWithAnchor(row)
+        ? 0
+        : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
+      // Free shipping is earned by goods; tax is due on goods and services alike.
       taxAmount = computeTax(
-        { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
+        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
         taxRule,
       ).taxAmount;
     }
   }
 
   const pricing = priceResult({
-    subtotal: goods.subtotal,
+    goods: goods.subtotal,
+    services,
     shipping: shippingAmount,
     tax: taxAmount,
   });
@@ -299,6 +328,7 @@ export async function loadAssignedBuild(
     lines: assembled.lines,
     cogs: assembled.cogs,
     pricing,
+    serviceLines,
     basePrice: goods.base,
     shortages,
     nameByItem,

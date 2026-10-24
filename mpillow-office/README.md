@@ -17,15 +17,29 @@ ref-img/     everything ComfyUI reads, by absolute path
   moodboard/   01-entry-waiting/ .. 06-patio-wash-dry/   <- drop refs here
   furniture/   01-entry-waiting/ .. 06-patio-wash-dry/   <- drop refs here
   renders/     earlier outputs kept as references (v1-v3, old sheets)
+  design/<plan>/  style/ materials/ lighting/ furniture/  <- design workflow refs
 model/       showroom_massing.glb / .obj  -- the dimensioned 3D model
              showroom_massing_cut.glb     -- north wall + patio roof off (cutaway)
              showroom_massing_ids.glb, showroom_massing_cut_ids.glb
                                           -- the same, coloured by area (ID model)
-tools/       build_massing.py, render_views.py, build_workflow.py
+             <base>_viewer.json           -- every part as JSON for the Admin Panel's
+                                             Showroom Model page (/settings/showroom)
+plans/       <name>.yaml  -- plan specs: every number of a model (showroom.yaml,
+                             hdb-4rm-1bh.yaml); sources/ holds their drawings,
+                             presets/ the answers that hold for a kind of plan
+             <name>.blocks.txt -- the furniture layer of a plan (design workflow)
+tools/       build_massing.py, plan_check.py, plan_read.py, plan_env.py,
+             render_views.py, build_workflow*.py, wf.py (shared graph helpers),
+             test_blocks.py
+requirements.txt  -- the Python packages tools/ needs
 comfy_nodes/ mp_glb_parts/  -- GLB Part Filter, a custom ComfyUI node: show / hide
                                 named parts of a model on the canvas (junction it
                                 into ComfyUI/custom_nodes)
-workflows/   showroom_moodboard_16x9.json  -- the one workflow
+             mp_blocking/   -- the furniture blocking layer: Block Layout, Block
+                                Prompts, Propose Blocks, Block Crop Source, Mesh
+                                Into Block (junction it the same way)
+workflows/   design_<plan>_16x9.json       -- design + blocking, any plan (see below)
+             showroom_moodboard_16x9.json  -- the first workflow
              showroom_zoned_16x9.json      -- colour-zoned areas, three final renders
 renders/     outputs (== ComfyUI/output/mpillow-office/)
   moodboard/   one sheet per area + the two master sheets
@@ -194,22 +208,349 @@ Qwen-Image-Edit-2509 (draft as image 1, hero as image 2). With a photo
 reference the edit model reproduces that photo; at partial denoise it
 changes nothing, and the depth ControlNet cannot override it.
 
+## The fast zoned variant
+
+`showroom_zoned_fast_16x9.json` (`python tools/build_workflow_fast.py`) is
+the zoned workflow, same sections and the same three renders, rebuilt to
+run quickly on a 16 GB card. Prompts, areas, colours and camera defaults are
+imported from `build_workflow.py`, so the two never drift apart. Outputs
+carry a `_fast` suffix so they sit next to the originals for comparison.
+
+- **One model, resident.** Qwen-Image-2.1 (7B, generates and edits) with
+  the Viggle turbo v0.3 LoRA merged in, int8, 7.3 GB. It replaces both 20B
+  models (Edit-2509 and Qwen-Image, 19 GB each), which never fitted in VRAM
+  and streamed from RAM on every step.
+- **6 steps, no CFG** (euler + BasicGuider). The turbo schedule's
+  resolution shift is computed by the build script into `ManualSigmas`
+  nodes, one per picture size, so no custom node is needed. Change a size in
+  the script and rebuild; do not hand-edit them.
+- **Depth lock:** the Qwen-Image-2.1 Fun ControlNet Union, a model patch
+  (`Load Model Patch` -> `Apply Fun ControlNet`), strength 0.85.
+- **Moodboards:** the mood and furniture contact sheets go in as reference
+  images 1 and 2 of `Text Encode Qwen Image 2.1`; no edit subgraph.
+- **Zone masks:** one KJNodes `Color To Mask` per area (RGB distance 120)
+  instead of 18 channel-arithmetic nodes per ID image.
+- **ZONING switch** (top of section 5): `false` drops the six regional
+  prompts and samples with the whole-scene prompt only, for quick look-dev.
+  The depth lock stays on.
+- Refines (section, free camera, muted 5.10b hi-res at 2560 x 1440) use the
+  last two turbo steps, starting near 0.7 noise.
+
+| File | Folder | Source |
+| --- | --- | --- |
+| `Qwen-Image-2.1-viggle-turbo-v0.3-6step-int8_convrot.safetensors` | diffusion_models | `Viggle/Qwen-Image-2.1-viggle-turbo` |
+| `qwen3vl_8b_int8_convrot.safetensors` | text_encoders | `Comfy-Org/Qwen-Image-2.1` |
+| `qwen_image_2.1_vae_bf16.safetensors` | vae | `Comfy-Org/Qwen-Image-2.1` |
+| `qwen_image_2.1_fun_controlnet_union_int8_convrot.safetensors` | model_patches | `Comfy-Org/Qwen-Image-2.1` |
+
+**Licence:** Qwen-Image-2.1 and the turbo are under the Qwen Research
+License (non-commercial). Use them for evaluation; clear the licence before
+any render goes to a client.
+
+## Design + blocking workflow
+
+`workflows/design_midview-08-83_16x9.json`, built by
+`python tools/build_workflow_design.py [plans/<plan>.yaml]`. It is driven by
+the plan spec, not by the showroom constants, so any plan works. It runs on
+the fast stack (Qwen-Image-2.1 turbo, below).
+
+**The blocks are the source of truth; ComfyUI only restyles them.** The
+furniture is a list of boxes, one per line, typed on the canvas:
+
+```
+waiting_sofa  x=2.30 z=7.15 w=2.20 d=0.90 h=0.80 rot=0  | low boucle three-seat sofa, oak base
+```
+
+- **Coordinates.** GLB frame, the same one every viewer uses: X east, Z south,
+  metres.
+  - `x z` is the centre of the footprint.
+  - `w` is the size along X, `d` along Z, `h` the height.
+  - `y` is the base height.
+  - `rot` is degrees counter-clockwise, seen from above.
+- **What the box becomes.** The text after `|` is drawn only on that block's
+  pixels.
+- **Silhouette.** Each block is drawn with a simple silhouette inside its box,
+  taken from the first furniture word in its name (`waiting_sofa` is a sofa)
+  or set with `shape=`. The shapes are sofa, chair, bed, table, bench, shelf,
+  cabinet, rug, plant and box.
+  - The depth pass therefore reads as furniture, not as crates.
+  - A piece faces north (-Z) at `rot=0`, with its back to the south. A
+    north-wall shelf needs `rot=180`.
+- **Where the layout is saved.** It lives in `plans/<plan>.blocks.txt`, which
+  the spec names with `blocks:`.
+  - Block Layout writes the canvas text back to that file on every Run.
+  - `build_massing.py` builds the blocks as parts named `blk_<name>`, so the
+    Admin Panel's Showroom Model page shows them too.
+- **Moving a block.** Edit its numbers and press Run. Every camera, pass and
+  render follows.
+
+The workflow reads left to right in nine stages. Each stage is one coloured
+group, and only what you edit sits on the canvas. The plumbing lives in
+subgraphs: double-click one to open it. A value that differs per instance,
+such as a seed, a folder or a crop, is a widget on that instance. Values every
+instance shares are primitives in a stage's controls panel, linked to all of
+them.
+
+| stage | you edit | subgraphs |
+| --- | --- | --- |
+| 1 REFERENCES | the images in `ref-img/design/<plan>/zones/<zone>/` and `lighting/`; **no prompts** | Reference sheet |
+| 2 PLAN + 3D + ELECTRICAL | Block Layout's plan, HIDE PARTS, ELECTRICAL POINTS, SHOW WIRING | Model: hide parts |
+| 3 FURNITURE BLOCKS | BLOCKS lines | none |
+| 4 CAMERAS | the numbers per camera, or CAMERAS FROM VIEWERS + orbit | Camera passes |
+| 5 FIRST PASS | the controls panel: SEED, NIGHT, ZONING, ZONE / LIGHT STRENGTH, REF RESOLUTION, BLOCK PROMPTS, FIXTURE GLOW | Lighting / Zone reference / Scene conditioning, 2 x 2 sheet, First pass sampler, Refine one camera |
+| 6 INPAINT | a prompt per zone, plus `enabled`, `denoise`, `seed`, `grow` on its node; BLOCKS to redraw + prompt | Inpaint zone N, Inpaint blocks |
+| 7 OUTPUTS | nothing | none |
+| 8 PROPOSE BLOCKS | muted, unchanged | none |
+| 9 BLOCK -> 3D ASSET | muted, unchanged | none |
+
+1. **REFERENCES.**
+   - One folder per zone of the plan, plus `lighting/`.
+   - Up to 12 images per folder are tiled 4 across into one 16:9 sheet.
+   - A folder needs at least one image.
+   - There are no prompts here. Each zone is drawn from its own sheet, inside
+     its own pixels only.
+   - *Why this works:* Text Encode Qwen Image 2.1 puts a reference image into
+     the conditioning as latents. A conditioning that is masked to a zone is
+     sampled in a model pass of its own (ComfyUI does not batch conds whose
+     reference latents differ), and that pass is weighted into the zone's
+     pixels only.
+   - The instruction each sheet is read with is fixed inside the **Zone
+     reference conditioning** subgraph.
+2. **PLAN + 3D + ELECTRICAL.**
+   - **Block Layout** turns the plan and BLOCKS into three models:
+     - the model with its blocks;
+     - a zone-ID twin;
+     - a block-ID twin.
+   - **HIDE PARTS** applies to all three.
+   - **Electrical Layout** reads the DB from the plan spec and the points from
+     **ELECTRICAL POINTS**. It writes them back to `plans/<plan>.electrical.txt`
+     on Run. Its outputs:
+     - the model with the wiring in it, which **SHOW WIRING** puts in the
+       viewer;
+     - a light-ID twin;
+     - the DB schedule;
+     - a check report.
+   - **Electrical Sheets** draws E-01..E-04 (see below).
+3. **FURNITURE BLOCKS.** BLOCKS, as above.
+4. **CAMERAS.** Each camera produces four passes: depth, zone-ID, block-ID and
+   light-ID.
+5. **FIRST PASS.** The four cameras are sampled in ONE pass as a 2 x 2 sheet,
+   so every camera gets the same design. The sheet's conditioning is built in
+   layers:
+   - the lighting sheet, plus a day or night line, over the whole frame
+     (LIGHT STRENGTH);
+   - each zone's reference sheet in its zone (ZONE STRENGTH);
+   - each block's `| prompt` on its pixels;
+   - each light point's note at the fitting (FIXTURE GLOW).
+
+   A, B and C are then cut out, upscaled and refined.
+6. **INPAINT.** Each **Inpaint zone** node redraws its zone in A, B and C:
+   - the zone's pixels (from the zone-ID pass, grown and feathered) are
+     re-noised to `denoise`;
+   - they are drawn again from **your prompt + the zone's reference sheet**,
+     depth locked, with the Fun ControlNet's inpaint context;
+   - outside the mask, everything is kept exactly;
+   - the seed is shared by the three cameras, so they agree.
+
+   Zones run in order. Then **Inpaint blocks** (off by default) redraws the
+   named blocks from their own prompt. `enabled` off passes the image through
+   without sampling.
+   - The block masks come from **Block Mask** on the block-ID pass.
+   - Inpainting is full frame, not crop-and-stitch, because the depth lock has
+     to see the same frame as the picture.
+7. **OUTPUTS.** All to `renders/design/<plan>_`:
+   - `pass1_cam_x`: the first pass, before inpainting;
+   - `cam_x`: the finals;
+   - `cam_x_electrical`: the finals with the wiring drawn through the same
+     camera (**Wiring Overlay**), for the electrician;
+   - `sheet`.
+8. **PROPOSE BLOCKS** and 9. **BLOCK -> 3D ASSET** are unchanged (see below).
+
+Section 8, PROPOSE BLOCKS:
+
+- Reads the renders back into BLOCKS lines, for furniture the model invented.
+- For each camera:
+  - SAM 3.1 finds each class in the list;
+  - MoGe-2 estimates depth;
+  - the depth is fitted, by scale and offset, to the room's true depth from
+    the same camera;
+  - each mask is back-projected through the exact camera and boxed on the
+    floor.
+- Finds seen from several cameras are merged; the best-scored label wins.
+- A find on an existing block is listed under `# already in BLOCKS`.
+- Pendants and masks that ran over several pieces are listed as `# dropped`.
+- `tools/test_blocks.py` checks this geometry on the real model with no ML.
+
+Section 9, BLOCK -> 3D ASSET:
+
+- **Block Crop Source** takes the render where the named block is largest.
+- TRELLIS.2 makes a textured mesh.
+- **Mesh Into Block** saves it as `model/assets/<plan>/<block>.glb`.
+- Block Layout fits the mesh into the block's box from the next Run.
+- `asset=none` brings the box back.
+- Frame camera C close on the piece for a sharp crop.
+
+Knobs worth knowing:
+
+- **Depth lock strength** (`ZImageFunControlnet`, 0.85, inside the
+  samplers): lower it for looser, softer pieces.
+- **The references show up too literally** (their layout, not just their
+  look): lower REF RESOLUTION, then ZONE STRENGTH.
+- **Block colours** follow line order. Add new blocks at the end.
+
+Install the node pack once, then restart ComfyUI:
+
+```
+mklink /J D:\AI\ComfyUI\custom_nodes\mp_blocking <repo>\mpillow-office\comfy_nodes\mp_blocking
+```
+
+Stages 8 and 9 need these files. Stages 1-7 need nothing new.
+
+| File | Folder | Source |
+| --- | --- | --- |
+| `sam3.1_multiplex_fp16.safetensors` | checkpoints | `Comfy-Org/sam3.1` |
+| `moge_2_vitl_normal_fp16.safetensors` | geometry_estimation | `Comfy-Org/MoGe` |
+| `trellis_2_int8_convrot.safetensors` | diffusion_models | `Comfy-Org/TRELLIS.2` |
+| `trellis_2_shape_vae_bf16.safetensors`, `trellis_2_texture_vae_bf16.safetensors` | vae | `Comfy-Org/Pixal3D` |
+| `dino_v3_L_naf_fp32.safetensors` | clip_vision | `Comfy-Org/Pixal3D` |
+
+**Licences:**
+
+- TRELLIS.2: MIT.
+- SAM 3.1: the SAM License. Commercial use is allowed, with restrictions.
+- MoGe-2: check the model card.
+- Qwen-Image-2.1 is still under the Qwen Research License.
+
+**Headless:** the viewers need the browser. A run through the API works when
+the `Preview 3D (Advanced)` nodes are muted and the cameras are by numbers.
+
+## Electrical layer
+
+`tools/electrical.py` holds the electrical layer. It is read in the order an
+electrician reads a job:
+
+1. **The DB.** It sits in the plan spec under `electrical.db`, and every run
+   starts there. The plan-to-3d skill finds it on the drawing, or asks.
+2. **The points.** They are in `plans/<plan>.electrical.txt`, one per line,
+   in the GLB frame like BLOCKS:
+
+   ```
+   L1-1  downlight  x=2.66 z=2.96            circuit=L1  | warm 2700K recessed downlight
+   S3    switch     x=0.85 z=1.17            controls=L1,L2,L3
+   P1-1  socket13a  x=0.17 z=4.55 n=2        circuit=P1  | twin
+   ```
+
+   The kinds are downlight, pendant, cove, track, wall_light, fan, emergency,
+   exit, switch, socket13a, fcu, isolator, heater, floor_box and data. Each
+   has a default mounting height.
+3. **The circuits.** `circuit=` groups points. Its prefix says what the
+   circuit is: L lighting, P power, AC aircon, WH water heater, E emergency,
+   D data. A switch's `controls=` names the circuits it switches.
+4. **The routes.** Each circuit runs:
+   - up a riser from the DB to the route height (in the false ceiling or in
+     trunking);
+   - along orthogonal runs on a minimum spanning tree;
+   - down a vertical drop to each accessory.
+5. **The drawings.** All are A3, as PNGs plus one PDF in `renders/electrical/`:
+   - **E-01** lighting layout;
+   - **E-02** power + data layout;
+   - **E-03** DB schedule + single-line diagram;
+   - **E-04** point schedule.
+
+   Each one has IEC 60617-style symbols, circuit tags, set-out dimensions in
+   mm from the wall faces, mounting heights in the legend, and a title block.
+   The points are also laid over the source floor plan, in
+   `model/<base>_electrical_plan.png`.
+
+```bash
+python tools/electrical.py plans/<plan>.yaml --propose   # a starting points file from the plan
+python tools/electrical.py plans/<plan>.yaml             # check, DB schedule, plan overlay, sheets
+python tools/test_electrical.py                          # self-test: text, checks, routing, projection
+```
+
+`--propose` lays out a starting set, to edit rather than to use as it is:
+
+- a downlight grid per indoor zone, and wall lights on an outdoor facade;
+- sockets along the inner wall faces, avoiding glazing;
+- a socket or floor box for each appliance named in BLOCKS (coffee machine,
+  sewing machine, and so on);
+- the main zone's switches by the DB, and every other zone's switch at its
+  door into the main zone (outside a wet room);
+- emergency lights, an exit sign and a data point.
+
+The check fails on errors and on open `electrical.assumptions`. Errors are a
+point on no circuit, a switch with nothing to switch, or a point outside the
+plan. Warnings flag a busy radial or a loaded MCB.
+
+**This is design intent.** Ratings and cable sizes are typical suggestions
+for SS 638 practice, not a design calculation. Every sheet says the
+drawings must be verified and endorsed by a Licensed Electrical Worker (LEW)
+before any work.
+
 ## Why the 3D step is computed, not generated
 
 Image-to-3D models (TRELLIS.2, Hunyuan3D, Tripo, Meshy, Rodin) rebuild a
 single object from a photo. The official ComfyUI docs say TRELLIS.2 "targets
 individual items, not scenes or architecture". None will turn a plan into a
-room, and the ones installed here are paid cloud APIs.
+room. That is why they are used only for furniture, one block at a time
+(design workflow, section 6), and never for the room.
 
 So `tools/build_massing.py` builds the room from numbers: every dimension
-from the brief, every position read off the page-4 plan. 165 parts. It is
-authored with north up, exactly as drawn, then mirrored on export so the GLB
-is right-handed for Y-up viewers.
+from the brief, every position read off the page-4 plan, all of it in
+`plans/showroom.yaml`. 165 parts. It is authored with north up, exactly as
+drawn, then mirrored on export so the GLB is right-handed for Y-up viewers.
+
+## New floor plans
+
+A new plan is a new spec, not new code. The `plan-to-3d` skill
+(`.claude/skills/plan-to-3d/`) runs the whole loop. By hand:
+
+```
+python tools/plan_env.py                          # ready? Python 3.10+, packages, poppler;
+                                                  # prints the install commands if not
+python -m pip install -r requirements.txt         # the packages (poppler is a system install)
+python tools/plan_read.py render plans/sources/<plan>.pdf --out plans/.cache/<plan>.png
+python tools/plan_read.py lines|ticks ...         # find the dimension chains -> calibrate
+python tools/plan_read.py --spec plans/<plan>.yaml solids | scan z=.. x=.. | grid
+python tools/plan_check.py plans/<plan>.yaml --breakdown   # the gate; exit 0 = PASS;
+                                                  # per wall / window / door scores
+python tools/build_massing.py plans/<plan>.yaml   # -> model/<base>*.glb
+```
+
+`plan_check` lays the model over the drawing (`model/<base>_check.png`) and
+fails unless every dimension chain adds up, at least 90% of the wall outlines
+sit on drawn lines (and every wall at least 60%), every solid fill on the
+plan is covered, and no entry in the spec's `assumptions:` is still `open`.
+That last point is deliberate: a plan never gives heights, and it is often
+ambiguous about a wall or two. Each such value is written down with the
+default used, and the skill asks the user about it until it is confirmed.
+
+`plans/hdb-4rm-1bh.yaml` is the worked example: an HDB 4-room type plan
+from a vector PDF. Every wall outline lands on the drawing, the dimension
+chains close exactly, and its nine assumptions (heights, an undrawn bedroom
+wall, the service yard parapet, zoning) were settled with the user. It
+passes. `plans/showroom.yaml` rebuilds the committed showroom GLB and its
+cutaway byte for byte. The two ID models would come out slightly different:
+pieces of a zone that spans several regions are now joined, where the old
+script kept only the last, so the committed ones lack a floor piece. The
+showroom drawing is a presentation sketch rather than a real plan, so its
+check is informational only.
+
+The skill asks first what kind of plan it is. Answers that hold for every
+plan of a kind live in `plans/presets/<kind>.yaml`. `hdb.yaml` holds the HDB
+heights, parapets and zone grouping, taken from the answers on the first HDB
+plan. A new HDB spec starts from that file, and the user accepts or changes
+all of its values in one question. Only what is particular to the drawing is
+still asked, such as an undrawn wall or an optional partition.
+
+`render_views.py` and the workflow builders still read the showroom's
+constants. Rendering a new plan needs them pointed at its spec (next step).
 
 ## Pipeline
 
 ```
-python tools/build_massing.py    # -> model/showroom_massing*.glb (+ ComfyUI/input/3d/)
+python tools/plan_check.py plans/showroom.yaml   # spec vs drawing -> model/showroom_massing_check.png
+python tools/build_massing.py    # plans/showroom.yaml -> model/showroom_massing*.glb (+ ComfyUI/input/3d/)
 python tools/render_views.py     # -> ref-img/massing/massing_<view>[_depth|_ids|_zoned].png
                                  #    and massing_sec_<area>*.png, zones.json
 python tools/build_workflow.py   # -> workflows/showroom_moodboard_16x9.json (+ sidebar)

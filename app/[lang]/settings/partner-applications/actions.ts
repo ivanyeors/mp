@@ -6,7 +6,9 @@ import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { renderApplicationOutcomeEmail } from "@/lib/email/application";
+import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "@/lib/email/application";
+import type { EmailCopySpec } from "@/lib/email/copy";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import { dispatchPartnerEmail } from "@/lib/email/partner";
 import { getSiteOrigin } from "@/lib/site-url";
 import {
@@ -16,10 +18,10 @@ import {
   type ApplicationStatus,
 } from "@/lib/partner-application";
 
-// Staff review queue for partner applications (#76). Reuses the existing
-// 'page-builder' admin permission (same as Locations CRUD). Server actions are
+// Staff review queue for partner applications (#76). Gated on the page's own
+// 'partner-applications' permission (ADR 0023). Server actions are
 // CSRF-safe and exempt from the settings static route-guard test.
-const PERM = "page-builder";
+const PERM = "partner-applications";
 const QUEUE_PATH = "/settings/partner-applications";
 const SUPPORT_EMAIL = "sg@mpillow.com";
 
@@ -38,10 +40,15 @@ async function sendOutcomeEmail(params: {
   partnerId: string | null;
 }): Promise<void> {
   try {
-    const rendered = renderApplicationOutcomeEmail(params.outcome, {
-      partnerSignInUrl: `${getSiteOrigin()}/partner`,
-      supportEmail: SUPPORT_EMAIL,
-    });
+    const copy = await loadEmailCopy(APPLICATION_EMAIL_COPY[params.outcome] as EmailCopySpec);
+    const rendered = renderApplicationOutcomeEmail(
+      params.outcome,
+      {
+        partnerSignInUrl: `${getSiteOrigin()}/partner`,
+        supportEmail: SUPPORT_EMAIL,
+      },
+      copy,
+    );
     await dispatchPartnerEmail(params.admin, {
       partnerId: params.partnerId,
       template: `application_${params.outcome}`,

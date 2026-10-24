@@ -7,6 +7,7 @@ import { MilestoneRungsEditor } from "@/components/partner/milestone-rungs-edito
 import { PartnerSelfPurchaseEditor } from "@/components/settings/partner-self-purchase-editor";
 import { PartnerPayouts } from "./partner-payouts";
 import { AdminReferralRows } from "./admin-referral-rows";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export const runtime = "nodejs";
 
@@ -33,8 +34,8 @@ export default async function PartnerCommissionsPage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // Reuses the "page-builder" permission (partner surfaces) — no new permission minted.
-  await requireAdminPage("page-builder", locale);
+  // The Partner Commissions page's own permission (ADR 0023).
+  await requireAdminPage("partner-commissions", locale);
 
   const admin = supabaseAdmin();
   const [{ data: schemeData }, { data: partnerData }] = await Promise.all([
@@ -56,14 +57,18 @@ export default async function PartnerCommissionsPage({
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Partner Commissions</h1>
-        <p className="text-sm text-muted-foreground">
-          Commission schemes for partner-referred pillow &amp; bolster units. Held on capture,
-          released {COMMISSION_RELEASE_WINDOW_DAYS} days after delivery, voided on refund. Staff
-          only — never shown in the Partner Hub. Milestone rungs, self-purchase rates, and payouts
-          are managed below.
-        </p>
+        <InfoTip label="About Partner Commissions">
+          <p>
+            Commission schemes for partner-referred pillow &amp; bolster units. Held on capture,
+            released {COMMISSION_RELEASE_WINDOW_DAYS} days after delivery, voided on refund.
+          </p>
+          <p>
+            Staff only — never shown in the Partner Hub. Milestone rungs, self-purchase rates, and
+            payouts are managed below.
+          </p>
+        </InfoTip>
       </div>
 
       <div className="mt-6 min-w-0 overflow-x-auto rounded-lg border">

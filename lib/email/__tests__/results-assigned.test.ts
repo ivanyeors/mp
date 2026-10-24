@@ -21,7 +21,8 @@ const balance = renderResultAssignedEmail(sampleResultAssignedBalance());
 describe("renderResultAssignedEmail", () => {
   it("keeps the Authorization hold voice unchanged", () => {
     expect(hold.subject).toBe("Your final build is ready");
-    expect(hold.text).toContain("Review and accept or decline:");
+    expect(hold.text).toContain("Accept or decline on the status page.");
+    expect(hold.text).toContain("Review your final build:");
     expect(hold.html).toContain("Review your final build");
     expect(hold.html).toContain(
       "Accept or decline on the status page. Accept captures payment; Decline releases your hold.",
@@ -67,7 +68,8 @@ describe("renderResultAssignedEmail", () => {
   it("asks an assisted customer to choose their finish, not to pay a total", () => {
     const finish = renderResultAssignedEmail(sampleResultAssignedFinish());
     expect(finish.subject).toBe("Your build is ready — choose your finish");
-    expect(finish.text).toContain("Choose your cover, case and shipping:");
+    expect(finish.text).toContain("Choose your cover, case and shipping to see your final price");
+    expect(finish.text).toContain("Choose your finish:");
     expect(finish.html).toContain("Choose your finish");
     expect(finish.html).toContain("From (before shipping)");
     expect(finish.html).toContain("6D Small");
@@ -86,5 +88,25 @@ describe("renderResultAssignedEmail", () => {
       expect(rendered.text).toContain(`token=${token}`);
       expect(rendered.html).toContain(`token=${token}`);
     }
+  });
+});
+
+describe("renderResultAssignedEmail — Paired build (ADR 0026)", () => {
+  it("names the other build and adds both into one total", () => {
+    const base = sampleResultAssigned();
+    const paired = renderResultAssignedEmail({
+      ...base,
+      paired: { label: "Mbolster medium", total: 60 },
+    });
+    const total = base.pricing!.total + 60;
+    for (const body of [paired.text, paired.html]) {
+      expect(body).toContain("Also in this order: Mbolster medium");
+      expect(body).toContain("Total for both");
+      expect(body).toContain(total.toFixed(2));
+    }
+  });
+
+  it("is unchanged when there is no pair", () => {
+    expect(renderResultAssignedEmail({ ...sampleResultAssigned(), paired: null })).toEqual(hold);
   });
 });

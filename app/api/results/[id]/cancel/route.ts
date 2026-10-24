@@ -5,6 +5,13 @@ import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { releaseHold } from "@/lib/authorization-hold";
+import {
+  cascadeEnding,
+  companionLockReason,
+  loadEndingPlan,
+  notifyCompanionRemoved,
+} from "@/lib/results/pair-ending";
+import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,7 +49,9 @@ export async function POST(
 
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
-    .select("id, status, filling_template_id, payment_intent_id, order_id")
+    .select(
+      "id, status, filling_template_id, payment_intent_id, order_id, paired_build_id, authorized_amount, customer_email, access_token, currency",
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -70,9 +79,17 @@ export async function POST(
   );
   if (!life.ok) return NextResponse.json({ error: life.error }, { status: 400 });
 
+  // Money moved for the whole pair: the Mbolster can only go with a refund.
+  const locked = await companionLockReason(admin, row);
+  if (locked) return NextResponse.json({ error: locked, code: "pair_paid" }, { status: 409 });
+
+  // A Paired build shares one hold (ADR 0026): cancelling the Mbolster keeps it
+  // for the Mpillow, and cancelling the Mpillow cancels the Mbolster with it.
+  const plan = await loadEndingPlan(admin, row);
+
   let holdReleased = false;
   let releaseError: string | null = null;
-  if (life.releaseHold && row.payment_intent_id) {
+  if (life.releaseHold && plan.releaseHold && row.payment_intent_id) {
     try {
       await releaseHold(row.payment_intent_id);
       holdReleased = true;
@@ -107,13 +124,25 @@ export async function POST(
     );
   }
 
+  await cascadeEnding(admin, plan, "cancelled");
+  // The customer hears that their Mbolster went — and, if their Mpillow was
+  // already built and waiting on it, that the Mpillow is ready.
+  await notifyCompanionRemoved(admin, { companion: row, partner: plan.partner, origin: getPublicOrigin(req) });
+
   await recordAdminAction({
     actor: await getAdminContext(),
     action: "result.cancel",
     entityType: "mp_config_response",
     entityId: id,
     before: { status: row.status },
-    after: { status: life.status, holdReleased, forced: force, releaseError, reason: reason ?? null },
+    after: {
+      status: life.status,
+      holdReleased,
+      forced: force,
+      releaseError,
+      reason: reason ?? null,
+      ...(plan.cascadeTo ? { pairedCancelled: plan.cascadeTo } : {}),
+    },
   });
 
   return NextResponse.json({
@@ -121,5 +150,6 @@ export async function POST(
     status: life.status,
     holdReleased,
     releaseError,
+    pairedCancelled: plan.cascadeTo,
   });
 }

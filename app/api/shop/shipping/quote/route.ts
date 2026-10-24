@@ -3,13 +3,17 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
-import { loadShippableLines } from "@/lib/shipping/lines";
+import { estimateLines, loadShippableLines } from "@/lib/shipping/lines";
 import { quoteShippingMethods } from "@/lib/shipping/quote";
+import { isSelfCollect } from "@/lib/shipping/self-collect";
+import { QuoteDestinationSchema } from "@/lib/shipping/destination-schema";
 import { DEFAULT_SHIPPING_SETTINGS, readShippingSettings } from "@/lib/shipping/settings";
 import type { ShippableLine, ShippingQuoteResponse } from "@/lib/shipping/types";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
+
+const Profile = z.enum(["pillow", "bolster", "accessory"]);
 
 const QuoteSchema = z
   .object({
@@ -18,15 +22,13 @@ const QuoteSchema = z
       .array(z.object({ variant_id: z.string().uuid(), quantity: z.number().int().min(1).max(50) }))
       .max(50)
       .optional(),
-    /** No cart (the landing-page estimator): one unit boxed as this product type. */
-    profile: z.enum(["pillow", "bolster", "accessory"]).optional(),
-    destination: z.object({
-      country: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
-      postal_code: z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9 -]+$/),
-      city: z.string().trim().max(120).optional(),
-      state: z.string().trim().max(120).optional(),
-      line1: z.string().trim().max(200).optional(),
-    }),
+    /**
+     * No cart: one unit boxed as this product type (the landing-page estimator),
+     * or one of each (a customisation, which ships a Paired build's Mbolster in
+     * its Mpillow's shipment).
+     */
+    profile: z.union([Profile, z.array(Profile).min(1).max(4)]).optional(),
+    destination: QuoteDestinationSchema,
   })
   .refine((b) => (b.items?.length ?? 0) > 0 || b.profile, { message: "items or profile is required" });
 
@@ -51,7 +53,10 @@ export async function POST(req: Request) {
 
   let methods: ShippingMethod[];
   try {
-    methods = (await readShippingMethods(false, destination.country)) as ShippingMethod[];
+    // The shop delivers: Self-collect is a customisation option only.
+    methods = ((await readShippingMethods(false, destination.country)) as ShippingMethod[]).filter(
+      (m) => !isSelfCollect(m),
+    );
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not load shipping methods" },
@@ -74,16 +79,7 @@ export async function POST(req: Request) {
     }
   } else {
     const settings = await readShippingSettings().catch(() => DEFAULT_SHIPPING_SETTINGS);
-    lines = [
-      {
-        product_type: profile!,
-        quantity: 1,
-        weight_grams: null,
-        unit_value: settings.estimate_declared_value,
-        currency: methods[0]?.currency ?? "SGD",
-        description: profile === "bolster" ? "Mbolster" : profile === "accessory" ? "Accessory" : "Mpillow",
-      },
-    ];
+    lines = estimateLines([profile!].flat(), settings.estimate_declared_value, methods[0]?.currency ?? "SGD");
   }
 
   // Priced at subtotal 0, i.e. before free_above — see `price` above.

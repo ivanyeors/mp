@@ -18,7 +18,7 @@ export default async function AppointmentSettingsRoute({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("results", locale);
+  await requireAdminPage("appointments", locale);
 
   // Same class of bug as the sibling pages: falling back to the defaults here
   // presents them as the *saved* settings and skips the client's mount fetch,

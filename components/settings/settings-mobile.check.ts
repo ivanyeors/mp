@@ -12,8 +12,8 @@ const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 const settingsNav = read("components/settings/settings-sidebar-nav.tsx");
 const auditLog = read("app/[lang]/settings/audit-log/page.tsx");
 const costings = read("app/[lang]/settings/costings/page.tsx");
-const admins = read("app/[lang]/settings/admins/admins-client.tsx");
-const staff = read("app/[lang]/settings/staff-management/staff-management-client.tsx");
+const members = read("app/[lang]/settings/users/members-tab.tsx");
+const staff = read("app/[lang]/settings/users/profiles-tab.tsx");
 const appointments = read("app/[lang]/settings/appointments/appointments-client.tsx");
 const analytics = read("app/[lang]/settings/analytics/AnalyticsClient.tsx");
 const journey = read("app/[lang]/settings/analytics/ProspectJourneyCard.tsx");
@@ -38,18 +38,19 @@ assert.doesNotMatch(auditLog, /mt-8 overflow-hidden rounded-lg border/);
 assert.match(costings, /flex flex-col gap-2 sm:flex-row sm:flex-wrap/);
 assert.match(costings, /w-full max-w-full sm:w-\[280px\]/);
 
-// admins: pending under email; fluid role select; card min-w-0
-assert.match(admins, /flex min-w-0 flex-col gap-1/);
-assert.match(admins, /w-full min-w-0 sm:w-36/);
-assert.match(admins, /Card className="min-w-0"/);
+// Users & permissions → Members: status under email; fluid role select; phone cards, table from sm
+assert.match(members, /flex min-w-0 flex-col gap-1/);
+assert.match(members, /w-full min-w-0 sm:w-40/);
+assert.match(members, /space-y-3 sm:hidden/);
+assert.match(members, /hidden min-w-0 sm:block/);
 
-// staff: relaxed widths; UUID hidden on xs
-assert.match(staff, /sm:w-\[260px\]/);
-assert.match(staff, /hidden sm:table-cell/);
+// Staff profiles: rows stack on phones, one line from sm; long emails wrap
+assert.match(staff, /flex flex-col gap-2 px-4 py-2\.5 sm:flex-row sm:items-center/);
+assert.match(staff, /min-w-0 break-all font-medium/);
 
-// appointments: title + settings gear share one row; phone blurb is short
+// appointments: title + settings gear share one row; blurb sits behind the InfoTip
 assert.match(appointments, /flex shrink-0 items-start justify-between gap-3/);
-assert.match(appointments, /text-muted-foreground md:hidden/);
+assert.match(appointments, /<InfoTip label="About Appointments">/);
 
 // appointments calendar: own toolbar (no FullCalendar header), 3-day phone view,
 // tap-to-select, selection bar clears the dock, detail is a Sheet

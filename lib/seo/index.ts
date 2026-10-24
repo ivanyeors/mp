@@ -1,5 +1,6 @@
 export { localeUrl, localeAlternates, resolveLocale } from "@/lib/seo/locale-url";
 export { resolveAnswerLede, type AnswerLedeFields } from "@/lib/seo/answer-lede";
+export { resolveMetaDescription, MAX_META_DESCRIPTION_CHARS } from "@/lib/seo/meta-description";
 export { buildPageMetadata, type PageMetadataInput } from "@/lib/seo/metadata";
 export {
   getReviewAggregate,

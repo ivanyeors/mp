@@ -26,6 +26,8 @@ const MUST_NEVER_CARRY = [
   "payment_reminder_count",
   "is_pre_order",
   "pre_order_restock_notified_at",
+  // A reordered Mbolster ships on its own; its old pair's hold is not its money.
+  "paired_build_id",
   "created_at",
   "updated_at",
 ];
@@ -51,6 +53,7 @@ describe("reorder column allowlist", () => {
       "addon_lines",
       "shipping_method",
       "shipping_address",
+      "shipping_rate",
       "currency",
       "customer_email",
     ]) {

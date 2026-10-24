@@ -12,20 +12,49 @@
 # supabase/migrations are skipped and the graph loses the whole DB schema.
 #
 # Override the pin for a one-off with: GRAPHIFY_VERSION=x.y.z ./scripts/graphify ...
-# On a machine with neither uv nor graphify this exits silently, so the
-# PreToolUse hooks in .claude/settings.json can never break a session.
+# On a machine with neither uv nor graphify this exits silently, so a
+# script or hook that calls it can never break a session.
 set -uo pipefail
 
-GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.48}"
+GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.75}"
 
+run=()
+python=()
 for uv_bin in uvx "$HOME/.local/bin/uvx"; do
   if command -v "$uv_bin" >/dev/null 2>&1; then
-    exec "$uv_bin" --from "graphifyy[sql]==${GRAPHIFY_VERSION}" graphify "$@"
+    run=("$uv_bin" --from "graphifyy[sql]==${GRAPHIFY_VERSION}")
+    python=("${run[@]}" python)
+    break
   fi
 done
 
-if command -v graphify >/dev/null 2>&1; then
-  exec graphify "$@"
+if [ ${#run[@]} -eq 0 ]; then
+  command -v graphify >/dev/null 2>&1 || exit 0
+  python=(python3)
 fi
 
-exit 0
+if [ "${1:-}" != "update" ]; then
+  exec "${run[@]}" graphify "$@"
+fi
+
+# `update` also maintains the data layer (code -> table edges, one node per
+# page), which graphify's AST pass cannot see. It is stripped first so graphify
+# rebuilds from exactly what it produced last time, then added back from the
+# current source. Both steps are deterministic; CI runs this same path.
+#
+# The extraction cache is cleared first: it has been seen to skip new and moved
+# files while the digest still looked stable, which CI (no cache) then fails.
+# A full rebuild costs ~50s and never disagrees with CI.
+dataflow="$(dirname "$0")/graphify-dataflow.py"
+root=.
+for arg in "${@:2}"; do
+  case "$arg" in -*) ;; *) root="$arg"; break ;; esac
+done
+graph="$root/graphify-out/graph.json"
+rm -rf "$root/graphify-out/cache"
+
+if [ -f "$graph" ]; then
+  "${python[@]}" "$dataflow" --strip "$graph" || exit 1
+fi
+"${run[@]}" graphify "$@" || exit $?
+"${python[@]}" "$dataflow" "$graph"

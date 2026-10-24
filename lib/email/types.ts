@@ -30,6 +30,12 @@ export interface OutgoingEmail extends RenderedEmail {
   from: string;
   /** Optional Reply-To header (e.g. the customer's address on a contact form). */
   replyTo?: string;
+  /**
+   * Extra message headers, such as `List-Unsubscribe` on a campaign email
+   * (migration slice 07). Transactional mail sets none. A name the transport
+   * owns (From, To, Subject, ...) or a value with a line break is refused.
+   */
+  headers?: Record<string, string>;
 }
 
 export interface TransportResult {
@@ -62,6 +68,8 @@ export interface OrderEmailAddress {
   state?: string | null;
   postalCode: string;
   country: string;
+  /** Self-collect: the studio the customer collects from; the address is that studio's. */
+  collectAt?: string | null;
 }
 
 /**
@@ -88,6 +96,10 @@ export interface OrderEmailData {
   /** The courier's latest checkpoint, e.g. "Held at customs — Singapore". */
   trackingCheckpoint?: string | null;
   refundAmount?: number | null;
+  /** Points spent at checkout; their dollars are inside `discountAmount` (PRD-loyalty-points slice 04). */
+  pointsSpent?: number | null;
+  /** What the Order will earn, for the order confirmation (slice 03); null when nothing. */
+  pointsEarn?: { points: number; guest: boolean } | null;
 }
 
 export interface SendOutcome {

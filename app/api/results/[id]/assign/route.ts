@@ -23,12 +23,16 @@ import {
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
-import { calculateShippingRate } from "@/lib/ecommerce/shipping";
+import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
+import { pairAuthorized, pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
+import { resultShippingAmount } from "@/lib/results/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { getPublicOrigin } from "@/lib/site-url";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import {
+  RESULT_EMAIL_COPY,
   renderResultAssignedEmail,
   type ResultPricing,
 } from "@/lib/email/results";
@@ -92,12 +96,14 @@ async function sendAssignedEmail(opts: {
   addons: string[];
   pricing: ResultPricing | null;
   needsFinish: boolean;
+  paired: { label: string; total: number } | null;
 }) {
   try {
+    const copy = await loadEmailCopy(RESULT_EMAIL_COPY.assigned);
     await getEmailTransport().send({
       to: opts.to,
       from: getDefaultFromAddress(),
-      ...renderResultAssignedEmail(opts),
+      ...renderResultAssignedEmail(opts, copy),
     });
     return "sent" as const;
   } catch (e) {
@@ -128,7 +134,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token",
+      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -384,6 +390,24 @@ export async function POST(
     );
   }
 
+  // The Measurement service fee follows who measured and the tier being assigned
+  // now — a Staff tier change at assign moves the fee with it (ADR 0024).
+  let serviceLines;
+  try {
+    serviceLines = await loadResultServiceLines(admin, {
+      measured_by_type: row.measured_by_type as string | null,
+      product_type: productType,
+      assigned_tier: assignedTier,
+    });
+  } catch (e) {
+    console.error(`[results/assign] service fees not usable: ${e instanceof Error ? e.message : e}`);
+    return NextResponse.json(
+      { error: "This build cannot be priced yet. Check Costings → Service fees." },
+      { status: 409 },
+    );
+  }
+  const services = sumServiceLines(serviceLines);
+
   let shippingAmount = 0;
   let taxAmount = 0;
   const address = row.shipping_address as { country?: string } | null;
@@ -394,23 +418,29 @@ export async function POST(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
+      // Free shipping is earned by goods; tax is due on goods and services alike.
+      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
+      shippingAmount = shipsWithAnchor(row)
+        ? 0
+        : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
-        { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
+        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
         taxRule,
       ).taxAmount;
     }
   }
 
   const priced = priceResult({
-    subtotal: goods.subtotal,
+    goods: goods.subtotal,
+    services,
     shipping: shippingAmount,
     tax: taxAmount,
   });
   const finalAmount = priced.total;
   const pricingBreakdown: ResultPricing = {
     subtotal: priced.subtotal,
+    services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
     shipping: priced.shipping,
     tax: priced.tax,
     total: priced.total,
@@ -502,11 +532,38 @@ export async function POST(
     (l) => `${nameByItem.get(l.item_id) ?? `Item #${l.item_id}`} ×${l.quantity}`,
   );
 
+  // A Paired build (ADR 0026) is accepted as one, from its Mpillow's page, so
+  // the customer hears once neither build is still being built: the email
+  // links the Mpillow and quotes both against the one hold.
+  let emailResultId = id;
+  let emailPricing = pricingBreakdown;
+  let pairedLine: { label: string; total: number } | null = null;
+  let pairStillBuilding = false;
+  if (row.paired_build_id) {
+    const { data: members } = await admin
+      .from("mp_config_responses")
+      .select("id, status, product_type, assigned_size, assigned_tier, assigned_length, final_amount, authorized_amount")
+      .eq("paired_build_id", row.paired_build_id);
+    const partner = pickPartner(members ?? [], id);
+    pairStillBuilding = partner?.status === "held";
+    emailResultId = row.paired_build_id;
+    emailPricing = { ...pricingBreakdown, authorized: pairAuthorized(members ?? []) };
+    if (partner?.status === "assigned" && partner.final_amount != null) {
+      pairedLine = {
+        label:
+          partner.product_type === "bolster"
+            ? `Mbolster ${partner.assigned_length ?? ""}`.trim()
+            : `Mpillow ${partner.assigned_size ?? ""} · ${partner.assigned_tier ?? ""}`.trim(),
+        total: Number(partner.final_amount),
+      };
+    }
+  }
+
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
-  if (row.customer_email && row.access_token) {
+  if (row.customer_email && row.access_token && !pairStillBuilding) {
     emailStatus = await sendAssignedEmail({
       to: row.customer_email,
-      resultId: id,
+      resultId: emailResultId,
       accessToken: row.access_token,
       origin,
       size: assignedSize,
@@ -516,8 +573,9 @@ export async function POST(
       fillingSummary,
       preferences: preferenceLabels,
       addons: addonLabels,
-      pricing: pricingBreakdown,
+      pricing: emailPricing,
       needsFinish: finishLater,
+      paired: pairedLine,
     });
   }
 

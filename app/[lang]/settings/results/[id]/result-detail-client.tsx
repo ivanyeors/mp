@@ -55,6 +55,7 @@ import {
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
@@ -77,6 +78,7 @@ import {
   resolveAssignHintTemplateId,
   selectAssignHintSource,
 } from "@/lib/rules-engine";
+import { InfoTip } from "@/components/ui/info-tip";
 
 function formatOrderMoney(amount: number | null, currency: string | null): string {
   if (amount == null) return "—";
@@ -113,6 +115,8 @@ type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
   is_final: boolean;
+  /** Who measured — `staff` means the Measurement service fee applies (ADR 0024). */
+  measured_by_type?: string | null;
   source?: string | null;
   order_id?: string | null;
   order_item_id?: string | null;
@@ -142,6 +146,10 @@ type MpConfigResponseRow = {
   is_pre_order?: boolean | null;
   recommendation_record?: Record<string, unknown> | null;
   filling_fingerprint?: string | null;
+  /** Paired build (ADR 0026): the anchor's id on both Results. */
+  paired_build_id?: string | null;
+  /** The other Result on the same hold. */
+  paired_result_id?: string | null;
 };
 
 type BomLine = {
@@ -749,7 +757,9 @@ export default function ResultDetailPage({
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange } = useCut();
-  const { itemSubtypes: pickerItemSubtypes } = useItemMaps(pickerItems, dimensionOverrides);
+  const { itemSubtypes: pickerItemSubtypes, itemSizes: pickerItemSizes, itemDims: pickerItemDims } = useItemMaps(pickerItems, dimensionOverrides);
+  // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
+  const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
   // Slice 09: the Mbolster's fit at the assigned length, for the confirm and the end-on cut.
   const bolsterLength = (["short", "medium", "long"] as const).find((l) => l === assignLength) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength as BolsterLength, pickerItems, dimensionOverrides);
@@ -1069,6 +1079,14 @@ export default function ResultDetailPage({
                       ? `${row.currency ?? "SGD"} ${Number(row.final_amount).toFixed(2)}`
                       : "—"}
                   </div>
+                  {row.measured_by_type === "staff" && row.product_type !== "bolster" ? (
+                    // The fee follows who measured (ADR 0024); Mbolster carries none.
+                    // "Measured by" locks once the Result is held, so a wrong value
+                    // can't be corrected from the Results list after that.
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Measured by Staff, so the Measurement service fee applies.
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1327,7 +1345,13 @@ export default function ResultDetailPage({
                             cut={cut}
                             onCutChange={setCut}
                             itemSubtypes={pickerItemSubtypes}
+                            itemSizes={pickerItemSizes}
+                            itemDims={pickerItemDims}
+                            placements={placements}
+                            onPlacementsChange={setPlacements}
+                            items={pickerItems}
                             colorOverrides={colorOverrides}
+                            softBody={softBody}
                           />
                         </>
                       ) : (
@@ -1379,6 +1403,26 @@ export default function ResultDetailPage({
               </Collapsible>
             </div>
           )}
+
+          {row.paired_build_id ? (
+            <div className="rounded-md border bg-muted/40 p-2.5 text-sm">
+              <span className="font-medium">Paired build.</span>{" "}
+              {row.paired_build_id === row.id
+                ? "This Mpillow carries an Mbolster on the same hold. The customer accepts both together; cancelling this one cancels the Mbolster too."
+                : "This Mbolster rides with an Mpillow on the same hold and ships with it at no shipping charge. Cancelling it leaves the Mpillow."}
+              {row.paired_result_id ? (
+                <>
+                  {" "}
+                  <a
+                    className="font-medium underline underline-offset-2"
+                    href={to(`/settings/results/${row.paired_result_id}`)}
+                  >
+                    Open the {row.paired_build_id === row.id ? "Mbolster" : "Mpillow"}
+                  </a>
+                </>
+              ) : null}
+            </div>
+          ) : null}
 
           {(row.authorized_amount != null ||
             row.customer_email ||
@@ -1651,8 +1695,12 @@ export default function ResultDetailPage({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2>Suggestion</h2>
-            <p className="text-sm text-muted-foreground">Computed using the current inventory/BOM configuration.</p>
+            <div className="flex items-center gap-1.5">
+              <h2>Suggestion</h2>
+              <InfoTip label="About Suggestion">
+                <p>Computed using the current inventory/BOM configuration.</p>
+              </InfoTip>
+            </div>
           </div>
         </div>
 

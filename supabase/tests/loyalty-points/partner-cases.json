@@ -1,0 +1,14 @@
+{
+  "about": "Rule (r), ADR 0030: is this Customer a partner? isPartnerMatch (lib/points/partner.ts) and is_partner_customer() (20261021120000) must give each case's `expected`. `login: true` puts the Customer's auth user on the partner row; `email` is the partner row's email (compared without case with the Customer's).",
+  "cases": [
+    { "name": "no partner row", "customer": { "email": "ann@x.test", "signedUp": true }, "partner": null, "expected": false },
+    { "name": "approved, same login", "customer": { "email": "ann@x.test", "signedUp": true }, "partner": { "login": true, "email": "other@x.test", "status": "approved" }, "expected": true },
+    { "name": "approved, same email", "customer": { "email": "ann@x.test", "signedUp": false }, "partner": { "login": false, "email": "ann@x.test", "status": "approved" }, "expected": true },
+    { "name": "approved, same email in other case and spaces", "customer": { "email": "Ann@X.test", "signedUp": false }, "partner": { "login": false, "email": " ann@x.TEST ", "status": "approved" }, "expected": true },
+    { "name": "pending application", "customer": { "email": "ann@x.test", "signedUp": true }, "partner": { "login": true, "email": "ann@x.test", "status": "pending" }, "expected": false },
+    { "name": "rejected application", "customer": { "email": "ann@x.test", "signedUp": true }, "partner": { "login": true, "email": "ann@x.test", "status": "rejected" }, "expected": false },
+    { "name": "approved, verified backup email", "customer": { "email": "ann@x.test", "signedUp": false }, "partner": { "login": false, "email": "main@x.test", "status": "approved", "backup": "ann@x.test", "backupVerified": true }, "expected": true },
+    { "name": "approved, unverified backup email", "customer": { "email": "ann@x.test", "signedUp": false }, "partner": { "login": false, "email": "main@x.test", "status": "approved", "backup": "ann@x.test", "backupVerified": false }, "expected": false },
+    { "name": "approved, different login and email", "customer": { "email": "ann@x.test", "signedUp": true }, "partner": { "login": false, "email": "bob@x.test", "status": "approved" }, "expected": false }
+  ]
+}

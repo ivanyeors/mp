@@ -13,14 +13,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Settings → Staff Management → Telegram access → "Connect TikTok": sends the
+ * Settings → Users & permissions → Telegram → "Connect TikTok": sends the
  * admin to TikTok to approve the app for the business account. A random state
  * rides in an httpOnly cookie and must come back unchanged to the callback.
  * Owners/admins only, like the rest of the tab.
  */
 export async function GET(req: Request) {
   try {
-    await requireAdminContext("staff");
+    await requireAdminContext("users");
   } catch (res) {
     return res as NextResponse;
   }

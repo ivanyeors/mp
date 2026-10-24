@@ -5,12 +5,15 @@ import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
 import { getAdminContext } from "@/lib/auth/admin";
-import { roleHasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
 import { loadResumeFinish } from "@/lib/results/resume-finish";
 import { loadStaffEditResult } from "@/lib/results/staff-edit";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { loadServicePrices, type ServicePrices } from "@/lib/pricing/service-prices";
+import { getWorkingAs } from "@/lib/staff/working-as";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { MpConfigClient } from "./mp-config-client";
 
 const INTRO: Record<Locale, { h1: string; lede: string }> = {
@@ -71,6 +74,20 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       // on the ordinary configurator and learns nothing about the Result.
       staffEditRequested ? loadStaffEditResult(resultId) : Promise.resolve(null),
     ]);
+  // Service fees (ADR 0024). The preview shows the Measurement service only when
+  // the server will charge it: a live Result says who measured; a new session on a
+  // Staff device working as a profile is stamped `staff` when its Draft is created.
+  const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
+  const liveResultId = staffEdit || resumeFinish ? resultId : undefined;
+  const measuredByStaff = liveResultId
+    ? await supabaseAdmin()
+        .from("mp_config_responses")
+        .select("measured_by_type")
+        .eq("id", liveResultId)
+        .maybeSingle()
+        .then(({ data }) => data?.measured_by_type === "staff")
+    : Boolean(staffCtx && (await getWorkingAs(staffCtx.memberId)));
+
   const info = {
     h1: intro.h1,
     lede: intro.lede,
@@ -98,20 +115,32 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         // Staff editing a live Result: the full assist editor (x-ray, size×tier,
         // Filling Template) over a build that already exists, saving back to the
         // Result instead of submitting a new hold.
-        <MpConfigClient info={info} staffEdit={staffEdit} staffAssist canViewResults />
+        <MpConfigClient
+          info={info}
+          staffEdit={staffEdit}
+          staffAssist
+          canViewResults
+          servicePrices={servicePrices}
+          measuredByStaff={measuredByStaff}
+        />
       ) : resumeFinish ? (
         // The customer's finish, not a new session: no assist chrome, no Assist
         // link, no partner. Even on a Staff device the fillings stay read-only —
         // Staff change them on the Result, not here.
-        <MpConfigClient info={info} resumeFinish={resumeFinish} />
+        <MpConfigClient
+          info={info}
+          resumeFinish={resumeFinish}
+          servicePrices={servicePrices}
+          measuredByStaff={measuredByStaff}
+        />
       ) : (
       <MpConfigClient
         info={info}
         // Assist edits a live Result — size, tier, filling mix — so it needs the
         // `results` permission, not mere back-office membership. `viewer` is the
         // read-only role and must not reach the editor.
-        staffAssist={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
-        canViewResults={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
+        staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
+        canViewResults={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         // Assist link (PRD staff-assisted-customisation). Deliberately NOT merged
         // into `staffAssist` above: that gate governs the x-ray editor and turns
         // on a Staff SESSION, while a customer holding a link has no admin_users
@@ -120,6 +149,8 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         // travels back to the server on save, where the code is re-resolved and
         // the Draft Result stamped `source = 'staff_assisted'`.
         assistCode={assistStaff?.code ?? null}
+        servicePrices={servicePrices}
+        measuredByStaff={measuredByStaff}
         partner={
           partner
             ? {

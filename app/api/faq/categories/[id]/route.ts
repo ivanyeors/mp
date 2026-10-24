@@ -26,7 +26,7 @@ const PatchCategorySchema = z.object({
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, ctx: RouteContext) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("faq");
   if (denied) return denied;
 
   const { id } = await ctx.params;
@@ -55,7 +55,7 @@ export async function PATCH(req: Request, ctx: RouteContext) {
 }
 
 export async function DELETE(_req: Request, ctx: RouteContext) {
-  const denied = await requireAdmin("page-builder");
+  const denied = await requireAdmin("faq");
   if (denied) return denied;
 
   const { id } = await ctx.params;

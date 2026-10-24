@@ -1,0 +1,19 @@
+{
+  "about": "Slice 09, ADR 0030 (s): the milestone ladder setting. parseMilestones (lib/points/milestones.ts) and points_milestones() (20261023120000) must read each `value` as `expected`: [points earned, bonus] pairs, lowest first. `value: null` is no row at all. Anything malformed is no milestones, never a default.",
+  "cases": [
+    { "name": "the seeded ladder", "value": "1000:100,2500:300,5000:800,10000:2000", "expected": [[1000, 100], [2500, 300], [5000, 800], [10000, 2000]] },
+    { "name": "one milestone", "value": "1000:100", "expected": [[1000, 100]] },
+    { "name": "out of order, with spaces", "value": " 2500:300 , 1000:100 ", "expected": [[1000, 100], [2500, 300]] },
+    { "name": "no row", "value": null, "expected": [] },
+    { "name": "blank: the owner removed every milestone", "value": "", "expected": [] },
+    { "name": "words", "value": "lots", "expected": [] },
+    { "name": "a missing bonus", "value": "1000:100,2500", "expected": [] },
+    { "name": "a trailing comma", "value": "1000:100,", "expected": [] },
+    { "name": "a negative number", "value": "1000:-100", "expected": [] },
+    { "name": "a decimal", "value": "1000:100.5", "expected": [] },
+    { "name": "a zero bonus", "value": "1000:0,2500:300", "expected": [] },
+    { "name": "a milestone at zero points", "value": "0:100", "expected": [] },
+    { "name": "two milestones at the same points", "value": "1000:100,1000:200", "expected": [] },
+    { "name": "a number too long", "value": "12345678:100", "expected": [] }
+  ]
+}

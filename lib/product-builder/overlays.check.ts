@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { OverlayFitSchema, overlayFrame } from "./overlays";
+import { permissionForHref } from "../auth/permissions";
 
 /** Bounds the workbench slider must not exceed (mirrors OverlayFitSchema). */
 const SCALE_BOUNDS = { min: 0.2, max: 3 };
@@ -31,28 +32,26 @@ assert.deepEqual(
 assert.ok(OverlayFitSchema.safeParse({ scale: 1.2, x: 30, y: -15 }).success);
 assert.ok(!OverlayFitSchema.safeParse({ scale: 9 }).success, "scale out of bounds rejected");
 
-// --- Product Visualize is a tab on Products; Rules Engine stays in the nav ---
-const productsClient = readFileSync("app/[lang]/settings/products/products-client.tsx", "utf8");
-assert.match(productsClient, /<TabsTrigger value="visualize">Product Visualize</, "Product Visualize tab");
-assert.match(productsClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
-assert.match(
-  readFileSync("app/[lang]/settings/products/page.tsx", "utf8"),
-  /roleHasPermission\(ctx\.role, "page-builder"\)/,
-  "tab keeps the page-builder perm gating",
-);
+// --- Product Visualize is a tab on Configure; Rules Engine stays in the nav ---
+const configureClient = readFileSync("app/[lang]/settings/inventory/configure/configure-client.tsx", "utf8");
+assert.match(configureClient, /<TabsTrigger value="visualize">Product Visualize</, "Product Visualize tab");
+assert.match(configureClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
+const configurePage = readFileSync("app/[lang]/settings/inventory/configure/page.tsx", "utf8");
+assert.match(configurePage, /requireAdminPage\("configure"/, "the tab shares the Configure page's permission (ADR 0023)");
+// ADR 0025: Soft body is a Configure tab too, lazy so the cut renderer stays out of the cards' bundle.
+assert.match(configureClient, /<TabsTrigger value="soft-body">Soft body</, "Soft body tab");
+assert.match(configureClient, /dynamic\(\s*\(\) => import\("\.\/soft-body-section"\)[\s\S]{0,120}ssr: false/, "Soft body loads on first open");
+assert.match(configurePage, /const TABS[^\n]*"soft-body"/, "?tab=soft-body opens the tab");
 assert.match(
   readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8"),
-  /redirect\([^)]*\/settings\/products\?tab=visualize/,
+  /redirect\([^)]*\/settings\/inventory\/configure\?tab=visualize/,
   "old Product Builder URL redirects to the tab",
 );
 const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
 const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing Site"'));
 assert.doesNotMatch(nav, /\/settings\/product-builder"/, "no standalone Product Builder nav entry");
-assert.match(
-  storeGroup,
-  /\/settings\/product-builder\/rules-engine"[^}]*perm: "page-builder"/,
-  "Rules Engine stays under Store > Products, page-builder gated",
-);
+assert.match(storeGroup, /\/settings\/product-builder\/rules-engine"/, "Rules Engine stays under Store > Products");
+assert.equal(permissionForHref("/settings/product-builder/rules-engine"), "rules-engine", "Rules Engine has its own key");
 
 // --- Visual workbench: the stage renders what the configurator renders ---
 const bench = readFileSync("components/product-builder/overlay-workbench.tsx", "utf8");
@@ -84,10 +83,14 @@ assert.match(bench, /max-h-\[28rem\] overflow-y-auto/, "rail scrolls instead of 
 assert.match(bench, /onKeyDown=\{url \? onKeyDown : undefined\}/, "fit is keyboard-reachable, not drag-only");
 // A mapping row whose asset lost its hosted_url is dropped by fetchOverlayMap,
 // so the shop renders nothing — the workbench must not call that "unmapped".
-assert.match(bench, /const assetMissing = item\.mapping != null && url == null;/, "missing asset is a distinct state");
 assert.match(
   bench,
-  /items\.filter\(\(i\) => i\.mapping\?\.hosted_url\)\.length/,
+  /const assetMissing = overlayState\(item\.mapping\) === "missing";/,
+  "missing asset is a distinct state",
+);
+assert.match(
+  bench,
+  /items\.filter\(overlayShips\)\.length/,
   "the mapped counter counts overlays that actually ship, not mapping rows",
 );
 assert.match(bench, /preserveAspectRatio="xMidYMid slice"/, "same cover behaviour as the configurator");
@@ -111,7 +114,7 @@ assert.ok(
 );
 
 const pageSrc = readFileSync(
-  "app/[lang]/settings/products/product-visualize.tsx",
+  "app/[lang]/settings/inventory/configure/product-visualize.tsx",
   "utf8",
 );
 assert.match(pageSrc, /<OverlayWorkbench/, "page mounts the workbench");
@@ -123,6 +126,8 @@ assert.match(api, /export async function GET/);
 assert.match(api, /export async function POST/);
 assert.match(api, /export async function DELETE/);
 assert.match(api, /OverlayFitSchema/, "fit validated with OverlayFitSchema");
+assert.match(api, /OverlayColorSchema/, "color validated with OverlayColorSchema");
+assert.match(api, /itemIds: ItemIdsSchema/, "one save can target every size of a family");
 assert.match(api, /item_overlay_mappings/, "route reads item_overlay_mappings");
 
 // --- Configurator preview renders clipped overlays ---
@@ -134,6 +139,12 @@ for (const [name, path] of [
   assert.match(src, /<clipPath id="[^"]*overlay-clip"/, `${name} clips overlay to silhouette`);
   assert.match(src, /overlayFrame\(/, `${name} uses overlayFrame for placement`);
   assert.match(src, /preserveAspectRatio="xMidYMid slice"/, `${name} covers the shape`);
+  assert.match(src, /fill=\{selectedOverlay\.color\}/, `${name} renders a color overlay`);
 }
+
+// --- Families and color overlays ---
+assert.match(bench, /overlayFamilies\(items\)/, "rail groups sizes of the same item");
+assert.match(bench, /onSave\(familyIds, draft\)/, "one size can be applied to every size");
+assert.match(bench, /type="color"/, "color overlay has a picker");
 
 console.log("product-builder overlays self-check ok");

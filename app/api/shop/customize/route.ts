@@ -12,6 +12,7 @@ import {
   incompleteEngineInputs,
   measurementPrefsToEngineInputs,
 } from "@/lib/rules-engine/legacy-inputs";
+import { HEAD_TO_BACK_MIN_CM } from "@/lib/rules-engine/units";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ const MeasurementRecommendRequestSchema = z.object({
     measurements: z.object({
       shoulder_length_cm: z.number().positive(),
       neck_to_back_cm: z.number().positive(),
-      head_to_back_cm: z.number().positive(),
+      head_to_back_cm: z.number().min(HEAD_TO_BACK_MIN_CM),
       neck_length_cm: z.number().positive(),
     }),
     demographics: z.object({
@@ -224,10 +225,10 @@ async function handleRecommend(req: Request) {
       // Fetch bolster buildable counts per variant
       const { data: bolsterBuildable } = await admin
         .from("bolster_buildable")
-        .select("variant, buildable");
+        .select("bolster_variant, buildable");
       const buildable_counts: Record<string, number> = {};
       for (const row of bolsterBuildable ?? []) {
-        buildable_counts[row.variant] = row.buildable ?? 0;
+        buildable_counts[row.bolster_variant] = row.buildable ?? 0;
       }
       const composed_buildable = buildable_counts[bolsterVariant] ?? 0;
 

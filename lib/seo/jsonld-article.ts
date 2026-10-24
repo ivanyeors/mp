@@ -1,5 +1,6 @@
 import { getSiteOrigin } from "@/lib/site-url";
 import { localeUrl } from "@/lib/seo/locale-url";
+import { organizationId } from "@/lib/seo/jsonld-organization";
 
 export type ArticleJsonLdInput = {
   lang: string;
@@ -37,7 +38,9 @@ export function buildArticleJsonLd(input: ArticleJsonLdInput): Record<string, un
     author: buildAuthorJsonLd(input.author),
     publisher: {
       "@type": "Organization",
+      "@id": organizationId(),
       name: "Mpillow",
+      url: origin,
       logo: { "@type": "ImageObject", url: `${origin}/mpillow_logo_2026.png` },
     },
     mainEntityOfPage: localeUrl(input.lang, `/blog/${input.slug}`),

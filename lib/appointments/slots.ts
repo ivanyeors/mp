@@ -202,10 +202,17 @@ export type EventGuest = {
   guestName: string;
   phone: string;
   email?: string;
+  /** Extra description lines Staff read at the visit (a re-adjustment's pillow and fee). */
+  notes?: string[];
+  /** The Re-adjustment booking behind this event (ADR 0024); private extended property. */
+  readjustmentBookingId?: string;
 };
 
 /** Key under `extendedProperties.private` carrying the Location row id. */
 export const LOCATION_ID_PROP = "mpLocationId";
+
+/** Key under `extendedProperties.private` carrying a Re-adjustment booking id. */
+export const READJUSTMENT_BOOKING_PROP = "mpReadjustmentBookingId";
 
 export type EventInsertBody = {
   summary: string;
@@ -224,6 +231,7 @@ export type EventInsertBody = {
 export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
   const lines = [`Name: ${guest.guestName}`, `Phone: ${guest.phone}`];
   if (guest.email) lines.push(`Email: ${guest.email}`);
+  if (guest.notes?.length) lines.push("", ...guest.notes);
 
   const body: EventInsertBody = {
     summary: guest.summary,
@@ -235,9 +243,10 @@ export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
   if (guest.email) {
     body.attendees = [{ email: guest.email, displayName: guest.guestName }];
   }
-  if (guest.locationId) {
-    body.extendedProperties = { private: { [LOCATION_ID_PROP]: guest.locationId } };
-  }
+  const priv: Record<string, string> = {};
+  if (guest.locationId) priv[LOCATION_ID_PROP] = guest.locationId;
+  if (guest.readjustmentBookingId) priv[READJUSTMENT_BOOKING_PROP] = guest.readjustmentBookingId;
+  if (Object.keys(priv).length > 0) body.extendedProperties = { private: priv };
   return body;
 }
 

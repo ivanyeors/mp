@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { InfoTip } from "@/components/ui/info-tip";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -229,10 +230,12 @@ export default function GeneralSettingsPage({
       {/* Header */}
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">API Configurations</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage external API integrations (LLM providers, Stripe, etc.)
-          </p>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">API Configurations</h1>
+            <InfoTip label="About API Configurations">
+              <p>Manage external API integrations (LLM providers, Stripe, etc.)</p>
+            </InfoTip>
+          </div>
         </div>
         <Button onClick={openNew} className="shrink-0 self-start sm:self-auto">
           <Plus className="mr-2 h-4 w-4" />

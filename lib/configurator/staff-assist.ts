@@ -124,6 +124,54 @@ export function recheckSelectionsForSize(input: SizeRecheckInput): SizeRecheckRe
   return { coverId, caseId, addonIds, clearedNames, keptOutOfStockNames };
 }
 
+// --- Starting template & what a size×tier change does to the mix -------------
+
+/** The engine's Filling Template, scoped to the size it recommended. */
+export type TemplateSuggestion = { size: string; templateId: number };
+
+/**
+ * The engine's pick from a Recommendation record, or null when it named no
+ * catalog template (a legacy bootstrap record, or a stub string id).
+ */
+export function templateSuggestion(
+  record: { size: string | null; templateId: string | null } | null,
+): TemplateSuggestion | null {
+  const id = Number(record?.templateId);
+  if (!record?.size || !Number.isInteger(id) || id <= 0) return null;
+  return { size: String(record.size), templateId: id };
+}
+
+/**
+ * The template a size starts from: the engine's suggestion on the size it
+ * recommended, else that size's default. A Filling Template is scoped by size,
+ * so the suggestion never follows Staff onto another size.
+ */
+export function startingTemplateId(
+  size: string,
+  suggestion: TemplateSuggestion | null,
+  defaultTemplateId: number | null,
+): number | null {
+  return suggestion?.size === size ? suggestion.templateId : defaultTemplateId;
+}
+
+/**
+ * The mix after a confirmed size×tier change, or null when a size change means
+ * starting over from that size's template. A tier-only change keeps the mix —
+ * templates are scoped by size, never by tier — except that a basic pillow
+ * cannot take a neck support (the hold refuses one), so those pieces go.
+ */
+export function mixAfterTierChange(
+  current: SizeTier,
+  next: SizeTier,
+  placements: PillowPlacement[],
+  isNeckSupport: (itemId: number) => boolean,
+): { placements: PillowPlacement[]; removed: number } | null {
+  if (current.size !== next.size) return null;
+  if (next.tier === "premium") return { placements, removed: 0 };
+  const kept = placements.filter((p) => !isNeckSupport(p.itemId));
+  return { placements: kept, removed: placements.length - kept.length };
+}
+
 // --- Session mix (per-cell list editor, v1) ----------------------------------
 
 function inCell(p: PillowPlacement, cell: Cell): boolean {
@@ -304,7 +352,10 @@ export function movePiece(
   const moving = placements.find((p) => inCell(p, ref) && p.slot === ref.slot);
   if (!moving) return { ok: false, error: `No piece at ${ref.section} ${ref.subSection} slot ${ref.slot}` };
   const staying = sameCell(ref, to.cell);
-  const without = placements.filter((p) => p !== moving);
+  // Staying, the Layer it leaves may close: renumber first, so `to.layer` (an
+  // index into the Layers left behind) is also the stored row it joins.
+  const lifted = placements.filter((p) => p !== moving);
+  const without = staying ? compactLayers(lifted, to.cell) : lifted;
   const layers = cellLayers(without, to.cell);
   const target = to.layer ?? Math.min(layers.findIndex((l) => l.length < MAX_PIECES_PER_LAYER), layers.length);
   const at = target < 0 ? layers.length : target;

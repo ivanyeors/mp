@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Product, ProductType, ProductVariant } from "@/lib/types/ecommerce";
-import type { ShippableLine } from "@/lib/shipping/types";
+import type { PackageType, ShippableLine } from "@/lib/shipping/types";
 
 type VariantWithProduct = Pick<ProductVariant, "id" | "sku" | "title" | "price" | "currency" | "weight_grams"> & {
   products?: Pick<Product, "product_type" | "slug" | "content"> | null;
@@ -30,6 +30,23 @@ export function toShippableLine(variant: VariantWithProduct, quantity: number): 
   };
 }
 
+/**
+ * A quote without a cart: one unit of each product type, declared at the
+ * estimate value. The delivery checker and the customisation flows quote this
+ * way, and a Result's hold builds the same lines, so it reads the rate the page
+ * showed from the quote cache (ADR 0032).
+ */
+export function estimateLines(types: PackageType[], declaredValue: number, currency: string): ShippableLine[] {
+  return types.map((type) => ({
+    product_type: type,
+    quantity: 1,
+    weight_grams: null,
+    unit_value: declaredValue,
+    currency,
+    description: type === "bolster" ? "Mbolster" : type === "accessory" ? "Accessory" : "Mpillow",
+  }));
+}
+
 /** Load posted cart items (variant + quantity) as shippable lines. Unknown variants are skipped. */
 export async function loadShippableLines(
   admin: SupabaseClient,
@@ -52,6 +69,7 @@ export async function loadShippableLines(
 }
 
 type OrderItemRow = {
+  kind?: string | null;
   variant_id: string | null;
   quantity: number;
   unit_price: number;
@@ -62,7 +80,11 @@ type OrderItemRow = {
   product_variants?: { weight_grams: number | null; products?: { product_type: string } | null } | null;
 };
 
-/** An order's lines for its label. A customised build without a variant ships as its product type. */
+/**
+ * An order's lines for its label. A customised build without a variant ships as its
+ * product type. A Service fee line (ADR 0024) is not a parcel and is left out —
+ * without that, a variant-less service line would be boxed as a "pillow".
+ */
 export async function loadOrderShippableLines(
   admin: SupabaseClient,
   orderId: string,
@@ -71,9 +93,10 @@ export async function loadOrderShippableLines(
   const { data, error } = await admin
     .from("order_items")
     .select(
-      "variant_id, quantity, unit_price, sku, product_title, variant_title, customization_snapshot, product_variants(weight_grams, products(product_type))",
+      "kind, variant_id, quantity, unit_price, sku, product_title, variant_title, customization_snapshot, product_variants(weight_grams, products(product_type))",
     )
-    .eq("order_id", orderId);
+    .eq("order_id", orderId)
+    .neq("kind", "service");
   if (error) throw new Error(error.message);
   return ((data ?? []) as unknown as OrderItemRow[]).map((row) => {
     const type =

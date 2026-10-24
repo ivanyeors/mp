@@ -17,7 +17,7 @@ export default async function ShopifyAdminRoute({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  await requireAdminPage("inventory", locale);
+  await requireAdminPage("shopify-link", locale);
 
   const items = await listShopifyAdminItems();
   return <ShopifyAdminPage initialData={items} />;

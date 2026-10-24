@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getEmailTransport } from "@/lib/email";
+import { loadEmailCopy } from "@/lib/email/copy-store";
 import {
+  RESULT_EMAIL_COPY,
   renderResultAssignedEmail,
   renderResultUpdatedEmail,
   statusUrl,
@@ -117,6 +119,7 @@ export async function POST(
     addons,
     pricing: {
       subtotal: build.pricing.subtotal,
+      services: build.serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
       shipping: build.pricing.shipping,
       tax: build.pricing.tax,
       total: build.pricing.total,
@@ -144,8 +147,8 @@ export async function POST(
   const needsFinish = needsCustomerFinish(row);
   const rendered =
     repriced === "updated" && !needsFinish
-      ? renderResultUpdatedEmail({ ...spec, previousTotal: storedFinal })
-      : renderResultAssignedEmail({ ...spec, needsFinish });
+      ? renderResultUpdatedEmail({ ...spec, previousTotal: storedFinal }, await loadEmailCopy(RESULT_EMAIL_COPY.updated))
+      : renderResultAssignedEmail({ ...spec, needsFinish }, await loadEmailCopy(RESULT_EMAIL_COPY.assigned));
 
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
   if (row.customer_email) {

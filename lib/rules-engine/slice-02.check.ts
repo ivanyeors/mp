@@ -1,5 +1,5 @@
 /**
- * Slice 02 self-check: workbench mount, page-builder gating, save/publish contract.
+ * Slice 02 self-check: workbench mount, rules-engine gating, save/publish contract.
  * Run: npx tsx lib/rules-engine/slice-02.check.ts
  */
 import assert from "node:assert/strict";
@@ -25,14 +25,14 @@ const flowPage =
   "app/[lang]/settings/product-builder/rules-engine/[flow]/page.tsx";
 const indexPage = "app/[lang]/settings/product-builder/rules-engine/page.tsx";
 const workbench = "components/rules-engine/workbench.tsx";
-const productBuilder = "app/[lang]/settings/products/product-visualize.tsx";
+const productBuilder = "app/[lang]/settings/inventory/configure/product-visualize.tsx";
 
 assert.ok(existsSync(join(ROOT, flowPage)), "flow page exists");
 assert.ok(existsSync(join(ROOT, indexPage)), "rules-engine index exists");
 assert.ok(existsSync(join(ROOT, workbench)), "workbench exists");
 
-assert.match(read(flowPage), /requireAdminPage\("page-builder"/);
-assert.match(read(indexPage), /requireAdminPage\("page-builder"/);
+assert.match(read(flowPage), /requireAdminPage\("rules-engine"/);
+assert.match(read(indexPage), /requireAdminPage\("rules-engine"/);
 assert.match(read(workbench), /@xyflow\/react/);
 assert.match(read(workbench), /MiniMap/);
 assert.match(read(workbench), /from "@\/lib\/rules-engine\/evaluate"/);
@@ -44,9 +44,9 @@ assert.match(
   /\/settings\/product-builder\/rules-engine/,
 );
 
-// --- Perm gating: page-builder yes for owner, no for viewer ---
-assert.equal(roleHasPermission("owner", "page-builder"), true);
-assert.equal(roleHasPermission("viewer", "page-builder"), false);
+// --- Perm gating: rules-engine yes for owner, no for viewer ---
+assert.equal(roleHasPermission("owner", "rules-engine"), true);
+assert.equal(roleHasPermission("viewer", "rules-engine"), false);
 
 const apiRoutes = [
   "app/api/settings/rules-engine/[flow]/route.ts",
@@ -56,7 +56,7 @@ const apiRoutes = [
   "app/api/settings/rules-engine/[flow]/evaluate/route.ts",
 ];
 for (const r of apiRoutes) {
-  assert.match(read(r), /requireAdminContext\("page-builder"\)/);
+  assert.match(read(r), /requireAdminContext\("rules-engine"\)/);
 }
 
 // Save contract: PUT body { graph }; Publish: POST → ok | errors[]

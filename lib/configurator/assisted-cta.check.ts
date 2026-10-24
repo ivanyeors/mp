@@ -88,7 +88,7 @@ assert.ok(
 // a windowed match would either miss it or be so loose it proves nothing. Both
 // strings are unique in the file, so "the guard opens before the label, and
 // nothing else opens a guard in between" is the exact structural claim.
-const GUARD = "{!assisted && !resumeFinish && (";
+const GUARD = "{!assisted && !resumeFinish && askingDetails && (";
 const labelAt = src.indexOf("Save without purchasing");
 const guardAt = src.lastIndexOf(GUARD, labelAt);
 assert.equal(

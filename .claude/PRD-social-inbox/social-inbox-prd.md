@@ -22,7 +22,7 @@ land, and where they should be answered from.
    card** headed `💬 INSTAGRAM DM · Jane Tan (@janetan)` (or FACEBOOK MESSAGE / TIKTOK DM), threaded
    under that customer's previous card. A photo Telegram can fetch becomes the card (the card is its
    caption); other attachments are listed with a link or "open the app to see it".
-3. **Staff reply.** An **Inbox agent** (or Review manager) replies to the card in Telegram; the bot
+3. **Staff reply.** Someone allowed to **Answer customer messages** replies to the card in Telegram; the bot
    sends the text to the customer on the same platform and confirms with `📤 Sent to … by Ivan`.
    Replying to that note continues the conversation. A reply that starts with `//` is a **team
    note** and is never sent. Anyone else who replies is told it was **not** sent.
@@ -37,11 +37,13 @@ land, and where they should be answered from.
    never answers twice. The echo of our own Telegram reply is matched and ignored. TikTok's
    automatic messages (welcome message, suggested questions, keyword replies) and reactions are
    dropped — neither is a person answering.
-6. **RBAC.** Same Telegram access tab as review cards (Staff Management → Telegram access), with a
-   new role **Inbox agent** (customer messages only). Review managers can answer too; shop
-   moderators cannot.
+6. **RBAC.** A new Telegram action, **Answer customer messages** (`telegram.social-inbox-reply`),
+   in the permission catalog (ADR 0023). A reply is sent only when the person's Telegram link
+   (Users & permissions → Telegram) and their login's role (→ Roles) both grant it. Owner and
+   Admin roles have it already; other roles and every existing link get it only when someone
+   turns it on. (Written before RBAC as an "Inbox agent" Telegram role.)
 7. **TikTok connect.** TikTok tokens expire daily and rotate, so they live in the database
-   (`social_channel_tokens`), not env. An admin taps **Connect TikTok** on the Telegram access tab
+   (`social_channel_tokens`), not env. An admin taps **Connect TikTok** on the Users & permissions → Telegram tab
    once; on production the callback also points TikTok's webhook at the site. The access token
    is refreshed on use and daily by the cron; the connection itself lasts a year, and the tab says
    "reconnect by …" in its last month.

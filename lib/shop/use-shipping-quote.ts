@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ShippingQuoteOptionView, ShippingQuoteResponse } from "@/lib/shipping/types";
+import type { PackageType, ShippingQuoteOptionView, ShippingQuoteResponse } from "@/lib/shipping/types";
+import { isPostalReady } from "@/lib/shipping/countries";
 
 export interface ShippingQuoteRequest {
   /** A cart; priced server-side from the variants. */
   items?: Array<{ variant_id: string; quantity: number }>;
-  /** No cart: one unit boxed as this product type (the estimator). */
-  profile?: "pillow" | "bolster" | "accessory";
+  /** No cart: one unit boxed as this product type (the estimator), or one of each (a customisation). */
+  profile?: PackageType | PackageType[];
   country: string;
   postalCode: string;
   city?: string;
@@ -26,10 +27,7 @@ export interface ShippingQuoteState {
 
 const IDLE: ShippingQuoteState = { options: [], live: false, loading: false, error: null, ready: false };
 
-/** A postal code worth quoting: couriers price by it, and a partial one only misses the cache. */
-export function isPostalReady(postal: string): boolean {
-  return postal.replace(/\s+/g, "").length >= 3;
-}
+export { isPostalReady };
 
 /**
  * Live shipping options for a cart or a product type to an address. Debounced
@@ -40,7 +38,7 @@ export function useShippingQuote(request: ShippingQuoteRequest | null, debounceM
   // The request as a stable string: the effect re-runs when its content changes,
   // not when the caller builds a new object with the same content.
   const key =
-    request && isPostalReady(request.postalCode)
+    request && isPostalReady(request.postalCode, request.country)
       ? JSON.stringify({
           items: request.items?.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
           profile: request.profile,

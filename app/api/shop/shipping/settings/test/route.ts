@@ -3,22 +3,19 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
+import { isSelfCollect } from "@/lib/shipping/self-collect";
 import { buildParcels } from "@/lib/shipping/parcels";
 import type { TypeBoxes } from "@/lib/shipping/types";
 import { readTypeBoxes } from "@/lib/easyship/store";
 import { fetchCourierRates, priceMethod } from "@/lib/shipping/quote";
+import { QuoteDestinationSchema } from "@/lib/shipping/destination-schema";
 import { parseShippingSettings, ShippingSettingsSchema } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 
 const TestSchema = z.object({
-  destination: z.object({
-    country: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
-    postal_code: z.string().trim().min(2).max(12),
-    city: z.string().trim().max(120).optional(),
-    state: z.string().trim().max(120).optional(),
-  }),
+  destination: QuoteDestinationSchema,
   profile: z.enum(["pillow", "bolster", "accessory"]).default("pillow"),
   quantity: z.number().int().min(1).max(10).default(1),
   /** The unsaved form, so Staff can try settings before saving them. Defaults to the saved row. Boxes are always the saved doc's. */
@@ -48,7 +45,10 @@ export async function POST(req: Request) {
     settings = parseShippingSettings(data as Record<string, unknown> | null);
   }
 
-  const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]);
+  // What shop checkout would offer, which never includes Self-collect.
+  const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]).filter(
+    (m) => !isSelfCollect(m),
+  );
   const currency = methods.find((m) => m.rate_source === "easyship")?.currency ?? methods[0]?.currency ?? "SGD";
   let boxes: TypeBoxes;
   try {

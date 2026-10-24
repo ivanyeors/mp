@@ -38,7 +38,13 @@ describe("email escaping", () => {
   // argument produces identical output for both fixtures, so the assertions
   // above pass without ever exercising an escape path. Asserting "at least one
   // template contains the probe" was not enough — it let 7 of 24 entries through.
-  describe.each(EMAIL_REGISTRY.map((c) => [c.id, c] as const))(
+  //
+  // Two versions show a customer with no link back to their order. Their one
+  // piece of free text was that link, so nothing of the fixture reaches the
+  // email, by design (they exist so Email templates can preview the restart
+  // and closing lines). They still pass every check above.
+  const NO_FREE_TEXT = new Set(["results.declined_restart", "results.hold_expired_unpaid_no_link"]);
+  describe.each(EMAIL_REGISTRY.filter((c) => !NO_FREE_TEXT.has(c.id)).map((c) => [c.id, c] as const))(
     "%s actually consumes the fixture",
     (_id, entry) => {
       it("renders differently under the hostile fixture", () => {
