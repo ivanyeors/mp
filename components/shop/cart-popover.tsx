@@ -33,6 +33,8 @@ export function CartPopover({ trigger }: CartPopoverProps) {
     removeItem,
     applyCoupon,
     couponCode,
+    couponKind,
+    couponPartnerName,
     couponError,
     couponDiscount,
     couponFreeShipping,
@@ -86,6 +88,8 @@ export function CartPopover({ trigger }: CartPopoverProps) {
             couponFreeShipping={couponFreeShipping}
             items={items}
             couponCode={couponCode}
+            couponKind={couponKind}
+            couponPartnerName={couponPartnerName}
             couponError={couponError}
             couponValidating={couponValidating}
             applyCoupon={applyCoupon}

@@ -639,11 +639,30 @@ export interface ResultPricing {
    * measured. Listed on their own rows so the customer sees what they pay for.
    */
   services?: Array<{ label: string; amount: number }>;
+  /**
+   * A discount code on the Result (ADR 0033): off the goods, after the Subtotal.
+   * Amount 0 is a free-shipping code — the Shipping row already reads 0.
+   */
+  discount?: { code: string; amount: number };
 }
 
 /** One row per Service fee, before the Subtotal they are part of. */
 function serviceRows(pricing: ResultPricing): Array<{ label: string; value: string }> {
   return (pricing.services ?? []).map((s) => ({ label: s.label, value: money(s.amount, pricing.currency) }));
+}
+
+/** The discount code's row, after the Subtotal it comes off. */
+function discountRows(pricing: ResultPricing): Array<{ label: string; value: string }> {
+  if (!pricing.discount) return [];
+  return [
+    {
+      label: `Discount (${pricing.discount.code})`,
+      value:
+        pricing.discount.amount > 0
+          ? `−${money(pricing.discount.amount, pricing.currency)}`
+          : "Free shipping",
+    },
+  ];
 }
 
 /** What the build IS — size and tier, or a bolster's length. */
@@ -737,6 +756,7 @@ export function renderResultAssignedEmail(p: {
     ? [
         ...serviceRows(p.pricing).map((r) => `${r.label}: ${r.value}`),
         `Subtotal: ${money(p.pricing.subtotal, p.pricing.currency)}`,
+        ...discountRows(p.pricing).map((r) => `${r.label}: ${r.value}`),
         `Shipping: ${money(p.pricing.shipping, p.pricing.currency)}`,
         `Tax: ${money(p.pricing.tax, p.pricing.currency)}`,
         `Total: ${money(p.pricing.total, p.pricing.currency)}`,
@@ -778,6 +798,7 @@ export function renderResultAssignedEmail(p: {
     ? [
         ...serviceRows(p.pricing),
         { label: "Subtotal", value: money(p.pricing.subtotal, p.pricing.currency) },
+        ...discountRows(p.pricing),
         { label: "Shipping", value: money(p.pricing.shipping, p.pricing.currency) },
         { label: "Tax", value: money(p.pricing.tax, p.pricing.currency) },
         { label: "Total", value: money(p.pricing.total, p.pricing.currency), strong: true },
@@ -899,6 +920,7 @@ export function renderResultUpdatedEmail(p: {
   const pricingRows = [
     ...serviceRows(p.pricing),
     { label: "Subtotal", value: money(p.pricing.subtotal, currency) },
+    ...discountRows(p.pricing),
     { label: "Shipping", value: money(p.pricing.shipping, currency) },
     { label: "Tax", value: money(p.pricing.tax, currency) },
     ...(priceChanged
@@ -926,6 +948,7 @@ export function renderResultUpdatedEmail(p: {
     "",
     ...serviceRows(p.pricing).map((r) => `${r.label}: ${r.value}`),
     `Subtotal: ${money(p.pricing.subtotal, currency)}`,
+    ...discountRows(p.pricing).map((r) => `${r.label}: ${r.value}`),
     `Shipping: ${money(p.pricing.shipping, currency)}`,
     `Tax: ${money(p.pricing.tax, currency)}`,
     ...(priceChanged ? [`Previously quoted: ${money(p.previousTotal!, currency)}`] : []),

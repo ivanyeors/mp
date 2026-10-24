@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { listAdminCoupons } from "@/lib/ecommerce/admin/coupons";
 import { requireAdmin } from "@/lib/auth/admin";
+import { isReferralCodeTaken } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,11 @@ export async function POST(req: Request) {
   const parsed = CreateCouponSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  // One field at checkout takes both kinds of code (ADR 0033).
+  if (await isReferralCodeTaken(parsed.data.code)) {
+    return NextResponse.json({ error: "This code is a partner's referral code. Choose another." }, { status: 409 });
   }
 
   const admin = supabaseAdmin();

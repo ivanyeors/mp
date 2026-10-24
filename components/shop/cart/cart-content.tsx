@@ -24,6 +24,8 @@ interface CartContentProps {
   couponFreeShipping: boolean;
   items: CartItemClient[];
   couponCode: string | null;
+  couponKind: "discount" | "referral" | null;
+  couponPartnerName: string | null;
   couponError: string | null;
   couponValidating: boolean;
   applyCoupon: (code: string | null) => Promise<void>;
@@ -43,6 +45,8 @@ export function CartContent({
   couponFreeShipping,
   items,
   couponCode,
+  couponKind,
+  couponPartnerName,
   couponError,
   couponValidating,
   applyCoupon,
@@ -124,6 +128,8 @@ export function CartContent({
             <CartShippingBar subtotal={subtotal} currency={currency} messages={messages} />
             <CartCouponField
               couponCode={couponCode}
+              couponKind={couponKind}
+              couponPartnerName={couponPartnerName}
               couponDiscount={couponDiscount}
               couponFreeShipping={couponFreeShipping}
               couponError={couponError}

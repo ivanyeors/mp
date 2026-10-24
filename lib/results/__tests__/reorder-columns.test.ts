@@ -28,6 +28,11 @@ const MUST_NEVER_CARRY = [
   "pre_order_restock_notified_at",
   // A reordered Mbolster ships on its own; its old pair's hold is not its money.
   "paired_build_id",
+  // A discount code was checked against its limits for the old sale; carried,
+  // a new sale would take it off again with nothing checked (ADR 0033).
+  "coupon_id",
+  "coupon_code",
+  "coupon_terms",
   "created_at",
   "updated_at",
 ];

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, CreditCard, Loader2, Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/shop/cart-context";
@@ -47,6 +47,14 @@ import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { POINTS_ACCOUNT_ERROR, POINTS_CHECKOUT_COPY } from "@/lib/points/spend";
+import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
+import {
+  checkoutCodeDiscount,
+  checkoutCodeFreeShipping,
+  checkoutCodeToSend,
+  type CheckoutCodeContext,
+} from "@/lib/checkout-code/shared";
+import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
 import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
 
 const NEW_ADDRESS = "new";
@@ -132,7 +140,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const lang = (params?.lang as string) ?? "en";
 
-  const { items, subtotal, couponCode, couponDiscount, couponFreeShipping, hydrated } = useCart();
+  const { items, subtotal, couponCode, hydrated, rememberCode } = useCart();
   const { isConverted } = useCurrency();
 
   // Form state
@@ -269,78 +277,57 @@ export default function CheckoutPage() {
     ? selectedShipping
     : (selectableIds[0] ?? "");
 
-  const [checkoutDiscount, setCheckoutDiscount] = useState(couponDiscount);
-  const [checkoutFreeShipping, setCheckoutFreeShipping] = useState(couponFreeShipping);
-  const [couponPreviewError, setCouponPreviewError] = useState<string | null>(null);
+  // The one optional code (ADR 0033): a discount or a partner's referral code.
+  // It reads as whatever the cart holds until the shopper types here, and is
+  // checked against this order as they type and as the order changes, so the
+  // summary's discount and total move with it. Checkout prices the order again
+  // from the database; only that is charged.
+  const [typedCode, setTypedCode] = useState<string | null>(null);
+  const code = typedCode ?? couponCode ?? "";
 
-  // Optional partner/referral code (#74) — inline, non-blocking attribution.
-  const [referralCode, setReferralCode] = useState("");
-  const [refStatus, setRefStatus] = useState<{
-    state: "idle" | "checking" | "valid" | "invalid";
-    partnerName?: string | null;
-  }>({ state: "idle" });
+  const codeContext = useMemo<CheckoutCodeContext | null>(
+    () =>
+      items.length > 0
+        ? {
+            flow: "shop",
+            subtotal,
+            line_items: items.map((i) => ({
+              product_id: i.productId,
+              line_total: (i.price + (i.addonPrice ?? 0)) * i.quantity,
+            })),
+          }
+        : null,
+    [items, subtotal],
+  );
+  const codeStatus = useCheckoutCode(code, codeContext, form.email);
+  const checkoutDiscount = checkoutCodeDiscount(codeStatus);
+  const checkoutFreeShipping = checkoutCodeFreeShipping(codeStatus);
 
+  // The cart keeps what checkout settled on, so the code survives a Stripe
+  // cancel or a trip back to the cart.
   useEffect(() => {
-    const code = referralCode.trim();
-    if (!code) {
-      setRefStatus({ state: "idle" });
-      return;
-    }
-    setRefStatus({ state: "checking" });
-    const t = setTimeout(() => {
-      fetch(`/api/partner/referral/validate?code=${encodeURIComponent(code)}`)
-        .then((res) => res.json())
-        .then((json) =>
-          setRefStatus(
-            json.valid
-              ? { state: "valid", partnerName: json.partnerName }
-              : { state: "invalid" },
-          ),
-        )
-        .catch(() => setRefStatus({ state: "idle" }));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [referralCode]);
-
-  useEffect(() => {
-    if (!couponCode) {
-      setCheckoutDiscount(0);
-      setCheckoutFreeShipping(false);
-      setCouponPreviewError(null);
-      return;
-    }
-
-    fetch("/api/shop/coupons/validate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        code: couponCode,
-        subtotal,
-        product_ids: items.map((i) => i.productId),
-        email: form.email || undefined,
-        line_items: items.map((i) => ({
-          product_id: i.productId,
-          line_total: (i.price + (i.addonPrice ?? 0)) * i.quantity,
-        })),
-      }),
-    })
-      .then((res) => res.json())
-      .then((json) => {
-        if (!json.valid) {
-          setCheckoutDiscount(0);
-          setCheckoutFreeShipping(false);
-          setCouponPreviewError(json.reason ?? "Invalid coupon");
-          return;
-        }
-        setCheckoutDiscount(json.discount_amount ?? 0);
-        setCheckoutFreeShipping(json.free_shipping === true);
-        setCouponPreviewError(null);
-      })
-      .catch(() => {
-        setCheckoutDiscount(couponDiscount);
-        setCheckoutFreeShipping(couponFreeShipping);
+    if (codeStatus.state === "discount") {
+      rememberCode({
+        code: codeStatus.code,
+        kind: "discount",
+        discount: codeStatus.discount ?? 0,
+        freeShipping: codeStatus.freeShipping,
       });
-  }, [couponCode, subtotal, items, form.email, couponDiscount, couponFreeShipping]);
+    } else if (codeStatus.state === "referral") {
+      rememberCode({
+        code: codeStatus.code,
+        kind: "referral",
+        discount: 0,
+        freeShipping: false,
+        partnerName: codeStatus.partnerName,
+      });
+    } else if (
+      typedCode !== null &&
+      (codeStatus.state === "idle" || codeStatus.state === "invalid" || codeStatus.state === "unknown")
+    ) {
+      rememberCode(null);
+    }
+  }, [codeStatus, typedCode, rememberCode]);
 
   // Points (ADR 0030 (h) to (j)): offered to a signed-in shopper who is not a
   // partner and holds at least the minimum. The server works the balance out
@@ -490,8 +477,8 @@ export default function CheckoutPage() {
           phone: form.phone || undefined,
         },
         shipping_method_id: chosenShipping,
-        coupon_code: couponCode ?? undefined,
-        referral_code: referralCode.trim() || undefined,
+        // Resolved and priced again on the server; the page only asks.
+        code: checkoutCodeToSend(code, codeStatus),
         // Checked and reserved again on the server; the page only asks.
         points: pointsToUse > 0 ? pointsToUse : undefined,
         locale: lang,
@@ -531,7 +518,7 @@ export default function CheckoutPage() {
             params: {
               value: total,
               currency,
-              ...(couponCode ? { coupon: couponCode } : {}),
+              ...(codeStatus.state === "discount" ? { coupon: codeStatus.code } : {}),
               items: items.map((item) => ({
                 item_id: item.variantId,
                 item_name: item.productTitle,
@@ -671,20 +658,17 @@ export default function CheckoutPage() {
             </span>
           </div>
 
-          {couponCode && (
+          {codeStatus.state === "discount" && (
             <div className="flex justify-between text-green-600 dark:text-green-400">
-              <span>Coupon ({couponCode})</span>
+              <span>Discount ({codeStatus.code})</span>
               <span>
-                {checkoutFreeShipping
-                  ? "Free shipping"
-                  : checkoutDiscount > 0
-                    ? <>-<PriceDisplay price={checkoutDiscount} currency={currency} className="inline text-sm" /></>
+                {checkoutDiscount > 0
+                  ? <>-<PriceDisplay price={checkoutDiscount} currency={currency} className="inline text-sm" /></>
+                  : checkoutFreeShipping
+                    ? "Free shipping"
                     : "Applied"}
               </span>
             </div>
-          )}
-          {couponPreviewError && (
-            <p className="text-xs text-destructive">{couponPreviewError}</p>
           )}
           {pointsToUse > 0 && (
             <div className="flex justify-between text-green-600 dark:text-green-400">
@@ -806,28 +790,14 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div className="sm:col-span-2 flex flex-col gap-1.5">
-                  <Label htmlFor="referral_code">
-                    Partner / referral code{" "}
-                    <span className="text-muted-foreground text-xs">(optional)</span>
-                  </Label>
-                  <Input
-                    id="referral_code"
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    placeholder="e.g. ABCD2345"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value)}
+                <div className="sm:col-span-2">
+                  <CheckoutCodeField
+                    id="checkout_code"
+                    value={code}
+                    onChange={setTypedCode}
+                    status={codeStatus}
+                    formatAmount={(amount) => formatPrice(amount, currency)}
                   />
-                  {refStatus.state === "valid" ? (
-                    <p className="text-xs text-emerald-600">
-                      Referred by {refStatus.partnerName}
-                    </p>
-                  ) : refStatus.state === "invalid" ? (
-                    <p className="text-xs text-muted-foreground">
-                      Code not recognised — you can still continue.
-                    </p>
-                  ) : null}
                 </div>
               </div>
             </section>

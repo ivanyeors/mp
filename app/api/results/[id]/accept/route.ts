@@ -29,6 +29,7 @@ import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledge
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
+import { incrementCouponUsage } from "@/lib/ecommerce/discounts";
 import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -49,7 +50,7 @@ const BodySchema = z.object({
   topupSessionId: z.string().min(1).optional(),
 });
 
-const ACCEPT_COLUMNS = `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source` as const;
+const ACCEPT_COLUMNS = `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source, coupon_id, coupon_code` as const;
 
 export async function POST(
   req: Request,
@@ -238,6 +239,9 @@ export async function POST(
     (t, m) => t + m.build.pricing.goods + sumServiceLines(m.serviceLines),
     0,
   );
+  // The discount code kept at hold (ADR 0033). The Mpillow carries a pair's.
+  const couponHolder = members.find((m) => m.row.coupon_id || m.row.coupon_code)?.row ?? null;
+  const orderDiscount = round2(members.reduce((t, m) => t + m.build.pricing.discount, 0));
   let topUpPaid = 0;
   /** Second PaymentIntent when the final total outgrew the hold. Ledgered separately. */
   let topUpPaymentIntentId: string | null = null;
@@ -504,7 +508,9 @@ export async function POST(
       // A Paired build's Mbolster ships with its Mpillow, so its shipping is 0.
       shipping_amount: round2(members.reduce((t, m) => t + m.build.pricing.shipping, 0)),
       tax_amount: round2(members.reduce((t, m) => t + m.build.pricing.tax, 0)),
-      discount_amount: 0,
+      discount_amount: orderDiscount,
+      coupon_id: couponHolder?.coupon_id ?? null,
+      coupon_code: couponHolder?.coupon_code ?? null,
       total: finalAmount,
       shipping_address: shippingAddress,
       payment_method: "stripe",
@@ -636,6 +642,18 @@ export async function POST(
     // keep the claim so the Result shows as accept_interrupted for a human.
     if (!rollbackErr) await releaseClaim();
     return NextResponse.json({ error: itemsErr }, { status: 500 });
+  }
+
+  // The code's use is counted now that it is a paid Order, as shop checkout
+  // counts one at payment. Until now the live Result held the use (ADR 0033).
+  // Once: the Order above is created once per Result, and a retry that finds it
+  // returns before here. Best-effort — the money is captured.
+  if (couponHolder?.coupon_id) {
+    try {
+      await incrementCouponUsage(couponHolder.coupon_id as string);
+    } catch (e) {
+      console.error("Coupon usage increment failed after capture", e);
+    }
   }
 
   // Record what we actually charged as ledger rows. Without these the order has no

@@ -26,6 +26,7 @@ import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { pairAuthorized, pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { resultShippingAmount } from "@/lib/results/shipping";
+import { discountRowOf, resultCouponPricing } from "@/lib/results/discount";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
@@ -134,7 +135,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type, paired_build_id",
+      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token, measured_by_type, coupon_code, coupon_terms, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -407,6 +408,8 @@ export async function POST(
     );
   }
   const services = sumServiceLines(serviceLines);
+  // The discount code kept at hold comes off the build assigned now (ADR 0033).
+  const coupon = resultCouponPricing(row.coupon_terms, goods.subtotal);
 
   let shippingAmount = 0;
   let taxAmount = 0;
@@ -418,14 +421,16 @@ export async function POST(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      // Free shipping is earned by goods; tax is due on goods and services alike.
+      // Free shipping is earned by goods; tax is due on goods and services alike,
+      // less the discount.
       // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
-      shippingAmount = shipsWithAnchor(row)
-        ? 0
-        : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
+      shippingAmount =
+        shipsWithAnchor(row) || coupon.freeShipping
+          ? 0
+          : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
-        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
+        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: coupon.discount },
         taxRule,
       ).taxAmount;
     }
@@ -436,10 +441,12 @@ export async function POST(
     services,
     shipping: shippingAmount,
     tax: taxAmount,
+    discount: coupon.discount,
   });
   const finalAmount = priced.total;
   const pricingBreakdown: ResultPricing = {
     subtotal: priced.subtotal,
+    discount: discountRowOf(row.coupon_code as string | null, row.coupon_terms, priced.discount),
     services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
     shipping: priced.shipping,
     tax: priced.tax,

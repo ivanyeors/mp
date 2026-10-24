@@ -415,3 +415,47 @@ describe("the reservation and its release (rule j)", () => {
     expect(h.db.orders).toEqual([]);
   });
 });
+
+describe("the one code field (ADR 0033)", () => {
+  it("applies a discount code typed into it, case and spaces aside", async () => {
+    const res = await pay("wei.ling@example.com", { body: { code: " save10 " } });
+    expect(res.status).toBe(200);
+    expect(orderInsert()).toMatchObject({ coupon_id: "coupon-save10", coupon_code: "SAVE10", discount_amount: 10 });
+    expect(stripeCharge()).toEqual({ amountOff: 1000, total: 95 });
+  });
+
+  it("attributes a partner's referral code and takes nothing off", async () => {
+    h.db.partners = [{ id: "partner-1", name: "Spine Clinic", type: "partner", referral_code: "ABCD2345" }];
+    const res = await pay("wei.ling@example.com", { body: { code: "abcd2345" } });
+    expect(res.status).toBe(200);
+    expect(orderInsert()).toMatchObject({
+      partner_id: "partner-1",
+      ref_code: "ABCD2345",
+      attribution_source: "typed",
+      coupon_id: null,
+      discount_amount: 0,
+    });
+  });
+
+  it("never blocks on a code nobody recognises", async () => {
+    const res = await pay("wei.ling@example.com", { body: { code: "NOPE123" } });
+    expect(res.status).toBe(200);
+    expect(orderInsert()).toMatchObject({ coupon_id: null, partner_id: null, discount_amount: 0, total: 105 });
+  });
+
+  it("refuses a discount code that cannot be used on this order, with its reason", async () => {
+    // SAVE10 needs S$100 of products; one S$50 item is not enough.
+    const res = await pay("wei.ling@example.com", {
+      body: { code: "SAVE10", items: [{ variant_id: VARIANT, quantity: 1 }] },
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/at least SGD 100\.00/);
+    expect(h.sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("still refuses an unknown coupon_code from a tab opened before the field changed", async () => {
+    const res = await pay("wei.ling@example.com", { coupon: "NOPE123" });
+    expect(res.status).toBe(400);
+    expect(h.db.orders).toEqual([]);
+  });
+});

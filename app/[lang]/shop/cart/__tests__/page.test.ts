@@ -56,7 +56,8 @@ describe("shop cart page → client component boundary", () => {
 describe("buildCartMessages", () => {
   it("formats the templated strings on the client side of the boundary", () => {
     const messages = buildCartMessages(getMessages("en-US").shop.cart);
-    expect(messages.couponApplied("SAVE10")).toBe('Coupon "SAVE10" applied!');
+    expect(messages.couponApplied("SAVE10")).toBe('Discount code "SAVE10" active');
+    expect(messages.referralApplied("ABCD2345")).toBe('Referral code "ABCD2345" active');
     expect(messages.freeShipping("S$12.00")).toBe("S$12.00 away from free shipping");
   });
 });

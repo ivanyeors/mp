@@ -378,7 +378,8 @@ export type Messages = {
       coupon: string;
       applyCoupon: string;
       removeCoupon: string;
-      couponApplied: string; // e.g. 'Coupon "{code}" applied!'
+      couponApplied: string; // e.g. 'Discount code "{code}" active'
+      referralApplied: string; // e.g. 'Referral code "{code}" active'
       remove: string;
       customizationAddon: string;
       closeCart: string;
