@@ -41,7 +41,8 @@ export async function POST(req: Request) {
     message: parsed.data.message,
   });
   if (emailed || notified) {
-    return NextResponse.json({ ok: true });
+    // `emailed` tells the form whether the customer has a copy in their inbox.
+    return NextResponse.json({ ok: true, emailed });
   }
   return NextResponse.json(
     { error: "We couldn't send your message right now. Please try again, or message us on WhatsApp." },

@@ -1,12 +1,13 @@
-import { getSupportInbox, sendContactMessage, type ContactMessage } from "@/lib/email/contact";
+import { contactRecipients, sendContactMessage, type ContactMessage } from "@/lib/email/contact";
 import { sendGroupMessage } from "@/lib/telegram/bot-api";
 
 /**
  * Where a Contact Us message goes (the "Get in touch" form on /support).
  *
  * Two copies, email first:
- *  - the email to the support inbox (SUPPORT_EMAIL), Reply-To the customer.
- *    Staff answer from it, and it is the copy that stays.
+ *  - the email to the support inbox (SUPPORT_EMAIL), with the customer and
+ *    sg@mpillow.com on Cc. Staff answer from it, the customer keeps it as
+ *    their copy, and it is the record that stays.
  *  - a notice in the staff Telegram group, so somebody sees the message within
  *    minutes rather than whenever the inbox is next opened. It says whether
  *    the email went, so nobody goes looking for an email that never arrived.
@@ -22,10 +23,12 @@ export const CONTACT_NOTICE_HEADER = "✉️ CONTACT US · mpillow website";
  * form (200 + 320 + 200), so this keeps the whole notice under Telegram's
  * 4096 characters; a longer notice is never delivered.
  */
-const MAX_NOTICE_MESSAGE_CHARS = 2800;
+const MAX_NOTICE_MESSAGE_CHARS = 2700;
 
 /** The Telegram notice. Plain text — no parse_mode, nothing to escape. */
 export function renderContactNotice(msg: ContactMessage, emailed: boolean): string {
+  const { to, cc } = contactRecipients(msg.email);
+  const copied = cc.map((address) => (address === msg.email ? "the customer" : address)).join(" and ");
   const subject = msg.subject?.trim();
   const message = msg.message.trim();
   const body =
@@ -40,8 +43,8 @@ export function renderContactNotice(msg: ContactMessage, emailed: boolean): stri
     body,
     "",
     emailed
-      ? `Emailed to ${getSupportInbox()}: reply from there and it goes back to them.`
-      : `⚠️ The email to ${getSupportInbox()} failed. Reply to ${msg.email} directly.`,
+      ? `Emailed to ${to}, cc ${copied}. Reply to that email and it reaches the customer.`
+      : `⚠️ The email to ${to} failed, so the customer has no copy either. Reply to ${msg.email} directly.`,
   ].join("\n");
 }
 

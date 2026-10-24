@@ -718,9 +718,9 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
   // --- Support / staff ---
   {
     id: "support.contact",
-    label: "Support form message",
+    label: "Contact Us message (support inbox, customer on Cc)",
     group: "support",
-    audience: "staff",
+    audience: "customer",
     render: (f) => renderContactEmail(sampleContact(f)),
   },
   {

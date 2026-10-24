@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "lib/email/contact.ts": {
-    "mtime": 1792768559.0977519,
-    "seen": 1792771532.1233494,
-    "ast_hash": "2deebb8e0d8a1ffb9d39e09b59265089",
+    "mtime": 1792808489.3589427,
+    "seen": 1792808711.708944,
+    "ast_hash": "050514694a0aca993b131cfde90da614",
     "semantic_hash": ""
   },
   "lib/email/index.ts": {
@@ -558,15 +558,15 @@
     "semantic_hash": ""
   },
   "lib/email/transport.ts": {
-    "mtime": 1792768559.0977519,
-    "seen": 1792771532.123375,
-    "ast_hash": "29a5a535e9ef772011c3a8c9f6326895",
+    "mtime": 1792808468.4298434,
+    "seen": 1792808711.7089741,
+    "ast_hash": "7db62876a7cebc39f3edf62c1df77a91",
     "semantic_hash": ""
   },
   "lib/email/types.ts": {
-    "mtime": 1792768559.0977519,
-    "seen": 1792771532.1233761,
-    "ast_hash": "c87e632a306a102d03b0ed5fffad2e81",
+    "mtime": 1792808462.831946,
+    "seen": 1792808711.7089748,
+    "ast_hash": "954da458aec6ccdd3889dd8296bf43f2",
     "semantic_hash": ""
   },
   "lib/faq/__tests__/faq.test.ts": {
@@ -2394,9 +2394,9 @@
     "semantic_hash": ""
   },
   "app/api/support/contact/route.ts": {
-    "mtime": 1792771166.1687706,
-    "seen": 1792771532.1226833,
-    "ast_hash": "16ff0b2d3f004009842c20fc484e1540",
+    "mtime": 1792808556.3209932,
+    "seen": 1792808711.7082174,
+    "ast_hash": "61af3b258d3754c802376be9d3baec38",
     "semantic_hash": ""
   },
   "app/api/telegram/webhook/route.ts": {
@@ -7170,9 +7170,9 @@
     "semantic_hash": ""
   },
   "lib/email/registry.ts": {
-    "mtime": 1792768559.0977519,
-    "seen": 1792771532.1233673,
-    "ast_hash": "dec9996f36c3fb2ced4f23e7111a4882",
+    "mtime": 1792808489.376654,
+    "seen": 1792808711.7089663,
+    "ast_hash": "973839f838aa7b262a697893f328e9aa",
     "semantic_hash": ""
   },
   "lib/email/results.ts": {
@@ -14910,15 +14910,21 @@
     "semantic_hash": ""
   },
   "lib/support/__tests__/contact.test.ts": {
-    "mtime": 1792771180.8876677,
-    "seen": 1792771532.1243503,
-    "ast_hash": "b5944f2f6337fc6e431fd66ddf6cc2f0",
+    "mtime": 1792808513.5025206,
+    "seen": 1792808711.7096493,
+    "ast_hash": "504c833b7294a1003a1506482da1001a",
     "semantic_hash": ""
   },
   "lib/support/contact.ts": {
-    "mtime": 1792771160.5276358,
-    "seen": 1792771532.124352,
-    "ast_hash": "576435ac947f1729d7326608bb5c4dee",
+    "mtime": 1792808513.4897025,
+    "seen": 1792808711.7096508,
+    "ast_hash": "ee86b6f6fd0bd21e4f5a6dd64bc81774",
+    "semantic_hash": ""
+  },
+  "lib/email/__tests__/contact.test.ts": {
+    "mtime": 1792808529.99595,
+    "seen": 1792808711.7089002,
+    "ast_hash": "219f43e73338e4fa40db7df122e23bd0",
     "semantic_hash": ""
   }
 }

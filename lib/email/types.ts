@@ -28,8 +28,10 @@ export interface RenderedEmail {
 export interface OutgoingEmail extends RenderedEmail {
   to: string;
   from: string;
-  /** Optional Reply-To header (e.g. the customer's address on a contact form). */
-  replyTo?: string;
+  /** Optional Reply-To header: one address, or several that a reply goes to together. */
+  replyTo?: string | string[];
+  /** Optional Cc recipients (e.g. the customer and a second staff inbox on a Contact Us message). */
+  cc?: string[];
   /**
    * Extra message headers, such as `List-Unsubscribe` on a campaign email
    * (migration slice 07). Transactional mail sets none. A name the transport

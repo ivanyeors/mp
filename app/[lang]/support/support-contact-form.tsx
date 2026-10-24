@@ -10,7 +10,8 @@ import { Loader2 } from "lucide-react";
 
 export function SupportContactForm() {
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  // Set once sent; `emailed` says whether the customer was copied on the email.
+  const [done, setDone] = useState<{ emailed: boolean } | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +42,7 @@ export function SupportContactForm() {
         throw new Error(message);
       }
       form.reset();
-      setDone(true);
+      setDone({ emailed: json?.emailed === true });
       toast.success("Message sent — we'll get back to you soon.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send message");
@@ -55,9 +56,11 @@ export function SupportContactForm() {
       <div className="rounded-lg border bg-muted/30 p-6">
         <p className="font-medium">Thanks for reaching out.</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          We&apos;ve received your message and will reply by email as soon as we can.
+          {done.emailed
+            ? "We've emailed you a copy of your message and will reply to it as soon as we can."
+            : "We've received your message and will reply by email as soon as we can."}
         </p>
-        <Button variant="outline" className="mt-4" onClick={() => setDone(false)}>
+        <Button variant="outline" className="mt-4" onClick={() => setDone(null)}>
           Send another message
         </Button>
       </div>

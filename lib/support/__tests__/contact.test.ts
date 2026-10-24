@@ -66,7 +66,7 @@ describe("renderContactNotice", () => {
     expect(text).toContain("Jane Tan · jane@example.com");
     expect(text).toContain("Subject: Pillow height");
     expect(text).toContain(MSG.message);
-    expect(text).toContain("Emailed to admin@mpillow.test");
+    expect(text).toContain("Emailed to admin@mpillow.test, cc the customer and sg@mpillow.com.");
   });
 
   it("leaves out the subject line when there is none", () => {
@@ -76,7 +76,9 @@ describe("renderContactNotice", () => {
 
   it("tells staff to reply directly when the email failed", () => {
     const text = renderContactNotice(MSG, false);
-    expect(text).toContain("The email to admin@mpillow.test failed. Reply to jane@example.com directly.");
+    expect(text).toContain(
+      "The email to admin@mpillow.test failed, so the customer has no copy either. Reply to jane@example.com directly.",
+    );
     expect(text).not.toContain("Emailed to");
   });
 
@@ -98,7 +100,7 @@ describe("renderContactNotice", () => {
 });
 
 describe("deliverContactMessage", () => {
-  it("emails the support inbox, Reply-To the customer, then posts the notice", async () => {
+  it("emails the support inbox with the customer and sg@ on Cc, then posts the notice", async () => {
     const { transport: t, sent } = transport();
     setEmailTransport(t);
 
@@ -106,7 +108,8 @@ describe("deliverContactMessage", () => {
 
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toBe("admin@mpillow.test");
-    expect(sent[0].replyTo).toBe("jane@example.com");
+    expect(sent[0].cc).toEqual(["jane@example.com", "sg@mpillow.com"]);
+    expect(sent[0].replyTo).toEqual(["admin@mpillow.test", "jane@example.com"]);
     expect(h.sendGroupMessage).toHaveBeenCalledTimes(1);
     expect(h.sendGroupMessage.mock.calls[0][0]).toContain("Emailed to admin@mpillow.test");
   });
