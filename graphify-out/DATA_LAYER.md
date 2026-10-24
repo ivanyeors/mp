@@ -2700,7 +2700,7 @@ app/[lang]/settings/showroom/page.tsx
 
 ### /settings/users
 app/[lang]/settings/users/page.tsx
-- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
+- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/social-inbox/meta/connect [POST]`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
 - Loads: `listMembers()`, `listRoles()`, `listStaffProfiles()`, `listTelegramLinks()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_roles`, `admin_users`, `mp_staff`, `social_channel_tokens`, `telegram_operators`
 - Reads, through the same: `mp_config_responses`
