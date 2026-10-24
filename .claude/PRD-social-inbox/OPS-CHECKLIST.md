@@ -141,7 +141,18 @@ needs an already-approved app. So the app is created first with the basic permis
 names for a new app, and the messaging permissions are added once the review passes (step 6).
 
 1. business-api.tiktok.com/portal → register as a developer (same login as TikTok for Business /
-   Ads Manager; the developer profile must be approved first) → **My Apps** → **Create app**:
+   Ads Manager; the developer profile must be approved first, in about 3 business days). The profile
+   follows TikTok's [Register as a developer](https://business-api.tiktok.com/portal/docs?id=1738855176671234)
+   rules:
+   - **Email**: an `@mpillow.com` address. Personal email gets rejected.
+   - **Account type**: Direct Advertiser, since we run our own account.
+   - **Company website**: `https://www.mpillow.com`, the main site with the shared email domain and
+     "Mellow Life Pte Ltd" in its footer. A profile with `custom.mpillow.com` was rejected as "unable
+     to access your company website".
+   - **Description**: say that Mellow Life Pte Ltd operates Mpillow and mpillow.com, which ties the
+     company name to the domain. Then describe the messaging use case.
+
+   Then **My Apps** → **Create app**:
    - **App name**: `Mpillow Inbox`
    - **App description** (under 500 characters):
      > Intended uses: in-house tool for Mpillow (mpillow.com), a Singapore pillow maker. Customers'
@@ -152,9 +163,9 @@ names for a new app, and the messaging permissions are added once the review pas
      > Access controls: internal only, for our own account and staff; not offered to other businesses.
    - **Advertiser redirect URL**: `https://custom.mpillow.com/api/social-inbox/tiktok/callback/`
      (advertiser sign-in isn't used; this is just a valid page of ours)
-   - **Scope of permission**: **Ad Account Management**, **Measurement**, and **CTX Events
-     Management** if the list has it (search "CTX"). Not TikTok Accounts yet — since 20 March 2026
-     that needs its own form (step 6).
+   - **Scope of permission**: **Ad Account Management** and **Measurement**. TikTok's guide also
+     names CTX Events Management, but it wasn't offered when we created the app. Don't add TikTok
+     Accounts yet: since 20 March 2026 it needs its own form (step 6).
    - Submit. TikTok reviews it in 2–3 business days (My Apps → Verification Status).
 2. Once approved: App Detail → **App logo** (JPG/PNG, at most 512×512) — without it TikTok's sign-in
    page shows an error.
