@@ -68,7 +68,7 @@ describe("resolveCouponDiscountBase — applies_to scoping", () => {
       lineItems,
     );
     expect(result.eligible).toBe(false);
-    expect(result.error).toMatch(/does not apply/i);
+    expect(result.error).toMatch(/doesn't apply/i);
   });
 });
 

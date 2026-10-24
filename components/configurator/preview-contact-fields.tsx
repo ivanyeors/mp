@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,6 +24,8 @@ import {
   isNonEmptyString,
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
+import type { CheckoutCodeContext, CheckoutCodeStatus } from "@/lib/checkout-code/shared";
+import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
 
 export type PreviewContactValues = {
   email: string;
@@ -30,8 +33,11 @@ export type PreviewContactValues = {
   discoverySource: string;
   discoverySourceOther: string;
   notes: string;
-  /** Optional typed partner/referral code (attribution, #74). Never blocks submit. */
-  referralCode: string;
+  /**
+   * The one optional code (ADR 0033): a partner's referral code (attribution,
+   * #74) or a discount code. Never blocks moving on; the hold resolves it again.
+   */
+  code: string;
 };
 
 type Option = { id: string; label: string };
@@ -41,6 +47,11 @@ type Props = {
   onChange: (patch: Partial<PreviewContactValues>) => void;
   fieldErrors: Record<string, string>;
   locale: Locale;
+  /** The build the code would go on, as priced on this page; `{ flow: "none" }` before a price exists. */
+  codeContext: CheckoutCodeContext | null;
+  /** The code's status, for the page's totals: a discount moves the price. */
+  onCodeStatus: (status: CheckoutCodeStatus) => void;
+  formatAmount: (amount: number) => string;
 };
 
 /** Field checks for authorize / Save without purchasing. */
@@ -82,42 +93,19 @@ export function PreviewContactFields({
   onChange,
   fieldErrors,
   locale,
+  codeContext,
+  onCodeStatus,
+  formatAmount,
 }: Props) {
   const [options, setOptions] = useState<Option[]>([]);
   const showOther = values.discoverySource === OTHER_DISCOVERY_SOURCE_ID;
 
-  // Inline, non-blocking referral-code validation (#74).
-  const [refStatus, setRefStatus] = useState<{
-    state: "idle" | "checking" | "valid" | "invalid";
-    partnerName?: string | null;
-  }>({ state: "idle" });
-
+  // Checked as the shopper types and as the build's price changes (ADR 0033);
+  // the page's totals read the answer, so a discount moves the price at once.
+  const codeStatus = useCheckoutCode(values.code, codeContext, values.email);
   useEffect(() => {
-    const code = values.referralCode.trim();
-    if (!code) {
-      setRefStatus({ state: "idle" });
-      return;
-    }
-    setRefStatus({ state: "checking" });
-    const t = setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetch(
-            `/api/partner/referral/validate?code=${encodeURIComponent(code)}`,
-          );
-          const data = await res.json().catch(() => ({}));
-          setRefStatus(
-            data.valid
-              ? { state: "valid", partnerName: data.partnerName }
-              : { state: "invalid" },
-          );
-        } catch {
-          setRefStatus({ state: "idle" });
-        }
-      })();
-    }, 400);
-    return () => clearTimeout(t);
-  }, [values.referralCode]);
+    onCodeStatus(codeStatus);
+  }, [codeStatus, onCodeStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -231,30 +219,16 @@ export function PreviewContactFields({
             ) : null}
           </div>
         ) : null}
-        <div className="space-y-2">
-          <Label htmlFor="hold-referral">
-            Partner / referral code{" "}
-            <span className="font-normal text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="hold-referral"
-            value={values.referralCode}
-            onChange={(e) => onChange({ referralCode: e.target.value })}
-            placeholder="e.g. ABCD2345"
-            autoCapitalize="characters"
-            autoComplete="off"
-          />
-          {refStatus.state === "valid" ? (
-            <p className="text-sm text-emerald-600">
-              Referred by {refStatus.partnerName}
-            </p>
-          ) : refStatus.state === "invalid" ? (
-            <p className="text-sm text-muted-foreground">
-              Code not recognised — you can still continue.
-            </p>
-          ) : null}
-        </div>
       </div>
+
+      <CheckoutCodeField
+        id="hold-code"
+        value={values.code}
+        onChange={(code) => onChange({ code })}
+        status={codeStatus}
+        formatAmount={formatAmount}
+        textClassName="text-sm"
+      />
 
       <div className="space-y-2">
         <Label htmlFor="hold-notes" className="text-base font-semibold">

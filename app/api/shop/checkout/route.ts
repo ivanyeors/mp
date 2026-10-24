@@ -3,7 +3,13 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { findCustomerByEmail, findOrCreateCustomer } from "@/lib/ecommerce/customers";
-import { validateCoupon } from "@/lib/ecommerce/discounts";
+import { checkCoupon, findActiveCoupon } from "@/lib/ecommerce/discounts";
+import {
+  CHECKOUT_CODE_MAX_LENGTH,
+  CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
+  checkoutCodeRateLimited,
+  resolveCheckoutCode,
+} from "@/lib/checkout-code";
 import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
 import { getPartnerByReferralCode } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
@@ -84,8 +90,15 @@ const CheckoutSchema = z.object({
   phone: z.string().optional(),
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
+  /**
+   * The one optional code (ADR 0033): a partner's referral code or a discount
+   * code, resolved here. An unrecognised code never blocks; a discount code
+   * that cannot be used on this order does, with its reason.
+   */
+  code: z.string().trim().max(CHECKOUT_CODE_MAX_LENGTH).optional(),
+  /** What a checkout tab from before `code` still sends: a discount code. */
   coupon_code: z.string().optional(),
-  /** Optional typed partner/referral code (attribution, #74). Never blocks. */
+  /** Likewise, a typed partner/referral code (attribution, #74). Never blocks. */
   referral_code: z.string().optional(),
   /**
    * Points to take off (ADR 0030 (h) to (j)). Any number: the server refuses
@@ -115,9 +128,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, phone, shipping_address, shipping_method_id, coupon_code, referral_code, items } =
+  const { email, phone, shipping_address, shipping_method_id, code, coupon_code, referral_code, items } =
     parsed.data;
   const pointsRequested = parsed.data.points != null && parsed.data.points !== 0;
+
+  // Every code is looked up below, so checkout is as good an oracle for
+  // guessing codes as the check endpoint: it draws on the same meter.
+  if ((code || coupon_code?.trim()) && checkoutCodeRateLimited(req)) {
+    return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE }, { status: 429 });
+  }
 
   const admin = supabaseAdmin();
 
@@ -510,7 +529,7 @@ export async function POST(req: Request) {
     return sum + basePrice + addonPrice;
   }, 0);
 
-  // 8. Validate coupon if provided
+  // 8. Resolve the code, and validate a discount code against this order
   let discountAmount = 0;
   let couponId: string | null = null;
   let appliedCouponCode: string | null = null;
@@ -519,7 +538,20 @@ export async function POST(req: Request) {
   const normalizedEmail = email.toLowerCase().trim();
   const existingCustomer = await findCustomerByEmail(normalizedEmail);
 
-  if (coupon_code) {
+  const typedCode = await resolveCheckoutCode(code);
+  const coupon =
+    typedCode?.kind === "coupon"
+      ? typedCode.coupon
+      : coupon_code?.trim()
+        ? await findActiveCoupon(coupon_code)
+        : null;
+  // A stale tab's explicit coupon_code is refused when unknown, as it always
+  // was; a `code` nobody recognises is simply not applied.
+  if (!coupon && coupon_code?.trim()) {
+    return NextResponse.json({ error: "This code isn't valid" }, { status: 400 });
+  }
+
+  if (coupon) {
     const productIds = cart.items.map((item) => item.product?.id).filter(Boolean) as string[];
     const categoryIds = cart.items
       .map((item) => item.product?.category_id)
@@ -536,7 +568,7 @@ export async function POST(req: Request) {
       };
     });
 
-    const couponResult = await validateCoupon(coupon_code, subtotal, productIds, categoryIds, {
+    const couponResult = await checkCoupon(coupon, subtotal, productIds, categoryIds, {
       customerEmail: normalizedEmail,
       customerId: existingCustomer?.id,
       lineItems,
@@ -546,7 +578,7 @@ export async function POST(req: Request) {
     }
     discountAmount = couponResult.discount_amount ?? 0;
     couponId = couponResult.coupon?.id ?? null;
-    appliedCouponCode = couponResult.coupon?.code ?? coupon_code.toUpperCase().trim();
+    appliedCouponCode = coupon.code;
     isFreeShipping = couponResult.coupon?.discount_type === "free_shipping";
   }
 
@@ -622,9 +654,12 @@ export async function POST(req: Request) {
 
   // Referral attribution (#74): resolved BEFORE tax so a self-purchase discount
   // (#82) reduces the taxable base. Invalid code silently attributes nothing.
-  const referralPartner = referral_code
-    ? await getPartnerByReferralCode(referral_code)
-    : null;
+  const referralPartner =
+    typedCode?.kind === "referral"
+      ? typedCode.partner
+      : referral_code
+        ? await getPartnerByReferralCode(referral_code)
+        : null;
 
   // Partner self-purchase (#82): a signed-in APPROVED partner buying pillows/
   // bolsters in their OWN account, and NOT via a referral attribution. It is

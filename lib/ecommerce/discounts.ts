@@ -1,6 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import type { Coupon } from "@/lib/types/ecommerce";
+import { computeCouponDiscountAmount } from "@/lib/ecommerce/coupon-math";
+
+export { computeCouponDiscountAmount };
 
 export interface CouponValidationResult {
   valid: boolean;
@@ -24,24 +27,22 @@ export interface ValidateCouponOptions {
    */
   customerId?: string;
   lineItems?: CouponLineItem[];
+  /**
+   * Results that must not count as a use of the coupon: the one being
+   * (re)submitted, which is about to carry it.
+   */
+  excludeResultIds?: string[];
 }
 
-/** Pure discount math — testable without DB. */
-export function computeCouponDiscountAmount(
-  coupon: Pick<Coupon, "discount_type" | "discount_value" | "max_discount">,
-  discountBase: number,
-): number {
-  let discountAmount = 0;
-  if (coupon.discount_type === "percentage") {
-    discountAmount = discountBase * (coupon.discount_value / 100);
-    if (coupon.max_discount !== null) {
-      discountAmount = Math.min(discountAmount, coupon.max_discount);
-    }
-  } else if (coupon.discount_type === "fixed_amount") {
-    discountAmount = Math.min(coupon.discount_value, discountBase);
-  }
-  return Math.round(discountAmount * 100) / 100;
-}
+/** Longest code worth a database round trip. Admin codes are capped at 100. */
+export const COUPON_CODE_MAX_LENGTH = 100;
+
+/**
+ * Result statuses that still hold a coupon: submitted, not yet an Order. Their
+ * use is counted at Accept, when the Order is paid; until then they count here,
+ * or one limited code could be held by any number of customisations.
+ */
+const LIVE_RESULT_STATUSES = ["held", "assigned", "accepted"];
 
 /** Resolve which subtotal the coupon applies to (full cart vs scoped items). */
 export function resolveCouponDiscountBase(
@@ -72,7 +73,7 @@ export function resolveCouponDiscountBase(
       return {
         eligible: false,
         discountBase: 0,
-        error: "Coupon does not apply to items in your cart",
+        error: "This code doesn't apply to these items",
       };
     }
     return {
@@ -87,14 +88,14 @@ export function resolveCouponDiscountBase(
     return {
       eligible: false,
       discountBase: 0,
-      error: "Coupon does not apply to items in your cart",
+      error: "This code doesn't apply to these items",
     };
   }
   if (hasCategoryScope && cIds.length === 0) {
     return {
       eligible: false,
       discountBase: 0,
-      error: "Coupon does not apply to items in your cart",
+      error: "This code doesn't apply to these items",
     };
   }
   const productMatch = hasProductScope && pIds.some((id) => product_ids!.includes(id));
@@ -103,7 +104,7 @@ export function resolveCouponDiscountBase(
     return {
       eligible: false,
       discountBase: 0,
-      error: "Coupon does not apply to items in your cart",
+      error: "This code doesn't apply to these items",
     };
   }
   return { eligible: true, discountBase: subtotal };
@@ -165,6 +166,56 @@ async function fetchCustomerCouponUseCount(
   return count ?? 0;
 }
 
+/**
+ * Customisations carrying this coupon that have not become an Order yet. Only
+ * Results that really entered the money path count: a card authorised
+ * (`payment_intent_id`), or submitted with no card at all (`authorized_amount`
+ * null — an Assisted customisation, or holds switched off). A Checkout opened
+ * and abandoned holds nothing, so it cannot use up a code nobody paid with.
+ */
+async function fetchLiveResultCouponUseCount(
+  couponId: string,
+  options: Pick<ValidateCouponOptions, "customerEmail" | "excludeResultIds">,
+): Promise<number> {
+  const admin = supabaseAdmin();
+  const live = () => {
+    let query = admin
+      .from("mp_config_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("coupon_id", couponId)
+      .in("status", LIVE_RESULT_STATUSES)
+      .is("order_id", null);
+    for (const id of options.excludeResultIds ?? []) query = query.neq("id", id);
+    if (options.customerEmail) {
+      query = query.ilike("customer_email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
+    }
+    return query;
+  };
+  const [authorised, noCard] = await Promise.all([
+    live().not("payment_intent_id", "is", null),
+    live().is("payment_intent_id", null).is("authorized_amount", null),
+  ]);
+  return (authorised.count ?? 0) + (noCard.count ?? 0);
+}
+
+/**
+ * The active coupon with exactly this code, or null. Exact match: every write
+ * (POST/PATCH /api/shop/coupons) stores the code upper-cased, and `ilike` would
+ * read `%`/`_` in the input as wildcards.
+ */
+export async function findActiveCoupon(code: string): Promise<Coupon | null> {
+  const normalized = code.toUpperCase().trim();
+  if (!normalized || normalized.length > COUPON_CODE_MAX_LENGTH) return null;
+  const { data, error } = await supabaseAdmin()
+    .from("coupons")
+    .select("*")
+    .eq("is_active", true)
+    .eq("code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as Coupon;
+}
+
 export async function validateCoupon(
   code: string,
   subtotal: number,
@@ -172,48 +223,58 @@ export async function validateCoupon(
   categoryIds?: string[],
   options?: ValidateCouponOptions,
 ): Promise<CouponValidationResult> {
-  const admin = supabaseAdmin();
-  const normalized = code.toUpperCase().trim();
-
-  // Exact match: every write (POST/PATCH /api/shop/coupons) stores the code
-  // upper-cased. `ilike` would read `%`/`_` in the input as wildcards.
-  const { data, error } = await admin
-    .from("coupons")
-    .select("*")
-    .eq("is_active", true)
-    .eq("code", normalized)
-    .single();
-
-  if (error || !data) {
-    return { valid: false, error: "Invalid coupon code" };
+  const coupon = await findActiveCoupon(code);
+  if (!coupon) {
+    return { valid: false, error: "This code isn't valid" };
   }
+  return checkCoupon(coupon, subtotal, productIds, categoryIds, options);
+}
 
-  const coupon = data as Coupon;
-
+/** Whether a coupon already found applies to this order, and what it takes off. */
+export async function checkCoupon(
+  coupon: Coupon,
+  subtotal: number,
+  productIds?: string[],
+  categoryIds?: string[],
+  options?: ValidateCouponOptions,
+): Promise<CouponValidationResult> {
   const now = new Date();
 
   if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-    return { valid: false, error: "Coupon is not yet active" };
+    return { valid: false, error: "This code isn't active yet" };
   }
   if (coupon.expires_at && new Date(coupon.expires_at) < now) {
-    return { valid: false, error: "Coupon has expired" };
+    return { valid: false, error: "This code has expired" };
   }
 
-  if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
-    return { valid: false, error: "Coupon usage limit reached" };
+  if (coupon.usage_limit !== null) {
+    const held = await fetchLiveResultCouponUseCount(coupon.id, {
+      excludeResultIds: options?.excludeResultIds,
+    });
+    if (coupon.usage_count + held >= coupon.usage_limit) {
+      return { valid: false, error: "This code has been fully redeemed" };
+    }
   }
 
   if (coupon.per_customer_limit !== null && (options?.customerEmail || options?.customerId)) {
-    const uses = await fetchCustomerCouponUseCount(coupon.id, options);
-    if (exceedsPerCustomerLimit(uses, coupon.per_customer_limit)) {
-      return { valid: false, error: "You have already used this coupon the maximum number of times" };
+    const [paid, held] = await Promise.all([
+      fetchCustomerCouponUseCount(coupon.id, options),
+      options.customerEmail
+        ? fetchLiveResultCouponUseCount(coupon.id, {
+            customerEmail: options.customerEmail,
+            excludeResultIds: options.excludeResultIds,
+          })
+        : Promise.resolve(0),
+    ]);
+    if (exceedsPerCustomerLimit(paid + held, coupon.per_customer_limit)) {
+      return { valid: false, error: "You've already used this code as many times as it allows" };
     }
   }
 
   if (coupon.min_order_amount !== null && subtotal < coupon.min_order_amount) {
     return {
       valid: false,
-      error: `Minimum order amount is ${coupon.currency} ${coupon.min_order_amount.toFixed(2)}`,
+      error: `This code needs an order of at least ${coupon.currency} ${Number(coupon.min_order_amount).toFixed(2)}`,
     };
   }
 
@@ -225,7 +286,7 @@ export async function validateCoupon(
     options?.lineItems,
   );
   if (!scope.eligible) {
-    return { valid: false, error: scope.error ?? "Coupon does not apply to items in your cart" };
+    return { valid: false, error: scope.error ?? "This code doesn't apply to these items" };
   }
 
   const discountAmount = computeCouponDiscountAmount(coupon, scope.discountBase);

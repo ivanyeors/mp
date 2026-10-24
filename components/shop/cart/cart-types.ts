@@ -11,6 +11,7 @@ export interface CartMessages {
   coupon: string;
   applyCoupon: string;
   couponApplied: (code: string) => string;
+  referralApplied: (code: string) => string;
   remove: string;
   freeShipping: (amount: string) => string;
   freeShippingQualified: string;

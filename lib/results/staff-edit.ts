@@ -25,6 +25,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
+import { resultCouponOf, type ResultCoupon } from "@/lib/results/discount";
 
 /** The two open states. Anything else has either not begun or already settled. */
 const EDITABLE_STATUSES = ["held", "assigned"] as const;
@@ -99,6 +100,8 @@ export type StaffEditResult = {
   /** Card hold, when one was taken. The edit never moves it; Accept settles the delta. */
   authorizedAmount: number | null;
   finalAmount: number | null;
+  /** The discount code the Result was held with (ADR 0033); a re-configure keeps it. */
+  coupon: ResultCoupon | null;
 };
 
 type PrefLine = { item_id: number; quantity: number; category: string };
@@ -123,7 +126,7 @@ export async function loadStaffEditResult(
   const { data: row } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, order_id, data, suggested_size, suggested_tier, assigned_size, assigned_tier, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, authorized_amount, final_amount, customer_email, customer_phone, discovery_source, discovery_source_other",
+      "id, status, source, product_type, order_id, data, suggested_size, suggested_tier, assigned_size, assigned_tier, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, authorized_amount, final_amount, customer_email, customer_phone, discovery_source, discovery_source_other, coupon_code, coupon_terms",
     )
     .eq("id", id)
     .maybeSingle();
@@ -179,5 +182,6 @@ export async function loadStaffEditResult(
     currency: row.currency ?? "SGD",
     authorizedAmount: row.authorized_amount != null ? Number(row.authorized_amount) : null,
     finalAmount: row.final_amount != null ? Number(row.final_amount) : null,
+    coupon: resultCouponOf(row.coupon_code, row.coupon_terms),
   };
 }

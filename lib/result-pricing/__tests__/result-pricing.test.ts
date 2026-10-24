@@ -19,7 +19,7 @@ describe("priceResult", () => {
 
   it("defaults services, shipping and tax to zero", () => {
     const priced = priceResult({ goods: 100 });
-    expect(priced).toEqual({ goods: 100, services: 0, subtotal: 100, shipping: 0, tax: 0, total: 100 });
+    expect(priced).toEqual({ goods: 100, services: 0, subtotal: 100, discount: 0, shipping: 0, tax: 0, total: 100 });
   });
 
   it("keeps Service fees beside goods, not inside them (ADR 0024)", () => {
@@ -28,6 +28,15 @@ describe("priceResult", () => {
     expect(priced.services).toBe(50);
     expect(priced.subtotal).toBe(410);
     expect(priced.total).toBe(418);
+  });
+
+  it("takes a discount code off the goods only, never below them (ADR 0033)", () => {
+    const priced = priceResult({ goods: 360, services: 50, shipping: 8, tax: 10, discount: 36 });
+    expect(priced.subtotal).toBe(410);
+    expect(priced.discount).toBe(36);
+    expect(priced.total).toBe(392);
+    // A discount can never eat into Service fees, shipping or tax.
+    expect(priceResult({ goods: 20, services: 50, shipping: 8, discount: 500 }).total).toBe(58);
   });
 
   it("is a pure function of its numbers — fillings cannot reach it", () => {

@@ -8,6 +8,7 @@ import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/l
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { resultShippingAmount } from "@/lib/results/shipping";
+import { discountRowOf, resultCouponPricing } from "@/lib/results/discount";
 import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
@@ -48,6 +49,8 @@ async function buildPublicSummary(row: {
   payment_intent_id: string | null;
   measured_by_type?: string | null;
   paired_build_id?: string | null;
+  coupon_code?: string | null;
+  coupon_terms?: unknown;
 }) {
   if (row.status !== "assigned" && row.status !== "accepted" && row.status !== "captured") {
     return null;
@@ -123,6 +126,8 @@ async function buildPublicSummary(row: {
       subtotal: number;
       /** Service fees inside the subtotal (ADR 0024), one row each. */
       services: Array<{ label: string; amount: number }>;
+      /** The discount code kept at hold, off the goods (ADR 0033). */
+      discount?: { code: string; amount: number };
       shipping: number;
       tax: number;
       total: number;
@@ -200,6 +205,7 @@ async function buildPublicSummary(row: {
           : null;
         if (goods.ok && serviceLines) {
           const services = sumServiceLines(serviceLines);
+          const coupon = resultCouponPricing(row.coupon_terms, goods.subtotal);
           let shippingAmount = 0;
           let taxAmount = 0;
           const address = row.shipping_address as { country?: string } | null;
@@ -211,12 +217,13 @@ async function buildPublicSummary(row: {
               .maybeSingle();
             if (shippingRow) {
               // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
-              shippingAmount = shipsWithAnchor(row)
-                ? 0
-                : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
+              shippingAmount =
+                shipsWithAnchor(row) || coupon.freeShipping
+                  ? 0
+                  : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
               const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
               taxAmount = computeTax(
-                { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
+                { subtotal: goods.subtotal + services, shippingAmount, discountAmount: coupon.discount },
                 taxRule,
               ).taxAmount;
             }
@@ -226,6 +233,7 @@ async function buildPublicSummary(row: {
             services,
             shipping: shippingAmount,
             tax: taxAmount,
+            discount: coupon.discount,
           });
           // A total stored before Service fees existed did not quote one; show
           // the build the customer is actually paying for (ADR 0024).
@@ -242,10 +250,12 @@ async function buildPublicSummary(row: {
                   services: sumServiceLines(quoted),
                   shipping: shippingAmount,
                   tax: taxAmount,
+                  discount: coupon.discount,
                 });
           pricing = {
             subtotal: priced.subtotal,
             services: quoted.map((l) => ({ label: l.label, amount: l.msrp })),
+            discount: discountRowOf(row.coupon_code, row.coupon_terms, priced.discount),
             shipping: priced.shipping,
             tax: priced.tax,
             total: priced.total,
@@ -288,7 +298,7 @@ export async function GET(
   const admin = supabaseAdmin();
   const { data: row, error } = await admin
     .from("mp_config_responses")
-    .select(`${PUBLIC_FIELDS}, access_token, customer_id, source, measured_by_type`)
+    .select(`${PUBLIC_FIELDS}, access_token, customer_id, source, measured_by_type, coupon_code, coupon_terms`)
     .eq("id", id)
     .maybeSingle();
 
@@ -327,7 +337,7 @@ export async function GET(
     const anchorSide = row.paired_build_id === row.id;
     let partnerQuery = admin
       .from("mp_config_responses")
-      .select(`${PUBLIC_FIELDS}, measured_by_type`);
+      .select(`${PUBLIC_FIELDS}, measured_by_type, coupon_code, coupon_terms`);
     partnerQuery = anchorSide
       ? partnerQuery.eq("paired_build_id", row.id).neq("id", row.id)
       : partnerQuery.eq("id", row.paired_build_id);
@@ -337,6 +347,7 @@ export async function GET(
       const partnerPublic: Record<string, unknown> = { ...partner };
       delete partnerPublic.shipping_address;
       delete partnerPublic.measured_by_type;
+      delete partnerPublic.coupon_terms;
       paired = {
         role: anchorSide ? "anchor" : "companion",
         partner: { ...partnerPublic, build: await buildPublicSummary(partner) },
@@ -353,6 +364,8 @@ export async function GET(
   delete (publicRow as { shipping_address?: unknown }).shipping_address;
   delete (publicRow as { source?: string | null }).source;
   delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
+  // The page shows the discount from `build.pricing`, never the coupon's terms.
+  delete (publicRow as { coupon_terms?: unknown }).coupon_terms;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
   return NextResponse.json({
     result: { ...publicRow, needs_finish, collect_at, build, referenceImages, paired },

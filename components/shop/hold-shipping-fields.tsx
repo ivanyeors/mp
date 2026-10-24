@@ -130,8 +130,14 @@ export function useHoldShippingQuote({
  * What the customer pays for this option: its price, or nothing once the goods
  * reach the method's free_above — the rule every repricing of a Result applies.
  */
-export function holdShippingAmount(option: HoldShippingOption | undefined, goodsSubtotal: number): number | null {
+export function holdShippingAmount(
+  option: HoldShippingOption | undefined,
+  goodsSubtotal: number,
+  /** A free-shipping discount code (ADR 0033): the hold charges no shipping. */
+  freeShipping = false,
+): number | null {
   if (!option || option.price == null) return null;
+  if (freeShipping) return 0;
   const freeAbove = option.method.free_above == null ? null : Number(option.method.free_above);
   return freeAbove != null && goodsSubtotal >= freeAbove ? 0 : option.price;
 }
@@ -154,7 +160,7 @@ export function holdShippingCheck(status: HoldShippingOption["status"] | undefin
   return { key: "shipping", touched: status != null, valid: status === "priced", message };
 }
 
-function optionPrice(option: HoldShippingOption, goodsSubtotal: number | null): string {
+function optionPrice(option: HoldShippingOption, goodsSubtotal: number | null, freeShipping = false): string {
   switch (option.status) {
     case "needs_postal":
       return "Enter postal code";
@@ -163,7 +169,12 @@ function optionPrice(option: HoldShippingOption, goodsSubtotal: number | null): 
     case "unavailable":
       return "Unavailable";
     default: {
-      const amount = goodsSubtotal == null ? option.price : holdShippingAmount(option, goodsSubtotal);
+      const amount =
+        goodsSubtotal == null
+          ? freeShipping
+            ? 0
+            : option.price
+          : holdShippingAmount(option, goodsSubtotal, freeShipping);
       return amount === 0 && (option.price ?? 0) > 0 ? "Free" : `${option.currency} ${(amount ?? 0).toFixed(2)}`;
     }
   }
@@ -180,15 +191,17 @@ export function holdShippingName(method: HoldShippingMethod): string {
 export function HoldShippingTotalRow({
   option,
   goodsSubtotal,
+  freeShipping = false,
 }: {
   option: HoldShippingOption | undefined;
   goodsSubtotal: number | null;
+  freeShipping?: boolean;
 }) {
   if (!option) return null;
   return (
     <div className="mb-1 flex justify-between gap-4 text-sm">
       <span className="min-w-0 text-muted-foreground">Shipping · {holdShippingName(option.method)}</span>
-      <span className="shrink-0 whitespace-nowrap tabular-nums">{optionPrice(option, goodsSubtotal)}</span>
+      <span className="shrink-0 whitespace-nowrap tabular-nums">{optionPrice(option, goodsSubtotal, freeShipping)}</span>
     </div>
   );
 }

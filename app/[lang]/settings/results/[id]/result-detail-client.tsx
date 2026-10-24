@@ -138,6 +138,8 @@ type MpConfigResponseRow = {
   final_amount?: number | null;
   currency?: string | null;
   payment_intent_id?: string | null;
+  /** Discount code held with (ADR 0033); every repricing takes it off the goods. */
+  coupon_code?: string | null;
   customer_email?: string | null;
   customer_phone?: string | null;
   discovery_source?: string | null;
@@ -1435,6 +1437,12 @@ export default function ResultDetailPage({
                   <span className="tabular-nums">
                     {row.currency ?? "SGD"} {Number(row.authorized_amount).toFixed(2)}
                   </span>
+                </div>
+              )}
+              {row.coupon_code && (
+                <div>
+                  <span className="text-muted-foreground">Discount code: </span>
+                  <span className="font-medium">{row.coupon_code}</span>
                 </div>
               )}
               {row.customer_email && (

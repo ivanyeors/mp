@@ -83,6 +83,8 @@ export async function ensureReferralCode(partnerId: string): Promise<string | nu
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateReferralCode();
+    // A discount code shares the checkout field; never mint over one.
+    if (await isCouponCode(admin, code)) continue;
     const { data, error: updErr } = await admin
       .from("partners")
       .update({ referral_code: code })
@@ -102,13 +104,26 @@ export async function ensureReferralCode(partnerId: string): Promise<string | nu
   return null;
 }
 
-/** Inline-validation result for the contact field + checkout. */
-export async function validateReferralCode(
-  code: string,
-): Promise<{ valid: boolean; partnerId: string | null; partnerName: string | null }> {
-  const partner = await getPartnerByReferralCode(code);
-  if (!partner) return { valid: false, partnerId: null, partnerName: null };
-  return { valid: true, partnerId: partner.id, partnerName: partner.name };
+/**
+ * Whether any partner — approved or not — holds this referral code. One field
+ * at checkout takes both kinds of code (ADR 0033), so a coupon may never be
+ * saved under one.
+ */
+export async function isReferralCodeTaken(code: string): Promise<boolean> {
+  const normalized = normalizeReferralCode(code);
+  if (!isValidReferralCodeFormat(normalized)) return false;
+  const { data } = await supabaseAdmin()
+    .from("partners")
+    .select("id")
+    .ilike("referral_code", normalized)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+/** Whether a coupon, active or not, is saved under this code (ADR 0033). */
+async function isCouponCode(admin: SupabaseClient, code: string): Promise<boolean> {
+  const { data } = await admin.from("coupons").select("id").eq("code", code.toUpperCase()).limit(1);
+  return (data ?? []).length > 0;
 }
 
 /** Last-touch: overwrite the Visitor's ref stamp with the newest code + now. */

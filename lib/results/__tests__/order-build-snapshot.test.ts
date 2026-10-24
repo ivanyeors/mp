@@ -37,7 +37,7 @@ describe("slice 10 — order build snapshot", () => {
     ],
     nameByItem,
     cogs: 42,
-    pricing: { goods: 140, services: 0, subtotal: 140, shipping: 8, tax: 12, total: 160 },
+    pricing: { goods: 140, services: 0, subtotal: 140, discount: 0, shipping: 8, tax: 12, total: 160 },
   });
 
   it("AC1: snapshot includes composed sellable, Filling Template, prefs, add-ons with names and quantities", () => {
@@ -91,7 +91,7 @@ describe("slice 10 — order build snapshot", () => {
       buildLines: [{ item_id: 99, quantity: 2, role: "filling", category: "filling" }],
       nameByItem: new Map(),
       cogs: 0,
-      pricing: { goods: 0, services: 0, subtotal: 0, shipping: 0, tax: 0, total: 0 },
+      pricing: { goods: 0, services: 0, subtotal: 0, discount: 0, shipping: 0, tax: 0, total: 0 },
     });
     expect(bare.build_lines[0]?.name).toBe("Item #99");
   });

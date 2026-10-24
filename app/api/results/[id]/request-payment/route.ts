@@ -10,6 +10,7 @@ import {
 } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
+import { discountRowOf } from "@/lib/results/discount";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { getPublicOrigin } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -47,7 +48,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, customer_email, access_token, order_id`,
+      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, customer_email, access_token, order_id, coupon_code`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -119,6 +120,7 @@ export async function POST(
     addons,
     pricing: {
       subtotal: build.pricing.subtotal,
+      discount: discountRowOf(row.coupon_code, row.coupon_terms, build.pricing.discount),
       services: build.serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
       shipping: build.pricing.shipping,
       tax: build.pricing.tax,

@@ -214,7 +214,7 @@ _Avoid_: "fee" alone in money-ledger context (`order_payments.type = 'fee'` is S
 _Avoid_: a customer-ticked option in the configurator; treating the "Have us measure you" link as the charge (the link books the visit; the charge follows who measured); "customisation charge"
 
 **Authorization hold**:
-An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
+An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s − a **Discount code**'s amount + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
 
 **Balance payment**:
 The immediate-capture Stripe Checkout that settles a **Result**: the amount owed above its **Authorization hold**, or the whole total when there is no hold. One mechanism, two readings — a top-up over a partial hold, and a full payment where the hold is zero — so an **Assisted customisation** settles through the same Checkout, the same webhook and the same re-entrant Accept as every other **Result**. The amount is **Costings**-derived like any other (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax); **Staff** never type it.
@@ -328,6 +328,14 @@ _Avoid_: conflating with **Customer preference** (cover/case choices only)
 **Order**:
 A paid platform sale in our DB (post Accept + capture when a hold existed). Analytics sales windows for platform **Orders** use **`paid_at`**, not `created_at`. Unpaid checkouts are outside realized margin.
 _Avoid_: calling a held **Result** an **Order**; using `created_at` for Analytics sold-margin windows
+
+**Checkout code**:
+The one optional code a shopper types at checkout — on shop checkout, in the cart, and on the customisation contact step: a partner's referral code (a **Referral**) or a **Discount code**, in the same field, one per order (ADR 0033). The server decides which: a code a partner holds is a referral code, otherwise one a coupon has is a discount code. Either reads "active" once accepted; a referral changes no price, a discount takes its amount off the total shown at once. A code that is neither, or a discount code this order cannot use, never blocks the shopper. A coupon may never be saved under a partner's code.
+_Avoid_: two code fields; "coupon field" or "referral field" for it; a price the browser worked out being charged (checkout and the hold price the order again)
+
+**Discount code**:
+A coupon (Settings → Discounts) entered as a **Checkout code**: a percentage or fixed amount off the goods, or free shipping. On a **Result** it is checked once, at hold, and the Result keeps its terms (`coupon_terms`); every repricing takes them off the goods priced then, never off **Service fees**, shipping or tax. On a **Paired build** the Mpillow carries it. A live Result holding a code counts as one of its uses until Accept, where its **Order** records it and the coupon's use is counted.
+_Avoid_: re-reading the coupon at Accept (an edit or expiry after the hold never moves an authorised price); "voucher" (the retired Welcome-back voucher); a discount on a Service fee
 
 **Analytics channel**:
 Admin Panel → Analytics view filter: `all` | `orders` | `shopify`. **All** = paid platform **Orders** ∪ **Shopify order mirror** for the same date range. In-store inventory sells without an **Order** are not a revenue channel. Accepted **Results** count only via the **Order** they become.
@@ -763,7 +771,7 @@ The partner-facing portal at `/partner` — pill label and page title "Partner H
 _Avoid_: "Partners page" (collides with `/our-partners` and the `partners_page` CMS table); `/partners` as the route; undated or unstyled notification emails
 
 **Referral**:
-A deterministic credit linking a **Customer**'s customisation/purchase to a **Partner account**. Channels: (1) the partner's unique **referral code / shareable link+QR** (stamped on the Visitor at landing, carried onto the **Result** at hold and the **Order** at capture; typeable in an optional "Partner / referral code" field on the customisation contact step — mp-config and mbolster-config — and on shop checkout, validated inline against active partner codes), (2) **partner-assisted customisation** — a signed-in partner runs the customisation flow for a customer, and the partner session stamps the attribution on the Result automatically. Self-reported **Discovery source** is never attribution.
+A deterministic credit linking a **Customer**'s customisation/purchase to a **Partner account**. Channels: (1) the partner's unique **referral code / shareable link+QR** (stamped on the Visitor at landing, carried onto the **Result** at hold and the **Order** at capture; typeable in the one optional **Checkout code** field on the customisation contact step — mp-config and mbolster-config — and on shop checkout, checked inline against active partner codes), (2) **partner-assisted customisation** — a signed-in partner runs the customisation flow for a customer, and the partner session stamps the attribution on the Result automatically. Self-reported **Discovery source** is never attribution.
 Conflicts: **one Referral per Order, never split — whoever closed the sale gets the commission.** Priority: partner-assisted session > code explicitly typed by the customer > most recent `?ref` link within the **30-day** attribution window (last-touch overwrites).
 Partner-visible detail (PDPA): **partner-assisted** referrals (their own clients / walk-ins — data the partner entered) show **full customer details** for verification; **link/code** referrals show **masked identity only** (those customers never consented to sharing identity with the clinic) plus product, commission status, and release countdown. Headline hub metric = distinct customers with attributed **paid Orders**, plus an "in progress" pipeline line (attributed Results not yet captured). The Admin Panel always sees all details.
 _Avoid_: "client" for the partner (ambiguous with the partner's own patients — say **Partner**); Discovery source as a commission trigger; Entry source as attribution

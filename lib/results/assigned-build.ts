@@ -10,6 +10,7 @@ import {
 } from "@/lib/pricing/service-lines";
 import { shipsWithAnchor } from "@/lib/results/paired-build";
 import { resultShippingAmount } from "@/lib/results/shipping";
+import { resultCouponPricing } from "@/lib/results/discount";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import {
   isBolsterLength,
@@ -43,6 +44,8 @@ export type AssignedBuildRow = {
   currency: string | null;
   /** Who measured — decides the Measurement service fee (ADR 0024). */
   measured_by_type: string | null;
+  /** The discount code's terms kept at hold (ADR 0033); null without one. */
+  coupon_terms: unknown;
 };
 
 /**
@@ -64,7 +67,7 @@ export type AssignedBuildRow = {
  * `_NoMissingBuildColumns` below is what keeps it honest instead.
  */
 export const ASSIGNED_BUILD_COLUMNS =
-  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, paired_build_id" as const;
+  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, coupon_terms, paired_build_id" as const;
 
 type TrimCol<S extends string> = S extends ` ${infer R}`
   ? TrimCol<R>
@@ -292,6 +295,8 @@ export async function loadAssignedBuild(
     return { ok: false, error: e instanceof Error ? e.message : "Service fees could not be priced" };
   }
   const services = sumServiceLines(serviceLines);
+  // The discount code kept at hold, off the goods priced now (ADR 0033).
+  const coupon = resultCouponPricing(row.coupon_terms, goods.subtotal);
 
   let shippingAmount = 0;
   let taxAmount = 0;
@@ -304,13 +309,15 @@ export async function loadAssignedBuild(
       .maybeSingle();
     if (shippingRow) {
       // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
-      shippingAmount = shipsWithAnchor(row)
-        ? 0
-        : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
+      shippingAmount =
+        shipsWithAnchor(row) || coupon.freeShipping
+          ? 0
+          : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
-      // Free shipping is earned by goods; tax is due on goods and services alike.
+      // Free shipping is earned by goods; tax is due on goods and services alike,
+      // less the discount.
       taxAmount = computeTax(
-        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
+        { subtotal: goods.subtotal + services, shippingAmount, discountAmount: coupon.discount },
         taxRule,
       ).taxAmount;
     }
@@ -321,6 +328,7 @@ export async function loadAssignedBuild(
     services,
     shipping: shippingAmount,
     tax: taxAmount,
+    discount: coupon.discount,
   });
 
   return {
