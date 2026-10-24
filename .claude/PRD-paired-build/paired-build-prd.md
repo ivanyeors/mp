@@ -97,8 +97,8 @@ anchor-led endings, one accept, one capture and one Order.
   writes step 2's answer into the hand-off and returns to the Mpillow page at step 3
   (`?paired=details`). Steps 3 and 4 are the Mpillow page's, since contact, address and shipping are
   the anchor's: step 3 asks contact and shipping (quoted for both boxes when the Mbolster was
-  added), step 4 summarises both builds, delivery and contact with an Edit on each, and its Proceed
-  sends `pairedHoldBody(pillowHold, bolster)`: the Mpillow's body, route answered, plus the Mbolster
+  added), step 4 summarises both builds, delivery and contact with an Edit on each, and its Pay
+  (Pre-order when a part must be restocked) sends `pairedHoldBody(pillowHold, bolster)`: the Mpillow's body, route answered, plus the Mbolster
   with its Staff mix. Back from step 3 returns to the Mbolster's customisation page, which drops its
   old answer until it is given again, so the summary never shows a case changed since. A cancelled
   Checkout returns to step 4; the hold re-anchors the hand-off first, so the Mpillow's fresh Result

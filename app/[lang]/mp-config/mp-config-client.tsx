@@ -2821,7 +2821,10 @@ export function MpConfigClient({
               : "Next: Mbolster"
             : phase === "details"
               ? "Review order"
-              : holdCtaLabel(preOrder, assisted);
+              : // The summary is where the shopper pays from (a Pre-order says so instead).
+                phase === "review" && !preOrder
+                ? "Pay"
+                : holdCtaLabel(preOrder, assisted);
     const returnPath = staffEditResultPath ?? resumeStatusPath;
     const backFromPreview = returnPath
       ? () => {
@@ -3303,7 +3306,7 @@ export function MpConfigClient({
                           : phase === "details"
                             ? "How to reach you, and where your order goes. You will see a summary of everything before you pay."
                             : phase === "review"
-                              ? `Check everything before you authorize payment. You are not charged until you accept the final ${pairedBolster ? "builds" : "build"}.`
+                              ? `Check everything before you pay. You are not charged until you accept the final ${pairedBolster ? "builds" : "build"}.`
                               : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
                   </p>
                   {staffEdit ? (

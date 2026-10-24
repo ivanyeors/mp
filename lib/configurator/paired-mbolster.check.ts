@@ -121,6 +121,7 @@ assert.match(mp, /askingDetails && !resumeFinish && !staffEdit && \(/, "contact 
 assert.match(mp, /\{askingDetails && \(\s*<HoldShippingFields/, "and so does shipping");
 assert.match(mp, /\{phase === "review" \? pairedReview : null\}/, "step 4 is the summary");
 assert.match(mp, /handleAuthorizeHold\(\{ paired: pairedChoice/, "and the hold is sent from it");
+assert.match(mp, /phase === "review" && !preOrder\s*\? "Pay"/, "its button says Pay");
 assert.match(mp, /pairedHoldBody\(holdBody, bolster\)/, "one request for both builds");
 assert.match(mp, /pairedFlow && pairedChoice\?\.bolster \? SHIPS_AS_PAIR/, "a pair's shipping is quoted for both boxes");
 assert.match(mp, /record\.flowRoute\.targetFlow !== "mbolster"/, "no Upsell card for an Mbolster route");
