@@ -176,7 +176,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:203
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
   - `getBolsterBaseQuantities()` [select] — lib/shop/customization-inventory.ts:413
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:394
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:395
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:156
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:34
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:263
@@ -631,8 +631,8 @@ Defined in supabase/migrations/0001_inventory.sql:45
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:262
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:155
   - `getAvailableFillings()` [select] — lib/shop/customization-llm.ts:54
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:401
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:276
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:402
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:277
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:183
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:213
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:33
@@ -753,8 +753,8 @@ Changed from pages: `/settings/inventory`
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:100
   - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:230
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:916
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:430
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:270
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:431
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:271
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:167
   - `linkPartToShopifyVariant()` [select] — app/[lang]/settings/inventory/actions.ts:1473
   - `listOverlayMappingItems()` [select] — lib/product-builder/overlay-mappings.ts:24
@@ -778,7 +778,7 @@ Changed from pages: `/settings/inventory`
   - `publishAllUnpublishedAccessories()` [select] — lib/ecommerce/from-inventory.ts:193
   - `quoteCustomization()` [select] — lib/shop/customization-quote.ts:62
   - `receiveStock()` [select] — app/[lang]/settings/inventory/actions.ts:314
-  - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:196
+  - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:197
   - `sellBolster()` [select] — app/[lang]/settings/inventory/actions.ts:371
   - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:310
   - `validateBolsterConfig()` [select] — lib/shop/customization-inventory.ts:473
@@ -863,7 +863,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 - Written by:
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
-  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:109
+  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:110
   - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:317
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:68
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:134
@@ -1214,8 +1214,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:333
   - `getPillowXsFromPriceLabel()` [select] — lib/landing-page-data.ts:51
   - `handleApply()` [select] — app/api/shop/customize/route.ts:579
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:339
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:249
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:340
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:250
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:337
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:177
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:195
@@ -1234,8 +1234,8 @@ Defined in supabase/migrations/0014_pillow_kinds.sql:45
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:56
   - `GET()` [select] — app/api/shopify/diagnostics/route.ts:20
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:93
-  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:347
-  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:257
+  - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:348
+  - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:258
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:393
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:32
   - `loadPreOrderTriggerAtHold()` [select] — lib/configurator/pre-order-persist.ts:45
@@ -2134,6 +2134,35 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `site-settings/route.ts` [select] — app/api/site-settings/route.ts:30
   - `sla-settings/route.ts` [select] — app/api/results/sla-settings/route.ts:56
 
+### social_channel_tokens
+Defined in supabase/migrations/20261024130000_social_inbox.sql:106
+Changed from pages: `/settings/users`
+- Written by:
+  - `saveTikTokConnection()` [upsert] — lib/social-inbox/tiktok.ts:411
+  - `tiktokAccess()` [update] — lib/social-inbox/tiktok.ts:453
+- Read by:
+  - `getTikTokTokenRow()` [select] — lib/social-inbox/tiktok.ts:398
+
+### social_conversations
+Defined in supabase/migrations/20261024130000_social_inbox.sql:26
+- Written by:
+  - `ensureConversation()` [select,upsert] — lib/social-inbox/store.ts:65
+  - `updateConversation()` [update] — lib/social-inbox/store.ts:83
+- Read by:
+  - `getConversation()` [select] — lib/social-inbox/store.ts:53
+
+### social_messages
+Defined in supabase/migrations/20261024130000_social_inbox.sql:52
+References: `social_conversations`
+- Written by:
+  - `ingestEcho()` [select,update] — lib/social-inbox/ingest.ts:162
+  - `insertMessage()` [upsert] — lib/social-inbox/store.ts:127
+  - `sweepUncarded()` [select,update] — lib/social-inbox/ingest.ts:231
+  - `updateMessage()` [update] — lib/social-inbox/store.ts:141
+- Read by:
+  - `getMessageByCard()` [select] — lib/social-inbox/store.ts:103
+  - `getMessageByExternalId()` [select] — lib/social-inbox/store.ts:91
+
 ### stripe_webhook_failures
 Defined in supabase/migrations/0033_stripe_webhook_failures.sql:8
 - Written by:
@@ -2671,9 +2700,9 @@ app/[lang]/settings/showroom/page.tsx
 
 ### /settings/users
 app/[lang]/settings/users/page.tsx
-- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
+- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
 - Loads: `listMembers()`, `listRoles()`, `listStaffProfiles()`, `listTelegramLinks()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_roles`, `admin_users`, `mp_staff`, `telegram_operators`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_roles`, `admin_users`, `mp_staff`, `social_channel_tokens`, `telegram_operators`
 - Reads, through the same: `mp_config_responses`
 
 ### /shipping-refund-policies
@@ -2731,5 +2760,5 @@ app/[lang]/unsubscribe/page.tsx
 Names in the source with no matching table, function or route (dynamic,
 external, or a typo).
 
-- endpoint: `/api/**`, `/api/*/orders.json`, `/api/media-assets*`, `/api/settings/customers/google-reviews/*`
+- endpoint: `/api/**`, `/api/*/orders.json`, `/api/media-assets*`, `/api/settings/customers/google-reviews/*`, `/api/social-inbox/tiktok`
 - table: `bolster_products`

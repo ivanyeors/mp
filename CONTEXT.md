@@ -449,7 +449,7 @@ Which kind of reply a **Google review** gets, chosen from its star rating in cod
 _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
 
 **Telegram operator**:
-Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards** only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action can act. The old **Review manager** maps to both Telegram actions, **Shop moderator** to moderating **Shop reviews** only.
+Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards**, or answer **Message cards**, only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action (Reply to Google reviews, Moderate shop reviews, Answer customer messages) can act. The old **Review manager** maps to replying on Google and moderating **Shop reviews**, **Shop moderator** to moderating **Shop reviews** only; nobody has Answer customer messages until a role and a link are given it.
 _Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
 
 ## Customer CRM (ADR 0028)
@@ -529,6 +529,26 @@ _Avoid_: "template" for the layout or design (that is fixed); calling an **Email
 **Wave**:
 One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
+
+## Customer messages (PRD-social-inbox)
+
+**Customer message**:
+A direct message someone sends Mpillow on Facebook Messenger, Instagram or TikTok, stored in `social_messages` under one `social_conversations` row per person per platform. The sender need not be a **Customer** (no account, no order) — anyone who writes.
+_Avoid_: "chat" or "lead" for the stored row; mixing these with WhatsApp (the staffed WhatsApp line is answered in the Business app, and the Cloud API number only sends appointment reminders)
+
+**Message card**:
+The Telegram message in the measurements group for one inbound **Customer message**, headed `💬 FACEBOOK MESSAGE`, `💬 INSTAGRAM DM` or `💬 TIKTOK DM` and the person's name, threaded under their previous card. A reply to it (or to the bot's `📤 Sent` / `↪️ Answered in` notes under it) from someone allowed to **Answer customer messages** is sent to that person on that platform.
+_Avoid_: calling it a **Review card** — those carry buttons and a draft; a Message card is answered by replying
+
+**Team note**:
+A reply under a **Message card** that starts with `//`. It stays in the group and is never sent to the customer.
+
+**Reply window**:
+How long after a person's last **Customer message** the platform accepts our reply through the API: 24 hours on Facebook and Instagram (7 days with Meta's Human Agent permission). Past it the bot refuses and says to answer from the platform's own app. TikTok has no time limit; it caps the number of messages instead (up to 10 in a new chat's first 48 hours, 3 once the person has been quiet for 48 hours, until they write again) and its refusal is passed on in words.
+_Avoid_: retrying a refused reply from Telegram — the platform will refuse it too
+
+**Echo**:
+A message our own account sent, reported back by the platform. The echo of a reply sent from Telegram is matched and ignored; one sent from Meta Business Suite, the Instagram app or TikTok is recorded and noted under the card as `↪️ Answered in …`. TikTok's automatic messages (welcome message, suggested questions, keyword replies) are not echoes a person sent and are dropped.
 
 ## Shipping (ADR 0020, ADR 0022, ADR 0031)
 

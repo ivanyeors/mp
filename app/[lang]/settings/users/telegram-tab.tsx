@@ -21,6 +21,7 @@ import {
   type TelegramAction,
 } from "@/lib/telegram/roles";
 import { InfoTip } from "@/components/ui/info-tip";
+import { SocialInboxCard } from "./social-inbox-card";
 
 type IssuedCode = { name: string; code: string; expiresAt: string | null };
 
@@ -36,8 +37,8 @@ async function call(url: string, method: "POST" | "PATCH" | "DELETE", body?: unk
 }
 
 /**
- * Users & permissions → Telegram: who may press buttons on review cards in
- * the measurements Telegram group. Access is a Telegram link on a Staff
+ * Users & permissions → Telegram: who may press buttons on review cards, and
+ * answer customer message cards, in the measurements Telegram group. Access is a Telegram link on a Staff
  * profile, with actions limited by the profile's login role (Roles tab).
  */
 export function TelegramAccessTab({
@@ -171,9 +172,10 @@ export function TelegramAccessTab({
       <div className="space-y-2 text-sm text-muted-foreground">
         <p>
           Review cards for new <span className="font-medium text-foreground">Google Maps</span> and{" "}
-          <span className="font-medium text-foreground">shop</span> reviews are posted to the measurements Telegram
-          group. Everyone in the group can see them; only a linked staff profile can press the buttons, and only for
-          actions both its link and its login&apos;s role allow.
+          <span className="font-medium text-foreground">shop</span> reviews, and message cards for customers writing
+          on <span className="font-medium text-foreground">Facebook, Instagram and TikTok</span>, are posted to the
+          measurements Telegram group. Everyone in the group can see them; only a linked staff profile can press the
+          buttons or answer a customer, and only for actions both its link and its login&apos;s role allow.
         </p>
         <ul className="list-disc space-y-1 pl-5">
           {TELEGRAM_ACTIONS.map((a) => (
@@ -185,12 +187,15 @@ export function TelegramAccessTab({
         </ul>
       </div>
 
+      <SocialInboxCard />
+
       <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5 text-sm">
           <p className="font-medium">Preview in Telegram</p>
           <InfoTip label="About Preview in Telegram">
-            Sends sample review cards to the measurements group so everyone sees how they will look. Tapping a
-            button on them tells each person whether they are set up. Nothing is posted to Google.
+            Sends sample review and message cards to the measurements group so everyone sees how they will look.
+            Tapping a button, or replying to the sample message, tells each person whether they are set up. Nothing
+            is posted to Google or sent to a customer.
           </InfoTip>
         </div>
         <Button variant="outline" onClick={sendPreview} disabled={previewing} className="shrink-0">

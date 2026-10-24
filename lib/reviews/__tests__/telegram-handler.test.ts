@@ -389,7 +389,7 @@ describe("/link", () => {
     await say({ id: 333 }, "/link K7Q2MX9P", { chat: 333 });
     expect(h.replyInChat).toHaveBeenLastCalledWith(
       333,
-      expect.stringMatching(/Linked as Nadia, but you can't act on review cards yet.*deactivated/),
+      expect.stringMatching(/Linked as Nadia, but you can't act on cards yet.*deactivated/),
       500,
     );
   });

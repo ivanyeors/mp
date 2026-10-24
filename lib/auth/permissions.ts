@@ -82,6 +82,7 @@ export const PERMISSION_CATALOG = [
 
   { key: "telegram.google-review-reply", label: "Reply to Google reviews", group: "Telegram", surface: "telegram" },
   { key: "telegram.shop-review-moderate", label: "Moderate shop reviews", group: "Telegram", surface: "telegram" },
+  { key: "telegram.social-inbox-reply", label: "Answer customer messages", group: "Telegram", surface: "telegram" },
 ] as const satisfies readonly CatalogEntry[];
 
 export type Permission = (typeof PERMISSION_CATALOG)[number]["key"];

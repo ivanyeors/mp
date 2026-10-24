@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * bot exactly as before.
  */
 
-const h = vi.hoisted(() => ({ after: vi.fn(), handle: vi.fn(), from: vi.fn() }));
+const h = vi.hoisted(() => ({ after: vi.fn(), handle: vi.fn(), handleInbox: vi.fn(), handleChat: vi.fn(), from: vi.fn() }));
 
 vi.mock("next/server", async (orig) => ({
   ...(await orig<typeof import("next/server")>()),
@@ -18,6 +18,14 @@ vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({ from: h.from }
 vi.mock("@/lib/reviews/telegram-handler", async (orig) => ({
   ...(await orig<typeof import("@/lib/reviews/telegram-handler")>()),
   handleReviewUpdate: h.handle,
+}));
+vi.mock("@/lib/social-inbox/telegram-handler", async (orig) => ({
+  ...(await orig<typeof import("@/lib/social-inbox/telegram-handler")>()),
+  handleInboxUpdate: h.handleInbox,
+}));
+vi.mock("@/lib/support/chat-telegram", async (orig) => ({
+  ...(await orig<typeof import("@/lib/support/chat-telegram")>()),
+  handleChatReplyUpdate: h.handleChat,
 }));
 
 const { POST } = await import("@/app/api/telegram/webhook/route");
@@ -75,6 +83,46 @@ describe("Telegram webhook review routing", () => {
       "Telegram webhook rejected: chat not in TELEGRAM_ALLOWED_CHATS",
       GROUP,
     );
+  });
+
+  it("hands a reply to a customer message card to the inbox handler after responding", async () => {
+    const update = {
+      update_id: 4,
+      message: {
+        message_id: 9,
+        chat: { id: GROUP, type: "supergroup" },
+        from: { id: 111 },
+        text: "Yes, we're open on Sunday!",
+        reply_to_message: { message_id: 8, text: "💬 INSTAGRAM DM · @jane\n…" },
+      },
+    };
+    const res = await POST(post(update));
+    expect(res.status).toBe(200);
+    expect(h.handle).not.toHaveBeenCalled();
+    expect(h.after).toHaveBeenCalledOnce();
+    await h.after.mock.calls[0][0]();
+    expect(h.handleInbox).toHaveBeenCalledWith(update);
+    // The website chat takes any other reply in the group; never this one.
+    expect(h.handleChat).not.toHaveBeenCalled();
+  });
+
+  it("hands a reply to a website chat message to the chat handler", async () => {
+    const update = {
+      update_id: 5,
+      message: {
+        message_id: 11,
+        chat: { id: GROUP, type: "supergroup" },
+        from: { id: 111 },
+        text: "Happy to help with that.",
+        reply_to_message: { message_id: 10, text: "💬 WEBSITE CHAT #3F9A2C\nJane · jane@x.test\n…" },
+      },
+    };
+    const res = await POST(post(update));
+    expect(res.status).toBe(200);
+    expect(h.after).toHaveBeenCalledOnce();
+    await h.after.mock.calls[0][0]();
+    expect(h.handleChat).toHaveBeenCalledWith(update);
+    expect(h.handleInbox).not.toHaveBeenCalled();
   });
 
   it("still refuses an unsigned review update", async () => {

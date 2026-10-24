@@ -116,7 +116,7 @@ One key per sidebar page, grouped like the sidebar, plus Telegram actions. Propo
 | Insights | `analytics`, `audit-log` |
 | Showroom | `showroom` |
 | Integration | `shopify-link` |
-| Telegram | `telegram.google-review-reply`, `telegram.shop-review-moderate` |
+| Telegram | `telegram.google-review-reply`, `telegram.shop-review-moderate`, `telegram.social-inbox-reply` (PRD-social-inbox) |
 
 Legacy → new mapping applied by the split (no behaviour change because the code matrix is expanded the same way): `staff` → `users`; `results` → `results` + `appointments`; `inventory` → `inventory` + `configure` + `shopify-link`; `orders` → `orders` + `returns`; `page-builder` → `page-builder` + `partners` + `partner-applications` + `partner-commissions` + `faq` + `forms` + `rules-engine` (product-builder sub-pages — mappings, dimensions, filling visuals, calibration — move to `products` or `rules-engine` per route, decided in slice 02).
 

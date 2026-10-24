@@ -286,14 +286,14 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
   const result = await redeemTelegramLinkCode(code, { id: from.id, username: from.username ?? null });
   if (result.ok) {
     if (result.denial) {
-      await reply(`✅ Linked as ${result.name}, but you can't act on review cards yet. ${linkedButOff(result.denial)}`);
+      await reply(`✅ Linked as ${result.name}, but you can't act on cards yet. ${linkedButOff(result.denial)}`);
     } else if (result.actions.length === 0) {
       await reply(
-        `✅ Linked as ${result.name}, but your access doesn't include any review actions yet. Ask an admin to turn them on under Users & permissions.`,
+        `✅ Linked as ${result.name}, but your access doesn't include any Telegram actions yet. Ask an admin to turn them on under Users & permissions.`,
       );
     } else {
       await reply(
-        `✅ Linked. You're set up as ${result.name} (${describeActions(result.actions)}) and can act on review cards in the mpillow group.`,
+        `✅ Linked. You're set up as ${result.name} (${describeActions(result.actions)}) and can act on cards in the mpillow group.`,
       );
     }
     return;

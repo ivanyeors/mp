@@ -1,6 +1,6 @@
 /**
- * Telegram actions: what a linked person can do on review cards in the
- * measurements group (ADR 0023).
+ * Telegram actions: what a linked person can do on review and customer message
+ * cards in the measurements group (ADR 0023).
  *
  * Each action is a permission catalog key (`telegram.*` in
  * lib/auth/permissions.ts), so a role grants it on Users & permissions →
@@ -29,6 +29,8 @@ export const TELEGRAM_ACTION_DESCRIPTIONS: Record<TelegramAction, string> = {
   "telegram.google-review-reply":
     "Post replies to Google reviews (and edit a draft by replying to its card). Speaks for the business on Google Maps.",
   "telegram.shop-review-moderate": "Approve or reject reviews left on the website. Nothing outside mpillow.com.",
+  "telegram.social-inbox-reply":
+    "Answer Facebook, Instagram and TikTok messages by replying to their cards. Speaks to customers for the business.",
 };
 
 /** "Reply to Google reviews, Moderate shop reviews", or "no actions". */

@@ -10,7 +10,11 @@ import {
 
 describe("Telegram actions", () => {
   it("are the catalog's Telegram keys", () => {
-    expect(TELEGRAM_ACTIONS).toEqual(["telegram.google-review-reply", "telegram.shop-review-moderate"]);
+    expect(TELEGRAM_ACTIONS).toEqual([
+      "telegram.google-review-reply",
+      "telegram.shop-review-moderate",
+      "telegram.social-inbox-reply",
+    ]);
     expect(isTelegramAction("telegram.shop-review-moderate")).toBe(true);
     expect(isTelegramAction("orders")).toBe(false);
     expect(isTelegramAction("review_manager")).toBe(false);
