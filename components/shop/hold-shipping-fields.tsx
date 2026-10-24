@@ -14,7 +14,6 @@ import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
 import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
 import { needsState } from "@/lib/shipping/state-countries";
 import type { PackageType } from "@/lib/shipping/types";
-import type { PairedHandoff } from "@/lib/configurator/paired-mbolster";
 import type { CustomerAddress } from "@/lib/types/ecommerce";
 
 // Loaded with the shipping section, not with the configurator's first screen:
@@ -169,33 +168,6 @@ function optionPrice(option: HoldShippingOption, goodsSubtotal: number | null): 
     }
   }
 }
-
-/**
- * A Paired build's shipping at step 2: the Mpillow's method, with the Mbolster
- * in the same shipment. A live method is quoted again with both boxes, as the
- * hold will quote it; a flat one, or one the Mpillow already ships free, keeps
- * step 1's charge. Null when step 1 sent no shipping.
- */
-export function usePairedShipping(
-  handoff: PairedHandoff | null,
-): { label: string; amount: number | null; pending: boolean } | null {
-  const shipping = handoff?.pillow.shipping;
-  const hold = handoff?.pillowHold as
-    | { shippingMethodId?: string; shippingAddress?: { country?: string; postal_code?: string } }
-    | undefined;
-  const methodId = hold?.shippingMethodId;
-  const country = hold?.shippingAddress?.country;
-  const requote = Boolean(shipping?.live && !shipping.free && methodId && country);
-  const quote = useShippingQuote(
-    requote ? { profile: SHIPS_AS_PAIR, country: country!, postalCode: hold?.shippingAddress?.postal_code ?? "" } : null,
-  );
-  if (!shipping) return null;
-  if (!requote) return { label: shipping.label, amount: shipping.amount, pending: false };
-  const option = quote.loading || quote.error ? undefined : quote.options.find((o) => o.method_id === methodId);
-  return { label: shipping.label, amount: option?.price ?? null, pending: quote.loading };
-}
-
-const SHIPS_AS_PAIR: PackageType[] = ["pillow", "bolster"];
 
 export function holdShippingName(method: HoldShippingMethod): string {
   return method.content?.["en-US"]?.name ?? method.slug;

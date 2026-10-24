@@ -285,16 +285,6 @@ const pillowHold = (extra: Row = {}): Row => ({
   ...extra,
 });
 
-const handoff = (extra: Row = {}) => ({
-  v: 1 as const,
-  pillowHold: pillowHold(extra),
-  companionId: COMP,
-  sleepPosition: "side" as const,
-  reason: "You already sleep with a bolster.",
-  configPath: "/mp-config",
-  pillow: { label: "Mpillow M · premium", ballpark: 330, currency: "SGD" },
-});
-
 const bolster = (extra: Row = {}) => ({
   responseId: COMP,
   suggestedLength: "medium",
@@ -337,8 +327,8 @@ async function asStaff<T>(fn: () => Promise<T>): Promise<T> {
 
 const hold = (body: Row) => call(holdRoute.POST(new Request(`${BASE}/api/results/hold`, json(body))));
 const holdPair = (pillowExtra: Row = {}, bolsterExtra: Row = {}) =>
-  hold(pairedHoldBody(handoff(pillowExtra), bolster(bolsterExtra) as never));
-const holdSkip = (pillowExtra: Row = {}) => hold(pairedHoldBody(handoff(pillowExtra), null));
+  hold(pairedHoldBody(pillowHold(pillowExtra), bolster(bolsterExtra) as never));
+const holdSkip = (pillowExtra: Row = {}) => hold(pairedHoldBody(pillowHold(pillowExtra), null));
 
 const webhook = (event: unknown) =>
   call(
@@ -946,7 +936,7 @@ describe("Paired build — re-submits", () => {
       payment_intent_id: null,
       paired_build_id: null,
     });
-    const res = await hold(pairedHoldBody(handoff({ responseId: STRANGER }), bolster() as never));
+    const res = await hold(pairedHoldBody(pillowHold({ responseId: STRANGER }), bolster() as never));
     expect(res.status).toBe(409);
     expect(R(COMP).paired_build_id).toBe(ANCHOR);
   });

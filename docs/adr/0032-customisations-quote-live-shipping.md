@@ -29,12 +29,13 @@ and accept, days apart, so a live price needs to be stored on the Result.
 - **The same boxes on the page and in the hold.** A customisation is quoted without a cart, as
   one unit of each product type declared at the estimate value (`estimateLines`). The
   configurator asks `POST /api/shop/shipping/quote` with `profile: ["pillow"]`, `["bolster"]`,
-  or, at a Paired build's step 2, `["pillow", "bolster"]`. The hold builds the same lines, so
+  or, for a Paired build with its Mbolster added, `["pillow", "bolster"]`. The hold builds the same lines, so
   within the quote TTL it reads the cached rate the customer was shown. After the TTL it quotes
   again, and Stripe's page shows the final figure.
 - **A Paired build is one shipment.** The anchor's rate is quoted for both boxes. The companion
-  stores no rate and charges no shipping (ADR 0026). Step 1 shows the Mpillow alone. Step 2
-  quotes again with the Mbolster in the box and shows the combined shipping before the hold.
+  stores no rate and charges no shipping (ADR 0026). Shipping is chosen at the stepper's step 3,
+  once step 2 has added the Mbolster or skipped it, and is quoted for whichever boxes ship; step 4
+  shows that combined shipping before the hold.
 - **No courier, no hold.** A live method with no quote for the address is refused (400), never
   charged its `base_rate` (ADR 0022). The page disables it and moves the selection to a method
   that can ship.

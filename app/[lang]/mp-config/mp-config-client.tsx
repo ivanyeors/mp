@@ -79,13 +79,19 @@ import {
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
-import { PairedStepper } from "@/components/configurator/paired-stepper";
+import { PairedStepperBar } from "@/components/configurator/paired-stepper";
+import { ReviewCard } from "@/components/configurator/review-card";
 import {
   bolsterSleepPosition,
   clearPairedHandoff,
+  opensPairedDetails,
+  PAIRED_MBOLSTER_PATH,
+  pairedHoldBody,
   readPairedHandoff,
+  reanchorPairedHandoff,
   runsPairedStepper,
   writePairedHandoff,
+  type PairedChoice,
   type PairedHandoff,
 } from "@/lib/configurator/paired-mbolster";
 import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
@@ -124,7 +130,7 @@ import {
   useHoldShippingQuote,
   type HoldShippingMethod,
 } from "@/components/shop/hold-shipping-fields";
-import { usesPostalCode } from "@/lib/shipping/countries";
+import { countryName, usesPostalCode } from "@/lib/shipping/countries";
 import type { PackageType } from "@/lib/shipping/types";
 import {
   configPathFor,
@@ -256,8 +262,16 @@ function pickDefaultComponent(
 /** Stable no-op setters: the account prefill is skipped on Staff devices (see its call). */
 const KEEP_EMAIL: Dispatch<SetStateAction<string>> = () => {};
 const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
-/** An Mpillow ships in its own box; a Paired build's Mbolster joins it at step 2. */
+/** An Mpillow ships in its own box; a Paired build's Mbolster, added at step 2, joins it. */
 const SHIPS_AS_MPILLOW: PackageType[] = ["pillow"];
+const SHIPS_AS_PAIR: PackageType[] = ["pillow", "bolster"];
+
+/**
+ * A Paired build's part of the preview (ADR 0026): its finish (step 1), then —
+ * after the Mbolster's own page (step 2) — contact and shipping (step 3), then
+ * the summary of both that is paid from (step 4).
+ */
+type PairedPhase = "customize" | "details" | "review";
 
 // Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline) and
 // is the pillow Size's registry outline since slice 02 — the shell and the
@@ -682,16 +696,11 @@ export function MpConfigClient({
   const selectedShipping = shippingMethods.find((m) => m.id === selectedShippingId);
   /** Self-collect asks for no address: the server stores the studio's. */
   const selfCollect = isSelfCollectMethod(selectedShipping);
-  // Each method priced for this Mpillow to this address — live courier rates
-  // with our markup — the same boxes the hold quotes (ADR 0032).
-  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
-    methods: shippingMethods,
-    address: holdAddress,
-    parcelTypes: SHIPS_AS_MPILLOW,
-    selectedId: selectedShippingId,
-    onSelect: setSelectedShippingId,
-  });
-  const shippingStatus = selectedShippingOption?.status;
+  const [pairedPhase, setPairedPhase] = useState<PairedPhase>("customize");
+  /** Step 2's answer, read back from the hand-off for steps 3 and 4. */
+  const [pairedChoice, setPairedChoice] = useState<PairedChoice | null>(null);
+  /** Back from step 2: paired before the recommendation reloads and says so. */
+  const [pairedRestored, setPairedRestored] = useState(false);
   const [holdSubmitting, setHoldSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** Basic → Premium accept: collect only missing neck steps, then re-eval Premium. */
@@ -737,6 +746,30 @@ export function MpConfigClient({
     partnerAssisted,
     reopened: Boolean(staffEdit || resumeFinish),
   });
+  // While the recommendation reloads on the way back from step 2, nothing yet
+  // says this is a pair — but contact and shipping must not flash up at step 1.
+  // Once it has reloaded, a route that no longer fires is an ordinary preview.
+  const pairedFlow = pairedStepper || (pairedRestored && !shopRecommendation);
+  // Each method priced for this Mpillow to this address — live courier rates
+  // with our markup — the same boxes the hold quotes (ADR 0032). A Paired
+  // build's Mbolster rides in the same shipment.
+  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
+    methods: shippingMethods,
+    address: holdAddress,
+    parcelTypes: pairedFlow && pairedChoice?.bolster ? SHIPS_AS_PAIR : SHIPS_AS_MPILLOW,
+    selectedId: selectedShippingId,
+    onSelect: setSelectedShippingId,
+  });
+  const shippingStatus = selectedShippingOption?.status;
+  // Each paired step starts at its top, not where the last one was scrolled to.
+  const previewPanelRef = useRef<HTMLDivElement | null>(null);
+  const shownPairedPhaseRef = useRef(pairedPhase);
+  useEffect(() => {
+    if (shownPairedPhaseRef.current === pairedPhase) return;
+    shownPairedPhaseRef.current = pairedPhase;
+    previewPanelRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  }, [pairedPhase]);
 
   const patchRecommendationRecord = useCallback((next: RecommendationRecord) => {
     setShopRecommendation((prev) =>
@@ -1162,6 +1195,25 @@ export function MpConfigClient({
     setCurrentStep("preview");
     setRestoringHoldCancel(true);
 
+    // Paired build, this Mpillow's hand-off only: an answered step 2 sends the
+    // shopper on to step 3, and a cancelled Checkout of the pair comes back to
+    // step 4, the summary it was paid from.
+    const opensDetails = opensPairedDetails(window.location.search);
+    const handoff = readPairedHandoff(window.sessionStorage);
+    if (handoff && handoff.anchorId === draft?.responseId) {
+      setPairedRestored(true);
+      if (handoff.choice && (opensDetails || holdCancelled)) {
+        setPairedChoice(handoff.choice);
+        setPairedPhase(holdCancelled ? "review" : "details");
+      }
+    }
+    if (opensDetails) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("paired");
+      const rest = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+    }
+
     if (holdCancelled) {
       toast.message(HOLD_CANCELLED_NOTICE.title, {
         description: HOLD_CANCELLED_NOTICE.description,
@@ -1279,6 +1331,9 @@ export function MpConfigClient({
     } catch {
       // private mode — nothing was stored
     }
+    setPairedPhase("customize");
+    setPairedChoice(null);
+    setPairedRestored(false);
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
   };
@@ -2193,10 +2248,10 @@ export function MpConfigClient({
 
   const handleAuthorizeHold = useCallback(async (opts?: {
     /**
-     * Paired build step 1 → 2 (ADR 0026): hand this finished hold to the
-     * Mbolster page, which sends it with the Mbolster, instead of sending it.
+     * Paired build step 4 (ADR 0026): step 2's answer, as the review showed it.
+     * The one hold sends the Mbolster the hand-off carries, or none on Skip.
      */
-    toMbolster?: PairedHandoff["pillow"];
+    paired?: PairedChoice;
   }) => {
     const size =
       shopRecommendation?.pillow_product?.size ??
@@ -2218,16 +2273,15 @@ export function MpConfigClient({
     const parsedRecord = parseRecommendationRecord(
       shopRecommendation?.recommendation_record ?? null,
     );
-    // The Mbolster route is answered by the shopper on the Mbolster page, which
-    // gets it still pending; holding from here (Skip, or a session with no
-    // stepper) declines it.
+    // The Mbolster route is answered by the shopper at step 2, and goes to
+    // `pairedHoldBody` still pending; a session with no stepper declines it.
     const journeyRecord =
-      !opts?.toMbolster &&
+      !opts?.paired &&
       parsedRecord?.flowRoute?.targetFlow === "mbolster" &&
       isFlowRoutePending(parsedRecord)
         ? withJourneyOnDecline(parsedRecord)
         : parsedRecord;
-    const routeGate = opts?.toMbolster
+    const routeGate = opts?.paired
       ? ({ ok: true } as const)
       : assertPreStripeRouteResolved(journeyRecord ?? { flowRoute: null });
     if (!routeGate.ok) {
@@ -2238,6 +2292,8 @@ export function MpConfigClient({
     const errors = buildFieldErrorMap(holdFields);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      // The review shows no fields: back to the step whose field needs fixing.
+      if (opts?.paired) setPairedPhase(errors.cover || errors.case ? "customize" : "details");
       return;
     }
     // Slice 04: a Staff-assisted mix with a cell that cannot close is a
@@ -2293,33 +2349,27 @@ export function MpConfigClient({
           ? { recommendationRecord: journeyRecord }
           : {}),
       };
-      if (opts?.toMbolster) {
-        // Back and forth keeps the Mbolster's id and answers while this is
-        // still the same Mpillow session. A cancelled Checkout comes back on a
-        // fresh session id (the held row is final), so the old companion stays
-        // with the old Result — but the same customer keeps their answers.
-        const prior = readPairedHandoff(window.sessionStorage);
+      let body: Record<string, unknown> = holdBody;
+      if (opts?.paired) {
+        // Re-anchored first: after a cancelled Checkout this Mpillow carries on
+        // under a fresh id, and its Mbolster needs one too.
         const anchorId = saved?.id ?? responseId;
-        const same = prior && prior.pillowHold.responseId === anchorId;
-        const sameCustomer = prior && prior.pillowHold.email === holdBody.email;
-        writePairedHandoff(window.sessionStorage, {
-          v: 1,
-          pillowHold: { ...holdBody, responseId: anchorId ?? undefined },
-          companionId: same ? prior.companionId : newResponseId(),
-          sleepPosition: bolsterSleepPosition(deriveSleepPosition(measurementData.sleepPositionType)),
-          reason: parsedRecord?.flowRoute?.reason ?? "",
-          configPath,
-          pillow: opts.toMbolster,
-          ...(selectedShipping?.collect_location ? { collectAt: selectedShipping.collect_location.name } : {}),
-          ...((same || sameCustomer) && prior.bolster ? { bolster: prior.bolster } : {}),
-        });
-        router.push(withLocale("/mbolster-config?paired=1", locale));
-        return;
+        const stored = readPairedHandoff(window.sessionStorage);
+        const handoff = stored && anchorId ? reanchorPairedHandoff(stored, anchorId, newResponseId) : stored;
+        if (handoff && handoff !== stored) writePairedHandoff(window.sessionStorage, handoff);
+        // The review decides whether there is an Mbolster; the hand-off only
+        // carries it (with its re-anchored id). One the shopper removed or
+        // skipped is never held, and one the review showed is never dropped.
+        const bolster = opts.paired.bolster ? (handoff?.choice?.bolster ?? null) : null;
+        if (opts.paired.bolster && !bolster) {
+          throw new Error("Your Mbolster was not saved on this device. Go back and add it again.");
+        }
+        body = pairedHoldBody(holdBody, bolster);
       }
       const res = await fetch("/api/results/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(holdBody),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -2331,11 +2381,15 @@ export function MpConfigClient({
       // customer goes straight to the status page to wait for Staff.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
-      // Held without the Mbolster: a stale hand-off must not offer it again.
-      try {
-        clearPairedHandoff(window.sessionStorage);
-      } catch {
-        // private mode — nothing was stored
+      // Held with no stepper: a stale hand-off must not offer an Mbolster again.
+      // A pair's stays, so a cancelled Checkout returns to its review; the
+      // status page clears it once held.
+      if (!opts?.paired) {
+        try {
+          clearPairedHandoff(window.sessionStorage);
+        } catch {
+          // private mode — nothing was stored
+        }
       }
       // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
       trackGaEventThen(
@@ -2383,9 +2437,121 @@ export function MpConfigClient({
     sessionFillingTemplateId,
     partner,
     tokenStorageKey,
-    router,
-    locale,
   ]);
+
+  /** Paired build step 1's own check: the finish. Contact and shipping are step 3's. */
+  const pairedFinishReady = () => {
+    const errors = buildFieldErrorMap(
+      holdFields.filter((f) => f.key === "cover" || f.key === "case"),
+    );
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return false;
+    }
+    return true;
+  };
+
+  /**
+   * The hand-off as step 1 leaves it: this Mpillow as the anchor, with step 2's
+   * answers kept from an earlier visit. `choice` is given only by step 1's own
+   * Skip; going on to step 2 leaves it to be answered there.
+   */
+  const writeStep1Handoff = (
+    anchorId: string,
+    pillow: PairedHandoff["pillow"],
+    choice?: PairedChoice,
+  ) => {
+    const prior = readPairedHandoff(window.sessionStorage);
+    const base = prior ? reanchorPairedHandoff(prior, anchorId, newResponseId) : null;
+    const record = parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null);
+    writePairedHandoff(window.sessionStorage, {
+      v: 2,
+      anchorId,
+      companionId: base?.companionId ?? newResponseId(),
+      sleepPosition: bolsterSleepPosition(deriveSleepPosition(measurementData.sleepPositionType)),
+      reason: record?.flowRoute?.reason ?? "",
+      configPath,
+      pillow,
+      ...(base?.bolster ? { bolster: base.bolster } : {}),
+      ...(choice ? { choice } : {}),
+    });
+  };
+
+  /**
+   * Paired build step 1 → 2 (ADR 0026): save the Mpillow's answers and open the
+   * Mbolster page. Both builds are customised before anything else is asked;
+   * its answer comes back here, to step 3.
+   */
+  const handleToMbolster = async (pillow: PairedHandoff["pillow"]) => {
+    if (!pairedFinishReady()) return;
+    setHoldSubmitting(true);
+    try {
+      const saved = await upsertToDb();
+      const anchorId = saved?.id ?? responseId;
+      if (!anchorId) throw new Error("Could not save your answers. Please try again.");
+      writeStep1Handoff(anchorId, pillow);
+      router.push(withLocale(PAIRED_MBOLSTER_PATH, locale));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open the Mbolster step");
+      setHoldSubmitting(false);
+    }
+  };
+
+  /** Paired build: Skip at step 1 — no Mbolster, straight on to step 3. */
+  const handleSkipMbolster = (pillow: PairedHandoff["pillow"]) => {
+    if (!pairedFinishReady()) return;
+    const choice: PairedChoice = { bolster: null };
+    if (responseId) {
+      try {
+        writeStep1Handoff(responseId, pillow, choice);
+      } catch {
+        // private mode — the answer lives in state for this visit
+      }
+    }
+    setPairedChoice(choice);
+    setPairedPhase("details");
+  };
+
+  /**
+   * Paired build, step 2 already answered (the shopper came back from the
+   * review to change the Mpillow): on to step 3 with that answer kept.
+   */
+  const handlePairedContinue = (pillow: PairedHandoff["pillow"]) => {
+    if (!pairedFinishReady()) return;
+    try {
+      const handoff = readPairedHandoff(window.sessionStorage);
+      // Step 2's running total reads the Mpillow's price from here.
+      if (handoff) writePairedHandoff(window.sessionStorage, { ...handoff, pillow });
+    } catch {
+      // private mode — nothing was stored
+    }
+    setPairedPhase("details");
+  };
+
+  /** Paired build step 3 → 4: everything the hold needs, then the summary. */
+  const handlePairedReview = () => {
+    const errors = buildFieldErrorMap(holdFields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setPairedPhase("review");
+  };
+
+  /** Paired build: back to step 2's own page, which reopens on its customisation. */
+  const openPairedMbolster = () => router.push(withLocale(PAIRED_MBOLSTER_PATH, locale));
+
+  /** Paired build, at the review: take the Mbolster out of this order. */
+  const handleRemoveMbolster = () => {
+    const choice: PairedChoice = { bolster: null };
+    try {
+      const handoff = readPairedHandoff(window.sessionStorage);
+      if (handoff) writePairedHandoff(window.sessionStorage, { ...handoff, choice });
+    } catch {
+      // private mode — the answer lives in state for this visit
+    }
+    setPairedChoice(choice);
+  };
 
   const saveLabel:
     | { text: string; className: string }
@@ -2621,6 +2787,26 @@ export function MpConfigClient({
           composedBuildable: shopRecommendation.composed_buildable ?? 0,
         }).isPreOrder
       : false;
+    // Which step of a Paired build this preview is, when it is one (ADR 0026).
+    const phase: PairedPhase | null = pairedFlow ? pairedPhase : null;
+    const money = (n: number) => `${currency} ${n.toFixed(2)}`;
+    // Outside a Paired build, every part shows at once, as it always has.
+    const customizing = phase == null || phase === "customize";
+    const askingDetails = phase == null || phase === "details";
+    const pillowTotal =
+      quoteBlocked || !shopRecommendation ? null : basePrice + addonTotal + serviceTotal;
+    const pairedPillow: PairedHandoff["pillow"] = {
+      label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
+      ballpark: pillowTotal,
+      currency,
+    };
+    const pairedBolster = pairedChoice?.bolster ? pairedChoice.summary : null;
+    // Steps 3 and 4 price the whole order: the Mbolster as its page priced it,
+    // and the anchor's shipping for both boxes, free_above on the Mpillow's goods.
+    const orderTotal =
+      pillowTotal == null || (pairedBolster && pairedBolster.ballpark == null)
+        ? null
+        : pillowTotal + (pairedBolster?.ballpark ?? 0) + (shippingAmount ?? 0);
     const holdCta = holdSubmitting
       ? staffEdit
         ? "Saving…"
@@ -2629,46 +2815,124 @@ export function MpConfigClient({
         ? "Save configuration"
         : resumeFinish
           ? "Pay"
-          : pairedStepper
-            ? "Next: Mbolster"
-            : holdCtaLabel(preOrder, assisted);
+          : phase === "customize"
+            ? pairedChoice
+              ? "Next: Details"
+              : "Next: Mbolster"
+            : phase === "details"
+              ? "Review order"
+              : // The summary is where the shopper pays from (a Pre-order says so instead).
+                phase === "review" && !preOrder
+                ? "Pay"
+                : holdCtaLabel(preOrder, assisted);
     const returnPath = staffEditResultPath ?? resumeStatusPath;
     const backFromPreview = returnPath
       ? () => {
           window.location.href = returnPath;
         }
-      : goToPreviousStep;
-    // Step 1 of a Paired build checks the Mpillow's finish, then hands it to the
-    // Mbolster page — the optional step 2 — rather than holding.
-    const goToMbolster = () =>
-      handleAuthorizeHold({
-        toMbolster: {
-          label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
-          ballpark: quoteBlocked ? null : basePrice + addonTotal + serviceTotal,
-          currency,
-          ...(selectedShippingOption
-            ? {
-                shipping: {
-                  label: holdShippingName(selectedShippingOption.method),
-                  live:
-                    selectedShippingOption.method.rate_source === "easyship" &&
-                    !selectedShippingOption.method.collect_location,
-                  amount: shippingAmount,
-                  free: shippingAmount === 0 && (selectedShippingOption.price ?? 0) > 0,
-                },
-              }
-            : {}),
-        },
-      });
-    // One primary action for the preview, whichever mode opened it.
+      : phase === "details"
+        ? pairedChoice?.bolster
+          ? openPairedMbolster
+          : () => setPairedPhase("customize")
+        : phase === "review"
+          ? () => setPairedPhase("details")
+          : goToPreviousStep;
+    // One primary action for the preview, whichever mode opened it. A Paired
+    // build customises both builds first, then asks for details, then shows the
+    // summary it is paid from.
     const onPreviewContinue = () =>
       void (staffEdit
         ? handleStaffEditSave()
         : resumeFinish
           ? handleFinishAndPay()
-          : pairedStepper
-            ? goToMbolster()
-            : handleAuthorizeHold());
+          : phase === "customize"
+            ? pairedChoice
+              ? handlePairedContinue(pairedPillow)
+              : handleToMbolster(pairedPillow)
+            : phase === "details"
+              ? handlePairedReview()
+              : phase === "review"
+                ? handleAuthorizeHold({ paired: pairedChoice ?? { bolster: null } })
+                : handleAuthorizeHold());
+    // Step 4: every part of the order as it will be held, each with its way back.
+    const optionName = (id: number | null, options: Array<{ item_id: number; name: string }>) =>
+      options.find((o) => o.item_id === id)?.name ?? null;
+    const coverName = optionName(selectedCover, shopRecommendation?.components.covers ?? []);
+    const caseName = optionName(selectedCase, shopRecommendation?.components.cases ?? []);
+    const addonNames = addons.filter((a) => selectedAddons.has(a.item_id)).map((a) => a.name);
+    const shippingMethod = selectedShippingOption?.method;
+    const collect = shippingMethod?.collect_location ?? null;
+    const editDetails = { label: "Edit", onClick: () => setPairedPhase("details") };
+    const pairedReview = (
+      <div className="space-y-3">
+        <ReviewCard
+          title={pairedPillow.label}
+          lines={[
+            ...(coverName ? [`Cover: ${coverName}`] : []),
+            ...(caseName ? [`Case: ${caseName}`] : []),
+            ...(addonNames.length ? [`Add-ons: ${addonNames.join(", ")}`] : []),
+          ]}
+          amount={pillowTotal != null ? money(pillowTotal) : null}
+          actions={[{ label: "Edit", onClick: () => setPairedPhase("customize") }]}
+        />
+        {pairedBolster ? (
+          <ReviewCard
+            title={pairedBolster.label}
+            detail="Ships with your Mpillow. You can still drop it later, when you accept the finished builds."
+            lines={pairedBolster.lines}
+            amount={
+              pairedBolster.ballpark != null
+                ? `${pairedBolster.currency} ${pairedBolster.ballpark.toFixed(2)}`
+                : "Not available"
+            }
+            actions={[
+              { label: "Edit", onClick: openPairedMbolster },
+              { label: "Remove", onClick: handleRemoveMbolster },
+            ]}
+          />
+        ) : (
+          <ReviewCard
+            title="Mbolster"
+            detail="Not added"
+            lines={[]}
+            actions={[{ label: "Add an Mbolster", onClick: () => void handleToMbolster(pairedPillow) }]}
+          />
+        )}
+        <ReviewCard
+          title={collect ? "Collection" : "Delivery"}
+          detail={
+            shippingMethod
+              ? [holdShippingName(shippingMethod), selectedShippingOption?.window].filter(Boolean).join(" · ")
+              : null
+          }
+          lines={
+            collect
+              ? [`Collect from ${collect.name}`, collect.address, `Collected by ${holdAddress.recipient}`]
+              : [
+                  holdAddress.recipient,
+                  holdAddress.line1,
+                  holdAddress.line2,
+                  [holdAddress.city, holdAddress.state, holdAddress.postal_code].filter(Boolean).join(" "),
+                  countryName(holdAddress.country || "SG"),
+                ].filter((l): l is string => Boolean(l))
+          }
+          amount={
+            shippingAmount == null
+              ? null
+              : shippingAmount === 0
+                ? "Free"
+                : money(shippingAmount)
+          }
+          actions={[editDetails]}
+        />
+        <ReviewCard
+          title="Contact"
+          detail={measurementData.name || null}
+          lines={[holdEmail, holdPhone, ...(holdNotes.trim() ? [`Notes: ${holdNotes.trim()}`] : [])]}
+          actions={[editDetails]}
+        />
+      </div>
+    );
     // A pending Upgrade/Keep route is a question for the shopper. Staff pick the
     // tier outright in the assist panel, so it must not freeze their save.
     const continueBlocked =
@@ -2676,7 +2940,9 @@ export function MpConfigClient({
       shopLoading ||
       !shopRecommendation ||
       quoteBlocked ||
-      (!staffEditing && flowRouteBlocksHold);
+      (!staffEditing && flowRouteBlocksHold) ||
+      // Removing the Mbolster at the review re-quotes shipping for one box.
+      (phase === "review" && shippingStatus === "quoting");
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
@@ -2729,9 +2995,22 @@ export function MpConfigClient({
                 </Button>
               )}
             </div>
+            {/* A Paired build's steps, at the top of every one of them. */}
+            {phase ? (
+              <PairedStepperBar
+                className="border-t"
+                step={phase === "customize" ? 1 : phase === "details" ? 3 : 4}
+                bolsterSkipped={pairedChoice != null && !pairedChoice.bolster}
+              />
+            ) : null}
           </header>
 
-          <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+          <div
+            className={cn(
+              "grid grid-cols-1 lg:grid-cols-[1fr_460px]",
+              phase ? "min-h-[calc(100dvh-100px)]" : "min-h-[calc(100dvh-56px)]",
+            )}
+          >
             {/* Left: the stage. Dark in both themes: the white silhouette, the
                 starfield and the x-ray's shell paint (xray-theme.ts) are drawn for
                 a dark ground, and `dark` flips the tokens and `dark:` variants
@@ -2741,7 +3020,16 @@ export function MpConfigClient({
                 Staff stage at both ends — the pillow under the header, the toolbox
                 and pack list off the bottom — with no way to scroll to either.
                 Below lg the stage flows at its natural height above the finish panel. */}
-            <div className="dark relative bg-background text-foreground lg:sticky lg:top-[56px] lg:h-[calc(100dvh-56px)] lg:overflow-hidden">
+            {/* A Paired build's details and review are forms: on phones the pillow
+                would only push them below the fold, so it stays on step 1. */}
+            <div
+              className={cn(
+                "dark relative bg-background text-foreground lg:sticky lg:overflow-hidden",
+                // Under the header, and the stepper bar when there is one.
+                phase ? "lg:top-[100px] lg:h-[calc(100dvh-100px)]" : "lg:top-[56px] lg:h-[calc(100dvh-56px)]",
+                (phase === "details" || phase === "review") && "max-lg:hidden",
+              )}
+            >
               {!isMobile && (
                 <>
                   <Particles
@@ -2777,7 +3065,11 @@ export function MpConfigClient({
                     <XraySectionDock
                       dived={divedSection}
                       onSlot={setSideSlot}
-                      className={cn("sticky top-0 flex max-h-[calc(100dvh-56px-2rem)]", STAGE_PANEL_CLASS)}
+                      className={cn(
+                        "sticky top-0 flex",
+                        phase ? "max-h-[calc(100dvh-100px-2rem)]" : "max-h-[calc(100dvh-56px-2rem)]",
+                        STAGE_PANEL_CLASS,
+                      )}
                     />
                   )}
                   <div className="flex min-w-0 flex-col items-center gap-4 md:gap-6">
@@ -2981,20 +3273,41 @@ export function MpConfigClient({
             </div>
 
             {/* Right: customization panel */}
-            <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100dvh-56px)] lg:border-l">
-              <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
+            <div
+              className={cn(
+                "flex min-h-0 flex-col bg-background lg:border-l",
+                phase ? "lg:h-[calc(100dvh-100px)]" : "lg:h-[calc(100dvh-56px)]",
+              )}
+            >
+              <div
+                ref={previewPanelRef}
+                className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}
+              >
                 {partner ? <CoBrandBanner partner={partner} /> : null}
-                {pairedStepper ? <PairedStepper step={1} /> : null}
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">
-                    {staffEdit ? "Edit configuration" : "Customize finish"}
+                    {staffEdit
+                      ? "Edit configuration"
+                      : phase === "details"
+                        ? "Your details"
+                        : phase === "review"
+                          ? "Review your order"
+                          : "Customize finish"}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {staffEdit
                       ? "Change size, tier, fillings, cover, case, add-ons or shipping for this Result. Saving reprices the build — send the customer the new quote with Request payment."
                       : resumeFinish
                         ? "Our team has built your fillings. Choose cover and case, optional add-ons and shipping, then pay to confirm your order."
-                        : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
+                        : phase === "customize"
+                          ? pairedChoice
+                            ? "Choose cover and case, and any add-ons. Your details and a review of your order come next, before you pay."
+                            : "Choose cover and case, and any add-ons. A matching Mbolster is next, then your details and a review of your order before you pay."
+                          : phase === "details"
+                            ? "How to reach you, and where your order goes. You will see a summary of everything before you pay."
+                            : phase === "review"
+                              ? `Check everything before you pay. You are not charged until you accept the final ${pairedBolster ? "builds" : "build"}.`
+                              : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
                   </p>
                   {staffEdit ? (
                     <p className="text-xs text-muted-foreground">
@@ -3006,7 +3319,7 @@ export function MpConfigClient({
                   ) : null}
                 </div>
 
-                {shopRecommendation ? (
+                {!customizing ? null : shopRecommendation ? (
                   <div className="space-y-2">
                     {(fieldErrors.cover || fieldErrors.case) && (
                       <p className="text-sm text-destructive">
@@ -3043,7 +3356,7 @@ export function MpConfigClient({
                   </div>
                 )}
 
-                {addons.length > 0 && !partnerAssisted && (
+                {customizing && addons.length > 0 && !partnerAssisted && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">
                       Add-ons for your Mpillow (optional)
@@ -3068,7 +3381,7 @@ export function MpConfigClient({
                   </div>
                 )}
 
-                {staffAssist ? (
+                {customizing && staffAssist ? (
                   <ConfigImageUpload
                     sessionId={responseId}
                     ensureSessionId={ensureResponseId}
@@ -3078,7 +3391,7 @@ export function MpConfigClient({
                 {/* A finish link already has contact from the questionnaire submit,
                     and a re-configuration edits the build, not who it belongs to —
                     contact and Discovery source stay on the Result detail page. */}
-                {!resumeFinish && !staffEdit && (
+                {askingDetails && !resumeFinish && !staffEdit && (
                 <PreviewContactFields
                     locale={locale}
                     fieldErrors={fieldErrors}
@@ -3100,6 +3413,7 @@ export function MpConfigClient({
                   />
                 )}
 
+                {askingDetails && (
                 <HoldShippingFields
                   options={shippingOptions}
                   goodsSubtotal={quoteBlocked ? null : basePrice + addonTotal}
@@ -3118,6 +3432,9 @@ export function MpConfigClient({
                   }}
                   recipientPlaceholder={measurementData.name || "Name"}
                 />
+                )}
+
+                {phase === "review" ? pairedReview : null}
 
                 {/*
                   Not rendered for an Assisted customisation: "Send to our build
@@ -3127,7 +3444,7 @@ export function MpConfigClient({
                   shouldCreateInstoreReviewOnly() — see lib/results/instore-finalize.
                   Nor for a finish link: that Result is already submitted and assigned.
                 */}
-                {!assisted && !resumeFinish && (
+                {!assisted && !resumeFinish && askingDetails && (
                 <div className="text-center">
                   <Button
                     variant="ghost"
@@ -3209,29 +3526,85 @@ export function MpConfigClient({
                   configuratorMobileCloseClearanceClassName,
                 )}
               >
-                {!quoteBlocked &&
-                  serviceLines.map((l) => (
-                    <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
-                      <span className="min-w-0 text-muted-foreground">{l.label}</span>
-                      <span className="shrink-0 whitespace-nowrap tabular-nums">{`${currency} ${l.msrp.toFixed(2)}`}</span>
+                {phase === "details" || phase === "review" ? (
+                  // The whole order: both builds, then the one shipment.
+                  <>
+                    <div className="mb-1 flex justify-between gap-4 text-sm">
+                      <span className="min-w-0 text-muted-foreground">{pairedPillow.label}</span>
+                      <span className="shrink-0 whitespace-nowrap tabular-nums">
+                        {pillowTotal != null
+                          ? money(basePrice + addonTotal)
+                          : shopLoading || restoringHoldCancel
+                            ? "…"
+                            : "Not available"}
+                      </span>
                     </div>
-                  ))}
-                {!quoteBlocked && (
-                  <HoldShippingTotalRow
-                    option={selectedShippingOption}
-                    goodsSubtotal={basePrice + addonTotal}
-                  />
+                    {pillowTotal != null &&
+                      serviceLines.map((l) => (
+                        <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
+                          <span className="min-w-0 text-muted-foreground">{l.label}</span>
+                          <span className="shrink-0 whitespace-nowrap tabular-nums">{money(l.msrp)}</span>
+                        </div>
+                      ))}
+                    {pairedBolster ? (
+                      <div className="mb-1 flex justify-between gap-4 text-sm">
+                        <span className="min-w-0 text-muted-foreground">{pairedBolster.label}</span>
+                        <span className="shrink-0 whitespace-nowrap tabular-nums">
+                          {pairedBolster.ballpark != null
+                            ? `${pairedBolster.currency} ${pairedBolster.ballpark.toFixed(2)}`
+                            : "Not available"}
+                        </span>
+                      </div>
+                    ) : null}
+                    {pillowTotal != null && (
+                      <HoldShippingTotalRow
+                        option={selectedShippingOption}
+                        goodsSubtotal={basePrice + addonTotal}
+                      />
+                    )}
+                    <div className="mb-3 flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)"}
+                      </span>
+                      <span className="font-medium tabular-nums">
+                        {orderTotal != null
+                          ? money(orderTotal)
+                          : shopLoading || restoringHoldCancel
+                            ? "…"
+                            : "Not available"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {!quoteBlocked &&
+                      serviceLines.map((l) => (
+                        <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
+                          <span className="min-w-0 text-muted-foreground">{l.label}</span>
+                          <span className="shrink-0 whitespace-nowrap tabular-nums">{`${currency} ${l.msrp.toFixed(2)}`}</span>
+                        </div>
+                      ))}
+                    {/* A Paired build's step 1 has no shipping yet: it is chosen at step 3. */}
+                    {!quoteBlocked && phase !== "customize" && (
+                      <HoldShippingTotalRow
+                        option={selectedShippingOption}
+                        goodsSubtotal={basePrice + addonTotal}
+                      />
+                    )}
+                    <div className="mb-3 flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {shippingAmount == null || phase === "customize"
+                          ? "Ballpark (before shipping/tax)"
+                          : "Total (before tax)"}
+                      </span>
+                      <span className="font-medium tabular-nums">
+                        {quoteBlocked
+                          ? "Not available"
+                          : `${currency} ${(basePrice + addonTotal + serviceTotal + (phase === "customize" ? 0 : (shippingAmount ?? 0))).toFixed(2)}`}
+                      </span>
+                    </div>
+                  </>
                 )}
-                <div className="mb-3 flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)"}
-                  </span>
-                  <span className="font-medium tabular-nums">
-                    {quoteBlocked
-                      ? "Not available"
-                      : `${currency} ${(basePrice + addonTotal + serviceTotal + (shippingAmount ?? 0)).toFixed(2)}`}
-                  </span>
-                </div>
                 <ConfiguratorStepActions
                   mobile={isMobile}
                   slot={mobileActionsSlot}
@@ -3251,11 +3624,11 @@ export function MpConfigClient({
                     <ArrowRight className="size-4" />
                   </Button>
                 </ConfiguratorStepActions>
-                {pairedStepper ? (
+                {phase === "customize" && !pairedChoice ? (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => void handleAuthorizeHold()}
+                    onClick={() => handleSkipMbolster(pairedPillow)}
                     disabled={continueBlocked}
                     className="mt-2 w-full text-muted-foreground"
                   >

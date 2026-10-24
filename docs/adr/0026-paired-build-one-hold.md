@@ -75,9 +75,13 @@ Everything downstream of the hold assumes one Result per PaymentIntent:
   the card still checks the full amount if the companion is deleted before Checkout completes.
 - v1 creates Paired builds only on the card path (or with holds switched off), never from an
   **Assisted customisation**.
-- Step 2 is the Mbolster configurator itself, in paired mode. The Mpillow preview hands over its
-  finished hold body (`sessionStorage`, `mp_paired_build_handoff`). The Mbolster page asks only for
-  height, since sleep position carries over and contact and shipping ride with the Mpillow. It then
-  shows its own customisation page: case and add-ons online, plus the **X-ray editor** under **Staff
-  assist mode**, so a Staff mix for the companion goes in with the same hold. Skip, on either page,
-  holds the Mpillow alone.
+- The stepper customises both builds before it asks for anything else: **1 Mpillow · 2 Mbolster
+  (optional) · 3 Details · 4 Review** (owner, 2026-10-23). Step 2 is the Mbolster configurator
+  itself, in paired mode, reached through a `sessionStorage` hand-off (`mp_paired_build_handoff`).
+  It asks only for height, since sleep position carries over, then shows its own customisation
+  page: case and add-ons online, plus the **X-ray editor** under **Staff assist mode**, so a Staff
+  mix for the companion goes in with the same hold. Add or Skip hands its answer back to the
+  Mpillow page, which owns steps 3 and 4 because a pair's contact, address and shipping are the
+  anchor's: contact and shipping (quoted for both boxes), then a summary of both builds, delivery
+  and contact, each with its way back to change it. The one hold is sent from that summary. Skip,
+  on either page, goes on to step 3 without the Mbolster.

@@ -404,8 +404,8 @@ function ResultStatusPage() {
     }
   };
 
-  // Back from a completed Checkout: the Paired build hand-off (contact, address,
-  // the Result token) has done its job and must not linger on a shared device.
+  // Back from a completed Checkout: the Paired build hand-off (both builds'
+  // answers) has done its job and must not linger on a shared device.
   useEffect(() => {
     if (!sessionId) return;
     try {
