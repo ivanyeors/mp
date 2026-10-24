@@ -465,7 +465,7 @@ export const enUS: Messages = {
         errorSlotTaken: "That time was just taken. Please pick another.",
         errorGeneric: "Something went wrong. Please try again.",
         measurementFeeNote:
-          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — paid with your pillow, not today.",
+          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — get it customised, adjusted and bring home immediately.",
       },
       readjust: {
         signInTitle: "Sign in to book a re-adjustment",

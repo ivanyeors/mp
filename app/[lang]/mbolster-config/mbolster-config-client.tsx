@@ -1974,14 +1974,14 @@ export function MbolsterConfigClient({
                 fee, so the visit is simply offered. */}
             {!staffAssist && !measuredByStaff && !partnerAssisted ? (
               <p className="text-sm text-muted-foreground">
-                Prefer our team to measure you?{" "}
+                Prefer our team to measure you? Get it customised, adjusted and bring home immediately — no
+                measurement fee for Mbolster.{" "}
                 <Link
                   href={to("/appointments?type=customisation")}
                   className="font-medium text-foreground underline underline-offset-4"
                 >
-                  Book a studio visit
-                </Link>{" "}
-                — no measurement fee for Mbolster.
+                  Book here
+                </Link>
               </p>
             ) : null}
           </div>

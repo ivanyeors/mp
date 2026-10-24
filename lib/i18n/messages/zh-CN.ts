@@ -430,7 +430,7 @@ export const zhCN: Messages = {
         errorSlotTaken: "该时间刚刚被预订，请选择其他时间。",
         errorGeneric: "出错了，请重试。",
         measurementFeeNote:
-          "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——随枕头一并支付，今天无需付款。",
+          "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——现场为你定制、调整，当天即可带回家。",
       },
       readjust: {
         signInTitle: "登录以预约复调",
