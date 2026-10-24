@@ -15,16 +15,16 @@ A customer who opens the configurator and would rather not measure themselves ca
 
 - **Where:** a secondary link on the `welcome` and `what-to-expect` steps. The step lists are in `lib/mp-config/flow-variant.ts:16-35` and `app/[lang]/mbolster-config/mbolster-config-client.tsx:199-201`. The what-to-expect copy is at `mp-config-client.tsx:3132-3138`.
 - **Copy (en-US), with the price read from `service_prices`:**
-  - Premium (`/mp-config`): *"Prefer our team to measure you? Book a studio measurement — $50, paid with your pillow."*
+  - Premium (`/mp-config`): *"Prefer our team to measure you? Get it customised, adjusted and bring home immediately for SGD 50.00. Book here"* (never "paid with your pillow" — it reads as if the pillow is the payment; #308)
   - Basic (`/mp-basic`): the same, with the Basic fee.
-  - Mbolster: the same, with the Basic fee.
+  - Mbolster: no fee — *"Prefer our team to measure you? Get it customised, adjusted and bring home immediately — no measurement fee for Mbolster. Book here"*
 - **Link:** `/[lang]/appointments?type=customisation`.
 - **Hidden** under **Staff assist mode** (they are already being measured), on an **Assist link** session, and on a **Partner-assisted** run.
 - **Prices:** server-rendered from the page (`app/[lang]/mp-config/page.tsx`) through `loadServicePrices`, never from a client constant.
 
 ### Booking page — customisation type
 
-On `/[lang]/appointments?type=customisation` (`components/slide-in-pages/booking-flow.tsx`), add one line above the form: *"Measurement service: $50 for Premium Mpillow, $30 for Basic Mpillow and Mbolster. Paid with your pillow, not today."* Prices come from `service_prices`. No payment step is added to customisation booking.
+On `/[lang]/appointments?type=customisation` (`components/slide-in-pages/booking-flow.tsx`), add one line above the form: *"Measurement service: SGD 50.00 for Premium Mpillow, SGD 30.00 for Basic Mpillow, none for Mbolster — get it customised, adjusted and bring home immediately."* Prices come from `service_prices`. No payment step is added to customisation booking.
 
 ### i18n
 
