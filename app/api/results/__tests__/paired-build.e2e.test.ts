@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
@@ -411,6 +412,7 @@ async function pairAssigned() {
 const errorSpy = vi.spyOn(console, "error");
 
 beforeEach(() => {
+  resetRateLimits();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(T0);
   seed();

@@ -52,6 +52,8 @@ vi.mock("@/lib/supabase/server", async () => {
           return q;
         },
         async rpc(fn: string, args: Record<string, unknown>) {
+          // The shared rate limiter, not a points call.
+          if (fn === "rate_limit_hit") return { data: false, error: null };
           h.log.push(`rpc:${fn}`);
           h.rpcCalls.push({ fn, args });
           if (fn === "points_balance") {

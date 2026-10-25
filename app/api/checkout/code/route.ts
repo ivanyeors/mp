@@ -61,7 +61,7 @@ const CheckCodeSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (checkoutCodeRateLimited(req)) {
+  if (await checkoutCodeRateLimited(req)) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE }, { status: 429 });
   }
 

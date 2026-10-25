@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -128,13 +129,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  // Every call creates an Order and a Stripe Checkout Session.
+  const limited = await tooManyRequests([
+    { bucket: "checkout-ip", key: clientIp(req), windowMs: 10 * 60_000, max: 30 },
+  ]);
+  if (limited) return limited;
+
   const { email, phone, shipping_address, shipping_method_id, code, coupon_code, referral_code, items } =
     parsed.data;
   const pointsRequested = parsed.data.points != null && parsed.data.points !== 0;
 
   // Every code is looked up below, so checkout is as good an oracle for
   // guessing codes as the check endpoint: it draws on the same meter.
-  if ((code || coupon_code?.trim()) && checkoutCodeRateLimited(req)) {
+  if ((code || coupon_code?.trim()) && (await checkoutCodeRateLimited(req))) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE }, { status: 429 });
   }
 

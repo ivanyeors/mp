@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { z } from "zod";
 import { createHash, randomUUID } from "crypto";
 import { secretMatches } from "@/lib/auth/secret";
@@ -305,9 +306,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   const input = parsed.data;
+  // A hold creates a Stripe Checkout Session, posts to the Staff Telegram group
+  // and emails the address given, all before the card is authorised.
+  const limited = await tooManyRequests([
+    { bucket: "hold-ip", key: clientIp(req), windowMs: 60 * 60_000, max: 20 },
+    { bucket: "hold-email", key: input.email.trim().toLowerCase(), windowMs: 60 * 60_000, max: 10 },
+  ]);
+  if (limited) return limited;
   // A code is checked against the database below, so a hold is as good an
   // oracle for guessing codes as the check endpoint: it draws on the same meter.
-  if (input.code && checkoutCodeRateLimited(req)) {
+  if (input.code && (await checkoutCodeRateLimited(req))) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE, field: "code" }, { status: 429 });
   }
   const admin = supabaseAdmin();

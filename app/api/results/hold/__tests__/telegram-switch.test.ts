@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
@@ -215,6 +216,7 @@ const todaysText = (origin: string, paired: boolean) =>
 const originOf = (body: { statusUrl: string }) => new URL(body.statusUrl).origin;
 
 beforeEach(() => {
+  resetRateLimits();
   vi.clearAllMocks();
   h.total = 200;
   h.rows.clear();

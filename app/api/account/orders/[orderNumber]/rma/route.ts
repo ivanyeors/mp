@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { toWebUrl } from "@/lib/format/web-url";
 import { z } from "zod";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
@@ -26,7 +27,8 @@ const BodySchema = z.object({
   resolution: z.enum(["refund", "exchange", "replacement"]),
   reason: z.string().max(1000).optional(),
   customer_note: z.string().max(2000).optional(),
-  photo_urls: z.array(z.string().url()).max(10).optional(),
+  // Shown to Staff as links, so only web links: never javascript: or data:.
+  photo_urls: z.array(z.string().url().refine((url) => toWebUrl(url) !== null, "Photo links must start with https://")).max(10).optional(),
 });
 
 /** Slice 03: signed-in customer creates an item-level RMA on a delivered order. */

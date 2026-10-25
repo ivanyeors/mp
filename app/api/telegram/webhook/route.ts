@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { secretMatches } from '@/lib/auth/secret'
+import { MP_CONFIG_TELEGRAM_CHAT_ID } from '@/lib/telegram/notify'
 import { handleReviewUpdate, isReviewUpdate } from '@/lib/reviews/telegram-handler'
 import { handleInboxUpdate, isInboxUpdate } from '@/lib/social-inbox/telegram-handler'
 import { handleChatReplyUpdate, isChatReplyCandidate } from '@/lib/support/chat-telegram'
@@ -34,8 +35,12 @@ function getEnv(name: string): string {
   return val
 }
 
+/**
+ * Chats allowed to run the inventory commands. Unset means the Staff group
+ * only, never everyone: the bot answers anyone who finds its username.
+ */
 function parseAllowedChats(): Set<number> {
-  const raw = process.env.TELEGRAM_ALLOWED_CHATS || ''
+  const raw = process.env.TELEGRAM_ALLOWED_CHATS || String(MP_CONFIG_TELEGRAM_CHAT_ID)
   const ids = raw
     .split(',')
     .map(s => s.trim())
@@ -562,7 +567,7 @@ export async function POST(req: NextRequest) {
 
     const effectiveChatId = typeof cbChatId === 'number' ? cbChatId : msgChatId
     if (!effectiveChatId) return NextResponse.json({ ok: true }, { status: 200 })
-    if (allowed.size > 0 && !allowed.has(effectiveChatId)) {
+    if (!allowed.has(effectiveChatId)) {
       console.warn('Telegram webhook rejected: chat not in TELEGRAM_ALLOWED_CHATS', effectiveChatId)
       return NextResponse.json({ ok: true }, { status: 200 })
     }

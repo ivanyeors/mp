@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { secretMatches } from "@/lib/auth/secret";
+import { ORDER_WITH_ITEMS, type CustomerOrder } from "@/lib/shop/customer-orders";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { OrderItem } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,10 @@ export const runtime = "nodejs";
  * page. Orders are keyed by their (semi-guessable) order number, so a matching
  * Stripe `session_id` is required as a capability token to prevent enumeration
  * of other shoppers' orders.
+ *
+ * It returns the customer's own columns only (ORDER_WITH_ITEMS): the service
+ * role would otherwise hand Staff notes and cost snapshots to anyone holding
+ * the success URL, which sits in browser history.
  */
 export async function GET(
   req: Request,
@@ -26,24 +31,20 @@ export async function GET(
 
   const { data, error } = await admin
     .from("orders")
-    .select("*, order_items(*)")
+    .select(ORDER_WITH_ITEMS)
     .eq("order_number", orderNumber)
     .maybeSingle();
 
-  if (error || !data) {
+  const order = data as unknown as CustomerOrder | null;
+  if (error || !order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
   // Capability check: the session id must match the order's Stripe session.
   // Without a valid session id, do not expose order details.
-  if (!sessionId || data.stripe_session_id !== sessionId) {
+  if (!secretMatches(order.stripe_session_id ?? undefined, sessionId)) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
-
-  const order = {
-    ...data,
-    items: (data.order_items ?? []) as OrderItem[],
-  };
 
   return NextResponse.json({ ok: true, order });
 }

@@ -16,7 +16,7 @@
  */
 import { findActiveCoupon } from "@/lib/ecommerce/discounts";
 import { getPartnerByReferralCode, type ReferralPartner } from "@/lib/referrals";
-import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { rateLimitExceeded, clientIp } from "@/lib/rate-limit";
 import type { Coupon } from "@/lib/types/ecommerce";
 import { CHECKOUT_CODE_MAX_LENGTH } from "./shared";
 
@@ -54,11 +54,12 @@ export async function resolveCheckoutCode(raw: string | null | undefined): Promi
  * or twice and the page re-checks it as the order changes; 60 in ten minutes is
  * far above that.
  *
- * The limiter is per instance (lib/rate-limit.ts): it slows a guesser, it does
- * not stop a distributed one. Codes worth protecting carry a usage limit.
+ * Counted in the shared store (lib/rate-limit.ts), so the allowance holds
+ * across instances. It still keys on IP: codes worth protecting carry a usage
+ * limit too.
  */
-export function checkoutCodeRateLimited(req: Request): boolean {
-  return isRateLimited({
+export function checkoutCodeRateLimited(req: Request): Promise<boolean> {
+  return rateLimitExceeded({
     bucket: "checkout-code",
     key: clientIp(req),
     windowMs: 10 * 60 * 1000,

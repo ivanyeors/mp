@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
@@ -178,6 +179,7 @@ const post = (extra: Record<string, unknown> = {}) =>
   );
 
 beforeEach(() => {
+  resetRateLimits();
   vi.clearAllMocks();
   h.total = 200;
   h.rows.clear();

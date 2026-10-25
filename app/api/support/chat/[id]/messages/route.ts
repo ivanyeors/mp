@@ -11,7 +11,7 @@ const MessageSchema = z.object({
 
 /** POST: the customer's next message, stored and posted to the staff Telegram group. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const limited = rateLimited(req, "support-chat-message", 30, 60_000);
+  const limited = await rateLimited(req, "support-chat-message", 30, 60_000);
   if (limited) return limited;
   const { id } = await params;
   const parsed = MessageSchema.safeParse(await req.json().catch(() => null));

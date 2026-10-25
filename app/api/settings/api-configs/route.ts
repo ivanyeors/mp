@@ -3,7 +3,7 @@ import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
-import { readApiConfigs } from "@/lib/settings/api-configs";
+import { keepStoredSecrets, readApiConfigs, toClientApiConfig, type ApiConfigRow } from "@/lib/settings/api-configs";
 
 export const runtime = "nodejs";
 
@@ -32,7 +32,7 @@ export async function GET() {
   if (denied) return denied;
 
   try {
-    return NextResponse.json(await readApiConfigs());
+    return NextResponse.json((await readApiConfigs()).map(toClientApiConfig));
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   invalidateTag("api-configs");
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(toClientApiConfig(data as ApiConfigRow), { status: 201 });
 }
 
 /* ------------------------------------------------------------------ */
@@ -79,8 +79,11 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { id, ...updates } = parsed.data;
+  const { id, ...edits } = parsed.data;
   const admin = supabaseAdmin();
+  const { data: existing } = await admin.from("api_configs").select("api_key, config").eq("id", id).maybeSingle();
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const updates = keepStoredSecrets(existing as Pick<ApiConfigRow, "api_key" | "config">, edits);
   const { data, error } = await admin
     .from("api_configs")
     .update(updates)
@@ -90,7 +93,7 @@ export async function PATCH(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   invalidateTag("api-configs");
-  return NextResponse.json(data);
+  return NextResponse.json(toClientApiConfig(data as ApiConfigRow));
 }
 
 /* ------------------------------------------------------------------ */

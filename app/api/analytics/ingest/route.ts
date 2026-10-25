@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { resolveCountryFromHeaders } from "@/lib/analytics/journey/country";
 import { parseIngestBody, persistJourneyIngest } from "@/lib/analytics/journey/ingest";
+import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 /** First-party journey beacon ingest. Always collects; Admin paths rejected. */
 export async function POST(req: Request) {
+  // Beacons are frequent and cheap, so the per-instance count is enough to
+  // stop one client filling the journey tables.
+  if (isRateLimited({ bucket: "analytics-ingest", key: clientIp(req), windowMs: 60_000, max: 120 })) {
+    return new NextResponse(null, { status: 429 });
+  }
   let raw: unknown;
   try {
     // sendBeacon often delivers text/plain; accept JSON text either way
