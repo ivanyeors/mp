@@ -48,7 +48,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, customer_email, access_token, order_id, coupon_code`,
+      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, payment_intent_id, final_amount, customer_email, access_token, order_id, coupon_code`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -126,7 +126,8 @@ export async function POST(
       tax: build.pricing.tax,
       total: build.pricing.total,
       currency: row.currency ?? "SGD",
-      authorized: row.authorized_amount != null ? Number(row.authorized_amount) : null,
+      // A quote with no card behind it is no hold: the whole total is due.
+      authorized: row.authorized_amount != null && row.payment_intent_id ? Number(row.authorized_amount) : null,
     },
   };
 

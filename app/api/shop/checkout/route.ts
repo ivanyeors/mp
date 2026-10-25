@@ -12,7 +12,7 @@ import {
   resolveCheckoutCode,
 } from "@/lib/checkout-code";
 import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
-import { getPartnerByReferralCode } from "@/lib/referrals";
+import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
 import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance";
@@ -48,7 +48,7 @@ import {
 } from "@/lib/points/spend";
 import type { BolsterVariant, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
-import { isSelfCollect } from "@/lib/shipping/self-collect";
+import { isSelfCollect, methodDeliversTo } from "@/lib/shipping/self-collect";
 
 type CustomizationConfigRow = {
   config_lines: unknown[];
@@ -545,16 +545,21 @@ export async function POST(req: Request) {
   const normalizedEmail = email.toLowerCase().trim();
   const existingCustomer = await findCustomerByEmail(normalizedEmail);
 
+  // One code per order (ADR 0033). With `code` present the legacy fields are
+  // ignored, so a referral in `code` cannot stack with a discount in
+  // `coupon_code`; with only the legacy fields, a coupon wins over a referral.
+  const codeGiven = Boolean(code?.trim());
+  const legacyCouponCode = codeGiven ? "" : (coupon_code?.trim() ?? "");
   const typedCode = await resolveCheckoutCode(code);
   const coupon =
     typedCode?.kind === "coupon"
       ? typedCode.coupon
-      : coupon_code?.trim()
-        ? await findActiveCoupon(coupon_code)
+      : legacyCouponCode
+        ? await findActiveCoupon(legacyCouponCode)
         : null;
   // A stale tab's explicit coupon_code is refused when unknown, as it always
   // was; a `code` nobody recognises is simply not applied.
-  if (!coupon && coupon_code?.trim()) {
+  if (!coupon && legacyCouponCode) {
     return NextResponse.json({ error: "This code isn't valid" }, { status: 400 });
   }
 
@@ -603,11 +608,7 @@ export async function POST(req: Request) {
   }
 
   const shippingMethod = shippingMethodRow as ShippingMethod;
-  if (
-    Array.isArray(shippingMethod.countries) &&
-    shippingMethod.countries.length > 0 &&
-    !shippingMethod.countries.includes(shipping_address.country.toUpperCase())
-  ) {
+  if (!methodDeliversTo(shippingMethod, shipping_address.country)) {
     return NextResponse.json(
       { error: "This shipping method does not deliver to the selected country" },
       { status: 400 },
@@ -661,12 +662,20 @@ export async function POST(req: Request) {
 
   // Referral attribution (#74): resolved BEFORE tax so a self-purchase discount
   // (#82) reduces the taxable base. Invalid code silently attributes nothing.
-  const referralPartner =
+  const codedPartner =
     typedCode?.kind === "referral"
       ? typedCode.partner
-      : referral_code
+      : !codeGiven && !coupon && referral_code
         ? await getPartnerByReferralCode(referral_code)
         : null;
+  // A partner's own code on their own purchase attributes nothing: no
+  // commission, no milestone progress. They get capped Partner pricing below.
+  const sessionPartner = codedPartner ? await getPartnerContext() : null;
+  const referralPartner =
+    codedPartner &&
+    !(await isSelfReferral(codedPartner.id, { sessionPartnerId: sessionPartner?.partnerId, email: normalizedEmail }))
+      ? codedPartner
+      : null;
 
   // Partner self-purchase (#82): a signed-in APPROVED partner buying pillows/
   // bolsters in their OWN account, and NOT via a referral attribution. It is
@@ -680,7 +689,8 @@ export async function POST(req: Request) {
   let selfPurchasePartnerId: string | null = null;
   let selfPurchaseUnits = 0;
   // Read once: self-purchase pricing and the points refusal ask the same question.
-  const partnerCtx = !referralPartner || pointsRequested ? await getPartnerContext() : null;
+  // Already read when a code named a partner; otherwise read it now.
+  const partnerCtx = codedPartner ? sessionPartner : await getPartnerContext();
   if (!referralPartner) {
     if (isPartnerActive(partnerCtx)) {
       const allowance = await loadSelfPurchaseAllowance(partnerCtx.partnerId);

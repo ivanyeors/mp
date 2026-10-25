@@ -166,6 +166,35 @@ async function fetchCustomerCouponUseCount(
   return count ?? 0;
 }
 
+/** How long a Stripe Checkout Session stays payable (its default lifetime). */
+const CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Shop orders carrying this coupon whose Checkout is still open: unpaid,
+ * pending, and younger than a Checkout Session. Each can still be paid, so
+ * each counts against the limit; otherwise N checkouts opened before paying
+ * any all pass a usage_limit = 1 check.
+ */
+async function fetchPendingOrderCouponUseCount(
+  couponId: string,
+  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId"> = {},
+): Promise<number> {
+  let query = supabaseAdmin()
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("coupon_id", couponId)
+    .eq("status", "pending")
+    .is("paid_at", null)
+    .gte("created_at", new Date(Date.now() - CHECKOUT_LIFETIME_MS).toISOString());
+  if (options.customerId) {
+    query = query.eq("customer_id", options.customerId);
+  } else if (options.customerEmail) {
+    query = query.ilike("email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
+  }
+  const { count } = await query;
+  return count ?? 0;
+}
+
 /**
  * Customisations carrying this coupon that have not become an Order yet. Only
  * Results that really entered the money path count: a card authorised
@@ -248,16 +277,17 @@ export async function checkCoupon(
   }
 
   if (coupon.usage_limit !== null) {
-    const held = await fetchLiveResultCouponUseCount(coupon.id, {
-      excludeResultIds: options?.excludeResultIds,
-    });
-    if (coupon.usage_count + held >= coupon.usage_limit) {
+    const [held, pending] = await Promise.all([
+      fetchLiveResultCouponUseCount(coupon.id, { excludeResultIds: options?.excludeResultIds }),
+      fetchPendingOrderCouponUseCount(coupon.id),
+    ]);
+    if (coupon.usage_count + held + pending >= coupon.usage_limit) {
       return { valid: false, error: "This code has been fully redeemed" };
     }
   }
 
   if (coupon.per_customer_limit !== null && (options?.customerEmail || options?.customerId)) {
-    const [paid, held] = await Promise.all([
+    const [paid, held, pending] = await Promise.all([
       fetchCustomerCouponUseCount(coupon.id, options),
       options.customerEmail
         ? fetchLiveResultCouponUseCount(coupon.id, {
@@ -265,8 +295,9 @@ export async function checkCoupon(
             excludeResultIds: options.excludeResultIds,
           })
         : Promise.resolve(0),
+      fetchPendingOrderCouponUseCount(coupon.id, options),
     ]);
-    if (exceedsPerCustomerLimit(paid + held, coupon.per_customer_limit)) {
+    if (exceedsPerCustomerLimit(paid + held + pending, coupon.per_customer_limit)) {
       return { valid: false, error: "You've already used this code as many times as it allows" };
     }
   }
@@ -293,14 +324,24 @@ export async function checkCoupon(
   return { valid: true, coupon, discount_amount: discountAmount };
 }
 
-export async function incrementCouponUsage(couponId: string) {
+/**
+ * Counts one redemption of a paid order's coupon. False means the coupon was
+ * already used up (its limit was reached by orders paid while this one sat in
+ * Checkout): the caller flags the order. Never pushes the count past the limit.
+ */
+export async function incrementCouponUsage(couponId: string): Promise<boolean> {
   const admin = supabaseAdmin();
-  const { error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
-  if (!error) return;
+  const { data, error } = await admin.rpc("increment_coupon_usage_capped", { p_coupon_id: couponId });
+  if (!error) return data === true;
 
-  // ponytail: fallback when RPC not yet migrated — read-modify-write
-  const { data } = await admin.from("coupons").select("usage_count").eq("id", couponId).single();
-  if (data) {
-    await admin.from("coupons").update({ usage_count: data.usage_count + 1 }).eq("id", couponId);
-  }
+  // Until migration 20261025130000 is applied: the old unconditional count.
+  const { error: legacyError } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
+  if (legacyError) throw new Error(`Coupon usage not counted for ${couponId}: ${legacyError.message}`);
+  return true;
+}
+
+/** Takes one redemption back on a full refund, never below zero, atomically. */
+export async function decrementCouponUsage(couponId: string): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("decrement_coupon_usage", { p_coupon_id: couponId });
+  if (error) throw new Error(`Coupon usage not decremented for ${couponId}: ${error.message}`);
 }

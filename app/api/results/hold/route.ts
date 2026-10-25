@@ -45,7 +45,8 @@ import {
   isWithinReferralWindow,
   resolveAttribution,
 } from "@/lib/referrals/attribution";
-import { getPartnerByReferralCode } from "@/lib/referrals";
+import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
+import { getPartnerContext } from "@/lib/auth/partner";
 import {
   CHECKOUT_CODE_MAX_LENGTH,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
@@ -873,10 +874,12 @@ export async function POST(req: Request) {
   const assistPartner = input.partnerAssistCode
     ? await getPartnerByReferralCode(input.partnerAssistCode)
     : null;
+  // One code per order (ADR 0033): the legacy referralCode only counts when
+  // the code field is empty, so it cannot stack with a discount code.
   const typedPartner =
     typedCode?.kind === "referral"
       ? typedCode.partner
-      : input.referralCode
+      : !input.code?.trim() && input.referralCode
         ? await getPartnerByReferralCode(input.referralCode)
         : null;
   let linkPartnerId: string | null = null;
@@ -899,10 +902,16 @@ export async function POST(req: Request) {
       }
     }
   }
+  // A partner's own code, assist link or referral link on their own build
+  // attributes nothing: no commission or milestone progress at Accept.
+  const sessionPartnerId =
+    assistPartner || typedPartner || linkPartnerId ? (await getPartnerContext())?.partnerId : null;
+  const notSelf = async (partnerId: string | null | undefined) =>
+    partnerId && !(await isSelfReferral(partnerId, { sessionPartnerId, email: input.email })) ? partnerId : null;
   const attribution = resolveAttribution({
-    assistPartnerId: assistPartner?.id ?? null,
-    typedPartnerId: typedPartner?.id ?? null,
-    linkPartnerId,
+    assistPartnerId: await notSelf(assistPartner?.id),
+    typedPartnerId: await notSelf(typedPartner?.id),
+    linkPartnerId: await notSelf(linkPartnerId),
   });
   const attributedRefCode =
     attribution.source === "assist"

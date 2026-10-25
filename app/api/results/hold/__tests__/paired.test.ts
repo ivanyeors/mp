@@ -115,7 +115,10 @@ vi.mock("@/lib/configurator/pre-order-persist", () => ({
   loadPreOrderTriggerAtHold: vi.fn().mockResolvedValue(null),
   preOrderFlagForResult: () => false,
 }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/referrals", () => ({
+  getPartnerByReferralCode: vi.fn().mockResolvedValue(null),
+  isSelfReferral: vi.fn().mockResolvedValue(false),
+}));
 vi.mock("@/lib/checkout-code", () => ({
   CHECKOUT_CODE_MAX_LENGTH: 64,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE: "Too many code attempts.",

@@ -127,7 +127,10 @@ vi.mock("@/lib/configurator/pre-order-persist", () => ({
   loadPreOrderTriggerAtHold: vi.fn().mockResolvedValue(null),
   preOrderFlagForResult: () => false,
 }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/referrals", () => ({
+  getPartnerByReferralCode: vi.fn().mockResolvedValue(null),
+  isSelfReferral: vi.fn().mockResolvedValue(false),
+}));
 vi.mock("@/lib/rules-engine", () => ({
   assertPreStripeRouteResolved: () => ({ ok: true }),
   inputsFromBolsterHeight: vi.fn(),

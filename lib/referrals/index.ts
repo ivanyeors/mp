@@ -32,6 +32,34 @@ export async function getPartnerByReferralCode(
   return data as ReferralPartner;
 }
 
+/**
+ * Is `partnerId` the buyer's own partner account? A partner never earns
+ * commission or milestone progress on their own purchase (prod hardening slice
+ * 09): recognised by the signed-in partner session, or by the checkout email
+ * matching the partner's sign-in email or verified backup email. A lookup
+ * failure counts as self — attributing nothing is the safe side.
+ */
+export async function isSelfReferral(
+  partnerId: string,
+  buyer: { sessionPartnerId?: string | null; email?: string | null },
+): Promise<boolean> {
+  if (buyer.sessionPartnerId && buyer.sessionPartnerId === partnerId) return true;
+  const email = (buyer.email ?? "").trim().toLowerCase();
+  if (!email) return false;
+  const { data, error } = await supabaseAdmin()
+    .from("partner_users")
+    .select("email, backup_email, backup_email_verified")
+    .eq("partner_id", partnerId);
+  if (error) {
+    console.error(`[referrals] Could not check self-referral for partner ${partnerId}:`, error.message);
+    return true;
+  }
+  const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  return (data ?? []).some(
+    (u) => norm(u.email) === email || (u.backup_email_verified === true && norm(u.backup_email) === email),
+  );
+}
+
 /** Co-brand + assist context for a partner-assisted configurator run (#78). */
 export type PartnerAssistContext = {
   partnerId: string;

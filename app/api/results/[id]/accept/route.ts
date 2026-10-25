@@ -30,6 +30,7 @@ import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { incrementCouponUsage } from "@/lib/ecommerce/discounts";
+import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -192,11 +193,17 @@ export async function POST(
   }
 
   // One intent authorised the whole pair; each row quotes only its own build.
-  const authorized = isAnchor(row)
-    ? pairAuthorized(companion ? [row, companion] : [row])
-    : row.authorized_amount != null
-      ? Number(row.authorized_amount)
-      : null;
+  // No intent means no card was ever authorised (an abandoned or refused hold
+  // Checkout), whatever authorized_amount says: nothing can be captured, so the
+  // whole total is a Balance payment. Crediting the quote here created an
+  // Order marked paid in full for only the shortfall.
+  const authorized = !row.payment_intent_id
+    ? null
+    : isAnchor(row)
+      ? pairAuthorized(companion ? [row, companion] : [row])
+      : row.authorized_amount != null
+        ? Number(row.authorized_amount)
+        : null;
   const anchorFinal =
     row.final_amount != null ? Number(row.final_amount) : build.pricing.total;
   const mateFinal =
@@ -650,7 +657,18 @@ export async function POST(
   // returns before here. Best-effort — the money is captured.
   if (couponHolder?.coupon_id) {
     try {
-      await incrementCouponUsage(couponHolder.coupon_id as string);
+      const counted = await incrementCouponUsage(couponHolder.coupon_id as string);
+      if (!counted) {
+        // Redeemed after the code was used up: the money is captured, so a
+        // human decides whether to recover the discount.
+        await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
+        await addOrderTimelineEvent(
+          order.id,
+          "coupon_over_limit",
+          "This order used a coupon that had already reached its usage limit.",
+          { coupon_id: couponHolder.coupon_id },
+        );
+      }
     } catch (e) {
       console.error("Coupon usage increment failed after capture", e);
     }

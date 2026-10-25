@@ -36,6 +36,11 @@ export function settleResult(input: {
   topUpPaid: number;
   topUpIntentId: string | null;
 }): Settlement {
+  // A capture with no intent is money that never moved; ledgering it as a
+  // charge would mark the Order paid for it.
+  if (input.holdCaptureAmount > 0 && !input.holdIntentId) {
+    throw new Error("A hold capture needs the payment intent it captured");
+  }
   const charges: SettlementCharge[] = [];
   if (input.holdCaptureAmount > 0) {
     charges.push({

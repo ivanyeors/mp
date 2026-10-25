@@ -21,6 +21,7 @@ import {
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import { clawbackPointsForRefund } from "@/lib/points/earn";
 import { releasePoints } from "@/lib/points/spend";
+import { sendTelegram } from "@/lib/telegram/notify";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -28,8 +29,8 @@ export const runtime = "nodejs";
 
 /**
  * Thrown by critical webhook steps (order confirmation, inventory deduction).
- * Critical failures are dead-lettered and answered with HTTP 500 so Stripe
- * retries. Non-critical failures are logged and answered with 200.
+ * Every unexpected failure, critical or not, is dead-lettered and answered with
+ * HTTP 500 so Stripe retries; each step is idempotent, so a retry is safe.
  */
 class CriticalWebhookError extends Error {
   constructor(message: string, public override cause?: unknown) {
@@ -93,6 +94,38 @@ async function recordWebhookFailure(
   }
 }
 
+/**
+ * Statuses an unpaid Order may be confirmed from. `payment_failed` stays for
+ * Orders a declined attempt marked before attempts stopped changing the status.
+ */
+const CONFIRMABLE_STATUSES = new Set(["pending", "payment_failed"]);
+
+/** True when the points this Order reserved were given back. */
+async function pointsWereReleased(admin: SupabaseClient, orderId: string): Promise<boolean> {
+  const { data, error } = await admin
+    .from("points_ledger")
+    .select("id")
+    .eq("order_id", orderId)
+    .eq("kind", "spend_release")
+    .limit(1);
+  if (error) throw new Error(`Points ledger read failed for ${orderId}: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+/** Puts an Order in front of Staff (needs_attention + a timeline entry). */
+async function flagOrder(
+  admin: SupabaseClient,
+  orderId: string,
+  eventType: string,
+  detail: string,
+  metadata: Record<string, unknown>,
+) {
+  const { error } = await admin.from("orders").update({ needs_attention: true }).eq("id", orderId);
+  if (error) throw new Error(`Could not flag order ${orderId}: ${error.message}`);
+  console.error(`[stripe/webhook] ${detail}`);
+  await addOrderTimelineEvent(orderId, eventType, detail, metadata);
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -145,7 +178,7 @@ export async function POST(req: Request) {
           // twice, and the Results queue can surface it as stuck meanwhile.
           if (session.metadata?.purpose === "result_topup") {
             if (paymentIntent && session.payment_status === "paid") {
-              await admin
+              const { data: stamped, error: stampError } = await admin
                 .from("mp_config_responses")
                 .update({
                   topup_payment_intent_id: paymentIntent,
@@ -154,7 +187,16 @@ export async function POST(req: Request) {
                 .eq("id", resultId)
                 // `accepted` too: accept holds that status while it settles, and a
                 // stamp dropped there is lost if that attempt fails and hands back.
-                .in("status", ["assigned", "accepted"]);
+                .in("status", ["assigned", "accepted"])
+                .select("id");
+              if (stampError) throw new Error(`Top-up stamp failed for Result ${resultId}: ${stampError.message}`);
+              // The Result moved on (cancelled, expired) while its Checkout was
+              // open: the money is in with nothing to settle it. A human refunds.
+              if (!stamped?.length) {
+                const detail = `Balance payment ${paymentIntent} for Result ${resultId} arrived after the Result left assigned/accepted. Refund or settle it by hand.`;
+                console.error(`[stripe/webhook] ${detail}`);
+                await recordWebhookFailure(admin, event, detail);
+              }
             }
             break;
           }
@@ -225,14 +267,15 @@ export async function POST(req: Request) {
         }
 
         // Fetch order with items
-        const { data: order } = await admin
+        const { data: order, error: orderError } = await admin
           .from("orders")
           .select(
             "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
           )
           .eq("id", orderId)
-          .single();
+          .maybeSingle();
 
+        if (orderError) throw new Error(`Order ${orderId} could not be read: ${orderError.message}`);
         if (!order) break;
 
         const paymentIntent =
@@ -262,10 +305,46 @@ export async function POST(req: Request) {
           break;
         }
 
-        // Step 1 (CRITICAL): Update order to confirmed (idempotent — skip if
-        // already paid). Tax/total are written back from the completed session.
+        // Paid after the Order was closed (Staff cancelled it while its
+        // Checkout was still open). Its points may already be back with the
+        // customer, so it is not fulfilled: the money is recorded and a human
+        // refunds or reinstates it.
+        if (!order.paid_at && !CONFIRMABLE_STATUSES.has(String(order.status))) {
+          if (paymentIntent) {
+            await recordLedgerEntry(admin, orderId, {
+              type: "charge",
+              amount: recon.writeBack.total,
+              currency: order.currency ?? "SGD",
+              stripeObjectId: paymentIntent,
+              metadata: { stripe_session_id: session.id, paid_while: order.status },
+            });
+            await rollupOrderMoney(admin, orderId);
+          }
+          const detail = `Order ${orderId} was paid while ${order.status}. Not fulfilled: refund or reinstate it.`;
+          await flagOrder(admin, orderId, "paid_while_closed", detail, { stripe_session_id: session.id });
+          await recordWebhookFailure(admin, event, detail);
+          break;
+        }
+
+        // Points come off at checkout and are only given back for an unpaid
+        // Order. If they came back before this payment landed, the discount
+        // was paid for with nothing: flag it rather than fulfil it silently.
+        if (!order.paid_at && Number(order.points_spent ?? 0) > 0 && (await pointsWereReleased(admin, orderId))) {
+          await flagOrder(
+            admin,
+            orderId,
+            "points_returned_before_payment",
+            `The ${order.points_spent} points used on this order were returned before it was paid. Recover them or the discount.`,
+            { points_spent: order.points_spent },
+          );
+        }
+
+        // Step 1 (CRITICAL): confirm the Order, claimed atomically: only the
+        // delivery that moves paid_at from null runs the once-only steps below
+        // (coupon count, timeline). Tax/total are written back from the session.
+        let justConfirmed = false;
         if (!order.paid_at) {
-          const { error: confirmError } = await admin
+          const { data: confirmed, error: confirmError } = await admin
             .from("orders")
             .update({
               status: "confirmed",
@@ -275,13 +354,17 @@ export async function POST(req: Request) {
               tax_amount: recon.writeBack.tax_amount,
               total: recon.writeBack.total,
             })
-            .eq("id", orderId);
+            .eq("id", orderId)
+            .is("paid_at", null)
+            .select("id")
+            .maybeSingle();
 
           if (confirmError) {
             throw new CriticalWebhookError(
               `Failed to confirm order ${orderId}: ${confirmError.message}`
             );
           }
+          justConfirmed = Boolean(confirmed);
         }
 
         // Step 1b: Record the captured charge in the money ledger (idempotent on
@@ -423,13 +506,23 @@ export async function POST(req: Request) {
           console.error(`[stripe/webhook] MP config creation failed for order ${orderId}:`, err);
         }
 
-        // Step 4: Increment coupon usage (idempotent — only if order was just confirmed)
-        if (!order.paid_at && order.coupon_id) {
+        // Step 4: Increment coupon usage (once — only the delivery that confirmed)
+        if (justConfirmed && order.coupon_id) {
           const { incrementCouponUsage } = await import("@/lib/ecommerce/discounts");
+          let counted = true;
           try {
-            await incrementCouponUsage(order.coupon_id);
+            counted = await incrementCouponUsage(order.coupon_id);
           } catch (err) {
             console.error(`[stripe/webhook] Coupon usage increment failed:`, err);
+          }
+          if (!counted) {
+            await flagOrder(
+              admin,
+              orderId,
+              "coupon_over_limit",
+              "This order used a coupon that had already reached its usage limit.",
+              { coupon_id: order.coupon_id },
+            );
           }
         }
 
@@ -442,8 +535,8 @@ export async function POST(req: Request) {
           }
         }
 
-        // Step 6: Add timeline event (idempotent — skip if already paid)
-        if (!order.paid_at) {
+        // Step 6: Add timeline event (once — only the delivery that confirmed)
+        if (justConfirmed) {
           await addOrderTimelineEvent(
             orderId,
             "payment_confirmed",
@@ -458,14 +551,13 @@ export async function POST(req: Request) {
           await admin.from("carts").delete().eq("token", cartToken);
         }
 
-        // Step 8: Send order-confirmation + payment-receipt emails (idempotent,
-        // non-critical — failures are logged and never break the webhook).
-        if (!order.paid_at) {
-          try {
-            await sendOrderConfirmedEmails(orderId, order, admin);
-          } catch (err) {
-            console.error(`[stripe/webhook] Order emails failed for ${orderId}:`, err);
-          }
+        // Step 8: Send order-confirmation + payment-receipt emails. On every
+        // delivery, not only the confirming one: order_emails sends each at most
+        // once, so a retry after a later step failed still sends them.
+        try {
+          await sendOrderConfirmedEmails(orderId, order, admin);
+        } catch (err) {
+          console.error(`[stripe/webhook] Order emails failed for ${orderId}:`, err);
         }
 
         // Step 9: a paid Re-adjustment (ADR 0024) — the money is in, so put the
@@ -538,12 +630,13 @@ export async function POST(req: Request) {
           await expireReadjustmentBooking(admin, session.metadata.readjustment_booking_id);
         }
 
-        const { data: order } = await admin
+        const { data: order, error: expiredError } = await admin
           .from("orders")
           .select("id, status")
           .eq("stripe_session_id", session.id)
-          .single();
+          .maybeSingle();
 
+        if (expiredError) throw new Error(`Expired session ${session.id} lookup failed: ${expiredError.message}`);
         if (!order) break;
 
         if (order.status === "pending") {
@@ -580,14 +673,15 @@ export async function POST(req: Request) {
 
         if (!paymentIntentId) break;
 
-        const { data: order } = await admin
+        const { data: order, error: refundedError } = await admin
           .from("orders")
           .select(
             "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
           )
           .eq("payment_reference", paymentIntentId)
-          .single();
+          .maybeSingle();
 
+        if (refundedError) throw new Error(`Refund lookup for ${paymentIntentId} failed: ${refundedError.message}`);
         if (!order) break;
 
         const wasFullyRefunded = order.status === "refunded";
@@ -670,16 +764,11 @@ export async function POST(req: Request) {
             }
           }
           if (order.coupon_id) {
-            const { data: coupon } = await admin
-              .from("coupons")
-              .select("usage_count")
-              .eq("id", order.coupon_id)
-              .single();
-            if (coupon) {
-              await admin
-                .from("coupons")
-                .update({ usage_count: Math.max(0, (coupon.usage_count ?? 0) - 1) })
-                .eq("id", order.coupon_id);
+            const { decrementCouponUsage } = await import("@/lib/ecommerce/discounts");
+            try {
+              await decrementCouponUsage(order.coupon_id);
+            } catch (err) {
+              console.error(`[stripe/webhook] Coupon usage decrement failed for ${order.id}:`, err);
             }
           }
           if (order.customer_id) {
@@ -720,15 +809,13 @@ export async function POST(req: Request) {
 
         if (!order) break;
 
-        // Only mark failure while still awaiting payment — never clobber a
-        // confirmed/paid order (a later retry may have succeeded).
+        // Only while still awaiting payment — never a confirmed/paid order.
         if (order.status !== "pending") break;
 
-        await admin
-          .from("orders")
-          .update({ status: "payment_failed" })
-          .eq("id", order.id);
-
+        // A declined attempt is not the end of the Order: the customer can try
+        // another card in the same Checkout, which stays open. The status stays
+        // `pending`, so nothing (the points sweep included) treats the Order as
+        // over while it can still be paid; only the timeline records the attempt.
         const failureMessage =
           intent.last_payment_error?.message ?? "Payment failed";
 
@@ -742,6 +829,33 @@ export async function POST(req: Request) {
           }
         );
 
+        break;
+      }
+
+      // Stripe cancels an uncaptured Authorization hold on its own after seven
+      // days (`cancellation_reason: "automatic"`). Our own releases (decline,
+      // cancel, re-submit) carry no reason and are recorded where they happen.
+      // Nothing can be captured from that card any more, so the intent is
+      // dropped: Accept then takes the whole total as a Balance payment instead
+      // of failing to capture on every try.
+      case "payment_intent.canceled": {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        if (intent.cancellation_reason !== "automatic") break;
+
+        const { data: lapsed, error: lapsedError } = await admin
+          .from("mp_config_responses")
+          .update({ payment_intent_id: null })
+          .eq("payment_intent_id", intent.id)
+          .in("status", ["held", "assigned"])
+          .select("id");
+        if (lapsedError) throw new Error(`Expired hold ${intent.id} not recorded: ${lapsedError.message}`);
+        if (!lapsed?.length) break;
+
+        const ids = lapsed.map((r) => r.id).join(", ");
+        console.error(`[stripe/webhook] Authorization hold ${intent.id} expired for Result ${ids}`);
+        await sendTelegram(
+          `Authorization hold expired (7 days) for Result ${ids}. The card can no longer be charged; Accept now asks the customer to pay the full total.`,
+        ).catch(() => null);
         break;
       }
 
@@ -779,11 +893,14 @@ export async function POST(req: Request) {
           }
         );
 
-        // Disputes are revenue-affecting and time-sensitive — surface loudly.
-        // TODO: wire to a real alert channel (email/Slack).
+        // Disputes are revenue-affecting and time-sensitive (the evidence
+        // deadline is days away): log loudly and tell the Staff group.
         console.error(
           `[stripe/webhook] DISPUTE opened for order ${order.id} (dispute ${dispute.id}, reason: ${dispute.reason})`
         );
+        await sendTelegram(
+          `Chargeback opened on order ${order.id}: ${dispute.currency?.toUpperCase() ?? ""} ${(dispute.amount / 100).toFixed(2)}, reason "${dispute.reason}". Respond in the Stripe Dashboard before the evidence deadline.`,
+        ).catch(() => null);
 
         break;
       }
@@ -913,16 +1030,14 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Webhook handler error";
     console.error(`[stripe/webhook] Error handling ${event.type}:`, message);
 
-    // Critical failures (order confirmation, inventory deduction) are
-    // dead-lettered and answered with 500 so Stripe retries the event.
-    if (err instanceof CriticalWebhookError) {
-      await recordWebhookFailure(admin, event, message);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
-
-    // Non-critical / unexpected application-level errors: log and return 200 so
-    // Stripe doesn't retry endlessly.
-    return NextResponse.json({ ok: false, error: message });
+    // Every unexpected failure is dead-lettered and answered with 500 so Stripe
+    // retries (for up to three days). A 200 here would lose the event for good:
+    // a paid Order never confirmed, or confirmed but never fulfilled.
+    await recordWebhookFailure(admin, event, message);
+    return NextResponse.json(
+      { ok: false, error: err instanceof CriticalWebhookError ? message : "Webhook handler error" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ ok: true, type: event.type });

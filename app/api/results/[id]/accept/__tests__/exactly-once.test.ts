@@ -246,6 +246,31 @@ describe("POST /api/results/[id]/accept — exactly once", () => {
     expect(h.captureHold).not.toHaveBeenCalled();
   });
 
+  it("a quote with no card behind it is not credited: the whole total is a Balance payment", async () => {
+    // An abandoned hold Checkout: authorized_amount was written, no card attached.
+    h.db.mp_config_responses = [assignedRow({ payment_intent_id: null, authorized_amount: 100 })];
+    // The shortfall-only top-up (110 - 100) settles nothing.
+    h.sessionsRetrieve.mockResolvedValue({
+      metadata: { result_id: ID, purpose: "result_topup" },
+      payment_status: "paid",
+      amount_total: 1000,
+      payment_intent: "pi_short",
+    });
+    expect((await accept({ topupSessionId: "cs_short" })).status).not.toBe(200);
+    expect(count("orders")).toBe(0);
+
+    // The whole total does, and nothing is captured from a hold that never existed.
+    h.sessionsRetrieve.mockResolvedValue({
+      metadata: { result_id: ID, purpose: "result_topup" },
+      payment_status: "paid",
+      amount_total: 11000,
+      payment_intent: "pi_full",
+    });
+    expect((await accept({ topupSessionId: "cs_full" })).status).toBe(200);
+    expect(count("orders")).toBe(1);
+    expect(h.captureHold).not.toHaveBeenCalled();
+  });
+
   it("a second accept after success returns the same Order and writes nothing", async () => {
     const first = await accept();
     const { orderId } = await first.json();

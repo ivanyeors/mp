@@ -82,7 +82,7 @@ vi.mock("@/lib/ecommerce/customers", () => ({
   findCustomerByEmail: async () => null,
 }));
 vi.mock("@/lib/ecommerce/discounts", () => ({ checkCoupon: vi.fn(), findActiveCoupon: vi.fn() }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: async () => null }));
+vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: async () => null, isSelfReferral: async () => false }));
 vi.mock("@/lib/auth/partner", () => ({ getPartnerContext: async () => null, isPartnerActive: () => false }));
 vi.mock("@/lib/partner-self-purchase/allowance", () => ({ loadSelfPurchaseAllowance: vi.fn() }));
 vi.mock("@/lib/ecommerce/tax", async (orig) => ({

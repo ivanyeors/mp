@@ -75,14 +75,28 @@ export type ResolvedShippingAddress = Record<string, unknown> & { country: strin
  * delivery method, the studio's for a self-collect one. Shared by the hold, the
  * finish and the Staff re-configure, so the three cannot disagree.
  */
+/**
+ * Does `method` deliver to `country`? A method with no country list delivers
+ * anywhere. Tax is resolved from the address's country, so a method must not
+ * accept a country it does not serve: an SG courier with country "US" would
+ * otherwise drop GST while the parcel still goes to the SG street.
+ */
+export function methodDeliversTo(method: { countries?: string[] | null }, country: string): boolean {
+  const countries = method.countries ?? [];
+  return countries.length === 0 || countries.includes(country.toUpperCase());
+}
+
 export async function resolveShippingAddress(
   admin: SupabaseClient,
-  method: { collect_location_id?: string | null },
+  method: { collect_location_id?: string | null; countries?: string[] | null },
   input: ShippingAddressInput,
 ): Promise<{ ok: true; address: ResolvedShippingAddress } | { ok: false; status: number; error: unknown }> {
   if (!isSelfCollect(method)) {
     const parsed = AddressSchema.safeParse(input);
     if (!parsed.success) return { ok: false, status: 400, error: parsed.error.flatten() };
+    if (!methodDeliversTo(method, parsed.data.country)) {
+      return { ok: false, status: 400, error: "This shipping method does not deliver to the selected country" };
+    }
     return { ok: true, address: parsed.data };
   }
   const { data: location, error } = await admin
