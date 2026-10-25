@@ -18,14 +18,18 @@ export interface CouponLineItem {
   lineTotal: number;
 }
 
+/** The signed-in shopper's Customer, from the session. */
+export type CouponAccount = { customerId: string; email: string };
+
 export interface ValidateCouponOptions {
   /** The email typed at checkout. */
   customerEmail?: string;
   /**
-   * The Customer that email resolves to (checkout's `findCustomerByEmail`).
-   * Never an id from a request body.
+   * The signed-in shopper's Customer, from the session (never a request
+   * body). A coupon with a per-customer limit, or bound to one Customer, is
+   * usable only with it, checking out under its own email.
    */
-  customerId?: string;
+  account?: CouponAccount | null;
   lineItems?: CouponLineItem[];
   /**
    * Results that must not count as a use of the coupon: the one being
@@ -122,7 +126,7 @@ export type CouponUseOrder = {
 export function countCustomerCouponUses(
   orders: CouponUseOrder[],
   couponId: string,
-  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId">,
+  options: { customerEmail?: string; customerId?: string },
 ): number {
   if (!options.customerEmail && !options.customerId) return 0;
 
@@ -142,29 +146,34 @@ export function exceedsPerCustomerLimit(uses: number, perCustomerLimit: number |
   return perCustomerLimit !== null && uses >= perCustomerLimit;
 }
 
-async function fetchCustomerCouponUseCount(
-  couponId: string,
-  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId">,
+/** How many distinct orders two lookups found between them. */
+async function distinctOrderCount(
+  lookups: Array<PromiseLike<{ data: Array<{ id: string }> | null }>>,
 ): Promise<number> {
-  if (!options.customerEmail && !options.customerId) return 0;
-
-  const admin = supabaseAdmin();
-  let query = admin
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("coupon_id", couponId)
-    .neq("status", "cancelled")
-    .not("paid_at", "is", null);
-
-  if (options.customerId) {
-    query = query.eq("customer_id", options.customerId);
-  } else if (options.customerEmail) {
-    query = query.ilike("email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
-  }
-
-  const { count } = await query;
-  return count ?? 0;
+  const results = await Promise.all(lookups);
+  return new Set(results.flatMap((r) => (r.data ?? []).map((row) => row.id))).size;
 }
+
+/**
+ * The account's paid, non-cancelled orders with this coupon: by its Customer,
+ * and by its email for guest orders placed under that address before.
+ */
+async function fetchCustomerCouponUseCount(couponId: string, account: CouponAccount): Promise<number> {
+  const paid = () =>
+    supabaseAdmin()
+      .from("orders")
+      .select("id")
+      .eq("coupon_id", couponId)
+      .neq("status", "cancelled")
+      .not("paid_at", "is", null);
+  return distinctOrderCount([
+    paid().eq("customer_id", account.customerId),
+    paid().ilike("email", escapeLikePattern(account.email.toLowerCase().trim())),
+  ]);
+}
+
+/** Why a per-customer or account-bound code was refused to a guest. */
+export const COUPON_SIGN_IN_ERROR = "Sign in with your account email to use this code";
 
 /** How long a Stripe Checkout Session stays payable (its default lifetime). */
 const CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
@@ -175,24 +184,20 @@ const CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
  * each counts against the limit; otherwise N checkouts opened before paying
  * any all pass a usage_limit = 1 check.
  */
-async function fetchPendingOrderCouponUseCount(
-  couponId: string,
-  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId"> = {},
-): Promise<number> {
-  let query = supabaseAdmin()
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("coupon_id", couponId)
-    .eq("status", "pending")
-    .is("paid_at", null)
-    .gte("created_at", new Date(Date.now() - CHECKOUT_LIFETIME_MS).toISOString());
-  if (options.customerId) {
-    query = query.eq("customer_id", options.customerId);
-  } else if (options.customerEmail) {
-    query = query.ilike("email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
-  }
-  const { count } = await query;
-  return count ?? 0;
+async function fetchPendingOrderCouponUseCount(couponId: string, account?: CouponAccount): Promise<number> {
+  const open = () =>
+    supabaseAdmin()
+      .from("orders")
+      .select("id")
+      .eq("coupon_id", couponId)
+      .eq("status", "pending")
+      .is("paid_at", null)
+      .gte("created_at", new Date(Date.now() - CHECKOUT_LIFETIME_MS).toISOString());
+  if (!account) return distinctOrderCount([open()]);
+  return distinctOrderCount([
+    open().eq("customer_id", account.customerId),
+    open().ilike("email", escapeLikePattern(account.email.toLowerCase().trim())),
+  ]);
 }
 
 /**
@@ -276,6 +281,22 @@ export async function checkCoupon(
     return { valid: false, error: "This code has expired" };
   }
 
+  // A code limited per customer, or bound to one Customer (a Welcome-back
+  // voucher), is counted per account, so it needs the account: signed in and
+  // checking out under its own email. Counted by typed email, a new address
+  // was a new customer.
+  const account = options?.account ?? null;
+  if (coupon.per_customer_limit !== null || coupon.customer_id) {
+    const typed = options?.customerEmail?.trim().toLowerCase();
+    if (!account || (typed && typed !== account.email.trim().toLowerCase())) {
+      return { valid: false, error: COUPON_SIGN_IN_ERROR };
+    }
+    // Someone else's voucher reads exactly like a code that does not exist.
+    if (coupon.customer_id && coupon.customer_id !== account.customerId) {
+      return { valid: false, error: "This code isn't valid" };
+    }
+  }
+
   if (coupon.usage_limit !== null) {
     const [held, pending] = await Promise.all([
       fetchLiveResultCouponUseCount(coupon.id, { excludeResultIds: options?.excludeResultIds }),
@@ -286,16 +307,14 @@ export async function checkCoupon(
     }
   }
 
-  if (coupon.per_customer_limit !== null && (options?.customerEmail || options?.customerId)) {
+  if (coupon.per_customer_limit !== null && account) {
     const [paid, held, pending] = await Promise.all([
-      fetchCustomerCouponUseCount(coupon.id, options),
-      options.customerEmail
-        ? fetchLiveResultCouponUseCount(coupon.id, {
-            customerEmail: options.customerEmail,
-            excludeResultIds: options.excludeResultIds,
-          })
-        : Promise.resolve(0),
-      fetchPendingOrderCouponUseCount(coupon.id, options),
+      fetchCustomerCouponUseCount(coupon.id, account),
+      fetchLiveResultCouponUseCount(coupon.id, {
+        customerEmail: account.email,
+        excludeResultIds: options?.excludeResultIds,
+      }),
+      fetchPendingOrderCouponUseCount(coupon.id, account),
     ]);
     if (exceedsPerCustomerLimit(paid + held + pending, coupon.per_customer_limit)) {
       return { valid: false, error: "You've already used this code as many times as it allows" };

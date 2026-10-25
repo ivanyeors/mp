@@ -15,7 +15,9 @@ const CreateCouponSchema = z.object({
   min_order_amount: z.number().nonnegative().nullable().optional().default(null),
   max_discount: z.number().nonnegative().nullable().optional().default(null),
   usage_limit: z.number().int().positive().nullable().optional().default(null),
-  per_customer_limit: z.number().int().positive().optional().default(1),
+  // Null = no per-customer limit (open to guests). A number makes the code
+  // need a signed-in customer, counted per account (ADR 0033 amendment).
+  per_customer_limit: z.number().int().positive().nullable().optional().default(null),
   starts_at: z.string().datetime({ offset: true }).nullable().optional().default(null),
   expires_at: z.string().datetime({ offset: true }).nullable().optional().default(null),
   applies_to: z.record(z.string(), z.unknown()).nullable().optional().default(null),

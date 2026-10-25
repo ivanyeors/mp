@@ -140,6 +140,7 @@ vi.mock("@/lib/checkout-code", () => ({
   CHECKOUT_CODE_MAX_LENGTH: 64,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE: "Too many code attempts.",
   checkoutCodeRateLimited: () => h.rateLimited,
+  couponAccount: async () => null,
   resolveCheckoutCode: h.resolveCheckoutCode,
 }));
 vi.mock("@/lib/ecommerce/discounts", async (orig) => ({

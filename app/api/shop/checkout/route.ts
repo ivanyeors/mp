@@ -9,6 +9,7 @@ import {
   CHECKOUT_CODE_MAX_LENGTH,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
   checkoutCodeRateLimited,
+  couponAccount,
   resolveCheckoutCode,
 } from "@/lib/checkout-code";
 import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
@@ -582,7 +583,7 @@ export async function POST(req: Request) {
 
     const couponResult = await checkCoupon(coupon, subtotal, productIds, categoryIds, {
       customerEmail: normalizedEmail,
-      customerId: existingCustomer?.id,
+      account: await couponAccount(coupon),
       lineItems,
     });
     if (!couponResult.valid) {

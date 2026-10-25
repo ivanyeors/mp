@@ -14,7 +14,9 @@
  * hold and every repricing of a Result. Nothing the browser says about a
  * discount is ever charged.
  */
-import { findActiveCoupon } from "@/lib/ecommerce/discounts";
+import { findActiveCoupon, type CouponAccount } from "@/lib/ecommerce/discounts";
+import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { getAuthUser } from "@/lib/auth/user";
 import { getPartnerByReferralCode, type ReferralPartner } from "@/lib/referrals";
 import { rateLimitExceeded, clientIp } from "@/lib/rate-limit";
 import type { Coupon } from "@/lib/types/ecommerce";
@@ -45,6 +47,24 @@ export async function resolveCheckoutCode(raw: string | null | undefined): Promi
   if (coupon) return { kind: "coupon", coupon };
 
   return { kind: "unknown" };
+}
+
+/**
+ * The signed-in shopper's account, when `coupon` needs one to be checked: a
+ * per-customer limit or a code bound to one Customer (ADR 0033, as amended
+ * 2026-10-25). Null when it needs none, or when nobody usable is signed in;
+ * checkCoupon then refuses such a code with its sign-in message.
+ */
+export async function couponAccount(coupon: Coupon): Promise<CouponAccount | null> {
+  if (coupon.per_customer_limit == null && !coupon.customer_id) return null;
+  const user = await getAuthUser();
+  if (!user?.email) return null;
+  try {
+    const customer = await linkCustomerToAuthUser(user);
+    return { customerId: customer.id, email: customer.email };
+  } catch {
+    return null;
+  }
 }
 
 /**

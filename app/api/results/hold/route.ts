@@ -51,6 +51,7 @@ import {
   CHECKOUT_CODE_MAX_LENGTH,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
   checkoutCodeRateLimited,
+  couponAccount,
   resolveCheckoutCode,
 } from "@/lib/checkout-code";
 import { checkCoupon } from "@/lib/ecommerce/discounts";
@@ -671,6 +672,7 @@ export async function POST(req: Request) {
   if (typedCode?.kind === "coupon") {
     const check = await checkCoupon(typedCode.coupon, goods.subtotal, undefined, undefined, {
       customerEmail: input.email,
+      account: await couponAccount(typedCode.coupon),
       lineItems: await resultCouponLineItems(admin, composedKey, goods.subtotal, typedCode.coupon.applies_to),
       excludeResultIds: [input.responseId, paired?.responseId].filter((id): id is string => Boolean(id)),
     });

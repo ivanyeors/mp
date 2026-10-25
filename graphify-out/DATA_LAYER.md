@@ -97,7 +97,7 @@ Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
   - `persistJourneyIngest()` [update,upsert] — lib/analytics/journey/ingest.ts:201
   - `stampVisitorRef()` [upsert] — lib/referrals/index.ts:163
 - Read by:
-  - `POST()` [select] — app/api/results/hold/route.ts:889
+  - `POST()` [select] — app/api/results/hold/route.ts:891
   - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:178
 
 ### analytics_visits
@@ -171,7 +171,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:420
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:185
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:483
-  - `POST()` [select] — app/api/shop/checkout/route.ts:494
+  - `POST()` [select] — app/api/shop/checkout/route.ts:495
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:166
   - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:206
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
@@ -217,7 +217,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:79
   - `GET()` [select] — app/api/mp-config/assist/route.ts:79
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:224
-  - `POST()` [select] — app/api/results/hold/route.ts:471
+  - `POST()` [select] — app/api/results/hold/route.ts:472
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:251
 
 ### bom_lines
@@ -233,7 +233,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:391
-  - `POST()` [select] — app/api/shop/checkout/route.ts:468
+  - `POST()` [select] — app/api/shop/checkout/route.ts:469
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:152
   - `deductInventoryForOrder()` [select] — lib/ecommerce/inventory-deduction.ts:189
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:162
@@ -395,11 +395,11 @@ Changed from pages: `/settings/discounts`, `/settings/discounts/[id]`
 - Written by:
   - `DELETE()` [delete] — app/api/shop/coupons/[id]/route.ts:74
   - `PATCH()` [update] — app/api/shop/coupons/[id]/route.ts:57
-  - `POST()` [insert] — app/api/shop/coupons/route.ts:59
+  - `POST()` [insert] — app/api/shop/coupons/route.ts:61
   - `deleteCoupon()` [delete] — app/[lang]/settings/discounts/actions.ts:14
   - `toggleCouponActive()` [update] — app/[lang]/settings/discounts/actions.ts:23
 - Read by:
-  - `findActiveCoupon()` [select] — lib/ecommerce/discounts.ts:238
+  - `findActiveCoupon()` [select] — lib/ecommerce/discounts.ts:243
   - `getAdminCoupon()` [select] — lib/ecommerce/admin/coupons.ts:58
   - `isCouponCode()` [select] — lib/referrals/index.ts:153
   - `listAdminCoupons()` [select] — lib/ecommerce/admin/coupons.ts:35
@@ -458,7 +458,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:77
 - Read by:
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
-  - `POST()` [select] — app/api/results/hold/route.ts:801
+  - `POST()` [select] — app/api/results/hold/route.ts:803
   - `POST()` [select] — app/api/shop/customers/[id]/addresses/route.ts:53
   - `POST()` [select] — app/api/shop/customers/[id]/followups/route.ts:65
   - `POST()` [select] — app/api/shop/customers/[id]/notes/route.ts:45
@@ -490,7 +490,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `handleApply()` [insert] — app/api/shop/customize/route.ts:630
   - `handleApplyBolster()` [insert] — app/api/shop/customize/route.ts:746
 - Read by:
-  - `POST()` [select] — app/api/shop/checkout/route.ts:276
+  - `POST()` [select] — app/api/shop/checkout/route.ts:277
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:168
 
 ### exchange_rates
@@ -596,7 +596,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:115
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:224
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:202
-  - `POST()` [select] — app/api/results/hold/route.ts:490
+  - `POST()` [select] — app/api/results/hold/route.ts:491
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
@@ -619,7 +619,7 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### increment_coupon_usage
 Defined in supabase/migrations/20260702130000_increment_coupon_usage.sql:2
 - Called by:
-  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:338
+  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:357
 
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
@@ -685,8 +685,8 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:397
   - `GET()` [select] — app/api/results/addons/route.ts:77
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:303
-  - `POST()` [select] — app/api/results/hold/route.ts:561
-  - `POST()` [select] — app/api/shop/checkout/route.ts:439
+  - `POST()` [select] — app/api/results/hold/route.ts:562
+  - `POST()` [select] — app/api/shop/checkout/route.ts:440
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:368
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:311
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:163
@@ -736,7 +736,7 @@ Changed from pages: `/settings/inventory`
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:297
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:94
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:140
-  - `POST()` [select] — app/api/results/hold/route.ts:451
+  - `POST()` [select] — app/api/results/hold/route.ts:452
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:367
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:310
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:37
@@ -871,7 +871,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:113
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
-  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:335
+  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:336
   - `POST()` [insert,update] — app/api/shop/orders/[id]/mp-config-link/route.ts:60
   - `POST()` [update] — app/api/stripe/webhook/route.ts:181
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:41
@@ -894,7 +894,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select] — app/api/mp-config/photos/route.ts:41
   - `POST()` [select] — app/api/results/[id]/reorder/route.ts:43
   - `companionLockReason()` [select] — lib/results/pair-ending.ts:94
-  - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:211
+  - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:216
   - `getMpConfigMetricsBreakdown()` [select] — app/[lang]/settings/analytics/actions.ts:83
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:70
   - `loadAdminOrderMpConfigLinks()` [select] — lib/ecommerce/admin/order-detail.ts:88
@@ -957,9 +957,9 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
 - Written by:
   - `POST()` [insert] — app/api/readjustments/checkout/route.ts:191
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:584
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:887
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:888
   - `POST()` [insert] — app/api/shop/orders/route.ts:108
-  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:1014
+  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:1015
   - `restockOrderItem()` [update] — lib/ecommerce/restock-order.ts:219
 - Read by:
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:31
@@ -992,7 +992,7 @@ References: `orders`
 Changed from pages: `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop/checkout`
 - Written by:
   - `GET()` [update] — app/api/shop/orders/[id]/easyship/label/route.ts:45
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:839
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:840
   - `applyShipmentToOrder()` [upsert] — lib/shipping/order-shipment.ts:142
   - `buyOrderLabel()` [update,upsert] — lib/shipping/order-shipment.ts:217
 - Read by:
@@ -1027,13 +1027,13 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:506
   - `POST()` [update] — app/api/settings/readjustments/[id]/route.ts:137
   - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:51
-  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:793
+  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:794
   - `POST()` [select,update] — app/api/shop/orders/[id]/cancel/route.ts:22
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund-request/route.ts:43
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:35
   - `POST()` [delete,insert,select] — app/api/shop/orders/route.ts:97
   - `POST()` [select,update] — app/api/stripe/webhook/route.ts:255
-  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:1007
+  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:1008
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:170
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:261
   - `flagOrder()` [update] — app/api/stripe/webhook/route.ts:123
@@ -1056,8 +1056,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `countNotMarkedDelivered()` [select] — lib/aftercare/review-request-server.ts:141
   - `emailStatus()` [select] — app/api/shipping/easyship/webhook/route.ts:121
   - `fetchConvertedRows()` [select] — lib/analytics/journey/aggregates.ts:436
-  - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:152
-  - `fetchPendingOrderCouponUseCount()` [select] — lib/ecommerce/discounts.ts:182
+  - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:163
+  - `fetchPendingOrderCouponUseCount()` [select] — lib/ecommerce/discounts.ts:189
   - `finalizeReadjustmentBooking()` [select] — lib/readjustment/checkout.ts:172
   - `getChannelMix()` [select] — app/[lang]/settings/analytics/seo-actions.ts:134
   - `getCustomerOrderByNumber()` [select] — lib/shop/customer-orders.ts:65
@@ -1210,7 +1210,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:59
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:69
-  - `POST()` [select] — app/api/shop/checkout/route.ts:366
+  - `POST()` [select] — app/api/shop/checkout/route.ts:367
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1170
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:194
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:161
@@ -1328,7 +1328,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:49
   - `GET()` [select] — app/api/shop/products/[id]/variants/route.ts:35
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:84
-  - `POST()` [select] — app/api/shop/checkout/route.ts:165
+  - `POST()` [select] — app/api/shop/checkout/route.ts:166
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:301
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:115
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:938
@@ -1363,7 +1363,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `syncProductToStripe()` [select,update] — lib/stripe/sync.ts:43
 - Read by:
   - `PATCH()` [select] — app/api/shop/products/[id]/variants/[variantId]/route.ts:43
-  - `POST()` [select] — app/api/checkout/code/route.ts:107
+  - `POST()` [select] — app/api/checkout/code/route.ts:110
   - `POST()` [select] — app/api/shop/products/[id]/variants/route.ts:60
   - `getAdminProduct()` [select] — lib/ecommerce/admin/products.ts:92
   - `getComposedProductImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:959
@@ -1572,7 +1572,7 @@ Changed from pages: `/settings/customers`
 ### decrement_coupon_usage
 Defined in supabase/migrations/20261025130000_coupon_usage_capped.sql:34
 - Called by:
-  - `decrementCouponUsage()` — lib/ecommerce/discounts.ts:345
+  - `decrementCouponUsage()` — lib/ecommerce/discounts.ts:364
 
 ### discard_landing_draft
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:132
@@ -1650,7 +1650,7 @@ Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.
 ### increment_coupon_usage_capped
 Defined in supabase/migrations/20261025130000_coupon_usage_capped.sql:19
 - Called by:
-  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:334
+  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:353
 
 ### is_partner_customer
 Defined in supabase/migrations/20261021120000_points_ledger.sql:143
@@ -1884,7 +1884,7 @@ References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:511
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1161
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1163
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:141
@@ -1896,7 +1896,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id
 - Written by:
   - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:511
   - `POST()` [delete,insert] — app/api/results/[id]/reconfigure/route.ts:316
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1178
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1180
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:69
@@ -2009,8 +2009,8 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:418
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:143
-  - `POST()` [select] — app/api/results/hold/route.ts:564
-  - `POST()` [select] — app/api/shop/checkout/route.ts:598
+  - `POST()` [select] — app/api/results/hold/route.ts:565
+  - `POST()` [select] — app/api/shop/checkout/route.ts:599
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:213
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
   - `getAllShippingMethods()` [select] — lib/ecommerce/shipping.ts:20
@@ -2220,7 +2220,7 @@ Changed from pages: `/settings/users`
 Defined in supabase/migrations/20260630120000_variant_stock_bolster.sql:10
 - Read by:
   - `GET()` [select] — app/api/shop/stock/route.ts:32
-  - `POST()` [select] — app/api/shop/checkout/route.ts:233
+  - `POST()` [select] — app/api/shop/checkout/route.ts:234
   - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:18
 
 ## Pages
