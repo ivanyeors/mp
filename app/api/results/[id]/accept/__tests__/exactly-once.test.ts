@@ -160,6 +160,9 @@ beforeEach(() => {
   h.writes = [];
   h.failCustomers = false;
   h.piStatus = "requires_capture";
+  // incrementCouponUsage now reports whether the capped increment applied;
+  // the happy path is "applied".
+  h.incrementCouponUsage.mockResolvedValue(true);
   h.captureHold.mockImplementation(async () => {
     await tick();
     h.piStatus = "succeeded";

@@ -293,14 +293,38 @@ export async function checkCoupon(
   return { valid: true, coupon, discount_amount: discountAmount };
 }
 
-export async function incrementCouponUsage(couponId: string) {
+/**
+ * Atomically bump a coupon's usage, enforcing its `usage_limit` in the same
+ * statement (prod-hardening slice 09). Returns whether the increment applied:
+ * `false` means the cap was already reached — by a parallel checkout, since the
+ * pre-payment check in `checkCoupon` passed. The payment has already been
+ * captured by the time this runs, so callers log and move on; they never fail
+ * on `false`.
+ */
+export async function incrementCouponUsage(couponId: string): Promise<boolean> {
   const admin = supabaseAdmin();
-  const { error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
-  if (!error) return;
-
-  // ponytail: fallback when RPC not yet migrated — read-modify-write
-  const { data } = await admin.from("coupons").select("usage_count").eq("id", couponId).single();
-  if (data) {
-    await admin.from("coupons").update({ usage_count: data.usage_count + 1 }).eq("id", couponId);
+  const { data, error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
+  if (!error) {
+    // The capped RPC returns the new usage_count, or null when the limit was
+    // already reached and no row changed.
+    return data != null;
   }
+
+  // ponytail: fallback when the capped RPC isn't migrated yet. Still enforce the
+  // cap here — a conditional update that re-checks the usage_count it read — so
+  // no deploy ordering can reopen the uncapped race the RPC closes.
+  const { data: row } = await admin
+    .from("coupons")
+    .select("usage_count, usage_limit")
+    .eq("id", couponId)
+    .single();
+  if (!row) return false;
+  if (row.usage_limit !== null && row.usage_count >= row.usage_limit) return false;
+  const { data: updated } = await admin
+    .from("coupons")
+    .update({ usage_count: row.usage_count + 1 })
+    .eq("id", couponId)
+    .eq("usage_count", row.usage_count)
+    .select("usage_count");
+  return (updated?.length ?? 0) > 0;
 }

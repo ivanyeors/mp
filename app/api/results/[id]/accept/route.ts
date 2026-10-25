@@ -650,7 +650,17 @@ export async function POST(
   // returns before here. Best-effort — the money is captured.
   if (couponHolder?.coupon_id) {
     try {
-      await incrementCouponUsage(couponHolder.coupon_id as string);
+      const applied = await incrementCouponUsage(couponHolder.coupon_id as string);
+      if (!applied) {
+        // Another Result redeemed the coupon's last use first. The money is
+        // already captured, so record it for a human rather than failing.
+        await admin.from("order_timeline").insert({
+          order_id: order.id,
+          event_type: "coupon_limit_reached",
+          message: "Coupon usage limit was already reached at capture; usage not incremented.",
+          metadata: { result_id: id, coupon_id: couponHolder.coupon_id },
+        });
+      }
     } catch (e) {
       console.error("Coupon usage increment failed after capture", e);
     }

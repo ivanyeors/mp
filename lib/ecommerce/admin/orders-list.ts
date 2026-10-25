@@ -4,6 +4,7 @@ import {
   parseOrdersPaidAtRange,
 } from "@/lib/ecommerce/orders-paid-at-range";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 
 /**
  * Raw (unparsed) query values for the admin orders list, exactly as they arrive
@@ -75,7 +76,11 @@ export async function listAdminOrders(
   if (email) query = query.ilike("email", `%${email}%`);
   if (customer_id) query = query.eq("customer_id", customer_id);
   if (search) {
-    query = query.or(`order_number.ilike.%${search}%,email.ilike.%${search}%`);
+    // `.or()` is a raw PostgREST filter string — sanitize, don't interpolate.
+    const term = sanitizeSearchTerm(search);
+    if (term) {
+      query = query.or(`order_number.ilike.%${term}%,email.ilike.%${term}%`);
+    }
   }
   query = applyOrdersPaidAtRange(query, paidAtRange.range);
 

@@ -427,7 +427,18 @@ export async function POST(req: Request) {
         if (!order.paid_at && order.coupon_id) {
           const { incrementCouponUsage } = await import("@/lib/ecommerce/discounts");
           try {
-            await incrementCouponUsage(order.coupon_id);
+            const applied = await incrementCouponUsage(order.coupon_id);
+            if (!applied) {
+              // A parallel checkout took the coupon's last use between
+              // validation and here. The payment is already captured, so note
+              // it for a human rather than failing the webhook.
+              await addOrderTimelineEvent(
+                orderId,
+                "coupon_limit_reached",
+                "Coupon usage limit was already reached at payment; usage not incremented",
+                { coupon_id: order.coupon_id }
+              );
+            }
           } catch (err) {
             console.error(`[stripe/webhook] Coupon usage increment failed:`, err);
           }
