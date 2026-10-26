@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { toWebUrl } from "@/lib/format/web-url";
 import SpotlightCard from "@/components/effects/SpotlightCard";
 import type { ResolvedPartner } from "@/lib/partners";
 
@@ -34,10 +35,11 @@ function PartnerCard({ partner }: { partner: ResolvedPartner }) {
     </SpotlightCard>
   );
 
-  if (partner.websiteUrl) {
+  const websiteUrl = toWebUrl(partner.websiteUrl);
+  if (websiteUrl) {
     return (
       <a
-        href={partner.websiteUrl}
+        href={websiteUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="block h-full transition-transform hover:scale-[1.02]"

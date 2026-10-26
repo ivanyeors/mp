@@ -48,6 +48,10 @@ vi.mock("@/lib/supabase/server", () => {
         filters.push((r) => r[col] === val);
         return q;
       },
+      is: (col: string, val: unknown) => {
+        filters.push((r) => (r[col] ?? null) === val);
+        return q;
+      },
       ilike: (col: string, pattern: string) => {
         filters.push((r) => likeMatch(pattern, r[col]));
         return q;
@@ -79,8 +83,13 @@ import {
 import { isPartnerSessionFresh } from "@/lib/auth/partner-session";
 import { AGREEMENT_VERSION } from "@/lib/partner-application";
 
-function asUser(u: { id: string; email: string | null; last_sign_in_at?: string }): User {
-  return u as unknown as User;
+function asUser(u: {
+  id: string;
+  email: string | null;
+  last_sign_in_at?: string;
+  email_confirmed_at?: string | null;
+}): User {
+  return { email_confirmed_at: "2026-01-01T00:00:00Z", ...u } as unknown as User;
 }
 
 function ctx(over: Partial<PartnerContext> = {}): PartnerContext {
@@ -171,6 +180,22 @@ describe("loadPartnerRow (resolution + precedence)", () => {
     h.db.partner_users.push({ id: "row-exact", auth_user_id: null, partner_id: "p1", application_status: "approved", agreed_version: null, email: "j_hn@x.com" });
     const row = await loadPartnerRow(asUser({ id: "auth-1", email: "j_hn@x.com" }));
     expect(row?.id).toBe("row-exact");
+  });
+
+  it("never resolves a primary-email row bound to another login", async () => {
+    h.db.partner_users = [
+      { id: "row-taken", auth_user_id: "auth-owner", partner_id: "p1", application_status: "approved", agreed_version: null, email: "ana@x.com" },
+    ];
+    expect(await loadPartnerRow(asUser({ id: "auth-other", email: "ana@x.com" }))).toBeNull();
+    expect(h.db.partner_users[0].auth_user_id).toBe("auth-owner");
+  });
+
+  it("never matches by email for an unconfirmed email", async () => {
+    h.db.partner_users = [
+      { id: "row-1", auth_user_id: null, partner_id: "p1", application_status: "approved", agreed_version: null, email: "ana@x.com" },
+    ];
+    expect(await loadPartnerRow(asUser({ id: "auth-1", email: "ana@x.com", email_confirmed_at: null }))).toBeNull();
+    expect(h.db.partner_users[0].auth_user_id).toBeNull();
   });
 
   it("resolves a VERIFIED backup email and never links auth_user_id", async () => {

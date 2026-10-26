@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { z } from "zod";
 import { createHash, randomUUID } from "crypto";
 import { secretMatches } from "@/lib/auth/secret";
@@ -44,11 +45,13 @@ import {
   isWithinReferralWindow,
   resolveAttribution,
 } from "@/lib/referrals/attribution";
-import { getPartnerByReferralCode } from "@/lib/referrals";
+import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
+import { getPartnerContext } from "@/lib/auth/partner";
 import {
   CHECKOUT_CODE_MAX_LENGTH,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
   checkoutCodeRateLimited,
+  couponAccount,
   resolveCheckoutCode,
 } from "@/lib/checkout-code";
 import { checkCoupon } from "@/lib/ecommerce/discounts";
@@ -305,9 +308,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   const input = parsed.data;
+  // A hold creates a Stripe Checkout Session, posts to the Staff Telegram group
+  // and emails the address given, all before the card is authorised.
+  const limited = await tooManyRequests([
+    { bucket: "hold-ip", key: clientIp(req), windowMs: 60 * 60_000, max: 20 },
+    { bucket: "hold-email", key: input.email.trim().toLowerCase(), windowMs: 60 * 60_000, max: 10 },
+  ]);
+  if (limited) return limited;
   // A code is checked against the database below, so a hold is as good an
   // oracle for guessing codes as the check endpoint: it draws on the same meter.
-  if (input.code && checkoutCodeRateLimited(req)) {
+  if (input.code && (await checkoutCodeRateLimited(req))) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE, field: "code" }, { status: 429 });
   }
   const admin = supabaseAdmin();
@@ -662,6 +672,7 @@ export async function POST(req: Request) {
   if (typedCode?.kind === "coupon") {
     const check = await checkCoupon(typedCode.coupon, goods.subtotal, undefined, undefined, {
       customerEmail: input.email,
+      account: await couponAccount(typedCode.coupon),
       lineItems: await resultCouponLineItems(admin, composedKey, goods.subtotal, typedCode.coupon.applies_to),
       excludeResultIds: [input.responseId, paired?.responseId].filter((id): id is string => Boolean(id)),
     });
@@ -865,10 +876,12 @@ export async function POST(req: Request) {
   const assistPartner = input.partnerAssistCode
     ? await getPartnerByReferralCode(input.partnerAssistCode)
     : null;
+  // One code per order (ADR 0033): the legacy referralCode only counts when
+  // the code field is empty, so it cannot stack with a discount code.
   const typedPartner =
     typedCode?.kind === "referral"
       ? typedCode.partner
-      : input.referralCode
+      : !input.code?.trim() && input.referralCode
         ? await getPartnerByReferralCode(input.referralCode)
         : null;
   let linkPartnerId: string | null = null;
@@ -891,10 +904,16 @@ export async function POST(req: Request) {
       }
     }
   }
+  // A partner's own code, assist link or referral link on their own build
+  // attributes nothing: no commission or milestone progress at Accept.
+  const sessionPartnerId =
+    assistPartner || typedPartner || linkPartnerId ? (await getPartnerContext())?.partnerId : null;
+  const notSelf = async (partnerId: string | null | undefined) =>
+    partnerId && !(await isSelfReferral(partnerId, { sessionPartnerId, email: input.email })) ? partnerId : null;
   const attribution = resolveAttribution({
-    assistPartnerId: assistPartner?.id ?? null,
-    typedPartnerId: typedPartner?.id ?? null,
-    linkPartnerId,
+    assistPartnerId: await notSelf(assistPartner?.id),
+    typedPartnerId: await notSelf(typedPartner?.id),
+    linkPartnerId: await notSelf(linkPartnerId),
   });
   const attributedRefCode =
     attribution.source === "assist"

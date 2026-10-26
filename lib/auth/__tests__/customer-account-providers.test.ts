@@ -78,6 +78,7 @@ const user = (providers: string[] | undefined): User =>
   ({
     id: "auth-1",
     email: "ana@x.test",
+    email_confirmed_at: "2026-01-01T00:00:00Z",
     user_metadata: {},
     identities: providers?.map(identity),
   }) as unknown as User;

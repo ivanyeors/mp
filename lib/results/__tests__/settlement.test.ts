@@ -50,6 +50,12 @@ describe("settleResult", () => {
     });
   });
 
+  it("refuses to ledger a hold capture that has no payment intent", () => {
+    expect(() =>
+      settleResult({ holdCaptureAmount: 100, holdIntentId: null, topUpPaid: 10, topUpIntentId: "pi_balance" }),
+    ).toThrow(/payment intent/);
+  });
+
   it("never writes a zero-amount charge row", () => {
     const s = settleResult({
       holdCaptureAmount: 0,

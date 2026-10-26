@@ -59,6 +59,12 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
   if (!email) {
     throw new Error("Cannot link a customer for an auth user without an email");
   }
+  // Matching by email hands over a guest's or a migrated customer's orders,
+  // addresses and points, so the email must be one the user proved. Supabase
+  // "Confirm email" guarantees this today; this keeps it true if it is ever off.
+  if (!user.email_confirmed_at) {
+    throw new Error("Cannot link a customer for an auth user whose email is not confirmed");
+  }
 
   const admin = supabaseAdmin();
 
@@ -83,7 +89,10 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
   let customer: Customer;
 
   if (decision.type === "already_linked") {
-    customer = (byAuthId ?? byEmail) as Customer;
+    // The email's row belongs to another login (an owner who changed their
+    // sign-in email, or a Staff edit). It is never handed to this one.
+    if (!byAuthId) throw new Error("This email belongs to another account");
+    customer = byAuthId as Customer;
   } else if (decision.type === "link_existing") {
     const { data, error } = await admin
       .from("customers")

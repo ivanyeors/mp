@@ -29,7 +29,9 @@ export interface ApiConfig {
   name: string;
   slug: string;
   base_url: string;
+  /** Always blank: the server never sends a stored key. */
   api_key: string;
+  api_key_set?: boolean;
   config: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
@@ -352,7 +354,11 @@ export default function GeneralSettingsPage({
                 <Input
                   id="cfg-key"
                   type={showKey ? "text" : "password"}
-                  placeholder="sk-..."
+                  placeholder={
+                    editingId && configs.find((c) => c.id === editingId)?.api_key_set
+                      ? "Saved. Leave blank to keep it"
+                      : "sk-..."
+                  }
                   value={form.api_key}
                   onChange={(e) => updateField("api_key", e.target.value)}
                   className="pr-10"

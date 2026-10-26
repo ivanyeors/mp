@@ -86,7 +86,7 @@ export type Coupon = {
     max_discount: number | null;
     usage_limit: number | null;
     usage_count: number;
-    per_customer_limit: number;
+    per_customer_limit: number | null;
     starts_at: string | null;
     expires_at: string | null;
     applies_to: AppliesTo;
@@ -171,9 +171,9 @@ function buildSummary(form: CouponForm): string {
         parts.push(`up to ${usageLimit} use${usageLimit !== 1 ? "s" : ""}`);
     }
 
-    const perCustomer = parseInt(form.per_customer_limit) || 1;
-    if (perCustomer > 1) {
-        parts.push(`${perCustomer} uses per customer`);
+    const perCustomer = parseInt(form.per_customer_limit) || 0;
+    if (perCustomer > 0) {
+        parts.push(`${perCustomer} use${perCustomer !== 1 ? "s" : ""} per customer (sign-in required)`);
     }
 
     return parts.join(", ") || "Configure the discount above";
@@ -187,7 +187,7 @@ const DEFAULT_FORM: CouponForm = {
     min_order_amount: "",
     max_discount: "",
     usage_limit: "",
-    per_customer_limit: "1",
+    per_customer_limit: "",
     starts_at: "",
     expires_at: "",
     is_active: true,
@@ -247,7 +247,7 @@ function couponToForm(c: Coupon): CouponForm {
         min_order_amount: c.min_order_amount !== null ? String(c.min_order_amount) : "",
         max_discount: c.max_discount !== null ? String(c.max_discount) : "",
         usage_limit: c.usage_limit !== null ? String(c.usage_limit) : "",
-        per_customer_limit: String(c.per_customer_limit),
+        per_customer_limit: c.per_customer_limit !== null ? String(c.per_customer_limit) : "",
         starts_at: toLocalDatetimeInput(c.starts_at),
         expires_at: toLocalDatetimeInput(c.expires_at),
         is_active: c.is_active,
@@ -428,7 +428,8 @@ export function DiscountEditorClient({
             min_order_amount: form.min_order_amount !== "" ? parseFloat(form.min_order_amount) : null,
             max_discount: form.max_discount !== "" ? parseFloat(form.max_discount) : null,
             usage_limit: form.usage_limit !== "" ? parseInt(form.usage_limit) : null,
-            per_customer_limit: parseInt(form.per_customer_limit) || 1,
+            // Blank (or 0) = no per-customer limit.
+            per_customer_limit: parseInt(form.per_customer_limit) > 0 ? parseInt(form.per_customer_limit) : null,
             starts_at: toISOWithOffset(form.starts_at),
             expires_at: toISOWithOffset(form.expires_at),
             applies_to: buildAppliesToPayload(appliesTo),
@@ -806,7 +807,7 @@ export function DiscountEditorClient({
                             <div className="space-y-1.5">
                                 <div className="flex items-center gap-1.5">
                                     <Label htmlFor="per_customer_limit">Per customer limit</Label>
-                                    <InfoTip label="About Per customer limit">How many times a single customer can use this code.</InfoTip>
+                                    <InfoTip label="About Per customer limit">How many times one customer can use this code. Leave blank for no limit, open to guests. With a limit, the customer must be signed in and check out with their account email, so a new email address cannot reuse the code.</InfoTip>
                                 </div>
                                 <Input
                                     id="per_customer_limit"
@@ -817,7 +818,7 @@ export function DiscountEditorClient({
                                     onChange={(e) =>
                                         set("per_customer_limit", e.target.value)
                                     }
-                                    placeholder="1"
+                                    placeholder="No limit"
                                 />
                             </div>
                         </CardContent>

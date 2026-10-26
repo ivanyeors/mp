@@ -14,9 +14,11 @@
  * hold and every repricing of a Result. Nothing the browser says about a
  * discount is ever charged.
  */
-import { findActiveCoupon } from "@/lib/ecommerce/discounts";
+import { findActiveCoupon, type CouponAccount } from "@/lib/ecommerce/discounts";
+import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { getAuthUser } from "@/lib/auth/user";
 import { getPartnerByReferralCode, type ReferralPartner } from "@/lib/referrals";
-import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { rateLimitExceeded, clientIp } from "@/lib/rate-limit";
 import type { Coupon } from "@/lib/types/ecommerce";
 import { CHECKOUT_CODE_MAX_LENGTH } from "./shared";
 
@@ -48,17 +50,36 @@ export async function resolveCheckoutCode(raw: string | null | undefined): Promi
 }
 
 /**
+ * The signed-in shopper's account, when `coupon` needs one to be checked: a
+ * per-customer limit or a code bound to one Customer (ADR 0033, as amended
+ * 2026-10-25). Null when it needs none, or when nobody usable is signed in;
+ * checkCoupon then refuses such a code with its sign-in message.
+ */
+export async function couponAccount(coupon: Coupon): Promise<CouponAccount | null> {
+  if (coupon.per_customer_limit == null && !coupon.customer_id) return null;
+  const user = await getAuthUser();
+  if (!user?.email) return null;
+  try {
+    const customer = await linkCustomerToAuthUser(user);
+    return { customerId: customer.id, email: customer.email };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Every endpoint that answers whether a code exists draws on this one
  * allowance per IP, so guessing codes through checkout or the hold costs the
  * same as guessing them through the check endpoint. A shopper types a code once
  * or twice and the page re-checks it as the order changes; 60 in ten minutes is
  * far above that.
  *
- * The limiter is per instance (lib/rate-limit.ts): it slows a guesser, it does
- * not stop a distributed one. Codes worth protecting carry a usage limit.
+ * Counted in the shared store (lib/rate-limit.ts), so the allowance holds
+ * across instances. It still keys on IP: codes worth protecting carry a usage
+ * limit too.
  */
-export function checkoutCodeRateLimited(req: Request): boolean {
-  return isRateLimited({
+export function checkoutCodeRateLimited(req: Request): Promise<boolean> {
+  return rateLimitExceeded({
     bucket: "checkout-code",
     key: clientIp(req),
     windowMs: 10 * 60 * 1000,

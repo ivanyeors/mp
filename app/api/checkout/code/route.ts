@@ -6,6 +6,7 @@ import {
   CHECKOUT_CODE_MAX_LENGTH,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
   checkoutCodeRateLimited,
+  couponAccount,
   resolveCheckoutCode,
 } from "@/lib/checkout-code";
 import { BOLSTER_LENGTHS } from "@/lib/results/composed-sellable";
@@ -61,7 +62,7 @@ const CheckCodeSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (checkoutCodeRateLimited(req)) {
+  if (await checkoutCodeRateLimited(req)) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE }, { status: 429 });
   }
 
@@ -82,11 +83,13 @@ export async function POST(req: Request) {
   }
 
   const coupon = resolved.coupon;
+  const account = await couponAccount(coupon);
   if (context.flow === "none") {
     // Usable at all — dates and limits — with the order-shaped rules (minimum,
     // scope) and the amount left to the hold, which prices the build.
     const usable = await checkCoupon({ ...coupon, min_order_amount: null, applies_to: null }, 0, undefined, undefined, {
       customerEmail: email,
+      account,
     });
     return usable.valid
       ? NextResponse.json({
@@ -117,6 +120,7 @@ export async function POST(req: Request) {
           ];
           return checkCoupon(coupon, context.subtotal, productIds, categoryIds, {
             customerEmail: email,
+      account,
             lineItems: context.line_items.map((l) => ({
               productId: l.product_id,
               categoryId: categoryById.get(l.product_id) ?? null,
@@ -126,6 +130,7 @@ export async function POST(req: Request) {
         })()
       : await checkCoupon(coupon, context.goods, undefined, undefined, {
           customerEmail: email,
+      account,
           lineItems: await resultCouponLineItems(
             supabaseAdmin(),
             context.build.product_type === "pillow"

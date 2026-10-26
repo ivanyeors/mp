@@ -21,11 +21,18 @@ const bodySchema = z.object({
   logo_url: z.string().url().max(2000).optional().nullable(),
 });
 
-/** True when `url` is a public logo we stored under the caller's own partner folder. */
+/**
+ * True when `url` is a public logo we stored under the caller's own partner
+ * folder: our own Supabase project's storage, not just a matching path on any
+ * host (the Admin Panel renders it as a raw <img>).
+ */
 function isOwnLogoUrl(url: string, partnerId: string): boolean {
   try {
-    return new URL(url).pathname.includes(
-      `/storage/v1/object/public/media/partner-logos/${partnerId}/`,
+    const parsed = new URL(url);
+    const storageOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
+    return (
+      parsed.origin === storageOrigin &&
+      parsed.pathname.startsWith(`/storage/v1/object/public/media/partner-logos/${partnerId}/`)
     );
   } catch {
     return false;

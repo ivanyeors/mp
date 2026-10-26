@@ -15,7 +15,7 @@ const UpdateCouponSchema = z.object({
   min_order_amount: z.number().nonnegative().nullable().optional(),
   max_discount: z.number().nonnegative().nullable().optional(),
   usage_limit: z.number().int().positive().nullable().optional(),
-  per_customer_limit: z.number().int().positive().optional(),
+  per_customer_limit: z.number().int().positive().nullable().optional(),
   starts_at: z.string().datetime({ offset: true }).nullable().optional(),
   expires_at: z.string().datetime({ offset: true }).nullable().optional(),
   applies_to: z.record(z.string(), z.unknown()).nullable().optional(),

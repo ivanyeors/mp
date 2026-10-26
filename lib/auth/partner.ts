@@ -50,7 +50,8 @@ export async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
   if (byAuthId) return byAuthId as PartnerRow;
 
   const email = (user.email ?? "").toLowerCase().trim();
-  if (!email) return null;
+  // Every match below is by email, so only an email the user proved counts.
+  if (!email || !user.email_confirmed_at) return null;
 
   const { data: byEmail } = await admin
     .from("partner_users")
@@ -59,8 +60,14 @@ export async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
     .maybeSingle();
 
   if (byEmail) {
+    // A row bound to another login is theirs, not this one's.
+    if (byEmail.auth_user_id && byEmail.auth_user_id !== user.id) return null;
     if (!byEmail.auth_user_id) {
-      await admin.from("partner_users").update({ auth_user_id: user.id }).eq("id", byEmail.id);
+      await admin
+        .from("partner_users")
+        .update({ auth_user_id: user.id })
+        .eq("id", byEmail.id)
+        .is("auth_user_id", null);
     }
     return byEmail as PartnerRow;
   }

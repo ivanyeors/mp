@@ -1,6 +1,7 @@
 "use server";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { toWebUrl } from "@/lib/format/web-url";
 import { revalidatePath } from "next/cache";
 import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -112,7 +113,7 @@ export async function approveApplication(id: string): Promise<{ ok: true }> {
       .from("partners")
       .insert({
         name: q.companyName || row.email,
-        website_url: q.website ?? null,
+        website_url: toWebUrl(q.website),
         type: "partner",
         visible: false, // Staff flip visibility via Locations CRUD; approval never publishes.
         position: nextPosition,

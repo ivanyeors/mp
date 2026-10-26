@@ -126,6 +126,32 @@ export function listDaySlots(
   return out;
 }
 
+/** How far ahead a booking may start. The date picker has no upper bound. */
+const MAX_BOOKING_AHEAD_MS = 366 * 24 * 60 * 60 * 1000;
+
+/**
+ * Is [startIso, endIso) a slot {@link listDaySlots} would offer: on the
+ * availability grid, exactly one appointment long, in the future, outside the
+ * blocked ranges and within a year? Calendar conflicts are `isSlotFree`'s job;
+ * this refuses times no slot picker could have produced, such as one booking
+ * spanning a month, which would otherwise block the calendar.
+ */
+export function isOfferableSlot(
+  startIso: string,
+  endIso: string,
+  settings: AppointmentSettings,
+  now: Date = new Date(),
+): boolean {
+  const startMs = Date.parse(startIso);
+  const endMs = Date.parse(endIso);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return false;
+  if (startMs - now.getTime() > MAX_BOOKING_AHEAD_MS) return false;
+  const p = sgtParts(startMs);
+  return listDaySlots([], settings, { y: p.y, m: p.m, d: p.d }, now).some(
+    (s) => Date.parse(s.startIso) === startMs && Date.parse(s.endIso) === endMs,
+  );
+}
+
 /** A nearby day worth offering when the picked one is full. */
 export type DaySuggestion = { date: string; count: number };
 

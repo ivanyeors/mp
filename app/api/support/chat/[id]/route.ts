@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
  * also tells the chat the customer is on the page.
  */
 export async function GET(req: Request, { params }: Params) {
-  const limited = rateLimited(req, "support-chat-poll", 120, 60_000);
+  const limited = await rateLimited(req, "support-chat-poll", 120, 60_000);
   if (limited) return limited;
   const { id } = await params;
   try {

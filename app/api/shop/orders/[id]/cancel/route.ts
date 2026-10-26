@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { refundPayment } from "@/lib/stripe/refunds";
+import { getStripe } from "@/lib/stripe/client";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import {
   refundableAmount,
@@ -21,7 +22,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, order_number, payment_reference, paid_at, total, amount_refunded, amount_captured, currency, status"
+      "id, order_number, payment_reference, paid_at, total, amount_refunded, amount_captured, currency, status, stripe_session_id"
     )
     .eq("id", orderId)
     .single();
@@ -65,6 +66,29 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       stripe_refund_id: stripeRefund.id,
       amount: remaining,
     });
+  }
+
+  // Close the Order's Checkout first, so it cannot be paid after it is
+  // cancelled (its points come back on cancel, and the webhook would otherwise
+  // find a paid Order nobody means to fulfil).
+  if (order.stripe_session_id) {
+    try {
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);
+      if (session.status === "complete") {
+        return NextResponse.json(
+          { error: "This order was just paid. Refresh the page; cancelling it now refunds it." },
+          { status: 409 },
+        );
+      }
+      if (session.status === "open") await stripe.checkout.sessions.expire(order.stripe_session_id);
+    } catch (err) {
+      console.error(`[orders/cancel] Could not close the Checkout for ${orderId}:`, err);
+      return NextResponse.json(
+        { error: "Could not close this order's Stripe Checkout. Try again in a moment." },
+        { status: 502 },
+      );
+    }
   }
 
   const now = new Date().toISOString();

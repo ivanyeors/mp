@@ -79,3 +79,30 @@ later.
 - Two Results held at the same moment can both pass a limit with one use left; the count is a
   read, not a reservation. The window is the seconds between check and write, not the days
   between hold and Accept it used to be.
+
+## Amendment (2026-10-25): per-customer limits are per account
+
+Counted by the email typed at checkout, a "once per customer" code was reusable by anyone with a
+second email address. Pre-launch hardening changed what the limit means:
+
+- **Blank means no limit.** `per_customer_limit` null is a code open to guests, counted only
+  against `usage_limit`. The Settings → Discounts field is one number input; blank (or 0) saves
+  null, and new codes start blank. Before this, the editor could not express "no limit", so codes
+  were saved with 1 or 99.
+- **A number needs the account.** A code with a per-customer limit is usable only by a signed-in
+  Customer checking out under their own account email, the same rule points use (ADR 0030 (h)).
+  Otherwise it is refused with "Sign in with your account email to use this code". Uses are
+  counted per account: paid and still-open orders by the Customer or by the account's email, and
+  live Results by that email.
+- **Bound vouchers are enforced.** A coupon with `customer_id` (a Welcome-back voucher, ADR 0029)
+  works only for that Customer, signed in under their own email. To anyone else it reads "This
+  code isn't valid", like a code that does not exist. The 20261020112100 migration described this
+  check, but nothing performed it.
+- **Open checkouts hold a use.** A pending, unpaid order younger than a Checkout Session counts
+  against both limits. Shop Checkout Sessions now expire after one hour, not Stripe's default 24
+  (`lib/stripe/checkout-lifetime.ts`), so an abandoned checkout gives its use back within the
+  hour, and `usage_count` is incremented with a cap
+  (`increment_coupon_usage`, capped by 20261025000000); an order that still lands past the limit is flagged
+  `needs_attention`. This replaces the "count is a read, not a reservation" consequence above.
+- **Referral codes are unchanged:** one per order, never stacked with a typed discount code, and
+  never credited to the buyer's own partner account.

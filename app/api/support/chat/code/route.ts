@@ -18,7 +18,7 @@ const CodeSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const limited = rateLimited(req, "support-chat-code", 5, 10 * 60_000);
+  const limited = await rateLimited(req, "support-chat-code", 5, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = CodeSchema.safeParse(await req.json().catch(() => null));

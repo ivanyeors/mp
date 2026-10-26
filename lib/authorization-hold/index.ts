@@ -36,13 +36,16 @@ export async function attachHoldPaymentIntent(
     return { ok: false, mismatch: null };
   }
 
-  const { data: held } = await admin
+  // Read and write errors throw: the webhook answers 500 and Stripe retries,
+  // rather than an authorised card ending up attached to nothing.
+  const { data: held, error: heldError } = await admin
     .from("mp_config_responses")
     .select("authorized_amount, currency, paired_build_id")
     .eq("id", resultId)
     .eq("status", "held")
     .is("payment_intent_id", null)
     .maybeSingle();
+  if (heldError) throw new Error(`Hold attach read failed for ${resultId}: ${heldError.message}`);
   if (!held) return { ok: false, mismatch: null };
 
   // A Paired build's one Checkout authorised both Results (ADR 0026): it must
@@ -55,12 +58,13 @@ export async function attachHoldPaymentIntent(
   if (held.paired_build_id === resultId && !session.metadata?.paired_result_id) {
     // A session that does not name its companion: it authorised the members
     // still waiting for a card.
-    const { data: waiting } = await admin
+    const { data: waiting, error: waitingError } = await admin
       .from("mp_config_responses")
       .select("id, authorized_amount")
       .eq("paired_build_id", resultId)
       .eq("status", "held")
       .is("payment_intent_id", null);
+    if (waitingError) throw new Error(`Hold attach read failed for ${resultId}: ${waitingError.message}`);
     const members = waiting?.length ? waiting : [{ id: resultId, ...held }];
     quoted = pairAuthorized(members);
     memberIds = members.map((m) => String(m.id));
@@ -97,13 +101,14 @@ export async function attachHoldPaymentIntent(
     };
   }
 
-  const { data: written } = await admin
+  const { data: written, error: writeError } = await admin
     .from("mp_config_responses")
     .update({ payment_intent_id: paymentIntentId })
     .in("id", memberIds)
     .eq("status", "held")
     .is("payment_intent_id", null)
     .select("id");
+  if (writeError) throw new Error(`Hold attach write failed for ${resultId}: ${writeError.message}`);
   return written?.some((w) => w.id === resultId)
     ? { ok: true, paymentIntentId }
     : { ok: false, mismatch: null };

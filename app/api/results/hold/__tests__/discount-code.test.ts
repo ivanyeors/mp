@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
@@ -131,11 +132,15 @@ vi.mock("@/lib/configurator/pre-order-persist", () => ({
   loadPreOrderTriggerAtHold: vi.fn().mockResolvedValue(null),
   preOrderFlagForResult: () => false,
 }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/referrals", () => ({
+  getPartnerByReferralCode: vi.fn().mockResolvedValue(null),
+  isSelfReferral: vi.fn().mockResolvedValue(false),
+}));
 vi.mock("@/lib/checkout-code", () => ({
   CHECKOUT_CODE_MAX_LENGTH: 64,
   CHECKOUT_CODE_RATE_LIMITED_MESSAGE: "Too many code attempts.",
   checkoutCodeRateLimited: () => h.rateLimited,
+  couponAccount: async () => null,
   resolveCheckoutCode: h.resolveCheckoutCode,
 }));
 vi.mock("@/lib/ecommerce/discounts", async (orig) => ({
@@ -230,6 +235,7 @@ const post = (extra: Record<string, unknown> = {}) =>
   );
 
 beforeEach(() => {
+  resetRateLimits();
   vi.clearAllMocks();
   h.rows.clear();
   h.rows.set(ID, { ...draft });
@@ -319,6 +325,15 @@ describe("POST /api/results/hold — the code field", () => {
       authorized_amount: 210,
     });
     expect(h.checkCoupon).not.toHaveBeenCalled();
+  });
+
+  it("a discount code ignores a referral sent in the old referralCode field (one code per order)", async () => {
+    const { getPartnerByReferralCode } = await import("@/lib/referrals");
+    vi.mocked(getPartnerByReferralCode).mockResolvedValue({ id: "partner-1", name: "Spine Clinic", referral_code: "ABCD2345" });
+    h.resolveCheckoutCode.mockResolvedValue({ kind: "coupon", coupon: coupon() });
+    await post({ code: "SAVE10", referralCode: "ABCD2345" });
+    expect(h.rows.get(ID)).toMatchObject({ coupon_id: "coupon-10", partner_id: null, ref_code: null, authorized_amount: 190 });
+    vi.mocked(getPartnerByReferralCode).mockResolvedValue(null);
   });
 
   it("clears a code a re-submit dropped", async () => {

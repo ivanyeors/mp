@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { toWebUrl } from "@/lib/format/web-url";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -202,18 +203,25 @@ export default async function RmaDetailPage({
           <p className="mt-1 text-sm text-muted-foreground">No photos attached.</p>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
-            {photos.map((url) => (
-              <a
-                key={url}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline"
-              >
-                {/* ponytail: raw links, not thumbnails — v1 photos are customer URLs (ADR 0011) */}
-                {url}
-              </a>
-            ))}
+            {photos.map((url) =>
+              // Customer-typed: a link only when it is a web link.
+              toWebUrl(url) ? (
+                <a
+                  key={url}
+                  href={toWebUrl(url) ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
+                  {/* ponytail: raw links, not thumbnails — v1 photos are customer URLs (ADR 0011) */}
+                  {url}
+                </a>
+              ) : (
+                <span key={url} className="text-xs text-muted-foreground">
+                  {url}
+                </span>
+              ),
+            )}
           </div>
         )}
       </section>

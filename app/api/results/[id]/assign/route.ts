@@ -453,9 +453,11 @@ export async function POST(
     total: priced.total,
     currency: composed.sellable.currency ?? row.currency ?? "SGD",
     // Null with no hold — and that null is what makes the assigned email ask
-    // for a Balance payment instead of an accept/decline.
+    // for a Balance payment instead of an accept/decline. A quote with no card
+    // behind it (an abandoned hold Checkout) is no hold either: Accept charges
+    // the whole total as a Balance payment.
     authorized:
-      row.authorized_amount != null ? Number(row.authorized_amount) : null,
+      row.authorized_amount != null && row.payment_intent_id ? Number(row.authorized_amount) : null,
   };
 
   // Divergence rule (PRD): keep filling_template_id only while the snapshot exactly
@@ -549,12 +551,15 @@ export async function POST(
   if (row.paired_build_id) {
     const { data: members } = await admin
       .from("mp_config_responses")
-      .select("id, status, product_type, assigned_size, assigned_tier, assigned_length, final_amount, authorized_amount")
+      .select("id, status, product_type, assigned_size, assigned_tier, assigned_length, final_amount, authorized_amount, payment_intent_id")
       .eq("paired_build_id", row.paired_build_id);
     const partner = pickPartner(members ?? [], id);
     pairStillBuilding = partner?.status === "held";
     emailResultId = row.paired_build_id;
-    emailPricing = { ...pricingBreakdown, authorized: pairAuthorized(members ?? []) };
+    emailPricing = {
+      ...pricingBreakdown,
+      authorized: pairAuthorized((members ?? []).filter((m) => m.payment_intent_id)),
+    };
     if (partner?.status === "assigned" && partner.final_amount != null) {
       pairedLine = {
         label:

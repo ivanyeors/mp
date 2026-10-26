@@ -65,6 +65,7 @@ describe("validateCoupon: per-customer use count matches the email exactly", () 
     ];
     const result = await validateCoupon("STAFF10", 100, undefined, undefined, {
       customerEmail: "a_b@x.com",
+      account: { customerId: "cust-ab", email: "a_b@x.com" },
     });
     expect(result.valid).toBe(true);
   });
@@ -76,6 +77,7 @@ describe("validateCoupon: per-customer use count matches the email exactly", () 
     ];
     const result = await validateCoupon("STAFF10", 100, undefined, undefined, {
       customerEmail: "A_B@x.com",
+      account: { customerId: "cust-ab", email: "a_b@x.com" },
     });
     expect(result.valid).toBe(false);
   });

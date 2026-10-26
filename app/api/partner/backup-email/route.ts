@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { tooManyRequests } from "@/lib/rate-limit";
 import { z } from "zod";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -23,6 +24,11 @@ export async function POST(req: Request) {
   if (!isPartnerActive(ctx)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Each request emails a code to the address given.
+  const limited = await tooManyRequests([
+    { bucket: "partner-backup-email", key: ctx.userId, windowMs: 60 * 60_000, max: 5 },
+  ]);
+  if (limited) return limited;
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });

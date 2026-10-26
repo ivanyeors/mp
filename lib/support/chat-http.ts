@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthIdentity, getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
-import { clientIp, isRateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitExceeded } from "@/lib/rate-limit";
 import { canAccessChat, loadChat, type ChatCustomer, type SupportChatRow } from "./chat";
 
 /**
@@ -17,8 +17,13 @@ export function chatError(error: string, status: number): NextResponse {
 }
 
 /** True (and the response to send) when this IP is over the bucket's allowance. */
-export function rateLimited(req: Request, bucket: string, max: number, windowMs: number): NextResponse | null {
-  if (!isRateLimited({ bucket, key: clientIp(req), windowMs, max })) return null;
+export async function rateLimited(
+  req: Request,
+  bucket: string,
+  max: number,
+  windowMs: number,
+): Promise<NextResponse | null> {
+  if (!(await rateLimitExceeded({ bucket, key: clientIp(req), windowMs, max }))) return null;
   return chatError("Too many requests. Please wait a minute and try again.", 429);
 }
 
