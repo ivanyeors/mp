@@ -540,7 +540,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
               return (
                 <TableRow key={r.shopifyVariantId}>
-                  <TableCell className="hidden font-mono text-xs md:table-cell">{r.shopifyVariantId}</TableCell>
+                  <TableCell className="hidden text-xs md:table-cell">{r.shopifyVariantId}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1">
                       {isInactive && (

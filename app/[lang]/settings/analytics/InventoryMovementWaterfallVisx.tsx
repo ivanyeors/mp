@@ -173,7 +173,6 @@ function Chart({
                 textAnchor="end"
                 dominantBaseline="middle"
                 fontSize={labelFontSize}
-                fontFamily="ui-sans-serif, system-ui"
                 fill={clickable ? "var(--foreground)" : "var(--muted-foreground)"}
                 style={{
                   cursor: clickable ? "pointer" : "default",
@@ -255,7 +254,6 @@ function Chart({
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
               fontSize: axisFontSize,
-              fontFamily: "ui-sans-serif, system-ui",
               textAnchor: "middle",
               dy: "0.6em",
             })}

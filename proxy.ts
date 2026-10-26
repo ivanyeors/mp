@@ -2,6 +2,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 import { classifyCrawler, recordCrawlerHit } from "@/lib/analytics/ai-crawlers";
 import { isCrossSiteWrite } from "@/lib/auth/cross-site";
 import { blogSlugFate } from "@/lib/blog-redirects";
+import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
@@ -47,7 +48,7 @@ function safeDecode(segment: string): string {
 
 function blogGoneResponse(locale: Locale): NextResponse {
   const blog = withLocale("/blog", locale);
-  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>This article has been removed | Mpillow</title></head><body style="font-family:system-ui,sans-serif;max-width:36rem;margin:15vh auto;padding:0 1rem;line-height:1.5"><h1>This article has been removed</h1><p>It is no longer part of the Mpillow blog.</p><p><a href="${blog}">Browse the blog</a></p></body></html>`;
+  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>This article has been removed | Mpillow</title></head><body style="font-family:${FONT_STACK};max-width:36rem;margin:15vh auto;padding:0 1rem;line-height:1.5"><h1>This article has been removed</h1><p>It is no longer part of the Mpillow blog.</p><p><a href="${blog}">Browse the blog</a></p></body></html>`;
   return new NextResponse(html, { status: 410, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 

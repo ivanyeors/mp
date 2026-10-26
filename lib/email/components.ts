@@ -24,7 +24,6 @@ import {
   RADIUS,
   TYPE,
   LAYOUT,
-  FONT_MONO,
   css,
   typeStyle,
   TABLE_RESET,
@@ -440,7 +439,7 @@ export interface CodeBlockOptions {
   variant?: "otp" | "identifier";
 }
 
-/** Monospaced code or identifier in a muted panel. */
+/** A code or identifier, centred in a muted panel. */
 export function codeBlock(code: string, opts: CodeBlockOptions = {}): string {
   const identifier = opts.variant === "identifier";
   return card({
@@ -449,7 +448,6 @@ export function codeBlock(code: string, opts: CodeBlockOptions = {}): string {
       color: LIGHT.fg,
       margin: 0,
       "text-align": "center",
-      "font-family": FONT_MONO,
       // `body` already carries tracking "0", which typeStyle drops.
       ...(identifier ? { "font-weight": 600, "word-break": "break-all" } : {}),
     })}">${escapeHtml(code)}</p>${

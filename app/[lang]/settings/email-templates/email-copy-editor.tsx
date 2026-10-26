@@ -257,7 +257,7 @@ export function EmailCopyEditor({
                                             <button
                                                 type="button"
                                                 title="Copy"
-                                                className="inline-flex shrink-0 items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 font-mono text-xs"
+                                                className="inline-flex shrink-0 items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-xs"
                                                 onClick={() => void navigator.clipboard?.writeText(`{${name}}`)}
                                             >
                                                 {`{${name}}`}

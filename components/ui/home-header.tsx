@@ -6,14 +6,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { useCart } from "@/lib/shop/cart-context";
-import { Globe, MapPin, MessageCircleMore } from "lucide-react";
-import { openBookAppointment } from "@/lib/book-appointment";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import { stripLocale } from "@/lib/i18n/routing";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
@@ -66,12 +62,11 @@ export function HomeHeader() {
         className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 w-fit max-w-[calc(100%-0.5rem)] -translate-x-1/2 px-2 py-2 transition-all duration-200 ease-out sm:max-w-full sm:px-4 ${isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none invisible"
           }`}
       >
-        {/* `dark` pins the pill's contents to dark-mode tokens in both themes, so
-            they stay legible on the blue. The cart popover portals to <body>
-            and keeps the page theme. */}
-        <div
-          className="dark relative flex max-w-full items-center justify-between gap-2 rounded-[35px] px-2 py-1.5 sm:gap-3 sm:px-3"
-        >
+        {/* Just the logo, which is also the way home: booking and chat live in the
+            dock. `dark` pins the cart button to dark-mode tokens in both themes,
+            so it stays legible on the blue; its popover portals to <body> and
+            keeps the page theme. */}
+        <div className="dark relative flex max-w-full items-center gap-2 rounded-[35px] px-5 py-1">
           {/* Dock background (matches `components/ui/shadcn-io/dock/index.tsx`) */}
           <div
             className="absolute inset-0 -z-10 rounded-[35px]"
@@ -88,42 +83,17 @@ export function HomeHeader() {
             }}
           />
 
-          <Link href="/" className="shrink-0">
+          <Link href="/" className="shrink-0" aria-label="Mpillow home">
             <Image
               src="/mpillow_logo_2026-inv.png"
               alt="Mpillow"
-              width={42}
-              height={42}
-              className="h-[42px] w-[42px] object-contain"
+              width={48}
+              height={48}
+              className="h-12 w-12 object-contain"
               priority
             />
           </Link>
-
-          <div className="min-w-0 flex items-center gap-1.5 sm:gap-2">
-            <span className="hidden text-xs font-medium text-foreground/80 md:inline-block">Customise</span>
-            <Button asChild size="sm" className="h-8 rounded-full px-2.5 sm:px-3">
-              <Link href="/mp-config" aria-label="Online">
-                <Globe className="h-4 w-4 sm:hidden" aria-hidden="true" />
-                <span className="hidden sm:inline">Online</span>
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="h-8 rounded-full px-2.5 sm:px-3">
-              <button type="button" onClick={openBookAppointment}>
-                <MapPin className="h-4 w-4 sm:hidden" aria-hidden="true" />
-                <span className="hidden sm:inline">In-Person</span>
-              </button>
-            </Button>
-            <a
-              href={SUPPORT_WHATSAPP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-foreground/90 hover:text-foreground max-md:h-11 max-md:w-11 max-md:p-2.5"
-              aria-label="WhatsApp"
-            >
-              <MessageCircleMore className="h-full w-full" />
-            </a>
-            {showCart && <CartButton />}
-          </div>
+          {showCart && <CartButton />}
         </div>
       </div>
 

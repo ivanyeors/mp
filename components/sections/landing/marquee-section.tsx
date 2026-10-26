@@ -1,4 +1,3 @@
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { InfiniteImageMarquee } from "@/components/effects/infinite-image-marquee";
 import type { LandingSection, MarqueeContent } from "@/lib/types/landing-sections";
 
@@ -15,13 +14,14 @@ export function MarqueeSection({ section, images }: MarqueeSectionProps) {
     <section className="relative py-12 md:py-16">
       {/* ponytail: w-full not w-screen — 100vw side-scrolls when a scrollbar exists */}
       <div className="relative w-full overflow-hidden">
-        <AspectRatio ratio={1150 / 310} className="relative overflow-hidden border bg-card/40 backdrop-blur-sm">
+        {/* Phones get a 30% taller band (310 → 403) so the sleep positions read at that width. */}
+        <div className="relative aspect-[1150/403] overflow-hidden border bg-card/40 backdrop-blur-sm md:aspect-[1150/310]">
           <InfiniteImageMarquee
             src={image}
             alt="Three-way sleep positions illustration"
             imageClassName="object-cover"
           />
-        </AspectRatio>
+        </div>
       </div>
     </section>
   );

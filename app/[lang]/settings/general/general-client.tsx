@@ -266,7 +266,7 @@ export default function GeneralSettingsPage({
               {configs.map((cfg) => (
                 <tr key={cfg.id} className="border-b last:border-b-0 hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium">{cfg.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
                     {cfg.slug}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs" title={cfg.base_url ?? ""}>
@@ -380,7 +380,7 @@ export default function GeneralSettingsPage({
               <Textarea
                 id="cfg-config"
                 rows={5}
-                className="font-mono text-base md:text-xs"
+                className="text-base md:text-xs"
                 placeholder='{"model": "gpt-4"}'
                 value={form.config}
                 onChange={(e) => updateField("config", e.target.value)}

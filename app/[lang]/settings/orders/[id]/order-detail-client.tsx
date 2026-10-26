@@ -730,7 +730,7 @@ export default function OrderDetailPage({
                                                     </p>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="px-4 hidden sm:table-cell text-xs font-mono text-muted-foreground">
+                                            <TableCell className="px-4 hidden sm:table-cell text-xs text-muted-foreground">
                                                 {item.sku || "—"}
                                             </TableCell>
                                             <TableCell className="px-4 text-right text-sm">
@@ -1364,7 +1364,7 @@ export default function OrderDetailPage({
                                                                 onClick={() => handleLinkResult(c.id)}
                                                             >
                                                                 <p className="text-sm font-medium">{cName}</p>
-                                                                <p className="text-xs text-muted-foreground font-mono truncate">{c.id}</p>
+                                                                <p className="text-xs text-muted-foreground truncate">{c.id}</p>
                                                             </button>
                                                         );
                                                     })
@@ -1431,12 +1431,12 @@ export default function OrderDetailPage({
                                             href={order.tracking_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="font-mono text-xs text-primary hover:underline"
+                                            className="text-xs text-primary hover:underline"
                                         >
                                             {order.tracking_number}
                                         </a>
                                     ) : (
-                                        <span className="font-mono text-xs">
+                                        <span className="text-xs">
                                             {order.tracking_number}
                                         </span>
                                     )}
@@ -1538,7 +1538,7 @@ export default function OrderDetailPage({
                             {order.payment_reference && (
                                 <div className="flex justify-between gap-2">
                                     <span className="text-muted-foreground shrink-0">Reference</span>
-                                    <span className="font-mono text-xs truncate text-right">
+                                    <span className="text-xs truncate text-right">
                                         {order.payment_reference}
                                     </span>
                                 </div>

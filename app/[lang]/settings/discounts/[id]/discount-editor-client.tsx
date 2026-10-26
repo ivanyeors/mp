@@ -527,7 +527,7 @@ export function DiscountEditorClient({
                                         onChange={(e) =>
                                             set("code", e.target.value.toUpperCase())
                                         }
-                                        className="font-mono uppercase tracking-widest"
+                                        className="uppercase tracking-widest"
                                         placeholder="e.g. SAVE20"
                                     />
                                     <Button
@@ -924,7 +924,7 @@ export function DiscountEditorClient({
                                 <div className="mb-3 flex items-center gap-2">
                                     <Badge
                                         variant="outline"
-                                        className="font-mono text-sm tracking-widest"
+                                        className="text-sm tracking-widest"
                                     >
                                         {form.code}
                                     </Badge>

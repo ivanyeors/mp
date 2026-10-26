@@ -530,7 +530,7 @@ export default function SettingsShippingPage({
                                                 ? `Free above ${formatCurrency(method.free_above, method.currency)}`
                                                 : "No free shipping"}
                                         </span>
-                                        <span className="font-mono text-xs">{method.slug}</span>
+                                        <span className="text-xs">{method.slug}</span>
                                     </div>
 
                                     {method.countries && method.countries.length > 0 && (
@@ -648,7 +648,7 @@ export default function SettingsShippingPage({
                                 value={form.slug}
                                 onChange={(e) => setField("slug", e.target.value)}
                                 placeholder="e.g. standard-delivery"
-                                className="font-mono text-base md:text-sm"
+                                className="text-base md:text-sm"
                             />
                             <p className="text-xs text-muted-foreground">
                                 Lowercase letters, numbers and hyphens only.
@@ -742,7 +742,7 @@ export default function SettingsShippingPage({
                                                     value={form.easyship_courier_service_id}
                                                     onChange={(e) => setField("easyship_courier_service_id", e.target.value)}
                                                     placeholder="Copy one from Couriers → Test a quote"
-                                                    className="font-mono text-base md:text-sm"
+                                                    className="text-base md:text-sm"
                                                 />
                                                 <p className="text-xs text-muted-foreground">
                                                     The method is hidden for addresses this courier does not serve.

@@ -12,9 +12,9 @@
 // drift per-template again.
 //
 // NO WEB FONTS. Gmail strips @import and <link>, and loading a font file from an
-// email is a tracking vector besides. Sora / JetBrains Mono are named first in
-// the stacks and degrade to Segoe UI / Menlo — the achromatic palette is chosen
-// so the fallback still reads as intentional.
+// email is a tracking vector besides. Figtree is named first in the stack and
+// degrades to Segoe UI / Roboto — the achromatic palette is chosen so the
+// fallback still reads as intentional.
 //
 // The logo must be an ABSOLUTE url (email clients have no page origin), so it is
 // resolved through getSiteOrigin() + the public asset path.

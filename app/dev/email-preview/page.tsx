@@ -41,7 +41,7 @@ export default async function EmailPreviewPage({
   const src = `/dev/email-preview/${selectedId}?fixture=${selectedFixture}`;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
       <aside
         style={{
           width: 280,

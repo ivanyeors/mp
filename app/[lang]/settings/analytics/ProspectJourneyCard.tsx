@@ -990,7 +990,7 @@ function ExpandedConvertedDigIn({
                     Journey {formatDwell(s.journeyDurationMs)}
                   </p>
                   <p
-                    className="mt-1 line-clamp-2 font-mono text-[10px] leading-snug text-muted-foreground"
+                    className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground"
                     title={s.shortPath.map(labelPath).join(" → ")}
                   >
                     {s.shortPath.map(labelPath).join(" → ")}
@@ -1847,7 +1847,7 @@ function JourneyGraph({
               {tooltipData.country ? (
                 <>
                   <dt className="text-muted-foreground">Country</dt>
-                  <dd className="font-mono">{tooltipData.country}</dd>
+                  <dd>{tooltipData.country}</dd>
                 </>
               ) : null}
               {tooltipData.dashed ? (
@@ -2312,7 +2312,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
                     checked={selectedCountries.includes(code)}
                     onCheckedChange={() => toggleCountry(code)}
                   />
-                  <span className="font-mono text-xs">{code}</span>
+                  <span className="text-xs">{code}</span>
                 </label>
               </li>
             ))}
@@ -2377,7 +2377,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
               style={{ backgroundColor: c.color }}
               aria-hidden
             />
-            <span className="font-mono">{c.code}</span>
+            <span>{c.code}</span>
           </li>
         ))}
         <li className="text-muted-foreground">Opacity scales with traffic</li>
