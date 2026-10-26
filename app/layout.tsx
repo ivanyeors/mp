@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Sora } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/lib/shop/cart-context";
@@ -25,13 +25,8 @@ import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18
 import { getSiteOrigin } from "@/lib/site-url";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo/metadata";
 
-const soraSans = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-});
-
-const soraMono = JetBrains_Mono({
-  variable: "--font-sora-mono",
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -102,7 +97,7 @@ export default async function RootLayout({
   return (
     <html lang={lang} suppressHydrationWarning>
       <body
-        className={`${soraSans.variable} ${soraMono.variable} antialiased`}
+        className={`${figtree.variable} antialiased`}
       >
         {isProd ? (
           <GoogleAnalytics

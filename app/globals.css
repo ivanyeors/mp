@@ -10,8 +10,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sora);
-  --font-mono: var(--font-sora-mono);
+  --font-sans: var(--font-figtree);
+  /* One sans-serif typeface everywhere: `font-mono` (codes and IDs) is Figtree too. */
+  --font-mono: var(--font-figtree);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -178,7 +179,7 @@ body.dock-hidden .app-dock {
     overflow-x: clip;
     overflow-y: visible;
     /* Default text (body, small text, UI text) */
-    @apply bg-background text-foreground font-mono leading-snug;
+    @apply bg-background text-foreground font-sans leading-snug;
     min-height: 100%;
   }
 
@@ -430,5 +431,5 @@ body.dock-hidden .app-dock {
 
 .wmde-markdown {
   background-color: transparent !important;
-  font-family: var(--font-mono) !important;
+  font-family: var(--font-sans) !important;
 }
