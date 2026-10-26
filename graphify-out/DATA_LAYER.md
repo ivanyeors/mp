@@ -347,7 +347,7 @@ Changed from pages: `/settings/discounts/[id]`, `/settings/media`, `/settings/pr
 Defined in supabase/migrations/0028_ecommerce.sql:194
 References: `collections`, `products`
 - Read by:
-  - `getProducts()` [select] — lib/ecommerce/products.ts:116
+  - `getProducts()` [select] — lib/ecommerce/products.ts:126
 
 ### commission_schemes
 Defined in supabase/migrations/20260728020000_commissions.sql:9
@@ -396,9 +396,9 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/disco
   - `DELETE()` [delete] — app/api/shop/coupons/[id]/route.ts:74
   - `PATCH()` [update] — app/api/shop/coupons/[id]/route.ts:57
   - `POST()` [insert] — app/api/shop/coupons/route.ts:59
-  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:673
+  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:684
   - `deleteCoupon()` [delete] — app/[lang]/settings/discounts/actions.ts:14
-  - `incrementCouponUsage()` [select,update] — lib/ecommerce/discounts.ts:302
+  - `incrementCouponUsage()` [select,update] — lib/ecommerce/discounts.ts:316
   - `toggleCouponActive()` [update] — app/[lang]/settings/discounts/actions.ts:23
 - Read by:
   - `findActiveCoupon()` [select] — lib/ecommerce/discounts.ts:209
@@ -452,12 +452,12 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/customers/[id]/route.ts:47
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
-  - `findOrCreateCustomer()` [insert] — lib/ecommerce/customers.ts:23
+  - `findOrCreateCustomer()` [insert] — lib/ecommerce/customers.ts:24
   - `linkCustomerToAuthUser()` [insert,select,update] — lib/auth/customer-identity.ts:65
   - `setMyAftercarePreference()` [update] — app/[lang]/account/actions.ts:60
   - `touchAccountProviders()` [update] — lib/auth/customer-identity.ts:221
   - `touchCustomerLastSeen()` [update] — lib/auth/customer-identity.ts:164
-  - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:77
+  - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:82
 - Read by:
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
   - `POST()` [select] — app/api/results/hold/route.ts:792
@@ -467,11 +467,11 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
   - `confirmationPoints()` [select] — lib/email/index.ts:284
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
-  - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:7
+  - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:77
   - `getCurrentCustomerId()` [select] — lib/shop/customer-addresses.ts:39
-  - `getCustomerById()` [select] — lib/ecommerce/customers.ts:35
-  - `getCustomers()` [select] — lib/ecommerce/customers.ts:52
+  - `getCustomerById()` [select] — lib/ecommerce/customers.ts:36
+  - `getCustomers()` [select] — lib/ecommerce/customers.ts:53
   - `linkGoogleReview()` [select] — lib/crm/google-review-links.ts:64
   - `listOpenStopRequests()` [select] — lib/aftercare/preferences.ts:225
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
@@ -618,11 +618,6 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
   - `getGoogleReview()` [select] — lib/reviews/google-reviews.ts:51
   - `getGoogleReviewByCard()` [select] — lib/reviews/google-reviews.ts:64
 
-### increment_coupon_usage
-Defined in supabase/migrations/20260702130000_increment_coupon_usage.sql:2
-- Called by:
-  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:298
-
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
 - Read by:
@@ -647,7 +642,7 @@ Defined in supabase/migrations/0001_inventory.sql:30
 References: `items`
 Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/inventory`, `/settings/orders`, `/settings/orders/[id]`
 - Written by:
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:736
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:746
   - `deductInventoryForOrder()` [insert] — lib/ecommerce/inventory-deduction.ts:236
   - `insertStockIn()` [insert] — app/[lang]/settings/inventory/actions.ts:342
   - `restockOrderItem()` [insert] — lib/ecommerce/restock-order.ts:214
@@ -972,7 +967,7 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
 ### order_margins
 Defined in supabase/migrations/20260702120000_order_margins.sql:8
 - Read by:
-  - `listAdminOrders()` [select] — lib/ecommerce/admin/orders-list.ts:94
+  - `listAdminOrders()` [select] — lib/ecommerce/admin/orders-list.ts:99
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:23
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:74
   - `loadPlatformFacts()` [select] — lib/analytics/channel-sales.ts:465
@@ -984,7 +979,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
 - Written by:
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:120
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:880
+  - `POST()` [select] — app/api/stripe/webhook/route.ts:891
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:144
 
@@ -1006,11 +1001,11 @@ Defined in supabase/migrations/0028_ecommerce.sql:480
 References: `orders`
 Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`
 - Written by:
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:743
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:657
   - `POST()` [insert] — app/api/shipping/easyship/webhook/route.ts:71
   - `POST()` [insert] — app/api/shop/orders/[id]/timeline/route.ts:49
   - `POST()` [insert] — app/api/shop/orders/route.ts:117
-  - `addOrderTimelineEvent()` [insert] — lib/ecommerce/orders.ts:89
+  - `addOrderTimelineEvent()` [insert] — lib/ecommerce/orders.ts:95
   - `buyOrderLabel()` [insert] — lib/shipping/order-shipment.ts:268
   - `fulfillOrder()` [insert] — app/[lang]/settings/orders/actions.ts:100
   - `markOrderDeliveredByCourier()` [insert] — lib/ecommerce/fulfilment.ts:91
@@ -1062,11 +1057,11 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `getChannelMix()` [select] — app/[lang]/settings/analytics/seo-actions.ts:134
   - `getCustomerOrderByNumber()` [select] — lib/shop/customer-orders.ts:65
   - `getCustomerOrders()` [select] — lib/shop/customer-orders.ts:48
-  - `getOrderById()` [select] — lib/ecommerce/orders.ts:58
-  - `getOrderByStripeSession()` [select] — lib/ecommerce/orders.ts:77
-  - `getOrderDashboardStats()` [select] — lib/ecommerce/orders.ts:106
-  - `getOrders()` [select] — lib/ecommerce/orders.ts:27
-  - `listAdminOrders()` [select] — lib/ecommerce/admin/orders-list.ts:70
+  - `getOrderById()` [select] — lib/ecommerce/orders.ts:64
+  - `getOrderByStripeSession()` [select] — lib/ecommerce/orders.ts:83
+  - `getOrderDashboardStats()` [select] — lib/ecommerce/orders.ts:112
+  - `getOrders()` [select] — lib/ecommerce/orders.ts:28
+  - `listAdminOrders()` [select] — lib/ecommerce/admin/orders-list.ts:71
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:85
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:34
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:18
@@ -1082,7 +1077,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:37
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:391
   - `sources/orders.ts` [select] — lib/crm/timeline/sources/orders.ts:67
-  - `updateCustomerStats()` [select] — lib/ecommerce/customers.ts:67
+  - `updateCustomerStats()` [select] — lib/ecommerce/customers.ts:72
 
 ### partner_emails
 Defined in supabase/migrations/20260728070000_partner_emails.sql:18
@@ -1366,9 +1361,9 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `POST()` [select] — app/api/shop/products/[id]/variants/route.ts:60
   - `getAdminProduct()` [select] — lib/ecommerce/admin/products.ts:92
   - `getComposedProductImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:959
-  - `getFeaturedProducts()` [select] — lib/ecommerce/products.ts:165
-  - `getProductBySlug()` [select] — lib/ecommerce/products.ts:140
-  - `getProducts()` [select] — lib/ecommerce/products.ts:79
+  - `getFeaturedProducts()` [select] — lib/ecommerce/products.ts:175
+  - `getProductBySlug()` [select] — lib/ecommerce/products.ts:150
+  - `getProducts()` [select] — lib/ecommerce/products.ts:80
   - `handleApplyBolster()` [select] — app/api/shop/customize/route.ts:684
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:130
   - `listAdminProducts()` [select] — lib/ecommerce/admin/products.ts:45
@@ -1640,6 +1635,11 @@ Defined in supabase/migrations/20261023120000_points_milestones.sql:181
 Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.sql:52
 - Called by:
   - `applyShopifyImportChunk()` — app/[lang]/settings/customers/import/actions.ts:128
+
+### increment_coupon_usage
+Defined in supabase/migrations/20261025000000_coupon_usage_cap.sql:19
+- Called by:
+  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:306
 
 ### is_partner_customer
 Defined in supabase/migrations/20261021120000_points_ledger.sql:143
@@ -2204,7 +2204,7 @@ Defined in supabase/migrations/20260630120000_variant_stock_bolster.sql:10
 - Read by:
   - `GET()` [select] — app/api/shop/stock/route.ts:32
   - `POST()` [select] — app/api/shop/checkout/route.ts:226
-  - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:18
+  - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:19
 
 ## Pages
 
