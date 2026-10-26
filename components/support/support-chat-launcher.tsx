@@ -52,7 +52,7 @@ export function Launcher({
           <BrandAvatar size={44} live />
           <div className="min-w-0">
             <p className="text-sm font-semibold">mpillow team</p>
-            <p className="text-xs text-[#bcd8ff]">Real people · usually reply within a few hours</p>
+            <p className="text-xs text-[#bcd8ff]">usually reply within a few hours</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

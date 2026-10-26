@@ -18,6 +18,7 @@ import type { SupportChatState } from "./support-chat-engine";
 export const STORAGE_KEY = "mp.supportChat";
 
 let enabled = false;
+let openOnLoad = false;
 let state: SupportChatState | null = null;
 const listeners = new Set<() => void>();
 
@@ -35,6 +36,22 @@ export function enableSupportChat() {
   if (enabled) return;
   enabled = true;
   emit();
+}
+
+/** Opens the chat window, loading the engine first when it isn't running yet. */
+export function openSupportChat() {
+  if (state) return state.setView("open");
+  openOnLoad = true;
+  enableSupportChat();
+}
+
+/** Whether the engine should open its window once it has loaded; reading clears nothing. */
+export function shouldOpenOnLoad() {
+  return openOnLoad;
+}
+
+export function clearOpenOnLoad() {
+  openOnLoad = false;
 }
 
 /** The engine's state, published on each of its renders. */

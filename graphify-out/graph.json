@@ -198484,7 +198484,7 @@
       "file_type": "code",
       "norm_label": "enus",
       "source_file": "lib/i18n/messages/en-US.ts",
-      "source_location": "L4"
+      "source_location": "L3"
     },
     {
       "id": "lib_i18n_messages_index",
@@ -198539,7 +198539,7 @@
       "file_type": "code",
       "norm_label": "zhcn",
       "source_file": "lib/i18n/messages/zh-CN.ts",
-      "source_location": "L4"
+      "source_location": "L3"
     },
     {
       "id": "lib_i18n_messages_types_ts_docref_adr_0024",
@@ -374992,18 +374992,6 @@
       "weight": 1.0
     },
     {
-      "source": "lib_i18n_messages_en_us",
-      "target": "lib_contact_support_whatsapp_display",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "lib/i18n/messages/en-US.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
       "source": "lib_i18n_messages_index",
       "target": "lib_i18n_locales_default_locale",
       "relation": "imports",
@@ -375073,18 +375061,6 @@
       "context": "import",
       "source_file": "lib/i18n/messages/zh-CN.ts",
       "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_i18n_messages_zh_cn",
-      "target": "lib_contact_support_whatsapp_display",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "lib/i18n/messages/zh-CN.ts",
-      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -451286,18 +451262,6 @@
       "weight": 1.0
     },
     {
-      "source": "lib_i18n_messages_en_us",
-      "target": "lib_contact",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "lib/i18n/messages/en-US.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
       "source": "lib_i18n_messages_index",
       "target": "lib_i18n_locales",
       "relation": "imports_from",
@@ -451357,18 +451321,6 @@
       "source_file": "lib/i18n/messages/zh-CN.ts",
       "source_location": "L1",
       "type_only": true,
-      "weight": 1.0
-    },
-    {
-      "source": "lib_i18n_messages_zh_cn",
-      "target": "lib_contact",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "lib/i18n/messages/zh-CN.ts",
-      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -575368,7 +575320,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/messages/en-US.ts",
-      "source_location": "L4",
+      "source_location": "L3",
       "weight": 1.0
     },
     {
@@ -575412,7 +575364,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/messages/zh-CN.ts",
-      "source_location": "L4",
+      "source_location": "L3",
       "weight": 1.0
     },
     {
@@ -680637,13 +680589,79 @@
     },
     {
       "source": "dataflow_page_shipping_refund_policies",
+      "target": "dataflow_endpoint_api_support_chat",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/support/use-support-chat.ts",
+      "source_location": "L135",
+      "weight": 1.0
+    },
+    {
+      "source": "dataflow_page_shipping_refund_policies",
+      "target": "dataflow_endpoint_api_support_chat_code",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/support/use-support-chat.ts",
+      "source_location": "L356",
+      "weight": 1.0
+    },
+    {
+      "source": "dataflow_page_shipping_refund_policies",
+      "target": "dataflow_endpoint_api_support_chat_id",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/support/use-support-chat.ts",
+      "source_location": "L150",
+      "weight": 1.0
+    },
+    {
+      "source": "dataflow_page_shipping_refund_policies",
+      "target": "dataflow_endpoint_api_support_chat_id_end",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/support/use-support-chat.ts",
+      "source_location": "L411",
+      "weight": 1.0
+    },
+    {
+      "source": "dataflow_page_shipping_refund_policies",
+      "target": "dataflow_endpoint_api_support_chat_id_leave",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/support/use-support-chat.ts",
+      "source_location": "L233",
+      "weight": 1.0
+    },
+    {
+      "source": "dataflow_page_shipping_refund_policies",
+      "target": "dataflow_endpoint_api_support_chat_id_messages",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/support/use-support-chat.ts",
+      "source_location": "L317",
+      "weight": 1.0
+    },
+    {
+      "source": "dataflow_page_shipping_refund_policies",
       "target": "lib_pricing_service_copy_loadservicecopyvalues",
       "relation": "loads",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/marketing/returns-warranty-page.tsx",
-      "source_location": "L28",
+      "source_location": "L25",
       "weight": 1.0,
       "context": "import"
     },
@@ -690632,5 +690650,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "899da18b4ece00b9b904cdc3bf6a4427994a06d7"
+  "built_at_commit": "d7e55633cf4d838280ef999abeeee563d08665d5"
 }

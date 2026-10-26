@@ -35,7 +35,7 @@ const compact = header.slice(0, expandedStart);
 assert.match(compact, /mpillow_logo_2026-inv\.png/);
 assert.doesNotMatch(header, /openBookAppointment|SUPPORT_WHATSAPP_URL/);
 assert.match(dock, /openBookAppointment/);
-assert.match(dock, /SUPPORT_WHATSAPP_URL/);
+assert.match(dock, /openSupportChat/);
 // Marketing pages go home via that logo, so only other pages get a dock Home.
 assert.match(dock, /marketing \? productItems : \[homeItem, \.\.\.productItems\]/);
 
