@@ -429,7 +429,7 @@ export function CustomerDetailClient({
                                                     <TableCell className="px-4 py-3">
                                                         <Link
                                                             href={to(`/settings/orders/${order.id}`)}
-                                                            className="font-bold font-mono text-sm text-primary hover:underline"
+                                                            className="font-bold text-sm text-primary hover:underline"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
                                                             #{order.order_number}

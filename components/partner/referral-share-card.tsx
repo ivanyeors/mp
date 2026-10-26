@@ -37,7 +37,7 @@ export function ReferralShareCard({ code, siteOrigin }: Props) {
     <div className="rounded-lg border p-4 space-y-4">
       <div className="space-y-1">
         <Label className="text-base font-semibold">Your referral code</Label>
-        <p className="font-mono text-2xl tracking-widest">{code}</p>
+        <p className="text-2xl tracking-widest">{code}</p>
       </div>
 
       <div className="space-y-2">
@@ -48,7 +48,7 @@ export function ReferralShareCard({ code, siteOrigin }: Props) {
             readOnly
             value={link}
             onFocus={(e) => e.currentTarget.select()}
-            className="font-mono text-sm"
+            className="text-sm"
           />
           <Button type="button" variant="outline" onClick={copy}>
             {copied ? "Copied" : "Copy"}

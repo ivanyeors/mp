@@ -509,7 +509,7 @@ export default function SettingsOrdersPage({
                                         }
                                     >
                                         <TableCell className="px-4 py-3">
-                                            <span className="font-bold font-mono text-sm">
+                                            <span className="font-bold text-sm">
                                                 #{order.order_number}
                                             </span>
                                         </TableCell>

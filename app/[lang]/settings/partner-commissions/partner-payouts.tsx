@@ -120,7 +120,7 @@ export async function PartnerPayouts() {
           </p>
           <p>
             Recording a payout marks the covered commissions{" "}
-            <span className="font-mono">paid</span> and is immutable — a mistake is
+            <span>paid</span> and is immutable — a mistake is
             corrected with a new negative entry, never an edit. No minimum threshold.
           </p>
         </InfoTip>
@@ -171,7 +171,7 @@ export async function PartnerPayouts() {
                     <ul className="mt-1 space-y-0.5">
                       <li>{d?.bank_name ?? "—"}</li>
                       <li>{d?.bank_account_name ?? "—"}</li>
-                      <li className="font-mono">{d?.bank_account_number ?? "—"}</li>
+                      <li>{d?.bank_account_number ?? "—"}</li>
                     </ul>
                   ) : (
                     <p className="mt-1 text-muted-foreground">Not provided.</p>

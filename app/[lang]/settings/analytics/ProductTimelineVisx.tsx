@@ -270,7 +270,6 @@ function Chart({
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
               fontSize: axisFontSize,
-              fontFamily: "ui-sans-serif, system-ui",
               textAnchor: "middle",
               dy: "0.6em",
             })}
@@ -285,7 +284,6 @@ function Chart({
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
               fontSize: axisFontSize,
-              fontFamily: "ui-sans-serif, system-ui",
               textAnchor: "end",
               dx: "-0.4em",
               dy: "0.33em",
@@ -319,7 +317,6 @@ function Chart({
                 y={y}
                 fill="var(--muted-foreground)"
                 fontSize={axisFontSize}
-                fontFamily="ui-sans-serif, system-ui"
                 textAnchor="middle"
                 style={{ pointerEvents: "none" }}
               >

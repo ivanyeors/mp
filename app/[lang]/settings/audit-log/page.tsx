@@ -128,11 +128,11 @@ export default async function AuditLogPage({
                       <span className="text-muted-foreground"> · {profileName.get(r.actor_profile_id)}</span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs">{r.action}</td>
+                  <td className="px-4 py-3 text-xs">{r.action}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {r.entity_type}
                     {r.entity_id ? (
-                      <span className="block font-mono text-[11px] opacity-70">
+                      <span className="block text-[11px] opacity-70">
                         {r.entity_id}
                       </span>
                     ) : null}

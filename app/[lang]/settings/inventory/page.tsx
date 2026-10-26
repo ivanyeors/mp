@@ -2199,7 +2199,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
 
                   return (
                     <TableRow key={r.shopifyVariantId}>
-                      <TableCell className="font-mono text-xs">{r.shopifyVariantId}</TableCell>
+                      <TableCell className="text-xs">{r.shopifyVariantId}</TableCell>
                       <TableCell className="text-xs">{mappingLabel}</TableCell>
                       <TableCell>
                         <Input

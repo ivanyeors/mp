@@ -169,7 +169,7 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
                 <div className="space-y-1">
                   <p className="font-medium">{pick.label}</p>
                   {pick.facts.map((f) => (
-                    <p key={f} className="font-mono text-xs tabular-nums">{f}</p>
+                    <p key={f} className="text-xs tabular-nums">{f}</p>
                   ))}
                   {pick.zone ? <p className="text-xs text-muted-foreground">Zone: {pick.zone}</p> : null}
                   {pick.note ? <p className="text-xs text-muted-foreground">{pick.note}</p> : null}
@@ -196,7 +196,7 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
               {unit.figures.map(({ label, value }) => (
                 <div key={label} className="min-w-0">
                   <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="font-mono text-sm tabular-nums">{value}</dd>
+                  <dd className="text-sm tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>

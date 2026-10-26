@@ -43,7 +43,7 @@ const WALK_SPEED = 3; // m/s, x2.5 with Shift
 const TAG_ZONE =
   "absolute left-0 top-0 whitespace-nowrap rounded border border-border bg-background/85 px-1.5 py-1 text-[11px] font-semibold uppercase leading-none tracking-wider text-foreground shadow-sm";
 const TAG_DIM =
-  "absolute left-0 top-0 whitespace-nowrap rounded bg-background/80 px-1 py-0.5 font-mono text-[11px] leading-none tabular-nums text-sky-800 dark:text-sky-300";
+  "absolute left-0 top-0 whitespace-nowrap rounded bg-background/80 px-1 py-0.5 text-[11px] leading-none tabular-nums text-sky-800 dark:text-sky-300";
 
 const srgb = (rgb: readonly number[]) =>
   new THREE.Color().setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);

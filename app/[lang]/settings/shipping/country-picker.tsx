@@ -168,7 +168,7 @@ export function CountryPicker({ value, onChange }: { value: string[]; onChange: 
                             key={code}
                             type="button"
                             onClick={() => toggle(code)}
-                            className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 font-mono text-xs hover:bg-muted"
+                            className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs hover:bg-muted"
                             aria-label={`Remove ${code}`}
                         >
                             {code}

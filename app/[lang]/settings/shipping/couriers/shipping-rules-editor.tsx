@@ -444,7 +444,7 @@ function JsonField({ value, onChange }: { value: Record<string, unknown>; onChan
     <details>
       <summary className="cursor-pointer text-xs text-muted-foreground">Options JSON</summary>
       <Textarea
-        className={`mt-2 font-mono text-xs ${state.bad ? "border-destructive" : ""}`}
+        className={`mt-2 text-xs ${state.bad ? "border-destructive" : ""}`}
         rows={4}
         value={state.text}
         onChange={(e) => setState({ ...state, text: e.target.value })}

@@ -925,7 +925,7 @@ export default function ResultDetailPage({
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1>Result details</h1>
-          <p className="text-sm text-muted-foreground font-mono break-all">{row.id}</p>
+          <p className="text-sm text-muted-foreground break-all">{row.id}</p>
           {headerMeta ? (
             <p className="text-xs text-muted-foreground mt-1">
               Created {headerMeta.createdAt} · Updated {headerMeta.updatedAt}
@@ -1106,7 +1106,7 @@ export default function ResultDetailPage({
                       readOnly
                       value={paymentLink}
                       onFocus={(e) => e.currentTarget.select()}
-                      className="font-mono text-xs"
+                      className="text-xs"
                     />
                     <Button type="button" variant="outline" onClick={copyPaymentLink}>
                       {paymentLinkCopied ? "Copied" : "Copy"}
@@ -1492,7 +1492,7 @@ export default function ResultDetailPage({
             <h2 className="text-sm font-semibold">Order</h2>
             <a
               href={to(`/settings/orders/${row.order_id}`)}
-              className="font-mono text-sm font-semibold text-primary hover:underline"
+              className="text-sm font-semibold text-primary hover:underline"
             >
               #{orderNumber ?? "view"}
             </a>
@@ -1545,12 +1545,12 @@ export default function ResultDetailPage({
                       href={linkedOrder.tracking_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-mono text-primary hover:underline"
+                      className="text-primary hover:underline"
                     >
                       {linkedOrder.tracking_number}
                     </a>
                   ) : (
-                    <span className="font-mono">{linkedOrder.tracking_number}</span>
+                    <span>{linkedOrder.tracking_number}</span>
                   )}
                 </div>
               )}

@@ -597,7 +597,7 @@ function WebhookSection({
 
         <div className="space-y-1.5">
           <Label>Endpoint</Label>
-          <Input readOnly value={endpoint ?? "Unavailable on this origin (needs a public https site URL)"} className="font-mono text-xs" />
+          <Input readOnly value={endpoint ?? "Unavailable on this origin (needs a public https site URL)"} className="text-xs" />
           <p className="text-xs text-muted-foreground">
             {sync.webhook_secret_set
               ? "Signing secret captured — incoming events are verified."
@@ -621,7 +621,7 @@ function WebhookSection({
                       })
                     }
                   />
-                  <span className="font-mono text-xs">{ev}</span>
+                  <span className="text-xs">{ev}</span>
                 </label>
               );
             })}

@@ -170,7 +170,7 @@ export default async function RmaDetailPage({
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
                     {it.order_items?.sku ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right">{it.quantity}</td>

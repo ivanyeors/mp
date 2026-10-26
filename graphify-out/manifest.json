@@ -3840,9 +3840,9 @@
     "semantic_hash": ""
   },
   "proxy.ts": {
-    "mtime": 1793009596.9491303,
-    "seen": 1793011377.7791255,
-    "ast_hash": "f275bc99f1334a95c9ed60584725cdea",
+    "mtime": 1793012567.2301238,
+    "seen": 1793012922.2235377,
+    "ast_hash": "9d0e04e48e8a24f75494b30e5a70c0d5",
     "semantic_hash": ""
   },
   "public/sw.js": {
@@ -7164,9 +7164,9 @@
     "semantic_hash": ""
   },
   "lib/email/theme.ts": {
-    "mtime": 1793011743.9042556,
-    "seen": 1793012073.061907,
-    "ast_hash": "a11994790c351e2b08634b7180128609",
+    "mtime": 1793012567.229759,
+    "seen": 1793012922.2224529,
+    "ast_hash": "9618a1bb6e738e835ec6f1106faf1403",
     "semantic_hash": ""
   },
   "scripts/build-auth-email-templates.ts": {
@@ -7188,8 +7188,8 @@
     "semantic_hash": ""
   },
   "docs/email-templates-preview.html": {
-    "mtime": 1793011785.7932603,
-    "seen": 1793012073.0657976,
+    "mtime": 1793012617.0253098,
+    "seen": 1793012922.225576,
     "ast_hash": "c9831f8a3a3929646911fe38122f06f1",
     "semantic_hash": ""
   },
@@ -7200,20 +7200,20 @@
     "semantic_hash": ""
   },
   "supabase/templates/confirm-signup.html": {
-    "mtime": 1793011761.077259,
-    "seen": 1793012073.0658472,
+    "mtime": 1793012612.6733096,
+    "seen": 1793012922.225635,
     "ast_hash": "b33edb1982a8a870933f4709b9c8c4a7",
     "semantic_hash": ""
   },
   "supabase/templates/invite-user.html": {
-    "mtime": 1793011761.077259,
-    "seen": 1793012073.0658517,
+    "mtime": 1793012612.6733096,
+    "seen": 1793012922.2256396,
     "ast_hash": "7b33a42409f495bec1d9959a6c00c879",
     "semantic_hash": ""
   },
   "supabase/templates/magic-link.html": {
-    "mtime": 1793011761.077259,
-    "seen": 1793012073.0658534,
+    "mtime": 1793012612.6733096,
+    "seen": 1793012922.2256415,
     "ast_hash": "14fe240483df25fd62be324c307b8ca2",
     "semantic_hash": ""
   },
@@ -7308,14 +7308,14 @@
     "semantic_hash": ""
   },
   "supabase/templates/change-email.html": {
-    "mtime": 1793011761.081259,
-    "seen": 1793012073.065844,
+    "mtime": 1793012612.6773095,
+    "seen": 1793012922.2256322,
     "ast_hash": "17f76eae1c921ea5c1605ea562d0d806",
     "semantic_hash": ""
   },
   "supabase/templates/reauthentication.html": {
-    "mtime": 1793011761.085259,
-    "seen": 1793012073.0658553,
+    "mtime": 1793012612.6773095,
+    "seen": 1793012922.2256439,
     "ast_hash": "af465ebac4a3fe50b8d10e2f989d4349",
     "semantic_hash": ""
   },
@@ -10752,9 +10752,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/showroom/showroom-scene.ts": {
-    "mtime": 1792768558.9071486,
-    "seen": 1793011377.7759533,
-    "ast_hash": "ba2bbfc68992f578098bc6ff13605d27",
+    "mtime": 1793012521.1509109,
+    "seen": 1793012922.2209888,
+    "ast_hash": "3030cfaec1b34a0dd6a9c5c19e1ba44e",
     "semantic_hash": ""
   },
   "lib/showroom/__tests__/showroom.test.ts": {
@@ -15339,6 +15339,18 @@
     "mtime": 1793010850.4245713,
     "seen": 1793011377.7766497,
     "ast_hash": "28cba8993e051f433668e79eb1055967",
+    "semantic_hash": ""
+  },
+  "app/fonts.ts": {
+    "mtime": 1793012547.3133056,
+    "seen": 1793012922.2215068,
+    "ast_hash": "71f212256736f23fb3d38b148919a26a",
+    "semantic_hash": ""
+  },
+  "lib/font-stack.ts": {
+    "mtime": 1793012549.0533059,
+    "seen": 1793012922.222483,
+    "ast_hash": "0d0bbb87c6326192d0f194c74752f0f3",
     "semantic_hash": ""
   }
 }

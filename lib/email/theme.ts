@@ -6,21 +6,14 @@
 // one design language:
 //   - palette  → app/globals.css `:root` / `.dark` (shadcn "neutral", achromatic)
 //   - radii    → app/globals.css `--radius: 0.625rem` and its derived scale
-//   - fonts    → app/layout.tsx (Figtree → --font-sans, the one typeface site-wide)
+//   - fonts    → lib/font-stack.ts, the site's one typeface as a font stack
 //   - footer   → components/ui/marketing-footer.tsx (kept in sync by a test)
 //
 // The oklch values in globals.css are the Tailwind `neutral` ramp, so they map
 // to exact hexes. Email clients understand neither oklch nor CSS variables, so
 // the hexes are literal here — this module is the ONLY place they appear.
 
-/**
- * The one stack, for headings and body alike, as on the site. Figtree cannot
- * actually load in email (no web fonts — see the note in base.ts), so the
- * fallbacks are what most recipients will see. They are ordered to land on a
- * humanist sans everywhere.
- */
-export const FONT_SANS =
-  "'Figtree','Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+import { FONT_STACK } from "@/lib/font-stack";
 
 /**
  * Light palette — `:root` in globals.css.
@@ -82,16 +75,16 @@ export const RADIUS = {
 export const TYPE = {
   // tracking matches Tailwind `tracking-tight` (-0.025em), used across the
   // landing sections; weight 600 matches their `font-semibold`.
-  h1: { size: 24, lh: 30, weight: 600, family: FONT_SANS, tracking: "-0.025em" },
-  h2: { size: 18, lh: 26, weight: 600, family: FONT_SANS, tracking: "-0.025em" },
-  h3: { size: 14, lh: 20, weight: 600, family: FONT_SANS, tracking: "0" },
-  body: { size: 14, lh: 22, weight: 400, family: FONT_SANS, tracking: "0" },
-  small: { size: 12, lh: 18, weight: 400, family: FONT_SANS, tracking: "0" },
+  h1: { size: 24, lh: 30, weight: 600, family: FONT_STACK, tracking: "-0.025em" },
+  h2: { size: 18, lh: 26, weight: 600, family: FONT_STACK, tracking: "-0.025em" },
+  h3: { size: 14, lh: 20, weight: 600, family: FONT_STACK, tracking: "0" },
+  body: { size: 14, lh: 22, weight: 400, family: FONT_STACK, tracking: "0" },
+  small: { size: 12, lh: 18, weight: 400, family: FONT_STACK, tracking: "0" },
   /** Large display figure — money callouts. */
-  figure: { size: 24, lh: 30, weight: 600, family: FONT_SANS, tracking: "0" },
-  code: { size: 28, lh: 36, weight: 700, family: FONT_SANS, tracking: "0.2em" },
+  figure: { size: 24, lh: 30, weight: 600, family: FONT_STACK, tracking: "0" },
+  code: { size: 28, lh: 36, weight: 700, family: FONT_STACK, tracking: "0.2em" },
   /** Button label. Sans, matching components/ui/button.tsx (text-sm/medium). */
-  button: { size: 14, lh: 44, weight: 500, family: FONT_SANS, tracking: "0" },
+  button: { size: 14, lh: 44, weight: 500, family: FONT_STACK, tracking: "0" },
 } as const;
 
 export const LAYOUT = {

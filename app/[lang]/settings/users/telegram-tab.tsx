@@ -244,7 +244,7 @@ export function TelegramAccessTab({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="rounded-md border bg-muted px-3 py-2 font-mono text-base tracking-wider">
+            <code className="rounded-md border bg-muted px-3 py-2 text-base tracking-wider">
               /link {issued.code}
             </code>
             <Button variant="outline" size="sm" onClick={() => copy(`/link ${issued.code}`)}>
