@@ -1,5 +1,6 @@
 /**
- * Slices 08–09: landing header Profile left + hero CTAs lower on mobile.
+ * Slices 08–09: landing header Profile left + hero CTAs lower on mobile;
+ * compact pill is logo-only, with booking and chat in the dock.
  * Run: npx tsx components/ui/landing-header-hero.check.ts
  */
 import assert from "node:assert/strict";
@@ -8,6 +9,7 @@ import { join } from "node:path";
 
 const ROOT = process.cwd();
 const header = readFileSync(join(ROOT, "components/ui/home-header.tsx"), "utf8");
+const dock = readFileSync(join(ROOT, "components/ui/app-dock.tsx"), "utf8");
 const hero = readFileSync(
   join(ROOT, "components/sections/landing/hero-section.tsx"),
   "utf8",
@@ -28,9 +30,14 @@ const right = expanded.slice(expanded.indexOf("justify-end"));
 assert.match(right, /LanguageToggle/);
 assert.match(right, /ModeToggle/);
 assert.doesNotMatch(right, /ProfileMenu/);
-assert.match(header, /aria-label="Online"/);
-assert.match(header, /In-Person/);
-assert.match(header, /WhatsApp/);
+// The compact pill is just the logo; booking and chat moved to the dock.
+const compact = header.slice(0, expandedStart);
+assert.match(compact, /mpillow_logo_2026-inv\.png/);
+assert.doesNotMatch(header, /openBookAppointment|SUPPORT_WHATSAPP_URL/);
+assert.match(dock, /openBookAppointment/);
+assert.match(dock, /SUPPORT_WHATSAPP_URL/);
+// Marketing pages go home via that logo, so only other pages get a dock Home.
+assert.match(dock, /marketing \? productItems : \[homeItem, \.\.\.productItems\]/);
 
 assert.match(hero, /mt-auto/);
 assert.match(hero, /pb-\[var\(--mobile-bottom-clearance/);

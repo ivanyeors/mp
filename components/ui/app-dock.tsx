@@ -3,15 +3,19 @@
 import * as React from "react";
 import { Dock, DockIcon, DockItem, DockLabel } from "@/components/ui/shadcn-io/dock";
 import {
-  Cylinder,
+  CalendarCheck,
   Home,
   LogOut,
   Menu,
-  Ruler,
+  MessageCircleMore,
 } from "lucide-react";
+import { BolsterIcon, PillowIcon } from "@/components/icons/product-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
+import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
+import { openBookAppointment } from "@/lib/book-appointment";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import dynamic from "next/dynamic";
 import type { BubbleMenuItem } from "@/components/ui/bubble-menu";
 import { openAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
@@ -62,22 +66,17 @@ const CervicalNeckSupportSheet = dynamic(
   { ssr: false },
 );
 
-const dockItems = [
-  {
-    title: "Home",
-    icon: Home,
-    href: "/",
-  },
-  {
-    title: "Mpillow Config",
-    icon: Ruler,
-    href: "/mp-config",
-  },
-  {
-    title: "Bolster Config",
-    icon: Cylinder,
-    href: "/mbolster-config",
-  },
+type DockNavItem = {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+};
+
+const homeItem: DockNavItem = { title: "Home", icon: Home, href: "/" };
+
+const productItems: DockNavItem[] = [
+  { title: "Customise Mpillow", icon: PillowIcon, href: "/mp-config" },
+  { title: "Customise Mbolster", icon: BolsterIcon, href: "/mbolster-config" },
 ];
 
 const ROTATIONS = [-8, 8, 8, -8, 8, -8, 8, -8];
@@ -103,6 +102,11 @@ export function AppDock() {
   const basePathname = stripLocale(pathname);
   const to = (href: string) => withLocale(href, locale);
   const adminDock = isAdminPanelDockPath(basePathname);
+  // Marketing pages float the logo up top (HomeHeader), which is the way home,
+  // so the dock drops Home there and takes over booking and chat instead.
+  // Account, configurator and Results pages have no logo, so they keep Home.
+  const marketing = isMarketingRoute(basePathname);
+  const navItems = marketing ? productItems : [homeItem, ...productItems];
   const isMobile = useIsMobile();
   const pageActions = toolsFor(useDockTools(), basePathname);
   const toolTransition = useReducedMotion() ? { duration: 0 } : dockToolMotion.transition;
@@ -361,11 +365,16 @@ export function AppDock() {
             </>
           ) : (
             <>
-              {dockItems.map((item, idx) => {
+              {navItems.map((item) => {
                 const isActive = basePathname === item.href;
                 const IconComponent = item.icon;
                 return (
-                  <Link key={idx} href={to(item.href)} className={dockTouchWrapClassName}>
+                  <Link
+                    key={item.href}
+                    href={to(item.href)}
+                    aria-label={item.title}
+                    className={dockTouchWrapClassName}
+                  >
                     <DockItem
                       className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm"
                       isActive={isActive}
@@ -378,6 +387,38 @@ export function AppDock() {
                   </Link>
                 );
               })}
+
+              {marketing && (
+                <>
+                  <button
+                    type="button"
+                    onClick={openBookAppointment}
+                    aria-label="Book in-person"
+                    className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
+                  >
+                    <DockItem className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm">
+                      <DockLabel>Book in-person</DockLabel>
+                      <DockIcon>
+                        <CalendarCheck className="h-full w-full text-neutral-300" />
+                      </DockIcon>
+                    </DockItem>
+                  </button>
+                  <a
+                    href={SUPPORT_WHATSAPP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="WhatsApp us"
+                    className={dockTouchWrapClassName}
+                  >
+                    <DockItem className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm">
+                      <DockLabel>WhatsApp us</DockLabel>
+                      <DockIcon>
+                        <MessageCircleMore className="h-full w-full text-neutral-300" />
+                      </DockIcon>
+                    </DockItem>
+                  </a>
+                </>
+              )}
 
               <button
                 type="button"
