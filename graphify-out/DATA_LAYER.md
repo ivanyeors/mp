@@ -229,7 +229,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,select,upsert] — app/[lang]/settings/inventory/configure/save/route.ts:88
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:70
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:479
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:477
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:419
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
@@ -257,7 +257,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
 - Written by:
   - `setTemplateKeys()` [delete,select,upsert] — lib/filling-templates/membership.ts:114
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:489
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:487
   - `assertTemplateNameFree()` [select] — lib/filling-templates/membership.ts:63
   - `loadTemplateKeys()` [select] — lib/filling-templates/membership.ts:26
   - `templateIdsForKey()` [select] — lib/filling-templates/membership.ts:47
@@ -271,7 +271,7 @@ Changed from pages: `/settings/inventory`, `/settings/inventory/configure/[card]
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/route.ts:310
   - `PUT()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:246
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:485
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:483
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:69
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:38
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:275
@@ -294,7 +294,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `PUT()` [select,update] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:169
   - `setTemplateKeys()` [update] — lib/filling-templates/membership.ts:140
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:481
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:479
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:422
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:46
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:406
@@ -1196,7 +1196,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:189
   - `setDefaultFillingTemplateId()` [select,update] — lib/results/composed-sellable.ts:379
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:478
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:476
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:414
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:79
@@ -1272,7 +1272,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`
 - Written by:
   - `POST()` [delete,upsert] — app/[lang]/settings/costings/save/route.ts:405
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:480
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:478
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:421
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:396
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1168

@@ -529,7 +529,7 @@ export function ProductsClient({
                                     {/* Name */}
                                     <TableCell className="px-4 py-3">
                                         <span className="font-medium line-clamp-1">{title}</span>
-                                        <span className="block text-xs text-muted-foreground mt-0.5 font-mono">
+                                        <span className="block text-xs text-muted-foreground mt-0.5">
                                             {product.slug}
                                         </span>
                                         {isLegacyProduct(product) && (

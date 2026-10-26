@@ -83,7 +83,7 @@ export function AssistLinkCard() {
             readOnly
             value={link}
             onFocus={(e) => e.currentTarget.select()}
-            className="font-mono text-sm"
+            className="text-sm"
           />
           <Button type="button" variant="outline" onClick={() => void copy()}>
             {copied ? "Copied" : "Copy"}

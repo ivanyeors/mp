@@ -750,7 +750,7 @@ function OverlayStage({
             />
           </div>
           <p
-            className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-muted-foreground"
+            className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground"
             aria-live={dragging ? "off" : "polite"}
           >
             <Move className="h-3.5 w-3.5" aria-hidden />
@@ -815,7 +815,7 @@ function OverlayStage({
                   maxLength={7}
                   aria-label={`${family.name} overlay color hex`}
                   aria-invalid={color == null}
-                  className="h-8 w-24 font-mono text-xs md:text-xs"
+                  className="h-8 w-24 text-xs md:text-xs"
                 />
               </div>
               {usedColors.length > 0 && (

@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 
 import type { Testimonial } from "@/lib/google/fallback-testimonials";
 import { Button } from "@/components/ui/button";
-import { TestimonialsGridWithAdd } from "@/components/ui/testimonials-grid-with-add";
+import {
+  TestimonialsCarouselWithAdd,
+  TestimonialsGridWithAdd,
+} from "@/components/ui/testimonials-grid-with-add";
 
 function sortByRatingThenRelevance(items: Testimonial[]): Testimonial[] {
   return items
@@ -50,9 +53,10 @@ export function StoriesSectionClient({
           {subtitle ? <p className="text-muted-foreground">{subtitle}</p> : null}
         </div>
 
+        {/* Phones scroll the whole set sideways, so paging only applies to the grid. */}
         <Button
           variant="outline"
-          className="w-full shrink-0 sm:w-auto"
+          className="hidden shrink-0 md:inline-flex"
           disabled={!canViewMore}
           onClick={() => setVisibleCount((c) => Math.min(ordered.length, c + batchSize))}
         >
@@ -60,7 +64,12 @@ export function StoriesSectionClient({
         </Button>
       </div>
 
-      <TestimonialsGridWithAdd testimonials={visible} writeReviewUrl={writeReviewUrl} />
+      <div className="md:hidden">
+        <TestimonialsCarouselWithAdd testimonials={ordered} writeReviewUrl={writeReviewUrl} />
+      </div>
+      <div className="hidden md:block">
+        <TestimonialsGridWithAdd testimonials={visible} writeReviewUrl={writeReviewUrl} />
+      </div>
     </div>
   );
 }

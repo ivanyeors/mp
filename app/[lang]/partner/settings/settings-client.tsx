@@ -110,7 +110,7 @@ export function PartnerSettingsClient({
         <CardHeader>
           <CardTitle>Public profile</CardTitle>
           <CardDescription>
-            Shown on <span className="font-mono">/our-partners</span> and the booking picker.
+            Shown on <span>/our-partners</span> and the booking picker.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

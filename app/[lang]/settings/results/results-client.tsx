@@ -1045,7 +1045,7 @@ export default function ResultsPage({
                           <div className="flex flex-col gap-0.5">
                             <a
                               href={to(`/settings/orders/${row.order_id}`)}
-                              className="text-xs text-primary hover:underline font-mono"
+                              className="text-xs text-primary hover:underline"
                             >
                               {row.order_number ?? "View order"}
                             </a>
@@ -1133,7 +1133,7 @@ export default function ResultsPage({
                           {busy ? "Sending…" : row.is_final ? "Sent" : "Send"}
                         </Button>
                       </TableCell>
-                      <TableCell className="hidden font-mono text-xs text-muted-foreground lg:table-cell">
+                      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
                         {row.id}
                       </TableCell>
                       <TableCell

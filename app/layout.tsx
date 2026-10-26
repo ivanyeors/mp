@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
+import { figtree } from "./fonts";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/lib/shop/cart-context";
 import { CurrencyProvider } from "@/lib/shop/currency-context";
@@ -24,16 +24,6 @@ import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import { getSiteOrigin } from "@/lib/site-url";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo/metadata";
-
-const soraSans = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-});
-
-const soraMono = JetBrains_Mono({
-  variable: "--font-sora-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteOrigin()),
@@ -100,9 +90,9 @@ export default async function RootLayout({
   const isProd = process.env.NODE_ENV === "production";
 
   return (
-    <html lang={lang} suppressHydrationWarning>
+    <html lang={lang} className={figtree.variable} suppressHydrationWarning>
       <body
-        className={`${soraSans.variable} ${soraMono.variable} antialiased`}
+        className="antialiased"
       >
         {isProd ? (
           <GoogleAnalytics

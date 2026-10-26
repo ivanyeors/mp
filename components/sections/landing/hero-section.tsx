@@ -1,10 +1,21 @@
 import { CustomiseTierPicker } from "@/components/customise-tier-picker";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { BookAppointmentButton } from "@/components/book-appointment-button";
+import { HeroContrastFrame } from "@/components/sections/landing/hero-contrast-frame";
 import Image from "next/image";
 import type { Messages } from "@/lib/i18n/messages/types";
 import type { Locale } from "@/lib/i18n/locales";
 import type { LandingSection, HeroContent } from "@/lib/types/landing-sections";
+
+/**
+ * Once `HeroContrastFrame` has measured the photo, the copy takes the colour with the
+ * most contrast over it, per theme. Important, so it outranks the `dark:` theme colours
+ * at equal specificity; the colours must match `TONE_RGB` in `lib/a11y/text-contrast`.
+ */
+const TONE_INK = [
+  "group-data-[hero-tone=light]/hero:text-white! group-data-[hero-tone=dark]/hero:text-neutral-950!",
+  "dark:group-data-[hero-tone-dark=light]/hero:text-white! dark:group-data-[hero-tone-dark=dark]/hero:text-neutral-950!",
+].join(" ");
 
 interface HeroSectionProps {
   section: LandingSection;
@@ -27,7 +38,7 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
 
   return (
     <section className="relative">
-      <div className="relative w-full overflow-hidden md:aspect-video">
+      <HeroContrastFrame className="relative w-full overflow-hidden md:aspect-video">
         <Image
           src={heroImage}
           alt={heroAlt}
@@ -35,23 +46,25 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
           priority
           className="object-cover"
           sizes="100vw"
+          data-hero-backdrop
         />
 
-        {/* Dark mode only: light mode shows the photo as shot, with no wash over it. */}
-        <div className="pointer-events-none absolute inset-0 z-[1] hidden bg-gradient-to-t from-background/85 via-background/25 to-transparent dark:block" />
-        <div className="pointer-events-none absolute inset-0 z-[1] hidden bg-gradient-to-t from-black/55 via-black/25 to-transparent dark:max-md:block" />
+        {/* The dark-theme washes are drawn by HeroContrastFrame, which measures through them. */}
         {/* Mobile: in flow with a 3:4 floor so long copy grows the hero instead of
             being clipped; md+: overlay centered on the 16:9 image. */}
         <div className="relative z-10 flex min-h-[133.34vw] flex-col md:absolute md:inset-0 md:min-h-0 md:flex-row md:items-center">
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-12 md:block md:h-auto md:flex-none md:py-16">
             <div className="flex h-full max-w-xl flex-col flex-1 md:block md:h-auto md:space-y-6">
               <div className="space-y-3">
-                <h1 className="line-clamp-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl">
+                <h1
+                  data-hero-copy
+                  className={`line-clamp-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl ${TONE_INK}`}
+                >
                   {titlePrefix}
                   {titleSuffix ? (
                     <>
                       {titlePrefix ? sep : null}
-                      <span className="text-primary">{titleEmphasis}</span>
+                      <span className={`text-primary ${TONE_INK}`}>{titleEmphasis}</span>
                       {sep}
                       {titleSuffix}
                     </>
@@ -59,17 +72,23 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
                     <>
                       {/* Tagline: force line 2 to start with the emphasis (e.g. "don't…") */}
                       <br />
-                      <span className="text-primary">{titleEmphasis}</span>
+                      <span className={`text-primary ${TONE_INK}`}>{titleEmphasis}</span>
                     </>
                   )}
                 </h1>
                 {/* Answer lede for AEO; hard ≤4 lines so hero never walls the product image */}
                 {/* Light mode has no overlay, so muted grey would vanish into the photo */}
-                <p className="line-clamp-4 text-base font-medium leading-relaxed text-foreground sm:text-lg dark:font-normal dark:text-foreground/85 dark:sm:text-muted-foreground max-w-prose">
+                <p
+                  data-hero-copy
+                  className={`line-clamp-4 text-base font-medium leading-relaxed text-foreground sm:text-lg dark:font-normal dark:text-foreground/85 dark:sm:text-muted-foreground max-w-prose ${TONE_INK}`}
+                >
                   {m.home.hero.seoAnswer}
                 </p>
                 {subtitle ? (
-                  <p className="text-base font-medium leading-relaxed text-foreground sm:text-lg md:text-xl dark:font-normal dark:text-foreground/90 dark:sm:text-muted-foreground">
+                  <p
+                    data-hero-copy
+                    className={`text-base font-medium leading-relaxed text-foreground sm:text-lg md:text-xl dark:font-normal dark:text-foreground/90 dark:sm:text-muted-foreground ${TONE_INK}`}
+                  >
                     {subtitle}
                   </p>
                 ) : null}
@@ -90,7 +109,7 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
             </div>
           </div>
         </div>
-      </div>
+      </HeroContrastFrame>
 
       <Ripple
         mainCircleSize={320}

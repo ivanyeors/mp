@@ -1,8 +1,11 @@
 "use client";
 
+import { figtree } from "./fonts";
+
 /**
  * Last-resort error page, for an error in the root layout itself. It replaces
- * the whole document, so it carries its own <html> and plain inline styles.
+ * the whole document, so it carries its own <html>, the site font and plain
+ * inline styles.
  */
 export default function GlobalError({
   error,
@@ -13,7 +16,7 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body style={{ fontFamily: "system-ui, sans-serif", maxWidth: "36rem", margin: "15vh auto", padding: "0 1rem", lineHeight: 1.5 }}>
+      <body className={figtree.className} style={{ maxWidth: "36rem", margin: "15vh auto", padding: "0 1rem", lineHeight: 1.5 }}>
         <h1>Something went wrong</h1>
         <p>
           Please try again. If it keeps happening, contact us at custom.mpillow.com/support.

@@ -266,7 +266,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <button
                                         type="button"
                                         onClick={() => copy(status.webhookUrl, "Webhook URL")}
-                                        className="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+                                        className="inline-flex items-center gap-1 text-primary hover:underline"
                                     >
                                         {status.webhookUrl}
                                         <Copy className="h-3 w-3" />
@@ -335,7 +335,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                             id="hs_code"
                             value={form.hs_code}
                             onChange={(e) => setField("hs_code", e.target.value.replace(/\D/g, ""))}
-                            className="font-mono text-base md:text-sm"
+                            className="text-base md:text-sm"
                         />
                         <p className="text-xs text-muted-foreground">9404.90 covers pillows and cushions.</p>
                     </div>
@@ -345,7 +345,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                             id="item_category"
                             value={form.item_category}
                             onChange={(e) => setField("item_category", e.target.value)}
-                            className="font-mono text-base md:text-sm"
+                            className="text-base md:text-sm"
                         />
                         <p className="text-xs text-muted-foreground">Used only when the HS code is empty.</p>
                     </div>
@@ -524,7 +524,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                                         <button
                                                             type="button"
                                                             onClick={() => copy(r.courier_service_id, "Service id")}
-                                                            className="inline-flex max-w-[14rem] items-center gap-1 truncate font-mono text-xs text-primary hover:underline"
+                                                            className="inline-flex max-w-[14rem] items-center gap-1 truncate text-xs text-primary hover:underline"
                                                         >
                                                             <span className="truncate">{r.courier_service_id}</span>
                                                             <Copy className="h-3 w-3 shrink-0" />
@@ -545,7 +545,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <ul className="space-y-1 text-sm">
                                         {testResult.methods.map((m) => (
                                             <li key={m.method_id} className="flex flex-wrap justify-between gap-2">
-                                                <span className="font-mono text-xs">{m.slug}</span>
+                                                <span className="text-xs">{m.slug}</span>
                                                 <span>
                                                     {!m.available
                                                         ? "Not offered — no matching courier"

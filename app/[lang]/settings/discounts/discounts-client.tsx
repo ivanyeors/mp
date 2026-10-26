@@ -201,7 +201,7 @@ export function DiscountsClient({
                                         {/* Code */}
                                         <TableCell className="px-4 py-3">
                                             <div className="space-y-1">
-                                                <span className="font-mono font-medium tracking-wide">
+                                                <span className="font-medium tracking-wide">
                                                     {coupon.code}
                                                 </span>
                                                 <div className="md:hidden">

@@ -120,7 +120,7 @@ export default async function RmaQueuePage({
                       {formatTimestamp(r.created_at)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs">
+                  <td className="px-4 py-3 text-xs">
                     {r.orders?.order_number != null ? `#${r.orders.order_number}` : "—"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">

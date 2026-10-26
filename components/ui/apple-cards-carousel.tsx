@@ -188,16 +188,18 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
             className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-foreground disabled:opacity-50"
             disabled={!canScrollLeft}
             onClick={scrollLeft}
+            aria-label="Scroll left"
           >
-            <IconArrowNarrowLeft className="h-6 w-6" />
+            <IconArrowNarrowLeft className="h-6 w-6" aria-hidden="true" />
           </button>
           <button
             type="button"
             className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-foreground disabled:opacity-50"
             disabled={!canScrollRight}
             onClick={scrollRight}
+            aria-label="Scroll right"
           >
-            <IconArrowNarrowRight className="h-6 w-6" />
+            <IconArrowNarrowRight className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -262,7 +264,7 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
             />
             <motion.div
               animate={{ opacity: 1 }}
-              className="relative z-[60] mx-auto my-10 h-fit max-w-5xl rounded-3xl bg-white p-4 font-sans md:p-10 dark:bg-neutral-900"
+              className="relative z-[60] mx-auto my-10 h-fit max-w-5xl rounded-3xl bg-white p-4 md:p-10 dark:bg-neutral-900"
               exit={{ opacity: 0 }}
               initial={{ opacity: 0 }}
               layoutId={layout ? `card-${card.title}` : undefined}
@@ -309,7 +311,7 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
             <div className="relative z-40 p-4 md:p-6">
               {hasCategory ? (
                 <motion.p
-                  className="text-left font-sans text-xs font-medium text-white md:text-sm"
+                  className="text-left text-xs font-medium text-white md:text-sm"
                   layoutId={layout ? `category-${card.category}` : undefined}
                 >
                   {card.category}
@@ -317,7 +319,7 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
               ) : null}
               <motion.p
                 className={cn(
-                  "max-w-xs text-left font-sans text-sm font-semibold [text-wrap:balance] text-white md:text-lg",
+                  "max-w-xs text-left text-sm font-semibold [text-wrap:balance] text-white md:text-lg",
                   hasCategory ? "mt-1" : "mt-0",
                 )}
                 layoutId={layout ? `title-${card.title}` : undefined}
@@ -335,7 +337,7 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
             <div className="relative z-40 border-t border-black/5 p-4 dark:border-white/10 md:p-5">
               {hasCategory ? (
                 <motion.p
-                  className="font-sans text-xs font-medium text-muted-foreground md:text-sm"
+                  className="text-xs font-medium text-muted-foreground md:text-sm"
                   layoutId={layout ? `category-${card.category}` : undefined}
                 >
                   {card.category}
@@ -343,7 +345,7 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
               ) : null}
               <motion.p
                 className={cn(
-                  "font-sans text-sm font-semibold leading-snug [text-wrap:balance] text-foreground md:text-base",
+                  "text-sm font-semibold leading-snug [text-wrap:balance] text-foreground md:text-base",
                   hasCategory ? "mt-1" : "mt-0",
                 )}
                 layoutId={layout ? `title-${card.title}` : undefined}

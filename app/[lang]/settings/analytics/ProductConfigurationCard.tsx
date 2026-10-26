@@ -202,7 +202,6 @@ function RootNode({ node }: { node: HierarchyPointNode<NodeShape> }) {
       />
       <text
         fontSize={fontSize}
-        fontFamily="ui-sans-serif, system-ui"
         textAnchor="middle"
         fill="var(--foreground)"
       >
@@ -252,7 +251,6 @@ function Node({ node }: { node: HierarchyPointNode<NodeShape> }) {
       <text
         dy=".33em"
         fontSize={10}
-        fontFamily="ui-sans-serif, system-ui"
         textAnchor="middle"
         style={{ pointerEvents: "none" }}
         fill={textFill}
@@ -263,7 +261,6 @@ function Node({ node }: { node: HierarchyPointNode<NodeShape> }) {
         x={radius + 10}
         y={isLeaf ? -4 : 5}
         fontSize={13}
-        fontFamily="ui-sans-serif, system-ui"
         textAnchor="start"
         fill="var(--foreground)"
       >
@@ -274,7 +271,6 @@ function Node({ node }: { node: HierarchyPointNode<NodeShape> }) {
           x={radius + 10}
           y={18}
           fontSize={11}
-          fontFamily="ui-sans-serif, system-ui"
           textAnchor="start"
           fill="var(--muted-foreground)"
         >
