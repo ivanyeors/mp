@@ -35,12 +35,12 @@ export function PillowIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** An Mbolster lying on its side: one rounded end, the other end face-on. */
+/** An Mbolster from the side: a rounded capsule with a seam near each end. */
 export function BolsterIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <ProductIcon {...props}>
-      <path d="M17.5 7H6.5a5 5 0 0 0 0 10h11" />
-      <ellipse cx="17.5" cy="12" rx="2.5" ry="5" />
+      <rect x="2" y="7.5" width="20" height="9" rx="4.5" />
+      <path d="M7 8v8M17 8v8" />
     </ProductIcon>
   );
 }
