@@ -25,6 +25,17 @@ describe("page metadata", () => {
       "x-default": "https://custom.mpillow.com/en-US/blog/x",
     });
   });
+
+  it("falls back to the logo share image when the page has none", () => {
+    const meta = buildPageMetadata({ ...base, lang: "en-US" });
+    expect(meta.openGraph?.images).toEqual([{ url: "/og-image.png", width: 1200, height: 630, alt: "T" }]);
+    expect(meta.twitter?.images).toEqual(["/og-image.png"]);
+  });
+
+  it("keeps the page's own share image", () => {
+    const meta = buildPageMetadata({ ...base, lang: "en-US", image: "https://cdn.example/p.jpg" });
+    expect(meta.openGraph?.images).toEqual([{ url: "https://cdn.example/p.jpg", width: 1200, height: 630, alt: "T" }]);
+  });
 });
 
 describe("organization JSON-LD", () => {
