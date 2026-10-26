@@ -179,6 +179,17 @@ import {
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
 import {
+  checkoutCodeDiscount,
+  checkoutCodeFreeShipping,
+  checkoutCodeToSend,
+  type CheckoutCodeContext,
+  type CheckoutCodeStatus,
+} from "@/lib/checkout-code/shared";
+import { resultCouponPricing } from "@/lib/results/discount";
+
+/** The Assisted questionnaire has no price yet: the code is checked as a code. */
+const NO_ORDER_CODE_CONTEXT: CheckoutCodeContext = { flow: "none" };
+import {
   AddonOptionButton,
   AddonReviewNotice,
   SelectedAddonPreviews,
@@ -670,7 +681,11 @@ export function MpConfigClient({
   const [discoverySourceOther, setDiscoverySourceOther] = useState(
     resumeFinish?.discoverySourceOther ?? staffEdit?.discoverySourceOther ?? "",
   );
-  const [referralCode, setReferralCode] = useState("");
+  // The one optional code (ADR 0033): a partner's referral code or a discount
+  // code. The contact fields check it against the build priced on the page and
+  // report back here, so the totals take a discount off at once.
+  const [checkoutCode, setCheckoutCode] = useState("");
+  const [codeStatus, setCodeStatus] = useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = useState("");
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>(() => ({
     recipient: "",
@@ -1000,7 +1015,7 @@ export function MpConfigClient({
       discoverySource,
       discoverySourceOther,
       notes: holdNotes,
-      referralCode,
+      code: checkoutCode,
     }),
     {
       key: "recipient",
@@ -1032,6 +1047,8 @@ export function MpConfigClient({
         ]),
     holdShippingCheck(shippingStatus),
   ], [
+    // The code never blocks; it is here because the checks read it.
+    checkoutCode,
     selectedCover,
     selectedCase,
     holdEmail,
@@ -2051,7 +2068,7 @@ export function MpConfigClient({
     discoverySource,
     discoverySourceOther,
     notes: holdNotes,
-    referralCode,
+    code: checkoutCode,
   };
 
   /**
@@ -2097,7 +2114,7 @@ export function MpConfigClient({
             discoverySource,
             discoverySourceOther:
               discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-            referralCode: referralCode.trim() || undefined,
+            code: checkoutCodeToSend(checkoutCode, codeStatus),
             measurements: {
               ...measurementData,
               ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
@@ -2334,7 +2351,8 @@ export function MpConfigClient({
         discoverySource,
         discoverySourceOther:
           discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-        referralCode: referralCode.trim() || undefined,
+        // Resolved and priced again by the hold; the page only asks.
+        code: checkoutCodeToSend(checkoutCode, codeStatus),
         // Assist priority (#78): server re-resolves this code → partner id.
         ...(partner ? { partnerAssistCode: partner.code } : {}),
         measurements: {
@@ -2436,7 +2454,8 @@ export function MpConfigClient({
     holdPhone,
     discoverySource,
     discoverySourceOther,
-    referralCode,
+    checkoutCode,
+    codeStatus,
     holdNotes,
     holdAddress,
     selectedShippingId,
@@ -2774,11 +2793,29 @@ export function MpConfigClient({
     const serviceTotal = sumServiceLines(serviceLines);
     const quoteBlocked = (pricingInputs != null && quote?.ok !== true) || servicesBlocked;
     const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
+    // The one code (ADR 0033), checked against this Mpillow's goods — a Paired
+    // build's code goes on the Mpillow too. A finish link or a Staff edit shows
+    // the code the Result already carries; the server takes it off either way.
+    const codeContext: CheckoutCodeContext | null =
+      quoteBlocked || !shopRecommendation || !size || (feeTier !== "basic" && feeTier !== "premium")
+        ? null
+        : {
+            flow: "customisation",
+            build: { product_type: "pillow", size: String(size), tier: feeTier },
+            goods: basePrice + addonTotal,
+          };
+    const storedCoupon = resumeFinish?.coupon ?? staffEdit?.coupon ?? null;
+    const storedCouponPricing = storedCoupon
+      ? resultCouponPricing(storedCoupon.terms, basePrice + addonTotal)
+      : null;
+    const codeDiscount = storedCouponPricing?.discount ?? checkoutCodeDiscount(codeStatus);
+    const codeFreeShipping = storedCouponPricing?.freeShipping ?? checkoutCodeFreeShipping(codeStatus);
+    const discountCode = storedCoupon?.code ?? (codeStatus.state === "discount" ? codeStatus.code : null);
     // Shipping joins the one price once the address has one: free_above is
     // earned by goods alone, as the hold applies it.
     const shippingAmount = quoteBlocked
       ? null
-      : holdShippingAmount(selectedShippingOption, basePrice + addonTotal);
+      : holdShippingAmount(selectedShippingOption, basePrice + addonTotal, codeFreeShipping);
     const coverStock = preferenceStockFor(
       selectedCover,
       shopRecommendation?.components.covers ?? [],
@@ -2827,7 +2864,17 @@ export function MpConfigClient({
     const orderTotal =
       pillowTotal == null || (pairedBolster && pairedBolster.ballpark == null)
         ? null
-        : pillowTotal + (pairedBolster?.ballpark ?? 0) + (shippingAmount ?? 0);
+        : pillowTotal - codeDiscount + (pairedBolster?.ballpark ?? 0) + (shippingAmount ?? 0);
+    /** The Discount row, under the parts it comes off. */
+    const discountRow =
+      discountCode && (codeDiscount > 0 || codeFreeShipping) && pillowTotal != null ? (
+        <div className="mb-1 flex justify-between gap-4 text-sm text-emerald-700 dark:text-emerald-400">
+          <span className="min-w-0">Discount ({discountCode})</span>
+          <span className="shrink-0 whitespace-nowrap tabular-nums">
+            {codeDiscount > 0 ? `−${money(codeDiscount)}` : "Free shipping"}
+          </span>
+        </div>
+      ) : null;
     const holdCta = holdSubmitting
       ? staffEdit
         ? "Saving…"
@@ -3426,6 +3473,9 @@ export function MpConfigClient({
                     locale={locale}
                     fieldErrors={fieldErrors}
                     values={contactValues}
+                    codeContext={codeContext}
+                    onCodeStatus={setCodeStatus}
+                    formatAmount={money}
                     onChange={(patch) => {
                       if (patch.email !== undefined) setHoldEmail(patch.email);
                       if (patch.phone !== undefined) setHoldPhone(patch.phone);
@@ -3436,9 +3486,7 @@ export function MpConfigClient({
                         setDiscoverySourceOther(patch.discoverySourceOther);
                       }
                       if (patch.notes !== undefined) setHoldNotes(patch.notes);
-                      if (patch.referralCode !== undefined) {
-                        setReferralCode(patch.referralCode);
-                      }
+                      if (patch.code !== undefined) setCheckoutCode(patch.code);
                     }}
                   />
                 )}
@@ -3487,7 +3535,7 @@ export function MpConfigClient({
                           discoverySource,
                           discoverySourceOther,
                           notes: holdNotes,
-                          referralCode,
+                          code: checkoutCode,
                         }),
                       );
                       if (Object.keys(contactErrors).length > 0) {
@@ -3586,10 +3634,12 @@ export function MpConfigClient({
                         </span>
                       </div>
                     ) : null}
+                    {discountRow}
                     {pillowTotal != null && (
                       <HoldShippingTotalRow
                         option={selectedShippingOption}
                         goodsSubtotal={basePrice + addonTotal}
+                        freeShipping={codeFreeShipping}
                       />
                     )}
                     <div className="mb-3 flex justify-between text-sm">
@@ -3614,11 +3664,13 @@ export function MpConfigClient({
                           <span className="shrink-0 whitespace-nowrap tabular-nums">{`${currency} ${l.msrp.toFixed(2)}`}</span>
                         </div>
                       ))}
+                    {phase !== "customize" && discountRow}
                     {/* A Paired build's step 1 has no shipping yet: it is chosen at step 3. */}
                     {!quoteBlocked && phase !== "customize" && (
                       <HoldShippingTotalRow
                         option={selectedShippingOption}
                         goodsSubtotal={basePrice + addonTotal}
+                        freeShipping={codeFreeShipping}
                       />
                     )}
                     <div className="mb-3 flex justify-between text-sm">
@@ -3630,7 +3682,7 @@ export function MpConfigClient({
                       <span className="font-medium tabular-nums">
                         {quoteBlocked
                           ? "Not available"
-                          : `${currency} ${(basePrice + addonTotal + serviceTotal + (phase === "customize" ? 0 : (shippingAmount ?? 0))).toFixed(2)}`}
+                          : `${currency} ${(basePrice + addonTotal + serviceTotal + (phase === "customize" ? 0 : (shippingAmount ?? 0) - codeDiscount)).toFixed(2)}`}
                       </span>
                     </div>
                   </>
@@ -4845,6 +4897,9 @@ export function MpConfigClient({
                     locale={locale}
                     fieldErrors={fieldErrors}
                     values={contactValues}
+                    codeContext={NO_ORDER_CODE_CONTEXT}
+                    onCodeStatus={setCodeStatus}
+                    formatAmount={(amount) => `SGD ${amount.toFixed(2)}`}
                     onChange={(patch) => {
                       if (patch.email !== undefined) setHoldEmail(patch.email);
                       if (patch.phone !== undefined) setHoldPhone(patch.phone);
@@ -4855,9 +4910,7 @@ export function MpConfigClient({
                         setDiscoverySourceOther(patch.discoverySourceOther);
                       }
                       if (patch.notes !== undefined) setHoldNotes(patch.notes);
-                      if (patch.referralCode !== undefined) {
-                        setReferralCode(patch.referralCode);
-                      }
+                      if (patch.code !== undefined) setCheckoutCode(patch.code);
                     }}
                   />
                 </div>

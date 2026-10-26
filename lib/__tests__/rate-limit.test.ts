@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { clientIp, isRateLimited, resetRateLimits } from "@/lib/rate-limit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const rpc = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({ rpc }) }));
+
+import { clientIp, isRateLimited, rateLimitExceeded, resetRateLimits } from "@/lib/rate-limit";
 
 const opts = { bucket: "test", key: "1.2.3.4", windowMs: 60_000, max: 3 };
 
@@ -46,5 +50,44 @@ describe("clientIp", () => {
     expect(clientIp(new Request("https://x.test", { headers: { "x-real-ip": "198.51.100.7" } })))
       .toBe("198.51.100.7");
     expect(clientIp(new Request("https://x.test"))).toBe("unknown");
+  });
+});
+
+describe("rateLimitExceeded", () => {
+  beforeEach(() => {
+    resetRateLimits();
+    rpc.mockReset();
+  });
+
+  it("asks the shared store, in whole seconds", async () => {
+    rpc.mockResolvedValue({ data: false, error: null });
+    expect(await rateLimitExceeded(opts)).toBe(false);
+    expect(rpc).toHaveBeenCalledWith("rate_limit_hit", {
+      p_bucket: "test",
+      p_key: "1.2.3.4",
+      p_window_seconds: 60,
+      p_max: 3,
+    });
+  });
+
+  it("refuses when the shared store says the key is over", async () => {
+    rpc.mockResolvedValue({ data: true, error: null });
+    expect(await rateLimitExceeded(opts)).toBe(true);
+  });
+
+  it("caps the window at a day, the longest the store keeps", async () => {
+    rpc.mockResolvedValue({ data: false, error: null });
+    await rateLimitExceeded({ ...opts, windowMs: 7 * 24 * 60 * 60 * 1000 });
+    expect(rpc.mock.calls[0][1].p_window_seconds).toBe(86_400);
+  });
+
+  // A limiter outage must never close checkout, but a flood on one instance is still slowed.
+  it("falls back to the per-instance count when the store fails", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "function rate_limit_hit does not exist" } });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (let i = 0; i < 3; i += 1) expect(await rateLimitExceeded(opts)).toBe(false);
+    expect(await rateLimitExceeded(opts)).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(1);
+    errors.mockRestore();
   });
 });

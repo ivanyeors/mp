@@ -428,11 +428,14 @@ export interface Coupon {
   max_discount: number | null;
   usage_limit: number | null;
   usage_count: number;
+  /** Uses per customer account, or null for no limit (open to guests). */
   per_customer_limit: number | null;
   starts_at: string | null;
   expires_at: string | null;
   applies_to: { product_ids?: string[]; category_ids?: string[] } | null;
   is_active: boolean;
+  /** Bound to one Customer (a Welcome-back voucher), or null for a bearer code. */
+  customer_id?: string | null;
   created_at: string;
   updated_at: string;
 }

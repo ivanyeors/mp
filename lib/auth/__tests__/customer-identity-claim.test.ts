@@ -23,7 +23,8 @@ vi.mock("@/lib/customer-migration/claim", () => ({
 
 const { linkCustomerToAuthUser } = await import("@/lib/auth/customer-identity");
 
-const user = (id: string, email: string) => ({ id, email, user_metadata: {} }) as unknown as User;
+const user = (id: string, email: string) =>
+  ({ id, email, email_confirmed_at: "2026-01-01T00:00:00Z", user_metadata: {} }) as unknown as User;
 
 beforeEach(() => {
   h.claims = [];
@@ -49,9 +50,16 @@ describe("linkCustomerToAuthUser → the Claim", () => {
     expect(h.claims).toEqual([customer.id]);
   });
 
-  it("never claims a row another login holds", async () => {
+  it("never claims, or hands back, a row another login holds", async () => {
     h.db.customers.push({ id: "c4", email: "d@example.com", auth_user_id: "someone-else" });
-    await linkCustomerToAuthUser(user("u4", "d@example.com"));
+    await expect(linkCustomerToAuthUser(user("u4", "d@example.com"))).rejects.toThrow(/another account/);
+    expect(h.claims).toEqual([]);
+  });
+
+  it("refuses an email the user never confirmed", async () => {
+    h.db.customers.push({ id: "c5", email: "e@example.com", auth_user_id: null });
+    const unconfirmed = { id: "u5", email: "e@example.com", user_metadata: {} } as unknown as User;
+    await expect(linkCustomerToAuthUser(unconfirmed)).rejects.toThrow(/not confirmed/);
     expect(h.claims).toEqual([]);
   });
 });

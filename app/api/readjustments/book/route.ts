@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { tooManyRequests } from "@/lib/rate-limit";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
   if (!customer) {
     return NextResponse.json({ error: "Sign in to book a re-adjustment" }, { status: 401 });
   }
+  const limited = await tooManyRequests([
+    { bucket: "readjustment-customer", key: customer.id, windowMs: 60 * 60_000, max: 10 },
+  ]);
+  if (limited) return limited;
 
   const parsed = ReadjustmentBookingSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

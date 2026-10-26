@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminCoupon } from "@/lib/ecommerce/admin/coupons";
 import { requireAdmin } from "@/lib/auth/admin";
+import { isReferralCodeTaken } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ const UpdateCouponSchema = z.object({
   min_order_amount: z.number().nonnegative().nullable().optional(),
   max_discount: z.number().nonnegative().nullable().optional(),
   usage_limit: z.number().int().positive().nullable().optional(),
-  per_customer_limit: z.number().int().positive().optional(),
+  per_customer_limit: z.number().int().positive().nullable().optional(),
   starts_at: z.string().datetime({ offset: true }).nullable().optional(),
   expires_at: z.string().datetime({ offset: true }).nullable().optional(),
   applies_to: z.record(z.string(), z.unknown()).nullable().optional(),
@@ -47,6 +48,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const update: Record<string, unknown> = { ...parsed.data };
   if (typeof update.code === "string") {
     update.code = (update.code as string).toUpperCase();
+    // One field at checkout takes both kinds of code (ADR 0033).
+    if (await isReferralCodeTaken(update.code as string)) {
+      return NextResponse.json({ error: "This code is a partner's referral code. Choose another." }, { status: 409 });
+    }
   }
 
   const { data, error } = await admin.from("coupons").update(update).eq("id", id).select("*").single();

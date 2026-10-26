@@ -4,6 +4,7 @@ import {
   collectLocationOf,
   isSelfCollect,
   isSelfCollectAddress,
+  methodDeliversTo,
   resolveShippingAddress,
   ShippingAddressInputSchema,
 } from "@/lib/shipping/self-collect";
@@ -114,5 +115,31 @@ describe("Self-collect", () => {
     expect(isSelfCollectAddress(null)).toBe(false);
     expect(isSelfCollectAddress({ line1: "1 Road" })).toBe(false);
     expect(collectLocationOf({ line1: "1 Road" })).toBeNull();
+  });
+});
+
+describe("A delivered method's countries", () => {
+  const sgAddress = { recipient: "Wei Ling", line1: "1 Orchard Rd", city: "Singapore", postal_code: "238824" };
+
+  it("refuses a country the method does not deliver to, so tax cannot be typed away", async () => {
+    const res = await resolveShippingAddress(
+      fakeAdmin([]),
+      { collect_location_id: null, countries: ["SG"] },
+      input({ ...sgAddress, country: "US" }),
+    );
+    expect(res).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("accepts a country on the list, and any country for a method with none", async () => {
+    const sg = await resolveShippingAddress(fakeAdmin([]), { collect_location_id: null, countries: ["SG"] }, input({ ...sgAddress, country: "SG" }));
+    expect(sg.ok).toBe(true);
+    const open = await resolveShippingAddress(fakeAdmin([]), { collect_location_id: null, countries: [] }, input({ ...sgAddress, country: "US", postal_code: "10001" }));
+    expect(open.ok).toBe(true);
+  });
+
+  it("matches the country whatever its case", () => {
+    expect(methodDeliversTo({ countries: ["SG"] }, "sg")).toBe(true);
+    expect(methodDeliversTo({ countries: ["SG"] }, "MY")).toBe(false);
+    expect(methodDeliversTo({ countries: null }, "MY")).toBe(true);
   });
 });

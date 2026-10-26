@@ -36,7 +36,7 @@ function isGated(body: string): boolean {
  * credential; it is rate limited instead, which this list asserts.
  */
 const OPEN_BY_DESIGN: Record<string, { verb: string; requires: RegExp }[]> = {
-  "responses/route.ts": [{ verb: "POST", requires: /isRateLimited\s*\(/ }],
+  "responses/route.ts": [{ verb: "POST", requires: /rateLimitExceeded\s*\(/ }],
 };
 
 const ROOT = join(process.cwd(), "app", "api", "mp-config");

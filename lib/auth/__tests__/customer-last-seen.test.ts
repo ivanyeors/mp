@@ -147,7 +147,7 @@ describe("touchCustomerLastSeen", () => {
 });
 
 describe("linkCustomerToAuthUser records the visit", () => {
-  const user = { id: "auth-1", email: "ana@x.test", user_metadata: {} } as unknown as User;
+  const user = { id: "auth-1", email: "ana@x.test", email_confirmed_at: "2026-01-01T00:00:00Z", user_metadata: {} } as unknown as User;
 
   it("touches account_last_seen_at for an already-linked Customer", async () => {
     h.customer = { id: "c1", email: "ana@x.test", auth_user_id: "auth-1", account_last_seen_at: null };

@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { findCustomerByEmail, findOrCreateCustomer } from "@/lib/ecommerce/customers";
-import { validateCoupon } from "@/lib/ecommerce/discounts";
+import { checkCoupon, findActiveCoupon } from "@/lib/ecommerce/discounts";
+import {
+  CHECKOUT_CODE_MAX_LENGTH,
+  CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
+  checkoutCodeRateLimited,
+  couponAccount,
+  resolveCheckoutCode,
+} from "@/lib/checkout-code";
 import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
-import { getPartnerByReferralCode } from "@/lib/referrals";
+import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
 import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance";
@@ -41,7 +49,7 @@ import {
 } from "@/lib/points/spend";
 import type { BolsterVariant, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
-import { isSelfCollect } from "@/lib/shipping/self-collect";
+import { isSelfCollect, methodDeliversTo } from "@/lib/shipping/self-collect";
 
 type CustomizationConfigRow = {
   config_lines: unknown[];
@@ -84,8 +92,15 @@ const CheckoutSchema = z.object({
   phone: z.string().optional(),
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
+  /**
+   * The one optional code (ADR 0033): a partner's referral code or a discount
+   * code, resolved here. An unrecognised code never blocks; a discount code
+   * that cannot be used on this order does, with its reason.
+   */
+  code: z.string().trim().max(CHECKOUT_CODE_MAX_LENGTH).optional(),
+  /** What a checkout tab from before `code` still sends: a discount code. */
   coupon_code: z.string().optional(),
-  /** Optional typed partner/referral code (attribution, #74). Never blocks. */
+  /** Likewise, a typed partner/referral code (attribution, #74). Never blocks. */
   referral_code: z.string().optional(),
   /**
    * Points to take off (ADR 0030 (h) to (j)). Any number: the server refuses
@@ -115,9 +130,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, phone, shipping_address, shipping_method_id, coupon_code, referral_code, items } =
+  // Every call creates an Order and a Stripe Checkout Session.
+  const limited = await tooManyRequests([
+    { bucket: "checkout-ip", key: clientIp(req), windowMs: 10 * 60_000, max: 30 },
+  ]);
+  if (limited) return limited;
+
+  const { email, phone, shipping_address, shipping_method_id, code, coupon_code, referral_code, items } =
     parsed.data;
   const pointsRequested = parsed.data.points != null && parsed.data.points !== 0;
+
+  // Every code is looked up below, so checkout is as good an oracle for
+  // guessing codes as the check endpoint: it draws on the same meter.
+  if ((code || coupon_code?.trim()) && (await checkoutCodeRateLimited(req))) {
+    return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE }, { status: 429 });
+  }
 
   const admin = supabaseAdmin();
 
@@ -510,7 +537,7 @@ export async function POST(req: Request) {
     return sum + basePrice + addonPrice;
   }, 0);
 
-  // 8. Validate coupon if provided
+  // 8. Resolve the code, and validate a discount code against this order
   let discountAmount = 0;
   let couponId: string | null = null;
   let appliedCouponCode: string | null = null;
@@ -519,7 +546,25 @@ export async function POST(req: Request) {
   const normalizedEmail = email.toLowerCase().trim();
   const existingCustomer = await findCustomerByEmail(normalizedEmail);
 
-  if (coupon_code) {
+  // One code per order (ADR 0033). With `code` present the legacy fields are
+  // ignored, so a referral in `code` cannot stack with a discount in
+  // `coupon_code`; with only the legacy fields, a coupon wins over a referral.
+  const codeGiven = Boolean(code?.trim());
+  const legacyCouponCode = codeGiven ? "" : (coupon_code?.trim() ?? "");
+  const typedCode = await resolveCheckoutCode(code);
+  const coupon =
+    typedCode?.kind === "coupon"
+      ? typedCode.coupon
+      : legacyCouponCode
+        ? await findActiveCoupon(legacyCouponCode)
+        : null;
+  // A stale tab's explicit coupon_code is refused when unknown, as it always
+  // was; a `code` nobody recognises is simply not applied.
+  if (!coupon && legacyCouponCode) {
+    return NextResponse.json({ error: "This code isn't valid" }, { status: 400 });
+  }
+
+  if (coupon) {
     const productIds = cart.items.map((item) => item.product?.id).filter(Boolean) as string[];
     const categoryIds = cart.items
       .map((item) => item.product?.category_id)
@@ -536,9 +581,9 @@ export async function POST(req: Request) {
       };
     });
 
-    const couponResult = await validateCoupon(coupon_code, subtotal, productIds, categoryIds, {
+    const couponResult = await checkCoupon(coupon, subtotal, productIds, categoryIds, {
       customerEmail: normalizedEmail,
-      customerId: existingCustomer?.id,
+      account: await couponAccount(coupon),
       lineItems,
     });
     if (!couponResult.valid) {
@@ -546,7 +591,7 @@ export async function POST(req: Request) {
     }
     discountAmount = couponResult.discount_amount ?? 0;
     couponId = couponResult.coupon?.id ?? null;
-    appliedCouponCode = couponResult.coupon?.code ?? coupon_code.toUpperCase().trim();
+    appliedCouponCode = coupon.code;
     isFreeShipping = couponResult.coupon?.discount_type === "free_shipping";
   }
 
@@ -564,11 +609,7 @@ export async function POST(req: Request) {
   }
 
   const shippingMethod = shippingMethodRow as ShippingMethod;
-  if (
-    Array.isArray(shippingMethod.countries) &&
-    shippingMethod.countries.length > 0 &&
-    !shippingMethod.countries.includes(shipping_address.country.toUpperCase())
-  ) {
+  if (!methodDeliversTo(shippingMethod, shipping_address.country)) {
     return NextResponse.json(
       { error: "This shipping method does not deliver to the selected country" },
       { status: 400 },
@@ -622,9 +663,20 @@ export async function POST(req: Request) {
 
   // Referral attribution (#74): resolved BEFORE tax so a self-purchase discount
   // (#82) reduces the taxable base. Invalid code silently attributes nothing.
-  const referralPartner = referral_code
-    ? await getPartnerByReferralCode(referral_code)
-    : null;
+  const codedPartner =
+    typedCode?.kind === "referral"
+      ? typedCode.partner
+      : !codeGiven && !coupon && referral_code
+        ? await getPartnerByReferralCode(referral_code)
+        : null;
+  // A partner's own code on their own purchase attributes nothing: no
+  // commission, no milestone progress. They get capped Partner pricing below.
+  const sessionPartner = codedPartner ? await getPartnerContext() : null;
+  const referralPartner =
+    codedPartner &&
+    !(await isSelfReferral(codedPartner.id, { sessionPartnerId: sessionPartner?.partnerId, email: normalizedEmail }))
+      ? codedPartner
+      : null;
 
   // Partner self-purchase (#82): a signed-in APPROVED partner buying pillows/
   // bolsters in their OWN account, and NOT via a referral attribution. It is
@@ -638,7 +690,8 @@ export async function POST(req: Request) {
   let selfPurchasePartnerId: string | null = null;
   let selfPurchaseUnits = 0;
   // Read once: self-purchase pricing and the points refusal ask the same question.
-  const partnerCtx = !referralPartner || pointsRequested ? await getPartnerContext() : null;
+  // Already read when a code named a partner; otherwise read it now.
+  const partnerCtx = codedPartner ? sessionPartner : await getPartnerContext();
   if (!referralPartner) {
     if (isPartnerActive(partnerCtx)) {
       const allowance = await loadSelfPurchaseAllowance(partnerCtx.partnerId);

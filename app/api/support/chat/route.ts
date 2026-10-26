@@ -57,7 +57,7 @@ function codeRefused(result: Exclude<RedeemCodeResult, { ok: true }>): NextRespo
 
 export async function POST(req: Request) {
   // Wrong codes count too; each code also allows only 5 tries.
-  const limited = rateLimited(req, "support-chat-start", 10, 10 * 60_000);
+  const limited = await rateLimited(req, "support-chat-start", 10, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = StartSchema.safeParse(await req.json().catch(() => null));

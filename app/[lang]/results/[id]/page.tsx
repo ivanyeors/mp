@@ -40,6 +40,8 @@ type BuildSummary = {
     subtotal: number;
     /** Service fees inside the subtotal (ADR 0024). Absent from older responses. */
     services?: Array<{ label: string; amount: number }>;
+    /** A discount code kept at hold (ADR 0033); 0 off is free shipping. */
+    discount?: { code: string; amount: number };
     shipping: number;
     tax: number;
     total: number;
@@ -597,6 +599,16 @@ function ResultStatusPage() {
                   {currency} {build.pricing.subtotal.toFixed(2)}
                 </span>
               </div>
+              {build.pricing.discount && (
+                <div className="flex justify-between gap-4 text-emerald-700 dark:text-emerald-400">
+                  <span className="min-w-0">Discount ({build.pricing.discount.code})</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
+                    {build.pricing.discount.amount > 0
+                      ? `−${currency} ${build.pricing.discount.amount.toFixed(2)}`
+                      : "Free shipping"}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">
                   {result?.collect_at ? `Self-collect · ${result.collect_at}` : "Shipping"}

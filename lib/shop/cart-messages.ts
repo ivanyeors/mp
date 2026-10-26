@@ -22,6 +22,7 @@ export function buildCartMessages(cart: CartDictionary): CartMessages {
     coupon: cart.coupon,
     applyCoupon: cart.applyCoupon,
     couponApplied: (code) => cart.couponApplied.replace("{code}", code),
+    referralApplied: (code) => cart.referralApplied.replace("{code}", code),
     remove: cart.remove,
     freeShipping: (amount) => cart.freeShippingAway.replace("{amount}", amount),
     freeShippingQualified: cart.freeShippingQualified,

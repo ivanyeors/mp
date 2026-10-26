@@ -9,6 +9,9 @@ import type { CartMessages } from "./cart-types";
 
 interface CartCouponFieldProps {
   couponCode: string | null;
+  /** A discount or a partner's referral code (ADR 0033); null until checked. */
+  couponKind: "discount" | "referral" | null;
+  couponPartnerName: string | null;
   couponDiscount: number;
   couponFreeShipping: boolean;
   couponError: string | null;
@@ -20,6 +23,8 @@ interface CartCouponFieldProps {
 
 export function CartCouponField({
   couponCode,
+  couponKind,
+  couponPartnerName,
   couponDiscount,
   couponFreeShipping,
   couponError,
@@ -75,7 +80,13 @@ export function CartCouponField({
       {couponError && (
         <p className="text-xs text-destructive">{couponError}</p>
       )}
-      {applied && (
+      {applied && couponKind === "referral" && (
+        <p className="text-xs text-green-600 dark:text-green-400">
+          {messages.referralApplied(couponCode!)}
+          {couponPartnerName && <> — {couponPartnerName}</>}
+        </p>
+      )}
+      {applied && couponKind === "discount" && (
         <p className="text-xs text-green-600 dark:text-green-400">
           {messages.couponApplied(couponCode!)}
           {couponDiscount > 0 && (

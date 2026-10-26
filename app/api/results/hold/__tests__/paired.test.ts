@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   total: 200,
   fetch: vi.fn(),
+  resolveCheckoutCode: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -104,7 +105,7 @@ vi.mock("@/lib/ecommerce/tax", () => ({
   resolveTaxRuleForRegion: vi.fn().mockResolvedValue(null),
   computeTax: () => ({ taxAmount: 0 }),
 }));
-vi.mock("@/lib/result-pricing", () => ({ priceResult: () => ({ total: h.total }) }));
+vi.mock("@/lib/result-pricing", () => ({ priceResult: () => ({ total: h.total, discount: 0 }) }));
 vi.mock("@/lib/site-settings", () => ({ getSiteSettings: vi.fn().mockResolvedValue({}) }));
 vi.mock("@/lib/sla-reminders", () => ({
   SLA_SETTING_KEYS: [],
@@ -114,7 +115,21 @@ vi.mock("@/lib/configurator/pre-order-persist", () => ({
   loadPreOrderTriggerAtHold: vi.fn().mockResolvedValue(null),
   preOrderFlagForResult: () => false,
 }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/referrals", () => ({
+  getPartnerByReferralCode: vi.fn().mockResolvedValue(null),
+  isSelfReferral: vi.fn().mockResolvedValue(false),
+}));
+vi.mock("@/lib/checkout-code", () => ({
+  CHECKOUT_CODE_MAX_LENGTH: 64,
+  CHECKOUT_CODE_RATE_LIMITED_MESSAGE: "Too many code attempts.",
+  checkoutCodeRateLimited: () => false,
+  couponAccount: async () => null,
+  resolveCheckoutCode: h.resolveCheckoutCode,
+}));
+vi.mock("@/lib/ecommerce/discounts", async (orig) => ({
+  ...(await orig<typeof import("@/lib/ecommerce/discounts")>()),
+  checkCoupon: async (coupon: unknown) => ({ valid: true, coupon, discount_amount: 20 }),
+}));
 vi.mock("@/lib/rules-engine", () => ({
   assertPreStripeRouteResolved: () => ({ ok: true }),
   inputsFromBolsterHeight: vi.fn(),
@@ -185,6 +200,7 @@ beforeEach(() => {
   h.createHoldCheckout.mockResolvedValue({ sessionId: "cs_1", url: "https://stripe.test/cs_1" });
   h.sendEmail.mockResolvedValue(undefined);
   h.fetch.mockResolvedValue(new Response("{}"));
+  h.resolveCheckoutCode.mockResolvedValue(null);
   vi.stubGlobal("fetch", h.fetch);
   process.env.TELEGRAM_BOT_TOKEN = "bot";
 });
@@ -218,6 +234,17 @@ describe("POST /api/results/hold — Paired build", () => {
       paired_result_id: COMPANION,
       paired_result_amount: "200",
     });
+  });
+
+  it("puts a discount code on the Mpillow only, never on its Mbolster (ADR 0033)", async () => {
+    h.resolveCheckoutCode.mockResolvedValue({
+      kind: "coupon",
+      coupon: { id: "coupon-10", code: "SAVE10", discount_type: "percentage", discount_value: 10, max_discount: null },
+    });
+    const res = await post({ code: "SAVE10" });
+    expect(res.status).toBe(200);
+    expect(h.rows.get(ID)).toMatchObject({ coupon_id: "coupon-10", coupon_code: "SAVE10" });
+    expect(h.rows.get(COMPANION)).toMatchObject({ coupon_id: null, coupon_code: null, coupon_terms: null });
   });
 
   it("refuses a companion id that is someone else's Result", async () => {

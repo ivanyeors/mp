@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
 import { normalizePhone } from "@/lib/appointments/phone";
+import { isOfferableSlot } from "@/lib/appointments/slots";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
 } from "@/lib/appointments/settings";
 import { getLocation } from "@/lib/locations";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -51,6 +53,18 @@ export async function POST(req: Request) {
   const phone = normalizePhone(parsed.phone);
   if (!phone) return NextResponse.json({ error: "Invalid phone" }, { status: 400 });
 
+  // Each booking sends a calendar invite and a paid WhatsApp template to the
+  // address and number given, so cap the recipient as well as the caller.
+  const limited = await tooManyRequests(
+    [
+      { bucket: "booking-ip", key: clientIp(req), windowMs: 60 * 60_000, max: 10 },
+      { bucket: "booking-email", key: parsed.email.trim().toLowerCase(), windowMs: 24 * 60 * 60_000, max: 3 },
+      { bucket: "booking-phone", key: phone, windowMs: 24 * 60 * 60_000, max: 3 },
+    ],
+    "Too many bookings. Please contact us if you need another appointment.",
+  );
+  if (limited) return limited;
+
   const location = await getLocation(parsed.location_id);
   if (!location) return NextResponse.json({ error: "Unknown location" }, { status: 404 });
   if (!location.address) {
@@ -73,6 +87,11 @@ export async function POST(req: Request) {
   const stored: Record<string, string> = {};
   for (const row of data ?? []) stored[row.key] = row.value;
   const settings = parseAppointmentSettings(stored);
+  // Only a time the slot picker offers: one appointment long, on the grid, in
+  // the future. Without it one request could block the calendar for a month.
+  if (!isOfferableSlot(parsed.start_iso, parsed.end_iso, settings)) {
+    return NextResponse.json({ error: "That time is not a bookable slot" }, { status: 400 });
+  }
 
   try {
     // ponytail: last-writer-wins re-check — no per-slot lock. Two submits racing

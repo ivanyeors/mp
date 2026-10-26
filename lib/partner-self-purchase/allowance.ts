@@ -3,13 +3,16 @@
  * (from `partners`) and how many discounted units they've already consumed. The
  * pure calc lives in ./index and is imported here (never the reverse).
  *
- * Consumed = discounted units on the partner's prior PAID, non-cancelled
- * self-purchase orders (paid_at set, status != cancelled — same rule the coupon
- * per-customer counter uses). A pending/abandoned checkout never consumes: its
- * units only count once the webhook marks the order paid.
+ * Consumed = discounted units on the partner's PAID, non-cancelled
+ * self-purchase orders, plus those on orders whose Checkout is still open
+ * (pending, unpaid, younger than a Checkout Session: one hour). Counting only paid ones
+ * let a partner open several checkouts before paying any, each priced against
+ * the full remaining cap. An abandoned checkout stops counting once it expires.
  */
 
+
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { OPEN_CHECKOUT_WINDOW_MS } from "@/lib/stripe/checkout-lifetime";
 import {
   remainingSelfPurchaseUnits,
   type SelfPurchaseKind,
@@ -34,14 +37,24 @@ export async function loadSelfPurchaseAllowance(partnerId: string): Promise<Self
   const amount = Number(partner?.self_purchase_amount ?? 0);
   const unitCap = Number(partner?.self_purchase_unit_cap ?? 0);
 
-  const { data: prior } = await admin
-    .from("orders")
-    .select("self_purchase_units")
-    .eq("self_purchase_partner_id", partnerId)
-    .neq("status", "cancelled")
-    .not("paid_at", "is", null);
+  const [{ data: paid }, { data: open }] = await Promise.all([
+    admin
+      .from("orders")
+      .select("self_purchase_units")
+      .eq("self_purchase_partner_id", partnerId)
+      .neq("status", "cancelled")
+      .not("paid_at", "is", null),
+    admin
+      .from("orders")
+      .select("self_purchase_units")
+      .eq("self_purchase_partner_id", partnerId)
+      .eq("status", "pending")
+      .is("paid_at", null)
+      .gte("created_at", new Date(Date.now() - OPEN_CHECKOUT_WINDOW_MS).toISOString()),
+  ]);
+  const prior = [...(paid ?? []), ...(open ?? [])];
 
-  const unitsUsed = (prior ?? []).reduce(
+  const unitsUsed = prior.reduce(
     (sum, o) => sum + Number((o as { self_purchase_units: number | null }).self_purchase_units ?? 0),
     0,
   );

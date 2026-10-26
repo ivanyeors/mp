@@ -12,7 +12,7 @@ export const maxDuration = 30;
  * again within LEAVE_SETTLE_MS: a reload does, closing the tab doesn't.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const limited = rateLimited(req, "support-chat-leave", 20, 60_000);
+  const limited = await rateLimited(req, "support-chat-leave", 20, 60_000);
   if (limited) return limited;
   const { id } = await params;
   const body = (await req.json().catch(() => null)) as { token?: unknown } | null;

@@ -141,12 +141,15 @@ export async function deductInventoryForOrder(
   for (const item of items) {
     if (!item.variant_id) continue;
 
-    const { data: variant } = await admin
+    const { data: variant, error: variantError } = await admin
       .from("product_variants")
       .select("id, pillow_product_id, item_id, track_inventory, stock_quantity, option1")
       .eq("id", item.variant_id)
-      .single();
+      .maybeSingle();
 
+    // A read that failed is not a variant that needs no deduction: throw, so
+    // the webhook hands the claim back and Stripe's retry deducts the line.
+    if (variantError) throw new Error(`Variant ${item.variant_id} could not be read: ${variantError.message}`);
     if (!variant || !variant.track_inventory) continue;
 
     const snapshot = (item.customization_snapshot ?? {}) as CustomizationSnapshot;

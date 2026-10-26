@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { z } from "zod";
 import { createHash, randomUUID } from "crypto";
 import { secretMatches } from "@/lib/auth/secret";
@@ -27,6 +28,7 @@ import {
 import {
   BOLSTER_LENGTHS,
   loadComposedSellable,
+  type ComposedSellableKey,
 } from "@/lib/results/composed-sellable";
 import { priceCompanionBolster } from "@/lib/results/paired-hold";
 import { quoteResultShipping, resultShippingAmount } from "@/lib/results/shipping";
@@ -43,7 +45,22 @@ import {
   isWithinReferralWindow,
   resolveAttribution,
 } from "@/lib/referrals/attribution";
-import { getPartnerByReferralCode } from "@/lib/referrals";
+import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
+import { getPartnerContext } from "@/lib/auth/partner";
+import {
+  CHECKOUT_CODE_MAX_LENGTH,
+  CHECKOUT_CODE_RATE_LIMITED_MESSAGE,
+  checkoutCodeRateLimited,
+  couponAccount,
+  resolveCheckoutCode,
+} from "@/lib/checkout-code";
+import { checkCoupon } from "@/lib/ecommerce/discounts";
+import {
+  couponTermsOf,
+  resultCouponLineItems,
+  resultCouponPricing,
+  type ResultCouponTerms,
+} from "@/lib/results/discount";
 import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -139,7 +156,13 @@ const HoldSchema = z
     phone: z.string().min(1),
     discoverySource: z.string().min(1),
     discoverySourceOther: z.string().optional(),
-    /** Optional typed "Partner / referral code". Invalid never blocks the hold. */
+    /**
+     * The one optional code (ADR 0033): a partner's referral code or a discount
+     * code, resolved here. An unrecognised code never blocks the hold; a
+     * discount code that cannot be used on this build does, with its reason.
+     */
+    code: z.string().trim().max(CHECKOUT_CODE_MAX_LENGTH).optional(),
+    /** Referral only — what a configurator tab from before `code` still sends. */
     referralCode: z.string().trim().optional(),
     /**
      * Partner-assisted run (#78): the launching partner's own referral code. The
@@ -285,6 +308,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   const input = parsed.data;
+  // A hold creates a Stripe Checkout Session, posts to the Staff Telegram group
+  // and emails the address given, all before the card is authorised.
+  const limited = await tooManyRequests([
+    { bucket: "hold-ip", key: clientIp(req), windowMs: 60 * 60_000, max: 20 },
+    { bucket: "hold-email", key: input.email.trim().toLowerCase(), windowMs: 60 * 60_000, max: 10 },
+  ]);
+  if (limited) return limited;
+  // A code is checked against the database below, so a hold is as good an
+  // oracle for guessing codes as the check endpoint: it draws on the same meter.
+  if (input.code && (await checkoutCodeRateLimited(req))) {
+    return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE, field: "code" }, { status: 429 });
+  }
   const admin = supabaseAdmin();
   const origin = getPublicOrigin(req);
   const productType = input.productType;
@@ -499,16 +534,15 @@ export async function POST(req: Request) {
   const placedPack = derivePackList(input.assistFilling?.placements ?? [], []);
   const allItemIds = [...new Set([...prefIds, ...addonIds, ...placedPack.map((l) => l.item_id)])];
 
-  const composed = await loadComposedSellable(
-    admin,
+  const composedKey: ComposedSellableKey =
     productType === "pillow"
       ? {
           productType: "pillow",
           size: input.suggestedSize!,
           tier: input.suggestedTier!,
         }
-      : { productType: "bolster", length: input.suggestedLength! },
-  );
+      : { productType: "bolster", length: input.suggestedLength! };
+  const composed = await loadComposedSellable(admin, composedKey);
   if (!composed.ok) {
     // Both pricing faults look identical to a shopper and must not leak the
     // reason, but they are very different to whoever reads the log: one means
@@ -628,6 +662,34 @@ export async function POST(req: Request) {
     );
   }
 
+  // The one code field (ADR 0033). A discount code is checked now, as shop
+  // checkout checks one, on this build's goods: limits count every live Result
+  // already holding it, except this one and its companion. What the Result keeps
+  // is the coupon's terms, which every repricing takes off the goods from here
+  // on. A Paired build's Mbolster never carries it: the Mpillow does.
+  const typedCode = await resolveCheckoutCode(input.code);
+  let coupon: { id: string; code: string; terms: ResultCouponTerms } | null = null;
+  if (typedCode?.kind === "coupon") {
+    const check = await checkCoupon(typedCode.coupon, goods.subtotal, undefined, undefined, {
+      customerEmail: input.email,
+      account: await couponAccount(typedCode.coupon),
+      lineItems: await resultCouponLineItems(admin, composedKey, goods.subtotal, typedCode.coupon.applies_to),
+      excludeResultIds: [input.responseId, paired?.responseId].filter((id): id is string => Boolean(id)),
+    });
+    if (!check.valid) {
+      return NextResponse.json(
+        { error: check.error ?? "This code can't be used on this order", field: "code" },
+        { status: 400 },
+      );
+    }
+    coupon = {
+      id: typedCode.coupon.id,
+      code: typedCode.coupon.code,
+      terms: couponTermsOf(typedCode.coupon),
+    };
+  }
+  const couponPricing = resultCouponPricing(coupon?.terms ?? null, goods.subtotal);
+
   // Who measured decides the Measurement service fee (ADR 0024), so it is settled
   // before pricing. An existing Draft keeps what it says — the responses route
   // stamped it on create (a Staff device's working-as profile) and the Results list
@@ -665,12 +727,16 @@ export async function POST(req: Request) {
 
   // No shipping yet on an Assisted submit sent from the questionnaire. The quote
   // is goods-only, the same as assign prices it until the customer finishes.
-  // Free shipping is earned by goods alone; tax is due on goods and services.
+  // Free shipping is earned by goods alone (before any discount); tax is due on
+  // goods and services, less the discount.
   const shippingMethod = shippingRow as ShippingMethod | null;
-  const shippingAmount = shippingMethod ? resultShippingAmount(shippingMethod, shippingRate, goods.subtotal) : 0;
+  const shippingAmount =
+    shippingMethod && !couponPricing.freeShipping
+      ? resultShippingAmount(shippingMethod, shippingRate, goods.subtotal)
+      : 0;
   const taxRule = await resolveTaxRuleForRegion(shippingCountry);
   const tax = computeTax(
-    { subtotal: goods.subtotal + services, shippingAmount, discountAmount: 0 },
+    { subtotal: goods.subtotal + services, shippingAmount, discountAmount: couponPricing.discount },
     taxRule,
   );
 
@@ -679,6 +745,7 @@ export async function POST(req: Request) {
     services,
     shipping: shippingAmount,
     tax: tax.taxAmount,
+    discount: couponPricing.discount,
   });
   // Cents, once: the row's numeric(12,2) would round a float-dust total on store,
   // and the hold webhook compares that stored amount against what Checkout charged.
@@ -809,9 +876,14 @@ export async function POST(req: Request) {
   const assistPartner = input.partnerAssistCode
     ? await getPartnerByReferralCode(input.partnerAssistCode)
     : null;
-  const typedPartner = input.referralCode
-    ? await getPartnerByReferralCode(input.referralCode)
-    : null;
+  // One code per order (ADR 0033): the legacy referralCode only counts when
+  // the code field is empty, so it cannot stack with a discount code.
+  const typedPartner =
+    typedCode?.kind === "referral"
+      ? typedCode.partner
+      : !input.code?.trim() && input.referralCode
+        ? await getPartnerByReferralCode(input.referralCode)
+        : null;
   let linkPartnerId: string | null = null;
   let linkRefCode: string | null = null;
   const visitorId = parseVisitorId(readCookie(req, VISITOR_COOKIE));
@@ -832,10 +904,16 @@ export async function POST(req: Request) {
       }
     }
   }
+  // A partner's own code, assist link or referral link on their own build
+  // attributes nothing: no commission or milestone progress at Accept.
+  const sessionPartnerId =
+    assistPartner || typedPartner || linkPartnerId ? (await getPartnerContext())?.partnerId : null;
+  const notSelf = async (partnerId: string | null | undefined) =>
+    partnerId && !(await isSelfReferral(partnerId, { sessionPartnerId, email: input.email })) ? partnerId : null;
   const attribution = resolveAttribution({
-    assistPartnerId: assistPartner?.id ?? null,
-    typedPartnerId: typedPartner?.id ?? null,
-    linkPartnerId,
+    assistPartnerId: await notSelf(assistPartner?.id),
+    typedPartnerId: await notSelf(typedPartner?.id),
+    linkPartnerId: await notSelf(linkPartnerId),
   });
   const attributedRefCode =
     attribution.source === "assist"
@@ -882,6 +960,10 @@ export async function POST(req: Request) {
     ref_code: attributedRefCode,
     // How it attributed (assist>typed>link) — #80 reads this for PDPA masking.
     attribution_source: attribution.source,
+    // Null clears a code a re-submit dropped.
+    coupon_id: coupon?.id ?? null,
+    coupon_code: coupon?.code ?? null,
+    coupon_terms: coupon?.terms ?? null,
     // An Assisted submit is usually made on a Staff member's signed-in device, so
     // the session user is not the buyer. Link nothing. The customer still finds
     // the Result by `customer_email` when they sign in.
@@ -1041,6 +1123,10 @@ export async function POST(req: Request) {
       addon_lines: paired.addonLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity })),
       // It rides in the anchor's shipment, whose rate is the anchor's.
       shipping_rate: null,
+      // The anchor carries the pair's discount code (ADR 0033).
+      coupon_id: null,
+      coupon_code: null,
+      coupon_terms: null,
       authorized_amount: takeCard ? companion.total : null,
       is_pre_order: preOrderFlagForResult(
         await loadPreOrderTriggerAtHold(admin, {
@@ -1131,6 +1217,9 @@ export async function POST(req: Request) {
                 }
               : null,
           platformUrl: platformLink,
+          discount: coupon
+            ? { code: coupon.code, amount: priced.discount, freeShipping: couponPricing.freeShipping }
+            : null,
         }),
       )
     : "skipped";

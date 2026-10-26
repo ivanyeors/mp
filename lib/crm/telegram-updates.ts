@@ -361,6 +361,8 @@ export type OnlineResultHeldNotice = {
   /** The Paired build's Mbolster, when there is one. */
   paired: { length: string; total: number; platformUrl: string } | null;
   platformUrl: string;
+  /** A discount code on this Result, and what it took off (ADR 0033). */
+  discount?: { code: string; amount: number; freeShipping: boolean } | null;
 };
 
 export function renderOnlineResultHeld(n: OnlineResultHeldNotice): string {
@@ -369,6 +371,13 @@ export function renderOnlineResultHeld(n: OnlineResultHeldNotice): string {
     n.label,
     `Email: ${n.email}`,
     ...n.serviceLines.map((l) => `${l.label}: ${n.currency} ${l.msrp.toFixed(2)}`),
+    ...(n.discount
+      ? [
+          n.discount.freeShipping && n.discount.amount <= 0
+            ? `Discount code ${n.discount.code}: free shipping`
+            : `Discount code ${n.discount.code}: −${n.currency} ${n.discount.amount.toFixed(2)}`,
+        ]
+      : []),
     n.cardTaken
       ? `Authorized: ${n.currency} ${n.total.toFixed(2)}`
       : `No card taken — quoted ${n.currency} ${n.total.toFixed(2)}`,

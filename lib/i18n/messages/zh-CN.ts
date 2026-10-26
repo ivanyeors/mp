@@ -430,7 +430,7 @@ export const zhCN: Messages = {
         errorSlotTaken: "该时间刚刚被预订，请选择其他时间。",
         errorGeneric: "出错了，请重试。",
         measurementFeeNote:
-          "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——随枕头一并支付，今天无需付款。",
+          "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——现场为你定制、调整，当天即可带回家。",
       },
       readjust: {
         signInTitle: "登录以预约复调",
@@ -508,10 +508,11 @@ export const zhCN: Messages = {
       freeShippingQualified: "您已满足免运费条件！",
       tax: "税费",
       total: "总计",
-      coupon: "优惠券代码",
+      coupon: "优惠码或推荐码",
       applyCoupon: "应用",
       removeCoupon: "移除",
-      couponApplied: "优惠券「{code}」已应用！",
+      couponApplied: "优惠码「{code}」已生效",
+      referralApplied: "推荐码「{code}」已生效",
       remove: "删除",
       customizationAddon: "定制",
       closeCart: "关闭购物车",

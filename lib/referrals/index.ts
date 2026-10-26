@@ -32,6 +32,34 @@ export async function getPartnerByReferralCode(
   return data as ReferralPartner;
 }
 
+/**
+ * Is `partnerId` the buyer's own partner account? A partner never earns
+ * commission or milestone progress on their own purchase (prod hardening slice
+ * 09): recognised by the signed-in partner session, or by the checkout email
+ * matching the partner's sign-in email or verified backup email. A lookup
+ * failure counts as self — attributing nothing is the safe side.
+ */
+export async function isSelfReferral(
+  partnerId: string,
+  buyer: { sessionPartnerId?: string | null; email?: string | null },
+): Promise<boolean> {
+  if (buyer.sessionPartnerId && buyer.sessionPartnerId === partnerId) return true;
+  const email = (buyer.email ?? "").trim().toLowerCase();
+  if (!email) return false;
+  const { data, error } = await supabaseAdmin()
+    .from("partner_users")
+    .select("email, backup_email, backup_email_verified")
+    .eq("partner_id", partnerId);
+  if (error) {
+    console.error(`[referrals] Could not check self-referral for partner ${partnerId}:`, error.message);
+    return true;
+  }
+  const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  return (data ?? []).some(
+    (u) => norm(u.email) === email || (u.backup_email_verified === true && norm(u.backup_email) === email),
+  );
+}
+
 /** Co-brand + assist context for a partner-assisted configurator run (#78). */
 export type PartnerAssistContext = {
   partnerId: string;
@@ -83,6 +111,8 @@ export async function ensureReferralCode(partnerId: string): Promise<string | nu
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateReferralCode();
+    // A discount code shares the checkout field; never mint over one.
+    if (await isCouponCode(admin, code)) continue;
     const { data, error: updErr } = await admin
       .from("partners")
       .update({ referral_code: code })
@@ -102,13 +132,26 @@ export async function ensureReferralCode(partnerId: string): Promise<string | nu
   return null;
 }
 
-/** Inline-validation result for the contact field + checkout. */
-export async function validateReferralCode(
-  code: string,
-): Promise<{ valid: boolean; partnerId: string | null; partnerName: string | null }> {
-  const partner = await getPartnerByReferralCode(code);
-  if (!partner) return { valid: false, partnerId: null, partnerName: null };
-  return { valid: true, partnerId: partner.id, partnerName: partner.name };
+/**
+ * Whether any partner — approved or not — holds this referral code. One field
+ * at checkout takes both kinds of code (ADR 0033), so a coupon may never be
+ * saved under one.
+ */
+export async function isReferralCodeTaken(code: string): Promise<boolean> {
+  const normalized = normalizeReferralCode(code);
+  if (!isValidReferralCodeFormat(normalized)) return false;
+  const { data } = await supabaseAdmin()
+    .from("partners")
+    .select("id")
+    .ilike("referral_code", normalized)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+/** Whether a coupon, active or not, is saved under this code (ADR 0033). */
+async function isCouponCode(admin: SupabaseClient, code: string): Promise<boolean> {
+  const { data } = await admin.from("coupons").select("id").eq("code", code.toUpperCase()).limit(1);
+  return (data ?? []).length > 0;
 }
 
 /** Last-touch: overwrite the Visitor's ref stamp with the newest code + now. */

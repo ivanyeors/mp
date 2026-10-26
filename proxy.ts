@@ -1,5 +1,6 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { classifyCrawler, recordCrawlerHit } from "@/lib/analytics/ai-crawlers";
+import { isCrossSiteWrite } from "@/lib/auth/cross-site";
 import { blogSlugFate } from "@/lib/blog-redirects";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -56,6 +57,15 @@ const CANONICAL_ORIGIN = "https://custom.mpillow.com";
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
+  // API: refuse a cookie-authenticated write from another origin, and nothing
+  // else — no crawler counting, host redirect or locale work (lib/auth/cross-site.ts).
+  if (pathname === "/api" || pathname.startsWith("/api/")) {
+    if (isCrossSiteWrite(request, pathname)) {
+      return NextResponse.json({ error: "Cross-site request refused" }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
+
   // AI crawler hits (PRD-search-visibility slice 04). Before the static-file
   // skip so /llms.txt and /robots.txt count; recorded after the response via
   // waitUntil, so a slow or failing write never delays or breaks the request.
@@ -72,10 +82,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.redirect(dest, 301);
   }
 
-  // Skip Next internals, API, auth callback, dev tooling, and direct file requests.
+  // Skip Next internals, auth callback, dev tooling, and direct file requests.
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
     pathname.startsWith("/auth") ||
     // Exact segment, not a prefix — a future /developers page must still get
     // normal locale handling.
@@ -169,7 +178,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next|auth|dev/|favicon.ico|manifest.webmanifest).*)",
+    "/((?!_next|auth|dev/|favicon.ico|manifest.webmanifest).*)",
   ],
 };
 

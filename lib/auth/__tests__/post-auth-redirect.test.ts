@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolvePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
+import { resolvePostAuthRedirect, safeNextPath } from "@/lib/auth/post-auth-redirect";
 
 const accountHome = "/en-US/account";
 const adminHome = "/en-US/settings";
@@ -37,5 +37,24 @@ describe("resolvePostAuthRedirect", () => {
     expect(resolve("https://evil.example", false)).toBe(accountHome);
     expect(resolve("//evil.example", true)).toBe(adminHome); // staff + fallback account → admin
     expect(resolve(undefined, false)).toBe(accountHome);
+  });
+
+  it("refuses paths a browser reads as another site", () => {
+    expect(resolve("/\\evil.example", false)).toBe(accountHome);
+    expect(resolve("/\\/evil.example", false)).toBe(accountHome);
+    expect(resolve("/\t/evil.example", false)).toBe(accountHome);
+    expect(resolve("/\n/evil.example", false)).toBe(accountHome);
+  });
+});
+
+describe("safeNextPath", () => {
+  it("keeps same-site paths, query strings included", () => {
+    expect(safeNextPath("/en-US/shop?category=pillows", "/")).toBe("/en-US/shop?category=pillows");
+  });
+
+  it("falls back for anything that leaves the site", () => {
+    for (const next of ["https://evil.example", "//evil.example", "/\\evil.example", "/\r\n/evil.example", "evil.example"]) {
+      expect(safeNextPath(next, "/fallback")).toBe("/fallback");
+    }
   });
 });

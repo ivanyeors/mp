@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,24 @@ export function AnalyticsNoticeBar() {
     setVisible(true);
   }, [pathname]);
 
+  // Publish how much of the bottom corner the bar takes, so the chat bubble
+  // (components/support/support-chat-window.tsx) sits above it, not over "Got it".
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!visible || !bar || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const publish = () =>
+      root.style.setProperty("--analytics-notice-clearance", `calc(${Math.round(bar.getBoundingClientRect().height)}px + 0.75rem)`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--analytics-notice-clearance");
+    };
+  }, [visible]);
+
   if (!visible) return null;
 
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -50,6 +68,7 @@ export function AnalyticsNoticeBar() {
     // desktop: right side (clears center dock); mobile: above dock via --app-dock-clearance
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-3 pb-[calc(0.75rem+max(var(--safe-bottom),var(--app-dock-clearance)))] md:justify-end md:pb-[calc(0.75rem+var(--safe-bottom))]">
       <div
+        ref={barRef}
         role="status"
         className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-lg border bg-background/95 px-4 py-3 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80"
       >

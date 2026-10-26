@@ -14,9 +14,15 @@ export type PageMetadataInput = {
   alternateLocales?: readonly string[];
 };
 
+/**
+ * The share image when a page has none of its own: the logo on white, 1200×630.
+ * Without it, link previews (WhatsApp, Telegram) fall back to the favicon.
+ */
+export const DEFAULT_OG_IMAGE = "/og-image.png";
+
 export function buildPageMetadata(input: PageMetadataInput): Metadata {
   const url = localeUrl(input.lang, input.path);
-  const imageUrl = input.image ?? undefined;
+  const imageUrl = input.image ?? DEFAULT_OG_IMAGE;
 
   return {
     title: input.title,
@@ -29,13 +35,13 @@ export function buildPageMetadata(input: PageMetadataInput): Metadata {
       url,
       type: input.type ?? "website",
       siteName: "Mpillow",
-      ...(imageUrl ? { images: [{ url: imageUrl, width: 1200, height: 630, alt: input.title }] } : {}),
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: input.title }],
     },
     twitter: {
-      card: imageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: input.title,
       description: input.description,
-      ...(imageUrl ? { images: [imageUrl] } : {}),
+      images: [imageUrl],
     },
     alternates: {
       canonical: url,

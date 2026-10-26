@@ -37,8 +37,9 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
           sizes="100vw"
         />
 
-        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-background/85 via-background/25 to-transparent" />
-        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/25 to-transparent md:hidden" />
+        {/* Dark mode only: light mode shows the photo as shot, with no wash over it. */}
+        <div className="pointer-events-none absolute inset-0 z-[1] hidden bg-gradient-to-t from-background/85 via-background/25 to-transparent dark:block" />
+        <div className="pointer-events-none absolute inset-0 z-[1] hidden bg-gradient-to-t from-black/55 via-black/25 to-transparent dark:max-md:block" />
         {/* Mobile: in flow with a 3:4 floor so long copy grows the hero instead of
             being clipped; md+: overlay centered on the 16:9 image. */}
         <div className="relative z-10 flex min-h-[133.34vw] flex-col md:absolute md:inset-0 md:min-h-0 md:flex-row md:items-center">
@@ -63,11 +64,12 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
                   )}
                 </h1>
                 {/* Answer lede for AEO; hard ≤4 lines so hero never walls the product image */}
-                <p className="line-clamp-4 text-base leading-relaxed text-foreground/85 sm:text-lg sm:text-muted-foreground max-w-prose">
+                {/* Light mode has no overlay, so muted grey would vanish into the photo */}
+                <p className="line-clamp-4 text-base font-medium leading-relaxed text-foreground sm:text-lg dark:font-normal dark:text-foreground/85 dark:sm:text-muted-foreground max-w-prose">
                   {m.home.hero.seoAnswer}
                 </p>
                 {subtitle ? (
-                  <p className="text-base leading-relaxed text-foreground/90 sm:text-lg sm:text-muted-foreground md:text-xl">
+                  <p className="text-base font-medium leading-relaxed text-foreground sm:text-lg md:text-xl dark:font-normal dark:text-foreground/90 dark:sm:text-muted-foreground">
                     {subtitle}
                   </p>
                 ) : null}

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
@@ -70,7 +71,7 @@ vi.mock("@/lib/discovery-source", () => ({
   validateDiscoverySource: () => null,
   normalizeDiscoverySourceOther: () => null,
 }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: async () => null }));
+vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: async () => null, isSelfReferral: async () => false }));
 vi.mock("@/lib/configurator/pre-order-persist", async (orig) => ({
   ...(await orig<typeof import("@/lib/configurator/pre-order-persist")>()),
   loadPreOrderTriggerAtHold: async () => ({ preferenceStocks: [100], composedBuildable: 100 }),
@@ -411,6 +412,7 @@ async function pairAssigned() {
 const errorSpy = vi.spyOn(console, "error");
 
 beforeEach(() => {
+  resetRateLimits();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(T0);
   seed();

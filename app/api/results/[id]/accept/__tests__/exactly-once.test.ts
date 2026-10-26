@@ -22,6 +22,7 @@ const h = vi.hoisted(() => ({
   applyMilestoneProgress: vi.fn(),
   loadAssignedBuild: vi.fn(),
   sessionsRetrieve: vi.fn(),
+  incrementCouponUsage: vi.fn(),
   /** The `customers` table is unreachable. */
   failCustomers: false,
 }));
@@ -103,6 +104,7 @@ vi.mock("@/lib/ecommerce/money-ledger", () => ({
   rollupOrderMoney: vi.fn(),
 }));
 vi.mock("@/lib/email/partner", () => ({ sendReferralEarnedEmail: vi.fn() }));
+vi.mock("@/lib/ecommerce/discounts", () => ({ incrementCouponUsage: h.incrementCouponUsage }));
 
 const { POST } = await import("@/app/api/results/[id]/accept/route");
 
@@ -158,6 +160,9 @@ beforeEach(() => {
   h.writes = [];
   h.failCustomers = false;
   h.piStatus = "requires_capture";
+  // incrementCouponUsage now reports whether the capped increment applied;
+  // the happy path is "applied".
+  h.incrementCouponUsage.mockResolvedValue(true);
   h.captureHold.mockImplementation(async () => {
     await tick();
     h.piStatus = "succeeded";
@@ -169,7 +174,7 @@ beforeEach(() => {
       { item_id: 2, quantity: 2, role: "filling" },
     ],
     cogs: 30,
-    pricing: { goods: 100, services: 0, subtotal: 100, shipping: 10, tax: 0, total: 110 },
+    pricing: { goods: 100, services: 0, subtotal: 100, discount: 0, shipping: 10, tax: 0, total: 110 },
     serviceLines: [],
     basePrice: 90,
     shortages: [],
@@ -179,6 +184,40 @@ beforeEach(() => {
 });
 
 describe("POST /api/results/[id]/accept — exactly once", () => {
+  it("writes the discount code onto the Order and counts its use once (ADR 0033)", async () => {
+    h.db.mp_config_responses = [assignedRow({ coupon_id: "coupon-10", coupon_code: "SAVE10" })];
+    h.loadAssignedBuild.mockResolvedValue({
+      ok: true,
+      lines: [{ item_id: 1, quantity: 1, role: "composed" }],
+      cogs: 30,
+      pricing: { goods: 100, services: 0, subtotal: 100, discount: 10, shipping: 10, tax: 0, total: 100 },
+      serviceLines: [],
+      basePrice: 90,
+      shortages: [],
+      nameByItem: new Map(),
+      fillingPlacements: [],
+    });
+    await Promise.all([accept(), accept()]);
+    expect(count("orders")).toBe(1);
+    // subtotal − discount + shipping + tax = total.
+    expect(h.db.orders[0]).toMatchObject({
+      subtotal: 100,
+      discount_amount: 10,
+      shipping_amount: 10,
+      total: 100,
+      coupon_id: "coupon-10",
+      coupon_code: "SAVE10",
+    });
+    expect(h.incrementCouponUsage).toHaveBeenCalledTimes(1);
+    expect(h.incrementCouponUsage).toHaveBeenCalledWith("coupon-10");
+  });
+
+  it("writes no coupon and counts nothing for a Result without a code", async () => {
+    await accept();
+    expect(h.db.orders[0]).toMatchObject({ discount_amount: 0, coupon_id: null, coupon_code: null });
+    expect(h.incrementCouponUsage).not.toHaveBeenCalled();
+  });
+
   it("two concurrent accepts make one Order, one stock deduction and one commission", async () => {
     const responses = await Promise.all([accept(), accept()]);
 
@@ -207,6 +246,31 @@ describe("POST /api/results/[id]/accept — exactly once", () => {
     expect(count("orders")).toBe(1);
     expect(count("inventory_transactions")).toBe(2);
     expect(h.createHeldCommissionsForOrder).toHaveBeenCalledOnce();
+    expect(h.captureHold).not.toHaveBeenCalled();
+  });
+
+  it("a quote with no card behind it is not credited: the whole total is a Balance payment", async () => {
+    // An abandoned hold Checkout: authorized_amount was written, no card attached.
+    h.db.mp_config_responses = [assignedRow({ payment_intent_id: null, authorized_amount: 100 })];
+    // The shortfall-only top-up (110 - 100) settles nothing.
+    h.sessionsRetrieve.mockResolvedValue({
+      metadata: { result_id: ID, purpose: "result_topup" },
+      payment_status: "paid",
+      amount_total: 1000,
+      payment_intent: "pi_short",
+    });
+    expect((await accept({ topupSessionId: "cs_short" })).status).not.toBe(200);
+    expect(count("orders")).toBe(0);
+
+    // The whole total does, and nothing is captured from a hold that never existed.
+    h.sessionsRetrieve.mockResolvedValue({
+      metadata: { result_id: ID, purpose: "result_topup" },
+      payment_status: "paid",
+      amount_total: 11000,
+      payment_intent: "pi_full",
+    });
+    expect((await accept({ topupSessionId: "cs_full" })).status).toBe(200);
+    expect(count("orders")).toBe(1);
     expect(h.captureHold).not.toHaveBeenCalled();
   });
 
@@ -252,7 +316,7 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
         { item_id: 2, quantity: 2, role: "filling" },
       ],
       cogs: 30,
-      pricing: { goods: 100, services: 50, subtotal: 150, shipping: 10, tax: 0, total: 160 },
+      pricing: { goods: 100, services: 50, subtotal: 150, discount: 0, shipping: 10, tax: 0, total: 160 },
       serviceLines: [
         { key: "measurement_premium", label: "Measurement service (Premium)", msrp: 50, costPrice: null },
       ],
@@ -295,7 +359,7 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
       ok: true,
       lines: [{ item_id: 1, quantity: 1, role: "composed" }],
       cogs: 30,
-      pricing: { goods: 100, services: 50, subtotal: 150, shipping: 10, tax: 0, total: 160 },
+      pricing: { goods: 100, services: 50, subtotal: 150, discount: 0, shipping: 10, tax: 0, total: 160 },
       serviceLines: [
         { key: "measurement_premium", label: "Measurement service (Premium)", msrp: 50, costPrice: 8 },
       ],
@@ -316,7 +380,7 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
       ok: true,
       lines: [{ item_id: 1, quantity: 1, role: "composed" }],
       cogs: 30,
-      pricing: { goods: 100, services: 50, subtotal: 150, shipping: 10, tax: 0, total: 160 },
+      pricing: { goods: 100, services: 50, subtotal: 150, discount: 0, shipping: 10, tax: 0, total: 160 },
       serviceLines: [
         { key: "measurement_premium", label: "Measurement service (Premium)", msrp: 50, costPrice: 8 },
       ],
@@ -356,7 +420,7 @@ describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
     ok: true,
     lines: [{ item_id: 9, quantity: 1, role: "composed" }],
     cogs: 12,
-    pricing: { goods: 60, services: 0, subtotal: 60, shipping: 0, tax: 0, total: 60 },
+    pricing: { goods: 60, services: 0, subtotal: 60, discount: 0, shipping: 0, tax: 0, total: 60 },
     serviceLines: [],
     basePrice: 50,
     shortages: [],
@@ -378,7 +442,7 @@ describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
               { item_id: 2, quantity: 2, role: "filling" },
             ],
             cogs: 30,
-            pricing: { goods: 100, services: 0, subtotal: 100, shipping: 10, tax: 0, total: 110 },
+            pricing: { goods: 100, services: 0, subtotal: 100, discount: 0, shipping: 10, tax: 0, total: 110 },
             serviceLines: [],
             basePrice: 90,
             shortages: [],

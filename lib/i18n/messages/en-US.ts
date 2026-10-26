@@ -465,7 +465,7 @@ export const enUS: Messages = {
         errorSlotTaken: "That time was just taken. Please pick another.",
         errorGeneric: "Something went wrong. Please try again.",
         measurementFeeNote:
-          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — paid with your pillow, not today.",
+          "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — get it customised, adjusted and bring home immediately.",
       },
       readjust: {
         signInTitle: "Sign in to book a re-adjustment",
@@ -546,10 +546,11 @@ export const enUS: Messages = {
       freeShippingQualified: "You qualify for free shipping!",
       tax: "Tax",
       total: "Total",
-      coupon: "Coupon code",
+      coupon: "Discount or referral code",
       applyCoupon: "Apply",
       removeCoupon: "Remove",
-      couponApplied: 'Coupon "{code}" applied!',
+      couponApplied: 'Discount code "{code}" active',
+      referralApplied: 'Referral code "{code}" active',
       remove: "Remove",
       customizationAddon: "customization",
       closeCart: "Close cart",

@@ -15,6 +15,7 @@ import { JourneyTracker } from "@/components/analytics/journey-tracker";
 import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
 import { BookAppointmentOverlay } from "@/components/slide-in-pages/book-appointment-overlay";
+import { SupportChatRoot } from "@/components/support/support-chat-root";
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
 import { Haptics } from "@/components/haptics";
 import { RegisterSW } from "@/components/register-sw";
@@ -22,6 +23,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import { getSiteOrigin } from "@/lib/site-url";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo/metadata";
 
 const soraSans = Sora({
   variable: "--font-sora",
@@ -42,6 +44,16 @@ export const metadata: Metadata = {
   description:
     "Singapore's fully customisable cervical pillows and bolsters — fitted in-store for neck pain relief and ergonomic sleep.",
   applicationName: "Mpillow",
+  // Pages without buildPageMetadata (FAQ, support, …) inherit this share image.
+  openGraph: {
+    type: "website",
+    siteName: "Mpillow",
+    images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: "Mpillow" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [DEFAULT_OG_IMAGE],
+  },
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/icon-192.png" }],
@@ -124,6 +136,8 @@ export default async function RootLayout({
               <BookAppointmentOverlay />
               <AppDock />
               <CartShell />
+              {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
+              <SupportChatRoot />
             </CartProvider>
           </CurrencyProvider>
           <SonnerProvider />

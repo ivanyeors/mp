@@ -5,9 +5,16 @@ import type { CartItemClient } from "@/lib/types/ecommerce";
 
 const STORAGE_KEY = "mp_cart";
 
+/** What the one code field holds (ADR 0033): a discount or a partner's referral code. */
+export type CartCodeKind = "discount" | "referral";
+
 interface CartState {
   items: CartItemClient[];
+  /** The code, whichever kind it is; kept under its old name for stored carts. */
   couponCode: string | null;
+  couponKind: CartCodeKind | null;
+  /** The partner a referral code credits, for the field's status line. */
+  couponPartnerName: string | null;
   couponDiscount: number;
   couponFreeShipping: boolean;
   couponError: string | null;
@@ -21,6 +28,10 @@ interface CartActions {
   removeItem: (variantId: string, customizationId?: string) => void;
   updateQuantity: (variantId: string, quantity: number, customizationId?: string) => void;
   applyCoupon: (code: string | null) => Promise<void>;
+  /** Checkout checked the code itself; keep its answer so the cart agrees. */
+  rememberCode: (
+    result: { code: string; kind: CartCodeKind; discount: number; freeShipping: boolean; partnerName?: string } | null,
+  ) => void;
   clearCart: () => void;
   toggleCart: (open?: boolean) => void;
 }
@@ -60,41 +71,73 @@ function saveCartToStorage(state: Pick<CartState, "items" | "couponCode">) {
   }
 }
 
+type CodeCheck =
+  | { valid: true; kind: CartCodeKind; code: string; discount: number; freeShipping: boolean; partnerName: string | null }
+  | { valid: false; error: string };
+
+/** Asks the one code endpoint (ADR 0033) what this code means for this cart. */
 async function validateCouponClient(
   code: string,
   items: CartItemClient[],
   subtotal: number,
   email?: string
-): Promise<{ valid: boolean; discount: number; freeShipping: boolean; error?: string }> {
-  const res = await fetch("/api/shop/coupons/validate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      code,
-      subtotal,
-      product_ids: items.map((i) => i.productId),
-      email: email || undefined,
-      line_items: items.map((i) => ({
-        product_id: i.productId,
-        line_total: (i.price + (i.addonPrice ?? 0)) * i.quantity,
-      })),
-    }),
-  });
-  const json = await res.json();
-  if (!json.valid) {
-    return { valid: false, discount: 0, freeShipping: false, error: json.reason ?? "Invalid coupon" };
+): Promise<CodeCheck> {
+  try {
+    const res = await fetch("/api/checkout/code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        email: email || undefined,
+        context: {
+          flow: "shop",
+          subtotal,
+          line_items: items.map((i) => ({
+            product_id: i.productId,
+            line_total: (i.price + (i.addonPrice ?? 0)) * i.quantity,
+          })),
+        },
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { valid: false, error: typeof json.error === "string" ? json.error : "We couldn't check this code" };
+    }
+    if (json.kind === "discount") {
+      return {
+        valid: true,
+        kind: "discount",
+        code: String(json.code ?? code),
+        discount: Number(json.discount_amount) || 0,
+        freeShipping: json.free_shipping === true,
+        partnerName: null,
+      };
+    }
+    if (json.kind === "referral") {
+      return {
+        valid: true,
+        kind: "referral",
+        code,
+        discount: 0,
+        freeShipping: false,
+        partnerName: typeof json.partner_name === "string" ? json.partner_name : null,
+      };
+    }
+    return {
+      valid: false,
+      error: json.kind === "invalid" && json.reason ? String(json.reason) : "Code not recognised",
+    };
+  } catch {
+    return { valid: false, error: "We couldn't check this code" };
   }
-  return {
-    valid: true,
-    discount: json.discount_amount ?? 0,
-    freeShipping: json.free_shipping === true,
-  };
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CartState>({
     items: [],
     couponCode: null,
+    couponKind: null,
+    couponPartnerName: null,
     couponDiscount: 0,
     couponFreeShipping: false,
     couponError: null,
@@ -148,14 +191,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({
           ...prev,
           couponCode: null,
+          couponKind: null,
+          couponPartnerName: null,
           couponDiscount: 0,
           couponFreeShipping: false,
-          couponError: result.error ?? "Coupon no longer valid",
+          couponError: result.error,
         }));
         return;
       }
       setState((prev) => ({
         ...prev,
+        couponKind: result.kind,
+        couponPartnerName: result.partnerName,
         couponDiscount: result.discount,
         couponFreeShipping: result.freeShipping,
         couponError: null,
@@ -213,6 +260,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({
         ...prev,
         couponCode: null,
+        couponKind: null,
+        couponPartnerName: null,
         couponDiscount: 0,
         couponFreeShipping: false,
         couponError: null,
@@ -241,16 +290,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({
         ...prev,
         couponValidating: false,
-        couponError: result.error ?? "Invalid coupon",
+        couponError: result.error,
       }));
       return;
     }
 
     setState((prev) => ({
       ...prev,
-      couponCode: trimmed,
+      couponCode: result.code.toUpperCase(),
+      couponKind: result.kind,
+      couponPartnerName: result.partnerName,
       couponDiscount: result.discount,
       couponFreeShipping: result.freeShipping,
+      couponError: null,
+      couponValidating: false,
+    }));
+  }, []);
+
+  const rememberCode = useCallback<CartActions["rememberCode"]>((result) => {
+    setState((prev) => ({
+      ...prev,
+      couponCode: result ? result.code.toUpperCase() : null,
+      couponKind: result?.kind ?? null,
+      couponPartnerName: result?.partnerName ?? null,
+      couponDiscount: result?.discount ?? 0,
+      couponFreeShipping: result?.freeShipping ?? false,
       couponError: null,
       couponValidating: false,
     }));
@@ -261,6 +325,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ...prev,
       items: [],
       couponCode: null,
+      couponKind: null,
+      couponPartnerName: null,
       couponDiscount: 0,
       couponFreeShipping: false,
       couponError: null,
@@ -289,13 +355,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       updateQuantity,
       applyCoupon,
+      rememberCode,
       clearCart,
       toggleCart,
       itemCount,
       subtotal,
       hydrated,
     }),
-    [state, addItem, removeItem, updateQuantity, applyCoupon, clearCart, toggleCart, itemCount, subtotal, hydrated]
+    [state, addItem, removeItem, updateQuantity, applyCoupon, rememberCode, clearCart, toggleCart, itemCount, subtotal, hydrated]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

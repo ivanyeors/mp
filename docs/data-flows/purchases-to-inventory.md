@@ -88,7 +88,10 @@ successful capture, never at hold.
 
 1. **Hold** (`POST /api/results/hold`) places the Stripe authorization hold
    and inserts the Result as `held`. It reads stock only to set sticky
-   `is_pre_order`.
+   `is_pre_order`. A discount code is checked here and its terms kept on the
+   Result (`coupon_terms`); every later repricing takes them off the goods
+   (ADR 0033). Money only — a discount never changes what is built or
+   deducted.
 2. **Assign** (`POST /api/results/[id]/assign`, Staff, from Admin Panel →
    Results).
    - Checks shortages against `inventory_balances`. While the customer still
@@ -106,7 +109,8 @@ successful capture, never at hold.
    3. Capture the hold (`captureHold`), or settle a Balance payment.
    4. Insert the Order with `paid_at = now`. Each build becomes one goods
       `order_items` row with `variant_id = null`. Service lines are
-      `kind 'service'` and never deducted.
+      `kind 'service'` and never deducted. A discount code goes on the Order
+      as `coupon_id` / `discount_amount`, and the coupon's use is counted.
    5. **Deduct**: one `sale` row per build line, metadata
       `{order_id, result_id, role}`. If the insert fails, the Order is flagged
       `needs_attention`. The deduction is not rolled back or retried.

@@ -1,6 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
-import { readApiConfigs } from "@/lib/settings/api-configs";
+import { readApiConfigs, toClientApiConfig } from "@/lib/settings/api-configs";
 import GeneralSettingsPage from "./general-client";
 
 export const runtime = "nodejs";
@@ -21,6 +21,8 @@ export default async function GeneralSettingsRoute({
 
   // A failed read must not look like "no API configs": leave `initialData`
   // undefined so the client runs its own mount fetch and surfaces the error.
-  const configs = await readApiConfigs().catch(() => null);
+  const configs = await readApiConfigs()
+    .then((rows) => rows.map(toClientApiConfig))
+    .catch(() => null);
   return <GeneralSettingsPage initialData={configs ?? undefined} />;
 }

@@ -37,27 +37,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No pending backup email. Send a code first." }, { status: 400 });
   }
 
+  const clearCode = () =>
+    admin
+      .from("partner_users")
+      .update({
+        backup_email_pending: null,
+        backup_email_otp_hash: null,
+        backup_email_otp_expires_at: null,
+        backup_email_otp_attempts: 0,
+      })
+      .eq("auth_user_id", ctx.userId);
+
+  // Every guess takes one of the code's tries before it is checked, with a
+  // conditional update, so guesses sent at once cannot share a try.
+  const attempts = row.backup_email_otp_attempts ?? 0;
+  if (attempts >= MAX_OTP_ATTEMPTS) {
+    await clearCode();
+    return NextResponse.json({ error: "Too many attempts. Request a new code." }, { status: 429 });
+  }
+  const { data: taken, error: takeError } = await admin
+    .from("partner_users")
+    .update({ backup_email_otp_attempts: attempts + 1 })
+    .eq("auth_user_id", ctx.userId)
+    .eq("backup_email_otp_hash", row.backup_email_otp_hash)
+    .eq("backup_email_otp_attempts", attempts)
+    .select("auth_user_id");
+  if (takeError) return NextResponse.json({ error: "Could not check the code. Try again." }, { status: 500 });
+  if (!taken?.length) {
+    return NextResponse.json({ error: "That code is wrong or expired." }, { status: 400 });
+  }
+
   const ok = verifyOtpCode(parsed.data.code, row.backup_email_otp_hash, row.backup_email_otp_expires_at, new Date());
   if (!ok) {
-    // ponytail: read-modify-write on the counter isn't atomic, but a racing
-    // brute-force still needs the right 6 digits; per-row rpc is the upgrade path.
-    const attempts = (row.backup_email_otp_attempts ?? 0) + 1;
-    if (attempts >= MAX_OTP_ATTEMPTS) {
-      await admin
-        .from("partner_users")
-        .update({
-          backup_email_pending: null,
-          backup_email_otp_hash: null,
-          backup_email_otp_expires_at: null,
-          backup_email_otp_attempts: 0,
-        })
-        .eq("auth_user_id", ctx.userId);
+    if (attempts + 1 >= MAX_OTP_ATTEMPTS) {
+      await clearCode();
       return NextResponse.json({ error: "Too many attempts. Request a new code." }, { status: 429 });
     }
-    await admin
-      .from("partner_users")
-      .update({ backup_email_otp_attempts: attempts })
-      .eq("auth_user_id", ctx.userId);
     return NextResponse.json({ error: "That code is wrong or expired." }, { status: 400 });
   }
 
@@ -71,8 +86,9 @@ export async function POST(req: Request) {
       backup_email_otp_expires_at: null,
       backup_email_otp_attempts: 0,
     })
-    .eq("auth_user_id", ctx.userId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    .eq("auth_user_id", ctx.userId)
+    .eq("backup_email_otp_hash", row.backup_email_otp_hash);
+  if (error) return NextResponse.json({ error: "Could not save the backup email. Try again." }, { status: 500 });
 
   return NextResponse.json({ ok: true, backup_email: row.backup_email_pending });
 }

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 import type { Product, ProductVariant, ProductImage, ProductOption } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
@@ -87,7 +88,16 @@ export async function getProducts(opts: GetProductsOpts = {}) {
   }
   if (opts.featured !== undefined) query = query.eq("featured", opts.featured);
   if (opts.tags?.length) query = query.overlaps("tags", opts.tags);
-  if (opts.search) query = query.or(`slug.ilike.%${opts.search}%,content->>'en-US'->>'title'.ilike.%${opts.search}%`);
+  if (opts.search) {
+    // `.or()` is a raw PostgREST filter string, so the term must be sanitized,
+    // not interpolated — see sanitizeSearchTerm. An all-metacharacter term
+    // sanitizes to "" and simply drops the filter (same as no search) rather
+    // than producing a malformed `.ilike.%%`.
+    const term = sanitizeSearchTerm(opts.search);
+    if (term) {
+      query = query.or(`slug.ilike.%${term}%,content->>'en-US'->>'title'.ilike.%${term}%`);
+    }
+  }
 
   // Sort
   switch (opts.sort) {

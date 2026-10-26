@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
@@ -116,7 +117,10 @@ vi.mock("@/lib/configurator/pre-order-persist", () => ({
   loadPreOrderTriggerAtHold: vi.fn().mockResolvedValue(null),
   preOrderFlagForResult: () => false,
 }));
-vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/referrals", () => ({
+  getPartnerByReferralCode: vi.fn().mockResolvedValue(null),
+  isSelfReferral: vi.fn().mockResolvedValue(false),
+}));
 vi.mock("@/lib/rules-engine", () => ({
   assertPreStripeRouteResolved: () => ({ ok: true }),
   inputsFromBolsterHeight: vi.fn(),
@@ -178,6 +182,7 @@ const post = (extra: Record<string, unknown> = {}) =>
   );
 
 beforeEach(() => {
+  resetRateLimits();
   vi.clearAllMocks();
   h.total = 200;
   h.rows.clear();

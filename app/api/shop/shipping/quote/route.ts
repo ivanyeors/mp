@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { clientIp, isRateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitExceeded } from "@/lib/rate-limit";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
 import { estimateLines, loadShippableLines } from "@/lib/shipping/lines";
 import { quoteShippingMethods } from "@/lib/shipping/quote";
@@ -40,7 +40,7 @@ const QuoteSchema = z
  * courier is never in the response.
  */
 export async function POST(req: Request) {
-  if (isRateLimited({ bucket: "shipping-quote", key: clientIp(req), windowMs: 60_000, max: 40 })) {
+  if (await rateLimitExceeded({ bucket: "shipping-quote", key: clientIp(req), windowMs: 60_000, max: 40 })) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

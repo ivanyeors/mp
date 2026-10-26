@@ -274,12 +274,12 @@ export function AppDock() {
             <>
               <Link href={to("/")} className={dockTouchWrapClassName}>
                 <DockItem
-                  className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm"
+                  className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm"
                   isActive={false}
                 >
                   <DockLabel>Home</DockLabel>
                   <DockIcon>
-                    <Home className="h-full w-full text-gray-200 dark:text-neutral-300" />
+                    <Home className="h-full w-full text-neutral-300" />
                   </DockIcon>
                 </DockItem>
               </Link>
@@ -290,10 +290,10 @@ export function AppDock() {
                   aria-label="Open Admin Panel menu"
                   className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
                 >
-                  <DockItem className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm">
+                  <DockItem className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm">
                     <DockLabel>Menu</DockLabel>
                     <DockIcon>
-                      <Menu className="h-full w-full text-gray-200 dark:text-neutral-300" />
+                      <Menu className="h-full w-full text-neutral-300" />
                     </DockIcon>
                   </DockItem>
                 </button>
@@ -306,7 +306,7 @@ export function AppDock() {
                     {...dockToolMotion}
                     transition={toolTransition}
                     aria-hidden
-                    className="h-7 w-px shrink-0 self-center bg-white/25 dark:bg-white/20"
+                    className="h-7 w-px shrink-0 self-center bg-white/20"
                   />
                 ) : null}
                 {pageActions.map((action) => {
@@ -322,17 +322,17 @@ export function AppDock() {
                         className={`relative border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
                       >
                         <DockItem
-                          className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm"
+                          className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm"
                           isActive={action.active}
                         >
                           <DockLabel>{action.title}</DockLabel>
                           <DockIcon>
-                            <Icon className={`h-full w-full ${action.active ? "text-white" : "text-gray-200 dark:text-neutral-300"}`} />
+                            <Icon className={`h-full w-full ${action.active ? "text-white" : "text-neutral-300"}`} />
                           </DockIcon>
                         </DockItem>
                         {/* Outside DockItem: it clones its direct children with motion props */}
                         {action.badge ? (
-                          <span aria-hidden className="absolute right-0 top-0 size-2.5 rounded-full bg-amber-400 ring-2 ring-slate-200 dark:ring-blue-950" />
+                          <span aria-hidden className="absolute right-0 top-0 size-2.5 rounded-full bg-amber-400 ring-2 ring-blue-950" />
                         ) : null}
                       </button>
                     </motion.div>
@@ -344,16 +344,16 @@ export function AppDock() {
                     {...dockToolMotion}
                     transition={toolTransition}
                     aria-hidden
-                    className="h-7 w-px shrink-0 self-center bg-white/25 dark:bg-white/20"
+                    className="h-7 w-px shrink-0 self-center bg-white/20"
                   />
                 ) : null}
               </AnimatePresence>
               <form action={signOutAction} method="post">
                 <button type="submit" className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`} aria-label="Logout">
-                  <DockItem className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm">
+                  <DockItem className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm">
                     <DockLabel>Logout</DockLabel>
                     <DockIcon>
-                      <LogOut className="h-full w-full text-gray-200 dark:text-neutral-300" />
+                      <LogOut className="h-full w-full text-neutral-300" />
                     </DockIcon>
                   </DockItem>
                 </button>
@@ -367,12 +367,12 @@ export function AppDock() {
                 return (
                   <Link key={idx} href={to(item.href)} className={dockTouchWrapClassName}>
                     <DockItem
-                      className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm"
+                      className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm"
                       isActive={isActive}
                     >
                       <DockLabel>{item.title}</DockLabel>
                       <DockIcon>
-                        <IconComponent className={`h-full w-full ${isActive ? 'text-white' : 'text-gray-200 dark:text-neutral-300'}`} />
+                        <IconComponent className={`h-full w-full ${isActive ? 'text-white' : 'text-neutral-300'}`} />
                       </DockIcon>
                     </DockItem>
                   </Link>
@@ -387,12 +387,12 @@ export function AppDock() {
                 className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
               >
                 <DockItem
-                  className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm"
+                  className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm"
                   isActive={isMenuActive || menuOpen}
                 >
                   <DockLabel>Menu</DockLabel>
                   <DockIcon>
-                    <Menu className={`h-full w-full ${isMenuActive || menuOpen ? "text-white" : "text-gray-200 dark:text-neutral-300"}`} />
+                    <Menu className={`h-full w-full ${isMenuActive || menuOpen ? "text-white" : "text-neutral-300"}`} />
                   </DockIcon>
                 </DockItem>
               </button>

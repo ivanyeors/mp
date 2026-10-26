@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessageView, ChatSummary, ChatView } from "@/lib/support/chat";
+import { STORAGE_KEY } from "./support-chat-root";
 
 /**
  * The website chat's state on the page (app/api/support/chat).
@@ -14,9 +15,12 @@ import type { ChatMessageView, ChatSummary, ChatView } from "@/lib/support/chat"
  * the first message goes out; the message waits in the chat meanwhile. The
  * chat that code started then vouches for the email (VERIFIED_KEY), so a new
  * chat in the same tab needs no second code.
+ *
+ * It runs in the chat engine (support-chat-engine.tsx), which the root layout
+ * loads once there's a chat to show, so a chat carries on as the visitor
+ * moves between pages.
  */
 
-const STORAGE_KEY = "mp.supportChat";
 const VERIFIED_KEY = "mp.supportChatVerified";
 const POLL_VISIBLE_MS = 3_000;
 const POLL_HIDDEN_MS = 15_000;

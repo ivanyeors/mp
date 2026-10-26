@@ -41,6 +41,8 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
     removeItem,
     applyCoupon,
     couponCode,
+    couponKind,
+    couponPartnerName,
     couponError,
     couponDiscount,
     couponFreeShipping,
@@ -129,6 +131,8 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
         <CartShippingBar subtotal={subtotal} currency={currency} messages={messages} />
         <CartCouponField
           couponCode={couponCode}
+          couponKind={couponKind}
+          couponPartnerName={couponPartnerName}
           couponDiscount={couponDiscount}
           couponFreeShipping={couponFreeShipping}
           couponError={couponError}

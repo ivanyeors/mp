@@ -26,11 +26,16 @@ import {
     orderedListCommand,
     type ICommand,
 } from "@uiw/react-md-editor/commands";
+import { rehypeStripUnsafeHtml } from "@/lib/blog-editor/strip-unsafe-html";
 
 const MDEditor = dynamic(
     () => import("@uiw/react-md-editor").then((mod) => mod.default),
     { ssr: false }
 );
+
+// The preview parses raw HTML; strip anything that could run script in the
+// Admin Panel (public posts never render raw HTML at all).
+const PREVIEW_OPTIONS = { rehypePlugins: [rehypeStripUnsafeHtml] };
 
 // ponytail: reduced toolbar so it fits a phone without horizontal overflow
 const MOBILE_MD_COMMANDS: ICommand[] = [
@@ -372,6 +377,7 @@ export default function BlogEditorPage({
                         onChange={(val) => updateActiveContent("body", val || "")}
                         height={isMobile ? "60dvh" : 500}
                         preview="edit"
+                        previewOptions={PREVIEW_OPTIONS}
                         commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
                         className="w-full rounded-lg border focus-within:ring-2 focus-within:ring-primary overflow-hidden"
                     />

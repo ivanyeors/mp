@@ -16,7 +16,7 @@ import {
 import { getAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
 import { getStaffByAssistCode } from "@/lib/assist-link";
 import { requireResultAccess } from "@/lib/results/access";
-import { clientIp, isRateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitExceeded } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 import { getPublicOrigin } from "@/lib/site-url";
@@ -339,12 +339,12 @@ export async function POST(req: Request) {
     // credential, so cap it. One create per configurator session (plus a few for
     // "start again"), against a limit no real shopper reaches — including several
     // customers behind one in-store IP.
-    isRateLimited({
+    (await rateLimitExceeded({
       bucket: "mp-config-create",
       key: clientIp(req),
       windowMs: 60_000,
       max: 20,
-    })
+    }))
   ) {
     return NextResponse.json(
       { error: "Too many new sessions. Please try again in a minute." },

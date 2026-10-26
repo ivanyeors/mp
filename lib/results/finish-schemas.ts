@@ -7,15 +7,21 @@ import { usesPostalCode } from "@/lib/shipping/countries";
  * exactly the same shapes.
  */
 
+/** Most of one Add-on a build may carry. */
+export const MAX_ADDON_QUANTITY = 20;
+
+// Whole numbers only: a line is priced msrp × quantity, so 0.01 of an Add-on
+// would cost 1% of it, and 1e9 would swamp the total.
 export const PreferenceLineSchema = z.object({
   item_id: z.number().int().positive(),
-  quantity: z.number().positive().default(1),
+  // One cover and one case per build.
+  quantity: z.number().int().min(1).max(1).default(1),
   category: z.enum(["cover", "case"]),
 });
 
 export const AddonLineSchema = z.object({
   item_id: z.number().int().positive(),
-  quantity: z.number().positive().default(1),
+  quantity: z.number().int().min(1).max(MAX_ADDON_QUANTITY).default(1),
 });
 
 /** A delivery address. The postal code may be blank only where the country has none (Hong Kong, the UAE…). */

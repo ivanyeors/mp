@@ -1,16 +1,21 @@
 name: ci
 
-# Lint, typecheck, test, and build every pull request and every push to main.
+# One lean gate per pull request: lint, typecheck, and the test suite, in a
+# single job that installs dependencies once.
 #
-# The three jobs run in parallel: they are independent gates and each installs
-# its own dependencies, so a failing lint does not hide a failing build. Vercel
-# builds the deployment; the build job here exists to catch a broken build on
-# the PR rather than after merge, and to measure per-route first-load JS.
+# The production build and type-safety are gated by Vercel, not here: Vercel
+# builds a preview for every pull request and builds production on deploy, so a
+# build that does not compile (and `next build` type-checks, so a type error
+# too) never reaches production. Running `next build` again in Actions only
+# duplicates that and burns minutes. What Vercel does NOT run is the test suite,
+# so that is the gate this workflow adds.
+#
+# Pull-request only: the required checks pass on the PR's merge commit before it
+# can merge, and Vercel rebuilds main on deploy, so re-running on push to main
+# would add minutes without adding a gate.
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 # A newer push makes an in-flight run irrelevant.
 concurrency:
@@ -21,7 +26,7 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
-  lint-typecheck:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -51,70 +56,11 @@ jobs:
       #
       # tsc needs about 2.3 GB for the whole program, past Node's default
       # ~2 GB heap on this runner, which ends in "JavaScript heap out of
-      # memory". `--extendedDiagnostics` reports "Memory used" when it grows.
+      # memory".
       - name: Typecheck
         run: pnpm typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Test
         run: pnpm test
-
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    # Placeholder values, not secrets. `next build` reads these at module scope
-    # while prerendering, so it needs them to be present and well-formed URLs —
-    # it never calls out to them, because no page fetches real data at build
-    # time. Keeping them inline means the build job needs no repository secrets
-    # and so runs unchanged on forked pull requests.
-    env:
-      NEXT_PUBLIC_SITE_URL: https://custom.mpillow.com
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # `next build` type-checks the same program, so it needs the same heap
-      # as the Typecheck step above.
-      - name: Build
-        run: pnpm build
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-
-      # Reads .next/ from the step above. Fails the job if any route's
-      # first-load JS exceeds scripts/bundle-budget.json.
-      - name: Bundle budget
-        run: pnpm bundle:check

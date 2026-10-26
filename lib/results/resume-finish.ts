@@ -4,6 +4,7 @@ import { secretMatches } from "@/lib/auth/secret";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
+import { resultCouponOf, type ResultCoupon } from "@/lib/results/discount";
 
 /** Everything the finish page needs to reopen an assigned build (ADR 0017). */
 export type ResumeFinish = {
@@ -21,6 +22,8 @@ export type ResumeFinish = {
   placements: PillowPlacementRow[];
   /** The placed Items — the shop's filling list has no neck support to label, color or charge. */
   items: FillingItem[];
+  /** The discount code submitted with the questionnaire (ADR 0033); the page shows it off the price. */
+  coupon: ResultCoupon | null;
 };
 
 /**
@@ -38,7 +41,7 @@ export async function loadResumeFinish(
   const { data: row } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, shipping_address, data, assigned_size, assigned_tier, customer_email, customer_phone, discovery_source, discovery_source_other, access_token, customer_id, order_id",
+      "id, status, source, product_type, shipping_address, data, assigned_size, assigned_tier, customer_email, customer_phone, discovery_source, discovery_source_other, access_token, customer_id, order_id, coupon_code, coupon_terms",
     )
     .eq("id", id)
     .maybeSingle();
@@ -78,5 +81,6 @@ export async function loadResumeFinish(
       ...item,
       msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
     })),
+    coupon: resultCouponOf(row.coupon_code, row.coupon_terms),
   };
 }

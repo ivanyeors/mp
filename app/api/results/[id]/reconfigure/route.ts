@@ -113,7 +113,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, order_id, filling_template_id, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, paired_build_id",
+      "id, status, product_type, order_id, filling_template_id, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, coupon_terms, paired_build_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -272,6 +272,8 @@ export async function POST(
       assigned_length: null,
       currency: row.currency as string | null,
       measured_by_type: row.measured_by_type as string | null,
+      // Staff re-configure the build; the discount code it was held with stays.
+      coupon_terms: row.coupon_terms,
       ...rewritten,
       shipping_method: shippingPatch?.shipping_method ?? (row.shipping_method as string | null),
       shipping_address: shippingPatch?.shipping_address ?? row.shipping_address,

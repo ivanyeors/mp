@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { DEFAULT_APPOINTMENT_SETTINGS } from "@/lib/appointments/settings";
 import {
   buildEventInsertBody,
+  isOfferableSlot,
   listDaySlots,
   sgtLocalToUtcMs,
   type BusyInterval,
@@ -136,5 +137,34 @@ describe("buildEventInsertBody", () => {
     expect(
       buildEventInsertBody({ ...guest, locationId: "loc-1" }).extendedProperties,
     ).toEqual({ private: { mpLocationId: "loc-1" } });
+  });
+});
+
+describe("isOfferableSlot", () => {
+  const at = (h: number, min = 0) => new Date(sgtLocalToUtcMs(2026, 7, 8, h, min)).toISOString();
+
+  it("accepts a slot listDaySlots offers", () => {
+    expect(isOfferableSlot(at(10), at(11), S, beforeOpen)).toBe(true);
+    expect(isOfferableSlot(at(18), at(19), S, beforeOpen)).toBe(true);
+  });
+
+  it("refuses a booking longer than one appointment", () => {
+    const monthLater = new Date(sgtLocalToUtcMs(2026, 8, 8, 11, 0)).toISOString();
+    expect(isOfferableSlot(at(10), monthLater, S, beforeOpen)).toBe(false);
+    expect(isOfferableSlot(at(10), at(12), S, beforeOpen)).toBe(false);
+  });
+
+  it("refuses off-grid, closed-day, past and far-future starts", () => {
+    expect(isOfferableSlot(at(10, 30), at(11, 30), S, beforeOpen)).toBe(false);
+    expect(isOfferableSlot(at(3), at(4), S, beforeOpen)).toBe(false);
+    const mon = (h: number) => new Date(sgtLocalToUtcMs(2026, 7, 6, h, 0)).toISOString();
+    expect(isOfferableSlot(mon(10), mon(11), S, beforeOpen)).toBe(false);
+    expect(isOfferableSlot(at(10), at(11), S, new Date(sgtLocalToUtcMs(2026, 7, 8, 12, 0)))).toBe(false);
+    const nextYear = (h: number) => new Date(sgtLocalToUtcMs(2027, 7, 14, h, 0)).toISOString();
+    expect(isOfferableSlot(nextYear(10), nextYear(11), S, beforeOpen)).toBe(false);
+  });
+
+  it("refuses unparseable times", () => {
+    expect(isOfferableSlot("soon", at(11), S, beforeOpen)).toBe(false);
   });
 });

@@ -76,3 +76,4 @@ mpillow-office/model/*_check.png
 mpillow-office/model/*_check.json
 mpillow-office/model/*_zones.png
 mpillow-office/**/__pycache__/
+package-lock.json

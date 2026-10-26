@@ -29,8 +29,15 @@ export function resolvePostAuthRedirect({
   return path;
 }
 
-/** Open-redirect guard: only same-origin relative paths. */
+/**
+ * Open-redirect guard: only same-origin relative paths.
+ *
+ * Browsers read `\` as `/` and drop tabs and newlines from a URL, so
+ * `/\evil.com` and `/<tab>/evil.com` are protocol-relative links to another
+ * site even though they start with a single `/`.
+ */
 export function safeNextPath(next: string | null | undefined, fallback: string): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
+  if (/[\\\x00-\x1f\x7f]/.test(next)) return fallback;
   return next;
 }

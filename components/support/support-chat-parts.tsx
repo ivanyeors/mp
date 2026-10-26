@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ArrowUp, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { motion } from "motion/react";
+import { ArrowUp, ChevronRight, History, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
+import type { ChatSummary } from "@/lib/support/chat";
 import { cn } from "@/lib/utils";
-import type { PendingMessage } from "./use-support-chat";
+import type { ActiveChat, PendingMessage } from "./use-support-chat";
 
 /**
  * The website chat's building blocks: bubbles, the assistant cards (the
@@ -18,10 +20,32 @@ const CUSTOMER_GRADIENT = "linear-gradient(135deg, #1298ff 0%, #1f74e0 55%, #2B6
 const SEND_GRADIENT = "linear-gradient(135deg, #a5d8ff 0%, #1298ff 55%, #1f5fc0 100%)";
 
 const TIME = new Intl.DateTimeFormat("en-SG", { hour: "numeric", minute: "2-digit" });
+export const DATE = new Intl.DateTimeFormat("en-SG", { day: "numeric", month: "short" });
 
 export function timeOf(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : TIME.format(d);
+}
+
+/** One line on where the chat stands, under "mpillow team". */
+export function chatStatusLine(active: ActiveChat): string {
+  if (active.awaitingCode) return "Check your email to send this";
+  if (!active.chat.id) return "Starting your chat…";
+  if (active.chat.status === "ended") return `Chat #${active.chat.ref} · ended`;
+  const last = active.messages.at(-1);
+  if (last?.sender === "staff") return `${last.staffName?.trim() || "The team"} replied · Chat #${active.chat.ref}`;
+  return `Sent · we usually reply within a few hours`;
+}
+
+/** Two slow, blurred blue lights behind the glass. */
+export function Aurora() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+      <div className="mp-chat-aurora-a absolute -left-24 -top-28 size-80 rounded-full bg-[#1298ff]/35 blur-3xl" />
+      <div className="mp-chat-aurora-b absolute -bottom-32 -right-16 size-96 rounded-full bg-[#66a7ff]/25 blur-3xl" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#a5d8ff]/60 to-transparent" />
+    </div>
+  );
 }
 
 /** The mpillow mark in a glass ring, with an optional "here" dot. */
@@ -393,5 +417,95 @@ export function Composer({
         </span>
       ) : null}
     </form>
+  );
+}
+
+/**
+ * A signed-in customer's chats, over whichever surface opened it. `safeArea`:
+ * that surface fills a phone's screen, so keep clear of the notch and home bar.
+ */
+export function HistoryPanel({
+  chats,
+  activeId,
+  onClose,
+  onOpen,
+  onNew,
+  safeArea = false,
+}: {
+  chats: ChatSummary[];
+  activeId: string | null;
+  onClose: () => void;
+  onOpen: (id: string) => Promise<void>;
+  onNew: () => void;
+  safeArea?: boolean;
+}) {
+  const [opening, setOpening] = useState<string | null>(null);
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 24 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      // Its own radius: a backdrop blur ignores the parent's rounded clip and would square the corners.
+      className="absolute inset-0 z-20 flex flex-col rounded-[inherit] bg-[#001736]/85 backdrop-blur-xl"
+      role="dialog"
+      aria-label="Your chats"
+    >
+      <div className={cn("flex items-center gap-3 px-5 pb-3 pt-5", safeArea && "max-md:pt-[calc(var(--safe-top)+1.25rem)]")}>
+        <History className="size-5 text-[#a5d8ff]" aria-hidden="true" />
+        <p className="flex-1 text-base font-semibold">Your chats</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/10 hover:bg-white/20 max-md:size-11"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="flex-1 space-y-2 overflow-y-auto px-3 pb-3 sm:px-5">
+        {chats.length === 0 ? <p className="px-2 py-6 text-sm text-[#bcd8ff]">No chats yet.</p> : null}
+        {chats.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={async () => {
+              setOpening(c.id);
+              await onOpen(c.id);
+              setOpening(null);
+            }}
+            className={cn(
+              "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors",
+              c.id === activeId ? "border-[#a5d8ff]/50 bg-white/15" : "border-white/10 bg-white/[0.06] hover:bg-white/[0.12]",
+            )}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="line-clamp-2 text-sm text-white">{c.preview}</span>
+              <span className="mt-1 flex items-center gap-2 text-[11px] text-[#bcd8ff]">
+                #{c.ref} · {DATE.format(new Date(c.lastMessageAt))}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide",
+                    c.status === "open" ? "bg-emerald-400/20 text-emerald-200" : "bg-white/10 text-[#cfe3ff]",
+                  )}
+                >
+                  {c.status === "open" ? "Open" : "Ended"}
+                </span>
+              </span>
+            </span>
+            {opening === c.id ? (
+              <Loader2 className="size-4 animate-spin text-[#a5d8ff]" aria-hidden="true" />
+            ) : (
+              <ChevronRight className="size-4 text-[#a5d8ff] transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            )}
+          </button>
+        ))}
+      </div>
+      <div className={cn("border-t border-white/10 p-3 sm:px-5", safeArea && "max-md:pb-[calc(var(--safe-bottom)+0.75rem)]")}>
+        <GradientButton type="button" onClick={onNew} className="w-full">
+          <Plus className="size-4" aria-hidden="true" /> Start a new chat
+        </GradientButton>
+      </div>
+    </motion.div>
   );
 }

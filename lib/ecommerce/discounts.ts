@@ -1,6 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { OPEN_CHECKOUT_WINDOW_MS } from "@/lib/stripe/checkout-lifetime";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import type { Coupon } from "@/lib/types/ecommerce";
+import { computeCouponDiscountAmount } from "@/lib/ecommerce/coupon-math";
+
+export { computeCouponDiscountAmount };
 
 export interface CouponValidationResult {
   valid: boolean;
@@ -15,33 +19,35 @@ export interface CouponLineItem {
   lineTotal: number;
 }
 
+/** The signed-in shopper's Customer, from the session. */
+export type CouponAccount = { customerId: string; email: string };
+
 export interface ValidateCouponOptions {
   /** The email typed at checkout. */
   customerEmail?: string;
   /**
-   * The Customer that email resolves to (checkout's `findCustomerByEmail`).
-   * Never an id from a request body.
+   * The signed-in shopper's Customer, from the session (never a request
+   * body). A coupon with a per-customer limit, or bound to one Customer, is
+   * usable only with it, checking out under its own email.
    */
-  customerId?: string;
+  account?: CouponAccount | null;
   lineItems?: CouponLineItem[];
+  /**
+   * Results that must not count as a use of the coupon: the one being
+   * (re)submitted, which is about to carry it.
+   */
+  excludeResultIds?: string[];
 }
 
-/** Pure discount math — testable without DB. */
-export function computeCouponDiscountAmount(
-  coupon: Pick<Coupon, "discount_type" | "discount_value" | "max_discount">,
-  discountBase: number,
-): number {
-  let discountAmount = 0;
-  if (coupon.discount_type === "percentage") {
-    discountAmount = discountBase * (coupon.discount_value / 100);
-    if (coupon.max_discount !== null) {
-      discountAmount = Math.min(discountAmount, coupon.max_discount);
-    }
-  } else if (coupon.discount_type === "fixed_amount") {
-    discountAmount = Math.min(coupon.discount_value, discountBase);
-  }
-  return Math.round(discountAmount * 100) / 100;
-}
+/** Longest code worth a database round trip. Admin codes are capped at 100. */
+export const COUPON_CODE_MAX_LENGTH = 100;
+
+/**
+ * Result statuses that still hold a coupon: submitted, not yet an Order. Their
+ * use is counted at Accept, when the Order is paid; until then they count here,
+ * or one limited code could be held by any number of customisations.
+ */
+const LIVE_RESULT_STATUSES = ["held", "assigned", "accepted"];
 
 /** Resolve which subtotal the coupon applies to (full cart vs scoped items). */
 export function resolveCouponDiscountBase(
@@ -72,7 +78,7 @@ export function resolveCouponDiscountBase(
       return {
         eligible: false,
         discountBase: 0,
-        error: "Coupon does not apply to items in your cart",
+        error: "This code doesn't apply to these items",
       };
     }
     return {
@@ -87,14 +93,14 @@ export function resolveCouponDiscountBase(
     return {
       eligible: false,
       discountBase: 0,
-      error: "Coupon does not apply to items in your cart",
+      error: "This code doesn't apply to these items",
     };
   }
   if (hasCategoryScope && cIds.length === 0) {
     return {
       eligible: false,
       discountBase: 0,
-      error: "Coupon does not apply to items in your cart",
+      error: "This code doesn't apply to these items",
     };
   }
   const productMatch = hasProductScope && pIds.some((id) => product_ids!.includes(id));
@@ -103,7 +109,7 @@ export function resolveCouponDiscountBase(
     return {
       eligible: false,
       discountBase: 0,
-      error: "Coupon does not apply to items in your cart",
+      error: "This code doesn't apply to these items",
     };
   }
   return { eligible: true, discountBase: subtotal };
@@ -121,7 +127,7 @@ export type CouponUseOrder = {
 export function countCustomerCouponUses(
   orders: CouponUseOrder[],
   couponId: string,
-  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId">,
+  options: { customerEmail?: string; customerId?: string },
 ): number {
   if (!options.customerEmail && !options.customerId) return 0;
 
@@ -141,28 +147,105 @@ export function exceedsPerCustomerLimit(uses: number, perCustomerLimit: number |
   return perCustomerLimit !== null && uses >= perCustomerLimit;
 }
 
-async function fetchCustomerCouponUseCount(
-  couponId: string,
-  options: Pick<ValidateCouponOptions, "customerEmail" | "customerId">,
+/** How many distinct orders two lookups found between them. */
+async function distinctOrderCount(
+  lookups: Array<PromiseLike<{ data: Array<{ id: string }> | null }>>,
 ): Promise<number> {
-  if (!options.customerEmail && !options.customerId) return 0;
+  const results = await Promise.all(lookups);
+  return new Set(results.flatMap((r) => (r.data ?? []).map((row) => row.id))).size;
+}
 
+/**
+ * The account's paid, non-cancelled orders with this coupon: by its Customer,
+ * and by its email for guest orders placed under that address before.
+ */
+async function fetchCustomerCouponUseCount(couponId: string, account: CouponAccount): Promise<number> {
+  const paid = () =>
+    supabaseAdmin()
+      .from("orders")
+      .select("id")
+      .eq("coupon_id", couponId)
+      .neq("status", "cancelled")
+      .not("paid_at", "is", null);
+  return distinctOrderCount([
+    paid().eq("customer_id", account.customerId),
+    paid().ilike("email", escapeLikePattern(account.email.toLowerCase().trim())),
+  ]);
+}
+
+/** Why a per-customer or account-bound code was refused to a guest. */
+export const COUPON_SIGN_IN_ERROR = "Sign in with your account email to use this code";
+
+/**
+ * Shop orders carrying this coupon whose Checkout is still open: unpaid,
+ * pending, and younger than a Checkout Session (one hour). Each can still be paid, so
+ * each counts against the limit; otherwise N checkouts opened before paying
+ * any all pass a usage_limit = 1 check.
+ */
+async function fetchPendingOrderCouponUseCount(couponId: string, account?: CouponAccount): Promise<number> {
+  const open = () =>
+    supabaseAdmin()
+      .from("orders")
+      .select("id")
+      .eq("coupon_id", couponId)
+      .eq("status", "pending")
+      .is("paid_at", null)
+      .gte("created_at", new Date(Date.now() - OPEN_CHECKOUT_WINDOW_MS).toISOString());
+  if (!account) return distinctOrderCount([open()]);
+  return distinctOrderCount([
+    open().eq("customer_id", account.customerId),
+    open().ilike("email", escapeLikePattern(account.email.toLowerCase().trim())),
+  ]);
+}
+
+/**
+ * Customisations carrying this coupon that have not become an Order yet. Only
+ * Results that really entered the money path count: a card authorised
+ * (`payment_intent_id`), or submitted with no card at all (`authorized_amount`
+ * null — an Assisted customisation, or holds switched off). A Checkout opened
+ * and abandoned holds nothing, so it cannot use up a code nobody paid with.
+ */
+async function fetchLiveResultCouponUseCount(
+  couponId: string,
+  options: Pick<ValidateCouponOptions, "customerEmail" | "excludeResultIds">,
+): Promise<number> {
   const admin = supabaseAdmin();
-  let query = admin
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("coupon_id", couponId)
-    .neq("status", "cancelled")
-    .not("paid_at", "is", null);
+  const live = () => {
+    let query = admin
+      .from("mp_config_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("coupon_id", couponId)
+      .in("status", LIVE_RESULT_STATUSES)
+      .is("order_id", null);
+    for (const id of options.excludeResultIds ?? []) query = query.neq("id", id);
+    if (options.customerEmail) {
+      query = query.ilike("customer_email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
+    }
+    return query;
+  };
+  const [authorised, noCard] = await Promise.all([
+    live().not("payment_intent_id", "is", null),
+    live().is("payment_intent_id", null).is("authorized_amount", null),
+  ]);
+  return (authorised.count ?? 0) + (noCard.count ?? 0);
+}
 
-  if (options.customerId) {
-    query = query.eq("customer_id", options.customerId);
-  } else if (options.customerEmail) {
-    query = query.ilike("email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
-  }
-
-  const { count } = await query;
-  return count ?? 0;
+/**
+ * The active coupon with exactly this code, or null. Exact match: every write
+ * (POST/PATCH /api/shop/coupons) stores the code upper-cased, and `ilike` would
+ * read `%`/`_` in the input as wildcards.
+ */
+export async function findActiveCoupon(code: string): Promise<Coupon | null> {
+  const normalized = code.toUpperCase().trim();
+  if (!normalized || normalized.length > COUPON_CODE_MAX_LENGTH) return null;
+  const { data, error } = await supabaseAdmin()
+    .from("coupons")
+    .select("*")
+    .eq("is_active", true)
+    .eq("code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as Coupon;
 }
 
 export async function validateCoupon(
@@ -172,48 +255,74 @@ export async function validateCoupon(
   categoryIds?: string[],
   options?: ValidateCouponOptions,
 ): Promise<CouponValidationResult> {
-  const admin = supabaseAdmin();
-  const normalized = code.toUpperCase().trim();
-
-  // Exact match: every write (POST/PATCH /api/shop/coupons) stores the code
-  // upper-cased. `ilike` would read `%`/`_` in the input as wildcards.
-  const { data, error } = await admin
-    .from("coupons")
-    .select("*")
-    .eq("is_active", true)
-    .eq("code", normalized)
-    .single();
-
-  if (error || !data) {
-    return { valid: false, error: "Invalid coupon code" };
+  const coupon = await findActiveCoupon(code);
+  if (!coupon) {
+    return { valid: false, error: "This code isn't valid" };
   }
+  return checkCoupon(coupon, subtotal, productIds, categoryIds, options);
+}
 
-  const coupon = data as Coupon;
-
+/** Whether a coupon already found applies to this order, and what it takes off. */
+export async function checkCoupon(
+  coupon: Coupon,
+  subtotal: number,
+  productIds?: string[],
+  categoryIds?: string[],
+  options?: ValidateCouponOptions,
+): Promise<CouponValidationResult> {
   const now = new Date();
 
   if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-    return { valid: false, error: "Coupon is not yet active" };
+    return { valid: false, error: "This code isn't active yet" };
   }
   if (coupon.expires_at && new Date(coupon.expires_at) < now) {
-    return { valid: false, error: "Coupon has expired" };
+    return { valid: false, error: "This code has expired" };
   }
 
-  if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
-    return { valid: false, error: "Coupon usage limit reached" };
+  // A code limited per customer, or bound to one Customer (a Welcome-back
+  // voucher), is counted per account, so it needs the account: signed in and
+  // checking out under its own email. Counted by typed email, a new address
+  // was a new customer.
+  const account = options?.account ?? null;
+  if (coupon.per_customer_limit !== null || coupon.customer_id) {
+    const typed = options?.customerEmail?.trim().toLowerCase();
+    if (!account || (typed && typed !== account.email.trim().toLowerCase())) {
+      return { valid: false, error: COUPON_SIGN_IN_ERROR };
+    }
+    // Someone else's voucher reads exactly like a code that does not exist.
+    if (coupon.customer_id && coupon.customer_id !== account.customerId) {
+      return { valid: false, error: "This code isn't valid" };
+    }
   }
 
-  if (coupon.per_customer_limit !== null && (options?.customerEmail || options?.customerId)) {
-    const uses = await fetchCustomerCouponUseCount(coupon.id, options);
-    if (exceedsPerCustomerLimit(uses, coupon.per_customer_limit)) {
-      return { valid: false, error: "You have already used this coupon the maximum number of times" };
+  if (coupon.usage_limit !== null) {
+    const [held, pending] = await Promise.all([
+      fetchLiveResultCouponUseCount(coupon.id, { excludeResultIds: options?.excludeResultIds }),
+      fetchPendingOrderCouponUseCount(coupon.id),
+    ]);
+    if (coupon.usage_count + held + pending >= coupon.usage_limit) {
+      return { valid: false, error: "This code has been fully redeemed" };
+    }
+  }
+
+  if (coupon.per_customer_limit !== null && account) {
+    const [paid, held, pending] = await Promise.all([
+      fetchCustomerCouponUseCount(coupon.id, account),
+      fetchLiveResultCouponUseCount(coupon.id, {
+        customerEmail: account.email,
+        excludeResultIds: options?.excludeResultIds,
+      }),
+      fetchPendingOrderCouponUseCount(coupon.id, account),
+    ]);
+    if (exceedsPerCustomerLimit(paid + held + pending, coupon.per_customer_limit)) {
+      return { valid: false, error: "You've already used this code as many times as it allows" };
     }
   }
 
   if (coupon.min_order_amount !== null && subtotal < coupon.min_order_amount) {
     return {
       valid: false,
-      error: `Minimum order amount is ${coupon.currency} ${coupon.min_order_amount.toFixed(2)}`,
+      error: `This code needs an order of at least ${coupon.currency} ${Number(coupon.min_order_amount).toFixed(2)}`,
     };
   }
 
@@ -225,21 +334,51 @@ export async function validateCoupon(
     options?.lineItems,
   );
   if (!scope.eligible) {
-    return { valid: false, error: scope.error ?? "Coupon does not apply to items in your cart" };
+    return { valid: false, error: scope.error ?? "This code doesn't apply to these items" };
   }
 
   const discountAmount = computeCouponDiscountAmount(coupon, scope.discountBase);
   return { valid: true, coupon, discount_amount: discountAmount };
 }
 
-export async function incrementCouponUsage(couponId: string) {
+/**
+ * Atomically bump a coupon's usage, enforcing its `usage_limit` in the same
+ * statement (prod-hardening slice 09). Returns whether the increment applied:
+ * `false` means the cap was already reached — by a parallel checkout, since the
+ * pre-payment check in `checkCoupon` passed. The payment has already been
+ * captured by the time this runs, so callers log and move on; they never fail
+ * on `false`.
+ */
+export async function incrementCouponUsage(couponId: string): Promise<boolean> {
   const admin = supabaseAdmin();
-  const { error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
-  if (!error) return;
-
-  // ponytail: fallback when RPC not yet migrated — read-modify-write
-  const { data } = await admin.from("coupons").select("usage_count").eq("id", couponId).single();
-  if (data) {
-    await admin.from("coupons").update({ usage_count: data.usage_count + 1 }).eq("id", couponId);
+  const { data, error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
+  if (!error) {
+    // The capped RPC returns the new usage_count, or null when the limit was
+    // already reached and no row changed.
+    return data != null;
   }
+
+  // ponytail: fallback when the capped RPC isn't migrated yet. Still enforce the
+  // cap here — a conditional update that re-checks the usage_count it read — so
+  // no deploy ordering can reopen the uncapped race the RPC closes.
+  const { data: row } = await admin
+    .from("coupons")
+    .select("usage_count, usage_limit")
+    .eq("id", couponId)
+    .single();
+  if (!row) return false;
+  if (row.usage_limit !== null && row.usage_count >= row.usage_limit) return false;
+  const { data: updated } = await admin
+    .from("coupons")
+    .update({ usage_count: row.usage_count + 1 })
+    .eq("id", couponId)
+    .eq("usage_count", row.usage_count)
+    .select("usage_count");
+  return (updated?.length ?? 0) > 0;
+}
+
+/** Takes one redemption back on a full refund, never below zero, atomically. */
+export async function decrementCouponUsage(couponId: string): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("decrement_coupon_usage", { p_coupon_id: couponId });
+  if (error) throw new Error(`Coupon usage not decremented for ${couponId}: ${error.message}`);
 }

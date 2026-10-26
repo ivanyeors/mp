@@ -9,6 +9,8 @@ import { z } from "zod/v4";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { normalizePhone } from "@/lib/appointments/phone";
+import { getAppointmentSettings } from "@/lib/appointments/settings-store";
+import { isOfferableSlot } from "@/lib/appointments/slots";
 import { getAuthUser } from "@/lib/auth/user";
 import { getLocation } from "@/lib/locations";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
@@ -171,6 +173,9 @@ export async function checkSlotRequest(
     return { ok: false, status: 400, error: "Invalid start_iso/end_iso" };
   }
   if (startMs < Date.now()) return { ok: false, status: 400, error: "That time has already passed" };
+  if (!isOfferableSlot(body.start_iso, body.end_iso, await getAppointmentSettings())) {
+    return { ok: false, status: 400, error: "That time is not a bookable slot" };
+  }
   const phone = normalizePhone(body.phone);
   if (!phone) return { ok: false, status: 400, error: "Invalid phone" };
   const location = await getLocation(body.location_id);

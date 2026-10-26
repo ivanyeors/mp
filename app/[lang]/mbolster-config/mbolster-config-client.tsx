@@ -58,6 +58,13 @@ import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
+import {
+  checkoutCodeDiscount,
+  checkoutCodeFreeShipping,
+  checkoutCodeToSend,
+  type CheckoutCodeContext,
+  type CheckoutCodeStatus,
+} from "@/lib/checkout-code/shared";
 import { ConfigImageUpload } from "@/components/configurator/config-image-upload";
 import {
   AddonOptionButton,
@@ -317,7 +324,10 @@ export function MbolsterConfigClient({
   const [holdPhone, setHoldPhone] = React.useState("");
   const [discoverySource, setDiscoverySource] = React.useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = React.useState("");
-  const [referralCode, setReferralCode] = React.useState("");
+  // The one optional code (ADR 0033): a partner's referral code or a discount
+  // code, checked against this bolster's goods; a discount moves the total.
+  const [checkoutCode, setCheckoutCode] = React.useState("");
+  const [codeStatus, setCodeStatus] = React.useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = React.useState("");
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
@@ -717,7 +727,7 @@ export function MbolsterConfigClient({
       discoverySource,
       discoverySourceOther,
       notes: holdNotes,
-      referralCode,
+      code: checkoutCode,
     }),
     {
       key: "recipient",
@@ -749,6 +759,8 @@ export function MbolsterConfigClient({
         ]),
     holdShippingCheck(shippingStatus),
   ], [
+    // The code never blocks; it is here because the checks read it.
+    checkoutCode,
     selectedCase,
     holdEmail,
     holdPhone,
@@ -1168,7 +1180,8 @@ export function MbolsterConfigClient({
           discoverySource,
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-          referralCode: referralCode.trim() || undefined,
+          // Resolved and priced again by the hold; the page only asks.
+          code: checkoutCodeToSend(checkoutCode, codeStatus),
           // Assist priority (#78): server re-resolves this code → partner id.
           ...(partner ? { partnerAssistCode: partner.code } : {}),
           productType: "bolster",
@@ -1240,7 +1253,8 @@ export function MbolsterConfigClient({
     holdPhone,
     discoverySource,
     discoverySourceOther,
-    referralCode,
+    checkoutCode,
+    codeStatus,
     holdNotes,
     holdAddress,
     selectedShippingId,
@@ -1288,9 +1302,18 @@ export function MbolsterConfigClient({
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
     const goodsSubtotal = shopBasePrice + addonTotal;
     const bolsterBallpark = serviceLines ? goodsSubtotal + sumServiceLines(serviceLines) : null;
+    // A pair's code goes on its Mpillow, entered on the Mpillow page (ADR 0033).
+    const codeContext: CheckoutCodeContext | null =
+      paired || !shopRecommendation || !suggestedLength
+        ? null
+        : { flow: "customisation", build: { product_type: "bolster", length: suggestedLength }, goods: goodsSubtotal };
+    const codeDiscount = paired ? 0 : checkoutCodeDiscount(codeStatus);
+    const codeFreeShipping = !paired && checkoutCodeFreeShipping(codeStatus);
     // Shipping joins the one price once it has one (free_above on goods alone).
     // A pair's is chosen on the Mpillow page after this step, for both boxes.
-    const shippingAmount = paired ? null : holdShippingAmount(selectedShippingOption, goodsSubtotal);
+    const shippingAmount = paired
+      ? null
+      : holdShippingAmount(selectedShippingOption, goodsSubtotal, codeFreeShipping);
     const oneTotal =
       bolsterBallpark == null
         ? null
@@ -1298,7 +1321,7 @@ export function MbolsterConfigClient({
           ? paired.pillow.ballpark == null
             ? null
             : paired.pillow.ballpark + bolsterBallpark + (shippingAmount ?? 0)
-          : bolsterBallpark + (shippingAmount ?? 0);
+          : bolsterBallpark - codeDiscount + (shippingAmount ?? 0);
 
     return (
       <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
@@ -1652,8 +1675,11 @@ export function MbolsterConfigClient({
                     discoverySource,
                     discoverySourceOther,
                     notes: holdNotes,
-                    referralCode,
+                    code: checkoutCode,
                   }}
+                  codeContext={codeContext}
+                  onCodeStatus={setCodeStatus}
+                  formatAmount={(amount) => `${shopCurrency} ${amount.toFixed(2)}`}
                   onChange={(patch) => {
                     if (patch.email !== undefined) setHoldEmail(patch.email);
                     if (patch.phone !== undefined) setHoldPhone(patch.phone);
@@ -1664,9 +1690,7 @@ export function MbolsterConfigClient({
                       setDiscoverySourceOther(patch.discoverySourceOther);
                     }
                     if (patch.notes !== undefined) setHoldNotes(patch.notes);
-                    if (patch.referralCode !== undefined) {
-                      setReferralCode(patch.referralCode);
-                    }
+                    if (patch.code !== undefined) setCheckoutCode(patch.code);
                   }}
                 />
 
@@ -1743,8 +1767,20 @@ export function MbolsterConfigClient({
                   </span>
                 </div>
               ) : null}
+              {!paired && codeStatus.state === "discount" && (codeDiscount > 0 || codeFreeShipping) && bolsterBallpark != null ? (
+                <div className="mb-1 flex justify-between gap-4 text-sm text-emerald-700 dark:text-emerald-400">
+                  <span className="min-w-0">Discount ({codeStatus.code})</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums">
+                    {codeDiscount > 0 ? `−${shopCurrency} ${codeDiscount.toFixed(2)}` : "Free shipping"}
+                  </span>
+                </div>
+              ) : null}
               {paired ? null : (
-                <HoldShippingTotalRow option={selectedShippingOption} goodsSubtotal={goodsSubtotal} />
+                <HoldShippingTotalRow
+                  option={selectedShippingOption}
+                  goodsSubtotal={goodsSubtotal}
+                  freeShipping={codeFreeShipping}
+                />
               )}
               <div className="mb-3 flex justify-between text-sm">
                 <span className="text-muted-foreground">
@@ -1938,14 +1974,14 @@ export function MbolsterConfigClient({
                 fee, so the visit is simply offered. */}
             {!staffAssist && !measuredByStaff && !partnerAssisted ? (
               <p className="text-sm text-muted-foreground">
-                Prefer our team to measure you?{" "}
+                Prefer our team to measure you? Get it customised, adjusted and bring home immediately — no
+                measurement fee for Mbolster.{" "}
                 <Link
                   href={to("/appointments?type=customisation")}
                   className="font-medium text-foreground underline underline-offset-4"
                 >
-                  Book a studio visit
-                </Link>{" "}
-                — no measurement fee for Mbolster.
+                  Book here
+                </Link>
               </p>
             ) : null}
           </div>
