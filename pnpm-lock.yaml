@@ -237,8 +237,8 @@ importers:
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.1.18)
       '@types/d3-hierarchy':
-        specifier: ^1.1.11
-        version: 1.1.11
+        specifier: ^3.1.7
+        version: 3.1.7
       '@types/node':
         specifier: ^20
         version: 20.19.27
@@ -1761,6 +1761,9 @@ packages:
 
   '@types/d3-hierarchy@1.1.11':
     resolution: {integrity: sha512-lnQiU7jV+Gyk9oQYk0GGYccuexmQPTp08E0+4BidgFdiJivjEvf+esPSdZqCZ2C7UwTWejWpqetVaU8A+eX3FA==}
+
+  '@types/d3-hierarchy@3.1.7':
+    resolution: {integrity: sha512-tJFtNoYBtRtkNysX1Xq4sxtjK8YgoWUNpIiUee0/jHGRwqvzYxkq0hGVbbOGSz+JgFxxRu4K8nb3YpG3CMARtg==}
 
   '@types/d3-interpolate@3.0.1':
     resolution: {integrity: sha512-jx5leotSeac3jr0RePOH1KdR9rISG91QIE4Q2PYTu4OymLTZfA3SrnURSLzKH48HmXVUru50b8nje4E79oQSQw==}
@@ -7022,6 +7025,8 @@ snapshots:
       '@types/geojson': 7946.0.16
 
   '@types/d3-hierarchy@1.1.11': {}
+
+  '@types/d3-hierarchy@3.1.7': {}
 
   '@types/d3-interpolate@3.0.1':
     dependencies:
