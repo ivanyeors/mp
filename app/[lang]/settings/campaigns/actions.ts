@@ -2,6 +2,7 @@
 
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
+import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
 import { resolveSegment } from "@/lib/crm/segments";
 import {
   CampaignDraftSchema,
@@ -183,7 +184,8 @@ export async function sendCampaignTestAction(
   if ("refused" in result) return { ok: false, error: result.refused };
   await recordAdminAction({
     actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
-    action: "email_campaign.test",
+    // The send limit counts these: Resend counts a test like any send.
+    action: CAMPAIGN_TEST_AUDIT_ACTION,
     entityType: "email_campaign",
     entityId: id,
     after: { sent: result.sent.length, failed: result.failed.length },
@@ -234,6 +236,8 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
       after: {
         wave: result.wave,
         size: result.customerIds.length,
+        requested: result.requested,
+        limited_by: result.limitedBy,
         eligible: result.plan.eligible,
         retry_failed: Boolean(req.retryFailed),
         resumed: Boolean(req.resume),

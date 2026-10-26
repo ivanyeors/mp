@@ -9,11 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CAMPAIGN_AUDIENCE_LABEL } from "@/lib/email-campaigns/rules";
+import { readSendingStatus, type SendingStatus } from "@/lib/email-campaigns/sender";
+import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { listCampaigns, type CampaignListItem } from "@/lib/email-campaigns/store";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { SendingStatusCard } from "./sending-status-card";
 
 export const runtime = "nodejs";
 
@@ -25,8 +28,9 @@ function statusOf({ campaign, stats }: CampaignListItem): { label: string; varia
 }
 
 /**
- * Admin Panel → Email campaigns (PRD-email-marketing): every campaign, newest
- * first, with its numbers. Guarded by `campaigns`, which Owner and Admin hold.
+ * Admin Panel → Email campaigns (PRD-email-marketing): the Sending card
+ * (PRD-campaign-send-flow slice 02), then every campaign, newest first, with
+ * its numbers. Guarded by `campaigns`, which Owner and Admin hold.
  */
 export default async function EmailCampaignsPage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
@@ -36,11 +40,13 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
 
     let items: CampaignListItem[] = [];
     let error: string | null = null;
-    try {
-        items = await listCampaigns(supabaseAdmin());
-    } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
-    }
+    const setup = campaignSenderSetup();
+    const [listed, status] = await Promise.all([
+        listCampaigns(supabaseAdmin()).catch((err: unknown) => err instanceof Error ? err : new Error(String(err))),
+        readSendingStatus(setup).catch((): SendingStatus | null => null),
+    ]);
+    if (listed instanceof Error) error = listed.message;
+    else items = listed;
 
     return (
         <div className="space-y-6">
@@ -71,6 +77,8 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                     </Link>
                 </Button>
             </div>
+
+            <SendingStatusCard status={status} origin={setup.origin} />
 
             {error ? (
                 <p role="alert" className="text-sm text-destructive">

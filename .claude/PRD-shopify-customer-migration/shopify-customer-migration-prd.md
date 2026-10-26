@@ -271,6 +271,8 @@ deliverability of every order email at risk. A Workspace mailbox also caps daily
 - goes through **Resend from its own subdomain** (for example `hello.mpillow.com`), with SPF,
   DKIM and DMARC set up;
 - goes out in **waves**: a pilot of 25–50, then waves sized to the list;
+- stays on **Resend's free plan** (owner, 2026-10-22): no more than 100 a day and 3,000 a month,
+  so a wave bigger than a day's limit is staggered across days;
 - **pauses** a wave when the bounce rate passes 2% or complaints pass 0.1%. Google and Yahoo's
   bulk-sender rules start enforcing near 0.3%.
 

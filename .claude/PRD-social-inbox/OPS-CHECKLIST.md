@@ -98,7 +98,8 @@ button once more for the Page subscription.
 
 Until App Review (step 7), Meta only delivers messages from people who have a **role on the app**
 (Admin, Developer or Tester — App roles → Roles). Add a team member as Tester, have them message
-the Page and the Instagram account from their personal accounts, and check part 4.
+the Page and the Instagram account from their personal accounts, and check part 4. The steps for
+each teammate are in Admin Panel → Documentation → **Adding teammates to the Meta app**.
 
 ### 7. App Review (for real customers)
 

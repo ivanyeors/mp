@@ -21,15 +21,20 @@
 // on CAMPAIGN_EMAIL_DOMAIN, and NEXT_PUBLIC_SITE_URL answers one-click unsubscribe
 // with this machine's UNSUBSCRIBE_SECRET.
 //
+// It also sends no more than Resend's plan allows: 100 a day and 3,000 a month on
+// the free plan, counted from the ledger. A wave bigger than that is staggered: run
+// the same command again the next day and it carries on where it stopped.
+//
 // Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL,
 //      CAMPAIGN_RESEND_API_KEY, CAMPAIGN_EMAIL_FROM, CAMPAIGN_EMAIL_DOMAIN,
-//      UNSUBSCRIBE_SECRET, SUPPORT_EMAIL
+//      UNSUBSCRIBE_SECRET, SUPPORT_EMAIL,
+//      CAMPAIGN_DAILY_SEND_LIMIT, CAMPAIGN_MONTHLY_SEND_LIMIT (optional; the free plan's)
 
 import { createClient } from "@supabase/supabase-js";
 
 import { CAMPAIGN_TEMPLATES, isCampaignTemplate } from "@/lib/customer-migration/campaign";
 import { formatWaveReport, runCampaignWave } from "@/lib/customer-migration/wave-sender";
-import { getCampaignTransport, transactionalFromAddress } from "@/lib/email/campaign-transport";
+import { campaignSendLimits, getCampaignTransport, transactionalFromAddress } from "@/lib/email/campaign-transport";
 import { getSupportInbox } from "@/lib/email/contact";
 import { getSiteOrigin } from "@/lib/site-url";
 
@@ -58,6 +63,12 @@ async function main() {
   if (!wave) fail("--wave is required, e.g. --wave w1");
   const limit = Number(flagValue(args, "--limit"));
   if (!Number.isInteger(limit) || limit < 1) fail("--limit is required: a whole number of people, e.g. --limit 200");
+  let sendLimits;
+  try {
+    sendLimits = campaignSendLimits();
+  } catch (e) {
+    fail(e instanceof Error ? e.message : String(e));
+  }
 
   const admin = createClient(requireEnv("NEXT_PUBLIC_SUPABASE_URL"), requireEnv("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false },
@@ -82,6 +93,7 @@ async function main() {
       replyTo: getSupportInbox(),
       origin: getSiteOrigin(),
       unsubscribeSecret: process.env.UNSUBSCRIBE_SECRET || undefined,
+      sendLimits,
     },
   );
 
