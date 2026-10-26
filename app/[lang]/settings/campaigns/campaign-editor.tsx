@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Archive, CheckCircle2, ChevronLeft, Copy, Loader2, Send, XCircle } from "lucide-react";
+import { AlertTriangle, Archive, ChevronLeft, Copy, Loader2, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -28,7 +29,10 @@ import {
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
-import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
+import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
+import { defaultWaveSize, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
+import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import {
@@ -42,21 +46,13 @@ import {
     sendCampaignTestAction,
     type WaveAnswer,
 } from "./actions";
+import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
+import { CheckList, StatusIcon } from "./send-parts";
+import { WaveTable } from "./wave-table";
 
 export type SegmentOption = { id: string; name: string };
 
 type ButtonChoice = "none" | "sign_in" | "url";
-
-/** Plain-language names for the sender's checks. */
-const CHECK_LABEL: Record<string, string> = {
-    transport: "Campaign email account (Resend)",
-    from: "Sending address",
-    reply_to: "Where replies go",
-    site: "Links point at the live site",
-    unsubscribe_route: "One-click unsubscribe works",
-    unsubscribe_secret: "Unsubscribe links are signed correctly",
-    pause: "Bounces and spam reports are low",
-};
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -74,26 +70,6 @@ function Field({ label, htmlFor, hint, error, children }: { label: string; htmlF
     );
 }
 
-function CheckList({ checks }: { checks: PreflightCheck[] }) {
-    return (
-        <ul className="space-y-2">
-            {checks.map((c) => (
-                <li key={c.key} className="flex items-start gap-2 text-sm">
-                    {c.ok ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-label="Passes" />
-                    ) : (
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-label="Fails" />
-                    )}
-                    <span className="min-w-0">
-                        <span className="font-medium">{CHECK_LABEL[c.key] ?? c.key}</span>
-                        <span className="block break-words text-xs text-muted-foreground">{c.detail}</span>
-                    </span>
-                </li>
-            ))}
-        </ul>
-    );
-}
-
 type WaveProgress = {
     wave: string;
     total: number;
@@ -102,8 +78,19 @@ type WaveProgress = {
     skipped: number;
     running: boolean;
     stopped: string | null;
+    /** Staff pressed Stop. */
+    stoppedByStaff: boolean;
+    /** Eligible people the wave did not include, when it started. */
+    waiting: number;
     errors: string[];
 };
+
+const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
+    checks: [{ key: "transport", ok: false, detail }],
+    ready: false,
+    allowance: null,
+    sender: { from: null, replyTo: null },
+});
 
 /**
  * Admin Panel → Email campaigns → one campaign (PRD-email-marketing): write it
@@ -111,11 +98,17 @@ type WaveProgress = {
  * waves. A wave is sent from this page a batch at a time, so it stays open
  * while it sends; closing it stops the wave, and the next one picks up the
  * people still to send to.
+ *
+ * The Send card (PRD-campaign-send-flow slices 03 and 04): a checklist, a
+ * wave no bigger than today's room in the sending plan, a confirmation
+ * dialog that restates the send, a labelled progress bar, what to do next,
+ * and each wave's numbers against the pause lines.
  */
 export function CampaignEditor({
     campaign,
     draft: initial,
     stats,
+    waves = [],
     segments,
     staffEmail,
 }: {
@@ -123,6 +116,8 @@ export function CampaignEditor({
     campaign: Campaign | null;
     draft: CampaignDraft;
     stats: CampaignStats | null;
+    /** This campaign's waves, oldest first or in any order. */
+    waves?: CampaignWaveStats[];
     segments: SegmentOption[];
     /** The signed-in Staff email: the test's default address. */
     staffEmail: string;
@@ -210,24 +205,23 @@ export function CampaignEditor({
 
     // ── Readiness ──────────────────────────────────────────────────────────
     const campaignId = campaign?.id;
-    const [checks, setChecks] = useState<PreflightCheck[] | null>(null);
+    const [readiness, setReadiness] = useState<CampaignReadiness | null>(null);
+    const checks = readiness?.checks ?? null;
+    const allowance = readiness?.allowance ?? null;
     const [checking, setChecking] = useState(false);
     const readChecks = useCallback(
-        () =>
-            checkCampaignReadiness(campaignId)
-                .then((r) => r.checks)
-                .catch((e: unknown): PreflightCheck[] => [{ key: "transport", ok: false, detail: String(e) }]),
+        () => checkCampaignReadiness(campaignId).catch((e: unknown) => UNREAD_READINESS(String(e))),
         [campaignId],
     );
     const runChecks = async () => {
         setChecking(true);
-        setChecks(await readChecks());
+        setReadiness(await readChecks());
         setChecking(false);
     };
     useEffect(() => {
         if (!campaignId) return;
         let live = true;
-        void readChecks().then((c) => live && setChecks(c));
+        void readChecks().then((r) => live && setReadiness(r));
         return () => {
             live = false;
         };
@@ -238,6 +232,7 @@ export function CampaignEditor({
     const [testTo, setTestTo] = useState(staffEmail);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+    const [lastTest, setLastTest] = useState<{ sent: number; at: string } | null>(null);
     const sendTest = async () => {
         if (!campaign) return;
         setTesting(true);
@@ -249,20 +244,34 @@ export function CampaignEditor({
             if (!res.ok) setTestResult({ ok: false, text: res.error });
             else if (res.failed.length) setTestResult({ ok: false, text: `Sent ${res.sent}; failed: ${res.failed.map((f) => `${f.to} (${f.error})`).join(", ")}` });
             else setTestResult({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}. Check the inbox, and the spam folder.` });
+            if (res.ok && res.sent > 0) {
+                setLastTest({ sent: res.sent, at: new Date().toISOString() });
+                // A test uses the plan's room too.
+                void readChecks().then(setReadiness);
+            }
         } finally {
             setTesting(false);
         }
     };
 
     // ── Waves ──────────────────────────────────────────────────────────────
-    const [size, setSize] = useState(stats && stats.handed > 0 ? 200 : 50);
+    // Until Staff type a size, it follows today's room (and 50 for a first wave).
+    const firstWave = !campaign?.lockedAt;
+    const [sizeInput, setSizeInput] = useState<number | null>(null);
+    const room = allowance?.remaining ?? null;
+    const maxSize = room && room > 0 ? Math.min(MAX_WAVE_SIZE, room) : MAX_WAVE_SIZE;
+    const size = Math.min(sizeInput ?? defaultWaveSize(allowance, firstWave, MAX_WAVE_SIZE), maxSize);
     const [retryFailed, setRetryFailed] = useState(false);
     const [resume, setResume] = useState(false);
     const [plan, setPlan] = useState<Extract<WaveAnswer, { ok: true }> | null>(null);
     const [planError, setPlanError] = useState<string | null>(null);
     const [planning, setPlanning] = useState(false);
     const [progress, setProgress] = useState<WaveProgress | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const stopRef = useRef(false);
+    // Sampled once for the life of the page, as formatAdminRelative's callers do.
+    const [nowMs] = useState(() => Date.now());
+    const rampEnds = rampUntil(waves, nowMs);
 
     const checkAudience = async () => {
         if (!campaign) return;
@@ -270,8 +279,11 @@ export function CampaignEditor({
         setPlanError(null);
         try {
             const res = await planCampaignWave(campaign.id, { size, retryFailed, resume }, false);
-            if (res.ok) setPlan(res);
-            else setPlanError(res.error);
+            if (res.ok) {
+                setPlan(res);
+                // The plan's checks are the freshest: show them in Ready to send? too.
+                setReadiness(res.readiness);
+            } else setPlanError(res.error);
         } finally {
             setPlanning(false);
         }
@@ -284,15 +296,23 @@ export function CampaignEditor({
         return () => window.removeEventListener("beforeunload", warn);
     }, [progress?.running]);
 
+    /** How many the checked plan sends now: the eligible, less who waits for later waves. */
+    const planned = plan ? plan.plan.eligible - plan.waiting : 0;
+    const confirmation: SendConfirmation | null = plan
+        ? {
+              count: planned,
+              wave: plan.wave,
+              subject,
+              from: plan.readiness.sender.from,
+              replyTo: plan.readiness.sender.replyTo,
+              audience: CAMPAIGN_AUDIENCE_LABEL[audience] + (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a Segment"}` : ""),
+              firstWave,
+          }
+        : null;
+
     const startWave = async () => {
         if (!campaign || !plan) return;
-        const count = Math.min(size, plan.plan.eligible);
-        const first = !campaign.lockedAt;
-        const ok = window.confirm(
-            `Send "${subject}" to ${n(count)} ${count === 1 ? "person" : "people"} now?` +
-                (first ? "\n\nAfter the first wave the email can't be changed (you can duplicate it)." : ""),
-        );
-        if (!ok) return;
+        setConfirmOpen(false);
         setPlanning(true);
         setPlanError(null);
         let started: Extract<WaveAnswer, { ok: true }>;
@@ -310,12 +330,23 @@ export function CampaignEditor({
 
         stopRef.current = false;
         const ids = started.customerIds;
-        let state: WaveProgress = { wave: started.wave, total: ids.length, sent: 0, failed: 0, skipped: 0, running: true, stopped: null, errors: [] };
+        let state: WaveProgress = {
+            wave: started.wave,
+            total: ids.length,
+            sent: 0,
+            failed: 0,
+            skipped: 0,
+            running: true,
+            stopped: null,
+            stoppedByStaff: false,
+            waiting: started.waiting,
+            errors: [],
+        };
         setProgress(state);
         let failuresInARow = 0;
         for (let i = 0; i < ids.length; i += started.batchSize) {
             if (stopRef.current) {
-                state = { ...state, stopped: "You stopped the wave." };
+                state = { ...state, stopped: "You stopped the wave.", stoppedByStaff: true };
                 break;
             }
             const res = await sendCampaignBatchAction(campaign.id, {
@@ -341,8 +372,10 @@ export function CampaignEditor({
             setProgress(state);
             if (res.stopped) break;
         }
-        setProgress({ ...state, running: false });
+        const unsent = state.total - state.sent - state.failed - state.skipped;
+        setProgress({ ...state, running: false, waiting: state.waiting + Math.max(0, unsent) });
         setPlan(null);
+        setSizeInput(null);
         router.refresh();
         void runChecks();
     };
@@ -370,7 +403,7 @@ export function CampaignEditor({
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${campaign && (sending || plan) ? mobileStickyActionBarSpacerClassName : ""}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                 <Button variant="ghost" size="sm" className="self-start" asChild>
                     <Link href={to("/settings/campaigns")}>
@@ -593,8 +626,9 @@ export function CampaignEditor({
                             <CardTitle className="text-base">Send</CardTitle>
                             <InfoTip label="About sending in waves">
                                 <p>
-                                    Send to a small group first, wait a day, and look at the bounces and spam reports
-                                    before sending to more. A sensible start is 50, then 200, then 500 a day.
+                                    Send to a small group first, wait two days, and look at the bounces and spam reports
+                                    before sending to more. Resend&apos;s free plan sends 100 a day, tests included, so a
+                                    bigger audience goes over several days: one wave a day, each no bigger than what is left.
                                 </p>
                                 <p>
                                     Keep this page open while a wave sends: it sends about two emails a second. If it
@@ -609,22 +643,43 @@ export function CampaignEditor({
                             </CardDescription>
                         ) : null}
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        {dirty && !locked ? (
-                            <p className="text-sm text-muted-foreground">Save your changes before sending.</p>
+                    <CardContent className="space-y-5">
+                        <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
+                            {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, allowance, resume }).map((step) => (
+                                <li key={step.key} className="flex items-start gap-2 text-sm">
+                                    <StatusIcon ok={step.done} advisory={step.advisory} />
+                                    <span className="min-w-0">
+                                        <span className="block font-medium">{step.label}</span>
+                                        <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
+                                    </span>
+                                </li>
+                            ))}
+                        </ol>
+
+                        {rampEnds && !sending ? (
+                            <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm" suppressHydrationWarning>
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                                The first wave went out recently. Wait until {formatAdminWeekdayTime(rampEnds)} before the next one,
+                                and look at its bounces and spam reports first.
+                            </p>
                         ) : null}
+
                         <div className="flex flex-wrap items-end gap-4">
-                            <Field label="People in this wave" htmlFor="c-size">
+                            <Field
+                                label="People in this wave"
+                                htmlFor="c-size"
+                                hint={room !== null ? (room > 0 ? `Up to ${n(Math.min(room, MAX_WAVE_SIZE))} now.` : "None can go now.") : undefined}
+                            >
                                 <Input
                                     id="c-size"
                                     type="number"
                                     min={1}
-                                    max={MAX_WAVE_SIZE}
+                                    max={maxSize}
                                     className="w-32"
                                     value={size}
                                     disabled={sending}
                                     onChange={(e) => {
-                                        setSize(Math.max(1, Math.min(MAX_WAVE_SIZE, Math.floor(Number(e.target.value) || 1))));
+                                        setSizeInput(Math.max(1, Math.min(maxSize, Math.floor(Number(e.target.value) || 1))));
                                         setPlan(null);
                                     }}
                                 />
@@ -663,7 +718,7 @@ export function CampaignEditor({
                             <div className="space-y-3 rounded-lg border p-4 text-sm">
                                 <p>
                                     <span className="font-medium">{n(plan.plan.eligible)}</span> of {n(plan.plan.considered)} customers in this
-                                    audience can get it now ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
+                                    audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
                                     {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
                                 </p>
                                 {Object.keys(plan.plan.excluded).length ? (
@@ -675,19 +730,29 @@ export function CampaignEditor({
                                         ))}
                                     </ul>
                                 ) : null}
-                                <Button onClick={startWave} disabled={planning || sending || !ready || plan.plan.eligible === 0}>
+                                {plan.plan.eligible > 0 ? (
+                                    <p className="font-medium">
+                                        {waitingSummary({
+                                            selected: planned,
+                                            waiting: plan.waiting,
+                                            limitedBy: plan.limitedBy,
+                                            dailyLimit: plan.readiness.allowance?.limits.daily ?? null,
+                                        })}
+                                    </p>
+                                ) : null}
+                                <Button onClick={() => setConfirmOpen(true)} disabled={planning || sending || !ready || planned === 0}>
                                     {planning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
-                                    Send to {n(Math.min(size, plan.plan.eligible))} {Math.min(size, plan.plan.eligible) === 1 ? "person" : "people"}
+                                    {sendButtonLabel(planned)}
                                 </Button>
-                                {!ready ? <p className="text-xs text-destructive">A check above fails, so it can&apos;t send yet.</p> : null}
+                                {!ready ? <p className="text-xs text-destructive">A step above is not done, so it can&apos;t send yet.</p> : null}
                             </div>
                         ) : null}
 
                         {progress ? (
-                            <div className="space-y-2 rounded-lg border p-4 text-sm" role="status">
+                            <div className="space-y-2 rounded-lg border p-4 text-sm">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="font-medium">
-                                        Wave {progress.wave}: {progress.running ? "sending" : "finished"}
+                                        Wave {progress.wave}: {progress.running ? "sending" : progress.stopped ? "stopped" : "finished"}
                                     </span>
                                     {progress.running ? (
                                         <Button variant="outline" size="sm" onClick={() => (stopRef.current = true)}>
@@ -695,11 +760,18 @@ export function CampaignEditor({
                                         </Button>
                                     ) : null}
                                 </div>
-                                <Progress value={progress.total ? ((progress.sent + progress.failed + progress.skipped) / progress.total) * 100 : 100} />
-                                <p>
+                                <Progress
+                                    aria-label={`Wave ${progress.wave}`}
+                                    value={progress.total ? ((progress.sent + progress.failed + progress.skipped) / progress.total) * 100 : 100}
+                                />
+                                {/* Updated once a batch (about every ten seconds), not once an email. */}
+                                <p role="status" aria-live="polite">
                                     Sent {n(progress.sent)} of {n(progress.total)} · failed {n(progress.failed)} · skipped {n(progress.skipped)}
                                 </p>
-                                {progress.stopped ? <p className="text-destructive">Stopped: {progress.stopped}</p> : null}
+                                {progress.running ? (
+                                    <p className="text-xs text-muted-foreground">Keep this page open until it finishes.</p>
+                                ) : null}
+                                {progress.stopped && !progress.stoppedByStaff ? <p className="text-destructive">Stopped: {progress.stopped}</p> : null}
                                 {progress.errors.length ? (
                                     <ul className="list-inside list-disc text-xs text-muted-foreground">
                                         {progress.errors.map((e, i) => (
@@ -709,10 +781,42 @@ export function CampaignEditor({
                                         ))}
                                     </ul>
                                 ) : null}
+                                {!progress.running ? (
+                                    <p className="rounded-md bg-muted/50 p-2">
+                                        <span className="font-medium">Next: </span>
+                                        {nextStepAfterWave({
+                                            sent: progress.sent,
+                                            failed: stats?.failed ?? progress.failed,
+                                            stoppedByStaff: progress.stoppedByStaff,
+                                            waiting: progress.waiting,
+                                            allowance,
+                                            rampUntil: rampEnds,
+                                        })}
+                                    </p>
+                                ) : null}
                             </div>
                         ) : null}
+
+                        <WaveTable waves={waves} />
                     </CardContent>
                 </Card>
+            ) : null}
+
+            <SendConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} details={confirmation} onConfirm={startWave} />
+
+            {campaign && (sending || (plan && planned > 0)) ? (
+                <MobileStickyActionBar>
+                    {sending ? (
+                        <Button variant="outline" className="w-full" onClick={() => (stopRef.current = true)}>
+                            Stop the wave
+                        </Button>
+                    ) : (
+                        <Button className="w-full" onClick={() => setConfirmOpen(true)} disabled={planning || !ready}>
+                            <Send className="mr-1 h-4 w-4" />
+                            {sendButtonLabel(planned)}
+                        </Button>
+                    )}
+                </MobileStickyActionBar>
             ) : null}
         </div>
     );

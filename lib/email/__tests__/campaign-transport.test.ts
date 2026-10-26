@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  campaignSendLimits,
   checkCampaignFrom,
   emailAddressOf,
   emailDomainOf,
   getCampaignTransport,
+  RESEND_FREE_SEND_LIMITS,
   transactionalFromAddress,
 } from "../campaign-transport";
 import { getDefaultTransport, resetTransportCache } from "../transport";
@@ -121,5 +123,25 @@ describe("address helpers", () => {
     expect(transactionalFromAddress({ EMAIL_FROM: "a@x.com", GMAIL_SENDER: "b@x.com" })).toBe("a@x.com");
     expect(transactionalFromAddress({ GMAIL_SENDER: "b@x.com" })).toBe("b@x.com");
     expect(transactionalFromAddress({})).toBeNull();
+  });
+});
+
+describe("campaignSendLimits", () => {
+  it("is Resend's free plan unless the plan's limits are set", () => {
+    expect(RESEND_FREE_SEND_LIMITS).toEqual({ daily: 100, monthly: 3000 });
+    expect(campaignSendLimits({})).toEqual(RESEND_FREE_SEND_LIMITS);
+    expect(campaignSendLimits({ CAMPAIGN_DAILY_SEND_LIMIT: " ", CAMPAIGN_MONTHLY_SEND_LIMIT: "" })).toEqual(RESEND_FREE_SEND_LIMITS);
+    expect(campaignSendLimits({ CAMPAIGN_DAILY_SEND_LIMIT: "80" })).toEqual({ daily: 80, monthly: 3000 });
+    expect(campaignSendLimits({ CAMPAIGN_DAILY_SEND_LIMIT: "5000", CAMPAIGN_MONTHLY_SEND_LIMIT: "50000" })).toEqual({
+      daily: 5000,
+      monthly: 50000,
+    });
+  });
+
+  it("refuses a limit that is not a whole number of emails", () => {
+    for (const bad of ["0", "-1", "1.5", "100/day", "lots"]) {
+      expect(() => campaignSendLimits({ CAMPAIGN_DAILY_SEND_LIMIT: bad })).toThrow(/CAMPAIGN_DAILY_SEND_LIMIT must be a whole number/);
+    }
+    expect(() => campaignSendLimits({ CAMPAIGN_MONTHLY_SEND_LIMIT: "0" })).toThrow(/CAMPAIGN_MONTHLY_SEND_LIMIT/);
   });
 });

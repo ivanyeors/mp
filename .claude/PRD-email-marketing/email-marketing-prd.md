@@ -9,6 +9,11 @@ send to my customers that I've imported from Shopify", from "our setting page".
 Its sibling, **Email templates** (`PRD-email-templates`), edits the words of every email the
 platform sends; a Campaigns / Templates switch joins the two pages.
 
+**Follow-up:** `PRD-campaign-send-flow` (2026-10-26) keeps every wave inside Resend's plan
+(100 a day, 3,000 a month on the free plan, tests included), adds the Sending card to this
+page, and replaces the send step's browser prompt with a checklist, a confirmation dialog,
+each wave's numbers and what to do next. The Resend key stays in Vercel (its decision 1).
+
 This page replaces the placeholder that recorded what the initiative inherits. Those inherited
 rules are kept below, unchanged.
 
@@ -38,12 +43,12 @@ it would go to, and sends it in waves.
    - the pause rule.
 
    A test needs the transport, sending address and Reply-To checks; a wave needs every check.
-5. **Send a wave.** Choose how many people (default 50 for the first, then 200; at most 1,000),
-   then *Check who it goes to*. That shows:
+5. **Send a wave.** Choose how many people (50 for the first; never more than the sending plan
+   has left today, `PRD-campaign-send-flow`; at most 1,000), then *Check who it goes to*. That shows:
    - the eligible count, and how many of those have ordered before (they go first);
    - who is left out, and why.
 
-   Then *Send to N people*, with a confirmation. The page sends 20 at a time, about two a
+   Then *Send to N people*, with a confirmation dialog. The page sends 20 at a time, about two a
    second, with a progress bar and a Stop button. The first wave fixes the email and audience.
    To send a changed email, duplicate the campaign.
 6. **Read the numbers.** Each campaign shows sent, bounced, marked as spam, failed, and sign-in

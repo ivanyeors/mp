@@ -6,6 +6,9 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *  - the views `marketing_campaign_candidates` (`select`, `eq`, `in`,
  *    `order`, `range`) and `customer_campaign_wave_stats`, computed from the
  *    tables;
+ *  - for the send limit, `customer_campaign_sends` (`in`, `gte`, `order`,
+ *    `limit`, a `count: "exact", head: true` select) and `admin_audit_log`'s
+ *    test sends;
  *  - the RPCs `claim_marketing_campaign_send`, `finish_campaign_send` and
  *    `mint_claim_link`.
  *
@@ -57,6 +60,8 @@ export interface FakeWorld {
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
   /** `site_settings`, by key: the points settings a Campaign that mentions points is checked against. */
   settings: Record<string, string>;
+  /** `admin_audit_log` rows: test sends (`email_campaign.test`), which the send limit counts. */
+  auditLog?: { action: string; created_at: string; after: Row | null }[];
   /** Called inside each claim, before the rule runs: a test's chance to change the world. */
   onClaim?: (customerId: string) => void;
 }
@@ -114,19 +119,26 @@ function waveStats(world: FakeWorld): Row[] {
 function query(rows: () => Row[]) {
   const filters: ((r: Row) => boolean)[] = [];
   let order: string | null = null;
+  let descending = false;
   let range: [number, number] | null = null;
+  let limit: number | null = null;
+  let head = false;
   const run = () => {
     let out = rows().filter((r) => filters.every((f) => f(r)));
-    if (order) out = [...out].sort((a, b) => String(a[order!]).localeCompare(String(b[order!])));
+    if (order) out = [...out].sort((a, b) => String(a[order!]).localeCompare(String(b[order!])) * (descending ? -1 : 1));
+    const count = out.length;
     if (range) out = out.slice(range[0], range[1] + 1);
-    return { data: out, error: null };
+    if (limit !== null) out = out.slice(0, limit);
+    return { data: head ? null : out, count, error: null };
   };
   const q = {
-    select: () => q,
+    select: (_columns?: string, opts?: { count?: string; head?: boolean }) => ((head = opts?.head === true), q),
     eq: (col: string, v: unknown) => (filters.push((r) => r[col] === v), q),
     in: (col: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[col])), q),
-    order: (col: string) => ((order = col), q),
+    gte: (col: string, v: string) => (filters.push((r) => String(r[col]) >= v), q),
+    order: (col: string, opts?: { ascending?: boolean }) => ((order = col), (descending = opts?.ascending === false), q),
     range: (from: number, to: number) => ((range = [from, to]), q),
+    limit: (n: number) => ((limit = n), q),
     then: (resolve: (v: ReturnType<typeof run>) => unknown, reject?: (e: unknown) => unknown) =>
       Promise.resolve(run()).then(resolve, reject),
   };
@@ -220,6 +232,8 @@ export function fakeCampaignsClient(world: FakeWorld) {
     from(table: string) {
       if (table === "marketing_campaign_candidates") return query(() => candidates(world));
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
+      if (table === "customer_campaign_sends") return query(() => world.sends as unknown as Row[]);
+      if (table === "admin_audit_log") return query(() => (world.auditLog ?? []) as unknown as Row[]);
       if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake: no table ${table}`);
     },

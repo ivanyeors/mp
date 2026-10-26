@@ -16,7 +16,10 @@
  *    email promises it: `claimBonusOffer`), and owner decision 3 allows the
  *    service notice;
  *  - the most recent wave holds no pause condition (bounces over 2%,
- *    complaints over 0.1%), or the human passes `resume`.
+ *    complaints over 0.1%), or the human passes `resume`;
+ *  - the send limit leaves room: Resend's free plan allows 100 a day and
+ *    3,000 a month (`campaignSendLimits`), counted from the ledger over every
+ *    template and wave.
  *
  * **What it sends.** The audience comes from `selectCampaignAudience`. Each
  * person is claimed in the ledger BEFORE the send (`claim_campaign_send`),
@@ -25,12 +28,21 @@
  * Claim link (`mintClaimLink`), the footer's unsubscribe link, and
  * `List-Unsubscribe` with `List-Unsubscribe-Post` (RFC 8058). Reply-To is the
  * support inbox. About two messages a second; it stops after five failures
- * in a row. A failed send is marked `failed`, and retried only with
- * `retryFailed`.
+ * in a row, or at once when Resend says its quota is used up. A failed send
+ * is marked `failed`, and retried only with `retryFailed`.
+ *
+ * **Staggering.** A run sends no more than the send limit leaves, and holds
+ * the rest of its selection back. The wave keeps its room, so the same
+ * command run again the next day carries on where it stopped.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
-import { checkCampaignFrom, emailAddressOf } from "@/lib/email/campaign-transport";
+import {
+  checkCampaignFrom,
+  emailAddressOf,
+  RESEND_FREE_SEND_LIMITS,
+  type CampaignSendLimits,
+} from "@/lib/email/campaign-transport";
 import {
   renderMigrationAnnouncementEmail,
   renderMigrationReminderEmail,
@@ -59,7 +71,9 @@ import {
   claimCampaignSend,
   finishCampaignSend,
   readCampaignWaveStats,
+  readRecentCampaignSends,
   readServiceNoticeEnabled,
+  sendBudget,
   wavePause,
   type CampaignWaveStats,
 } from "./campaign-ledger";
@@ -71,6 +85,11 @@ import { readPointsSettings } from "@/lib/points/server";
 export const THROTTLE_MS = 500;
 /** Stop the wave after this many failures in a row. */
 export const MAX_CONSECUTIVE_FAILURES = 5;
+
+/** Resend's answer when the account's daily or monthly quota is used up (`daily_quota_exceeded`, `monthly_quota_exceeded`). */
+export function isSendQuotaError(message: string): boolean {
+  return /\(429\)/.test(message) && /quota/i.test(message);
+}
 
 export interface WaveRequest {
   template: CampaignTemplate;
@@ -104,6 +123,8 @@ export interface WaveSetup {
   origin: string;
   /** UNSUBSCRIBE_SECRET on this machine: it signs every link sent. */
   unsubscribeSecret: string | undefined;
+  /** `campaignSendLimits()`; Resend's free plan when absent. */
+  sendLimits?: CampaignSendLimits;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
@@ -122,6 +143,8 @@ export interface WavePreflight {
   /** The Claim bonus as the offer templates state it; null when a sign-in would grant none. */
   bonus: CampaignBonusTerms | null;
   stats: CampaignWaveStats[];
+  /** How many this run may send under the send limit; null when the ledger could not be counted. */
+  budget: number | null;
 }
 
 export type WaveSendOutcome =
@@ -143,6 +166,8 @@ export interface WaveReport {
   skipped: Partial<Record<string, number>>;
   /** Why it stopped before the end of the selection. */
   stopped: string | null;
+  /** Selected, but left for a later run by the send limit. */
+  heldBack: number;
   results: WaveSendOutcome[];
 }
 
@@ -152,6 +177,8 @@ export function maskEmail(email: string): string {
   if (at < 1) return "***";
   return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`;
 }
+
+const count = (n: number) => n.toLocaleString("en-US");
 
 const isLocalHost = (host: string) => host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
 
@@ -170,13 +197,12 @@ export type DeliverySetup = Pick<
 >;
 
 /**
- * The checks every campaign email passes before anything is sent, whatever it
- * says: the Resend transport, the From on the campaign subdomain, a support
- * inbox for Reply-To, a public https site, and that site answering one-click
- * unsubscribe for links signed here. Shared by the wave sender and the Email
- * campaigns page (lib/email-campaigns/sender.ts). Changes nothing.
+ * The delivery checks that need no network call: the Resend transport, the
+ * From on the campaign subdomain, a support inbox for Reply-To, and a public
+ * https site. The Email campaigns page's Sending card shows these on every
+ * load. Pure.
  */
-export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
+export function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "unsubscribeSecret">): PreflightCheck[] {
   const checks: PreflightCheck[] = [];
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
 
@@ -209,6 +235,18 @@ export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<Pref
   }
   const siteOk = Boolean(site && site.protocol === "https:" && !isLocalHost(site.hostname));
   add("site", siteOk, siteOk ? `links point at ${site!.origin}` : `${setup.origin} is not a public https site`);
+  return checks;
+}
+
+/**
+ * The checks every campaign email passes before anything is sent, whatever it
+ * says: {@link campaignConfigChecks}, then that site answering one-click
+ * unsubscribe for links signed here. Shared by the wave sender and the Email
+ * campaigns page (lib/email-campaigns/sender.ts). Changes nothing.
+ */
+export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
+  const checks = campaignConfigChecks(setup);
+  const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
 
   const route = await probeUnsubscribeRoute(setup.origin, setup.fetchImpl);
   add("unsubscribe_route", route.ready, route.ready ? `${setup.origin}${UNSUBSCRIBE_ROUTE} answers one-click unsubscribe` : route.reason);
@@ -279,7 +317,24 @@ export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now:
     );
   }
 
-  return { checks, ready: checks.every((c) => c.ok), bonus, stats };
+  let budget: number | null = null;
+  const limits = setup.sendLimits ?? RESEND_FREE_SEND_LIMITS;
+  const used = await attempt(() => readRecentCampaignSends(setup.admin, now));
+  if (!used.ok) add("send_limit", false, used.error);
+  else {
+    const b = sendBudget(limits, used.value);
+    budget = b.remaining;
+    const counted = `${count(used.value.lastDay)} of ${count(limits.daily)} sent in the last 24 hours, ${count(used.value.lastMonth)} of ${count(limits.monthly)} in the last 31 days`;
+    add(
+      "send_limit",
+      b.remaining > 0,
+      b.remaining > 0
+        ? `${counted}: this run sends at most ${count(b.remaining)}`
+        : `${counted}: the ${b.binding} limit (CAMPAIGN_${b.binding.toUpperCase()}_SEND_LIMIT) is used up; run it again ${b.binding === "daily" ? "tomorrow" : "once the oldest of them is 31 days old"}`,
+    );
+  }
+
+  return { checks, ready: checks.every((c) => c.ok), bonus, stats, budget };
 }
 
 /** Pure — one campaign email for one recipient. */
@@ -332,6 +387,7 @@ export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promi
     failed: 0,
     skipped: {},
     stopped: null,
+    heldBack: 0,
     results: [],
   };
 
@@ -347,7 +403,10 @@ export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promi
     report.audienceError = audience.error;
     return report;
   }
-  report.audience = audience.value;
+  const selection =
+    preflight.budget === null ? audience.value.selection : audience.value.selection.slice(0, preflight.budget);
+  report.heldBack = audience.value.selection.length - selection.length;
+  report.audience = { ...audience.value, selection };
   if (!req.apply || !preflight.ready) return report;
 
   report.ran = true;
@@ -357,9 +416,9 @@ export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promi
   const origin = setup.origin.replace(/\/$/, "");
   let consecutive = 0;
 
-  for (const candidate of audience.value.selection) {
+  for (const candidate of selection) {
     if (consecutive >= MAX_CONSECUTIVE_FAILURES) {
-      report.stopped = `${MAX_CONSECUTIVE_FAILURES} sends in a row failed`;
+      report.stopped = `${MAX_CONSECUTIVE_FAILURES} sends in a row failed. Check the transport, then run again (the ledger skips who was sent)`;
       break;
     }
     const masked = maskEmail(candidate.email);
@@ -423,6 +482,11 @@ export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promi
       report.failed++;
       consecutive++;
       report.results.push({ customerId: candidate.customerId, email: maskEmail(claim.email), outcome: "failed", error: message });
+      if (isSendQuotaError(message)) {
+        report.stopped =
+          "Resend's sending quota is used up. Run the same command again once it resets, and --retry-failed for the send it refused";
+        break;
+      }
     }
     await sleep(THROTTLE_MS);
   }
@@ -471,6 +535,9 @@ export function formatWaveReport(report: WaveReport): string[] {
     for (const c of audience.selection) {
       lines.push(`  ${c.customerId}  ${maskEmail(c.email).padEnd(28)} ${isBuyer(c) ? "buyer" : "no orders"}  imported ${c.importedAt.slice(0, 10)}`);
     }
+    if (report.heldBack > 0) {
+      lines.push(`Held back by the send limit: ${report.heldBack} more. The same command sends them on a later day.`);
+    }
   }
 
   lines.push("");
@@ -485,7 +552,7 @@ export function formatWaveReport(report: WaveReport): string[] {
         lines.push(`  sent ${r.customerId} ${r.email}, but the ledger kept it pending: it will not be sent again`);
       }
     }
-    if (report.stopped) lines.push(`STOPPED: ${report.stopped}. Check the transport, then run again (the ledger skips who was sent).`);
+    if (report.stopped) lines.push(`STOPPED: ${report.stopped}.`);
   }
   return lines;
 }
