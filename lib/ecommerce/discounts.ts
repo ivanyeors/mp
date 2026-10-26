@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { OPEN_CHECKOUT_WINDOW_MS } from "@/lib/stripe/checkout-lifetime";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import type { Coupon } from "@/lib/types/ecommerce";
 import { computeCouponDiscountAmount } from "@/lib/ecommerce/coupon-math";
@@ -175,12 +176,9 @@ async function fetchCustomerCouponUseCount(couponId: string, account: CouponAcco
 /** Why a per-customer or account-bound code was refused to a guest. */
 export const COUPON_SIGN_IN_ERROR = "Sign in with your account email to use this code";
 
-/** How long a Stripe Checkout Session stays payable (its default lifetime). */
-const CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
-
 /**
  * Shop orders carrying this coupon whose Checkout is still open: unpaid,
- * pending, and younger than a Checkout Session. Each can still be paid, so
+ * pending, and younger than a Checkout Session (one hour). Each can still be paid, so
  * each counts against the limit; otherwise N checkouts opened before paying
  * any all pass a usage_limit = 1 check.
  */
@@ -192,7 +190,7 @@ async function fetchPendingOrderCouponUseCount(couponId: string, account?: Coupo
       .eq("coupon_id", couponId)
       .eq("status", "pending")
       .is("paid_at", null)
-      .gte("created_at", new Date(Date.now() - CHECKOUT_LIFETIME_MS).toISOString());
+      .gte("created_at", new Date(Date.now() - OPEN_CHECKOUT_WINDOW_MS).toISOString());
   if (!account) return distinctOrderCount([open()]);
   return distinctOrderCount([
     open().eq("customer_id", account.customerId),

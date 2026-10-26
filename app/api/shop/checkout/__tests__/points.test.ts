@@ -455,6 +455,55 @@ describe("the one code field (ADR 0033)", () => {
     expect(h.sessionsCreate).not.toHaveBeenCalled();
   });
 
+  describe("one code per order: a referral never rides with a discount", () => {
+    beforeEach(() => {
+      h.db.partners = [{ id: "partner-1", name: "Spine Clinic", type: "partner", referral_code: "ABCD2345" }];
+    });
+
+    it("a referral in the field ignores a discount sent in the old coupon_code field", async () => {
+      const res = await pay("wei.ling@example.com", { coupon: "SAVE10", body: { code: "ABCD2345" } });
+      expect(res.status).toBe(200);
+      expect(orderInsert()).toMatchObject({ partner_id: "partner-1", coupon_id: null, discount_amount: 0 });
+      expect(h.couponsCreate).not.toHaveBeenCalled();
+    });
+
+    it("a discount in the field ignores a referral sent in the old referral_code field", async () => {
+      const res = await pay("wei.ling@example.com", { body: { code: "SAVE10", referral_code: "ABCD2345" } });
+      expect(res.status).toBe(200);
+      expect(orderInsert()).toMatchObject({ coupon_id: "coupon-save10", discount_amount: 10, partner_id: null });
+    });
+
+    it("with only the old fields, the discount applies and the referral is dropped", async () => {
+      const res = await pay("wei.ling@example.com", { coupon: "SAVE10", body: { referral_code: "ABCD2345" } });
+      expect(res.status).toBe(200);
+      expect(orderInsert()).toMatchObject({ coupon_id: "coupon-save10", discount_amount: 10, partner_id: null });
+    });
+
+    it("a partner's own code on their own order credits nobody", async () => {
+      h.partner = { status: "approved", partnerId: "partner-1", agreedVersion: null };
+      const res = await pay("wei.ling@example.com", { body: { code: "ABCD2345" } });
+      expect(res.status).toBe(200);
+      expect(orderInsert()).toMatchObject({ partner_id: null, ref_code: null });
+    });
+
+    it("so does a partner's code under their own sign-in email, signed out", async () => {
+      h.db.partner_users = [
+        { id: "pu-1", partner_id: "partner-1", email: "wei.ling@example.com", backup_email: null, backup_email_verified: false },
+      ];
+      const res = await pay("Wei.Ling@example.com", { body: { code: "ABCD2345" } });
+      expect(res.status).toBe(200);
+      expect(orderInsert()).toMatchObject({ partner_id: null, ref_code: null });
+    });
+  });
+
+  it("opens a Checkout that lapses within the hour, so an abandoned one hands its code back", async () => {
+    const before = Math.floor(Date.now() / 1000);
+    expect((await pay("wei.ling@example.com", { body: { code: "SAVE10" } })).status).toBe(200);
+    const { expires_at } = h.sessionsCreate.mock.calls[0][0] as { expires_at: number };
+    expect(expires_at - before).toBeGreaterThanOrEqual(3600 - 5);
+    expect(expires_at - before).toBeLessThanOrEqual(3600 + 5);
+  });
+
   it("still refuses an unknown coupon_code from a tab opened before the field changed", async () => {
     const res = await pay("wei.ling@example.com", { coupon: "NOPE123" });
     expect(res.status).toBe(400);

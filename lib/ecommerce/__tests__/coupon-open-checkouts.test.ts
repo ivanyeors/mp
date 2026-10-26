@@ -26,7 +26,7 @@ const coupon = {
   is_active: true,
 } as unknown as Coupon;
 
-const hoursAgo = (n: number) => new Date(Date.now() - n * 3600_000).toISOString();
+const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000).toISOString();
 
 beforeEach(() => {
   h.db = { orders: [], mp_config_responses: [] };
@@ -35,12 +35,12 @@ beforeEach(() => {
 describe("checkCoupon — open checkouts hold a use", () => {
   it("a usage_limit = 1 code is taken while another checkout with it is still open", async () => {
     expect((await checkCoupon(coupon, 100)).valid).toBe(true);
-    h.db.orders.push({ id: "o1", coupon_id: "c1", status: "pending", paid_at: null, created_at: hoursAgo(1) });
+    h.db.orders.push({ id: "o1", coupon_id: "c1", status: "pending", paid_at: null, created_at: minutesAgo(10) });
     expect(await checkCoupon(coupon, 100)).toMatchObject({ valid: false });
   });
 
-  it("an expired, unpaid checkout no longer holds it", async () => {
-    h.db.orders.push({ id: "o1", coupon_id: "c1", status: "pending", paid_at: null, created_at: hoursAgo(30) });
+  it("an unpaid checkout past its one-hour life no longer holds it", async () => {
+    h.db.orders.push({ id: "o1", coupon_id: "c1", status: "pending", paid_at: null, created_at: minutesAgo(90) });
     expect((await checkCoupon(coupon, 100)).valid).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { getStripe } from "./client";
 import { stripePriceIdOf } from "./mode";
 import type { ProductVariant } from "@/lib/types/ecommerce";
+import { SHOP_CHECKOUT_LIFETIME_MS } from "@/lib/stripe/checkout-lifetime";
 
 interface CheckoutLineItem {
   variant: ProductVariant;
@@ -213,6 +214,10 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
       },
     ];
   }
+
+  // Unpaid, it lapses within the hour and gives back what its order holds
+  // (lib/stripe/checkout-lifetime.ts); checkout.session.expired does the rest.
+  sessionParams.expires_at = Math.floor((Date.now() + SHOP_CHECKOUT_LIFETIME_MS) / 1000);
 
   const session = await stripe.checkout.sessions.create(
     sessionParams,

@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/discounts.ts": {
-    "mtime": 1792937918.2608054,
-    "seen": 1792937993.2499082,
-    "ast_hash": "cf968d43fecb58caec922ae997c761bd",
+    "mtime": 1792989938.550917,
+    "seen": 1792990205.7688246,
+    "ast_hash": "f2c321b21120d35a36bc811436aca69c",
     "semantic_hash": ""
   },
   "lib/ecommerce/exchange-rates.ts": {
@@ -1554,9 +1554,9 @@
     "semantic_hash": ""
   },
   "lib/stripe/checkout.ts": {
-    "mtime": 1792768559.126262,
-    "seen": 1792822411.3486936,
-    "ast_hash": "1e8f8892512747fe6ccbf1db99ee5300",
+    "mtime": 1792989938.5490975,
+    "seen": 1792990205.7698667,
+    "ast_hash": "5f1cbce3bab3c52c74bac3456d77543e",
     "semantic_hash": ""
   },
   "lib/stripe/client.ts": {
@@ -3210,9 +3210,9 @@
     "semantic_hash": ""
   },
   "lib/partner-self-purchase/allowance.ts": {
-    "mtime": 1792928035.2743044,
-    "seen": 1792928599.9931583,
-    "ast_hash": "45c3e8ef363fd6ab1c45b6361ea01ae6",
+    "mtime": 1792989938.552289,
+    "seen": 1792990205.7691698,
+    "ast_hash": "eb7cdfaaf3173362fd83a34d5e129e36",
     "semantic_hash": ""
   },
   "lib/partner-self-purchase/index.ts": {
@@ -14274,9 +14274,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/__tests__/points.test.ts": {
-    "mtime": 1792926920.147177,
-    "seen": 1792927076.9797616,
-    "ast_hash": "b2c1cbcc886f5295de8fcfd24b10e745",
+    "mtime": 1792989987.9473553,
+    "seen": 1792990205.7679496,
+    "ast_hash": "c92e1821b81283a7a6113f30ba994882",
     "semantic_hash": ""
   },
   "app/api/shop/customers/[id]/points/__tests__/route.test.ts": {
@@ -15150,9 +15150,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/__tests__/discount-code.test.ts": {
-    "mtime": 1792937918.258816,
-    "seen": 1792937993.248876,
-    "ast_hash": "05eea0712f426dfc807d95620ec23cf7",
+    "mtime": 1792990015.1117034,
+    "seen": 1792990205.767849,
+    "ast_hash": "00fa015b84ddefb7af6d0fe5d0308ebf",
     "semantic_hash": ""
   },
   "app/api/shop/coupons/__tests__/referral-collision.test.ts": {
@@ -15204,9 +15204,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0033-one-checkout-code-and-discounts-on-results.md": {
-    "mtime": 1792937918.2604327,
-    "seen": 1792937993.2525764,
-    "ast_hash": "681ce7c7371188ac7ec07ec012347570",
+    "mtime": 1792989938.5525749,
+    "seen": 1792990205.7713945,
+    "ast_hash": "f9195ed09fbce99242c40aad4d78ed84",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/cross-site.test.ts": {
@@ -15264,15 +15264,15 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/__tests__/coupon-open-checkouts.test.ts": {
-    "mtime": 1792928099.2008665,
-    "seen": 1792928599.9927506,
-    "ast_hash": "1f7ec96b63da230ec2a2379f32547671",
+    "mtime": 1792989972.574955,
+    "seen": 1792990205.7687821,
+    "ast_hash": "d77dcdd99b849c2763751c3426fc2c34",
     "semantic_hash": ""
   },
   "lib/partner-self-purchase/__tests__/allowance-open-checkouts.test.ts": {
-    "mtime": 1792928083.5755513,
-    "seen": 1792928599.9931548,
-    "ast_hash": "2345670366981691beaa3056c8b0b864",
+    "mtime": 1792989972.5755966,
+    "seen": 1792990205.769167,
+    "ast_hash": "01e440d969d39808165fa7ac979a6194",
     "semantic_hash": ""
   },
   "lib/referrals/__tests__/self-referral.test.ts": {
@@ -15297,6 +15297,12 @@
     "mtime": 1792937666.3501656,
     "seen": 1792937993.2498443,
     "ast_hash": "cb4fc2848b1bbf77149f0c4741caf4b6",
+    "semantic_hash": ""
+  },
+  "lib/stripe/checkout-lifetime.ts": {
+    "mtime": 1792989938.5337672,
+    "seen": 1792990205.7698638,
+    "ast_hash": "b2095c110ed3ee28a20ed1c1fd8df930",
     "semantic_hash": ""
   }
 }

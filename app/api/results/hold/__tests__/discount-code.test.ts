@@ -327,6 +327,15 @@ describe("POST /api/results/hold — the code field", () => {
     expect(h.checkCoupon).not.toHaveBeenCalled();
   });
 
+  it("a discount code ignores a referral sent in the old referralCode field (one code per order)", async () => {
+    const { getPartnerByReferralCode } = await import("@/lib/referrals");
+    vi.mocked(getPartnerByReferralCode).mockResolvedValue({ id: "partner-1", name: "Spine Clinic", referral_code: "ABCD2345" });
+    h.resolveCheckoutCode.mockResolvedValue({ kind: "coupon", coupon: coupon() });
+    await post({ code: "SAVE10", referralCode: "ABCD2345" });
+    expect(h.rows.get(ID)).toMatchObject({ coupon_id: "coupon-10", partner_id: null, ref_code: null, authorized_amount: 190 });
+    vi.mocked(getPartnerByReferralCode).mockResolvedValue(null);
+  });
+
   it("clears a code a re-submit dropped", async () => {
     h.rows.set(ID, { ...draft, coupon_id: "coupon-10", coupon_code: "SAVE10", coupon_terms: { discount_type: "percentage", discount_value: 10, max_discount: null } });
     await post();

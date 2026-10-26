@@ -98,8 +98,10 @@ second email address. Pre-launch hardening changed what the limit means:
   works only for that Customer, signed in under their own email. To anyone else it reads "This
   code isn't valid", like a code that does not exist. The 20261020112100 migration described this
   check, but nothing performed it.
-- **Open checkouts hold a use.** A pending, unpaid order younger than a Checkout Session (24h)
-  counts against both limits, and `usage_count` is incremented with a cap
+- **Open checkouts hold a use.** A pending, unpaid order younger than a Checkout Session counts
+  against both limits. Shop Checkout Sessions now expire after one hour, not Stripe's default 24
+  (`lib/stripe/checkout-lifetime.ts`), so an abandoned checkout gives its use back within the
+  hour, and `usage_count` is incremented with a cap
   (`increment_coupon_usage_capped`); an order that still lands past the limit is flagged
   `needs_attention`. This replaces the "count is a read, not a reservation" consequence above.
 - **Referral codes are unchanged:** one per order, never stacked with a typed discount code, and

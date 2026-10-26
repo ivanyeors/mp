@@ -5,15 +5,14 @@
  *
  * Consumed = discounted units on the partner's PAID, non-cancelled
  * self-purchase orders, plus those on orders whose Checkout is still open
- * (pending, unpaid, younger than a Checkout Session). Counting only paid ones
+ * (pending, unpaid, younger than a Checkout Session: one hour). Counting only paid ones
  * let a partner open several checkouts before paying any, each priced against
  * the full remaining cap. An abandoned checkout stops counting once it expires.
  */
 
-/** How long a Stripe Checkout Session stays payable (its default lifetime). */
-const CHECKOUT_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { OPEN_CHECKOUT_WINDOW_MS } from "@/lib/stripe/checkout-lifetime";
 import {
   remainingSelfPurchaseUnits,
   type SelfPurchaseKind,
@@ -51,7 +50,7 @@ export async function loadSelfPurchaseAllowance(partnerId: string): Promise<Self
       .eq("self_purchase_partner_id", partnerId)
       .eq("status", "pending")
       .is("paid_at", null)
-      .gte("created_at", new Date(Date.now() - CHECKOUT_LIFETIME_MS).toISOString()),
+      .gte("created_at", new Date(Date.now() - OPEN_CHECKOUT_WINDOW_MS).toISOString()),
   ]);
   const prior = [...(paid ?? []), ...(open ?? [])];
 

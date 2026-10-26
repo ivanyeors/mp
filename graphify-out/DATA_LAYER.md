@@ -399,7 +399,7 @@ Changed from pages: `/settings/discounts`, `/settings/discounts/[id]`
   - `deleteCoupon()` [delete] — app/[lang]/settings/discounts/actions.ts:14
   - `toggleCouponActive()` [update] — app/[lang]/settings/discounts/actions.ts:23
 - Read by:
-  - `findActiveCoupon()` [select] — lib/ecommerce/discounts.ts:243
+  - `findActiveCoupon()` [select] — lib/ecommerce/discounts.ts:241
   - `getAdminCoupon()` [select] — lib/ecommerce/admin/coupons.ts:58
   - `isCouponCode()` [select] — lib/referrals/index.ts:153
   - `listAdminCoupons()` [select] — lib/ecommerce/admin/coupons.ts:35
@@ -619,7 +619,7 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### increment_coupon_usage
 Defined in supabase/migrations/20260702130000_increment_coupon_usage.sql:2
 - Called by:
-  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:357
+  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:355
 
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
@@ -894,7 +894,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select] — app/api/mp-config/photos/route.ts:41
   - `POST()` [select] — app/api/results/[id]/reorder/route.ts:43
   - `companionLockReason()` [select] — lib/results/pair-ending.ts:94
-  - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:216
+  - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:214
   - `getMpConfigMetricsBreakdown()` [select] — app/[lang]/settings/analytics/actions.ts:83
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:70
   - `loadAdminOrderMpConfigLinks()` [select] — lib/ecommerce/admin/order-detail.ts:88
@@ -1056,8 +1056,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `countNotMarkedDelivered()` [select] — lib/aftercare/review-request-server.ts:141
   - `emailStatus()` [select] — app/api/shipping/easyship/webhook/route.ts:121
   - `fetchConvertedRows()` [select] — lib/analytics/journey/aggregates.ts:436
-  - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:163
-  - `fetchPendingOrderCouponUseCount()` [select] — lib/ecommerce/discounts.ts:189
+  - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:164
+  - `fetchPendingOrderCouponUseCount()` [select] — lib/ecommerce/discounts.ts:187
   - `finalizeReadjustmentBooking()` [select] — lib/readjustment/checkout.ts:172
   - `getChannelMix()` [select] — app/[lang]/settings/analytics/seo-actions.ts:134
   - `getCustomerOrderByNumber()` [select] — lib/shop/customer-orders.ts:65
@@ -1079,7 +1079,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:185
   - `loadPlatformFacts()` [select] — lib/analytics/channel-sales.ts:450
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:206
-  - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:42
+  - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:41
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:391
   - `sources/orders.ts` [select] — lib/crm/timeline/sources/orders.ts:67
   - `updateCustomerStats()` [select] — lib/ecommerce/customers.ts:67
@@ -1175,7 +1175,7 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `listAdminLocationRows()` [select] — lib/partners/index.ts:113
   - `loadAdminReferralRows()` [select] — lib/commissions/referral-rows.ts:230
   - `loadMilestoneDashboard()` [select] — lib/milestones/ledger.ts:220
-  - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:31
+  - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:30
   - `locations/index.ts` [select] — lib/locations/index.ts:56
   - `notifyPartnerWhatsApp()` [select] — lib/whatsapp/partner-notify.ts:88
   - `resolveShippingAddress()` [select] — lib/shipping/self-collect.ts:102
@@ -1572,7 +1572,7 @@ Changed from pages: `/settings/customers`
 ### decrement_coupon_usage
 Defined in supabase/migrations/20261025130000_coupon_usage_capped.sql:34
 - Called by:
-  - `decrementCouponUsage()` — lib/ecommerce/discounts.ts:364
+  - `decrementCouponUsage()` — lib/ecommerce/discounts.ts:362
 
 ### discard_landing_draft
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:132
@@ -1650,7 +1650,7 @@ Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.
 ### increment_coupon_usage_capped
 Defined in supabase/migrations/20261025130000_coupon_usage_capped.sql:19
 - Called by:
-  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:353
+  - `incrementCouponUsage()` — lib/ecommerce/discounts.ts:351
 
 ### is_partner_customer
 Defined in supabase/migrations/20261021120000_points_ledger.sql:143

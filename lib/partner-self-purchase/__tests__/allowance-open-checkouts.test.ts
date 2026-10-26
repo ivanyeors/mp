@@ -9,14 +9,14 @@ vi.mock("@/lib/supabase/server", async () => {
 
 const { loadSelfPurchaseAllowance } = await import("@/lib/partner-self-purchase/allowance");
 
-const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const order = (id: string, extra: Record<string, unknown>) => ({
   id,
   self_purchase_partner_id: "p1",
   self_purchase_units: 1,
   status: "pending",
   paid_at: null,
-  created_at: hoursAgo(1),
+  created_at: minutesAgo(10),
   ...extra,
 });
 
@@ -29,13 +29,13 @@ beforeEach(() => {
 
 describe("loadSelfPurchaseAllowance", () => {
   it("counts an open checkout, so several opened before paying cannot each take the full cap", async () => {
-    h.db.orders.push(order("o-paid", { status: "confirmed", paid_at: hoursAgo(30), created_at: hoursAgo(30) }));
+    h.db.orders.push(order("o-paid", { status: "confirmed", paid_at: minutesAgo(3000), created_at: minutesAgo(3000) }));
     h.db.orders.push(order("o-open", {}));
     expect((await loadSelfPurchaseAllowance("p1")).remaining).toBe(1);
   });
 
   it("stops counting an abandoned checkout once it can no longer be paid, and never a cancelled one", async () => {
-    h.db.orders.push(order("o-stale", { created_at: hoursAgo(30) }));
+    h.db.orders.push(order("o-stale", { created_at: minutesAgo(90) }));
     h.db.orders.push(order("o-cancelled", { status: "cancelled" }));
     expect((await loadSelfPurchaseAllowance("p1")).remaining).toBe(3);
   });
