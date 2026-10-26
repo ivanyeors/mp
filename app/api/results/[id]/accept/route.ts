@@ -664,7 +664,7 @@ export async function POST(
         await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
         await addOrderTimelineEvent(
           order.id,
-          "coupon_over_limit",
+          "coupon_limit_reached",
           "This order used a coupon that had already reached its usage limit.",
           { coupon_id: couponHolder.coupon_id },
         );

@@ -519,7 +519,7 @@ export async function POST(req: Request) {
             await flagOrder(
               admin,
               orderId,
-              "coupon_over_limit",
+              "coupon_limit_reached",
               "This order used a coupon that had already reached its usage limit.",
               { coupon_id: order.coupon_id },
             );

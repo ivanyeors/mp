@@ -342,19 +342,39 @@ export async function checkCoupon(
 }
 
 /**
- * Counts one redemption of a paid order's coupon. False means the coupon was
- * already used up (its limit was reached by orders paid while this one sat in
- * Checkout): the caller flags the order. Never pushes the count past the limit.
+ * Atomically bump a coupon's usage, enforcing its `usage_limit` in the same
+ * statement (prod-hardening slice 09). Returns whether the increment applied:
+ * `false` means the cap was already reached — by a parallel checkout, since the
+ * pre-payment check in `checkCoupon` passed. The payment has already been
+ * captured by the time this runs, so callers log and move on; they never fail
+ * on `false`.
  */
 export async function incrementCouponUsage(couponId: string): Promise<boolean> {
   const admin = supabaseAdmin();
-  const { data, error } = await admin.rpc("increment_coupon_usage_capped", { p_coupon_id: couponId });
-  if (!error) return data === true;
+  const { data, error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
+  if (!error) {
+    // The capped RPC returns the new usage_count, or null when the limit was
+    // already reached and no row changed.
+    return data != null;
+  }
 
-  // Until migration 20261025130000 is applied: the old unconditional count.
-  const { error: legacyError } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
-  if (legacyError) throw new Error(`Coupon usage not counted for ${couponId}: ${legacyError.message}`);
-  return true;
+  // ponytail: fallback when the capped RPC isn't migrated yet. Still enforce the
+  // cap here — a conditional update that re-checks the usage_count it read — so
+  // no deploy ordering can reopen the uncapped race the RPC closes.
+  const { data: row } = await admin
+    .from("coupons")
+    .select("usage_count, usage_limit")
+    .eq("id", couponId)
+    .single();
+  if (!row) return false;
+  if (row.usage_limit !== null && row.usage_count >= row.usage_limit) return false;
+  const { data: updated } = await admin
+    .from("coupons")
+    .update({ usage_count: row.usage_count + 1 })
+    .eq("id", couponId)
+    .eq("usage_count", row.usage_count)
+    .select("usage_count");
+  return (updated?.length ?? 0) > 0;
 }
 
 /** Takes one redemption back on a full refund, never below zero, atomically. */

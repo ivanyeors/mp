@@ -17,3 +17,24 @@
 export function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_*]/g, (ch) => `\\${ch}`);
 }
+
+/**
+ * Make a free-text search term safe to interpolate into a PostgREST `.or()`
+ * filter string. `.or(...)` is a query language, not a value slot: a comma ends
+ * one `column.op.value` condition and begins the next, parentheses group a logic
+ * tree, and `% _ *` are `ilike` wildcards. Dropped in raw (the hole this closes),
+ * `?search=x,cost_price.gte.100` injects a condition the caller can toggle by
+ * result count — a blind boolean oracle over a column the select never returns
+ * but Postgres still filters on.
+ *
+ * Strip every character that could break out of a single `ilike` value
+ * (`, ( ) % _ * \ "`), leaving a plain case-insensitive substring match, and
+ * cap the length (the term is the only unbounded part of the query). This
+ * over-removes rather than escaping, so there is no ambiguity about what the
+ * surviving string can express — unlike `escapeLikePattern`, which is for a
+ * single `.ilike()` value, not a raw `.or()` string. Callers drop the filter
+ * entirely when the result is empty.
+ */
+export function sanitizeSearchTerm(raw: string): string {
+  return raw.replace(/[,()%_*\\"]/g, "").trim().slice(0, 100);
+}

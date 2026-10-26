@@ -82,4 +82,4 @@ graph TD
 - Slices 06 (only if a claim column is needed), 09, 15 and 16 carry migrations.
 - Merging to `main` auto-deploys, but migrations are not automated.
 - Apply each with `supabase db push` in the same sitting as its merge. Never use the MCP `apply_migration`.
-- Pre-launch hardening (2026-10-25) added two: `20261025120000_rate_limit_hits.sql` (shared rate limiter) and `20261025130000_coupon_usage_capped.sql` (capped coupon count). The code works before they are applied (the limiter falls back to per-instance counting, the coupon count to the old function), but neither protection is real until they are.
+- Pre-launch hardening (2026-10-25) added two: `20261025120000_rate_limit_hits.sql` (shared rate limiter) and `20261025130000_coupon_usage_decrement.sql` (atomic coupon decrement on refund). `20261025000000_coupon_usage_cap.sql` (capped `increment_coupon_usage`, #316) is already applied in prod. The code works before the two are applied (the limiter falls back to per-instance counting), but the shared limit is not real until they are.

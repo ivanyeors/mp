@@ -426,9 +426,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/customers.ts": {
-    "mtime": 1792768559.095862,
-    "seen": 1792822411.3469033,
-    "ast_hash": "5622be4371b2a5fcc9a1f3a540d2e842",
+    "mtime": 1792991721.2156441,
+    "seen": 1792992275.8417647,
+    "ast_hash": "c0c31112bc38ec91354cbfe8d16db6fe",
     "semantic_hash": ""
   },
   "lib/ecommerce/customization-product-type.ts": {
@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/discounts.ts": {
-    "mtime": 1792989938.550917,
-    "seen": 1792990205.7688246,
-    "ast_hash": "f2c321b21120d35a36bc811436aca69c",
+    "mtime": 1792991748.8698897,
+    "seen": 1792992275.8417678,
+    "ast_hash": "837f6d29ca04a2b091fbaad4563a3726",
     "semantic_hash": ""
   },
   "lib/ecommerce/exchange-rates.ts": {
@@ -504,15 +504,15 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/orders.ts": {
-    "mtime": 1792768559.095862,
-    "seen": 1792822411.3469424,
-    "ast_hash": "35feccc7f4c34198cd2eca9d58d3f345",
+    "mtime": 1792991721.2202811,
+    "seen": 1792992275.8417864,
+    "ast_hash": "d7a8d826419d850a570c69af3ecf9c4e",
     "semantic_hash": ""
   },
   "lib/ecommerce/products.ts": {
-    "mtime": 1792768559.095862,
-    "seen": 1792822411.3469455,
-    "ast_hash": "261c3b733304837a5008a99cde585928",
+    "mtime": 1792991721.2202811,
+    "seen": 1792992275.8417873,
+    "ast_hash": "4fa100b3034bf8c8116d77ef9f68a249",
     "semantic_hash": ""
   },
   "lib/ecommerce/restock-order.ts": {
@@ -2022,9 +2022,9 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/accept/route.ts": {
-    "mtime": 1792927676.584325,
-    "seen": 1792928599.9916885,
-    "ast_hash": "fef66e917e9d90e13db424992af2afac",
+    "mtime": 1792991760.2976696,
+    "seen": 1792992275.8408048,
+    "ast_hash": "e812b90e91038555ec256e56fc3c4f00",
     "semantic_hash": ""
   },
   "app/api/results/[id]/assign/route.ts": {
@@ -2382,9 +2382,9 @@
     "semantic_hash": ""
   },
   "app/api/stripe/webhook/route.ts": {
-    "mtime": 1792928191.7875776,
-    "seen": 1792928599.9919815,
-    "ast_hash": "4f9ab1de9e9f2563f2f3a9343cab58b1",
+    "mtime": 1792991760.2970257,
+    "seen": 1792992275.8410578,
+    "ast_hash": "243f743c3dc7ac8940834a55a150fc8a",
     "semantic_hash": ""
   },
   "app/api/telegram/webhook/route.ts": {
@@ -3828,9 +3828,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792768560.6957016,
-    "seen": 1792822411.3489265,
-    "ast_hash": "b82a37fb7080b61ba4e373536406e3f7",
+    "mtime": 1792991721.2209303,
+    "seen": 1792992275.842922,
+    "ast_hash": "857e220838899cf02af257e1a5308612",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -6840,9 +6840,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/admin/orders-list.ts": {
-    "mtime": 1792768559.095862,
-    "seen": 1792822411.3468945,
-    "ast_hash": "70094dfa619e934aa8d38bc8ddccd124",
+    "mtime": 1792991721.2156441,
+    "seen": 1792992275.8417583,
+    "ast_hash": "bbf57ec4df9aab2f3db8d82fe6682e94",
     "semantic_hash": ""
   },
   "lib/ecommerce/admin/products.ts": {
@@ -8388,9 +8388,9 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/accept/__tests__/exactly-once.test.ts": {
-    "mtime": 1792927664.5805357,
-    "seen": 1792928599.9916837,
-    "ast_hash": "863627d83aaa9a62032307d210ade982",
+    "mtime": 1792991721.1356442,
+    "seen": 1792992275.8408015,
+    "ast_hash": "13078bde88a51787100ae3bcbfcee741",
     "semantic_hash": ""
   },
   "app/api/results/hold/__tests__/ownership.test.ts": {
@@ -8598,9 +8598,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-prod-hardening/issues/README.md": {
-    "mtime": 1792928410.8832655,
-    "seen": 1792928599.994898,
-    "ast_hash": "e36cf1d00b8704bcf3ce58f804d67e9b",
+    "mtime": 1792991780.2181609,
+    "seen": 1792992275.8440914,
+    "ast_hash": "bf0ea774d28d542b78f7ca4cda2e0e3a",
     "semantic_hash": ""
   },
   ".claude/PRD-prod-hardening/prod-hardening-prd.md": {
@@ -13674,9 +13674,9 @@
     "semantic_hash": ""
   },
   "lib/supabase/like-pattern.ts": {
-    "mtime": 1792768559.1268308,
-    "seen": 1792822411.348733,
-    "ast_hash": "85f86d4314d8c324ac7074b328f83d4a",
+    "mtime": 1792991721.2202811,
+    "seen": 1792992275.842816,
+    "ast_hash": "0eafdbd61e711adf7569144bdc4ebde9",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020122000_customer_purchase_lines.sql": {
@@ -15204,9 +15204,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0033-one-checkout-code-and-discounts-on-results.md": {
-    "mtime": 1792989938.5525749,
-    "seen": 1792990205.7713945,
-    "ast_hash": "f9195ed09fbce99242c40aad4d78ed84",
+    "mtime": 1792991780.2164927,
+    "seen": 1792992275.8449044,
+    "ast_hash": "4f8cf4af4fa6d033cb33e45551c592f1",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/cross-site.test.ts": {
@@ -15287,12 +15287,6 @@
     "ast_hash": "54fe4ffa5d744014fa25257fced79478",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261025130000_coupon_usage_capped.sql": {
-    "mtime": 1792927364.1952033,
-    "seen": 1792928599.9944186,
-    "ast_hash": "d9dcc3115e2c9cc3d3cb1838c0fb4988",
-    "semantic_hash": ""
-  },
   "lib/ecommerce/__tests__/coupon-account.test.ts": {
     "mtime": 1792937666.3501656,
     "seen": 1792937993.2498443,
@@ -15303,6 +15297,30 @@
     "mtime": 1792989938.5337672,
     "seen": 1792990205.7698638,
     "ast_hash": "b2095c110ed3ee28a20ed1c1fd8df930",
+    "semantic_hash": ""
+  },
+  "lib/ecommerce/__tests__/coupon-usage-cap.test.ts": {
+    "mtime": 1792991721.2156441,
+    "seen": 1792992275.8417218,
+    "ast_hash": "9059bdcb97187fcc2db897a2236f909d",
+    "semantic_hash": ""
+  },
+  "lib/ecommerce/__tests__/search-injection.test.ts": {
+    "mtime": 1792991721.2156441,
+    "seen": 1792992275.8417356,
+    "ast_hash": "82ac1824599a838cf745145b9666ebd4",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261025000000_coupon_usage_cap.sql": {
+    "mtime": 1792991721.2209303,
+    "seen": 1792992275.8434334,
+    "ast_hash": "4f0068ae4d3ce472732b77d9674f176a",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261025130000_coupon_usage_decrement.sql": {
+    "mtime": 1792991780.1706638,
+    "seen": 1792992275.8434384,
+    "ast_hash": "6806a1a2e189952dfb6796b51bad8f3e",
     "semantic_hash": ""
   }
 }

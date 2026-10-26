@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 import type { Order, OrderItem, OrderTimelineEvent } from "@/lib/types/ecommerce";
 
 /** Sum line quantities for list/detail item counts (not line-item row count). */
@@ -30,7 +31,12 @@ export async function getOrders(opts: GetOrdersOpts = {}) {
   if (opts.email) query = query.ilike("email", `%${opts.email}%`);
   if (opts.customer_id) query = query.eq("customer_id", opts.customer_id);
   if (opts.search) {
-    query = query.or(`order_number.ilike.%${opts.search}%,email.ilike.%${opts.search}%`);
+    // `.or()` is a raw PostgREST filter string, so the term is sanitized, not
+    // interpolated (see sanitizeSearchTerm). Admin-gated, but the same breakout.
+    const term = sanitizeSearchTerm(opts.search);
+    if (term) {
+      query = query.or(`order_number.ilike.%${term}%,email.ilike.%${term}%`);
+    }
   }
 
   query = query.order("created_at", { ascending: false }).range(from, to);
