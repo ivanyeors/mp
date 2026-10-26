@@ -6,8 +6,9 @@ import { marketingEmailState } from "@/lib/marketing-consent/state";
  * the wave sender asks of Postgres:
  *  - `customer_campaign_candidates` and `customer_campaign_wave_stats`, the
  *    two views, computed from the tables (`select`, `order`, `range`);
- *  - `customer_campaign_sends`, for the send limit's count (`in`, `gte`,
- *    `select` with `count: "exact", head: true`);
+ *  - `customer_campaign_sends`, for the send limit's count and its oldest
+ *    send (`in`, `gte`, `order`, `limit`, `select` with `count: "exact",
+ *    head: true`), and `admin_audit_log` for the tests it also counts;
  *  - `site_settings` (`eq`, `in`, `maybeSingle`);
  *  - the RPCs `claim_campaign_send`, `finish_campaign_send`, `mint_claim_link`
  *    and `set_marketing_email`.
@@ -57,6 +58,8 @@ export interface CampaignWorld {
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
   settings: Record<string, string>;
   consentEvents: Row[];
+  /** `admin_audit_log` rows: the Email campaigns page's tests (`email_campaign.test`), which the send limit counts. */
+  auditLog?: { action: string; created_at: string; after: Row | null }[];
   /** Called inside each claim, before the rule runs: a test's chance to change the world. */
   onClaim?: (customerId: string) => void;
 }
@@ -130,12 +133,15 @@ function waveStats(world: CampaignWorld): Row[] {
 function query(source: () => Row[]) {
   const filters: Array<(r: Row) => boolean> = [];
   let sort: string | null = null;
+  let descending = false;
   let range: [number, number] | null = null;
+  let limit: number | null = null;
   let head = false;
   const rows = () => {
     let r = source().filter((row) => filters.every((f) => f(row)));
-    if (sort) r = [...r].sort((a, b) => (String(a[sort!]) < String(b[sort!]) ? -1 : 1));
+    if (sort) r = [...r].sort((a, b) => (String(a[sort!]) < String(b[sort!]) ? -1 : 1) * (descending ? -1 : 1));
     if (range) r = r.slice(range[0], range[1] + 1);
+    if (limit !== null) r = r.slice(0, limit);
     return r;
   };
   const q = {
@@ -143,8 +149,9 @@ function query(source: () => Row[]) {
     eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
     in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(r[col])), q),
     gte: (col: string, val: string) => (filters.push((r) => String(r[col]) >= val), q),
-    order: (col: string) => ((sort = col), q),
+    order: (col: string, opts?: { ascending?: boolean }) => ((sort = col), (descending = opts?.ascending === false), q),
     range: (from: number, to: number) => ((range = [from, to]), q),
+    limit: (n: number) => ((limit = n), q),
     maybeSingle: () => Promise.resolve({ data: rows()[0] ?? null, error: null }),
     then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
       Promise.resolve({ data: head ? null : rows(), count: rows().length, error: null }).then(resolve, reject),
@@ -245,6 +252,7 @@ export function fakeCampaignClient(world: CampaignWorld) {
       if (table === "customer_campaign_candidates") return query(() => candidates(world));
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
       if (table === "customer_campaign_sends") return query(() => world.sends as unknown as Row[]);
+      if (table === "admin_audit_log") return query(() => (world.auditLog ?? []) as unknown as Row[]);
       if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake-campaign-db: no table ${table}`);
     },

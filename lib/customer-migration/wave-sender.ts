@@ -197,13 +197,12 @@ export type DeliverySetup = Pick<
 >;
 
 /**
- * The checks every campaign email passes before anything is sent, whatever it
- * says: the Resend transport, the From on the campaign subdomain, a support
- * inbox for Reply-To, a public https site, and that site answering one-click
- * unsubscribe for links signed here. Shared by the wave sender and the Email
- * campaigns page (lib/email-campaigns/sender.ts). Changes nothing.
+ * The delivery checks that need no network call: the Resend transport, the
+ * From on the campaign subdomain, a support inbox for Reply-To, and a public
+ * https site. The Email campaigns page's Sending card shows these on every
+ * load. Pure.
  */
-export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
+export function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "unsubscribeSecret">): PreflightCheck[] {
   const checks: PreflightCheck[] = [];
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
 
@@ -236,6 +235,18 @@ export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<Pref
   }
   const siteOk = Boolean(site && site.protocol === "https:" && !isLocalHost(site.hostname));
   add("site", siteOk, siteOk ? `links point at ${site!.origin}` : `${setup.origin} is not a public https site`);
+  return checks;
+}
+
+/**
+ * The checks every campaign email passes before anything is sent, whatever it
+ * says: {@link campaignConfigChecks}, then that site answering one-click
+ * unsubscribe for links signed here. Shared by the wave sender and the Email
+ * campaigns page (lib/email-campaigns/sender.ts). Changes nothing.
+ */
+export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
+  const checks = campaignConfigChecks(setup);
+  const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
 
   const route = await probeUnsubscribeRoute(setup.origin, setup.fetchImpl);
   add("unsubscribe_route", route.ready, route.ready ? `${setup.origin}${UNSUBSCRIBE_ROUTE} answers one-click unsubscribe` : route.reason);

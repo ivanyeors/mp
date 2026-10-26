@@ -25,6 +25,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:54
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
+  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:267
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
 
 ### admin_roles
@@ -1455,7 +1456,7 @@ Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:52
 References: `customers`, `email_campaigns`
 - Read by:
   - `campaign-sends.ts` [select] — lib/crm/timeline/sources/campaign-sends.ts:51
-  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:230
+  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:248
 
 ### customer_campaign_wave_stats
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:392
@@ -2428,23 +2429,24 @@ app/[lang]/settings/blogs/[id]/page.tsx
 
 ### /settings/campaigns
 app/[lang]/settings/campaigns/page.tsx
-- Loads: `listCampaigns()`, `requireAdminPage()`
+- Server actions: `checkCampaignReadiness()`
+- Loads: `listCampaigns()`, `readSendingStatus()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
-- Reads, through the same: `admin_roles`, `admin_users`, `email_campaign_stats`, `email_campaigns`
+- Reads, through the same: `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `email_campaign_stats`, `email_campaigns`, `site_settings`
 
 ### /settings/campaigns/[id]
 app/[lang]/settings/campaigns/[id]/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
-- Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `requireAdminPage()`
+- Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `marketing_campaign_candidates`, `site_settings`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `marketing_campaign_candidates`, `site_settings`
 
 ### /settings/campaigns/new
 app/[lang]/settings/campaigns/new/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Loads: `listSegments()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_wave_stats`, `customer_segments`, `marketing_campaign_candidates`, `site_settings`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `marketing_campaign_candidates`, `site_settings`
 
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx

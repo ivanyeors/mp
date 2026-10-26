@@ -6,11 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
 import { FIRST_CAMPAIGN_DRAFT, campaignLedgerKey, type Campaign } from "../rules";
+import { ResendTransport } from "@/lib/email/transport";
+import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import {
   BATCH_SIZE,
   campaignButton,
   campaignSlug,
   planWave,
+  readSendingStatus,
   renderCampaignPreview,
   sendCampaignBatch,
   sendCampaignTest,
@@ -242,6 +245,7 @@ describe("planWave", () => {
       "pause",
       // The first campaign promises points.
       "points",
+      "send_limit",
     ]);
     expect(r.wave).toBe("w1");
     // Ann (2 Shopify orders) and Bea (1 here) are buyers, Bea the newer; Dan
@@ -378,5 +382,154 @@ describe("links", () => {
     const html = renderCampaignPreview(campaign(), { origin: ORIGIN, firstName: "Ivan" }).html;
     expect(html).toContain(`${ORIGIN}/en-US/unsubscribe"`);
     expect(html).toContain("Hi Ivan,");
+  });
+});
+
+describe("the send limit (Resend's free plan: 100 a day, 3,000 a month, tests included)", () => {
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+  /** Sends of another campaign email, `h` hours ago. */
+  const earlier = (n: number, status: string, h: number) => {
+    for (let i = 0; i < n; i++) {
+      world.sends.push({
+        id: `e-${status}-${h}-${i}`,
+        customer_id: `earlier-${h}-${i}`,
+        template: "migration_announcement",
+        campaign_id: null,
+        wave: "pilot",
+        status,
+        provider_message_id: status === "failed" ? null : `re_e_${h}_${i}`,
+        sent_at: hoursAgo(h),
+        attempts: 1,
+        last_error: null,
+        bounced_at: null,
+        complained_at: null,
+      });
+    }
+  };
+  const tests = (sent: number, h: number) =>
+    (world.auditLog ??= []).push({ action: "email_campaign.test", created_at: hoursAgo(h), after: { sent, failed: 0 } });
+  const limitOf = (r: { readiness: { checks: { key: string; ok: boolean; detail: string }[] } }) =>
+    r.readiness.checks.find((c) => c.key === "send_limit")!;
+
+  it("is the free plan when no limits are given, and counts the ledger and tests over both windows", async () => {
+    earlier(10, "sent", 2);
+    earlier(3, "failed", 2); // never reached Resend
+    earlier(40, "sent", 30); // yesterday: the month only
+    tests(3, 1);
+    tests(2, 24 * 20);
+    const r = await planWave(campaign(), { size: 2 }, setup().s);
+    expect(limitOf(r)).toEqual({
+      key: "send_limit",
+      ok: true,
+      detail: "13 of 100 sent in the last 24 hours, 55 of 3,000 in the last 31 days: up to 87 more now",
+    });
+    expect(r.readiness.allowance).toMatchObject({ remaining: 87, binding: "daily", used: { daily: 13, monthly: 55 }, roomAt: null });
+    expect(r.limitedBy).toBeNull();
+  });
+
+  it("plans no more than today's room, and says how many wait for a later wave", async () => {
+    const r = await planWave(campaign(), { size: 10 }, setup({ sendLimits: { daily: 2, monthly: 3000 } }).s);
+    expect(r.readiness.ready).toBe(true);
+    expect(r.customerIds).toEqual([BEA, ANN]);
+    expect(r).toMatchObject({ requested: 10, limitedBy: "daily", waiting: 1 });
+    expect(r.plan.eligible).toBe(3);
+  });
+
+  it("fails the check at zero, plans nobody, and says when room opens again", async () => {
+    earlier(1, "sent", 5);
+    earlier(1, "pending", 3);
+    const r = await planWave(campaign(), { size: 10 }, setup({ sendLimits: { daily: 2, monthly: 3000 } }).s);
+    expect(r.readiness.ready).toBe(false);
+    expect(r.customerIds).toEqual([]);
+    const roomAt = r.readiness.allowance!.roomAt!;
+    expect(Math.abs(Date.parse(roomAt) - (Date.now() + 19 * 3600_000))).toBeLessThan(60_000);
+    expect(limitOf(r)).toMatchObject({ ok: false });
+    expect(limitOf(r).detail).toBe(
+      `2 of 2 sent in the last 24 hours, 2 of 3,000 in the last 31 days: the day's 2 are used; room again from ${formatAdminWeekdayTime(roomAt)}`,
+    );
+  });
+
+  it("names the month when the month is what is used up", async () => {
+    earlier(5, "sent", 24 * 10);
+    const r = await planWave(campaign(), { size: 10 }, setup({ sendLimits: { daily: 100, monthly: 5 } }).s);
+    expect(r.readiness.allowance).toMatchObject({ remaining: 0, binding: "monthly" });
+    expect(limitOf(r).detail).toMatch(/: the month's 5 are used; room again from /);
+  });
+
+  it("reads the limits when it counts them, so a bad value fails the check, not the page", async () => {
+    const r = await planWave(
+      campaign(),
+      { size: 10 },
+      setup({ sendLimits: () => { throw new Error("CAMPAIGN_DAILY_SEND_LIMIT must be a whole number of emails, not lots"); } }).s,
+    );
+    expect(limitOf(r)).toEqual({ key: "send_limit", ok: false, detail: "CAMPAIGN_DAILY_SEND_LIMIT must be a whole number of emails, not lots" });
+    expect(r.customerIds).toEqual([]);
+  });
+
+  it("cuts a batch to the room left and stops there, claiming nobody past it", async () => {
+    const { s, sent, admin } = setup({ sendLimits: { daily: 1, monthly: 3000 } });
+    const r = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA, ANN] }, s);
+    expect(r).toMatchObject({ sent: 1, failed: 0, stopped: "the send limit is reached; the rest go in the next wave" });
+    expect(sent.map((e) => e.to)).toEqual(["bea@x.test"]);
+    expect(admin.rpcCalls.filter((c) => c.name === "claim_marketing_campaign_send")).toHaveLength(1);
+  });
+
+  it("stops before claiming anyone when another sender used the room since the wave was planned", async () => {
+    earlier(1, "sent", 0.5);
+    const { s, sent, admin } = setup({ sendLimits: { daily: 1, monthly: 3000 } });
+    const r = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA, ANN] }, s);
+    expect(r.sent).toBe(0);
+    expect(r.stopped).toMatch(/^the send limit is reached \(room again from .+\); the rest go in the next wave$/);
+    expect(sent).toEqual([]);
+    expect(admin.rpcCalls).toEqual([]);
+  });
+
+  it("stops at once on Resend's quota answer, and marks that send failed so it can be retried", async () => {
+    const quota = 'Resend send failed (429): {"name":"daily_quota_exceeded","message":"You have reached your daily email sending quota."}';
+    const transport: EmailTransport = { name: "resend", send: vi.fn(async () => { throw new Error(quota); }) };
+    const { s, admin } = setup({ transport });
+    const r = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA, ANN] }, s);
+    expect(r).toMatchObject({ sent: 0, failed: 1, stopped: "Resend's sending quota is used up: wait for room, then retry the failed send" });
+    expect(admin.rpcCalls.filter((c) => c.name === "claim_marketing_campaign_send")).toHaveLength(1);
+    expect(world.sends.find((x) => x.customer_id === BEA)).toMatchObject({ status: "failed" });
+  });
+
+  it("refuses a test without room, because Resend counts tests too", async () => {
+    tests(2, 1);
+    const none = await sendCampaignTest(campaign(), { to: ["a@x.test"], firstName: null }, setup({ sendLimits: { daily: 2, monthly: 3000 } }).s);
+    expect(none).toEqual({ refused: expect.stringMatching(/^The send limit is reached, and Resend counts tests too: room again from .+\.$/) });
+    const one = await sendCampaignTest(campaign(), { to: ["a@x.test", "b@x.test"], firstName: null }, setup({ sendLimits: { daily: 3, monthly: 3000 } }).s);
+    expect(one).toEqual({ refused: "Only 1 more can be sent now, and Resend counts tests too: send the test to fewer addresses." });
+  });
+});
+
+describe("readSendingStatus", () => {
+  it("says what is set up and what is left, and never carries the key", async () => {
+    const key = "re_live_0123456789abcdef";
+    const status = await readSendingStatus(setup({ transport: new ResendTransport(key), reportsConfigured: true }).s);
+    expect(status.checks.map((c) => [c.key, c.ok])).toEqual([
+      ["transport", true],
+      ["from", true],
+      ["reply_to", true],
+      ["site", true],
+      ["reports", true],
+    ]);
+    expect(status.allowance).toMatchObject({ remaining: 100, used: { daily: 0, monthly: 0 } });
+    expect(JSON.stringify(status)).not.toContain(key);
+    expect(JSON.stringify(status)).not.toContain("re_live");
+  });
+
+  it("names what is missing, and calls no other site", async () => {
+    const fetchImpl = vi.fn();
+    const status = await readSendingStatus(
+      setup({ transport: null, campaignFrom: undefined, reportsConfigured: false, fetchImpl: fetchImpl as unknown as typeof fetch }).s,
+    );
+    const failing = Object.fromEntries(status.checks.filter((c) => !c.ok).map((c) => [c.key, c.detail]));
+    expect(failing).toEqual({
+      transport: "CAMPAIGN_RESEND_API_KEY is not set (owner decision 4)",
+      from: "CAMPAIGN_EMAIL_FROM is not set",
+      reports: "CAMPAIGN_RESEND_WEBHOOK_SECRET is not set: bounces and spam reports are not recorded, and the pause rule cannot see them",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

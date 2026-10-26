@@ -1,4 +1,4 @@
-import { getCampaignTransport, transactionalFromAddress } from "@/lib/email/campaign-transport";
+import { campaignSendLimits, getCampaignTransport, transactionalFromAddress } from "@/lib/email/campaign-transport";
 import { getSupportInbox } from "@/lib/email/contact";
 import { getSiteOrigin } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -10,6 +10,9 @@ import type { CampaignSenderSetup } from "./sender";
  * Resend key and subdomain (CAMPAIGN_RESEND_API_KEY, CAMPAIGN_EMAIL_FROM,
  * CAMPAIGN_EMAIL_DOMAIN), never the order mailbox; the support inbox for
  * Reply-To; this site for every link; and UNSUBSCRIBE_SECRET to sign them.
+ * The plan's send limit (CAMPAIGN_DAILY_SEND_LIMIT, CAMPAIGN_MONTHLY_SEND_LIMIT;
+ * unset, Resend's free plan) and whether bounce reports can arrive
+ * (CAMPAIGN_RESEND_WEBHOOK_SECRET) come from here too.
  */
 export function campaignSenderSetup(): CampaignSenderSetup {
   return {
@@ -21,5 +24,7 @@ export function campaignSenderSetup(): CampaignSenderSetup {
     replyTo: getSupportInbox(),
     origin: getSiteOrigin(),
     unsubscribeSecret: process.env.UNSUBSCRIBE_SECRET || undefined,
+    sendLimits: () => campaignSendLimits(),
+    reportsConfigured: Boolean(process.env.CAMPAIGN_RESEND_WEBHOOK_SECRET?.trim()),
   };
 }

@@ -542,6 +542,19 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => 
     expect(report.heldBack).toBe(1);
   });
 
+  it("counts the Email campaigns page's tests, which Resend counts too", async () => {
+    world.auditLog = [
+      { action: "email_campaign.test", created_at: new Date(Date.now() - 3600_000).toISOString(), after: { sent: 3, failed: 0 } },
+      { action: "email_campaign.test", created_at: new Date(Date.now() - 5 * 86400_000).toISOString(), after: { sent: 2, failed: 1 } },
+      { action: "email_campaign.test", created_at: new Date(Date.now() - 40 * 86400_000).toISOString(), after: { sent: 3, failed: 0 } },
+      { action: "email_campaign.update", created_at: new Date().toISOString(), after: { sent: 50 } },
+    ];
+    const report = await runCampaignWave(announce({ apply: false }), setup());
+    expect(limitCheck(report).detail).toBe(
+      "3 of 100 sent in the last 24 hours, 5 of 3,000 in the last 31 days: this run sends at most 97",
+    );
+  });
+
   it("refuses while the month is used up", async () => {
     earlier(16, "sent", 3);
     const report = await runCampaignWave(announce(), setup({ sendLimits: { daily: 100, monthly: 16 } }));

@@ -220,23 +220,78 @@ export const SEND_LIMIT_DAY_MS = 24 * 3600_000;
 export const SEND_LIMIT_MONTH_MS = 31 * 86400_000;
 
 export interface RecentCampaignSends {
+  /** Sends and test emails in the last 24 hours. */
   lastDay: number;
+  /** Sends and test emails in the last 31 days. */
   lastMonth: number;
+  /** The oldest of those in each window: room opens again when it leaves the window. */
+  oldestInDay?: string | null;
+  oldestInMonth?: string | null;
 }
 
-/** Campaign sends in the last 24 hours and the last 31 days, every template and wave. */
+/** The audit log's action for a test from the Email campaigns page; `after.sent` is how many it sent. */
+export const CAMPAIGN_TEST_AUDIT_ACTION = "email_campaign.test";
+
+/** The earliest of some timestamps, compared as times: Postgres and JavaScript write them differently. */
+const earliest = (...isos: (string | null | undefined)[]) =>
+  isos.filter((t): t is string => Boolean(t) && Number.isFinite(Date.parse(t!))).sort((a, b) => Date.parse(a) - Date.parse(b))[0] ?? null;
+
+/**
+ * Campaign email that used one of Resend's sends in the last 24 hours and
+ * the last 31 days: every ledger row of every template, wave and Campaign,
+ * plus the Email campaigns page's tests, which the ledger does not hold (the
+ * audit log does). Resend counts tests too.
+ */
 export async function readRecentCampaignSends(admin: SupabaseClient, now: Date): Promise<RecentCampaignSends> {
-  const since = async (ms: number) => {
-    const { count, error } = await admin
-      .from("customer_campaign_sends")
-      .select("id", { count: "exact", head: true })
-      .in("status", [...COUNTED_SEND_STATUSES])
-      .gte("sent_at", new Date(now.getTime() - ms).toISOString());
+  const sinceIso = (ms: number) => new Date(now.getTime() - ms).toISOString();
+  const used = () =>
+    admin.from("customer_campaign_sends").select("sent_at", { count: "exact", head: true }).in("status", [...COUNTED_SEND_STATUSES]);
+  const count = async (ms: number) => {
+    const { count, error } = await used().gte("sent_at", sinceIso(ms));
     if (error) throw new Error(`Could not count the campaign's recent sends: ${error.message}`);
     return count ?? 0;
   };
-  const [lastDay, lastMonth] = await Promise.all([since(SEND_LIMIT_DAY_MS), since(SEND_LIMIT_MONTH_MS)]);
-  return { lastDay, lastMonth };
+  const oldest = async (ms: number) => {
+    const { data, error } = await admin
+      .from("customer_campaign_sends")
+      .select("sent_at")
+      .in("status", [...COUNTED_SEND_STATUSES])
+      .gte("sent_at", sinceIso(ms))
+      .order("sent_at", { ascending: true })
+      .limit(1);
+    if (error) throw new Error(`Could not read the campaign's recent sends: ${error.message}`);
+    const at = (data as { sent_at?: unknown }[] | null)?.[0]?.sent_at;
+    return typeof at === "string" ? at : null;
+  };
+  const tests = async () => {
+    const { data, error } = await admin
+      .from("admin_audit_log")
+      .select("created_at, after")
+      .eq("action", CAMPAIGN_TEST_AUDIT_ACTION)
+      .gte("created_at", sinceIso(SEND_LIMIT_MONTH_MS));
+    if (error) throw new Error(`Could not count the campaign's test sends: ${error.message}`);
+    return ((data ?? []) as { created_at?: unknown; after?: unknown }[]).flatMap((row) => {
+      const sent = Number((row.after as { sent?: unknown } | null)?.sent);
+      return typeof row.created_at === "string" && Number.isInteger(sent) && sent > 0 ? [{ at: row.created_at, sent }] : [];
+    });
+  };
+
+  const [lastDay, lastMonth, oldestDay, oldestMonth, testRows] = await Promise.all([
+    count(SEND_LIMIT_DAY_MS),
+    count(SEND_LIMIT_MONTH_MS),
+    oldest(SEND_LIMIT_DAY_MS),
+    oldest(SEND_LIMIT_MONTH_MS),
+    tests(),
+  ]);
+  const daySince = now.getTime() - SEND_LIMIT_DAY_MS;
+  const testsInDay = testRows.filter((t) => Date.parse(t.at) >= daySince);
+  const sum = (rows: { sent: number }[]) => rows.reduce((a, t) => a + t.sent, 0);
+  return {
+    lastDay: lastDay + sum(testsInDay),
+    lastMonth: lastMonth + sum(testRows),
+    oldestInDay: earliest(oldestDay, ...testsInDay.map((t) => t.at)),
+    oldestInMonth: earliest(oldestMonth, ...testRows.map((t) => t.at)),
+  };
 }
 
 export interface SendBudget {
@@ -251,4 +306,24 @@ export function sendBudget(limits: { daily: number; monthly: number }, used: Rec
   const daily = Math.max(0, limits.daily - used.lastDay);
   const monthly = Math.max(0, limits.monthly - used.lastMonth);
   return daily <= monthly ? { remaining: daily, binding: "daily" } : { remaining: monthly, binding: "monthly" };
+}
+
+export interface SendAllowance extends SendBudget {
+  limits: { daily: number; monthly: number };
+  used: { daily: number; monthly: number };
+  /** When room opens again, while none is left: the oldest counted send leaves the binding window. */
+  roomAt: string | null;
+}
+
+/** Pure — the send limit as the Email campaigns page shows it. */
+export function sendAllowance(limits: { daily: number; monthly: number }, recent: RecentCampaignSends): SendAllowance {
+  const budget = sendBudget(limits, recent);
+  const oldest = budget.binding === "daily" ? recent.oldestInDay : recent.oldestInMonth;
+  const window = budget.binding === "daily" ? SEND_LIMIT_DAY_MS : SEND_LIMIT_MONTH_MS;
+  return {
+    ...budget,
+    limits: { daily: limits.daily, monthly: limits.monthly },
+    used: { daily: recent.lastDay, monthly: recent.lastMonth },
+    roomAt: budget.remaining === 0 && oldest ? new Date(Date.parse(oldest) + window).toISOString() : null,
+  };
 }

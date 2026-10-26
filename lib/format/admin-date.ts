@@ -64,6 +64,15 @@ const MY_DATE = new Intl.DateTimeFormat("en-MY", {
   day: "numeric",
 });
 
+const WEEKDAY_TIME = new Intl.DateTimeFormat("en-SG", {
+  timeZone: TIME_ZONE,
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 /**
  * `Intl.format` throws a RangeError on an invalid Date, where the
  * `toLocale*` methods it replaces returned "Invalid Date". Parse defensively so
@@ -98,6 +107,11 @@ export function formatAdminDateTimeMY(iso: string | null | undefined): string {
 /** Date only, en-MY shape: `2 Sept 2026` (Asia/Singapore). */
 export function formatAdminDateMY(iso: string | null | undefined): string {
   return apply(MY_DATE, iso);
+}
+
+/** Weekday, date and time: `Tue, 27 Oct, 3:40 pm` (Asia/Singapore). For a moment soon, such as when sending opens again. */
+export function formatAdminWeekdayTime(iso: string | null | undefined): string {
+  return apply(WEEKDAY_TIME, iso);
 }
 
 /**

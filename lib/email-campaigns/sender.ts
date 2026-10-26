@@ -16,6 +16,13 @@
  * (`claimBonusOffer`): on, launched, with a Claim bonus. A test send is not
  * held back by it.
  *
+ * **The send limit** (PRD-campaign-send-flow). Resend's free plan sends 100
+ * a day and 3,000 a month, tests included (`campaignSendLimits` raises them on
+ * a paid plan). A wave is planned only up to the room left, every batch
+ * re-reads it (the migration script or a second tab may have sent), and
+ * Resend's 429 quota answer stops the wave at once. The rest of the audience
+ * waits for the next wave: there is no cron.
+ *
  * **Each send** is claimed in the ledger first (`claim_marketing_campaign_send`,
  * which re-checks consent, suppression and "already sent" in SQL at that
  * moment), then rendered with the recipient's own unsubscribe link and
@@ -26,16 +33,29 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mintClaimLink } from "@/lib/customer-migration/claim-link";
-import { wavePause, type CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import {
+  readRecentCampaignSends,
+  sendAllowance,
+  wavePause,
+  type CampaignWaveStats,
+  type SendAllowance,
+} from "@/lib/customer-migration/campaign-ledger";
+import {
+  campaignConfigChecks,
   campaignDeliveryChecks,
+  isSendQuotaError,
   MAX_CONSECUTIVE_FAILURES,
   THROTTLE_MS,
   type DeliverySetup,
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
 import { renderComposedCampaignEmail } from "@/lib/email/campaigns";
-import { checkCampaignFrom, emailAddressOf } from "@/lib/email/campaign-transport";
+import {
+  checkCampaignFrom,
+  emailAddressOf,
+  RESEND_FREE_SEND_LIMITS,
+  type CampaignSendLimits,
+} from "@/lib/email/campaign-transport";
 import type { RenderedEmail } from "@/lib/email/types";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -54,6 +74,7 @@ import {
   type Campaign,
   type CampaignPlan,
 } from "./rules";
+import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
 
 export { MAX_CONSECUTIVE_FAILURES };
@@ -63,7 +84,12 @@ export const BATCH_SIZE = 20;
 
 export interface CampaignSenderSetup extends DeliverySetup {
   admin: SupabaseClient;
+  /** `campaignSendLimits`, read when counted so a bad value fails the check, not the page; Resend's free plan when absent. */
+  sendLimits?: CampaignSendLimits | (() => CampaignSendLimits);
+  /** CAMPAIGN_RESEND_WEBHOOK_SECRET is set, so bounces and spam reports reach the ledger. */
+  reportsConfigured?: boolean;
   sleep?: (ms: number) => Promise<void>;
+  now?: () => Date;
 }
 
 /** `utm_source` on the site links a composed campaign carries. */
@@ -194,6 +220,84 @@ function quickChecks(setup: DeliverySetup): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// The send limit
+// ---------------------------------------------------------------------------
+
+const count = (v: number) => v.toLocaleString("en-SG");
+
+/** What the plan's limits leave now: every campaign email and test of the last 24 hours and 31 days. */
+export async function readSendAllowance(setup: Pick<CampaignSenderSetup, "admin" | "sendLimits" | "now">): Promise<SendAllowance> {
+  const now = (setup.now ?? (() => new Date()))();
+  const limits = typeof setup.sendLimits === "function" ? setup.sendLimits() : (setup.sendLimits ?? RESEND_FREE_SEND_LIMITS);
+  return sendAllowance(limits, await readRecentCampaignSends(setup.admin, now));
+}
+
+/** Pure — the send limit as a check: it fails while nothing is left. */
+export function allowanceCheck(allowance: SendAllowance | null, error?: string): PreflightCheck {
+  if (!allowance) return { key: "send_limit", ok: false, detail: error ?? "the send limit could not be counted" };
+  const { limits, used, remaining, binding } = allowance;
+  const counted = `${count(used.daily)} of ${count(limits.daily)} sent in the last 24 hours, ${count(used.monthly)} of ${count(limits.monthly)} in the last 31 days`;
+  return {
+    key: "send_limit",
+    ok: remaining > 0,
+    detail:
+      remaining > 0
+        ? `${counted}: up to ${count(remaining)} more now`
+        : `${counted}: the ${binding === "daily" ? "day's" : "month's"} ${count(binding === "daily" ? limits.daily : limits.monthly)} are used; ${roomAgainText(allowance)}`,
+  };
+}
+
+async function tryAllowance(setup: CampaignSenderSetup): Promise<{ allowance: SendAllowance | null; error?: string }> {
+  try {
+    return { allowance: await readSendAllowance(setup) };
+  } catch (err) {
+    return { allowance: null, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The Sending card
+// ---------------------------------------------------------------------------
+
+/** Who a campaign email is from and where replies go, as configured: shown to Staff, never typed. */
+export interface CampaignSender {
+  from: string | null;
+  replyTo: string | null;
+}
+
+const senderOf = (setup: DeliverySetup): CampaignSender => ({
+  from: setup.campaignFrom?.trim() || null,
+  replyTo: emailAddressOf(setup.replyTo),
+});
+
+export interface SendingStatus {
+  sender: CampaignSender;
+  /** The delivery checks with no network call, then whether reports can arrive. */
+  checks: PreflightCheck[];
+  allowance: SendAllowance | null;
+  allowanceError: string | null;
+}
+
+/**
+ * The Email campaigns page's Sending card: is Resend set up, from which
+ * address, where replies go, whether bounces and spam reports can arrive, and
+ * how much of the plan is left. It names no key: a key never leaves the
+ * server. Changes nothing, and calls no other site.
+ */
+export async function readSendingStatus(setup: CampaignSenderSetup): Promise<SendingStatus> {
+  const checks = campaignConfigChecks(setup);
+  checks.push({
+    key: "reports",
+    ok: Boolean(setup.reportsConfigured),
+    detail: setup.reportsConfigured
+      ? "Resend reports bounces and spam to this site, so they are left out of later sends"
+      : "CAMPAIGN_RESEND_WEBHOOK_SECRET is not set: bounces and spam reports are not recorded, and the pause rule cannot see them",
+  });
+  const { allowance, error } = await tryAllowance(setup);
+  return { sender: senderOf(setup), checks, allowance, allowanceError: allowance ? null : (error ?? null) };
+}
+
+// ---------------------------------------------------------------------------
 // Checks and the plan
 // ---------------------------------------------------------------------------
 
@@ -201,6 +305,9 @@ export interface CampaignReadiness {
   checks: PreflightCheck[];
   /** Every check passed. */
   ready: boolean;
+  /** The send limit's room now; null when it could not be counted (its check then fails). */
+  allowance: SendAllowance | null;
+  sender: CampaignSender;
 }
 
 /** Every check, for the page's status panel. Changes nothing. */
@@ -208,7 +315,7 @@ export async function campaignReadiness(
   setup: CampaignSenderSetup,
   { campaign, resume = false }: { campaign?: Pick<Campaign, "id"> & CampaignContent; resume?: boolean } = {},
 ): Promise<CampaignReadiness> {
-  const checks = await campaignDeliveryChecks(setup);
+  const [checks, room] = await Promise.all([campaignDeliveryChecks(setup), tryAllowance(setup)]);
   try {
     const { all } = await readWaveStats(setup.admin, campaign?.id ?? "");
     checks.push(pauseCheck(all, resume));
@@ -217,7 +324,8 @@ export async function campaignReadiness(
   }
   const points = campaign ? await pointsCheck(setup.admin, campaign) : null;
   if (points) checks.push(points);
-  return { checks, ready: checks.every((c) => c.ok) };
+  checks.push(allowanceCheck(room.allowance, room.error));
+  return { checks, ready: checks.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
 }
 
 export interface WavePlanResult {
@@ -227,6 +335,12 @@ export interface WavePlanResult {
   plan: Omit<CampaignPlan, "selection">;
   /** Who the wave goes to, in send order: ids only. */
   customerIds: string[];
+  /** The size asked for. */
+  requested: number;
+  /** The limit that cut the wave below what was asked for and is eligible; null when none did. */
+  limitedBy: "daily" | "monthly" | null;
+  /** Eligible people this wave leaves for later waves. */
+  waiting: number;
 }
 
 /**
@@ -249,12 +363,18 @@ export async function planWave(
     readWaveStats(setup.admin, campaign.id),
     readCampaignCandidates(setup.admin, campaign, segmentIds),
   ]);
-  const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, { size: n, retryFailed });
+  // Never past today's room: the rest of the audience waits for the next wave.
+  const room = readiness.allowance?.remaining ?? 0;
+  const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, { size: Math.min(n, room), retryFailed });
+  const wanted = Math.min(n, plan.eligible);
   return {
     readiness,
     wave: nextWaveLabel(waves.own.map((w) => w.wave)),
     plan,
     customerIds: selection.map((c) => c.customerId),
+    requested: n,
+    limitedBy: readiness.allowance && selection.length < wanted ? readiness.allowance.binding : null,
+    waiting: plan.eligible - selection.length,
   };
 }
 
@@ -323,6 +443,17 @@ export async function sendCampaignBatch(
     result.stopped = points.detail;
     return result;
   }
+  // Every batch too: the script or a second tab may have used the room since the wave was planned.
+  const room = await tryAllowance(setup);
+  if (!room.allowance) {
+    result.stopped = room.error ?? "the send limit could not be counted";
+    return result;
+  }
+  if (room.allowance.remaining === 0) {
+    result.stopped = `the send limit is reached (${roomAgainText(room.allowance)}); the rest go in the next wave`;
+    return result;
+  }
+  const ids = customerIds.slice(0, room.allowance.remaining);
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const transport = setup.transport!;
@@ -331,7 +462,7 @@ export async function sendCampaignBatch(
   const origin = originOf(setup);
   const key = campaignLedgerKey(campaign.id);
 
-  for (const customerId of customerIds) {
+  for (const customerId of ids) {
     if (result.failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
       result.stopped = `${MAX_CONSECUTIVE_FAILURES} sends in a row failed`;
       break;
@@ -379,11 +510,18 @@ export async function sendCampaignBatch(
       const message = err instanceof Error ? err.message : String(err);
       await finishCampaignSend(setup.admin, { sendId: claim.sendId, sent: false, error: message });
       fail(message);
+      if (isSendQuotaError(message)) {
+        result.stopped = "Resend's sending quota is used up: wait for room, then retry the failed send";
+        break;
+      }
     }
     await sleep(THROTTLE_MS);
   }
   if (!result.stopped && result.failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
     result.stopped = `${MAX_CONSECUTIVE_FAILURES} sends in a row failed`;
+  }
+  if (!result.stopped && ids.length < customerIds.length) {
+    result.stopped = "the send limit is reached; the rest go in the next wave";
   }
   return result;
 }
@@ -407,6 +545,17 @@ export async function sendCampaignTest(
   if (addresses.length > MAX_TEST_RECIPIENTS) return { refused: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
   const notReady = quickChecks(setup);
   if (notReady) return { refused: notReady };
+  // Resend counts a test like any send.
+  const room = await tryAllowance(setup);
+  if (!room.allowance) return { refused: room.error ?? "the send limit could not be counted" };
+  if (room.allowance.remaining < addresses.length) {
+    return {
+      refused:
+        room.allowance.remaining === 0
+          ? `The send limit is reached, and Resend counts tests too: ${roomAgainText(room.allowance)}.`
+          : `Only ${count(room.allowance.remaining)} more can be sent now, and Resend counts tests too: send the test to fewer addresses.`,
+    };
+  }
 
   const origin = originOf(setup);
   const replyTo = emailAddressOf(setup.replyTo)!;
