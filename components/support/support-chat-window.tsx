@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CheckCircle2, ChevronDown, History, MailCheck, Minus, MoreHorizontal, Plus, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, History, MailCheck, Minus, MoreHorizontal, Phone, Plus, X } from "lucide-react";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import { authCallbackUrl } from "@/lib/site-url";
 import { authErrorMessage } from "@/lib/auth/error-message";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -377,6 +378,18 @@ function Session({
             {chatStatusLine(active)}
           </p>
         </div>
+        {open ? (
+          // WhatsApp has no call link: this opens the chat there, where its call button is.
+          <a
+            href={SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-white/20 max-md:min-h-11"
+          >
+            <Phone className="size-3.5" aria-hidden="true" />
+            Call us
+          </a>
+        ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <HeaderButton label="Chat options" disabled={creating}>

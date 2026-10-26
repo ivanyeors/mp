@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 import { openBookAppointment } from "@/lib/book-appointment";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
+import { openSupportChat } from "@/components/support/support-chat-root";
 import dynamic from "next/dynamic";
 import type { BubbleMenuItem } from "@/components/ui/bubble-menu";
 import { openAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
@@ -403,20 +403,19 @@ export function AppDock() {
                       </DockIcon>
                     </DockItem>
                   </button>
-                  <a
-                    href={SUPPORT_WHATSAPP_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="WhatsApp us"
-                    className={dockTouchWrapClassName}
+                  <button
+                    type="button"
+                    onClick={openSupportChat}
+                    aria-label="Chat with us"
+                    className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
                   >
                     <DockItem className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm">
-                      <DockLabel>WhatsApp us</DockLabel>
+                      <DockLabel>Chat with us</DockLabel>
                       <DockIcon>
                         <MessageCircleMore className="h-full w-full text-neutral-300" />
                       </DockIcon>
                     </DockItem>
-                  </a>
+                  </button>
                 </>
               )}
 

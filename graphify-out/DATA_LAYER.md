@@ -448,7 +448,7 @@ Changed from pages: `/settings/customers`
 
 ### customers
 Defined in supabase/migrations/0028_ecommerce.sql:212
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/customers/[id]/route.ts:47
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
@@ -1016,7 +1016,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, 
 ### orders
 Defined in supabase/migrations/0028_ecommerce.sql:384
 References: `coupons`, `customers`, `partners`, `shipping_methods`
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [update] — app/api/shop/orders/[id]/route.ts:65
   - `POST()` [select,update] — app/api/account/orders/[orderNumber]/refund-request/route.ts:34
@@ -1797,7 +1797,7 @@ Defined in supabase/migrations/20261020120000_marketing_consent.sql:155
 
 ### support_chat_codes
 Defined in supabase/migrations/20261024120000_support_chats.sql:110
-Changed from pages: `/support`
+Changed from pages: `/shipping-refund-policies`, `/support`
 - Written by:
   - `issueChatCode()` [delete,insert,select] — lib/support/chat-codes.ts:43
   - `redeemChatCode()` [select,update] — lib/support/chat-codes.ts:90
@@ -1805,7 +1805,7 @@ Changed from pages: `/support`
 ### support_chat_messages
 Defined in supabase/migrations/20261024120000_support_chats.sql:88
 References: `support_chats`
-Changed from pages: `/support`
+Changed from pages: `/shipping-refund-policies`, `/support`
 - Written by:
   - `insertMessage()` [insert] — lib/support/chat.ts:191
   - `setTelegramId()` [update] — lib/support/chat.ts:205
@@ -1817,7 +1817,7 @@ Changed from pages: `/support`
 ### support_chats
 Defined in supabase/migrations/20261024120000_support_chats.sql:49
 References: `customers`
-Changed from pages: `/support`
+Changed from pages: `/shipping-refund-policies`, `/support`
 - Written by:
   - `emailTranscriptIfNew()` [update] — lib/support/chat.ts:373
   - `listCustomerChats()` [select,update] — lib/support/chat.ts:425
@@ -2735,10 +2735,10 @@ app/[lang]/settings/users/page.tsx
 
 ### /shipping-refund-policies
 app/[lang]/shipping-refund-policies/page.tsx
-- Endpoints: `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`
+- Endpoints: `/api/shop/exchange-rates [GET]`, `/api/shop/shipping [GET]`, `/api/support/chat`, `/api/support/chat/[id]`, `/api/support/chat/[id]/end`, `/api/support/chat/[id]/leave`, `/api/support/chat/[id]/messages`, `/api/support/chat/code`
 - Loads: `loadServiceCopyValues()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `exchange_rates`, `mp_staff`, `shipping_methods`
-- Reads, through the same: `admin_roles`, `admin_users`, `service_prices`, `site_settings`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customers`, `exchange_rates`, `mp_staff`, `orders`, `shipping_methods`, `support_chat_codes`, `support_chat_messages`, `support_chats`
+- Reads, through the same: `admin_roles`, `admin_users`, `points_ledger`, `service_prices`, `site_settings`
 
 ### /shop
 app/[lang]/shop/page.tsx

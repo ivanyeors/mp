@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import { CalendarDays, MessageCircleMore } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { BookAppointmentButton } from "@/components/book-appointment-button";
 import { InfoCallout } from "@/components/marketing/info-callout";
+import { OpenChatButton } from "@/components/support/open-chat-button";
 import { SupportChat } from "@/components/support/support-chat";
 import { Separator } from "@/components/ui/separator";
-import {
-  SUPPORT_WHATSAPP_DISPLAY,
-  SUPPORT_WHATSAPP_URL,
-} from "@/lib/contact";
 
 const QUICK_LINKS = [
   { href: "#book-appointment", label: "Book appointment" },
@@ -71,11 +68,7 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
           <p>
             Select your preferred available slot using the button below to open our calendar. One slot is
             only for one person. If you have 2 people, please book 2 adjacent time slots. For
-            rescheduling, please WhatsApp to{" "}
-            <a href={SUPPORT_WHATSAPP_URL} className="underline underline-offset-4" target="_blank" rel="noopener noreferrer">
-              {SUPPORT_WHATSAPP_DISPLAY}
-            </a>{" "}
-            at least 48 hours before appointment in order for other customers to have a chance to take over
+            rescheduling, please <OpenChatButton>chat with us</OpenChatButton> at least 48 hours before appointment in order for other customers to have a chance to take over
             your slot.
           </p>
           <p>You will receive a WhatsApp message from us on the details.</p>
@@ -99,28 +92,11 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">Get in touch</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Start a chat and our team replies right here. Prefer WhatsApp? That works too.
+            Start a chat and our team replies right here.
           </p>
         </div>
 
         <SupportChat />
-
-        <a
-          href={SUPPORT_WHATSAPP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 active:bg-muted/70"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366]">
-            <MessageCircleMore className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium">Chat on WhatsApp</span>
-            <span className="mt-0.5 block text-sm text-muted-foreground">
-              {SUPPORT_WHATSAPP_DISPLAY} · Usually replies within a few hours
-            </span>
-          </span>
-        </a>
       </section>
     </main>
   );

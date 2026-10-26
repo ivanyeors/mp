@@ -1,10 +1,10 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { stripLocale } from "@/lib/i18n/routing";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
-import { publishSupportChat } from "./support-chat-root";
+import { clearOpenOnLoad, publishSupportChat, shouldOpenOnLoad } from "./support-chat-root";
 import SupportChatWindow from "./support-chat-window";
 import { useSupportChat } from "./use-support-chat";
 
@@ -37,12 +37,16 @@ export default function SupportChatEngine() {
   const [draft, setDraft] = useState("");
   const pathname = usePathname() ?? "/";
 
-  // A chat restored on load comes back as the bubble; the transcript email's link opens it.
+  // A chat restored on load comes back as the bubble; the transcript email's link or the dock opens it.
   const [settled, setSettled] = useState(false);
   if (!settled && !chat.restoring) {
     setSettled(true);
-    if (chat.active) setView(new URLSearchParams(window.location.search).has("chat") ? "open" : "minimised");
+    if (shouldOpenOnLoad()) setView("open");
+    else if (chat.active) setView(new URLSearchParams(window.location.search).has("chat") ? "open" : "minimised");
   }
+  useEffect(() => {
+    if (settled) clearOpenOnLoad();
+  }, [settled]);
 
   // Replies count as read while the window is open; a newly loaded chat starts with none unread.
   const chatId = chat.active?.chat.id ?? "";

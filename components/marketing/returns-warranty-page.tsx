@@ -9,10 +9,7 @@ import {
   Truck,
 } from "lucide-react";
 
-import {
-  SUPPORT_WHATSAPP_DISPLAY,
-  SUPPORT_WHATSAPP_URL,
-} from "@/lib/contact";
+import { OpenChatButton } from "@/components/support/open-chat-button";
 import { Badge } from "@/components/ui/badge";
 import { DeliveryEstimator } from "@/components/shop/delivery-estimator";
 import {
@@ -278,11 +275,7 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
           </div>
 
           <p className="text-sm leading-relaxed text-muted-foreground">
-            For refund-related questions, chat with us on WhatsApp at{" "}
-            <a href={SUPPORT_WHATSAPP_URL} className="underline underline-offset-4">
-              {SUPPORT_WHATSAPP_DISPLAY}
-            </a>{" "}
-            or email{" "}
+            For refund-related questions, <OpenChatButton>chat with us</OpenChatButton> or email{" "}
             <a href="mailto:sleep@mpillow.com" className="underline underline-offset-4">
               sleep@mpillow.com
             </a>
@@ -451,10 +444,7 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
               </a>
             </li>
             <li>
-              WhatsApp:{" "}
-              <a href={SUPPORT_WHATSAPP_URL} className="underline underline-offset-4">
-                {SUPPORT_WHATSAPP_DISPLAY}
-              </a>
+              <OpenChatButton>Chat with us</OpenChatButton>
             </li>
             <li>
               <Link href={supportHref} className="underline underline-offset-4">
