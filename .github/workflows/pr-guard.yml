@@ -39,9 +39,11 @@ on:
   pull_request_target:
     types: [opened, reopened, synchronize]
   schedule:
-    # Every three hours. Fast enough that a conflict born from a merge is found
-    # the same working session, cheap enough to be invisible.
-    - cron: "0 */3 * * *"
+    # Twice a day. Each scheduled run bills a whole Actions minute (GitHub rounds
+    # every job up), so the old every-three-hours sweep cost ~240 minutes a month
+    # on its own; twice a day still catches a base-moved conflict within a working
+    # day for a fraction of that.
+    - cron: "0 */12 * * *"
 
 concurrency:
   # Keyed by pull request, not by ref alone: under pull_request_target

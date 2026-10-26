@@ -11,8 +11,9 @@ name: graphify freshness
 
 on:
   pull_request:
-  push:
-    branches: [main]
+
+# Pull-request only: the check passes on the PR's merge commit before it can
+# merge, so re-running it on push to main only duplicates that and burns minutes.
 
 # A newer push makes an in-flight run irrelevant.
 concurrency:
