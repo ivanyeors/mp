@@ -188,16 +188,18 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
             className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-foreground disabled:opacity-50"
             disabled={!canScrollLeft}
             onClick={scrollLeft}
+            aria-label="Scroll left"
           >
-            <IconArrowNarrowLeft className="h-6 w-6" />
+            <IconArrowNarrowLeft className="h-6 w-6" aria-hidden="true" />
           </button>
           <button
             type="button"
             className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-foreground disabled:opacity-50"
             disabled={!canScrollRight}
             onClick={scrollRight}
+            aria-label="Scroll right"
           >
-            <IconArrowNarrowRight className="h-6 w-6" />
+            <IconArrowNarrowRight className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
       </div>
