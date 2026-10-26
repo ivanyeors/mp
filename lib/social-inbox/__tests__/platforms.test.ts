@@ -1,7 +1,13 @@
 import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkOutgoingText, replyWindow } from "@/lib/social-inbox/platforms";
-import { parseMetaWebhook, verifyMetaChallenge, verifyMetaSignature } from "@/lib/social-inbox/meta";
+import {
+  checkMetaSetup,
+  connectMetaWebhooks,
+  parseMetaWebhook,
+  verifyMetaChallenge,
+  verifyMetaSignature,
+} from "@/lib/social-inbox/meta";
 import { parseTikTokWebhook, tiktokAuthorizeUrl, verifyTikTokSignature } from "@/lib/social-inbox/tiktok";
 
 /**
@@ -144,6 +150,155 @@ describe("Meta webhooks", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("META_APP_SECRET", "");
     expect(verifyMetaSignature("{}", "sha256=abc")).toBe(false);
+  });
+});
+
+describe("Meta setup", () => {
+  const URL_OK = "https://custom.mpillow.com/api/webhooks/meta-messages";
+
+  /** A Graph API stand-in: answers by method and path, records every call. */
+  function graph(overrides: Record<string, unknown> = {}) {
+    const calls: { method: string; path: string; query: URLSearchParams; form: URLSearchParams | null }[] = [];
+    const answers: Record<string, unknown> = {
+      "GET /me": { id: "PAGE1", name: "Mpillow", instagram_business_account: { id: "IG1", username: "thempillow" } },
+      "GET /app": { id: "APP1", name: "Mpillow" },
+      "GET /APP1/subscriptions": {
+        data: [
+          { object: "whatsapp_business_account", callback_url: "https://custom.mpillow.com/api/webhooks/whatsapp", active: true, fields: [] },
+          {
+            object: "page",
+            callback_url: URL_OK,
+            active: true,
+            fields: [{ name: "messages" }, { name: "message_echoes" }, { name: "messaging_postbacks" }],
+          },
+          { object: "instagram", callback_url: URL_OK, active: true, fields: [{ name: "messages" }, { name: "messaging_postbacks" }] },
+        ],
+      },
+      "GET /PAGE1/subscribed_apps": {
+        data: [{ id: "APP1", name: "Mpillow", subscribed_fields: ["messages", "message_echoes", "messaging_postbacks"] }],
+      },
+      "POST /APP1/subscriptions": { success: true },
+      "POST /PAGE1/subscribed_apps": { success: true },
+      ...overrides,
+    };
+    const fetch = (async (input: string | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      const method = init?.method ?? "GET";
+      const path = url.pathname.replace(/^\/v[\d.]+/, "");
+      calls.push({ method, path, query: url.searchParams, form: init?.body ? new URLSearchParams(String(init.body)) : null });
+      const answer = answers[`${method} ${path}`] ?? { error: { message: `unexpected ${method} ${path}`, code: 100 } };
+      return new Response(JSON.stringify(answer), { status: (answer as { error?: unknown }).error ? 400 : 200 });
+    }) as typeof globalThis.fetch;
+    return { fetch, calls };
+  }
+
+  function env() {
+    vi.stubEnv("META_PAGE_ACCESS_TOKEN", "page-token");
+    vi.stubEnv("META_APP_SECRET", "app-secret");
+    vi.stubEnv("META_WEBHOOK_VERIFY_TOKEN", "verify-me");
+    vi.stubEnv("META_PAGE_ID", "");
+    vi.stubEnv("INSTAGRAM_ACCOUNT_ID", "");
+  }
+
+  it("is silent without a Page token, and all clear once Meta is set up", async () => {
+    vi.stubEnv("META_PAGE_ACCESS_TOKEN", "");
+    expect(await checkMetaSetup(URL_OK, graph())).toBeNull();
+
+    env();
+    const { fetch, calls } = graph();
+    expect(await checkMetaSetup(URL_OK, { fetch })).toEqual({
+      ok: true,
+      page: { id: "PAGE1", name: "Mpillow" },
+      instagram: { id: "IG1", username: "thempillow" },
+      problems: [],
+    });
+    // Page calls carry appsecret_proof; the app's own webhooks are read with its app token.
+    expect(calls.find((c) => c.path === "/me")?.query.get("appsecret_proof")).toBeTruthy();
+    expect(calls.find((c) => c.path === "/APP1/subscriptions")?.query.get("access_token")).toBe("APP1|app-secret");
+  });
+
+  it("names what still keeps messages away", async () => {
+    env();
+    vi.stubEnv("META_PAGE_ID", "OLDPAGE");
+    const setup = await checkMetaSetup(
+      URL_OK,
+      graph({
+        "GET /APP1/subscriptions": {
+          data: [{ object: "page", callback_url: "https://old.example.com/hook", active: true, fields: [{ name: "messages" }] }],
+        },
+        "GET /PAGE1/subscribed_apps": { data: [{ id: "OTHERAPP", subscribed_fields: ["messages"] }] },
+      }),
+    );
+    expect(setup?.ok && setup.problems).toEqual([
+      "META_PAGE_ID is OLDPAGE, but the token is for Page PAGE1 — every Facebook message is ignored.",
+      `Meta sends Facebook messages to https://old.example.com/hook, not ${URL_OK}.`,
+      "Meta doesn't send Instagram messages to the site yet.",
+      "The Page doesn't pass its messages to the app yet.",
+    ]);
+  });
+
+  it("explains a token or app secret that doesn't fit", async () => {
+    env();
+    const wrongSecret = await checkMetaSetup(
+      URL_OK,
+      graph({ "GET /me": { error: { message: "Invalid appsecret_proof provided in the API argument", code: 100 } } }),
+    );
+    expect(wrongSecret).toMatchObject({ ok: false, error: expect.stringContaining("Set META_APP_SECRET") });
+
+    const userToken = await checkMetaSetup(
+      URL_OK,
+      graph({ "GET /me": { error: { message: "(#100) Tried accessing nonexisting field (instagram_business_account) on node type (User)", code: 100 } } }),
+    );
+    expect(userToken).toMatchObject({ ok: false, error: expect.stringContaining("not the Page's own token") });
+  });
+
+  it("falls back to the WhatsApp app's secret", async () => {
+    env();
+    vi.stubEnv("META_APP_SECRET", "");
+    vi.stubEnv("WHATSAPP_APP_SECRET", "whatsapp-secret");
+    const body = "{}";
+    const sig = `sha256=${createHmac("sha256", "whatsapp-secret").update(body).digest("hex")}`;
+    expect(verifyMetaSignature(body, sig)).toBe(true);
+    const { fetch, calls } = graph();
+    await checkMetaSetup(URL_OK, { fetch });
+    expect(calls.find((c) => c.path === "/APP1/subscriptions")?.query.get("access_token")).toBe("APP1|whatsapp-secret");
+  });
+
+  it("connects Facebook first, then the Page, then Instagram", async () => {
+    env();
+    const { fetch, calls } = graph();
+    expect(await connectMetaWebhooks(URL_OK, { fetch })).toEqual({ ok: true });
+    const posts = calls.filter((c) => c.method === "POST");
+    expect(posts.map((c) => [c.path, c.form?.get("object") ?? c.query.get("subscribed_fields")])).toEqual([
+      ["/APP1/subscriptions", "page"],
+      ["/PAGE1/subscribed_apps", "messages,message_echoes,messaging_postbacks"],
+      ["/APP1/subscriptions", "instagram"],
+    ]);
+    expect(Object.fromEntries(posts[0].form ?? [])).toEqual({
+      object: "page",
+      callback_url: URL_OK,
+      fields: "messages,message_echoes,messaging_postbacks",
+      verify_token: "verify-me",
+    });
+    expect(posts[2].form?.get("fields")).toBe("messages,messaging_postbacks");
+  });
+
+  it("stops at the first refusal, and won't start without a verify token", async () => {
+    env();
+    const refused = graph({ "POST /APP1/subscriptions": { error: { message: "(#2200) callback verification failed", code: 2200 } } });
+    expect(await connectMetaWebhooks(URL_OK, refused)).toEqual({
+      ok: false,
+      error: "Facebook webhook: (#2200) callback verification failed (#2200)",
+    });
+    expect(refused.calls.filter((c) => c.method === "POST")).toHaveLength(1);
+
+    vi.stubEnv("META_WEBHOOK_VERIFY_TOKEN", "");
+    const untouched = graph();
+    expect(await connectMetaWebhooks(URL_OK, untouched)).toEqual({
+      ok: false,
+      error: "META_WEBHOOK_VERIFY_TOKEN is not set on this deployment.",
+    });
+    expect(untouched.calls).toHaveLength(0);
   });
 });
 

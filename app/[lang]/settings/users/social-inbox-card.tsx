@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Music2 } from "lucide-react";
+import { Loader2, Music2, Webhook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,8 +10,9 @@ import type { SocialInboxStatus } from "@/lib/social-inbox/status";
 
 /**
  * Users & permissions → Telegram → Customer messages: which of Facebook, Instagram and TikTok
- * are connected to the measurements group, and the one-click TikTok connect
- * (Meta is set up once in env — see .claude/PRD-social-inbox/OPS-CHECKLIST.md).
+ * are connected to the measurements group, what still stands in Meta's way
+ * (checked live against Meta), and the one-click connects — Meta's webhooks
+ * once its env is set, TikTok's sign-in (.claude/PRD-social-inbox/OPS-CHECKLIST.md).
  *
  * The TikTok callback lands back on this tab with ?tiktok=connected|error;
  * that outcome is toasted once and removed from the address bar.
@@ -19,6 +20,13 @@ import type { SocialInboxStatus } from "@/lib/social-inbox/status";
 export function SocialInboxCard() {
   const [status, setStatus] = useState<SocialInboxStatus | null>(null);
   const [failed, setFailed] = useState(false);
+  const [connectingMeta, setConnectingMeta] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/social-inbox/status");
+    if (!res.ok) throw new Error();
+    return (await res.json()) as SocialInboxStatus;
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -39,19 +47,32 @@ export function SocialInboxCard() {
     }
 
     let cancelled = false;
-    fetch("/api/social-inbox/status")
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const payload = (await res.json()) as SocialInboxStatus;
-        if (!cancelled) setStatus(payload);
-      })
+    load()
+      .then((payload) => !cancelled && setStatus(payload))
       .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [load]);
+
+  async function connectMeta() {
+    setConnectingMeta(true);
+    try {
+      const res = await fetch("/api/social-inbox/meta/connect", { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(payload?.error ?? "Failed");
+      toast.success("Meta now sends Facebook and Instagram messages to this site.");
+    } catch (e) {
+      toast.error(`Webhooks not connected — ${e instanceof Error ? e.message : "unknown error"}`);
+    }
+    // Either way, show what Meta now says.
+    await load().then(setStatus, () => setFailed(true));
+    setConnectingMeta(false);
+  }
 
   const meta = status?.meta;
+  const setup = meta?.setup?.ok ? meta.setup : null;
+  const setupError = meta?.setup && !meta.setup.ok ? meta.setup.error : null;
   const tiktok = status?.tiktok;
 
   return (
@@ -76,24 +97,51 @@ export function SocialInboxCard() {
         <ul className="space-y-3">
           <Row
             name="Facebook Messenger"
-            connected={!!meta?.connected}
+            connected={!!setup}
             detail={
-              meta?.connected
-                ? meta.pageId
-                  ? `Page ${meta.pageId}`
-                  : "Page token set"
-                : "Set META_PAGE_ACCESS_TOKEN (OPS checklist, part 1)."
+              setup
+                ? `${setup.page.name ?? "Page"} · ${setup.page.id}`
+                : meta?.connected
+                  ? "Page token set, but Meta refused it (below)."
+                  : "Set META_PAGE_ACCESS_TOKEN (OPS checklist, part 1)."
             }
           />
           <Row
             name="Instagram"
-            connected={!!meta?.connected}
+            connected={!!setup?.instagram}
             detail={
-              meta?.connected
-                ? `Through the Facebook Page${meta.instagramId ? ` · account ${meta.instagramId}` : ""}`
-                : "Uses the same Facebook Page token once Instagram is linked to the Page."
+              setup?.instagram
+                ? `${setup.instagram.username ? `@${setup.instagram.username}` : "Account"} · ${setup.instagram.id}`
+                : setup
+                  ? "No Instagram professional account is linked to the Page (Meta Business Suite → Settings → Instagram accounts)."
+                  : "Uses the same Facebook Page token once Instagram is linked to the Page."
             }
           />
+          {setup ? (
+            <Row
+              name="Meta webhooks"
+              connected={setup.problems.length === 0}
+              detail={
+                setup.problems.length === 0
+                  ? "Meta sends Facebook and Instagram messages to the site."
+                  : meta?.webhookUrl
+                    ? "Not all set up yet (below)."
+                    : "Not all set up yet (below) — open this tab on the production site to connect them."
+              }
+              action={
+                meta?.webhookUrl ? (
+                  <Button variant="outline" size="sm" disabled={connectingMeta} onClick={connectMeta}>
+                    {connectingMeta ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Webhook className="mr-2 h-4 w-4" />
+                    )}
+                    {setup.problems.length === 0 ? "Reconnect webhooks" : "Connect webhooks"}
+                  </Button>
+                ) : null
+              }
+            />
+          ) : null}
           <Row
             name="TikTok"
             connected={!!tiktok?.connected}
@@ -118,9 +166,22 @@ export function SocialInboxCard() {
               ) : null
             }
           />
-          {meta?.connected && !meta.webhookSigned ? (
-            <li className="text-destructive">
-              META_APP_SECRET is not set — production refuses every Facebook and Instagram webhook until it is.
+          {setupError ? <li className="break-words text-destructive">Meta: {setupError}</li> : null}
+          {setup?.problems.map((problem) => (
+            <li key={problem} className="break-words text-destructive">
+              {problem}
+            </li>
+          ))}
+          {setup && (!meta?.pageId || (setup.instagram && !meta.instagramId)) ? (
+            <li className="break-words text-xs text-muted-foreground">
+              Optional: add <code className="rounded bg-muted px-1">META_PAGE_ID={setup.page.id}</code>
+              {setup.instagram ? (
+                <>
+                  {" "}
+                  and <code className="rounded bg-muted px-1">INSTAGRAM_ACCOUNT_ID={setup.instagram.id}</code>
+                </>
+              ) : null}{" "}
+              to Vercel, so messages to any other account the app serves are ignored.
             </li>
           ) : null}
         </ul>

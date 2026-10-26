@@ -1,7 +1,7 @@
 # OPS checklist: Facebook, Instagram and TikTok messages in Telegram
 
 Everything below happens outside the code. The slow parts are the platform approvals — Meta App
-Review (part 1, step 8) and TikTok's Business Messaging access review (part 2, step 2.5) — so start
+Review (part 1, step 7) and TikTok's Business Messaging access review (part 2, step 2.5) — so start
 those first. Parts 3–4
 work as soon as the migration is applied, and the Send preview lets the team practise before any
 real message arrives.
@@ -49,52 +49,58 @@ login**).
 
    Copy the `access_token` next to the Mpillow Page → that is `META_PAGE_ACCESS_TOKEN`.
 
-### 4. Environment (Vercel + `.env.local`)
+   No terminal? The same call works in the browser: developers.facebook.com/tools/explorer → paste
+   the system-user token into **Access Token** → `GET me/accounts?fields=id,name,access_token` →
+   **Submit**.
+
+### 4. Environment (Vercel)
 
 ```
 META_PAGE_ACCESS_TOKEN=<from step 3>
-META_APP_SECRET=<App settings → Basic → App secret>
-META_WEBHOOK_VERIFY_TOKEN=<openssl rand -hex 32>
+META_WEBHOOK_VERIFY_TOKEN=<any long random string, e.g. openssl rand -hex 32>
 ```
 
-Then find the ids and check the token:
+`META_APP_SECRET` is only needed if Messenger and Instagram run on a different app from WhatsApp:
+it falls back to `WHATSAPP_APP_SECRET`, which Vercel already has. **Redeploy.**
+
+### 5. Connect the webhooks
+
+On **production**: Settings → **Users & permissions** → **Telegram** → Customer messages. The card
+checks the Meta side live: the Page and Instagram account the token speaks for, that the app
+secret belongs to the token's app, the app's webhooks and the Page's subscription. Anything still
+missing is listed in red.
+
+Press **Connect webhooks**. It points the app's **Page** webhook (`messages`, `message_echoes`,
+`messaging_postbacks`) and **Instagram** webhook (`messages`, `messaging_postbacks`) at
+`https://custom.mpillow.com/api/webhooks/meta-messages` and subscribes the Page to the app. Meta
+checks the URL with `META_WEBHOOK_VERIFY_TOKEN` before saving it, which is why step 4 must be
+deployed first. Done when **Meta webhooks** shows Connected and no red lines remain. Pressing it
+again is harmless. A preview deployment shows the check but no button, so it can never take the
+webhook from production. The WhatsApp webhook (`/api/webhooks/whatsapp`) is a separate object and
+isn't touched.
+
+The card also shows `META_PAGE_ID=…` and `INSTAGRAM_ACCOUNT_ID=…`. Adding them to Vercel (and
+redeploying) is optional; they make the webhook ignore any other Page the app might serve.
+
+From a terminal instead (needs the same `META_WEBHOOK_VERIFY_TOKEN` as production in
+`.env.local`):
 
 ```bash
-npx tsx --env-file=.env.local scripts/social-inbox-setup.ts
+npx tsx --env-file=.env.local scripts/social-inbox-setup.ts --meta-webhook https://custom.mpillow.com/api/webhooks/meta-messages
 ```
 
-It prints `META_PAGE_ID=…` and `INSTAGRAM_ACCOUNT_ID=…` — add both to Vercel and `.env.local`
-(they make the webhook ignore any other Page the app might be subscribed to). **Redeploy** so the
-webhook below can verify.
+If Meta refuses the button (the error is shown), set it by hand: App dashboard → **Webhooks** (or
+Messenger / Instagram → Configure webhooks) → for **Page** and **Instagram**, callback URL above,
+verify token = `META_WEBHOOK_VERIFY_TOKEN`, the fields above → Verify and save. Then press the
+button once more for the Page subscription.
 
-### 5. Webhooks in the Meta app
+### 6. Test while the app is in development
 
-App dashboard → **Webhooks** (or Messenger / Instagram → Configure webhooks):
-
-| Object     | Callback URL                                            | Verify token                | Fields                                          |
-| ---------- | ------------------------------------------------------- | --------------------------- | ----------------------------------------------- |
-| Page       | `https://custom.mpillow.com/api/webhooks/meta-messages` | `META_WEBHOOK_VERIFY_TOKEN` | `messages`, `message_echoes`, `messaging_postbacks` |
-| Instagram  | `https://custom.mpillow.com/api/webhooks/meta-messages` | `META_WEBHOOK_VERIFY_TOKEN` | `messages`, `messaging_postbacks`               |
-
-"Verify and save" must succeed — if it fails, the env from step 4 isn't deployed yet. The WhatsApp
-webhook (`/api/webhooks/whatsapp`) stays as it is.
-
-### 6. Subscribe the Page to the app
-
-```bash
-npx tsx --env-file=.env.local scripts/social-inbox-setup.ts --subscribe
-```
-
-The last lines should show this app with `messages, message_echoes, messaging_postbacks`. Both
-Messenger and Instagram DMs need this.
-
-### 7. Test while the app is in development
-
-Until App Review (step 8), Meta only delivers messages from people who have a **role on the app**
+Until App Review (step 7), Meta only delivers messages from people who have a **role on the app**
 (Admin, Developer or Tester — App roles → Roles). Add a team member as Tester, have them message
 the Page and the Instagram account from their personal accounts, and check part 4.
 
-### 8. App Review (for real customers)
+### 7. App Review (for real customers)
 
 App Review → Permissions and features → request **Advanced access** for `pages_messaging`,
 `instagram_manage_messages` (and `instagram_basic`, `pages_manage_metadata` if asked). Meta wants a
@@ -268,11 +274,12 @@ connected; nothing else is affected.
 
 ## Troubleshooting
 
-- **No cards at all** — Vercel logs for `/api/webhooks/meta-messages`: a 401 means
-  `META_APP_SECRET` is wrong; nothing logged means the webhook fields (part 1, step 5) or the Page
-  subscription (step 6) are missing, or the sender has no app role while the app is in development.
+- **No cards at all** — first look at the Customer messages card (part 1, step 5): it names a wrong
+  token or app secret, a missing webhook or Page subscription. If it's all green, check the Vercel
+  logs for `/api/webhooks/meta-messages`: a 401 means the app secret is wrong; nothing logged
+  means the sender has no app role while the app is in development (part 1, step 6).
 - **Facebook works, Instagram doesn't** — "Allow access to messages" (part 1, step 1.3), and the
-  Instagram object in the webhooks table.
+  card's Instagram line and Instagram webhook.
 - **"Not sent — Instagram said: … (#10)" or "(#200)"** — usually Meta Business Suite holds the
   conversation: Business Suite → Settings → **Conversation routing** / Advanced messaging → let this
   app receive and reply to messages. Also check the token's permissions (part 1, step 3).

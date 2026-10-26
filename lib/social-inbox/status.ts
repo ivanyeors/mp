@@ -1,5 +1,5 @@
 import { sweepUncarded } from "@/lib/social-inbox/ingest";
-import { metaAccountIds, metaConfigured } from "@/lib/social-inbox/meta";
+import { checkMetaSetup, metaAccountIds, metaConfigured, type MetaSetup } from "@/lib/social-inbox/meta";
 import { humanAgentEnabled } from "@/lib/social-inbox/platforms";
 import { getTikTokTokenRow, tiktokAccess, tiktokAppConfig } from "@/lib/social-inbox/tiktok";
 
@@ -7,10 +7,13 @@ import { getTikTokTokenRow, tiktokAccess, tiktokAppConfig } from "@/lib/social-i
 export type SocialInboxStatus = {
   meta: {
     connected: boolean;
-    webhookSigned: boolean;
     pageId: string | null;
     instagramId: string | null;
     humanAgent: boolean;
+    /** The live check against Meta (checkMetaSetup); null without a Page token. */
+    setup: MetaSetup | null;
+    /** What the connect button points Meta at; null off production, where the button is hidden. */
+    webhookUrl: string | null;
   };
   tiktok: {
     appConfigured: boolean;
@@ -22,16 +25,22 @@ export type SocialInboxStatus = {
   };
 };
 
-export async function getSocialInboxStatus(): Promise<SocialInboxStatus> {
+export async function getSocialInboxStatus(metaWebhookUrl: string | null): Promise<SocialInboxStatus> {
   const ids = metaAccountIds();
-  const row = await getTikTokTokenRow().catch(() => null);
+  const [row, setup] = await Promise.all([
+    getTikTokTokenRow().catch(() => null),
+    checkMetaSetup(metaWebhookUrl).catch(
+      (e): MetaSetup => ({ ok: false, error: e instanceof Error ? e.message : "Couldn't check Meta" }),
+    ),
+  ]);
   return {
     meta: {
       connected: metaConfigured(),
-      webhookSigned: Boolean(process.env.META_APP_SECRET?.trim()),
       pageId: ids.pageId,
       instagramId: ids.instagramId,
       humanAgent: humanAgentEnabled(),
+      setup,
+      webhookUrl: metaWebhookUrl,
     },
     tiktok: {
       appConfigured: tiktokAppConfig() !== null,
