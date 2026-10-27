@@ -62,12 +62,12 @@ export function ProductVisualize() {
       const res = await fetch(settingsPath("/settings/product-builder/mappings"));
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to load overlay mappings"));
+        toast.error(getApiErrorMessage(data.error, "Couldn't load overlay mappings."));
         return;
       }
       setItems(data.items as OverlayItem[]);
     } catch {
-      toast.error("Failed to load overlay mappings");
+      toast.error("Couldn't load overlay mappings.");
     } finally {
       setLoading(false);
     }
@@ -88,13 +88,13 @@ export function ProductVisualize() {
         });
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          toast.error(getApiErrorMessage(data.error, "Failed to save mapping"));
+          toast.error(getApiErrorMessage(data.error, "Couldn't save the mapping."));
           return;
         }
         toast.success(itemIds.length > 1 ? `Overlay saved to ${itemIds.length} sizes` : "Overlay saved");
         await load();
       } catch {
-        toast.error("Failed to save mapping");
+        toast.error("Couldn't save the mapping.");
       } finally {
         setSaving(false);
       }
@@ -113,17 +113,17 @@ export function ProductVisualize() {
         });
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          toast.error(getApiErrorMessage(data.error, "Failed to remove mapping"));
+          toast.error(getApiErrorMessage(data.error, "Couldn't remove the mapping."));
           return;
         }
         toast.success(
           itemIds.length > 1
-            ? `Overlay removed from ${itemIds.length} sizes — silhouette back to default`
-            : "Overlay removed — silhouette back to default",
+            ? `Overlay removed from ${itemIds.length} sizes. The silhouette is back to default.`
+            : "Overlay removed. The silhouette is back to default.",
         );
         await load();
       } catch {
-        toast.error("Failed to remove mapping");
+        toast.error("Couldn't remove the mapping.");
       } finally {
         setSaving(false);
       }
@@ -137,9 +137,9 @@ export function ProductVisualize() {
         <div className="flex items-center gap-1.5">
           <h2 className="text-lg font-semibold tracking-tight">Product Visualize</h2>
           <InfoTip label="About Product Visualize">
-            Map cover and case items to an overlay — an image from the Media Asset
-            Library or a solid color. The configurator preview swaps the overlay when
-            the item is selected; unmapped items keep the plain silhouette.
+            Give each cover and case item an overlay: an image from the media library
+            or a solid color. The configurator preview shows the overlay when the item
+            is picked, and unmapped items keep the plain silhouette.
           </InfoTip>
         </div>
         <Button type="button" variant="outline" asChild>
@@ -152,7 +152,7 @@ export function ProductVisualize() {
 
       <div className="flex items-center gap-1.5">
         <h3 className="text-base font-semibold tracking-tight">Overlay mapping</h3>
-        <InfoTip label="About Overlay mapping">
+        <InfoTip label="About overlay mapping">
           Sizes of the same item are grouped. Select the item name to give every size
           the same overlay in one save, or a size chip to set just that size. Switch
           between Image and Color to choose what fills the silhouette.
@@ -193,13 +193,13 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
       const res = await fetch(settingsPath("/settings/product-builder/filling-visuals"));
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to load filling visuals"));
+        toast.error(getApiErrorMessage(data.error, "Couldn't load filling visuals."));
         return;
       }
       setSubtypes(data.subtypes as string[]);
       setOverrides(data.overrides as ColorOverrideRow[]);
     } catch {
-      toast.error("Failed to load filling visuals");
+      toast.error("Couldn't load filling visuals.");
     } finally {
       setLoading(false);
     }
@@ -218,7 +218,7 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to save color"));
+        toast.error(getApiErrorMessage(data.error, "Couldn't save the color."));
         return;
       }
       toast.success("Color override saved");
@@ -236,10 +236,10 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to clear override"));
+        toast.error(getApiErrorMessage(data.error, "Couldn't clear the override."));
         return;
       }
-      toast.success("Override cleared — back to code default");
+      toast.success("Override cleared. Back to the code default.");
       await load();
     },
     [settingsPath, load],
@@ -251,7 +251,7 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
         <h3 className="text-base font-semibold tracking-tight">Filling visuals</h3>
-        <InfoTip label="About Filling visuals">
+        <InfoTip label="About filling visuals">
           Each filling subtype renders in the x-ray with a designer-owned fluid shape
           (not editable) and a color. Overriding a color applies to all x-ray views on
           next load; clearing restores the code default.

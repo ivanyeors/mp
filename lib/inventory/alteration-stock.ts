@@ -27,7 +27,7 @@ export function alterationBaseId(item: StockItem): number | null {
 /** Converting more than the base holds throws, so a conversion never takes the base negative. */
 export function assertConvertible(quantity: number, baseOnHand: number): void {
   if (quantity > baseOnHand) {
-    throw new Error(`Only ${Math.max(0, baseOnHand)} of the base filling on hand — can't convert ${quantity}.`);
+    throw new Error(`Only ${Math.max(0, baseOnHand)} of the base filling on hand, so ${quantity} can't be converted.`);
   }
 }
 

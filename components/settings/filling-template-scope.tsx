@@ -119,7 +119,7 @@ export function TemplateScopeField({
               aria-pressed={on}
               title={
                 last
-                  ? `A Filling Template must apply to at least one ${kind === "bolster" ? "length" : "size"}`
+                  ? `A filling template must apply to at least one ${kind === "bolster" ? "length" : "size"}.`
                   : undefined
               }
               onClick={() => toggle(key)}
@@ -141,7 +141,7 @@ export function TemplateScopeField({
       <p className="text-xs text-muted-foreground">
         {keys.includes(currentKey)
           ? `One recipe, shared by every ${kind === "bolster" ? "length" : "size"} switched on.`
-          : `Saving removes this template from ${templateKeyLabel(kind, currentKey)} — it will leave this list.`}
+          : `Saving removes this template from ${templateKeyLabel(kind, currentKey)}, so it will leave this list.`}
       </p>
     </div>
   );
@@ -171,8 +171,8 @@ export function SharedTemplateNotice({
         Shared with {noun === "size" ? "sizes" : "lengths"} {formatTemplateKeys(kind, others)}.
       </div>
       <p className="mt-1 text-muted-foreground">
-        Saving rewrites the recipe for all {keys.length} — including builds assigned from them
-        later. Past Results keep the mix they were built with.
+        Saving rewrites the recipe for all {keys.length}, including builds assigned from them
+        later. Past results keep the mix they were built with.
       </p>
       <Button
         type="button"

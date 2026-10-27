@@ -294,7 +294,7 @@ export function CustomerDetailClient({
             const payload = await res.json().catch(() => null);
             if (!res.ok || !payload?.row) {
                 throw new Error(
-                    typeof payload?.error === "string" ? payload.error : "Could not save the customer",
+                    typeof payload?.error === "string" ? payload.error : "Couldn't save the customer.",
                 );
             }
             const row = payload.row as Customer;
@@ -305,7 +305,7 @@ export function CustomerDetailClient({
             setTags(row.tags ?? []);
             toast.success("Saved");
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Could not save the customer");
+            toast.error(e instanceof Error ? e.message : "Couldn't save the customer.");
         } finally {
             setSaving(false);
         }
@@ -355,7 +355,7 @@ export function CustomerDetailClient({
                 <Button variant="ghost" size="sm" asChild>
                     <Link href={to("/settings/customers")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
-                        Back to Customers
+                        Back to customers
                     </Link>
                 </Button>
                 <p className="text-muted-foreground">Customer not found.</p>
@@ -394,7 +394,7 @@ export function CustomerDetailClient({
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
                                 <ShoppingCart className="h-4 w-4" />
-                                Order History
+                                Order history
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -475,12 +475,12 @@ export function CustomerDetailClient({
                                     <DialogTrigger asChild>
                                         <Button size="sm" variant="outline">
                                             <Plus className="mr-2 h-4 w-4" />
-                                            Add Address
+                                            Add address
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-lg">
                                         <DialogHeader>
-                                            <DialogTitle>Add Address</DialogTitle>
+                                            <DialogTitle>Add address</DialogTitle>
                                         </DialogHeader>
                                         <div className="grid grid-cols-2 gap-3 py-2">
                                             <div className="col-span-2 space-y-1.5">
@@ -510,7 +510,7 @@ export function CustomerDetailClient({
                                                 />
                                             </div>
                                             <div className="col-span-2 space-y-1.5">
-                                                <Label>Address Line 1</Label>
+                                                <Label>Address line 1</Label>
                                                 <Input
                                                     value={addressForm.line1}
                                                     onChange={(e) =>
@@ -523,7 +523,7 @@ export function CustomerDetailClient({
                                             </div>
                                             <div className="col-span-2 space-y-1.5">
                                                 <Label>
-                                                    Address Line 2{" "}
+                                                    Address line 2{" "}
                                                     <span className="text-muted-foreground font-normal">
                                                         (optional)
                                                     </span>
@@ -563,7 +563,7 @@ export function CustomerDetailClient({
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <Label>Postal Code</Label>
+                                                <Label>Postal code</Label>
                                                 <Input
                                                     value={addressForm.postal_code}
                                                     onChange={(e) =>
@@ -627,7 +627,7 @@ export function CustomerDetailClient({
                                                 ) : (
                                                     <Plus className="mr-2 h-4 w-4" />
                                                 )}
-                                                Add Address
+                                                Add address
                                             </Button>
                                         </DialogFooter>
                                     </DialogContent>
@@ -689,14 +689,14 @@ export function CustomerDetailClient({
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <User className="h-4 w-4" />
-                                Customer Info
+                                Customer info
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {canEdit ? (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="first-name">First Name</Label>
+                                        <Label htmlFor="first-name">First name</Label>
                                         <Input
                                             id="first-name"
                                             value={firstName}
@@ -704,7 +704,7 @@ export function CustomerDetailClient({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="last-name">Last Name</Label>
+                                        <Label htmlFor="last-name">Last name</Label>
                                         <Input
                                             id="last-name"
                                             value={lastName}
@@ -738,7 +738,7 @@ export function CustomerDetailClient({
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value)}
                                             className="pl-9"
-                                            placeholder="+60..."
+                                            placeholder="+60…"
                                         />
                                     </div>
                                 </div>
@@ -787,14 +787,14 @@ export function CustomerDetailClient({
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <ShoppingCart className="h-4 w-4" />
-                                    <span>Total Orders</span>
+                                    <span>Total orders</span>
                                 </div>
                                 <span className="font-semibold">{customer.total_orders}</span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <DollarSign className="h-4 w-4" />
-                                    <span>Total Spent</span>
+                                    <span>Total spent</span>
                                 </div>
                                 <span className="font-semibold">
                                     {formatSGD(customer.total_spent)}
@@ -803,7 +803,7 @@ export function CustomerDetailClient({
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <Clock className="h-4 w-4" />
-                                    <span>Member Since</span>
+                                    <span>Customer since</span>
                                 </div>
                                 <span className="font-semibold">
                                     {formatDate(customer.created_at)}
@@ -857,7 +857,7 @@ export function CustomerDetailClient({
                             {canEdit && (
                                 <div className="flex gap-2">
                                     <Input
-                                        placeholder="Add tag..."
+                                        placeholder="Add a tag…"
                                         value={tagInput}
                                         onChange={(e) => setTagInput(e.target.value)}
                                         onKeyDown={(e) => {
@@ -893,7 +893,7 @@ export function CustomerDetailClient({
                             ) : (
                                 <Save className="mr-2 h-4 w-4" />
                             )}
-                            Save Changes
+                            Save changes
                         </Button>
                     )}
 

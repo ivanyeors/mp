@@ -25,7 +25,7 @@ export default async function ServiceFeesPage({ params }: { params: Promise<{ la
   try {
     initial = await load(admin);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load service fees";
+    loadError = e instanceof Error ? e.message : "Couldn't load service fees.";
   }
   return <ServiceFeesClient initial={initial} loadError={loadError} />;
 }

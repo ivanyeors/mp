@@ -18,7 +18,7 @@ export function ReviewActions({ id }: { id: string }) {
         await fn();
         toast.success(ok);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Action failed");
+        toast.error(e instanceof Error ? e.message : "Couldn't update the application.");
       }
     });
   };
@@ -41,7 +41,7 @@ export function ReviewActions({ id }: { id: string }) {
           run(
             () => rejectApplication(id),
             "Application rejected",
-            "Reject this application? The applicant will be emailed a decline.",
+            "Reject this application? The applicant gets a decline email.",
           )
         }
       >

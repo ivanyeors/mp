@@ -241,7 +241,7 @@ export default function GeneralSettingsPage({
         </div>
         <Button onClick={openNew} className="shrink-0 self-start sm:self-auto">
           <Plus className="mr-2 h-4 w-4" />
-          Add API
+          Add API config
         </Button>
       </div>
 
@@ -357,7 +357,7 @@ export default function GeneralSettingsPage({
                   placeholder={
                     editingId && configs.find((c) => c.id === editingId)?.api_key_set
                       ? "Saved. Leave blank to keep it"
-                      : "sk-..."
+                      : "sk-…"
                   }
                   value={form.api_key}
                   onChange={(e) => updateField("api_key", e.target.value)}

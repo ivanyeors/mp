@@ -194,12 +194,12 @@ export function EmailCopyEditor({
                 </div>
             </div>
             <p className="text-sm text-muted-foreground">
-                {groupLabel} · {spec.description}
+                {groupLabel}. {spec.description}
                 {saved.updatedAt ? ` Last edited ${formatAdminDateTime(saved.updatedAt)}${saved.updatedBy ? ` by ${saved.updatedBy}` : ""}.` : ""}
             </p>
             {readError ? (
                 <p role="alert" className="text-sm text-destructive">
-                    Could not read the saved words, so the originals are shown: {readError}
+                    Couldn&apos;t read the saved words, so the originals are shown: {readError}
                 </p>
             ) : null}
 

@@ -19,7 +19,7 @@ function Blank() {
 
 function Source({ source }: { source: CatalogSource }) {
   if (source === "unmeasured") return <Badge variant="destructive">fallback</Badge>;
-  return <Badge variant={source === "configured" ? "secondary" : "outline"}>{source === "configured" ? "Settings" : "measured"}</Badge>;
+  return <Badge variant={source === "configured" ? "secondary" : "outline"}>{source === "configured" ? "configured" : "measured"}</Badge>;
 }
 
 function Section({ title, hint, children }: { title: string; hint: ReactNode; children: ReactNode }) {
@@ -52,20 +52,20 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
       <header className="space-y-2">
         <h1 className="text-xl font-semibold tracking-tight">X-ray calibration sheet</h1>
         <p className="text-muted-foreground">
-          What the x-ray predicts for each bench check in slice 10, from the dimensions in Settings at {generatedAt}.
-          Write the ruler reading in the empty column; anything more than a few millimetres (or one Layer) apart is a
-          number to change in Settings → Products → Dimensions. Print with your browser (⌘P / Ctrl+P).
+          What the x-ray predicts for each bench check in slice 10, from the saved dimensions at {generatedAt}.
+          Write the ruler reading in the empty column. Anything more than a few millimetres (or one layer) apart is a
+          number to change on the Configure page&apos;s Dimensions tab. Print with your browser (⌘P / Ctrl+P).
           Loft allowance: {Math.round(sheet.loftAllowance * 100)} %.
         </p>
         {sheet.unmeasured.length > 0 && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-destructive" role="alert">
             {sheet.unmeasured.length} entries are still drawn from a fallback size ({sheet.unmeasured.join(", ")}). Their
-            predictions are placeholders: enter the Size M measurements in Settings first, then reload this sheet.
+            predictions are placeholders: enter the size M measurements on the Dimensions tab first, then reload this sheet.
           </p>
         )}
       </header>
 
-      <Section title="1. Loft budget per Size" hint="The height each Section may stand at: the gusset plus the loft allowance. The centre is one inch lower.">
+      <Section title="1. Loft budget per size" hint="The height each section may stand at: the gusset plus the loft allowance. The centre is one inch lower.">
         <Table>
           <TableHeader>
             <TableRow>
@@ -92,8 +92,8 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
 
       {sheet.templates.length > 0 && (
         <Section
-          title="2. Default Filling Templates"
-          hint="Build each one and measure the loft at each Section's middle. The x-ray reads the same numbers."
+          title="2. Default filling templates"
+          hint="Build each one and measure the loft at each section's middle. The x-ray reads the same numbers."
         >
           <Table>
             <TableHeader>
@@ -130,16 +130,16 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
 
       <Section
         title="3. Layers until it cannot close"
-        hint="One pouch type, the same number of Layers in the front, middle and back of one Section. The x-ray turns amber at the first number and red at the second; note the Layer at which the bench says no. They should agree within one Layer."
+        hint="One pouch type, the same number of layers in the front, middle and back of one section. The x-ray turns amber at the first number and red at the second. Note the layer at which the bench says no. They should agree within one layer."
       >
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Pouch</TableHead>
               {PILLOW_SIZES.map((size) => (
-                <TableHead key={size}>{size} side · centre</TableHead>
+                <TableHead key={size}>{size} side and centre</TableHead>
               ))}
-              <TableHead>Bench (size, Section, Layer)</TableHead>
+              <TableHead>Bench (size, section, layer)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -164,13 +164,13 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
           </TableBody>
         </Table>
         <p className="text-xs text-muted-foreground">
-          Each cell reads <em>side</em> then <em>centre</em> Section, as “squeezes at / cannot close at” a number of Layers;
-          “–” means not within the five-Layer cap.
+          Each cell reads the <em>side</em> then the <em>centre</em> section, as “squeezes at / cannot close at” a number of layers.
+          “–” means not within the five-layer cap.
         </p>
       </Section>
 
       {sheet.squeeze.length > 0 && (
-        <Section title="4. Five 6D L in one Section" hint="Squeeze them in by hand, then check the x-ray says the same and its numbers are credible.">
+        <Section title="4. Five 6D L in one section" hint="Squeeze them in by hand, then check the x-ray says the same and its numbers are credible.">
           <Table>
             <TableHeader>
               <TableRow>
@@ -184,7 +184,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
                 <TableRow key={s.label}>
                   <TableCell className="font-medium">{s.label}</TableCell>
                   <TableCell>
-                    <span className="font-medium">{s.status}</span> — {s.message}
+                    <span className="font-medium">{s.status}</span>: {s.message}
                   </TableCell>
                   <Blank />
                 </TableRow>
@@ -195,7 +195,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
       )}
 
       <Section
-        title="5. Settle: one pouch alone in centre middle, Size M"
+        title="5. Settle: one pouch alone in centre middle, size M"
         hint="Front and back empty. Close the pillow, press once as a head would, open it and measure how far it spread each way and how thick it now is."
       >
         <Table>
@@ -240,8 +240,8 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
       </Section>
 
       <Section
-        title="6. Footprints by Size"
-        hint="Lay the pouch flat in an open chamber and photograph it from above. M is what Settings says; the other Sizes are scaled from M by the pillow's proportions, so the XS and XL photos check that rule too."
+        title="6. Footprints by size"
+        hint="Lay the pouch flat in an open chamber and photograph it from above. M is what the Dimensions tab says. The other sizes are scaled from M by the pillow's proportions, so the XS and XL photos check that rule too."
       >
         <Table>
           <TableHeader>

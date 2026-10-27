@@ -101,7 +101,7 @@ export function EasyshipFulfilment({
             const res = await fetch(`/api/shop/orders/${order.id}/easyship/rates`, { method: "POST" });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
-                setRatesError(typeof json?.error === "string" ? json.error : "Could not get courier rates.");
+                setRatesError(typeof json?.error === "string" ? json.error : "Couldn't get courier rates.");
                 return;
             }
             const list = json.rates as CourierRate[];
@@ -113,7 +113,7 @@ export function EasyshipFulfilment({
                     : (list[0]?.courier_service_id ?? ""),
             );
         } catch {
-            setRatesError("Network error. Please try again.");
+            setRatesError("Couldn't reach the server. Try again.");
         } finally {
             setLoadingRates(false);
         }
@@ -130,18 +130,18 @@ export function EasyshipFulfilment({
             });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
-                toast.error(typeof json?.error === "string" ? json.error : "Could not buy the label.");
+                toast.error(typeof json?.error === "string" ? json.error : "Couldn't buy the label.");
                 return;
             }
             toast.success(
                 json.shipped
-                    ? "Label bought — the order is marked shipped and the customer has been emailed."
-                    : "Shipment created — the label is being generated. Tracking will arrive by webhook.",
+                    ? "Label bought. The order is marked shipped and the customer has been emailed."
+                    : "Shipment created. The label is still being made, and tracking appears once it's ready.",
             );
             setOpen(false);
             await Promise.all([onChanged(), loadShipment()]);
         } catch {
-            toast.error("Network error. Please try again.");
+            toast.error("Couldn't reach the server. Try again.");
         } finally {
             setBuying(false);
         }

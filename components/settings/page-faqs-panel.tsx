@@ -120,7 +120,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
         body: JSON.stringify({ surface_key: key }),
       });
       if (!ensure.ok) {
-        toast.error("Failed to load Page FAQ set");
+        toast.error("Couldn't load the page FAQs.");
         setSet(null);
         return;
       }
@@ -128,7 +128,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
       const json = await res.json();
       setSet(json.set ?? null);
     } catch {
-      toast.error("Failed to load Page FAQ set");
+      toast.error("Couldn't load the page FAQs.");
       setSet(null);
     } finally {
       setLoading(false);
@@ -166,7 +166,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
       body: JSON.stringify({ set_id: set.id, slug, content }),
     });
     if (!res.ok) {
-      toast.error("Failed to add question");
+      toast.error("Couldn't add the question.");
       return;
     }
     toast.success("Question added");
@@ -180,7 +180,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
       body: JSON.stringify(patch),
     });
     if (!res.ok) {
-      toast.error("Failed to save question");
+      toast.error("Couldn't save the question.");
       return;
     }
     const { row } = await res.json();
@@ -216,7 +216,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
             }
           : prev
       );
-      toast.error("Failed to update visibility");
+      toast.error("Couldn't update visibility.");
     }
   };
 
@@ -224,7 +224,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
     if (!confirm("Delete this question?")) return;
     const res = await fetch(`/api/page-faq/items/${item.id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.error("Failed to delete question");
+      toast.error("Couldn't delete the question.");
       return;
     }
     setSet((prev) =>
@@ -252,7 +252,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
     });
     if (!res.ok) {
       loadSet(surfaceKey);
-      toast.error("Failed to reorder");
+      toast.error("Couldn't reorder the questions.");
     }
   };
 
@@ -451,7 +451,7 @@ function PageItemEditor({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Answer (markdown)</Label>
+                  <Label className="text-xs">Answer (Markdown)</Label>
                   <Textarea
                     rows={5}
                     value={content[loc]?.answer ?? ""}

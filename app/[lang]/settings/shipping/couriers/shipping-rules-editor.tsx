@@ -68,7 +68,7 @@ export function ShippingRulesEditor({
         if (j.reference) setReference(j.reference);
         else throw new Error(typeof j.error === "string" ? j.error : "no reference");
       })
-      .catch((e) => !cancelled && toast.error(`Courier reference data unavailable: ${e instanceof Error ? e.message : e}`));
+      .catch((e) => !cancelled && toast.error(`Couldn't load courier reference data: ${e instanceof Error ? e.message : e}`));
     return () => { cancelled = true; };
   }, []);
 
@@ -80,8 +80,8 @@ export function ShippingRulesEditor({
   const commit = () => {
     if (!editing) return;
     const { index, draft } = editing;
-    if (!draft.name.trim()) return toast.error("Give the rule a name");
-    if (!draft.conditions.length || !draft.actions.length) return toast.error("A rule needs at least one condition and one action");
+    if (!draft.name.trim()) return toast.error("Give the rule a name.");
+    if (!draft.conditions.length || !draft.actions.length) return toast.error("A rule needs at least one condition and one action.");
     const next = [...rules];
     if (index < 0) next.push(draft);
     else next[index] = draft;
@@ -92,8 +92,8 @@ export function ShippingRulesEditor({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Rules run in priority order (lower first) when the courier account quotes a shipment. Matched there by name; a rule
-        whose conditions or actions change is recreated there.
+        Rules run in priority order (lowest first) when the courier account quotes a shipment. They&apos;re matched there by
+        name, and a rule whose conditions or actions change is recreated there.
       </p>
 
       {ordered.map(({ r, i }) => (
@@ -103,7 +103,7 @@ export function ShippingRulesEditor({
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">#{r.priority}</Badge>
                 <span className="font-medium">{r.name || "Untitled rule"}</span>
-                {!r.active && <Badge variant="secondary">inactive</Badge>}
+                {!r.active && <Badge variant="secondary">Inactive</Badge>}
               </div>
               <p className="text-xs text-muted-foreground">
                 {r.conditions.map((c) => titleCase(c.type)).join(", ")} → {r.actions.map((a) => titleCase(a.type)).join(", ")}
@@ -373,7 +373,7 @@ function Labeled({ label, hint, children }: { label: string; hint?: string; chil
     <div className="space-y-1.5">
       <Label className="font-normal">
         {label}
-        {hint && <span className="ml-1 text-xs text-muted-foreground">· {hint}</span>}
+        {hint && <span className="ml-1 text-xs text-muted-foreground">({hint})</span>}
       </Label>
       {children}
     </div>

@@ -93,7 +93,7 @@ function AddSectionDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm">Section Slug</Label>
+            <Label className="text-sm">Section slug</Label>
             <Input
               value={slug}
               onChange={(e) => setSlug(slugify(e.target.value))}
@@ -443,7 +443,7 @@ export default function PageBuilderPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-sm text-muted-foreground">Loading sections...</div>
+        <div className="text-sm text-muted-foreground">Loading sections…</div>
       </div>
     );
   }

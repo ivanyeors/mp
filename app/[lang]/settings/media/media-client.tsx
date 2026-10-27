@@ -441,7 +441,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             const res = await fetch(`/api/media/drive/resolve?url=${encodeURIComponent(url)}`);
             const data = await res.json();
             if (!res.ok || !data.ok) {
-                toast.error(getApiErrorMessage(data.error, "Could not resolve Drive link"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't open that Drive link."));
                 return;
             }
             if (data.file.isFolder) {
@@ -451,7 +451,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             setDrivePreview(data.file as DrivePreview);
         } catch (error) {
             console.error("Drive preview error", error);
-            toast.error("Could not resolve Drive link");
+            toast.error("Couldn't open that Drive link.");
         } finally {
             setDrivePreviewing(false);
         }
@@ -529,7 +529,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             });
             const data = await res.json();
             if (!res.ok || !data.ok) {
-                toast.error(getApiErrorMessage(data.error, "Could not create folder"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't create the folder."));
                 return;
             }
             setFolders((prev) =>
@@ -542,7 +542,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             toast.success("Folder created");
         } catch (error) {
             console.error("Create folder error", error);
-            toast.error("Could not create folder");
+            toast.error("Couldn't create the folder.");
         } finally {
             setFolderBusy(false);
         }
@@ -551,7 +551,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     const handleRenameFolder = async (id: string, name: string) => {
         const trimmed = name.trim();
         if (!trimmed) {
-            toast.error("Folder name cannot be empty");
+            toast.error("Enter a folder name.");
             return;
         }
         setFolderBusy(true);
@@ -584,7 +584,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         if (!detailFile) return;
         const name = editName.trim();
         if (!name) {
-            toast.error("Name cannot be empty");
+            toast.error("Enter a name.");
             return;
         }
         setSavingMeta(true);
@@ -1023,7 +1023,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 )}
                                 {kindFromMime(drivePreview.mimeType) === "other" && (
                                     <p className="text-xs text-destructive">
-                                        This file type cannot be imported.
+                                        This file type can&apos;t be imported.
                                     </p>
                                 )}
                             </div>
@@ -1049,7 +1049,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 type="text"
-                                placeholder="Search images..."
+                                placeholder="Search images…"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full max-md:min-h-11 pl-9 pr-3 py-2 text-base md:text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"

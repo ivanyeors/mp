@@ -185,7 +185,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
   if (parsed.data.keys !== undefined) {
     if (tpl.role !== 'filling') {
       return NextResponse.json(
-        { error: 'Only Filling Templates apply to more than one size' },
+        { error: 'Only filling templates can apply to more than one size.' },
         { status: 400 },
       )
     }
@@ -214,7 +214,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     // uq_bom_templates_filling / _warehouse: one name per kind+key scope.
     if (upErr.code === '23505') {
       return NextResponse.json(
-        { error: 'Another template in this scope already uses that name' },
+        { error: 'Another template here already uses that name.' },
         { status: 409 },
       )
     }
@@ -256,7 +256,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
   if (parsed.data.placements !== undefined) {
     if (tpl.role !== 'filling') {
       return NextResponse.json(
-        { error: 'Placements are only allowed on Filling Templates (role=filling)' },
+        { error: 'Only filling templates can have placements.' },
         { status: 400 },
       )
     }

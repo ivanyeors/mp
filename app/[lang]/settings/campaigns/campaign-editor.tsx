@@ -242,7 +242,7 @@ export function CampaignEditor({
             const addresses = testTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
             const res = await sendCampaignTestAction(campaign.id, addresses);
             if (!res.ok) setTestResult({ ok: false, text: res.error });
-            else if (res.failed.length) setTestResult({ ok: false, text: `Sent ${res.sent}; failed: ${res.failed.map((f) => `${f.to} (${f.error})`).join(", ")}` });
+            else if (res.failed.length) setTestResult({ ok: false, text: `Sent ${res.sent}. Couldn't send to ${res.failed.map((f) => `${f.to} (${f.error})`).join(", ")}.` });
             else setTestResult({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}. Check the inbox, and the spam folder.` });
             if (res.ok && res.sent > 0) {
                 setLastTest({ sent: res.sent, at: new Date().toISOString() });
@@ -305,7 +305,7 @@ export function CampaignEditor({
               subject,
               from: plan.readiness.sender.from,
               replyTo: plan.readiness.sender.replyTo,
-              audience: CAMPAIGN_AUDIENCE_LABEL[audience] + (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a Segment"}` : ""),
+              audience: CAMPAIGN_AUDIENCE_LABEL[audience] + (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : ""),
               firstWave,
           }
         : null;
@@ -444,7 +444,7 @@ export function CampaignEditor({
                         <CardDescription>Only customers who agreed to marketing email receive it.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Field label="Campaign name" htmlFor="c-name" hint="For you; customers never see it." error={fieldErrors.name}>
+                        <Field label="Campaign name" htmlFor="c-name" hint="Customers never see this." error={fieldErrors.name}>
                             <Input id="c-name" value={name} maxLength={CAMPAIGN_LIMITS.name} onChange={(e) => setName(e.target.value)} />
                         </Field>
 
@@ -466,11 +466,11 @@ export function CampaignEditor({
                             <Field
                                 label="Segment"
                                 htmlFor="c-segment"
-                                hint={segments.length ? "Save Segments from the Customers list's filters." : "No Segments yet: save one from the Customers list's filters."}
+                                hint={segments.length ? "Save segments from the filters on the Customers list." : "No segments yet. Save one from the filters on the Customers list."}
                             >
                                 <Select value={segmentId} onValueChange={setSegmentId}>
                                     <SelectTrigger id="c-segment" className="w-full justify-between" disabled={locked || !segments.length}>
-                                        <SelectValue placeholder="Choose a Segment" />
+                                        <SelectValue placeholder="Choose a segment" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {segments.map((s) => (
@@ -638,8 +638,8 @@ export function CampaignEditor({
                         </div>
                         {stats ? (
                             <CardDescription>
-                                Sent {n(stats.handed)} · bounced {n(stats.bounced)} · marked as spam {n(stats.complained)} · failed{" "}
-                                {n(stats.failed)} · sign-in link opened {n(stats.linkClicks)}
+                                Sent {n(stats.handed)}, bounced {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed{" "}
+                                {n(stats.failed)}, sign-in link opened {n(stats.linkClicks)}
                             </CardDescription>
                         ) : null}
                     </CardHeader>
@@ -766,7 +766,7 @@ export function CampaignEditor({
                                 />
                                 {/* Updated once a batch (about every ten seconds), not once an email. */}
                                 <p role="status" aria-live="polite">
-                                    Sent {n(progress.sent)} of {n(progress.total)} · failed {n(progress.failed)} · skipped {n(progress.skipped)}
+                                    Sent {n(progress.sent)} of {n(progress.total)}, failed {n(progress.failed)}, skipped {n(progress.skipped)}
                                 </p>
                                 {progress.running ? (
                                     <p className="text-xs text-muted-foreground">Keep this page open until it finishes.</p>

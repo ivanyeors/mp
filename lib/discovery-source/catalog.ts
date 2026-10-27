@@ -163,15 +163,15 @@ export function assertCatalogAllowsSave(
 ): { ok: true; catalog: DiscoverySourceCatalog } | { ok: false; error: string } {
   const hasOther = catalog.options.some((o) => o.id === OTHER_DISCOVERY_SOURCE_ID);
   if (!hasOther) {
-    return { ok: false, error: "Other is a fixed system option and cannot be removed" };
+    return { ok: false, error: "Other is a fixed system option and can't be removed." };
   }
   const other = catalog.options.find((o) => o.id === OTHER_DISCOVERY_SOURCE_ID)!;
   if (other.active === false) {
-    return { ok: false, error: "Other cannot be archived" };
+    return { ok: false, error: "Other can't be archived." };
   }
   const ids = catalog.options.map((o) => o.id);
   if (new Set(ids).size !== ids.length) {
-    return { ok: false, error: "Duplicate option ids" };
+    return { ok: false, error: "Two options share the same id." };
   }
   for (const o of catalog.options) {
     if (!ID_RE.test(o.id)) {

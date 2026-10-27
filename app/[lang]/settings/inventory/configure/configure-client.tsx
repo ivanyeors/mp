@@ -169,7 +169,7 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
                   <div className="text-xs text-muted-foreground">Bolster</div>
                   <div className="text-2xl font-semibold">{v.label}</div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Case, Protector, 6D (L)
+                    Case, protector, 6D (L)
                   </div>
                   <div className="mt-3">
                     <Button size="sm" variant="secondary">

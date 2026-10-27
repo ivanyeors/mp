@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
     if (!normalized.ok) return NextResponse.json({ error: normalized.error }, { status: 400 })
     if (!normalized.keys.includes(key)) {
       return NextResponse.json(
-        { error: `A template created at ${key} must also apply to ${key}` },
+        { error: `A template created at ${key} must also apply to ${key}.` },
         { status: 400 },
       )
     }

@@ -339,8 +339,8 @@ export default function ConfigureCardPage() {
     const res = await fetch(url, { method: 'GET' })
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
-      const message = payload?.error ?? 'Failed to load templates'
-      throw new Error(typeof message === 'string' ? message : 'Failed to load templates')
+      const message = payload?.error ?? "Couldn't load templates."
+      throw new Error(typeof message === 'string' ? message : "Couldn't load templates.")
     }
     const payload = await res.json().catch(() => null)
     return (payload?.templates ?? []) as Array<{ id: number; name: string; notes: string | null }>
@@ -502,7 +502,7 @@ export default function ConfigureCardPage() {
         );
         setPillowTemplates(list);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to load templates');
+        toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
       }
     };
     load();
@@ -516,7 +516,7 @@ export default function ConfigureCardPage() {
         const list = await loadTemplates('bolster', key);
         setBolsterTemplates(list);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to load templates');
+        toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
       }
     };
     load();
@@ -567,7 +567,7 @@ export default function ConfigureCardPage() {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      const message = payload?.error ?? "Failed to save configuration";
+      const message = payload?.error ?? "Couldn't save the configuration.";
       throw new Error(message);
     }
   };
@@ -583,7 +583,7 @@ export default function ConfigureCardPage() {
     const res = await fetch(url, { method: "GET" });
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      throw new Error(payload?.error ?? "Failed to load Filling Templates");
+      throw new Error(payload?.error ?? "Couldn't load filling templates.");
     }
     const payload = await res.json().catch(() => null);
     const rows = (payload?.templates ?? []) as FillingTemplateRow[];
@@ -611,8 +611,8 @@ export default function ConfigureCardPage() {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), { method: 'GET' })
     const payload = await res.json().catch(() => null)
     if (!res.ok) {
-      const message = payload?.error ?? 'Failed to load template'
-      throw new Error(typeof message === 'string' ? message : 'Failed to load template')
+      const message = payload?.error ?? "Couldn't load the template."
+      throw new Error(typeof message === 'string' ? message : "Couldn't load the template.")
     }
     type LineRow = { item_id: number | string; quantity: number | string }
     return ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }))
@@ -625,13 +625,13 @@ export default function ConfigureCardPage() {
       body: JSON.stringify({ templateId }),
     });
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(payload?.error ?? 'Failed to delete template');
+    if (!res.ok) throw new Error(payload?.error ?? "Couldn't delete the template.");
   };
 
   const confirmDeletePillowTemplate = async () => {
     if (pillowSelectedTemplateId === '') return;
     if (!selectedSize || !selectedPillowKind) {
-      toast.error('Select a pillow size/kind first');
+      toast.error('Choose a pillow size and tier first.');
       return;
     }
     setDeletingTemplate(true);
@@ -648,7 +648,7 @@ export default function ConfigureCardPage() {
       setPillowDeleteOpen(false);
       toast.success('Template deleted');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete template');
+      toast.error(err instanceof Error ? err.message : "Couldn't delete the template.");
     } finally {
       setDeletingTemplate(false);
     }
@@ -657,7 +657,7 @@ export default function ConfigureCardPage() {
   const confirmDeleteBolsterTemplate = async () => {
     if (bolsterSelectedTemplateId === '') return;
     if (!bolsterVariant) {
-      toast.error('Select a bolster variant first');
+      toast.error('Choose a bolster length first.');
       return;
     }
     setDeletingTemplate(true);
@@ -670,7 +670,7 @@ export default function ConfigureCardPage() {
       setBolsterDeleteOpen(false);
       toast.success('Template deleted');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete template');
+      toast.error(err instanceof Error ? err.message : "Couldn't delete the template.");
     } finally {
       setDeletingTemplate(false);
     }
@@ -678,7 +678,7 @@ export default function ConfigureCardPage() {
 
   const saveBolster = async () => {
     if (!bolsterVariant) {
-      toast.message("Select a bolster variant to save");
+      toast.message("Choose a bolster length to save.");
       return;
     }
     setSaving(true);
@@ -698,7 +698,7 @@ export default function ConfigureCardPage() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        const message = payload?.error ?? 'Failed to save bolster';
+        const message = payload?.error ?? "Couldn't save the bolster.";
         throw new Error(message);
       }
       // If a bolster template is selected, keep it in sync with the edited lines.
@@ -713,13 +713,13 @@ export default function ConfigureCardPage() {
         })
         if (!res.ok) {
           const payload = await res.json().catch(() => null)
-          throw new Error(payload?.error ?? 'Failed to update template')
+          throw new Error(payload?.error ?? "Couldn't update the template.")
         }
       }
       toast.success('Bolster configuration saved');
       notifyInventoryChange();
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to save bolster';
+      const message = e instanceof Error ? e.message : "Couldn't save the bolster.";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -731,7 +731,7 @@ export default function ConfigureCardPage() {
     try {
       const product = products.find((p) => p.size === size && p.kind === kind);
       if (!product) {
-        throw new Error(`No active ${kind} pillow product found for size ${size}`);
+        throw new Error(`There's no active ${kind} pillow in size ${size}.`);
       }
       // If the user is editing a saved template, persist the edits back into that template too.
       // This matches the UX expectation that reloading the template reflects what was just saved.
@@ -746,7 +746,7 @@ export default function ConfigureCardPage() {
         })
         if (!res.ok) {
           const payload = await res.json().catch(() => null)
-          throw new Error(payload?.error ?? 'Failed to update template')
+          throw new Error(payload?.error ?? "Couldn't update the template.")
         }
       }
       await persistProductBom(
@@ -757,7 +757,7 @@ export default function ConfigureCardPage() {
       toast.success(`${kind === 'basic' ? 'Basic' : 'Premium'} configuration saved for size ${size}`);
       notifyInventoryChange();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save configuration";
+      const message = err instanceof Error ? err.message : "Couldn't save the configuration.";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -776,7 +776,7 @@ export default function ConfigureCardPage() {
       }));
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load template');
+      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
@@ -787,7 +787,7 @@ export default function ConfigureCardPage() {
       setBolsterLines(await loadTemplateLines(next));
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load template');
+      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
@@ -820,9 +820,9 @@ export default function ConfigureCardPage() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="flex items-center gap-1.5">
-        <h1>Configure {productLabel} — {sizeLabel}</h1>
+        <h1>Configure {productLabel}: {sizeLabel}</h1>
         <InfoTip label="About Configure">
-          Product tab: non-filling BOM and warehouse presets. Filling Config: filling mixes for this {open ? "size" : "length"}.
+          The Product tab sets every part except the fillings, plus warehouse presets. Filling config sets the filling mixes for this {open ? "size" : "length"}.
         </InfoTip>
       </div>
       <Separator />
@@ -835,7 +835,7 @@ export default function ConfigureCardPage() {
             >
               <TabsList className="w-full lg:w-auto">
                 <TabsTrigger value="product" className="flex-1 lg:px-6">Product</TabsTrigger>
-                <TabsTrigger value="filling" className="flex-1 lg:px-6">Filling Config</TabsTrigger>
+                <TabsTrigger value="filling" className="flex-1 lg:px-6">Filling config</TabsTrigger>
               </TabsList>
               <TabsContent value="product" className="mt-4 overflow-y-auto lg:overflow-visible">
               <div className={WORKBENCH_GRID}>
@@ -851,7 +851,7 @@ export default function ConfigureCardPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="linen">Linen</SelectItem>
-                        <SelectItem value="fibrecool">Fibrecool</SelectItem>
+                        <SelectItem value="fibrecool">FibreCool</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : undefined
@@ -859,11 +859,11 @@ export default function ConfigureCardPage() {
               />
               <div className="min-w-0 space-y-3">
               <WorkbenchHeader
-                title={pillowSelectedTemplate?.name ?? `${productLabel} — ${sizeLabel}`}
+                title={pillowSelectedTemplate?.name ?? `${productLabel}: ${sizeLabel}`}
                 description={
                   pillowSelectedTemplate
-                    ? 'Linked template — saving updates the product BOM and this template.'
-                    : 'No template linked — pick one to load its parts, or save these parts as a new template.'
+                    ? 'Linked template. Saving updates the product BOM and this template.'
+                    : 'No template linked. Pick one to load its parts, or save these parts as a new template.'
                 }
                 actions={
                   <>
@@ -895,11 +895,11 @@ export default function ConfigureCardPage() {
                   <div className="text-sm font-medium text-muted-foreground">Premium variant</div>
                   <Select value={premiumVariant} onValueChange={changePremiumVariant}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select variant…" />
+                      <SelectValue placeholder="Choose a variant…" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="linen">Linen</SelectItem>
-                      <SelectItem value="fibrecool">Fibrecool</SelectItem>
+                      <SelectItem value="fibrecool">FibreCool</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -912,10 +912,10 @@ export default function ConfigureCardPage() {
                     onValueChange={(value) => void selectPillowTemplate(value ? Number(value) : '')}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select template…" />
+                      <SelectValue placeholder="Choose a template…" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select template…</SelectItem>
+                      <SelectItem value="">Choose a template…</SelectItem>
                       {pillowTemplates.map((t) => (
                         <SelectItem key={t.id} value={String(t.id)}>
                           {t.name}
@@ -947,7 +947,7 @@ export default function ConfigureCardPage() {
                       variant="secondary"
                       onClick={async () => {
                         const name = pillowTemplateName.trim();
-                        if (!name) { toast.message('Enter a template name'); return; }
+                        if (!name) { toast.message('Enter a template name.'); return; }
                         try {
                           const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
                             method: 'POST',
@@ -964,7 +964,7 @@ export default function ConfigureCardPage() {
                             }),
                           });
                           const payload = await res.json().catch(() => null);
-                          if (!res.ok) throw new Error(payload?.error ?? 'Failed to save template');
+                          if (!res.ok) throw new Error(payload?.error ?? "Couldn't save the template.");
                           const list = await loadTemplates(
                             'pillow',
                             selectedSize,
@@ -976,7 +976,7 @@ export default function ConfigureCardPage() {
                           setPillowTemplateNotes('');
                           toast.success(payload?.updatedExisting ? 'Template updated' : 'Template saved');
                         } catch (err) {
-                          toast.error(err instanceof Error ? err.message : 'Failed to save template');
+                          toast.error(err instanceof Error ? err.message : "Couldn't save the template.");
                         }
                       }}
                     >
@@ -997,8 +997,8 @@ export default function ConfigureCardPage() {
                     <DialogTitle>Delete template?</DialogTitle>
                     <DialogDescription>
                       {pillowSelectedTemplate
-                        ? <>This will permanently delete <strong>{pillowSelectedTemplate.name}</strong>. This can’t be undone.</>
-                        : <>This will permanently delete the selected template. This can’t be undone.</>}
+                        ? <>This deletes <strong>{pillowSelectedTemplate.name}</strong>. It can’t be undone.</>
+                        : <>This deletes the selected template. It can’t be undone.</>}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -1082,7 +1082,7 @@ export default function ConfigureCardPage() {
             >
               <TabsList className="w-full lg:w-auto">
                 <TabsTrigger value="product" className="flex-1 lg:px-6">Product</TabsTrigger>
-                <TabsTrigger value="filling" className="flex-1 lg:px-6">Filling Config</TabsTrigger>
+                <TabsTrigger value="filling" className="flex-1 lg:px-6">Filling config</TabsTrigger>
               </TabsList>
               <TabsContent value="product" className="mt-4 overflow-y-auto lg:overflow-visible">
               <div className={WORKBENCH_GRID}>
@@ -1093,11 +1093,11 @@ export default function ConfigureCardPage() {
               />
               <div className="min-w-0 space-y-3">
               <WorkbenchHeader
-                title={bolsterSelectedTemplate?.name ?? `${productLabel} — ${sizeLabel}`}
+                title={bolsterSelectedTemplate?.name ?? `${productLabel}: ${sizeLabel}`}
                 description={
                   bolsterSelectedTemplate
-                    ? 'Linked template — saving updates the bolster BOM and this template.'
-                    : 'No template linked — pick one to load its parts, or save these parts as a new template.'
+                    ? 'Linked template. Saving updates the bolster BOM and this template.'
+                    : 'No template linked. Pick one to load its parts, or save these parts as a new template.'
                 }
                 actions={
                   <>
@@ -1132,10 +1132,10 @@ export default function ConfigureCardPage() {
                     onValueChange={(value) => void selectBolsterTemplate(value ? Number(value) : '')}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select template…" />
+                      <SelectValue placeholder="Choose a template…" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select template…</SelectItem>
+                      <SelectItem value="">Choose a template…</SelectItem>
                       {bolsterTemplates.map((t) => (
                         <SelectItem key={t.id} value={String(t.id)}>
                           {t.name}
@@ -1167,7 +1167,7 @@ export default function ConfigureCardPage() {
                       variant="secondary"
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
-                        if (!name) { toast.message('Enter a template name'); return; }
+                        if (!name) { toast.message('Enter a template name.'); return; }
                         const key = getBolsterTemplateKey(bolsterVariant);
                         try {
                           const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
@@ -1183,14 +1183,14 @@ export default function ConfigureCardPage() {
                             }),
                           });
                           const payload = await res.json().catch(() => null);
-                          if (!res.ok) throw new Error(payload?.error ?? 'Failed to save template');
+                          if (!res.ok) throw new Error(payload?.error ?? "Couldn't save the template.");
                           const list = await loadTemplates('bolster', key);
                           setBolsterTemplates(list);
                           setBolsterTemplateName('');
                           setBolsterTemplateNotes('');
                           toast.success(payload?.updatedExisting ? 'Template updated' : 'Template saved');
                         } catch (err) {
-                          toast.error(err instanceof Error ? err.message : 'Failed to save template');
+                          toast.error(err instanceof Error ? err.message : "Couldn't save the template.");
                         }
                       }}
                     >
@@ -1211,8 +1211,8 @@ export default function ConfigureCardPage() {
                     <DialogTitle>Delete template?</DialogTitle>
                     <DialogDescription>
                       {bolsterSelectedTemplate
-                        ? <>This will permanently delete <strong>{bolsterSelectedTemplate.name}</strong>. This can’t be undone.</>
-                        : <>This will permanently delete the selected template. This can’t be undone.</>}
+                        ? <>This deletes <strong>{bolsterSelectedTemplate.name}</strong>. It can’t be undone.</>
+                        : <>This deletes the selected template. It can’t be undone.</>}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -1343,16 +1343,16 @@ function DefaultFillingPicker({
 
   return (
     <div className="space-y-2 lg:rounded-xl lg:border lg:p-4">
-      <div className="text-sm font-medium text-muted-foreground lg:text-foreground">Default Filling Template</div>
+      <div className="text-sm font-medium text-muted-foreground lg:text-foreground">Default filling template</div>
       <Select
         value={selectedId == null ? "" : String(selectedId)}
         onValueChange={(value) => onSelectedIdChange(value ? Number(value) : null)}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="No default configured" />
+          <SelectValue placeholder="No default set" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">No default configured</SelectItem>
+          <SelectItem value="">No default set</SelectItem>
           {templates.map((t) => (
             <SelectItem key={t.id} value={String(t.id)}>
               {t.name}
@@ -1361,7 +1361,7 @@ function DefaultFillingPicker({
         </SelectContent>
       </Select>
       {selectedId == null ? (
-        <p className="text-xs text-muted-foreground">No default configured</p>
+        <p className="text-xs text-muted-foreground">No default set</p>
       ) : loading ? (
         <p className="text-xs text-muted-foreground">Loading preview…</p>
       ) : preview.length ? (
@@ -1373,7 +1373,7 @@ function DefaultFillingPicker({
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-muted-foreground">Default has no filling lines</p>
+        <p className="text-xs text-muted-foreground">The default has no fillings.</p>
       )}
     </div>
   );
@@ -1451,7 +1451,7 @@ function FillingConfigPanel({
         const list = await loadFillingTemplates(kind, templateKey);
         if (!cancelled) setTemplates(list);
       } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load Filling Templates");
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load filling templates.");
       }
     })();
     return () => {
@@ -1467,7 +1467,7 @@ function FillingConfigPanel({
       { method: "GET" },
     );
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(payload?.error ?? "Failed to load unpromoted mixes");
+    if (!res.ok) throw new Error(payload?.error ?? "Couldn't load unpromoted mixes.");
     return (payload?.entries ?? []) as UnpromotedEntry[];
   }, [kind, templateKey, settingsPath]);
 
@@ -1480,7 +1480,7 @@ function FillingConfigPanel({
       } catch (e) {
         if (!cancelled) {
           setUnpromoted([]);
-          toast.error(e instanceof Error ? e.message : "Failed to load unpromoted mixes");
+          toast.error(e instanceof Error ? e.message : "Couldn't load unpromoted mixes.");
         }
       }
     })();
@@ -1493,7 +1493,7 @@ function FillingConfigPanel({
     if (!promoteTarget) return;
     const trimmed = promoteName.trim();
     if (!trimmed) {
-      toast.message("Enter a template name");
+      toast.message("Enter a template name.");
       return;
     }
     setPromoting(true);
@@ -1509,15 +1509,15 @@ function FillingConfigPanel({
         }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to promote");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't promote the mix.");
       setPromoteTarget(null);
       setPromoteName("");
       // Promoted mixes match a template now: refresh both the picker and the ranking.
       setTemplates(await loadFillingTemplates(kind, templateKey));
       setUnpromoted(await fetchUnpromoted());
-      toast.success("Promoted to Filling Template");
+      toast.success("Promoted to a filling template");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to promote");
+      toast.error(e instanceof Error ? e.message : "Couldn't promote the mix.");
     } finally {
       setPromoting(false);
     }
@@ -1546,8 +1546,8 @@ function FillingConfigPanel({
       const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        const message = payload?.error ?? "Failed to load template";
-        throw new Error(typeof message === "string" ? message : "Failed to load template");
+        const message = payload?.error ?? "Couldn't load the template.";
+        throw new Error(typeof message === "string" ? message : "Couldn't load the template.");
       }
       const served = (payload?.keys ?? []) as string[];
       if (served.length) setScopeKeys(served);
@@ -1564,7 +1564,7 @@ function FillingConfigPanel({
         setHadPlacements(placementRows.length > 0);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load template lines");
+      toast.error(e instanceof Error ? e.message : "Couldn't load the template.");
     }
   };
 
@@ -1589,15 +1589,15 @@ function FillingConfigPanel({
     });
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
-      const message = payload?.error ?? "Failed to save placements";
-      throw new Error(typeof message === "string" ? message : "Failed to save placements");
+      const message = payload?.error ?? "Couldn't save the placements.";
+      throw new Error(typeof message === "string" ? message : "Couldn't save the placements.");
     }
   };
 
   const saveTemplate = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.message("Enter a Filling Template name");
+      toast.message("Enter a filling template name.");
       return;
     }
     const scope = normalizeTemplateKeys(kind, scopeKeys);
@@ -1608,7 +1608,7 @@ function FillingConfigPanel({
     // A new template must land where it was authored, or it would be saved
     // straight out of the list the operator is looking at.
     if (selectedId === "" && !scope.keys.includes(templateKey)) {
-      toast.error(`A new Filling Template must apply to ${templateKeyLabel(kind, templateKey)}`);
+      toast.error(`A new filling template must apply to ${templateKeyLabel(kind, templateKey)}.`);
       return;
     }
     // Slice 04 / 09: a cell that cannot close, or a bolster that cannot fit, is a confirm, never a block (ADR 0019).
@@ -1628,15 +1628,15 @@ function FillingConfigPanel({
         if (!scope.keys.includes(templateKey)) {
           resetEditor();
           toast.success(
-            `${trimmed} now applies to ${formatTemplateKeys(kind, scope.keys)} — open one of those cards to edit it`,
+            `${trimmed} now applies to ${formatTemplateKeys(kind, scope.keys)}. Open one of those cards to edit it.`,
           );
           return;
         }
         setHadPlacements(true);
         toast.success(
           scope.keys.length > 1
-            ? `Filling Template updated for ${formatTemplateKeys(kind, scope.keys)}`
-            : "Filling Template updated",
+            ? `Filling template updated for ${formatTemplateKeys(kind, scope.keys)}`
+            : "Filling template updated",
         );
         return;
       }
@@ -1656,8 +1656,8 @@ function FillingConfigPanel({
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        const message = payload?.error ?? "Failed to save Filling Template";
-        throw new Error(typeof message === "string" ? message : "Failed to save Filling Template");
+        const message = payload?.error ?? "Couldn't save the filling template.";
+        throw new Error(typeof message === "string" ? message : "Couldn't save the filling template.");
       }
       const savedId = payload?.template?.id as number | undefined;
       if (savedId) {
@@ -1667,9 +1667,9 @@ function FillingConfigPanel({
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
       if (savedId) setSelectedId(savedId);
-      toast.success(payload?.updatedExisting ? "Filling Template updated" : "Filling Template saved");
+      toast.success(payload?.updatedExisting ? "Filling template updated" : "Filling template saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save Filling Template");
+      toast.error(e instanceof Error ? e.message : "Couldn't save the filling template.");
     } finally {
       setSaving(false);
     }
@@ -1686,7 +1686,7 @@ function FillingConfigPanel({
     const current = templates.find((t) => t.id === id);
     if (!current) return;
     if (!trimmed) {
-      toast.message("Enter a Filling Template name");
+      toast.message("Enter a filling template name.");
       return;
     }
     if (trimmed === current.name) {
@@ -1694,7 +1694,7 @@ function FillingConfigPanel({
       return;
     }
     if (templates.some((t) => t.id !== id && t.name === trimmed)) {
-      toast.error("Another Filling Template in this scope already uses that name");
+      toast.error("Another filling template here already uses that name.");
       return;
     }
     setRenaming(true);
@@ -1706,15 +1706,15 @@ function FillingConfigPanel({
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        const message = payload?.error ?? "Failed to rename Filling Template";
-        throw new Error(typeof message === "string" ? message : "Failed to rename Filling Template");
+        const message = payload?.error ?? "Couldn't rename the filling template.";
+        throw new Error(typeof message === "string" ? message : "Couldn't rename the filling template.");
       }
       setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, name: trimmed } : t)));
       if (selectedId === id) setName(trimmed);
       setRenamingId("");
-      toast.success("Filling Template renamed");
+      toast.success("Filling template renamed");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to rename Filling Template");
+      toast.error(e instanceof Error ? e.message : "Couldn't rename the filling template.");
     } finally {
       setRenaming(false);
     }
@@ -1745,18 +1745,18 @@ function FillingConfigPanel({
       );
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        const message = payload?.error ?? "Failed to copy Filling Template";
-        throw new Error(typeof message === "string" ? message : "Failed to copy Filling Template");
+        const message = payload?.error ?? "Couldn't copy the filling template.";
+        throw new Error(typeof message === "string" ? message : "Couldn't copy the filling template.");
       }
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
       const createdId = payload?.template?.id as number | undefined;
       if (createdId) await selectTemplate(createdId);
       toast.success(
-        `${copyName} applies to ${label} only — ${name.trim() || "the original"} no longer does`,
+        `${copyName} now covers ${label} only, and ${name.trim() || "the original"} no longer does.`,
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to copy Filling Template");
+      toast.error(e instanceof Error ? e.message : "Couldn't copy the filling template.");
     } finally {
       setForking(false);
     }
@@ -1770,12 +1770,12 @@ function FillingConfigPanel({
         body: JSON.stringify({ is_active }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to update");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't update the template.");
       setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
       if (selectedId === id) setActive(is_active);
       toast.success(is_active ? "Template activated" : "Template deactivated");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update");
+      toast.error(e instanceof Error ? e.message : "Couldn't update the template.");
     }
   };
 
@@ -1793,9 +1793,9 @@ function FillingConfigPanel({
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
       resetEditor();
-      toast.success("Filling Template deleted");
+      toast.success("Filling template deleted");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete");
+      toast.error(e instanceof Error ? e.message : "Couldn't delete the template.");
     } finally {
       setSaving(false);
     }
@@ -1869,7 +1869,7 @@ function FillingConfigPanel({
 
   const templateRail = (
     <TemplateRail
-      title="Filling Templates"
+      title="Filling templates"
       placement={kind === "pillow" ? "lg:max-h-[28rem]" : undefined}
       total={templates.length}
       search={search}
@@ -1953,8 +1953,8 @@ function FillingConfigPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Filling-only mixes for operator assignment. Showing every recipe that applies to{" "}
-        {kind === "pillow" ? "size" : "length"} <strong>{templateKey}</strong> — one recipe can
+        Filling mixes that staff assign to results. This shows every recipe for{" "}
+        {kind === "pillow" ? "size" : "length"} <strong>{templateKey}</strong>, since one recipe can
         serve several.
       </p>
       <div className={WORKBENCH_GRID}>
@@ -1969,13 +1969,13 @@ function FillingConfigPanel({
       )}
       <div className="min-w-0 space-y-4">
       <WorkbenchHeader
-        title={selectedId === "" ? "New Filling Template" : name.trim() || "Untitled Filling Template"}
-        description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey} · ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed`}
+        title={selectedId === "" ? "New filling template" : name.trim() || "Untitled filling template"}
+        description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey}, ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed`}
         // Save is pinned here while the shared-recipe notice scrolls away with
         // the meta block, so the warning rides alongside the button it is about.
         warning={
           scopeKeys.length > 1
-            ? `Shared — saving rewrites ${formatTemplateKeys(kind, scopeKeys)}`
+            ? `Shared. Saving rewrites ${formatTemplateKeys(kind, scopeKeys)}`
             : null
         }
         actions={
@@ -1989,7 +1989,7 @@ function FillingConfigPanel({
               </Button>
             )}
             <Button size="sm" onClick={() => void saveTemplate()} disabled={saving}>
-              {saving ? "Saving…" : "Save Filling Template"}
+              {saving ? "Saving…" : "Save filling template"}
             </Button>
           </>
         }
@@ -2016,7 +2016,7 @@ function FillingConfigPanel({
         </Select>
       </div>
       <Input
-        placeholder="Filling Template name"
+        placeholder="Filling template name"
         value={name}
         maxLength={120}
         onChange={(e) => setName(e.target.value)}
@@ -2041,7 +2041,7 @@ function FillingConfigPanel({
         </label>
         <div className="flex flex-wrap gap-2 lg:hidden">
           <Button variant="secondary" onClick={() => void saveTemplate()} disabled={saving}>
-            {saving ? "Saving…" : "Save Filling Template"}
+            {saving ? "Saving…" : "Save filling template"}
           </Button>
           <Button
             variant="destructive"
@@ -2058,7 +2058,7 @@ function FillingConfigPanel({
       {deleteConfirm && (
         <p className="text-xs text-amber-700 dark:text-amber-400">
           This recipe also applies to {formatTemplateKeys(kind, scopeKeys.filter((k) => k !== templateKey))}.
-          Deleting removes it from all of them — to drop only{" "}
+          Deleting removes it from all of them. To drop only{" "}
           {templateKeyLabel(kind, templateKey)}, switch that {kind === "bolster" ? "length" : "size"} off
           above and save instead.
         </p>
@@ -2090,7 +2090,7 @@ function FillingConfigPanel({
       <div className="space-y-3">
           {isLegacyFlat && (
             <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-              <div className="font-medium">Legacy flat recipe — saving spatially will set placements.</div>
+              <div className="font-medium">Legacy flat recipe. Saving gives each piece a placement.</div>
               <ul className="mt-1 list-inside list-disc text-muted-foreground">
                 {lines.map((l) => (
                   <li key={l.item_id}>
@@ -2103,7 +2103,7 @@ function FillingConfigPanel({
           {/* Wide screens: the pack list sits beside the editor that derives it. */}
           <div className="space-y-3 xl:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start xl:gap-4 xl:space-y-0">
           {kind === "pillow" ? (
-            <Section title="Spatial recipe — click a section to dive in (up to 5 layers × 5 pieces per cell)">
+            <Section title="Spatial recipe: click a section to dive in (up to 5 layers × 5 pieces per cell)">
               {placements.length > 0 && !isSpatiallyAuthored(placements) && (
                 <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                   <div className="font-medium">Not spatially authored.</div>
@@ -2146,7 +2146,7 @@ function FillingConfigPanel({
           ) : (
             // Mbolster: one long compartment, no piece cap, never the 3×3 grid — edited on
             // the same capsule x-ray the /mbolster-config staff assist uses.
-            <Section title="Single compartment (ordered mix — no piece cap)">
+            <Section title="Single compartment (ordered mix, no piece cap)">
               <XrayBolsterEditor
                 placements={bolsterMix}
                 length={bolsterLength}
@@ -2176,7 +2176,7 @@ function FillingConfigPanel({
               <InsertOrderList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />
             )}
             <Textarea
-              placeholder="Assembly notes (optional) — how the fillings go together"
+              placeholder="Assembly notes (optional): how the fillings go together"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               maxLength={2000}
@@ -2196,7 +2196,7 @@ function FillingConfigPanel({
                   <div key={entry.fingerprint} className="rounded-lg border p-3 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="font-medium">
-                        #{idx + 1} · {entry.count} Result{entry.count === 1 ? "" : "s"} ·{" "}
+                        #{idx + 1}: {entry.count} result{entry.count === 1 ? "" : "s"}.{" "}
                         {entry.packList.map((l) => `${itemLabel(l.item_id)} ×${l.count}`).join(", ")}
                       </div>
                       <Button
@@ -2212,7 +2212,7 @@ function FillingConfigPanel({
                     </div>
                     {kind === "pillow" && (
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {cellSummary(entry.placements as PillowPlacementRow[]).join(" · ")}
+                        {cellSummary(entry.placements as PillowPlacementRow[]).join("; ")}
                       </div>
                     )}
                   </div>
@@ -2228,11 +2228,11 @@ function FillingConfigPanel({
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Promote to Filling Template</DialogTitle>
+                <DialogTitle>Promote to a filling template</DialogTitle>
                 <DialogDescription>
-                  Creates a named active catalog Filling Template for{" "}
-                  {kind === "pillow" ? "size" : "length"} {templateKey} from this mix. It leaves the
-                  unpromoted list once promoted.
+                  Creates a named, active filling template for{" "}
+                  {kind === "pillow" ? "size" : "length"} {templateKey} from this mix. Once promoted, it
+                  leaves the unpromoted list.
                 </DialogDescription>
               </DialogHeader>
               <Input
@@ -2431,7 +2431,7 @@ function TemplateRail({
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search templates..."
+            placeholder="Search templates…"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
@@ -2546,7 +2546,7 @@ function WarehouseTemplateRail({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="recent">Recently updated</SelectItem>
-              <SelectItem value="name">Name A–Z</SelectItem>
+              <SelectItem value="name">Name A to Z</SelectItem>
             </SelectContent>
           </Select>
         </>
@@ -2682,7 +2682,7 @@ function DynamicPartSection({
 
   return (
     <Section title={title}>
-      <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]} pinFirstColumn>
+      <ConfigureTable headers={["Part", "Size", "Qty", "Actions"]} pinFirstColumn>
         {lines.map((l) => {
           const item = getItem(l.item_id);
           return (
@@ -2724,11 +2724,11 @@ function DynamicPartSection({
                   onValueChange={(value) => setSelectedId(value ? Number(value) : "")}
                 >
                   <SelectTrigger className="w-full" disabled={addable.length === 0}>
-                    <SelectValue placeholder={addable.length ? "Select part to add" : "All available parts added"} />
+                    <SelectValue placeholder={addable.length ? "Choose a part to add" : "Every available part is added"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="" disabled={addable.length === 0}>
-                      {addable.length ? "Select part to add" : "All available parts added"}
+                      {addable.length ? "Choose a part to add" : "Every available part is added"}
                     </SelectItem>
                     {addable.map((it) => (
                       <SelectItem key={it.id} value={String(it.id)}>

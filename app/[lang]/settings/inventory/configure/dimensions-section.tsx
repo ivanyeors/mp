@@ -38,12 +38,12 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
       const res = await fetch(settingsPath(ROUTE));
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to load dimensions"));
+        toast.error(getApiErrorMessage(data.error, "Couldn't load dimensions."));
         return;
       }
       setPayload(data as DimensionsPayload);
     } catch {
-      toast.error("Failed to load dimensions");
+      toast.error("Couldn't load dimensions.");
     }
   }, [settingsPath]);
 
@@ -60,7 +60,7 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        toast.error(getApiErrorMessage(data.error, "Failed to save dimensions"));
+        toast.error(getApiErrorMessage(data.error, "Couldn't save dimensions."));
         return false;
       }
       return true;
@@ -105,8 +105,8 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
             section widths and heights come from the drawings and are not editable.
           </p>
           <p>
-            Enter pouch and Neck support sizes as they sit in a <strong>Size M</strong> pillow:
-            the other Sizes scale them by their own proportions (width by the pillow width,
+            Enter pouch and neck support sizes as they sit in a <strong>size M</strong> pillow.
+            The other sizes scale them by their own proportions (width by the pillow width,
             length by its length, thickness by its gusset height), so a filling keeps its
             place in every pillow from XS to XL.{" "}
             <a
@@ -135,7 +135,7 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
           />
           <DimensionSheet
             title="Filling pouches"
-            blurb="Width runs across the section (left ↔ right), length along it (front ↔ back); thickness relaxed and fully compressed; minimum width when squeezed. Flat length / width are optional: the fabric’s own limit when it stops a spread before the fill is fully compressed."
+            blurb="Width runs across the section (left to right) and length along it (front to back). Thickness is measured relaxed and fully compressed, and minimum width when squeezed. Flat length and width are optional: the fabric’s own limit when it stops a spread before the fill is fully compressed."
             leadHead="Pouch"
             columns={POUCH_COLUMNS}
             entries={payload.pouches.map((row) => ({
@@ -156,7 +156,7 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
             onReset={(key) => mutate("DELETE", { kind: "pouch", key }, "Pouch back to the code default")}
           />
           <DimensionSheet
-            title="Cervical Neck support"
+            title="Cervical Neck Support"
             blurb="A roll, like a mini bolster: length end to end (left ↔ right), radius relaxed and fully squashed."
             leadHead="Size"
             columns={NECK_COLUMNS}
@@ -169,7 +169,7 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
               measuredOn: row.measuredOn,
             }))}
             toBody={(size, d) => neckBody(size, d as NeckDraft)}
-            onSaveAll={(items) => saveAll("neck", items, "Neck support rows")}
+            onSaveAll={(items) => saveAll("neck", items, "neck support rows")}
             onReset={(size) => mutate("DELETE", { kind: "neck", size }, "Neck support back to the code default")}
           />
         </>
@@ -210,7 +210,7 @@ function AllowanceEditor({
     return PILLOW_SIZES.map((size) => {
       const g = PILLOW_DIMENSIONS[size].gusset;
       return `${size} ${Math.round(g.fullMm * k)} / ${Math.round(g.backMm * k)}`;
-    }).join(" · ");
+    }).join(", ");
   }, [draftPct, valid, allowance]);
 
   return (
@@ -219,9 +219,9 @@ function AllowanceEditor({
         <label htmlFor="loft-allowance" className="text-sm font-medium">
           Loft allowance
         </label>
-        <InfoTip label="About Loft allowance">
+        <InfoTip label="About loft allowance">
           How much the drawn height and the loft budget exceed the drawing’s gusset, because the
-          case is cloth and gives. Drawn side / centre heights in mm at this allowance: {heights}.
+          case is cloth and gives. Drawn side and centre heights in mm at this allowance: {heights}.
         </InfoTip>
         <div className="flex items-center gap-1">
           <div className="w-20">
@@ -306,14 +306,14 @@ function pouchBody(key: string, d: PouchDraft): { body: Body } | { error: string
   const min_thickness_mm = toMm(d.min_thickness_mm);
   const min_width_mm = toMm(d.min_width_mm);
   if (!width_mm || !length_mm || !thickness_mm || !min_thickness_mm || !min_width_mm) {
-    return { error: "Every measurement must be a whole number of millimetres" };
+    return { error: "Every measurement must be a whole number of millimetres." };
   }
-  if (min_thickness_mm > thickness_mm) return { error: "Min thickness cannot exceed thickness" };
-  if (min_width_mm > width_mm) return { error: "Min width cannot exceed width" };
+  if (min_thickness_mm > thickness_mm) return { error: "Min thickness can't be more than thickness." };
+  if (min_width_mm > width_mm) return { error: "Min width can't be more than width." };
   const flat_length_mm = d.flat_length_mm.trim() === "" ? null : toMm(d.flat_length_mm);
   const flat_width_mm = d.flat_width_mm.trim() === "" ? null : toMm(d.flat_width_mm);
-  if (flat_length_mm === null && d.flat_length_mm.trim() !== "") return { error: "Flat length must be a whole number" };
-  if (flat_width_mm === null && d.flat_width_mm.trim() !== "") return { error: "Flat width must be a whole number" };
+  if (flat_length_mm === null && d.flat_length_mm.trim() !== "") return { error: "Flat length must be a whole number." };
+  if (flat_width_mm === null && d.flat_width_mm.trim() !== "") return { error: "Flat width must be a whole number." };
   return {
     body: {
       key,
@@ -343,9 +343,9 @@ function neckBody(size: string, d: NeckDraft): { body: Body } | { error: string 
   const radius_mm = toMm(d.radius_mm);
   const min_radius_mm = toMm(d.min_radius_mm);
   if (!length_mm || !radius_mm || !min_radius_mm) {
-    return { error: "Every measurement must be a whole number of millimetres" };
+    return { error: "Every measurement must be a whole number of millimetres." };
   }
-  if (min_radius_mm > radius_mm) return { error: "Min radius cannot exceed radius" };
+  if (min_radius_mm > radius_mm) return { error: "Min radius can't be more than radius." };
   return { body: { size, length_mm, radius_mm, min_radius_mm } };
 }
 
@@ -431,7 +431,7 @@ function DimensionSheet({
             type="button"
             size="sm"
             disabled={saving || dirty.length === 0 || errorCount === dirty.length}
-            title={errorCount ? `${errorCount} row(s) have errors and will not be saved` : undefined}
+            title={errorCount ? `${errorCount} row(s) have errors and won't be saved` : undefined}
             onClick={() => void save()}
           >
             {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}

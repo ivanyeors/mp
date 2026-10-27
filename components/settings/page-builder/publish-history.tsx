@@ -50,7 +50,7 @@ export function PublishHistory({
       const body = await res.json();
       setRows(body.snapshots ?? []);
     } catch {
-      toast.error("Failed to load publish history");
+      toast.error("Couldn't load the publish history.");
       setRows([]);
     }
   }, []);
@@ -68,13 +68,13 @@ export function PublishHistory({
         body: JSON.stringify({ snapshotId: snapshot.id }),
       });
       const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error ?? "Restore failed");
-      toast.success("Restored as a draft — review it, then publish");
+      if (!res.ok) throw new Error(body?.error ?? "Couldn't restore this version.");
+      toast.success("Restored as a draft. Review it, then publish.");
       setConfirming(null);
       setOpen(false);
       onRestored();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Restore failed");
+      toast.error(err instanceof Error ? err.message : "Couldn't restore this version.");
     } finally {
       setBusy(false);
     }
@@ -119,7 +119,7 @@ export function PublishHistory({
                   )}
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {row.published_by ?? "Unknown"} · {row.sectionCount} sections
+                  {row.published_by ?? "Unknown"}, {row.sectionCount} sections
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {describeSnapshotDiff(row.diff)}
@@ -128,7 +128,7 @@ export function PublishHistory({
                   <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
                     {row.diff.missing.length} section
                     {row.diff.missing.length === 1 ? "" : "s"} in this version no longer exist and
-                    cannot be brought back.
+                    can&apos;t be brought back.
                   </p>
                 )}
                 <Button
@@ -154,8 +154,8 @@ export function PublishHistory({
               {pending.total > 0
                 ? `This replaces your current draft, discarding ${pending.total} pending change${
                     pending.total === 1 ? "" : "s"
-                  }. It does not change the live site — publish afterwards to do that.`
-                : "It comes back as a draft, so the live site does not change until you publish."}
+                  }. The live site doesn't change until you publish.`
+                : "It comes back as a draft, so the live site doesn't change until you publish."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-2">

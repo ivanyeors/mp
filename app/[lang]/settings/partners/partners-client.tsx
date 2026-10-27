@@ -446,7 +446,7 @@ export default function PartnersSettingsPage({
                       setHeroImage(e.target.value);
                       setHeroAssetId(null);
                     }}
-                    placeholder="Image URL or pick from media..."
+                    placeholder="Image URL or pick from media…"
                     className="flex-1"
                   />
                   <ImagePicker
@@ -777,7 +777,7 @@ export default function PartnersSettingsPage({
                       onChange={(e) =>
                         setPartnerForm((f) => ({ ...f, logo_url: e.target.value, media_asset_id: null }))
                       }
-                      placeholder="Image URL..."
+                      placeholder="Image URL…"
                       className="flex-1"
                     />
                     <ImagePicker
@@ -800,7 +800,7 @@ export default function PartnersSettingsPage({
                   <Input
                     value={partnerForm.website_url}
                     onChange={(e) => setPartnerForm((f) => ({ ...f, website_url: e.target.value }))}
-                    placeholder="https://..."
+                    placeholder="https://…"
                   />
                 </div>
                 <div className="space-y-1.5">

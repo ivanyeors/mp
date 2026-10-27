@@ -115,13 +115,13 @@ export async function PartnerPayouts() {
         <h2 className="text-xl font-semibold tracking-tight">Payouts</h2>
         <InfoTip label="About Payouts">
           <p>
-            Manual payouts (ADR 0015). Released balance = commissions past the return
-            window, not yet paid.
+            Payouts are recorded by hand (ADR 0015). The released balance is commission past the
+            return window that isn&apos;t paid yet.
           </p>
           <p>
             Recording a payout marks the covered commissions{" "}
-            <span>paid</span> and is immutable — a mistake is
-            corrected with a new negative entry, never an edit. No minimum threshold.
+            <span>paid</span> and can&apos;t be changed. Fix a mistake
+            with a new negative entry, never an edit. There&apos;s no minimum threshold.
           </p>
         </InfoTip>
       </div>
@@ -189,7 +189,7 @@ export async function PartnerPayouts() {
                 <h4 className="text-sm font-medium sm:col-span-2">Record a payout</h4>
 
                 <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted-foreground">Amount (negative = correction)</span>
+                  <span className="text-muted-foreground">Amount (negative for a correction)</span>
                   <input
                     type="number"
                     name="amount"
@@ -216,7 +216,7 @@ export async function PartnerPayouts() {
                   <input
                     type="text"
                     name="method"
-                    placeholder="PayNow / bank transfer"
+                    placeholder="PayNow or bank transfer"
                     className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                   />
                 </label>
@@ -226,7 +226,7 @@ export async function PartnerPayouts() {
                   <input
                     type="text"
                     name="reference"
-                    placeholder="Txn ref"
+                    placeholder="Transaction reference"
                     className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                   />
                 </label>

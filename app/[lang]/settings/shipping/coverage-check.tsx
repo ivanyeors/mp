@@ -36,7 +36,7 @@ function methodName(m: ShippingMethod): string {
 function days(rate: CourierRate): string {
     if (rate.min_days == null) return "—";
     const max = rate.max_days ?? rate.min_days;
-    return max === rate.min_days ? `${max} days` : `${rate.min_days}–${max} days`;
+    return max === rate.min_days ? `${max} days` : `${rate.min_days} to ${max} days`;
 }
 
 class AccountError extends Error {}
@@ -53,10 +53,10 @@ async function checkCountry(country: Country, profile: PackageType, signal: Abor
         signal,
     });
     const json = await res.json().catch(() => null);
-    if (!res.ok) return { status: "error", message: apiErrorMessage(json?.error, `Request failed (${res.status})`) };
+    if (!res.ok) return { status: "error", message: apiErrorMessage(json?.error, `Couldn't get a quote (${res.status}).`) };
     if (!json?.ok) {
-        if (ACCOUNT_FAILURES.has(json?.reason)) throw new AccountError(json.error ?? "The courier account cannot quote");
-        return { status: "error", message: json?.error ?? "The courier could not quote" };
+        if (ACCOUNT_FAILURES.has(json?.reason)) throw new AccountError(json.error ?? "The courier account can't quote.");
+        return { status: "error", message: json?.error ?? "The courier couldn't quote." };
     }
     const rates = (json.rates ?? []) as CourierRate[];
     if (rates.length === 0) return { status: "none" };
@@ -126,7 +126,7 @@ export function CoverageCheck({
                     }
                     setResults((prev) => ({
                         ...prev,
-                        [country.code]: { status: "error", message: err instanceof Error ? err.message : "Network error" },
+                        [country.code]: { status: "error", message: err instanceof Error ? err.message : "Couldn't reach the server." },
                     }));
                 }
                 setDone((n) => n + 1);
@@ -160,13 +160,13 @@ export function CoverageCheck({
             });
             const json = await res.json().catch(() => null);
             if (!res.ok) {
-                toast.error(apiErrorMessage(json?.error, "Could not update the method."));
+                toast.error(apiErrorMessage(json?.error, "Couldn't update the method."));
                 return;
             }
             toast.success(`${toAdd.length} ${toAdd.length === 1 ? "country" : "countries"} added to ${methodName(target)}`);
             await onMethodsChanged();
         } catch {
-            toast.error("Network error. Please try again.");
+            toast.error("Couldn't reach the server. Try again.");
         } finally {
             setAdding(false);
         }
@@ -195,7 +195,7 @@ export function CoverageCheck({
                 <div className="mt-6 space-y-5">
                     {!environment ? (
                         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                            Couriers aren&apos;t connected, so there is nothing to check. Set up the connection in Shipping › Couriers.
+                            Couriers aren&apos;t connected, so there&apos;s nothing to check. Set up the connection on the Couriers page.
                         </div>
                     ) : (
                         <>
@@ -275,7 +275,7 @@ export function CoverageCheck({
                                         <p className="text-sm">
                                             <span className="font-medium">{covered.length}</span> of {checked.length} countries have a
                                             courier
-                                            {failed.length > 0 && <span className="text-muted-foreground"> · {failed.length} failed</span>}
+                                            {failed.length > 0 && <span className="text-muted-foreground">, {failed.length} failed</span>}
                                         </p>
                                         <div className="flex gap-2">
                                             {failed.length > 0 && !running && (
@@ -376,7 +376,7 @@ export function CoverageCheck({
                                                                             {formatCurrency(r.cheapest.total_charge, r.cheapest.currency)}
                                                                         </p>
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            {r.cheapest.courier_name} · {days(r.cheapest)}
+                                                                            {r.cheapest.courier_name}, {days(r.cheapest)}
                                                                         </p>
                                                                     </>
                                                                 ) : (
@@ -388,7 +388,7 @@ export function CoverageCheck({
                                                                     <>
                                                                         <p className="whitespace-nowrap">{days(r.fastest)}</p>
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            {r.fastest.courier_name} ·{" "}
+                                                                            {r.fastest.courier_name},{" "}
                                                                             {formatCurrency(r.fastest.total_charge, r.fastest.currency)}
                                                                         </p>
                                                                     </>
