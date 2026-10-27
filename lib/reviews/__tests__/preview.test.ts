@@ -28,6 +28,7 @@ describe("buildReviewCardPreview", () => {
       "a new 1★ review, with a service-recovery reply",
       "a review reopened after its rating dropped from 5★ to 2★",
       "how a card looks after a review manager taps Post",
+      "a new 4★ review read through the Places API, answered on Google Maps by hand",
       "a new shop review",
     ]);
     for (const { card } of cards) {
@@ -43,7 +44,11 @@ describe("buildReviewCardPreview", () => {
     const { cards } = await buildReviewCardPreview({ now: NOW, draft: null });
     const buttons = cards.flatMap((c) => c.card.replyMarkup?.inline_keyboard.flat() ?? []);
     expect(buttons.length).toBeGreaterThan(0);
-    for (const b of buttons) expect(parseReviewCallback(b.callback_data)).toMatchObject({ id: PREVIEW_REVIEW_ID });
+    for (const b of buttons) {
+      // A link button (Open on Google Maps) calls nothing back.
+      if (b.url) continue;
+      expect(parseReviewCallback(b.callback_data ?? "")).toMatchObject({ id: PREVIEW_REVIEW_ID });
+    }
   });
 
   it("shows the recovery and reopened cards the way they will really look", async () => {
@@ -59,12 +64,20 @@ describe("buildReviewCardPreview", () => {
     expect(posted.replyMarkup).toBeUndefined();
   });
 
+  it("shows a Places review with Mark replied instead of Post reply", async () => {
+    const { cards } = await buildReviewCardPreview({ now: NOW, draft: null });
+    const places = cards[5].card;
+    expect(places.text).toContain("then tap ✅ Mark replied");
+    const callbacks = places.replyMarkup?.inline_keyboard.flat().filter((b) => !b.url).map((b) => b.text);
+    expect(callbacks).toEqual(["✅ Mark replied", "🙈 Skip"]);
+  });
+
   it("uses real Claude drafts when it can, with the reopened review's history", async () => {
     const draft = vi.fn(async () => ({ ok: true as const, reply: "A fresh Claude draft.", model: "claude-opus-5-5" }));
     const { cards, usedClaude } = await buildReviewCardPreview({ now: NOW, draft });
 
     expect(usedClaude).toBe(true);
-    expect(draft).toHaveBeenCalledTimes(4);
+    expect(draft).toHaveBeenCalledTimes(5);
     expect(draft).toHaveBeenCalledWith(
       expect.objectContaining({ starRating: 2, update: expect.objectContaining({ previousRating: 5 }) }),
     );
@@ -76,7 +89,7 @@ describe("buildReviewCardPreview", () => {
     const draft = vi.fn(async () => ({ ok: false as const, error: "ANTHROPIC_API_KEY was rejected" }));
     const { cards, usedClaude, draftErrors } = await buildReviewCardPreview({ now: NOW, draft });
     expect(usedClaude).toBe(false);
-    expect(draftErrors).toHaveLength(4);
+    expect(draftErrors).toHaveLength(5);
     expect(cards[0].card.text).toContain("The reply is sample text standing in for Claude's draft.");
   });
 
@@ -103,7 +116,7 @@ describe("sendReviewCardPreview", () => {
     const send = vi.fn(async () => ({ ok: true as const, chatId: -1, messageId: (id += 1) }));
     const result = await sendReviewCardPreview({ now: NOW, draft: null, send });
 
-    expect(result).toEqual({ ok: true, sent: 8, total: 8, usedClaude: false });
+    expect(result).toEqual({ ok: true, sent: 9, total: 9, usedClaude: false });
     expect(send.mock.calls[0]).toEqual([PREVIEW_INTRO, undefined]);
     expect(String((send.mock.calls[1] as unknown[])[0])).toMatch(/^🧪 PREVIEW — a new 5★ review/);
     // Last, a customer message card a reply can be tried on.
@@ -121,7 +134,7 @@ describe("sendReviewCardPreview", () => {
     expect(result).toEqual({
       ok: false,
       sent: 1,
-      total: 8,
+      total: 9,
       usedClaude: false,
       error: "Forbidden: bot was kicked from the supergroup chat",
     });

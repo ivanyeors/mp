@@ -147,6 +147,8 @@ describe("isReviewUpdate", () => {
     expect(isReviewUpdate(msg("/stock"))).toBe(false);
     const card = { reply_to_message: { message_id: 77, text: `${GOOGLE_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thanks so much!", card))).toBe(true);
+    // A team note under a card stays with the review flow, so no other handler takes it.
+    expect(isReviewUpdate(msg("// shall we offer a refit?", card))).toBe(true);
     const preview = { reply_to_message: { message_id: 78, text: `${PREVIEW_CARD_PREFIX}a 5★ review.\n${GOOGLE_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thanks so much!", preview))).toBe(true);
     expect(isReviewUpdate(msg("/help", card))).toBe(false);
@@ -339,10 +341,66 @@ describe("Skip and staff wording", () => {
     expect(h.replyInGroup).not.toHaveBeenCalled();
   });
 
+  it("leaves a // team note under the card alone — the draft stays, and nobody is answered", async () => {
+    await say(IVAN, "// shall we offer her a refit visit?", { replyTo: 77 });
+    await say(STRANGER, "//agree", { replyTo: 77 });
+    expect(review()).toMatchObject({ draft_reply: "Thanks, Jane!", draft_version: 2, draft_source: "claude" });
+    expect(h.replyInGroup).not.toHaveBeenCalled();
+    expect(h.editGroupCard).not.toHaveBeenCalled();
+  });
+
   it("tells a linked person without Google replies they can't change them", async () => {
     await say(SAM, "Thanks!", { replyTo: 77 });
     expect(review().draft_reply).toBe("Thanks, Jane!");
     expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/doesn't include "reply to google reviews"/), 500);
+  });
+});
+
+describe("Mark replied, for a review read through the Places API", () => {
+  const done = (version = 2) => encodeReviewCallback({ source: "google", action: "done", id: REVIEW_ID, version });
+
+  beforeEach(() => {
+    Object.assign(review(), {
+      source: "places",
+      review_name: "places/ChIJ-test/reviews/abc",
+      maps_uri: "https://www.google.com/maps/reviews/data=abc",
+    });
+  });
+
+  it("records the draft on screen as posted, by whom — and never calls Google", async () => {
+    await tap(IVAN, done(2));
+    expect(review()).toMatchObject({ status: "posted", posted_reply: "Thanks, Jane!", acted_by_name: "Ivan" });
+    expect(h.updateReply).not.toHaveBeenCalled();
+    expect(lastAlert()).toEqual(["cq1", "Marked replied.", false]);
+    expect(lastEditText()).toContain("✅ Marked replied on Google Maps by Ivan");
+  });
+
+  it("refuses a draft that changed since the card was drawn", async () => {
+    await tap(IVAN, done(1));
+    expect(lastAlert()?.[1]).toMatch(/draft just changed/);
+    expect(review().status).toBe("pending");
+  });
+
+  it("needs the same permission as Post", async () => {
+    await tap(SAM, done(2));
+    expect(lastAlert()?.[1]).toMatch(/Shop desk/);
+    expect(review().status).toBe("pending");
+  });
+
+  it("refuses Post on a Places review, and says what to do instead", async () => {
+    await tap(IVAN, post(2));
+    expect(lastAlert()?.[1]).toBe(
+      "This review came through the Places API, which can't post. Reply on Google Maps, then tap Mark replied.",
+    );
+    expect(h.updateReply).not.toHaveBeenCalled();
+    expect(review().status).toBe("pending");
+  });
+
+  it("points at Post reply once the Business Profile API has adopted the review", async () => {
+    review().source = "business_profile";
+    await tap(IVAN, done(2));
+    expect(lastAlert()?.[1]).toMatch(/use Post reply on the updated card/);
+    expect(review().status).toBe("pending");
   });
 });
 

@@ -1,6 +1,7 @@
 # PRD: Google review replies through Telegram
 
-Status: Built (needs Google Business Profile API approval + ops setup — see `OPS-CHECKLIST.md`)
+Status: Built. Until Google approves the Business Profile API, reviews come through the Places API
+once a week (see "Places API stopgap" below, ADR 0035). Ops setup: `OPS-CHECKLIST.md`.
 
 ## Problem Statement
 
@@ -46,7 +47,8 @@ are posted — so that is where review work should land.
    card** headed `⭐ GOOGLE MAPS REVIEW`, with **Post reply / Redraft / Skip**. Website reviews get a
    `🛍 SHOP REVIEW · mpillow website` card with **Approve / Reject** and no reply affordance.
 4. **Staff decide.** A review manager taps Post to publish the draft exactly as shown, or replies
-   to the card with their own wording (which replaces the draft — Post is still required). Every
+   to the card with their own wording (which replaces the draft — Post is still required). A reply
+   that starts with `//` is a team note and changes nothing, as under customer message cards. Every
    card re-renders after each change and loses its buttons once someone has acted.
 5. **RBAC.** Staff Management → **Telegram access** (owners/admins only) lists who may press the
    buttons, with a role each: **Review manager** (Google replies + shop moderation) or **Shop
@@ -110,6 +112,28 @@ are posted — so that is where review work should land.
   messages, which is all the card flow needs.
 - **Link codes.** 8 characters from an unambiguous alphabet, single use, 72-hour expiry, stored
   only as a sha256; `/link` attempts are rate-limited per Telegram user.
+
+## Places API stopgap (2026-10-27)
+
+Business Profile API access was never approved, so `GOOGLE_BUSINESS_LOCATION` was never set and no
+review reached the group. Until it is, the Places API stands in (ADR 0035):
+
+- **Weekly, inside the free allowance.** Chained onto the daily `results-sla` cron, the poll reads
+  once its last successful read is a week old. Each read is one billed Place Details Enterprise +
+  Atmosphere call (1,000 free a month), counted in `google_places_polls` against a cap of 60 a month
+  before it is made. The landing page's own read is cached for a week.
+- **Same cards, answered by hand.** Reviews are stored with `source = places` and carded with
+  Claude's draft, **Open on Google Maps**, **Mark replied** and **Skip**. Staff paste the reply on
+  Google Maps, then tap Mark replied, which records the draft on screen as what was posted.
+- **Only five reviews.** Places returns Google's five most relevant. When the place's review count
+  rises by more than the reviews seen, the group gets a note linking to Google Maps.
+- **30 days.** Places content may only be kept temporarily: Places rows are deleted after 30 days,
+  and an open card is closed.
+- **Hand-over.** Once `GOOGLE_BUSINESS_*` is set, the poll stands down and the Business Profile sync
+  adopts each Places row it can match, card and all; Post reply then publishes from Telegram.
+- **Status.** Users & permissions → Telegram → **Google Maps reviews** shows both sources: a live
+  Business Profile check that names what is missing (and lists the `GOOGLE_BUSINESS_LOCATION`
+  values once Google answers), and the Places reads used this month.
 
 ## Reopening
 

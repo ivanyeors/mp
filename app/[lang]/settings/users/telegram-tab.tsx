@@ -21,6 +21,7 @@ import {
   type TelegramAction,
 } from "@/lib/telegram/roles";
 import { InfoTip } from "@/components/ui/info-tip";
+import { GoogleReviewsCard } from "./google-reviews-card";
 import { SocialInboxCard } from "./social-inbox-card";
 
 type IssuedCode = { name: string; code: string; expiresAt: string | null };
@@ -186,6 +187,8 @@ export function TelegramAccessTab({
           ))}
         </ul>
       </div>
+
+      <GoogleReviewsCard />
 
       <SocialInboxCard />
 

@@ -18,6 +18,7 @@ import {
   PREVIEW_CARD_PREFIX,
   PREVIEW_REVIEW_ID,
   REVIEW_CALLBACK_PREFIX,
+  TEAM_NOTE_PREFIX,
   parseReviewCallback,
   type ReviewCallback,
   renderGoogleReviewCard,
@@ -27,6 +28,7 @@ import { getGoogleReviewByCard, type GoogleReviewRow } from "@/lib/reviews/googl
 import {
   claimGoogleReviewPost,
   executeGoogleReviewPost,
+  markGoogleReviewReplied,
   setStaffDraft,
   skipGoogleReview,
   type Actor,
@@ -36,7 +38,8 @@ import { customerMatchLinkFor } from "@/lib/crm/google-review-match-server";
 
 /**
  * The review half of the Telegram bot: buttons on review cards, replies to a
- * Google card (a review manager's own wording), and `/link CODE`.
+ * Google card (a review manager's own wording; a reply starting with `//` is a
+ * team note and is left alone), and `/link CODE`.
  *
  * Runs before the inventory bot's TELEGRAM_ALLOWED_CHATS check on purpose:
  * this path has its own, stricter gate — cards live only in the measurements
@@ -80,11 +83,9 @@ export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
   const text = message?.text?.trim();
   if (!message || !text) return false;
   if (LINK_COMMAND.test(text)) return true;
-  return (
-    message.chat.id === MP_CONFIG_TELEGRAM_CHAT_ID &&
-    !text.startsWith("/") &&
-    isGoogleCardText(message.reply_to_message?.text)
-  );
+  // A `//` team note is not a command: claimed here, so the inventory bot never answers it.
+  const command = text.startsWith("/") && !text.startsWith(TEAM_NOTE_PREFIX);
+  return message.chat.id === MP_CONFIG_TELEGRAM_CHAT_ID && !command && isGoogleCardText(message.reply_to_message?.text);
 }
 
 function deniedMessage(
@@ -150,6 +151,7 @@ async function authorize(
 
 const PREVIEW_EFFECT: Record<ReviewCallback["action"], string> = {
   post: "publish the reply on Google Maps",
+  done: "record that you posted the reply on Google Maps yourself",
   skip: "remove this card without replying",
   approve: "show the review on the product page",
   reject: "hide the review from the shop",
@@ -220,6 +222,13 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
     return;
   }
 
+  if (parsed.action === "done") {
+    const result = await markGoogleReviewReplied(parsed.id, parsed.version, auth.actor);
+    await answerCallback(cq.id, result.ok ? "Marked replied." : result.message, !result.ok);
+    await showGoogleCard(result.row, messageId);
+    return;
+  }
+
   const result = await skipGoogleReview(parsed.id, auth.actor);
   await answerCallback(cq.id, result.ok ? "Skipped — no reply will be posted." : result.message, !result.ok);
   // A card Telegram will not delete (older than 48h) is marked skipped instead.
@@ -230,7 +239,7 @@ async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["messa
   const from = message.from;
   const cardId = message.reply_to_message?.message_id;
   const text = message.text?.trim();
-  if (!from || !cardId || !text) return;
+  if (!from || !cardId || !text || text.startsWith(TEAM_NOTE_PREFIX)) return;
 
   // A preview card: show what a reply would do, and the replier's access.
   if (message.reply_to_message?.text?.startsWith(PREVIEW_CARD_PREFIX)) {

@@ -4,9 +4,9 @@ import {
   getBusinessProfileConfig,
   isReviewName,
   starRatingToNumber,
-  type BusinessProfileClient,
   type GbpReview,
 } from "@/lib/google/business-profile";
+import { isPlacesReviewName } from "@/lib/google/places-reviews";
 import { draftInputFor, draftReviewReply } from "@/lib/reviews/draft-reply";
 import { renderGoogleReviewCard } from "@/lib/reviews/cards";
 import { replyStyleFor } from "@/lib/reviews/reply-style";
@@ -15,6 +15,7 @@ import { customerMatchLinkFor } from "@/lib/crm/google-review-match-server";
 import {
   GOOGLE_REVIEW_COLUMNS,
   type GoogleReviewRow,
+  type GoogleReviewSource,
   type GoogleReviewStatus,
 } from "@/lib/reviews/google-reviews";
 
@@ -34,6 +35,12 @@ import {
  * comes back as a fresh card when its rating moves into another reply type —
  * 5★ → 2★ needs service recovery, 2★ → 5★ deserves a thank-you. The new card
  * shows the reply on Google now, and posting replaces it.
+ *
+ * Two sources feed it (`source`): the Business Profile API, and until that is
+ * approved, the Places API (lib/reviews/places-poll.ts), whose reviews are
+ * mapped into the same shape. When the Business Profile API takes over, a
+ * review already carded from Places is adopted — renamed and re-sourced, card
+ * and all — so it is not carded twice.
  */
 
 /** Reviews last changed longer ago than this when first seen get no card. */
@@ -46,10 +53,22 @@ const STALE_MS = 10 * 60 * 1000;
 const EDITED_AFTER_REPLY_MS = 60_000;
 /** Settled states a rating change can reopen. */
 const REOPENABLE: GoogleReviewStatus[] = ["posted", "skipped", "replied_elsewhere", "backlog"];
+/** How far apart Places' publish time and Business Profile's create or update time may be for one review. */
+const ADOPT_TOLERANCE_MS = 2 * 60_000;
+
+/** A review as the sync reads it: Business Profile's shape, which Places reviews are mapped into. */
+export type SyncReview = GbpReview & { mapsUri?: string | null };
+
+/** Lists the newest reviews of one source. A BusinessProfileClient is one. */
+export type ReviewLister = {
+  listReviews(location: string, opts?: { pageSize?: number }): Promise<{ reviews: SyncReview[] }>;
+};
 
 export type ReviewSyncDeps = {
-  client?: BusinessProfileClient;
+  client?: ReviewLister;
   location?: string;
+  /** Which API `client` reads. Defaults to the Business Profile API. */
+  source?: GoogleReviewSource;
   now?: Date;
   maxCards?: number;
   draft?: typeof draftReviewReply;
@@ -75,13 +94,16 @@ export type ReviewSyncSummary = {
   redrafted: number;
   /** Settled reviews back as fresh cards because their rating changed reply type. */
   reopened: number;
+  /** Places rows the Business Profile API took over. */
+  adopted: number;
   recovered: number;
   carded: number;
 };
 
-export function reviewFields(review: GbpReview) {
+export function reviewFields(review: SyncReview) {
   return {
     review_name: review.name,
+    maps_uri: review.mapsUri?.trim() || null,
     star_rating: starRatingToNumber(review.starRating),
     comment: review.comment?.trim() || null,
     reviewer_name: review.reviewer?.displayName?.trim() || null,
@@ -242,10 +264,12 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
     repliedElsewhere: 0,
     redrafted: 0,
     reopened: 0,
+    adopted: 0,
     recovered: 0,
     carded: 0,
   };
 
+  const source = deps.source ?? "business_profile";
   const config = deps.client && deps.location ? null : getBusinessProfileConfig();
   const client = deps.client ?? (config ? businessProfileClientFromConfig(config) : null);
   const location = deps.location ?? config?.location;
@@ -253,7 +277,9 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
 
   const admin = supabaseAdmin();
   const page = await client.listReviews(location, { pageSize: 50 });
-  const reviews = page.reviews.filter((r) => isReviewName(r.name));
+  const reviews = page.reviews.filter((r) =>
+    source === "places" ? isPlacesReviewName(r.name) : isReviewName(r.name),
+  );
   summary.fetched = reviews.length;
 
   const existing = new Map<string, GoogleReviewRow>();
@@ -268,17 +294,37 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
     if (error) throw new Error(error.message);
     for (const row of (data ?? []) as GoogleReviewRow[]) existing.set(row.review_name, row);
   }
+  // Rows read from Places that the Business Profile API may now be reading too.
+  const placesRows: GoogleReviewRow[] = [];
+  if (source === "business_profile" && reviews.some((r) => !existing.has(r.name))) {
+    const { data, error } = await admin
+      .from("google_reviews")
+      .select(GOOGLE_REVIEW_COLUMNS)
+      .eq("source", "places");
+    if (error) throw new Error(error.message);
+    placesRows.push(...((data ?? []) as GoogleReviewRow[]));
+  }
 
   for (const review of reviews) {
     const fields = reviewFields(review);
-    const row = existing.get(review.name);
+    let row = existing.get(review.name);
+    const adopted = !row && placesRows.length > 0 ? await adoptPlacesRow(review, placesRows) : null;
+    if (adopted) {
+      row = adopted;
+      summary.adopted += 1;
+    }
 
     if (!row) {
       const initial = initialState(review, now);
       const { data: inserted, error } = await admin
         .from("google_reviews")
         .upsert(
-          { ...fields, status: initial.status, ...(initial.reopened ? { reopened_at: now.toISOString() } : {}) },
+          {
+            ...fields,
+            source,
+            status: initial.status,
+            ...(initial.reopened ? { reopened_at: now.toISOString() } : {}),
+          },
           { onConflict: "review_name", ignoreDuplicates: true },
         )
         .select("id");
@@ -292,7 +338,11 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
     }
 
     const patch = changedFields(row, fields);
-    if (!patch) continue;
+    if (!patch) {
+      // An adopted card swaps Mark replied for Post reply.
+      if (adopted?.status === "pending") await refreshCard(adopted, edit, matchLink);
+      continue;
+    }
     const next: Record<string, unknown> = { ...patch };
     // The reviewer moved the rating into another reply type (5★ → 2★, 2★ → 5★).
     const restyled = replyStyleFor(row.star_rating) !== replyStyleFor(fields.star_rating);
@@ -376,6 +426,39 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
 
   summary.carded = await deliverPendingCards({ ...deps, now });
   return summary;
+}
+
+/**
+ * The Places row for a review the Business Profile API now lists: same
+ * reviewer, written at the same time. Renamed to the Business Profile name and
+ * re-sourced, keeping its card, draft and status. Null when none matches (the
+ * review is then stored as new).
+ */
+async function adoptPlacesRow(review: SyncReview, candidates: GoogleReviewRow[]): Promise<GoogleReviewRow | null> {
+  const name = review.reviewer?.displayName?.trim();
+  if (!name) return null;
+  const times = [review.createTime, review.updateTime]
+    .map((t) => Date.parse(t ?? ""))
+    .filter(Number.isFinite);
+  const index = candidates.findIndex((row) => {
+    const published = Date.parse(row.review_created_at ?? "");
+    return (
+      row.reviewer_name === name &&
+      Number.isFinite(published) &&
+      times.some((t) => Math.abs(t - published) <= ADOPT_TOLERANCE_MS)
+    );
+  });
+  if (index === -1) return null;
+  const [candidate] = candidates.splice(index, 1);
+  const { data, error } = await supabaseAdmin()
+    .from("google_reviews")
+    .update({ review_name: review.name, source: "business_profile" })
+    .eq("id", candidate.id)
+    .eq("source", "places")
+    .select(GOOGLE_REVIEW_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as GoogleReviewRow | null) ?? null;
 }
 
 /** New and reopened rows in the order they queued, then claimed rows whose card never went out. */

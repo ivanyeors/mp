@@ -441,15 +441,15 @@ _Avoid_: measuring the window from order/ship date
 ## Reviews (PRD-google-review-replies)
 
 **Google review**:
-A review of the business on Google Maps, read through the Google Business Profile API and kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us.
-_Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read-only, never stored)
+A review of the business on Google Maps, kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us. Read through the Google Business Profile API, or, until Google approves that API, through the Places API once a week (`source` `places`, ADR 0035): Google's five most relevant reviews only, answered on Google Maps by hand, and deleted 30 days after they are stored.
+_Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read once a week, read-only, never stored)
 
 **Shop review**:
 A review a signed-in **Customer** leaves on a **Storefront product** (`product_reviews`). Starts `pending`; a **Shop moderator** approves it onto the product page or rejects it. No public reply.
 _Avoid_: "product review" when the source matters on a Telegram card — the card says SHOP REVIEW
 
 **Review card**:
-The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft, and nothing reaches Google until someone taps Post on the version they are looking at.
+The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft (unless it is a **Team note**), and nothing reaches Google until someone taps Post on the version they are looking at. A card for a review read through the Places API has Open on Google Maps / Mark replied / Skip instead: the reply is pasted on Google Maps, and Mark replied records the draft on screen as what was posted.
 _Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
 
 **Reply type**:
@@ -549,7 +549,7 @@ The Telegram message in the measurements group for one inbound **Customer messag
 _Avoid_: calling it a **Review card** — those carry buttons and a draft; a Message card is answered by replying
 
 **Team note**:
-A reply under a **Message card** that starts with `//`. It stays in the group and is never sent to the customer.
+A reply under a **Message card** or a Google **Review card** that starts with `//`. It stays in the group: never sent to the customer, and never a review's draft.
 
 **Reply window**:
 How long after a person's last **Customer message** the platform accepts our reply through the API: 24 hours on Facebook and Instagram (7 days with Meta's Human Agent permission). Past it the bot refuses and says to answer from the platform's own app. TikTok has no time limit; it caps the number of messages instead (up to 10 in a new chat's first 48 hours, 3 once the person has been quiet for 48 hours, until they write again) and its refusal is passed on in words.

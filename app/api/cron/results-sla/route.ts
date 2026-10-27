@@ -28,6 +28,7 @@ import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
+import { pollPlacesReviews } from "@/lib/reviews/places-poll";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
 import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
@@ -516,6 +517,17 @@ export async function GET(req: Request) {
     googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
   }
 
+  // Chain: Google reviews through the Places API until the Business Profile
+  // API is approved (ADR 0035). Reads once a week, by its last successful read;
+  // each read is billed and counted against a monthly cap first. Stands down
+  // once GOOGLE_BUSINESS_* is set. Manual ops: GET /api/cron/google-places-reviews.
+  let placesReviews: Awaited<ReturnType<typeof pollPlacesReviews>> | { ok: false; error: string };
+  try {
+    placesReviews = await pollPlacesReviews({ maxCards: 5 });
+  } catch (e) {
+    placesReviews = { ok: false, error: e instanceof Error ? e.message : "google places reviews poll failed" };
+  }
+
   // Chain: Aftercare messages (PRD customer-crm slices 07 and 08): the Review
   // request, 14 days after delivery, and the yearly Check-up reminder for a
   // Premium Mpillow. Every send is claimed in a ledger first, so a manual
@@ -582,6 +594,7 @@ export async function GET(req: Request) {
     gscIngest,
     preOrderRestock,
     googleReviews,
+    placesReviews,
     aftercare,
     points,
     pointsMilestones,

@@ -10,6 +10,9 @@ export type GooglePlaceTestimonial = {
 };
 
 type PlacesV1Review = {
+  /** places/{placeId}/reviews/{reviewId} */
+  name?: string;
+  googleMapsUri?: string;
   rating?: number;
   publishTime?: string;
   relativePublishTimeDescription?: string;
@@ -25,6 +28,7 @@ type PlacesV1Review = {
 type PlacesV1PlaceDetails = {
   reviews?: PlacesV1Review[];
   googleMapsUri?: string;
+  userRatingCount?: number;
 };
 
 function getRequiredEnv(name: string): string | null {
@@ -66,12 +70,91 @@ export function isTestimonialVisible(rating: number | undefined, minRating: numb
 }
 
 /**
- * How long one Places read is reused. Asking for `reviews` bills every uncached read as
- * Place Details Enterprise + Atmosphere (past 1,000 free a month), and Google's top five
- * barely move in a day. Every caller shares this one cached response — unless it calls from
- * inside `unstable_cache`, where Next runs the fetch as no-store and every read is billed.
+ * How long one Places read is reused: a week. Asking for `reviews` bills every uncached read
+ * as Place Details Enterprise + Atmosphere (1,000 free a month, shared with the weekly review
+ * poll in lib/reviews/places-poll.ts), and Google's top five barely move in a week. Every
+ * caller shares this one cached response — unless it calls from inside `unstable_cache`,
+ * where Next runs the fetch as no-store and every read is billed. The response is reused,
+ * never stored by us: Google's terms forbid keeping Places content.
  */
-export const PLACE_REVIEWS_REVALIDATE_SECONDS = 24 * 60 * 60;
+export const PLACE_REVIEWS_REVALIDATE_SECONDS = 7 * 24 * 60 * 60;
+
+const PLACES_REVIEW_NAME = /^places\/[A-Za-z0-9_-]+\/reviews\/[A-Za-z0-9_-]+$/;
+
+/** places/{placeId}/reviews/{reviewId} — how the Places API names a review. */
+export function isPlacesReviewName(value: string): boolean {
+  return PLACES_REVIEW_NAME.test(value);
+}
+
+export type PlaceReview = {
+  name: string;
+  rating: number | null;
+  /** What the reviewer wrote, untranslated. */
+  text: string | null;
+  authorName: string | null;
+  publishTime: string | null;
+  mapsUri: string | null;
+};
+
+export type PlaceReviewsRead =
+  | { ok: true; reviews: PlaceReview[]; ratingCount: number | null; mapsUri: string | null }
+  | { ok: false; error: string };
+
+/**
+ * One fresh, uncached Places read for the review poll: Google's five most relevant reviews,
+ * the place's review count, and its Maps link. Billed as one Place Details Enterprise +
+ * Atmosphere read (the count and link add nothing on top of `reviews`). The caller counts it
+ * against the monthly cap before calling.
+ */
+export async function readPlaceReviews(deps: { fetch?: typeof fetch } = {}): Promise<PlaceReviewsRead> {
+  const apiKey = getRequiredEnv("GOOGLE_MAPS_API_KEY");
+  const placeId = getRequiredEnv("GOOGLE_PLACE_ID");
+  if (!apiKey || !placeId) return { ok: false, error: "GOOGLE_MAPS_API_KEY or GOOGLE_PLACE_ID is not set" };
+  try {
+    const res = await (deps.fetch ?? fetch)(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "reviews,userRatingCount,googleMapsUri",
+        ...getOptionalReferrerHeaders(),
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      let message = text.slice(0, 300) || `HTTP ${res.status}`;
+      try {
+        message = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? message;
+      } catch {
+        /* keep raw */
+      }
+      return { ok: false, error: `Places API ${res.status}: ${message}` };
+    }
+    const data = (text ? JSON.parse(text) : {}) as PlacesV1PlaceDetails;
+    const reviews = (data.reviews ?? []).flatMap((r): PlaceReview[] =>
+      r.name && isPlacesReviewName(r.name)
+        ? [
+            {
+              name: r.name,
+              rating: typeof r.rating === "number" ? r.rating : null,
+              text: r.originalText?.text?.trim() || r.text?.text?.trim() || null,
+              authorName: r.authorAttribution?.displayName?.trim() || null,
+              publishTime: typeof r.publishTime === "string" ? r.publishTime : null,
+              mapsUri: typeof r.googleMapsUri === "string" ? r.googleMapsUri : null,
+            },
+          ]
+        : [],
+    );
+    return {
+      ok: true,
+      reviews,
+      ratingCount: typeof data.userRatingCount === "number" ? data.userRatingCount : null,
+      mapsUri: typeof data.googleMapsUri === "string" ? data.googleMapsUri : null,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Places API read failed" };
+  }
+}
 
 export async function getGooglePlaceTestimonials(opts?: {
   limit?: number;

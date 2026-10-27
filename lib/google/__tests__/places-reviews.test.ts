@@ -68,14 +68,14 @@ describe("getGooglePlaceTestimonials", () => {
     expect(result.map((t) => t.rating)).toEqual([5, 4]);
   });
 
-  it("caches the billed read for a day and asks only for the fields it reads", async () => {
+  it("caches the billed read for a week and asks only for the fields it reads", async () => {
     stubFetch([5]);
 
     await getGooglePlaceTestimonials({ limit: 20 });
 
     const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit & { next?: { revalidate?: number } }];
     expect(init.next?.revalidate).toBe(PLACE_REVIEWS_REVALIDATE_SECONDS);
-    expect(PLACE_REVIEWS_REVALIDATE_SECONDS).toBe(24 * 60 * 60);
+    expect(PLACE_REVIEWS_REVALIDATE_SECONDS).toBe(7 * 24 * 60 * 60);
     expect((init.headers as Record<string, string>)["X-Goog-FieldMask"]).toBe("reviews,googleMapsUri");
   });
 

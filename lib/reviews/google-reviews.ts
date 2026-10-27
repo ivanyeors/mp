@@ -13,9 +13,19 @@ export const GOOGLE_REVIEW_STATUSES = [
 ] as const;
 export type GoogleReviewStatus = (typeof GOOGLE_REVIEW_STATUSES)[number];
 
+/**
+ * Where a row was read from. Business Profile reviews are answered from
+ * Telegram (Post reply); Places reviews are read-only, so staff reply on Google
+ * Maps and tap Mark replied (lib/reviews/places-poll.ts).
+ */
+export type GoogleReviewSource = "business_profile" | "places";
+
 export type GoogleReviewRow = {
   id: string;
   review_name: string;
+  source: GoogleReviewSource;
+  /** The review on Google Maps; Places gives one, the Business Profile API does not. */
+  maps_uri: string | null;
   star_rating: number | null;
   comment: string | null;
   reviewer_name: string | null;
@@ -45,7 +55,7 @@ export type GoogleReviewRow = {
 };
 
 export const GOOGLE_REVIEW_COLUMNS =
-  "id,review_name,star_rating,comment,reviewer_name,reviewer_is_anonymous,review_created_at,review_updated_at,google_reply,google_reply_updated_at,status,draft_reply,draft_source,draft_version,draft_error,posted_reply,posted_at,acted_by_telegram_user_id,acted_by_name,telegram_chat_id,telegram_message_id,last_error,reopened_at,reopened_from_rating,created_at,updated_at";
+  "id,review_name,source,maps_uri,star_rating,comment,reviewer_name,reviewer_is_anonymous,review_created_at,review_updated_at,google_reply,google_reply_updated_at,status,draft_reply,draft_source,draft_version,draft_error,posted_reply,posted_at,acted_by_telegram_user_id,acted_by_name,telegram_chat_id,telegram_message_id,last_error,reopened_at,reopened_from_rating,created_at,updated_at";
 
 export async function getGoogleReview(id: string): Promise<GoogleReviewRow | null> {
   const { data, error } = await supabaseAdmin()

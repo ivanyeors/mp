@@ -382,3 +382,53 @@ describe("reopening a review whose rating changed reply type", () => {
     expect(byName("r1")?.status).toBe("replied_elsewhere");
   });
 });
+
+describe("the Business Profile API taking over from Places", () => {
+  const placesRow = (extra: Row = {}): Row => ({
+    ...GOOGLE_REVIEW_DEFAULTS,
+    id: "3f2b7c1e-8a4d-4e9b-9c11-0123456789ab",
+    source: "places",
+    review_name: "places/ChIJ-test/reviews/p1",
+    maps_uri: "https://www.google.com/maps/reviews/data=p1",
+    reviewer_name: "Jane Tan",
+    star_rating: 5,
+    comment: "Lovely pillow",
+    review_created_at: daysAgo(1),
+    review_updated_at: daysAgo(1),
+    status: "pending",
+    draft_reply: "Thank you, Jane!",
+    draft_source: "claude",
+    draft_version: 1,
+    telegram_chat_id: -1001279910218,
+    telegram_message_id: 77,
+    created_at: daysAgo(1),
+    updated_at: daysAgo(1),
+    ...extra,
+  });
+
+  it("adopts an open Places card instead of carding the review twice, and swaps in Post reply", async () => {
+    h.tables.google_reviews.push(placesRow());
+    const summary = await run([review("r1")]);
+
+    expect(summary).toMatchObject({ adopted: 1, inserted: 0, carded: 0 });
+    expect(rows()).toHaveLength(1);
+    expect(byName("r1")).toMatchObject({ source: "business_profile", status: "pending", telegram_message_id: 77 });
+    expect(send).not.toHaveBeenCalled();
+    const [cardId, , markup] = edit.mock.calls.at(-1)!;
+    expect(cardId).toBe(77);
+    expect(markup?.inline_keyboard.flat().map((b) => b.text)).toEqual(["✅ Post reply", "🙈 Skip"]);
+  });
+
+  it("settles an adopted card when someone already answered on Google", async () => {
+    h.tables.google_reviews.push(placesRow());
+    await run([review("r1", { reviewReply: { comment: "Thanks Jane!", updateTime: daysAgo(0) } })]);
+    expect(byName("r1")).toMatchObject({ status: "replied_elsewhere", google_reply: "Thanks Jane!" });
+  });
+
+  it("leaves a Places row alone when the reviewer or time does not match", async () => {
+    h.tables.google_reviews.push(placesRow({ reviewer_name: "Someone Else" }));
+    const summary = await run([review("r1")]);
+    expect(summary).toMatchObject({ adopted: 0, inserted: 1 });
+    expect(rows().map((r) => r.source)).toEqual(["places", "business_profile"]);
+  });
+});

@@ -2,12 +2,8 @@ import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 import { replyInGroup } from "@/lib/telegram/bot-api";
 import { authorizeTelegramAction, type TelegramDenial } from "@/lib/telegram/operators";
 import { describeActions } from "@/lib/telegram/roles";
-import {
-  TEAM_NOTE_PREFIX,
-  inboxPreviewPlatform,
-  isInboxBotText,
-  renderSentNote,
-} from "@/lib/social-inbox/cards";
+import { TEAM_NOTE_PREFIX } from "@/lib/reviews/cards";
+import { inboxPreviewPlatform, isInboxBotText, renderSentNote } from "@/lib/social-inbox/cards";
 import {
   PLATFORM_APPS,
   PLATFORM_NAMES,
@@ -57,7 +53,9 @@ export function isInboxUpdate(update: InboxTelegramUpdate): boolean {
   const message = update.message;
   const replied = message?.reply_to_message;
   if (!message || !replied || message.chat.id !== MP_CONFIG_TELEGRAM_CHAT_ID) return false;
-  if (message.text?.trim().startsWith("/")) return false;
+  // A `//` team note is not a command: claimed here, so the inventory bot never answers it.
+  const text = message.text?.trim() ?? "";
+  if (text.startsWith("/") && !text.startsWith(TEAM_NOTE_PREFIX)) return false;
   return isInboxBotText(replied.text ?? replied.caption);
 }
 

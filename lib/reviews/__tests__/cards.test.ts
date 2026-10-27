@@ -4,7 +4,9 @@ import {
   SHOP_CARD_HEADER,
   encodeReviewCallback,
   parseReviewCallback,
+  renderExpiredPlacesCard,
   renderGoogleReviewCard,
+  renderMissedReviewsNotice,
   renderShopReviewCard,
   starLine,
   type ReviewCallback,
@@ -17,6 +19,8 @@ function row(overrides: Partial<GoogleReviewRow> = {}): GoogleReviewRow {
   return {
     id: ID,
     review_name: "accounts/1/locations/2/reviews/abc",
+    source: "business_profile",
+    maps_uri: null,
     star_rating: 5,
     comment: "Best pillow I have owned. The fitting took ten minutes.",
     reviewer_name: "Jane Tan",
@@ -51,6 +55,7 @@ const buttons = (card: ReturnType<typeof renderGoogleReviewCard>) =>
 describe("review callback data", () => {
   const cases: ReviewCallback[] = [
     { source: "google", action: "post", id: ID, version: 12 },
+    { source: "google", action: "done", id: ID, version: 12 },
     { source: "google", action: "skip", id: ID },
     { source: "shop", action: "approve", id: ID },
     { source: "shop", action: "reject", id: ID },
@@ -76,7 +81,7 @@ describe("Google review card", () => {
     expect(card.text).toContain("★★★★★ 5/5 · Jane Tan");
     expect(card.text).toContain("drafted by Claude");
     expect(buttons(card).map((b) => b.text)).toEqual(["✅ Post reply", "🙈 Skip"]);
-    expect(parseReviewCallback(buttons(card)[0].callback_data)).toMatchObject({ action: "post", version: 3 });
+    expect(parseReviewCallback(buttons(card)[0].callback_data ?? "")).toMatchObject({ action: "post", version: 3 });
   });
 
   it("labels the reply type of Claude's draft", () => {
@@ -124,7 +129,7 @@ describe("Google review card", () => {
     expect(card.text).toContain("💬 Our reply on Google now (posting replaces it):\nThank you, Jane!");
     expect(card.text).toContain("tap Post reply to swap our reply");
     expect(buttons(card)[0].text).toBe("✅ Post reply");
-    expect(parseReviewCallback(buttons(card)[0].callback_data)).toMatchObject({ action: "post" });
+    expect(parseReviewCallback(buttons(card)[0].callback_data ?? "")).toMatchObject({ action: "post" });
   });
 
   it("says a review was edited when the earlier rating is unknown, and drops the banner once settled", () => {
@@ -229,6 +234,63 @@ describe("Google review card", () => {
   });
 });
 
+describe("Google review card read through the Places API", () => {
+  const places = (overrides: Partial<GoogleReviewRow> = {}) =>
+    row({
+      source: "places",
+      review_name: "places/ChIJ-test/reviews/r1",
+      maps_uri: "https://www.google.com/maps/reviews/data=r1",
+      ...overrides,
+    });
+
+  it("links to the review and offers Mark replied for the draft on screen, never Post", () => {
+    const card = renderGoogleReviewCard(places());
+    expect(card.text.split("\n")[0]).toBe(GOOGLE_CARD_HEADER);
+    expect(card.text).toContain("post this reply on Google Maps, then tap ✅ Mark replied");
+    expect(card.text).toContain("Start a reply with // for a team-only note.");
+    expect(card.replyMarkup?.inline_keyboard[0]).toEqual([
+      { text: "🔗 Open on Google Maps", url: "https://www.google.com/maps/reviews/data=r1" },
+    ]);
+    expect(card.replyMarkup?.inline_keyboard[1].map((b) => b.text)).toEqual(["✅ Mark replied", "🙈 Skip"]);
+    expect(parseReviewCallback(card.replyMarkup?.inline_keyboard[1][0].callback_data ?? "")).toEqual({
+      source: "google",
+      action: "done",
+      id: ID,
+      version: 3,
+    });
+    expect(buttons(card).map((b) => b.text)).not.toContain("✅ Post reply");
+  });
+
+  it("still offers Mark replied without a draft, for wording written on Google Maps", () => {
+    const card = renderGoogleReviewCard(places({ draft_reply: null }));
+    expect(card.text).toContain("write a reply on Google Maps, then tap ✅ Mark replied");
+    expect(buttons(card).map((b) => b.text)).toEqual(["🔗 Open on Google Maps", "✅ Mark replied", "🙈 Skip"]);
+  });
+
+  it("says who marked it replied, and links back to the review", () => {
+    const card = renderGoogleReviewCard(
+      places({ status: "posted", posted_reply: "Thank you, Jane!", acted_by_name: "Ivan", posted_at: "2026-10-02T02:00:00Z" }),
+    );
+    expect(card.text).toContain("✅ Marked replied on Google Maps by Ivan");
+    expect(card.text).toContain("🔗 Check it on Google Maps: https://www.google.com/maps/reviews/data=r1");
+    expect(card.replyMarkup).toBeUndefined();
+  });
+
+  it("closes an expired card without quoting the review", () => {
+    const text = renderExpiredPlacesCard(places());
+    expect(text).toContain("⌛ This card closed after 30 days");
+    expect(text).toContain("https://www.google.com/maps/reviews/data=r1");
+    expect(text).not.toContain("Best pillow");
+  });
+
+  it("announces reviews the five Places returns did not include", () => {
+    expect(renderMissedReviewsNotice(1, "https://maps.google.com/?cid=1")).toBe(
+      "⭐ 1 new Google review didn't come through as a card: the Places API shows only five reviews, picked by relevance.\nRead and answer on Google Maps: https://maps.google.com/?cid=1",
+    );
+    expect(renderMissedReviewsNotice(2, "https://maps.google.com/?cid=1")).toMatch(/^⭐ 2 new Google reviews /);
+  });
+});
+
 describe("shop review card", () => {
   const shop = {
     id: ID,
@@ -246,7 +308,7 @@ describe("shop review card", () => {
     expect(card.text.split("\n")[0]).toBe(SHOP_CARD_HEADER);
     expect(card.text).toContain("Product: Mpillow Basic");
     expect(card.text).toContain("no public reply");
-    expect(buttons(card).map((b) => parseReviewCallback(b.callback_data))).toEqual([
+    expect(buttons(card).map((b) => parseReviewCallback(b.callback_data ?? ""))).toEqual([
       { source: "shop", action: "approve", id: ID },
       { source: "shop", action: "reject", id: ID },
     ]);

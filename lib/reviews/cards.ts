@@ -1,4 +1,4 @@
-import type { InlineKeyboardMarkup } from "@/lib/telegram/bot-api";
+import type { InlineKeyboardButton, InlineKeyboardMarkup } from "@/lib/telegram/bot-api";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { replyWarnings } from "@/lib/reviews/reply-rules";
 import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
@@ -12,6 +12,10 @@ import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
  * The first line names the source in capitals so nobody mistakes a public
  * Google review (we reply on Google Maps) for a website review (no reply;
  * approve or reject only). Plain text — no parse_mode, nothing to escape.
+ *
+ * A Google review read through the Places API (`source` places) cannot be
+ * answered from here — that API is read-only — so its card links to the review
+ * on Google Maps and offers Mark replied instead of Post reply.
  */
 
 export const GOOGLE_CARD_HEADER = "⭐ GOOGLE MAPS REVIEW";
@@ -24,10 +28,15 @@ const MAX_CURRENT_REPLY_CHARS = 600;
 
 export type Card = { text: string; replyMarkup?: InlineKeyboardMarkup };
 
+/** A staff reply under a card that starts with this stays in the group: never sent, never a draft. */
+export const TEAM_NOTE_PREFIX = "//";
+const TEAM_NOTE_LINE = `Start a reply with ${TEAM_NOTE_PREFIX} for a team-only note.`;
+
 // ---------------------------------------------------------------------------
 // Callback data: rv:<source>:<action>:<id>[:<draft version>] — at most 52 bytes,
-// inside Telegram's 64. Post carries the draft version the tapper was looking
-// at, so a draft edited a moment earlier is never published unseen.
+// inside Telegram's 64. Post (and Mark replied) carries the draft version the
+// tapper was looking at, so a draft edited a moment earlier is never published
+// — or recorded as published — unseen.
 // ---------------------------------------------------------------------------
 
 export const REVIEW_CALLBACK_PREFIX = "rv:";
@@ -44,13 +53,13 @@ export const PREVIEW_CARD_PREFIX = "🧪 PREVIEW — ";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ReviewCallback =
-  | { source: "google"; action: "post"; id: string; version: number }
+  | { source: "google"; action: "post" | "done"; id: string; version: number }
   | { source: "google"; action: "skip"; id: string }
   | { source: "shop"; action: "approve" | "reject"; id: string };
 
 export function encodeReviewCallback(cb: ReviewCallback): string {
   if (cb.source === "google") {
-    return cb.action === "post" ? `rv:g:post:${cb.id}:${cb.version}` : `rv:g:skip:${cb.id}`;
+    return cb.action === "skip" ? `rv:g:skip:${cb.id}` : `rv:g:${cb.action}:${cb.id}:${cb.version}`;
   }
   return `rv:s:${cb.action}:${cb.id}`;
 }
@@ -60,8 +69,8 @@ export function parseReviewCallback(data: string): ReviewCallback | null {
   if (parts[0] !== "rv" || !UUID.test(parts[3] ?? "")) return null;
   const [, source, action, id, version] = parts;
   if (source === "g") {
-    if (action === "post" && parts.length === 5 && /^\d{1,6}$/.test(version ?? "")) {
-      return { source: "google", action: "post", id, version: Number(version) };
+    if ((action === "post" || action === "done") && parts.length === 5 && /^\d{1,6}$/.test(version ?? "")) {
+      return { source: "google", action, id, version: Number(version) };
     }
     if (action === "skip" && parts.length === 4) return { source: "google", action, id };
   }
@@ -190,8 +199,9 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
     case "posted": {
       const by = row.acted_by_name ? ` by ${row.acted_by_name}` : "";
       const at = formatCardDate(row.posted_at);
-      lines.push(`✅ Replied on Google Maps${by}${at ? ` · ${at}` : ""}`, row.posted_reply ?? "");
-      const url = googleReviewsUrl();
+      const done = row.source === "places" ? "Marked replied on Google Maps" : "Replied on Google Maps";
+      lines.push(`✅ ${done}${by}${at ? ` · ${at}` : ""}`, row.posted_reply ?? "");
+      const url = row.maps_uri ?? googleReviewsUrl();
       if (url) lines.push("", `🔗 Check it on Google Maps: ${url}`);
       return { text: lines.join("\n").trimEnd() };
     }
@@ -209,21 +219,13 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
   }
 
   // new / pending / backlog: waiting on a review manager.
+  if (row.source === "places") return placesOpenCard(row, lines);
   // A reopened review usually already has a reply on Google; posting replaces it.
   const replacing = !!row.google_reply;
   if (replacing) {
     lines.push("💬 Our reply on Google now (posting replaces it):", clip(row.google_reply ?? "", MAX_CURRENT_REPLY_CHARS), "");
   }
-  if (row.draft_reply) {
-    const heading =
-      row.draft_source === "staff"
-        ? `✍️ Reply written by ${row.acted_by_name ?? "a review manager"}:`
-        : `✍️ ${REPLY_STYLE_NAMES[style]} reply, drafted by Claude:`;
-    lines.push(heading, row.draft_reply);
-    for (const warning of replyWarnings(row.draft_reply, { style })) lines.push(`⚠️ ${warning}`);
-  } else {
-    lines.push(`✍️ No draft yet${row.draft_error ? ` — ${clip(row.draft_error, MAX_ERROR_CHARS)}` : ""}.`);
-  }
+  lines.push(...draftLines(row, style));
   if (row.last_error) lines.push(`❌ Last attempt failed: ${clip(row.last_error, MAX_ERROR_CHARS)}`);
   lines.push(
     "",
@@ -232,6 +234,7 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
       : replacing
         ? "👉 Review managers: tap Post reply to swap our reply on Google Maps for this one, or reply to this message with your own wording to replace the draft."
         : "👉 Review managers: tap Post reply to publish this on Google Maps, or reply to this message with your own wording to replace the draft.",
+    TEAM_NOTE_LINE,
   );
 
   const buttons = [
@@ -251,6 +254,73 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
     { text: "🙈 Skip", callback_data: encodeReviewCallback({ source: "google", action: "skip", id: row.id }) },
   ];
   return { text: lines.join("\n"), replyMarkup: { inline_keyboard: [buttons] } };
+}
+
+/** The draft lines both kinds of open card share. */
+function draftLines(row: GoogleReviewRow, style: ReturnType<typeof replyStyleFor>): string[] {
+  if (!row.draft_reply) return [`✍️ No draft yet${row.draft_error ? ` — ${clip(row.draft_error, MAX_ERROR_CHARS)}` : ""}.`];
+  const heading =
+    row.draft_source === "staff"
+      ? `✍️ Reply written by ${row.acted_by_name ?? "a review manager"}:`
+      : `✍️ ${REPLY_STYLE_NAMES[style]} reply, drafted by Claude:`;
+  return [heading, row.draft_reply, ...replyWarnings(row.draft_reply, { style }).map((w) => `⚠️ ${w}`)];
+}
+
+/**
+ * An open card for a review read through the Places API: the reply goes on
+ * Google Maps by hand (the API cannot post), then Mark replied records it.
+ */
+function placesOpenCard(row: GoogleReviewRow, lines: string[]): Card {
+  const style = replyStyleFor(row.star_rating);
+  const replacing = !!row.reopened_at && !!row.posted_reply;
+  lines.push(...draftLines(row, style));
+  lines.push(
+    "",
+    !row.draft_reply
+      ? "👉 Review managers: write a reply on Google Maps, then tap ✅ Mark replied. To keep your wording here first, reply to this message with it."
+      : replacing
+        ? "👉 Review managers: replace our reply on Google Maps with this one, then tap ✅ Mark replied. Reply to this message with your own wording to replace the draft."
+        : "👉 Review managers: post this reply on Google Maps, then tap ✅ Mark replied. Reply to this message with your own wording to replace the draft.",
+    TEAM_NOTE_LINE,
+    "📍 Read through the Places API, which can't post replies. Post reply arrives once the Business Profile API is connected.",
+  );
+
+  const url = row.maps_uri ?? googleReviewsUrl();
+  const keyboard: InlineKeyboardButton[][] = [];
+  if (url) keyboard.push([{ text: "🔗 Open on Google Maps", url }]);
+  keyboard.push([
+    {
+      text: "✅ Mark replied",
+      callback_data: encodeReviewCallback({ source: "google", action: "done", id: row.id, version: row.draft_version }),
+    },
+    { text: "🙈 Skip", callback_data: encodeReviewCallback({ source: "google", action: "skip", id: row.id }) },
+  ]);
+  return { text: lines.join("\n"), replyMarkup: { inline_keyboard: keyboard } };
+}
+
+/**
+ * A Places card closed when its row is deleted (lib/reviews/places-poll.ts):
+ * no buttons, and nothing quoted from the review.
+ */
+export function renderExpiredPlacesCard(row: GoogleReviewRow): string {
+  const url = row.maps_uri ?? googleReviewsUrl();
+  return [
+    GOOGLE_CARD_HEADER,
+    `${starLine(row.star_rating)} · ${reviewerLabel(row)}`,
+    "",
+    "⌛ This card closed after 30 days without being marked replied. If it still needs an answer, reply on Google Maps directly.",
+    ...(url ? [`🔗 ${url}`] : []),
+  ].join("\n");
+}
+
+/** Reviews Google counted that the Places API's five did not include. */
+export function renderMissedReviewsNotice(count: number, placeUrl: string | null): string {
+  const url = placeUrl ?? googleReviewsUrl();
+  const reviews = count === 1 ? "1 new Google review" : `${count} new Google reviews`;
+  return [
+    `⭐ ${reviews} didn't come through as a card: the Places API shows only five reviews, picked by relevance.`,
+    url ? `Read and answer on Google Maps: ${url}` : "Read and answer them on Google Maps.",
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------------------
