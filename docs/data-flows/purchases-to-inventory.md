@@ -4,8 +4,8 @@ Every path by which a purchase removes stock: the entry point, the function
 chain, which Items it decides to deduct, and how it avoids deducting twice.
 How stock is stored and added is in [inventory.md](inventory.md).
 
-Terms follow `CONTEXT.md`. Verified by reading the code at commit `dfe7696`
-(2026-10-22), not against the live database. `./scripts/graphify explain
+Terms follow `CONTEXT.md`. Verified by reading the code on 2026-10-27, not
+against the live database. `./scripts/graphify explain
 "inventory_transactions"` lists every writer with its current line.
 
 ## Four channels, one ledger
@@ -20,28 +20,54 @@ flowchart TD
   subgraph results["Customisation (Results)"]
     hold["POST /api/results/hold<br/>authorization hold, read-only"] --> assign["POST /api/results/[id]/assign<br/>Staff; shortage check"]
     assign --> accept["POST /api/results/[id]/accept<br/>claim → capture → Order"]
-    accept --> lab["loadAssignedBuild() + assembleBuild()"]
+    accept --> dos["deductOrderStockOrFlag()<br/>3 attempts"]
   end
-  subgraph shopify["Shopify sales"]
-    swh["POST /api/shopify/webhook"] --> q[(shopify_sales_queue)]
-    q --> commit["commitShopifySales()<br/>Staff, Orders page"]
+  subgraph staff["Staff-made Orders"]
+    mk["POST /api/shop/orders · PATCH /api/shop/orders/[id]<br/>markOrderShipped()"] -->|"Order becomes sold"| dws["deductStockWhenSold()"]
+    btn["POST /api/shop/orders/[id]/deduct-stock<br/>Order page → Deduct stock"] --> dst["deductOrderStock()"]
   end
   subgraph manual["In-store, Admin Panel → Inventory"]
-    sells["sellFromTemplate() · sellPillow()<br/>sellBolster() · sellPart()"]
+    cart["sellCart() · sellPart()"]
   end
+  dos --> dst
+  dws --> dst
+  dst --> did
   did -->|"sale rows"| tx[(inventory_transactions)]
-  lab -->|"sale rows"| tx
-  commit -->|"sale rows"| tx
-  sells -->|"sale rows"| tx
-  commit -.->|"push levels"| sp["Shopify inventory"]
+  cart -->|"sale rows"| tx
 ```
 
 | Channel | Entry point | Stock leaves when | Items come from | Double-deduction guard |
 |---|---|---|---|---|
-| Shop | `POST /api/stripe/webhook` | After the webhook stamps `paid_at` | The Variant: BOM, Item, or customisation snapshot | Count of ledger rows with `metadata.order_id` |
-| Result | `POST /api/results/[id]/accept` | After capture, once the Order exists | The assigned build | CAS `assigned → accepted` where `order_id is null` |
-| Shopify | `commitShopifySales` | When Staff commit the queue, not at payment | Part Item, Staff replace lines, or a warehouse template | Ledger row with `metadata.shopify_queue_id` |
-| In-store | Inventory page cart | Immediately | Default BOM or templates | None |
+| Shop | `POST /api/stripe/webhook` | After the webhook stamps `paid_at` | The Variant: its Composed sellable's build, its Item, or its own `stock_quantity` | Claim `orders.inventory_deducted_at` |
+| Result | `POST /api/results/[id]/accept` | After capture, once the Order exists | The build frozen on the Order line | Claim `orders.inventory_deducted_at` |
+| Staff-made Order | `POST`/`PATCH /api/shop/orders…`, `markOrderShipped` | When the Order becomes sold | As Shop | Claim `orders.inventory_deducted_at` |
+| In-store | Inventory page cart | Immediately | Warehouse + Filling Template, or parts | Unique `sale_id` × `sale_line` × Item |
+
+Shopify sales take no stock. This platform replaces Shopify, so the Shopify
+webhook only feeds the read-only Shopify order mirror for Analytics.
+
+## The claim: one deduction per Order
+
+`orders.inventory_deducted_at` is set by whichever call deducts the Order's
+goods, and every other call sees it set and stops.
+
+- **`deductOrderStock(admin, orderId)`** (`lib/ecommerce/order-stock.ts`)
+  claims the Order, then deducts every goods line through
+  `deductInventoryForOrder`. If the deduction throws, it hands the claim back
+  so a retry deducts, and rethrows.
+- An Order that already has `sale` rows tagged with its `order_id` is only
+  claimed, never deducted again. Rows written before the claim existed count.
+  Migration `20261027140000_stock_deduction_guards.sql` back-filled the claim
+  on every such Order.
+- **`deductOrderStockOrFlag`** tries `deductOrderStock` up to N times. If
+  every attempt fails, it flags the Order `needs_attention` and writes a
+  `stock_not_deducted` timeline event. It never throws, because the sale has
+  already happened.
+- The Stripe webhook keeps its own claim on the same column, and calls
+  `deductInventoryForOrder` directly.
+- **Deduct stock** on the Order page (`POST /api/shop/orders/[id]/deduct-stock`,
+  permission `orders`) runs `deductOrderStock` for a sold Order with no claim.
+  It is the recovery path for every flagged Order.
 
 ## Shop: checkout → Stripe → webhook
 
@@ -51,8 +77,8 @@ flowchart TD
    - Standard lines are checked against `variant_stock.stock_available`.
    - Customised lines are re-quoted from Costings by `quoteCustomization`.
      The quote's canonical `config_lines` / `filling_lines` replace the
-     client's, and `validateCustomizationConfig` checks them against
-     `inventory_balances`.
+     client's. `validateCustomizationConfig` checks `composedBuildLines`
+     against `inventory_balances`. These are the same lines the sale deducts.
    - Pillow and bolster lines without a customisation are refused.
 2. **`POST /api/stripe/webhook`** handles `checkout.session.completed` and
    `checkout.session.async_payment_succeeded`.
@@ -66,20 +92,35 @@ flowchart TD
    where it is null, and deducts only when the claim lands. A failed
    deduction clears the claim so Stripe's retry deducts.
 4. **`deductInventoryForOrder`** (`lib/ecommerce/inventory-deduction.ts`)
-   writes the `sale` rows for every line in one insert and throws on error. It
-   skips lines with no Variant and Variants with `track_inventory = false`:
+   writes the `sale` rows for every goods line in one insert, and throws on
+   error. Service lines and Variants with `track_inventory = false` take
+   nothing. Each Variant line resolves through `stockLinesForOrderItem`, which
+   restock also uses:
 
    | Case | When | Deducts |
    |---|---|---|
-   | 1 Customised bolster | `customization_id` + snapshot, bolster type | `bolster_bom_lines` for the length with fillings removed, merged under the snapshot's `config_lines` |
-   | 2 Customised pillow | `pillow_product_id` + `customization_id` + snapshot | Snapshot `config_lines` + `filling_lines`, plus non-filling `bom_lines` whose Item is not already listed |
-   | 3 Plain pillow | `pillow_product_id` | All `bom_lines` of the product |
-   | 4 Plain bolster | `option1` is a length | All `bolster_bom_lines` of the length |
-   | 5 Item-linked Variant (accessory, part) | `item_id` | That Item |
-   | 6 Manual Variant | none of the above | **No ledger row.** Decrements `product_variants.stock_quantity`, floored at 0 |
+   | 1 Customised bolster | `customization_id` + snapshot, bolster type | The length's build (below) under the snapshot's choices |
+   | 2 Pillow | `pillow_product_id` | The size × tier's build, under the snapshot's choices when customised |
+   | 3 Plain bolster | `option1` is a length | The length's build |
+   | 4 Item-linked Variant (accessory, part) | `item_id` | That Item |
+   | 5 Manual Variant | none of the above | **No ledger row.** Lowers `product_variants.stock_quantity`, floored at 0 |
+   | 6 Result line | no Variant, a Result build snapshot | The snapshot's `build_lines`, with `result_id` and `role` |
 
-   If it throws, the Order is flagged `needs_attention` with an `oversold`
-   timeline event, and the webhook returns 500 so Stripe retries.
+   **A Composed sellable's build** (`composedBuildLines`) is the customer's
+   chosen lines, laid over the defaults: the recipe (`bom_lines` or
+   `bolster_bom_lines`) and the Default Filling Template's pack. A recipe
+   carries no fillings (ADR 0003).
+   - A chosen cover or case replaces the recipe's default of that role.
+   - Chosen fillings replace the default fillings. A shop bolster offers no
+     filling choice, so it always ships its length's default fillings.
+   - A chosen Item replaces the recipe line for the same Item.
+   - Zero-quantity lines are dropped. The ledger refuses a 0 row.
+
+   A Filling Template's pack (`loadFillingTemplatePack`) is its placements,
+   one unit each, or its flat `bom_template_lines` when it has none.
+
+   If the deduction throws, the Order is flagged `needs_attention` with an
+   `oversold` timeline event, and the webhook returns 500 so Stripe retries.
 
 ## Results: hold → assign → accept
 
@@ -111,14 +152,16 @@ successful capture, never at hold.
       hands it back if a step before the Order fails.
    3. Capture the hold (`captureHold`), or settle a Balance payment.
    4. Insert the Order with `paid_at = now`. Each build becomes one goods
-      `order_items` row with `variant_id = null`. Service lines are
-      `kind 'service'` and never deducted. A discount code goes on the Order
-      as `coupon_id` / `discount_amount`, and the coupon's use is counted. An
-      attributed Order holding a customised premium pillow gets one held
-      `commissions` row for the hold's `partner_commission` (ADR 0034).
-   5. **Deduct**: one `sale` row per build line, metadata
-      `{order_id, result_id, role}`. If the insert fails, the Order is flagged
-      `needs_attention`. The deduction is not rolled back or retried.
+      `order_items` row with `variant_id = null`, whose snapshot freezes the
+      build's lines (`build_lines`). Service lines are `kind 'service'` and
+      never deducted. A discount code goes on the Order as `coupon_id` /
+      `discount_amount`, and the coupon's use is counted. An attributed Order
+      holding a customised premium pillow gets one held `commissions` row for
+      the hold's `partner_commission` (ADR 0034).
+   5. **Deduct**: `deductOrderStockOrFlag(admin, order.id, 3)` writes one
+      `sale` row per frozen build line, metadata `{order_id, result_id, role}`.
+      It tries three times. If all fail, the Order is flagged and Staff use
+      **Deduct stock**. The Accept still succeeds, because the money is captured.
    6. Mark each member Result `captured` with its `order_id`.
 
    **What gets deducted** is `assembleBuild` (`lib/build-assembly/index.ts`)
@@ -130,35 +173,21 @@ successful capture, never at hold.
      `derivePackList` (one unit per placement), or the assigned Filling
      Template's lines for legacy Results;
    - Customer preference lines, at the BOM's quantity for that role;
-   - Add-on lines.
+   - Add-on lines (`accessories` Items).
 
-Result Orders never pass through `deductInventoryForOrder`: they have no
-Variant, and their Stripe sessions carry `result_id` rather than `order_id`.
+## Staff-made Orders
 
-## Shopify: queue, then Staff commit
+`deductStockWhenSold(admin, orderId, before, after)` deducts when an Order
+moves from a status that is not sold to one that is (`confirmed`,
+`processing`, `shipped`, `delivered`; `lib/ecommerce/sold-status.ts`). An
+Order already sold before the change is not deducted again. It runs from:
 
-1. **`POST /api/shopify/webhook`** verifies the HMAC.
-   - Lines mapped through `shopify_variant_mappings` are upserted into
-     `shopify_sales_queue`, and the Shopify order is recorded in
-     `shopify_processed_orders`.
-   - It writes **no stock**.
-   - `refreshShopifySalesQueueFromShopify` fills the same queue by pulling
-     paid orders from the Shopify API.
-2. **`commitShopifySales`** (Admin Panel → Orders, Shopify sales section)
-   processes `pending` rows:
-   - `part` → the mapped Item;
-   - pillow/bolster with Staff-entered replace lines → those Items;
-   - otherwise a chosen **warehouse** template's `bom_template_lines`.
-     Filling-role templates are refused.
+- `POST /api/shop/orders`, when Staff create an Order already sold;
+- `PATCH /api/shop/orders/[id]`, the Order page's status change;
+- `updateOrderStatus` and `fulfillOrder` in `app/[lang]/settings/orders/actions.ts`;
+- `markOrderShipped`, when an Order nobody confirmed is shipped.
 
-   Each row is then set `archived`.
-3. **Guards**:
-   - the webhook short-circuits on an existing `shopify_processed_orders` row;
-   - the queue upsert is keyed on order × line × variant × kind;
-   - the commit skips a queue row that already has a ledger row with its
-     `shopify_queue_id`.
-4. After a commit, `syncShopifyInventoryForDepletedItems` pushes new levels for
-   the affected mappings to Shopify.
+A failure flags the Order, as above.
 
 ## In-store: Admin Panel → Inventory
 
@@ -167,34 +196,36 @@ Analytics does not count these as a revenue channel.
 
 | Cart line | Server action | Deducts |
 |---|---|---|
-| Warehouse + Filling Template | `sellFromTemplate` | Both templates' `bom_template_lines` (flat lines, not placements) |
-| Pillow | `sellPillow` | `bom_lines` of the size × tier |
-| Bolster | `sellBolster` | `bolster_bom_lines` of the length, or hard-coded fallback Items when the BOM is empty |
-| Part, custom drawers | `sellPart` | That Item |
+| Pillow or bolster: Warehouse Template + Filling Template | `sellCart` | The warehouse template's lines plus the Filling Template's pack (placements first) |
+| Part, or the custom pillow/bolster drawers | `sellCart` | Those Items |
+| Part drawer, one Item | `sellPart` | That Item |
 
-None of these has an idempotency key, so a double submit deducts twice.
+`sellCart` writes the whole cart in one insert, so it sells whole or not at
+all. Each row carries `metadata.sale_id` (one id per cart, made in the
+browser) and `sale_line`. A unique index on `sale_id` × `sale_line` × Item
+refuses a resubmitted cart, and the action answers "already sold". The Sell
+button is disabled while a sale runs.
 
 ## Purchases that take no stock
 
 - **Services**: re-adjustment fee Orders and measurement fees are
   `kind 'service'` with no Variant.
-- **Manual Orders** created by Staff through `POST /api/shop/orders`.
-- **Uncommitted Shopify sales**: they sit in `shopify_sales_queue` until
-  Staff commit them.
+- **Orders that never become sold**: `pending`, `cancelled`, `refunded`.
+- **Shopify sales**: mirrored for Analytics only.
 
 ## Known gaps
 
 Found by reading the code, not by running it.
 
 - **Manual-stock updates run after the ledger insert.** If one of several
-  case 6 `stock_quantity` updates fails, the earlier ones stay applied and
+  case 5 `stock_quantity` updates fails, the earlier ones stay applied and
   the retry applies them again.
-- **Shop customisations deduct differently from Result builds.**
-  - A customised bolster bought in the shop deducts its snapshot's
-    `config_lines` but not its `filling_lines`.
-  - Cases 1–2 add every BOM line whose Item is not already listed, so the
-    BOM's default cover/case is deducted alongside the customer's choice.
-    `assembleBuild` replaces by role instead.
+- **A Composed sellable with no Default Filling Template deducts no
+  fillings** for a shop line that chose none. Configure should set one for
+  every card.
 - **Result accept checks then inserts.** The shortage check and the ledger
   insert are not atomic. The claim CAS makes the Order exactly-once, but not
   the stock check.
+- **Restock of a shop line re-resolves its build today.** An Order sold
+  before 2026-10-27 that deducted both the default and the chosen cover gets
+  only the chosen one back.

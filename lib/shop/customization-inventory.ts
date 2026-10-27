@@ -1,4 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import {
+  composedBuildLines,
+  type CategorisedLine,
+  type ComposedSellableRef,
+} from "@/lib/ecommerce/inventory-deduction";
 import type { BolsterVariant, ComponentOption, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { ItemOverlay, OverlayFit } from "@/lib/product-builder/overlays";
 
@@ -316,52 +321,28 @@ type ConfigValidation = {
 };
 
 /**
- * Validate a full customization config against current inventory.
- * Checks ALL components (fillings + covers + cases + etc) can be fulfilled.
+ * Check what one build needs, `orderQuantity` times over, against on-hand stock.
+ * The build is `composedBuildLines`, the same lines the sale deducts: the chosen
+ * components and fillings over the recipe and the Default Filling Template.
  */
-export async function validateFullConfig(
-  pillowProductId: number,
-  fillingLines: FillingLine[],
-  componentQuantities: ConfigLine[],
+async function validateComposedBuild(
+  sellable: ComposedSellableRef,
+  chosen: CategorisedLine[],
   orderQuantity: number,
-  reserved: ReadonlyMap<number, number> = new Map()
+  reserved: ReadonlyMap<number, number>,
 ): Promise<ConfigValidation> {
   const admin = supabaseAdmin();
 
-  // Build a map of all items needed: item_id → total quantity
   const needed = new Map<number, number>();
-
-  // Add filling lines
-  for (const fl of fillingLines) {
-    needed.set(fl.item_id, (needed.get(fl.item_id) ?? 0) + fl.quantity * orderQuantity);
+  for (const line of await composedBuildLines(admin, sellable, chosen)) {
+    needed.set(line.item_id, (needed.get(line.item_id) ?? 0) + line.quantity * orderQuantity);
   }
 
-  // Add custom component quantities
-  for (const cl of componentQuantities) {
-    needed.set(cl.item_id, (needed.get(cl.item_id) ?? 0) + cl.quantity * orderQuantity);
-  }
-
-  // If no explicit non-filling components, add defaults from BOM
-  const hasNonFilling = componentQuantities.some(
-    (cl) => !["filling"].includes(cl.category)
-  );
-
-  if (!hasNonFilling) {
-    const { data: bomLines } = await admin
-      .from("bom_lines")
-      .select("item_id, quantity, items!inner(category)")
-      .eq("product_id", pillowProductId);
-
-    for (const bl of bomLines ?? []) {
-      const cat = (bl as unknown as { items: { category: string } }).items.category;
-      if (cat !== "filling") {
-        needed.set(bl.item_id, (needed.get(bl.item_id) ?? 0) + bl.quantity * orderQuantity);
-      }
-    }
-  }
-
-  // Check inventory
   const itemIds = [...needed.keys()];
+  if (itemIds.length === 0) {
+    return { valid: true, shortages: [], needed };
+  }
+
   const { data: balances } = await admin
     .from("inventory_balances")
     .select("item_id, on_hand")
@@ -403,6 +384,28 @@ export async function validateFullConfig(
 }
 
 /**
+ * Validate a full customization config against current inventory.
+ * Checks ALL components (fillings + covers + cases + etc) can be fulfilled.
+ */
+export async function validateFullConfig(
+  pillowProductId: number,
+  fillingLines: FillingLine[],
+  componentQuantities: ConfigLine[],
+  orderQuantity: number,
+  reserved: ReadonlyMap<number, number> = new Map()
+): Promise<ConfigValidation> {
+  return validateComposedBuild(
+    { pillowProductId },
+    [
+      ...componentQuantities.map((cl) => ({ item_id: cl.item_id, quantity: cl.quantity, category: cl.category })),
+      ...fillingLines.map((fl) => ({ item_id: fl.item_id, quantity: fl.quantity, category: "filling" })),
+    ],
+    orderQuantity,
+    reserved,
+  );
+}
+
+/**
  * Get base BOM quantities for a bolster variant from bolster_bom_lines.
  */
 export async function getBolsterBaseQuantities(
@@ -421,8 +424,9 @@ export async function getBolsterBaseQuantities(
 }
 
 /**
- * Validate a bolster customization config against current inventory.
- * Bolsters have no filling lines — only component_quantities from bolster_bom_lines + user selections.
+ * Validate a bolster customization config against current inventory. A shop
+ * bolster offers no filling choice, so its length's Default Filling Template
+ * fillings are checked with its components.
  */
 export async function validateBolsterConfig(
   bolsterVariant: BolsterVariant,
@@ -430,74 +434,12 @@ export async function validateBolsterConfig(
   orderQuantity: number,
   reserved: ReadonlyMap<number, number> = new Map()
 ): Promise<ConfigValidation> {
-  const admin = supabaseAdmin();
-
-  const needed = new Map<number, number>();
-
-  for (const cl of componentQuantities) {
-    needed.set(cl.item_id, (needed.get(cl.item_id) ?? 0) + cl.quantity * orderQuantity);
-  }
-
-  const hasNonFilling = componentQuantities.some(
-    (cl) => !["filling"].includes(cl.category)
+  return validateComposedBuild(
+    { length: bolsterVariant },
+    componentQuantities.map((cl) => ({ item_id: cl.item_id, quantity: cl.quantity, category: cl.category })),
+    orderQuantity,
+    reserved,
   );
-
-  if (!hasNonFilling) {
-    const { data: bomLines } = await admin
-      .from("bolster_bom_lines")
-      .select("item_id, quantity, items!inner(category)")
-      .eq("variant", bolsterVariant);
-
-    for (const bl of bomLines ?? []) {
-      const cat = (bl as unknown as { items: { category: string } }).items.category;
-      if (cat !== "filling") {
-        needed.set(bl.item_id, (needed.get(bl.item_id) ?? 0) + bl.quantity * orderQuantity);
-      }
-    }
-  }
-
-  const itemIds = [...needed.keys()];
-  if (itemIds.length === 0) {
-    return { valid: true, shortages: [], needed };
-  }
-
-  const { data: balances } = await admin
-    .from("inventory_balances")
-    .select("item_id, on_hand")
-    .in("item_id", itemIds);
-
-  const stockMap = new Map<number, number>(
-    (balances ?? []).map((b: { item_id: number; on_hand: number }) => [b.item_id, b.on_hand])
-  );
-
-  const { data: items } = await admin
-    .from("items")
-    .select("id, name, subtype")
-    .in("id", itemIds);
-
-  const nameMap = new Map<number, string>(
-    (items ?? []).map((i: { id: number; name: string; subtype: string | null }) => [
-      i.id,
-      i.subtype ? `${i.name} (${i.subtype})` : i.name,
-    ])
-  );
-
-  const shortages: { item_id: number; name: string; needed: number; available: number }[] = [];
-
-  for (const [itemId, qty] of needed) {
-    const available = stockMap.get(itemId) ?? 0;
-    const total = qty + (reserved.get(itemId) ?? 0);
-    if (available < total) {
-      shortages.push({
-        item_id: itemId,
-        name: nameMap.get(itemId) ?? `Item #${itemId}`,
-        needed: total,
-        available,
-      });
-    }
-  }
-
-  return { valid: shortages.length === 0, shortages, needed };
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
  * Best-effort Shopify order-mirror writes from the webhook path.
- * Failures are logged only — never fail shopify_sales_queue work (catch-up retries).
+ * Failures are logged only — never fail the webhook (catch-up retries).
  */
 import {
   applyShopifyRefund,
@@ -25,8 +25,8 @@ export async function bestEffortUpsertOrderMirror(
     return { ok: true }
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e)
-    // ponytail: swallow so queue path stays 200; slice 05 catch-up re-pulls missed mirror rows.
-    console.error('Shopify order mirror upsert failed (queue unaffected; catch-up will retry)', error)
+    // ponytail: swallow so the webhook stays 200; slice 05 catch-up re-pulls missed mirror rows.
+    console.error('Shopify order mirror upsert failed (catch-up will retry)', error)
     return { ok: false, error }
   }
 }

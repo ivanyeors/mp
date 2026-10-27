@@ -1,9 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { shopifyGetPrimaryLocationId, shopifyGetVariantInventoryItemId, shopifySetInventoryLevel } from './client'
 import { shopifyListActiveProductsWithVariants } from './products'
-import { selectMappingsAffectedByDepletedItems, type ShopifyMappingRow } from './sync-scope'
-
-type MappingRow = ShopifyMappingRow
+type MappingRow = {
+  shopify_variant_id: number | string
+  kind: 'pillow' | 'bolster' | 'part'
+  pillow_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | string | null
+  pillow_kind: 'basic' | 'premium' | string | null
+  bolster_variant: 'short' | 'medium' | 'long' | string | null
+  item_id: number | null
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -162,76 +167,4 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{
     mappings: (mappings ?? []) as MappingRow[],
     paceMs: 650,
   })
-}
-
-/**
- * Push inventory for mappings affected by depleted item ids (BOM-aware).
- * No fixed sleep — small batches; client 429 retry handles bursts.
- */
-export async function syncShopifyInventoryForDepletedItems(args: {
-  depletedItemIds: number[]
-  alwaysIncludeVariantIds?: number[]
-  /** Extra pillow keys from the committed sale rows (kind+size) */
-  pillowKeys?: Array<{ kind: string; size: string }>
-  /** Extra bolster variants from the committed sale rows */
-  bolsterVariants?: string[]
-}): Promise<{ updated: number; skipped_not_found: number; skipped_inactive: number; scoped: number }> {
-  const depleted = Array.from(
-    new Set(args.depletedItemIds.map(Number).filter((id) => Number.isFinite(id) && id > 0)),
-  )
-  const always = Array.from(
-    new Set((args.alwaysIncludeVariantIds ?? []).map(Number).filter((id) => Number.isFinite(id) && id > 0)),
-  )
-  if (!depleted.length && !always.length && !(args.pillowKeys?.length) && !(args.bolsterVariants?.length)) {
-    return { updated: 0, skipped_not_found: 0, skipped_inactive: 0, scoped: 0 }
-  }
-
-  const admin = supabaseAdmin()
-
-  const [{ data: mappings }, { data: pillowProducts }, { data: bomLines }, { data: bolsterBom }] = await Promise.all([
-    admin
-      .from('shopify_variant_mappings')
-      .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id'),
-    admin.from('pillow_products').select('id,kind,size').eq('is_active', true),
-    depleted.length
-      ? admin.from('bom_lines').select('product_id,item_id').in('item_id', depleted)
-      : Promise.resolve({ data: [] as Array<{ product_id: number; item_id: number }> }),
-    depleted.length
-      ? admin.from('bolster_bom_lines').select('variant,item_id').in('item_id', depleted)
-      : Promise.resolve({ data: [] as Array<{ variant: string; item_id: number }> }),
-  ])
-
-  const productIdByKey = new Map<number, { kind: string; size: string }>()
-  ;(pillowProducts ?? []).forEach((p: { id: number | string; kind: string | null; size: string }) => {
-    productIdByKey.set(Number(p.id), { kind: String(p.kind || 'basic'), size: String(p.size) })
-  })
-
-  const pillowKeysUsingItems: Array<{ kind: string; size: string }> = [...(args.pillowKeys ?? [])]
-  const seenPillow = new Set(pillowKeysUsingItems.map((p) => `${p.kind}:${p.size}`))
-  ;(bomLines ?? []).forEach((r: { product_id: number | string }) => {
-    const meta = productIdByKey.get(Number(r.product_id))
-    if (!meta) return
-    const k = `${meta.kind}:${meta.size}`
-    if (seenPillow.has(k)) return
-    seenPillow.add(k)
-    pillowKeysUsingItems.push(meta)
-  })
-
-  const bolsterVariantsUsingItems = Array.from(
-    new Set([
-      ...(args.bolsterVariants ?? []).map(String),
-      ...(bolsterBom ?? []).map((r: { variant: string }) => String(r.variant)),
-    ]),
-  )
-
-  const scoped = selectMappingsAffectedByDepletedItems({
-    mappings: (mappings ?? []) as MappingRow[],
-    depletedItemIds: depleted,
-    pillowKeysUsingItems,
-    bolsterVariantsUsingItems,
-    alwaysIncludeVariantIds: always,
-  })
-
-  const result = await pushMappingsToShopify({ mappings: scoped, paceMs: 0 })
-  return { ...result, scoped: scoped.length }
 }

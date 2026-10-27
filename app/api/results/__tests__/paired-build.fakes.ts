@@ -127,9 +127,16 @@ function project(table: string, r: Row, sel: string | null): Row {
       Object.assign(out, structuredClone(r));
       continue;
     }
-    const embed = tok.match(/^([a-z_]+)\(([\s\S]*)\)$/);
+    const embed = tok.match(/^([a-z_]+)(?:!inner)?\(([\s\S]*)\)$/);
     if (embed) {
       const child = embed[1];
+      // To-one: this row holds the child's id (`items(...)` on a row with `item_id`).
+      const ownFk = `${child.replace(/s$/, "")}_id`;
+      if (ownFk in r) {
+        const parent = rows(child).find((c) => c.id === r[ownFk]);
+        out[child] = parent ? project(child, parent, embed[2]) : null;
+        continue;
+      }
       const fk = `${table.replace(/s$/, "")}_id`;
       out[child] = rows(child)
         .filter((c) => c[fk] === r.id)
@@ -145,6 +152,14 @@ function project(table: string, r: Row, sel: string | null): Row {
 function sqlEq(a: unknown, b: unknown) {
   if (a == null || b == null) return false;
   return String(a) === String(b) || a === b;
+}
+
+/** A column, or a `col->>key` jsonb path as PostgREST filters read it. */
+function field(r: Row, c: string): unknown {
+  const [col, key] = c.split("->>");
+  if (key === undefined) return r[col];
+  const json = r[col];
+  return json && typeof json === "object" ? (json as Row)[key] : undefined;
 }
 
 class Query {
@@ -201,7 +216,7 @@ class Query {
     return this;
   }
   eq(c: string, v: unknown) {
-    return this.f(`${c}=eq.${String(v)}`, (r) => sqlEq(r[c], v));
+    return this.f(`${c}=eq.${String(v)}`, (r) => sqlEq(field(r, c), v));
   }
   neq(c: string, v: unknown) {
     return this.f(`${c}=neq.${String(v)}`, (r) => r[c] != null && v != null && !sqlEq(r[c], v));

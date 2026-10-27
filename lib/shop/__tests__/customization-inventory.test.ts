@@ -60,10 +60,7 @@ function createSupabaseMock(tables: Record<string, MockRow[]>) {
           filters.in.push([column, values]);
           return builder;
         },
-        then(
-          onFulfilled?: (value: { data: MockRow[]; error: null }) => unknown,
-          onRejected?: (reason: unknown) => unknown,
-        ) {
+        rows() {
           let filtered = [...rows];
           for (const [col, val] of filters.eq) {
             filtered = filtered.filter((row) => row[col] === val);
@@ -71,7 +68,16 @@ function createSupabaseMock(tables: Record<string, MockRow[]>) {
           for (const [col, vals] of filters.in) {
             filtered = filtered.filter((row) => vals.includes(row[col] as never));
           }
-          const result = { data: filtered, error: null };
+          return filtered;
+        },
+        maybeSingle() {
+          return Promise.resolve({ data: builder.rows()[0] ?? null, error: null });
+        },
+        then(
+          onFulfilled?: (value: { data: MockRow[]; error: null }) => unknown,
+          onRejected?: (reason: unknown) => unknown,
+        ) {
+          const result = { data: builder.rows(), error: null };
           return Promise.resolve(result).then(onFulfilled, onRejected);
         },
       };
@@ -248,6 +254,55 @@ describe("validateBolsterConfig", () => {
 
     expect(result.valid).toBe(true);
     expect(result.shortages).toEqual([]);
+  });
+
+  it("checks the length's default fillings, which ship with every shop bolster", async () => {
+    mockTables = {
+      bolster_bom_lines: [{ variant: "medium", item_id: 301, quantity: 1, items: { category: "bolster_case" } }],
+      bolster_length_config: [{ variant: "medium", default_filling_template_id: 77 }],
+      bom_templates: [{ id: 77, kind: "bolster" }],
+      bolster_template_placements: [
+        { template_id: 77, item_id: 401 },
+        { template_id: 77, item_id: 401 },
+      ],
+      bom_template_lines: [],
+      inventory_balances: [
+        { item_id: 301, on_hand: 5 },
+        { item_id: 401, on_hand: 1 },
+      ],
+      items: [
+        { id: 301, name: "Bolster Case M", subtype: null },
+        { id: 401, name: "6D", subtype: "6D-L" },
+      ],
+    };
+
+    const result = await validateBolsterConfig("medium", [], 1);
+
+    expect(result.valid).toBe(false);
+    expect(result.shortages).toEqual([{ item_id: 401, name: "6D (6D-L)", needed: 2, available: 1 }]);
+  });
+
+  it("checks a chosen cover instead of the default one, plus the rest of the recipe", async () => {
+    mockTables = {
+      bolster_bom_lines: [
+        { variant: "short", item_id: 300, quantity: 1, items: { category: "cover" } },
+        { variant: "short", item_id: 302, quantity: 1, items: { category: "bolster_protector" } },
+      ],
+      inventory_balances: [
+        { item_id: 101, on_hand: 5 },
+        { item_id: 300, on_hand: 0 },
+        { item_id: 302, on_hand: 0 },
+      ],
+      items: [
+        { id: 101, name: "Bolster Cover", subtype: null },
+        { id: 302, name: "Bolster Protector S", subtype: null },
+      ],
+    };
+
+    const result = await validateBolsterConfig("short", [coverLine], 1);
+
+    expect(result.needed).toEqual(new Map([[101, 1], [302, 1]]));
+    expect(result.shortages.map((s) => s.item_id)).toEqual([302]);
   });
 });
 
