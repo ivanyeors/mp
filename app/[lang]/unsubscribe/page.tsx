@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 // The link carries its token: never index it, and never send it on as a referrer.
 export const metadata: Metadata = {
-  title: "Unsubscribe | Mpillow",
+  title: "Unsubscribe",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };

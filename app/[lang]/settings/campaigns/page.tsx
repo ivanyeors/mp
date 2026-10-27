@@ -60,13 +60,12 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                     <h1 className="text-2xl font-semibold tracking-tight">Email campaigns</h1>
                     <InfoTip label="About email campaigns">
                         <p>
-                            Write an email, send yourself a test, then send it in waves. Only
-                            customers who agreed to marketing email receive it, and nobody gets
-                            the same campaign twice.
+                            Write it, test it on yourself, then send it in waves. Only customers
+                            who agreed to marketing email get it, and nobody gets it twice.
                         </p>
                         <p>
-                            Every email has an unsubscribe link. Anyone whose email bounces or who
-                            marks one as spam is left out of every later campaign.
+                            Every email has an unsubscribe link. Addresses that bounce or report
+                            spam are left out of later campaigns.
                         </p>
                     </InfoTip>
                 </div>
@@ -89,8 +88,8 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                     <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
                         <Mail className="h-8 w-8 text-muted-foreground" aria-hidden />
                         <p className="max-w-md text-sm text-muted-foreground">
-                            No campaigns yet. Start with the one for your Shopify customers: it is
-                            written for you, so you can read it, test it and send it.
+                            No campaigns yet. Start with the one written for your Shopify
+                            customers: read it, test it, then send it.
                         </p>
                         <Button asChild>
                             <Link href={to("/settings/campaigns/new")}>Write your first campaign</Link>

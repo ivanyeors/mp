@@ -30,7 +30,7 @@ export function AccessDeniedNotice() {
     >
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <p className="flex-1">
-        You don&apos;t have access to {label}. Ask an Owner to add it to your role.
+        You don&apos;t have access to {label}. Ask an Owner or Admin to add it to your role.
       </p>
       <button
         type="button"

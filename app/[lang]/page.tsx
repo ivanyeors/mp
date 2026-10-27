@@ -17,7 +17,7 @@ export async function generateMetadata({
   const m = getMessages(locale);
 
   return buildPageMetadata({
-    title: "Mpillow | Custom Pillow Singapore",
+    title: "Custom cervical pillow for neck pain in Singapore",
     description: m.home.hero.seoAnswer,
     path: "",
     lang: locale,

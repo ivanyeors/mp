@@ -89,11 +89,11 @@ export default function GeneralSettingsPage({
   const fetchConfigs = useCallback(async () => {
     try {
       const res = await fetch("/api/settings/api-configs");
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Couldn't load.");
       const data: ApiConfig[] = await res.json();
       setConfigs(data);
     } catch {
-      toast.error("Failed to load API configurations");
+      toast.error("Couldn't load API configurations.");
     } finally {
       setLoading(false);
     }
@@ -147,7 +147,7 @@ export default function GeneralSettingsPage({
     try {
       parsedConfig = JSON.parse(form.config);
     } catch {
-      toast.error("Config must be valid JSON");
+      toast.error("Config must be valid JSON.");
       return;
     }
 
@@ -173,14 +173,14 @@ export default function GeneralSettingsPage({
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(typeof err.error === "string" ? err.error : "Save failed");
+        throw new Error(typeof err.error === "string" ? err.error : "Couldn't save.");
       }
 
       toast.success(isEdit ? "API config updated" : "API config created");
       setDialogOpen(false);
       fetchConfigs();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }
@@ -189,7 +189,7 @@ export default function GeneralSettingsPage({
   /* ---- delete ---- */
   const handleDelete = async () => {
     if (!editingId) return;
-    if (!confirm("Are you sure you want to delete this API configuration?")) return;
+    if (!confirm("Delete this API configuration?")) return;
 
     setSaving(true);
     try {
@@ -198,12 +198,12 @@ export default function GeneralSettingsPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: editingId }),
       });
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) throw new Error("Couldn't delete.");
       toast.success("API config deleted");
       setDialogOpen(false);
       fetchConfigs();
     } catch {
-      toast.error("Failed to delete API config");
+      toast.error("Couldn't delete the API config.");
     } finally {
       setSaving(false);
     }
@@ -233,9 +233,9 @@ export default function GeneralSettingsPage({
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">API Configurations</h1>
-            <InfoTip label="About API Configurations">
-              <p>Manage external API integrations (LLM providers, Stripe, etc.)</p>
+            <h1 className="text-2xl font-semibold tracking-tight">API configurations</h1>
+            <InfoTip label="About API configurations">
+              <p>Connect outside services, such as LLM providers and Stripe.</p>
             </InfoTip>
           </div>
         </div>
@@ -248,7 +248,7 @@ export default function GeneralSettingsPage({
       {/* Table */}
       {configs.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          No API configurations yet. Click &ldquo;Add API&rdquo; to create one.
+          No API configurations yet.
         </div>
       ) : (
         <div className="min-w-0 max-w-full overflow-x-auto rounded-lg border">
@@ -302,7 +302,7 @@ export default function GeneralSettingsPage({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit API Config" : "New API Config"}</DialogTitle>
+            <DialogTitle>{editingId ? "Edit API config" : "New API config"}</DialogTitle>
             <DialogDescription>
               {editingId
                 ? "Update the configuration for this API integration."
@@ -349,7 +349,7 @@ export default function GeneralSettingsPage({
 
             {/* API Key */}
             <div className="grid gap-2">
-              <Label htmlFor="cfg-key">API Key</Label>
+              <Label htmlFor="cfg-key">API key</Label>
               <div className="relative">
                 <Input
                   id="cfg-key"
@@ -415,7 +415,7 @@ export default function GeneralSettingsPage({
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingId ? "Save Changes" : "Create"}
+              {editingId ? "Save changes" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

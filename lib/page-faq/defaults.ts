@@ -15,7 +15,7 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
           "en-US": {
             question: "What is Mpillow?",
             answer:
-              "Mpillow is a modular custom pillow system sized to your shoulder, neck, and head measurements. Start online via [mp-config](/mp-config), or browse [Shop](/shop) for ready options.",
+              "Mpillow is a modular custom pillow system sized to your shoulder, neck, and head measurements. Start online via [mp-config](/mp-config), or browse the [shop](/shop) for ready options.",
           },
           "zh-CN": {
             question: "什么是 Mpillow？",
@@ -30,7 +30,7 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
           "en-US": {
             question: "What’s the difference between Basic and Premium Mpillow?",
             answer:
-              "Basic is the core custom-fit pillow. Premium adds higher-spec components and accessories (including cervical neck support options). Compare on [Shop](/shop) or start [customisation](/mp-config).",
+              "Basic is the core custom-fit pillow. Premium adds higher-spec components and accessories (including cervical neck support options). Compare them in the [shop](/shop) or start [customisation](/mp-config).",
           },
           "zh-CN": {
             question: "基础版与高级版 Mpillow 有什么区别？",
@@ -45,7 +45,7 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
           "en-US": {
             question: "What’s the difference between a cervical and an ergonomic pillow?",
             answer:
-              "Cervical support targets the neck curve with a dedicated contour. An ergonomic custom pillow like Mpillow sizes the whole stack — shoulder, neck, and head — to your body. See cervical neck support on the home page, or start [customisation](/mp-config).",
+              "Cervical support targets the neck curve with a dedicated contour. An ergonomic custom pillow like Mpillow sizes the whole pillow to your shoulder, neck and head. See cervical neck support on the home page, or start [customisation](/mp-config).",
           },
           "zh-CN": {
             question: "颈椎枕和人体工学枕有什么区别？",
@@ -60,7 +60,7 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
           "en-US": {
             question: "Can a customised pillow help with tech neck strain at night?",
             answer:
-              "Long screen days load the cervical spine. A customised Mpillow with optional cervical neck support helps keep overnight alignment after desk-heavy days — support and align for sleep comfort, not medical treatment. Explore cervical support on the home page or [customise](/mp-config).",
+              "Long screen days load the cervical spine. A customised Mpillow with optional cervical neck support helps keep overnight alignment after desk-heavy days. It's there to support and align you for sleep comfort, and it isn't medical treatment. Explore cervical support on the home page or [customise](/mp-config).",
           },
           "zh-CN": {
             question: "定制枕头能帮助缓解夜间科技颈不适吗？",
@@ -90,7 +90,7 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
           "en-US": {
             question: "Do you ship in Singapore?",
             answer:
-              "Yes — we fulfil orders in Singapore. See [Global FAQ](/faq) for shipping, warranty, and care details.",
+              "Yes, we fulfil orders in Singapore. See our [FAQ](/faq) for shipping, warranty, and care details.",
           },
           "zh-CN": {
             question: "新加坡有配送吗？",

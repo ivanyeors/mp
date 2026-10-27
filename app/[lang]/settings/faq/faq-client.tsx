@@ -306,7 +306,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
       setCategories(catJson.rows ?? []);
       setItems(itemJson.rows ?? []);
     } catch {
-      toast.error("Failed to load FAQ data");
+      toast.error("Couldn't load FAQ data.");
     } finally {
       setLoading(false);
     }
@@ -341,7 +341,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
       body: JSON.stringify({ labels, key }),
     });
     if (!res.ok) {
-      toast.error("Failed to save category");
+      toast.error("Couldn't save the category.");
       return;
     }
     const { row } = await res.json();
@@ -359,7 +359,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     });
     if (!res.ok) {
       setCategories((prev) => prev.map((c) => (c.id === cat.id ? cat : c)));
-      toast.error("Failed to update visibility");
+      toast.error("Couldn't update visibility.");
     }
   };
 
@@ -368,7 +368,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     const res = await fetch(`/api/faq/categories/${cat.id}`, { method: "DELETE" });
     if (!res.ok) {
       const err = await res.json();
-      toast.error(err.error ?? "Failed to delete category");
+      toast.error(err.error ?? "Couldn't delete the category.");
       return;
     }
     setCategories((prev) => prev.filter((c) => c.id !== cat.id));
@@ -383,7 +383,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     });
     if (!res.ok) {
       const err = await res.json();
-      toast.error(err.error ?? "Failed to add category");
+      toast.error(err.error ?? "Couldn't add the category.");
       return;
     }
     const { row } = await res.json();
@@ -398,7 +398,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
       body: JSON.stringify(patch),
     });
     if (!res.ok) {
-      toast.error("Failed to save question");
+      toast.error("Couldn't save the question.");
       return;
     }
     const { row } = await res.json();
@@ -416,7 +416,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     });
     if (!res.ok) {
       setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
-      toast.error("Failed to update visibility");
+      toast.error("Couldn't update visibility.");
     }
   };
 
@@ -424,7 +424,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     if (!confirm("Delete this question?")) return;
     const res = await fetch(`/api/faq/items/${item.id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.error("Failed to delete question");
+      toast.error("Couldn't delete the question.");
       return;
     }
     setItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -443,7 +443,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
       body: JSON.stringify({ category_id: categoryId, slug, content }),
     });
     if (!res.ok) {
-      toast.error("Failed to add question");
+      toast.error("Couldn't add the question.");
       return;
     }
     const { row } = await res.json();
@@ -463,7 +463,7 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     });
     if (!res.ok) {
       load();
-      toast.error("Failed to reorder categories");
+      toast.error("Couldn't reorder categories.");
     }
   };
 
@@ -472,9 +472,9 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
       <div className="space-y-8" data-settings-faq>
         <div>
           <div className="flex items-center gap-1.5">
-            <h1>FAQ Management</h1>
-            <InfoTip label="About FAQ Management">
-              <p>Manage Global FAQ and page-local FAQ embeds from one place.</p>
+            <h1>FAQ</h1>
+            <InfoTip label="About FAQ">
+              <p>Manage the Global FAQ and per-page FAQs in one place.</p>
             </InfoTip>
           </div>
         </div>
@@ -500,9 +500,9 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     <div className="space-y-8" data-settings-faq>
       <div>
         <div className="flex items-center gap-1.5">
-          <h1>FAQ Management</h1>
-          <InfoTip label="About FAQ Management">
-            <p>Manage Global FAQ and page-local FAQ embeds from one place.</p>
+          <h1>FAQ</h1>
+          <InfoTip label="About FAQ">
+            <p>Manage the Global FAQ and per-page FAQs in one place.</p>
           </InfoTip>
         </div>
       </div>

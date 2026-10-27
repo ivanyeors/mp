@@ -15,7 +15,7 @@ const BLOG_DESCRIPTION =
 export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
     const { lang } = await params;
     return buildPageMetadata({
-        title: "Mpillow Blogs | Better Sleep Guidance from the Experts",
+        title: "Better sleep guidance from our blog",
         description: BLOG_DESCRIPTION,
         path: "/blog",
         lang: isSupportedLocale(lang) ? lang : DEFAULT_LOCALE,

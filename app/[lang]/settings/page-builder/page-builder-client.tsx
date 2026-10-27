@@ -58,12 +58,12 @@ function AddSectionDialog({
       <DialogTrigger asChild>
         <Button size="sm">
           <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Add Section
+          Add section
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Section</DialogTitle>
+          <DialogTitle>New section</DialogTitle>
           <DialogDescription>
             Choose a template and give your section a unique name.
           </DialogDescription>
@@ -109,7 +109,7 @@ function AddSectionDialog({
             disabled={!selectedType || !slug}
             className="w-full"
           >
-            Create Section
+            Create section
           </Button>
         </div>
       </DialogContent>
@@ -152,7 +152,7 @@ function PublishBar({
     try {
       const res = await fetch("/api/landing-sections/publish", { method });
       const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error ?? "Request failed");
+      if (!res.ok) throw new Error(body?.error ?? "Something went wrong.");
       if (method === "POST") {
         toast.success("Published to the live site");
         onPublished();
@@ -162,7 +162,7 @@ function PublishBar({
       }
       setConfirmOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
@@ -286,12 +286,12 @@ export default function PageBuilderPage({
   const loadSections = useCallback(async () => {
     try {
       const res = await fetch("/api/landing-sections");
-      if (!res.ok) throw new Error("Failed to load");
+      if (!res.ok) throw new Error("Couldn't load.");
       const data = await res.json();
       setSections(data.sections);
       setPending(data.pending ?? EMPTY_PENDING);
     } catch {
-      toast.error("Failed to load sections");
+      toast.error("Couldn't load sections.");
     } finally {
       setLoading(false);
     }
@@ -345,14 +345,14 @@ export default function PageBuilderPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ visible: newVisible }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error("Something went wrong.");
       toast.success(newVisible ? "Section shown" : "Section hidden");
       afterChange();
     } catch {
       setSections((prev) =>
         prev.map((s) => (s.id === section.id ? { ...s, visible: !newVisible } : s)),
       );
-      toast.error("Failed to update visibility");
+      toast.error("Couldn't update visibility.");
     }
   };
 
@@ -366,13 +366,13 @@ export default function PageBuilderPage({
       const res = await fetch(`/api/landing-sections/${section.id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error ?? "Failed");
+        throw new Error(err?.error ?? "Something went wrong.");
       }
-      toast.success("Section removed — publish to apply");
+      toast.success("Section removed. Publish to apply.");
       afterChange();
     } catch (err) {
       loadSections();
-      toast.error(err instanceof Error ? err.message : "Failed to remove section");
+      toast.error(err instanceof Error ? err.message : "Couldn't remove the section.");
     }
   };
 
@@ -385,14 +385,14 @@ export default function PageBuilderPage({
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(typeof err.error === "string" ? err.error : "Failed to create");
+        throw new Error(typeof err.error === "string" ? err.error : "Couldn't create.");
       }
       const { section } = await res.json();
       setSelectedSlug(section.slug);
       toast.success("Section added");
       afterChange();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add section");
+      toast.error(err instanceof Error ? err.message : "Couldn't add the section.");
     }
   };
 
@@ -408,13 +408,13 @@ export default function PageBuilderPage({
         });
         if (!res.ok) {
           const body = await res.json().catch(() => null);
-          throw new Error(typeof body?.error === "string" ? body.error : "Failed to reorder");
+          throw new Error(typeof body?.error === "string" ? body.error : "Couldn't reorder.");
         }
         toast.success("Order updated");
         afterChange();
       } catch (err) {
         loadSections();
-        toast.error(err instanceof Error ? err.message : "Failed to reorder");
+        toast.error(err instanceof Error ? err.message : "Couldn't reorder.");
       }
     },
     [afterChange, loadSections],
@@ -480,7 +480,7 @@ export default function PageBuilderPage({
     </div>
   ) : (
     <p className="text-sm text-muted-foreground">
-      Pick a section — in the list or in the preview — to edit it.
+      Pick a section in the list or the preview to edit it.
     </p>
   );
 

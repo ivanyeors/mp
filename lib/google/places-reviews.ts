@@ -120,7 +120,7 @@ export async function getGooglePlaceTestimonials(opts?: {
     const avatarAlt = name;
 
     const rel = r.relativePublishTimeDescription?.trim();
-    const title = rel ? `Google review · ${rel}` : "Google review";
+    const title = rel ? `Reviewed on Google ${rel}` : "Google review";
 
     return {
       quote,

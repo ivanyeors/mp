@@ -28,7 +28,7 @@ import { DEFAULT_OG_IMAGE } from "@/lib/seo/metadata";
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteOrigin()),
   title: {
-    default: "Mpillow | Custom Pillow Singapore",
+    default: "Mpillow | Custom pillows in Singapore",
     template: "%s | Mpillow",
   },
   description:

@@ -88,7 +88,7 @@ function getStatus(coupon: Coupon): {
 
 function formatDateRange(starts_at: string | null, expires_at: string | null): string {
     const fmt = (d: string) => formatAdminDateMY(d);
-    if (starts_at && expires_at) return `${fmt(starts_at)} – ${fmt(expires_at)}`;
+    if (starts_at && expires_at) return `${fmt(starts_at)} to ${fmt(expires_at)}`;
     if (starts_at) return `From ${fmt(starts_at)}`;
     if (expires_at) return `Until ${fmt(expires_at)}`;
     return "No expiry";
@@ -143,13 +143,13 @@ export function DiscountsClient({
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">Discounts</h1>
                     <InfoTip label="About Discounts">
-                        Manage discount codes and promotions for your store.
+                        Manage discount codes and loyalty points.
                     </InfoTip>
                 </div>
                 <Button asChild size="sm" className="w-full sm:w-auto">
                     <Link href={to("/settings/discounts/new")}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Discount
+                        Add discount
                     </Link>
                 </Button>
             </div>
@@ -165,12 +165,12 @@ export function DiscountsClient({
                 <div className="rounded-xl border border-dashed p-14 text-center">
                     <Tag className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
                     <p className="text-sm font-medium text-muted-foreground">
-                        No discount codes yet. Create your first discount to get started.
+                        No discount codes yet.
                     </p>
                     <Button asChild size="sm" className="mt-4">
                         <Link href={to("/settings/discounts/new")}>
                             <Plus className="mr-2 h-4 w-4" />
-                            Add Discount
+                            Add discount
                         </Link>
                     </Button>
                 </div>

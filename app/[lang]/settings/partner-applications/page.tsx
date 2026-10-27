@@ -65,9 +65,8 @@ export default async function PartnerApplicationsPage({
       <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Partner applications</h1>
         <InfoTip label="About Partner applications">
-          Review pending applications. Verify ACRA / website yourself, then approve or
-          reject. Approving creates a hidden partner location — flip visibility later in
-          Partners.
+          Verify ACRA and the website yourself, then approve or reject. Approving adds a
+          hidden partner location. Make it visible later in Partners.
         </InfoTip>
       </div>
 
@@ -89,7 +88,7 @@ export default async function PartnerApplicationsPage({
                       {q.companyName || app.email}
                     </CardTitle>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {app.email} · applied {formatDate(app.created_at)}
+                      {app.email}, applied {formatDate(app.created_at)}
                     </p>
                   </div>
                   <ReviewActions id={app.id} />

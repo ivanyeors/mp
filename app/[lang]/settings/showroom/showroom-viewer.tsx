@@ -73,8 +73,8 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
     <div className="space-y-4 md:space-y-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h1>Showroom Model</h1>
-          <InfoTip label="About Showroom Model">
+          <h1>Showroom model</h1>
+          <InfoTip label="About Showroom model">
             <p>Drag to look around, tap a wall or pane to see its size.</p>
           </InfoTip>
         </div>

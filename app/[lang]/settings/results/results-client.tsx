@@ -162,7 +162,7 @@ function noOrderReason(stage: ResultStage): string {
     case "awaiting_customer":
       return "Not yet captured";
     case "closed":
-      return "Closed — no sale";
+      return "Closed, no sale";
     default:
       return "—";
   }
@@ -268,7 +268,7 @@ export default function ResultsPage({
         cache: "no-store",
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to load results");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't load results.");
       const nextRows = (payload?.rows ?? []) as MpConfigResponseRow[];
       setLocations((payload?.locations ?? []) as LocationOption[]);
       setTotalCount(typeof payload?.count === "number" ? (payload.count as number) : null);
@@ -278,7 +278,7 @@ export default function ResultsPage({
         return nextRows;
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load results");
+      toast.error(e instanceof Error ? e.message : "Couldn't load results.");
     } finally {
       setLoading(false);
     }
@@ -297,10 +297,10 @@ export default function ResultsPage({
     try {
       const res = await fetch("/api/staff?includeArchived=1", { method: "GET", cache: "no-store" });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to load staff");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't load staff.");
       setStaffRows((payload?.rows ?? []) as StaffRow[]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load staff");
+      toast.error(e instanceof Error ? e.message : "Couldn't load staff.");
       setStaffRows([]);
     } finally {
       setStaffLoading(false);
@@ -393,7 +393,7 @@ export default function ResultsPage({
           }),
         });
         const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to update measured by");
+        if (!res.ok) throw new Error(payload?.error ?? "Couldn't update who measured.");
       } catch (e) {
         // Revert on failure.
         setRows((p) =>
@@ -407,7 +407,7 @@ export default function ResultsPage({
               : r,
           ),
         );
-        toast.error(e instanceof Error ? e.message : "Failed to update measured by");
+        toast.error(e instanceof Error ? e.message : "Couldn't update who measured.");
       }
     },
     [],
@@ -429,10 +429,10 @@ export default function ResultsPage({
           body: JSON.stringify({ id: row.id, data, locationId }),
         });
         const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to update location");
+        if (!res.ok) throw new Error(payload?.error ?? "Couldn't update the location.");
       } catch (e) {
         setRows((p) => p.map((r) => (r.id === row.id ? { ...r, location_id: prev } : r)));
-        toast.error(e instanceof Error ? e.message : "Failed to update location");
+        toast.error(e instanceof Error ? e.message : "Couldn't update the location.");
       }
     },
     [],
@@ -513,7 +513,7 @@ export default function ResultsPage({
    */
   const requestPayment = useCallback(async (row: MpConfigResponseRow) => {
     if (!row.customer_email) {
-      toast.error("No customer email on file — open the result to copy the link");
+      toast.error("No customer email on file. Open the result to copy the link.");
       return;
     }
     setRequestingPayment((prev) => ({ ...prev, [row.id]: true }));
@@ -523,7 +523,7 @@ export default function ResultsPage({
         { method: "POST" },
       );
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't request payment.");
       // Three outcomes, not two. The route returns 200 with emailStatus
       // "failed" when the transport throws, and calling that a success told
       // staff the customer had been chased when nothing was sent.
@@ -535,12 +535,12 @@ export default function ResultsPage({
       if (emailStatus === "sent") {
         toast.success(`Payment email sent to ${row.customer_email}`);
       } else if (emailStatus === "failed") {
-        toast.error("Could not send the payment email — open the result to copy the link");
+        toast.error("Couldn't send the payment email. Open the result to copy the link.");
       } else {
-        toast.success("Link ready — no customer email on file");
+        toast.success("Link ready, but there's no customer email on file.");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to request payment");
+      toast.error(e instanceof Error ? e.message : "Couldn't request payment.");
     } finally {
       setRequestingPayment((prev) => {
         const next = { ...prev };
@@ -554,7 +554,7 @@ export default function ResultsPage({
     async (row: MpConfigResponseRow) => {
       if (row.is_final) return;
       if (!isMeasuredByValid(row)) {
-        toast.error("Measured by is required before sending to Telegram");
+        toast.error("Choose who measured before sending to Telegram.");
         return;
       }
       setSending((prev) => ({ ...prev, [row.id]: true }));
@@ -570,7 +570,7 @@ export default function ResultsPage({
           }),
         });
         const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to update");
+        if (!res.ok) throw new Error(payload?.error ?? "Couldn't update.");
         setRows((prev) =>
           prev.map((r) =>
             r.id === row.id
@@ -592,12 +592,12 @@ export default function ResultsPage({
 
         const telegramStatus = payload?.telegramStatus as "sent" | "skipped" | "failed" | undefined;
         if (telegramStatus === "sent") toast.success("Sent to Telegram");
-        else if (telegramStatus === "failed") toast.error("Saved, but failed to send to Telegram");
+        else if (telegramStatus === "failed") toast.error("Saved, but couldn't send to Telegram.");
         else toast.success("Sent");
         // No tab switch: releasing to the Telegram group is a notification, not a
         // lifecycle move. The row keeps its stage.
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Failed to update");
+        toast.error(e instanceof Error ? e.message : "Couldn't update.");
       } finally {
         setSending((prev) => {
           const next = { ...prev };
@@ -614,7 +614,7 @@ export default function ResultsPage({
     try {
       const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(row.id)}`, { method: "DELETE" });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to delete");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't delete.");
 
       setRows((prev) => prev.filter((r) => r.id !== row.id));
       setTotalCount((prev) => (typeof prev === "number" ? Math.max(0, prev - 1) : prev));
@@ -622,7 +622,7 @@ export default function ResultsPage({
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete");
+      toast.error(e instanceof Error ? e.message : "Couldn't delete.");
     } finally {
       setDeleting((prev) => {
         const next = { ...prev };
@@ -726,8 +726,8 @@ export default function ResultsPage({
             <DialogTitle>{deleteTarget ? "Delete result?" : `Delete ${selectedRows.length} result(s)?`}</DialogTitle>
             <DialogDescription>
               {deleteTarget?.is_final
-                ? "This released result will be permanently deleted from the database. This action cannot be undone."
-                : "This action will permanently delete the selected result(s) from the database. This action cannot be undone."}
+                ? "This released result will be deleted. This can't be undone."
+                : "The selected result(s) will be deleted. This can't be undone."}
             </DialogDescription>
           </DialogHeader>
 
@@ -760,7 +760,7 @@ export default function ResultsPage({
           <div className="flex items-center gap-1.5">
             <h1>Results</h1>
             <InfoTip label="About Results">
-              <p>Mp-config submissions synced from the database. Click a row to view details and edit.</p>
+              <p>Each row is a customisation submission. Open one to see or edit it.</p>
             </InfoTip>
           </div>
         </div>
@@ -827,8 +827,8 @@ export default function ResultsPage({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Any order state</SelectItem>
-                <SelectItem value="has_order">Has an Order</SelectItem>
-                <SelectItem value="no_order">No Order</SelectItem>
+                <SelectItem value="has_order">Has an order</SelectItem>
+                <SelectItem value="no_order">No order</SelectItem>
                 <SelectItem value="mismatch">Order without capture</SelectItem>
               </SelectContent>
             </Select>
@@ -871,7 +871,7 @@ export default function ResultsPage({
                   disabled={bulkBusy}
                   onClick={() => void bulkSetLocation()}
                 >
-                  Set Location
+                  Set location
                 </Button>
                 <Button
                   size="sm"
@@ -880,7 +880,7 @@ export default function ResultsPage({
                   disabled={bulkBusy}
                   onClick={() => void bulkSend()}
                 >
-                  Send Group Updates
+                  Send to Telegram
                 </Button>
                 <Button
                   size="sm"
@@ -936,7 +936,7 @@ export default function ResultsPage({
                 <TableRow>
                   <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "stuck"
-                      ? "Nothing stuck — every Result is moving."
+                      ? "Nothing is stuck. Every result is moving."
                       : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
                   </TableCell>
                 </TableRow>

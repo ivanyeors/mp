@@ -46,13 +46,12 @@ export default async function EmailTemplatesPage({ params }: { params: Promise<{
                 <h1 className="text-2xl font-semibold tracking-tight">Email templates</h1>
                 <InfoTip label="About email templates">
                     <p>
-                        The words of every email customers and partners get from the platform: subjects, headings,
-                        messages and buttons. Change one and every email of that kind sends with your words from
-                        then on.
+                        The wording of every email customers and partners get: subjects, headings, messages and
+                        buttons. An edit applies to every later email of that kind.
                     </p>
                     <p>
-                        Order details, amounts, addresses and links stay as they are, so an edit can&apos;t break an
-                        email. You can always go back to the original words.
+                        Order details, amounts, addresses and links are fixed, so an edit can&apos;t break an
+                        email. You can always restore the original words.
                     </p>
                 </InfoTip>
             </div>

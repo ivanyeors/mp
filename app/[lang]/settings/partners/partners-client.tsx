@@ -232,7 +232,7 @@ export default function PartnersSettingsPage({
       });
       const json = await res.json();
       if (!json.ok) {
-        toast.error(typeof json.error === "string" ? json.error : "Failed to save page content");
+        toast.error(typeof json.error === "string" ? json.error : "Couldn't save the page content.");
         return;
       }
       toast.success("Work With Us content saved");
@@ -252,7 +252,7 @@ export default function PartnersSettingsPage({
       });
       const json = await res.json();
       if (!json.ok) {
-        toast.error(typeof json.error === "string" ? json.error : "Failed to save agreement");
+        toast.error(typeof json.error === "string" ? json.error : "Couldn't save the agreement.");
         return;
       }
       toast.success("Partner Agreement saved");
@@ -318,7 +318,7 @@ export default function PartnersSettingsPage({
 
       const json = await res.json();
       if (!json.ok) {
-        toast.error(typeof json.error === "string" ? json.error : "Failed to save location");
+        toast.error(typeof json.error === "string" ? json.error : "Couldn't save the location.");
         return;
       }
 
@@ -335,7 +335,7 @@ export default function PartnersSettingsPage({
     const res = await fetch(`/api/partners/${id}`, { method: "DELETE" });
     const json = await res.json();
     if (!json.ok) {
-      toast.error("Failed to delete location");
+      toast.error("Couldn't delete the location.");
       return;
     }
     toast.success("Location deleted");
@@ -350,7 +350,7 @@ export default function PartnersSettingsPage({
     });
     const json = await res.json();
     if (!json.ok) {
-      toast.error("Failed to update visibility");
+      toast.error("Couldn't update visibility.");
       return;
     }
     loadData();
@@ -365,7 +365,7 @@ export default function PartnersSettingsPage({
     });
     const json = await res.json();
     if (!json.ok) {
-      toast.error("Failed to reorder");
+      toast.error("Couldn't reorder.");
       loadData();
     }
   };
@@ -398,7 +398,7 @@ export default function PartnersSettingsPage({
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold">Partners</h1>
           <InfoTip label="About Partners">
-            Manage own studios and partner clinics, edit the Work With Us page, and the
+            Manage your studios and partner clinics, the Work With Us page and the
             Partner Agreement.
           </InfoTip>
         </div>
@@ -504,7 +504,7 @@ export default function PartnersSettingsPage({
               className="space-y-1.5"
               data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}
             >
-              <Label>Body — markdown ({activeLocale})</Label>
+              <Label>Body in Markdown ({activeLocale})</Label>
               <MDEditor
                 value={activeContent.body ?? ""}
                 onChange={(v) => updateActiveContent({ body: v ?? "" })}
@@ -691,7 +691,7 @@ export default function PartnersSettingsPage({
           <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
             Current version{" "}
             <span className="font-medium text-foreground">{AGREEMENT_VERSION}</span>. Editing
-            the copy here does not change the version — bump{" "}
+            the copy here does not change the version. Bump{" "}
             <code className="text-xs">AGREEMENT_VERSION</code> in code to force partners to
             re-accept.
           </div>
@@ -699,7 +699,7 @@ export default function PartnersSettingsPage({
             className="space-y-1.5"
             data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}
           >
-            <Label>Agreement — markdown (live preview)</Label>
+            <Label>Agreement in Markdown (live preview)</Label>
             <MDEditor
               value={agreementMd}
               onChange={(v) => setAgreementMd(v ?? "")}
@@ -713,7 +713,7 @@ export default function PartnersSettingsPage({
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save Agreement
+            Save agreement
           </Button>
         </TabsContent>
       </Tabs>

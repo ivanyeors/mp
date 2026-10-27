@@ -36,7 +36,7 @@ describe("renderKey", () => {
 describe("mobile dock capacity", () => {
   const dock = readFileSync("components/ui/shadcn-io/dock/index.tsx", "utf8");
 
-  // Measured in Chromium: with the Admin Panel's Home / Menu / Logout and the
+  // Measured in Chromium: with the Admin Panel's Home / Menu / Sign out and the
   // two fences, three page actions are a 344px pill and a fourth is 396px —
   // past the 374px a 390px phone leaves inside the dock's own mx-2.
   it("is three", () => {

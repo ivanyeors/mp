@@ -59,10 +59,10 @@ const ITEM_CATEGORIES = [
 type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 const CATEGORY_TITLES: Record<ItemCategory, string> = {
   cover: 'Covers',
-  pillow_case: 'Pillow Cases',
-  pillow_protector: 'Pillow Protectors',
-  bolster_case: 'Bolster Cases',
-  bolster_protector: 'Bolster Protectors',
+  pillow_case: 'Pillow cases',
+  pillow_protector: 'Pillow protectors',
+  bolster_case: 'Bolster cases',
+  bolster_protector: 'Bolster protectors',
   filling: 'Fillings',
   packaging: 'Packaging',
   accessories: 'Accessories',
@@ -366,7 +366,7 @@ export default function InventoryPage() {
       setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
       setSellDrawerFillingTemplates(fillingList.map((t) => ({ id: Number(t.id), name: String(t.name) })));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load templates");
+      toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
     }
   };
 
@@ -394,14 +394,14 @@ export default function InventoryPage() {
       setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
       setSellDrawerFillingTemplates(fillingList.map((t) => ({ id: Number(t.id), name: String(t.name) })));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load templates");
+      toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
     }
   };
 
   const loadSelectedTemplateLines = useCallback(async (templateId: number) => {
     const res = await fetch(`/settings/inventory/configure/templates/${templateId}`);
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(payload?.error ?? "Failed to load template");
+    if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the template.");
     type LineRow = { item_id: number | string; quantity: number | string };
     const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }));
     setSellDrawerLines(lines);
@@ -412,7 +412,7 @@ export default function InventoryPage() {
   const loadSelectedFillingTemplateLines = useCallback(async (templateId: number) => {
     const res = await fetch(`/settings/inventory/configure/templates/${templateId}`);
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(payload?.error ?? "Failed to load filling template");
+    if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the filling template.");
     type LineRow = { item_id: number | string; quantity: number | string };
     const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }));
     setSellDrawerFillingLines(lines);
@@ -437,7 +437,7 @@ export default function InventoryPage() {
       await load();
       notifyInventoryChange();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to add inventory item";
+      const message = error instanceof Error ? error.message : "Couldn't add the inventory item.";
       throw new Error(message);
     }
   };
@@ -611,7 +611,7 @@ export default function InventoryPage() {
         if (line.quantity <= 0) continue;
         if (line.templateId) {
           if (!line.fillingTemplateId) {
-            toast.error('Cart line missing filling template');
+            toast.error('A cart line has no filling template.');
             return;
           }
           await sellFromTemplate({
@@ -642,7 +642,7 @@ export default function InventoryPage() {
       toast.success("Sale completed");
       setCartOpen(false);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to sell';
+      const message = e instanceof Error ? e.message : "Couldn't sell.";
       toast.error(message);
     }
   };
@@ -661,7 +661,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       await load();
       notifyInventoryChange();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete item";
+      const message = error instanceof Error ? error.message : "Couldn't delete the item.";
       toast.error(message);
     }
 }, [load, notifyInventoryChange]);
@@ -685,9 +685,9 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
   const sellCustomPillowFromDrawer = async () => {
     const qty = parseInt((customPillowQty || '0'), 10);
-    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    if (!qty || qty <= 0) { toast.message('Enter a quantity above 0.'); return; }
     const entries = (customPillowLines ?? []).filter(l => (l.quantity ?? 0) > 0);
-    if (entries.length === 0) { toast.message('No parts configured'); return; }
+    if (entries.length === 0) { toast.message('No parts are configured.'); return; }
     setSavingCustomPillow(true);
     try {
       for (const l of entries) {
@@ -699,7 +699,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       toast.success('Custom pillow sold');
       setCustomPillowDrawerOpen(false);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to sell custom pillow';
+      const message = e instanceof Error ? e.message : "Couldn't sell the custom pillow.";
       toast.error(message);
     } finally {
       setSavingCustomPillow(false);
@@ -708,9 +708,9 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
   const sellCustomBolsterFromDrawer = async () => {
     const qty = parseInt((customBolsterQty || '0'), 10);
-    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    if (!qty || qty <= 0) { toast.message('Enter a quantity above 0.'); return; }
     const entries = (customBolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
-    if (entries.length === 0) { toast.message('No parts configured'); return; }
+    if (entries.length === 0) { toast.message('No parts are configured.'); return; }
     setSavingCustomBolster(true);
     try {
       for (const l of entries) {
@@ -722,7 +722,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       toast.success('Custom bolster sold');
       setCustomBolsterDrawerOpen(false);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to sell custom bolster';
+      const message = e instanceof Error ? e.message : "Couldn't sell the custom bolster.";
       toast.error(message);
     } finally {
       setSavingCustomBolster(false);
@@ -731,9 +731,9 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
   const addCustomPillowToCart = async () => {
     const qty = parseInt((customPillowQty || '0'), 10);
-    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    if (!qty || qty <= 0) { toast.message('Enter a quantity above 0.'); return; }
     const entries = (customPillowLines ?? []).filter(l => (l.quantity ?? 0) > 0);
-    if (entries.length === 0) { toast.message('No parts configured'); return; }
+    if (entries.length === 0) { toast.message('No parts are configured.'); return; }
     setCart(prev => {
       const nextParts = { ...prev.parts };
       for (const l of entries) {
@@ -748,9 +748,9 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
   const addCustomBolsterToCart = async () => {
     const qty = parseInt((customBolsterQty || '0'), 10);
-    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    if (!qty || qty <= 0) { toast.message('Enter a quantity above 0.'); return; }
     const entries = (customBolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
-    if (entries.length === 0) { toast.message('No parts configured'); return; }
+    if (entries.length === 0) { toast.message('No parts are configured.'); return; }
     setCart(prev => {
       const nextParts = { ...prev.parts };
       for (const l of entries) {
@@ -1028,8 +1028,8 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                       <div className="font-medium">{line.label}</div>
                       <div className="text-xs text-muted-foreground">
                         Qty: {line.quantity}
-                        {line.templateName ? ` · Template: ${line.templateName}` : ''}
-                        {line.fillingTemplateName ? ` · Filling: ${line.fillingTemplateName}` : ''}
+                        {line.templateName ? `, template: ${line.templateName}` : ''}
+                        {line.fillingTemplateName ? `, filling: ${line.fillingTemplateName}` : ''}
                       </div>
                     </div>
                     <Button size="sm" variant="secondary" onClick={() => undoCartLine("pillow", line.id)}>Remove</Button>
@@ -1071,10 +1071,10 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           <SheetHeader>
             <SheetTitle>
               {sellDrawerKind === 'pillow'
-                ? `Sell ${sellDrawerPillowKind === 'premium' ? 'premium ' : ''}pillow — ${
-                    sellDrawerPillowKind === 'premium' ? `${sellDrawerPremiumVariant} — ` : ''
-                  }${sellDrawerSize}`
-                : `Sell bolster — ${sellDrawerBolsterVariant}`}
+                ? `Sell ${sellDrawerPillowKind === 'premium' ? 'premium ' : ''}pillow (${
+                    sellDrawerPillowKind === 'premium' ? `${sellDrawerPremiumVariant}, ` : ''
+                  }${sellDrawerSize})`
+                : `Sell bolster (${sellDrawerBolsterVariant})`}
             </SheetTitle>
             <SheetDescription>Select warehouse template and filling mix, then add to cart.</SheetDescription>
           </SheetHeader>
@@ -1097,7 +1097,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                         const list = (payload.templates ?? []) as TemplateRow[];
                         setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
                       } catch (e) {
-                        toast.error(e instanceof Error ? e.message : 'Failed to load templates');
+                        toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
                       }
                     }}
                   >
@@ -1118,7 +1118,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                   const next: number | '' = value ? Number(value) : '';
                   setSellDrawerTemplateId(next);
                   if (next === '') { setSellDrawerLines([]); setSellDrawerTemplateName(null); return; }
-                  loadSelectedTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load template'));
+                  loadSelectedTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : "Couldn't load the template."));
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -1137,7 +1137,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             <div className="space-y-2">
               <div className="text-sm font-medium text-muted-foreground">
                 Filling mix
-                {!sellDrawerFillingTemplateId && <span className="text-destructive"> · Confirm required</span>}
+                {!sellDrawerFillingTemplateId && <span className="text-destructive"> (required)</span>}
               </div>
               <Select
                 value={sellDrawerFillingTemplateId === '' ? '' : String(sellDrawerFillingTemplateId)}
@@ -1145,7 +1145,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                   const next: number | '' = value ? Number(value) : '';
                   setSellDrawerFillingTemplateId(next);
                   if (next === '') { setSellDrawerFillingLines([]); setSellDrawerFillingTemplateName(null); return; }
-                  loadSelectedFillingTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load filling template'));
+                  loadSelectedFillingTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : "Couldn't load the filling template."));
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -1514,7 +1514,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
       }
       onOpenChange(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add inventory item";
+      const message = err instanceof Error ? err.message : "Couldn't add the inventory item.";
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -1528,7 +1528,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
         <SheetHeader>
           <SheetTitle>Add inventory item</SheetTitle>
           <SheetDescription>
-            Create a new component so it can be tracked in stock and costings.
+            Adds an item to track in stock and Costings.
           </SheetDescription>
         </SheetHeader>
         <form className="mt-4 flex h-full flex-col" onSubmit={handleSubmit}>
@@ -2039,7 +2039,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
     setLoading(true);
     try {
       const res = await listShopifyAdminState();
-      if (!res?.ok) throw new Error("Failed to load Shopify admin state");
+      if (!res?.ok) throw new Error("Couldn't load Shopify admin state.");
       const next = (res.rows ?? []) as AdminRow[];
       setRows(next);
       setDraftByVariantId(() => {
@@ -2057,7 +2057,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
         return out;
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load Shopify admin state");
+      toast.error(e instanceof Error ? e.message : "Couldn't load Shopify admin state.");
     } finally {
       setLoading(false);
     }
@@ -2161,7 +2161,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
                       await refresh();
                       await onSynced();
                     } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Failed to link");
+                      toast.error(e instanceof Error ? e.message : "Couldn't link.");
                     } finally {
                       setLinking(false);
                     }
@@ -2258,7 +2258,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
                                 toast.success("Saved");
                                 await refresh();
                               } catch (e) {
-                                toast.error(e instanceof Error ? e.message : "Failed to save");
+                                toast.error(e instanceof Error ? e.message : "Couldn't save.");
                               }
                             }}
                           >
@@ -2274,7 +2274,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
                                 setDraftByVariantId((prev) => ({ ...prev, [r.shopifyVariantId]: { sku: "", price: "", compareAt: "" } }));
                                 await refresh();
                               } catch (e) {
-                                toast.error(e instanceof Error ? e.message : "Failed to clear override");
+                                toast.error(e instanceof Error ? e.message : "Couldn't clear the override.");
                               }
                             }}
                           >
@@ -2290,7 +2290,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
                                   toast.success("Mapping deleted");
                                   await refresh();
                                 } catch (e) {
-                                  toast.error(e instanceof Error ? e.message : "Failed to delete mapping");
+                                  toast.error(e instanceof Error ? e.message : "Couldn't delete the mapping.");
                                 }
                               }}
                             >
@@ -2328,9 +2328,9 @@ function BaseImageControl({ name, current, title, save }: {
 }) {
   const apply = (assetId: string | null, url: string | null) =>
     save(assetId, url)
-      .then(() => toast.success(url ? "Image set — shop product updated" : "Image cleared"))
+      .then(() => toast.success(url ? "Image set on the item and its storefront product." : "Image cleared"))
       .catch((error: unknown) =>
-        toast.error(error instanceof Error ? error.message : "Failed to update image"),
+        toast.error(error instanceof Error ? error.message : "Couldn't update the image."),
       );
 
   return (
@@ -2371,7 +2371,7 @@ function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
     <BaseImageControl
       name={name}
       current={itemIds.map((id) => imageUrls[id]).find(Boolean)}
-      title="Item image — also the base image on its shop product"
+      title="This image is also the base image of its storefront product."
       save={(assetId, url) =>
         setItemsPrimaryImage({ itemIds, assetId }).then(() =>
           setImageUrls((prev) => {
@@ -2545,7 +2545,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
       setRenameValue("");
       setRenameError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to rename item";
+      const message = error instanceof Error ? error.message : "Couldn't rename the item.";
       setRenameError(message);
       toast.error(message);
     } finally {
@@ -2569,7 +2569,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
       setOutQtyByItem({});
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save stock");
+      toast.error(error instanceof Error ? error.message : "Couldn't save stock.");
     } finally {
       setSaving(false);
     }
@@ -2616,7 +2616,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                         ) : null}
                       </div>
                       <div className="mt-0.5 text-xs text-muted-foreground">
-                        {variants.length} item{variants.length === 1 ? "" : "s"} • On hand: {totalOnHand}
+                        {variants.length} item{variants.length === 1 ? "" : "s"}, {totalOnHand} on hand
                       </div>
                     </div>
                   </button>
@@ -2652,7 +2652,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                       const converting = baseId ? (convertingByBase.get(baseId) ?? 0) : 0;
                       const baseShort = converting > baseOnHand;
                       const baseHint = baseShort
-                        ? `Only ${Math.max(0, baseOnHand)} of ${baseName} on hand — can't convert ${converting}.`
+                        ? `Only ${Math.max(0, baseOnHand)} of ${baseName} on hand, so ${converting} can't be converted.`
                         : converting > 0
                           ? `Takes ${converting} out of ${baseName} (${baseOnHand} → ${baseOnHand - converting}).`
                           : `Made from ${baseName} (${baseOnHand} on hand). Stock in converts from it.`;

@@ -25,7 +25,7 @@ export const zhCN: Messages = {
       ctaCustomise: "开始定制",
       ctaBookAppointment: "预约咨询",
       seoAnswer:
-        "Mpillow 是新加坡全定制颈椎枕品牌。我们会根据您的颈曲、睡姿与体型在店内量身试配，并以模块化层次手工打造持久承托。可选基础款或高级款 Mpillow，也可搭配 Mbolster 支撑抱枕，专为缓解颈椎不适与人体工学对齐，而非一刀切泡沫枕。可先在线选配，再预约到店，让每一层承托都贴合您。",
+        "Mpillow 是来自新加坡的定制颈椎枕，专为长期颈部僵硬而设计。在新加坡可到店量身，海外顾客可在线测量，我们再按您的睡姿为您调校枕头。",
     },
     sizeMatters: {
       title: "新加坡手工定制枕头，打造一夜好眠",
@@ -45,12 +45,12 @@ export const zhCN: Messages = {
       products: {
         basic: {
           title: "Basic",
-          description: "入门定制，轻松体验",
+          description: "偶尔颈部紧绷，选 Basic。这是一款按您的肩长定尺寸的颈椎枕。",
           badge: "标准贴合",
         },
         premium: {
           title: "Premium",
-          description: "进阶定制，获得更佳贴合",
+          description: "长期颈痛，选 Premium。可在新加坡门店进行一对一试配，海外顾客可在线测量。FibreCool 与颈椎支撑垫可按需加选。",
           badge: "专属贴合",
         },
       },
@@ -107,7 +107,7 @@ export const zhCN: Messages = {
     },
     stories: {
       title: "听听新加坡顾客怎么说",
-      subtitle: "来自 Google 的真实评价，关于定制贴合睡眠与颈部舒适。",
+      subtitle: "阅读顾客在 Google 上的真实评价，了解定制枕头带来的睡眠与颈部舒适。",
     },
   },
   slides: {
@@ -313,7 +313,7 @@ export const zhCN: Messages = {
       techNeckTitle: "为科技颈的白天而建，在夜间恢复承托",
       techNeckParagraphs: [
         "长时间伏案与使用设备会给颈椎带来负荷。Premium Mpillow 搭配颈椎支撑垫，旨在为屏幕日后的夜间对齐提供承托，帮助头颈姿势在睡眠中得到支撑。",
-        "作为同一套 Science of Sleep 配置的一部分：以模块化颈椎承托应对桌前负荷，在夜间恢复对齐——无需另设科技颈专用 SKU。",
+        "它可放进 Premium Mpillow 里使用，无需另买一个科技颈专用枕头。",
       ],
       whyTitle: "为什么设计颈椎支撑枕",
       whyDescription: "我们的研究与设计，能为颈部曲线更明显的人提供更好的承托，帮助缓解睡眠中造成的颈部僵硬或颈部疼痛。",

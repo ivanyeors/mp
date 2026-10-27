@@ -111,7 +111,7 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
 
   return (
     <div className="space-y-6">
-      <h1>Configure Products</h1>
+      <h1>Configure products</h1>
       <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="products">Products</TabsTrigger>

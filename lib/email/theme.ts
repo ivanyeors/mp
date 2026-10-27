@@ -118,7 +118,6 @@ export const SPACE = {
 export const BRAND = {
   name: "Mpillow",
   legalName: "Mellow Life Pte Ltd",
-  tagline: "Science of Sleep",
   logoPath: "/mpillow_logo_2026.png",
   logoInvertedPath: "/mpillow_logo_2026-inv.png",
   whatsapp: "https://wa.me/6587805311",
@@ -131,21 +130,21 @@ export const BRAND = {
  * appears in that component.
  */
 export const FOOTER_LINKS = [
-  { label: "Our Partners", href: "/our-partners" },
+  { label: "Our partners", href: "/our-partners" },
   { label: "Blog", href: "/blog" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Returns & Warranty", href: "/shipping-refund-policies" },
-  { label: "Terms of Service", href: "/terms-of-service" },
-  { label: "Contact Us", href: "/support" },
+  { label: "Privacy policy", href: "/privacy-policy" },
+  { label: "Returns & warranty", href: "/shipping-refund-policies" },
+  { label: "Terms of service", href: "/terms-of-service" },
+  { label: "Contact us", href: "/support" },
   { label: "FAQ", href: "/faq" },
 ] as const;
 
 /** Partner-facing mail swaps the shopping links for the hub. */
 export const PARTNER_FOOTER_LINKS = [
   { label: "Partner Hub", href: "/partner" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Terms of Service", href: "/terms-of-service" },
-  { label: "Contact Us", href: "/support" },
+  { label: "Privacy policy", href: "/privacy-policy" },
+  { label: "Terms of service", href: "/terms-of-service" },
+  { label: "Contact us", href: "/support" },
 ] as const;
 
 export const SOCIAL_LINKS = [

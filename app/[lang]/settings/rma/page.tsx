@@ -64,8 +64,7 @@ export default async function RmaQueuePage({
       <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Returns / RMA</h1>
         <InfoTip label="About Returns / RMA">
-          Customer return requests, newest first. Read-only queue — open a request to
-          review details.
+          Return requests appear here, newest first. Open one to review it.
         </InfoTip>
       </div>
 

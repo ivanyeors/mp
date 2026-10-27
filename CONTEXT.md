@@ -804,8 +804,12 @@ _Avoid_: moving the bar only at commission release (kills the feedback loop); re
 ## Marketing
 
 **Science of Sleep**:
-Mpillow's brand umbrella: clinical engineering for cervical alignment, modular custom fit, and lasting overnight support. Gift/customisation language is a conversion tactic (CTAs, product cards), not the primary brand story.
-_Avoid_: leading every surface with gift/lifestyle framing when the page's job is clinical sleep fit
+Retired (owner, 2026-10-27). Mpillow no longer uses this phrase or concept on any surface: copy, metadata, email or `llms.txt`. Lead with measurement-led cervical fit instead. Gift/customisation language is still a conversion tactic (CTAs, product cards), not the primary brand story.
+_Avoid_: writing "Science of Sleep" anywhere; leading every surface with gift/lifestyle framing when the page's job is clinical sleep fit
+
+**In-store fitting**:
+Singapore only. Customers in other countries measure online and buy online. Copy that offers an in-store fitting says it is in Singapore, or pairs it with the online route for overseas customers.
+_Avoid_: implying a store visit is available outside Singapore
 
 **Affluent Wellness / Pain Sufferer**:
 Primary home-hero persona — high-intent buyers with chronic neck pain or stiffness who value consultative in-store fitting and Premium customisation.
@@ -947,12 +951,12 @@ _Avoid_: burying the answer below fold or inside client-only modals; building a 
 
 **Copy fit (layout + SEO)**:
 Marketing strings must fit the surface they render in — keyword intent does not excuse overflow. Hard bands for en-US **home hero**:
-- **Hero H1**: **≤2 lines** → 4–8 words and ≤55 characters (`line-clamp-2`). May be a brand tagline; then Singapore / cervical / neck / Science of Sleep **must** appear in the Answer lede.
+- **Hero H1**: **≤2 lines** → 4–8 words and ≤55 characters (`line-clamp-2`). May be a brand tagline; then Singapore / cervical / neck **must** appear in the Answer lede.
 - **Hero subtitle**: optional; ≤12 words when present (omit rather than repeat the lede).
 - **Hero Answer lede (`seoAnswer`)**: **≤4 lines** → 28–40 words (`line-clamp-4`).
 - **Meta title** (separate from H1): 50–60 characters for SERP display; may differ from on-page H1.
 - **Card / section blurbs**: ≤18 words unless the surface is a long-form slide body.
-Canvas Recommended supplies keyword intent; if a Recommended string breaks a band, **compress** — do not drop required intents (Singapore / cervical / neck pain / Science of Sleep where the surface requires them). Science of Sleep may live in the lede when the H1 is at the 2-line cap.
+Canvas Recommended supplies keyword intent; if a Recommended string breaks a band, **compress** — do not drop required intents (Singapore / cervical / neck pain where the surface requires them). They may live in the lede when the H1 is at the 2-line cap.
 _Avoid_: treating canvas Recommended as a license to ignore layout; removing `line-clamp-2` / `line-clamp-4` from the hero; stuffing every keyword into the H1
 
 **Global FAQ**:

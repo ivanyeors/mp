@@ -139,7 +139,7 @@ function getPriceRange(variants: ProductVariant[]): string {
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const fmt = (n: number) => formatCurrency(n);
-    return min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
+    return min === max ? fmt(min) : `${fmt(min)} to ${fmt(max)}`;
 }
 
 function getTotalStock(variants: ProductVariant[]): { value: number; hasStockAvailable: boolean } {
@@ -304,13 +304,13 @@ export function ProductsClient({
             });
             if (!res.ok) {
                 const json = await res.json().catch(() => ({}));
-                throw new Error(json.error ?? "Sync failed");
+                throw new Error(json.error ?? "Couldn't sync.");
             }
             const json = await res.json();
-            toast.success(json.message ?? "Inventory synced successfully");
+            toast.success(json.message ?? "Inventory synced");
             fetchProducts();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to sync inventory");
+            toast.error(err instanceof Error ? err.message : "Couldn't sync inventory.");
         } finally {
             setSyncing(false);
         }
@@ -321,14 +321,14 @@ export function ProductsClient({
         try {
             const res = await fetch("/api/shop/products/resync-prices", { method: "POST" });
             const json = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(json.error ?? "Resync failed");
+            if (!res.ok) throw new Error(json.error ?? "Couldn't resync.");
             toast.success(json.message ?? "Prices resynced from Costings");
             if (json.unresolvable?.length) {
                 toast.warning(`${json.unresolvable.length} variant(s) have no costing source`);
             }
             fetchProducts();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to resync prices");
+            toast.error(err instanceof Error ? err.message : "Couldn't resync prices.");
         } finally {
             setResyncingPrices(false);
         }
@@ -431,8 +431,8 @@ export function ProductsClient({
                         {debouncedSearch || statusFilter !== "all" || categoryFilter !== "all"
                             ? "No products match your filters."
                             : activeTab === "pillows"
-                            ? "No pillows or bolsters found. Try syncing from inventory."
-                            : "No accessories yet. Add your first accessory to get started."}
+                            ? "No pillows or bolsters yet. Sync from inventory."
+                            : "No accessories are listed yet. Turn one on above."}
                     </p>
                 </div>
             );
@@ -712,7 +712,7 @@ export function ProductsClient({
             <div className="flex items-center gap-1.5">
                 <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
                 <InfoTip label="About Products">
-                    Manage your store products, variants, and inventory.
+                    Storefront products are built from inventory and priced in Costings.
                 </InfoTip>
             </div>
 
