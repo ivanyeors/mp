@@ -185,6 +185,9 @@ const FLAT = {
   countries: ["SG"],
 };
 
+/** A partner on the Schedule's S$50 pool, taking all of it, no customer discount. */
+const partnerTerms = { pool: 50, choice: null, nextChoice: null, nextChoiceFrom: null, customerDiscount: false };
+
 const coupon = (over: Record<string, unknown> = {}) => ({
   id: "coupon-10",
   code: "SAVE10",
@@ -313,7 +316,7 @@ describe("POST /api/results/hold — the code field", () => {
   it("attributes a referral code and takes nothing off", async () => {
     h.resolveCheckoutCode.mockResolvedValue({
       kind: "referral",
-      partner: { id: "partner-1", name: "Spine Clinic", referral_code: "ABCD2345" },
+      partner: { id: "partner-1", name: "Spine Clinic", referral_code: "ABCD2345", terms: partnerTerms },
     });
     await post({ code: "abcd2345" });
     const row = h.rows.get(ID)!;
@@ -329,7 +332,7 @@ describe("POST /api/results/hold — the code field", () => {
 
   it("a discount code ignores a referral sent in the old referralCode field (one code per order)", async () => {
     const { getPartnerByReferralCode } = await import("@/lib/referrals");
-    vi.mocked(getPartnerByReferralCode).mockResolvedValue({ id: "partner-1", name: "Spine Clinic", referral_code: "ABCD2345" });
+    vi.mocked(getPartnerByReferralCode).mockResolvedValue({ id: "partner-1", name: "Spine Clinic", referral_code: "ABCD2345", terms: partnerTerms });
     h.resolveCheckoutCode.mockResolvedValue({ kind: "coupon", coupon: coupon() });
     await post({ code: "SAVE10", referralCode: "ABCD2345" });
     expect(h.rows.get(ID)).toMatchObject({ coupon_id: "coupon-10", partner_id: null, ref_code: null, authorized_amount: 190 });

@@ -5,85 +5,84 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  resolveScheme,
-  computeCommission,
-  releaseAt,
-  type CommissionScheme,
-  type CommissionProductType,
-} from "./index";
+  PARTNER_TERMS_COLUMNS,
+  commissionInEffect,
+  isEligibleOrderItem,
+  partnerTermsOf,
+  sgtDate,
+  type CommissionOrderItem,
+  type PartnerTermsRow,
+} from "@/lib/partner-terms";
+import { round2, releaseAt } from "./index";
 
-export interface CommissionLineInput {
-  orderItemId: string;
-  productType: CommissionProductType;
-  /** Per-line BASE (per-unit base × quantity) — excludes add-ons/shipping/tax. */
-  baseAmount: number;
-  quantity: number;
-}
-
-/** A partner's visible schemes: their overrides + the DEFAULT (null-partner) rows. */
-async function loadSchemes(
-  admin: SupabaseClient,
-  partnerId: string,
-): Promise<CommissionScheme[]> {
-  const { data } = await admin
-    .from("commission_schemes")
-    .select("partner_id, product_type, kind, amount")
-    .or(`partner_id.eq.${partnerId},partner_id.is.null`);
-  return (data ?? []).map((s) => ({
-    partner_id: s.partner_id ?? null,
-    product_type: s.product_type as CommissionProductType,
-    kind: s.kind,
-    amount: Number(s.amount),
-  }));
-}
+export type CommissionItemInput = CommissionOrderItem & {
+  id: string;
+  /** The line's goods, recorded as the commission's base for reference. */
+  total_price?: number | string | null;
+};
 
 /**
- * Create HELD commission rows for an attributed order's pillow/bolster lines.
- * Idempotent on order_item_id (upsert ignores duplicates on redelivery). Lines
- * with no resolvable scheme are skipped. `deliveredAt` drives release — null until
- * the order is delivered (shop orders), a timestamp at in-store handover.
+ * Create the HELD commission for an attributed order, once per Qualifying Sale
+ * (ADR 0034): an order with at least one customised premium pillow earns the
+ * partner's flat commission, however many it holds. Nothing else earns.
+ *
+ * `amount` is the commission the hold fixed (clause 7.2: the pick in force the day
+ * the customer paid); without one, the partner's terms today price it. The row
+ * sits on the order's first eligible line, so redelivery picks the same line and
+ * the upsert is a no-op. `deliveredAt` drives release — null until delivered, a
+ * timestamp at in-store handover. Returns whether the order qualifies.
  */
 export async function createHeldCommissionsForOrder(
   admin: SupabaseClient,
   input: {
     orderId: string;
     partnerId: string;
-    lines: CommissionLineInput[];
+    items: CommissionItemInput[];
     deliveredAt: string | null;
+    amount?: number | null;
   },
-): Promise<void> {
-  if (input.lines.length === 0) return;
-  const schemes = await loadSchemes(admin, input.partnerId);
-  const ra = releaseAt(input.deliveredAt);
+): Promise<boolean> {
+  const eligible = input.items.filter(isEligibleOrderItem).sort((a, b) => a.id.localeCompare(b.id));
+  if (eligible.length === 0) return false;
 
-  const rows = [];
-  for (const line of input.lines) {
-    const scheme = resolveScheme(schemes, input.partnerId, line.productType);
-    if (!scheme) continue;
-    rows.push({
+  let amount = input.amount ?? null;
+  if (amount == null) {
+    const { data: partner, error } = await admin
+      .from("partners")
+      .select(PARTNER_TERMS_COLUMNS)
+      .eq("id", input.partnerId)
+      .maybeSingle();
+    if (error || !partner) throw new Error(error?.message ?? "Partner not found");
+    amount = commissionInEffect(partnerTermsOf(partner as PartnerTermsRow), sgtDate(new Date()));
+  }
+
+  const ra = releaseAt(input.deliveredAt);
+  const { error } = await admin.from("commissions").upsert(
+    {
       order_id: input.orderId,
-      order_item_id: line.orderItemId,
+      order_item_id: eligible[0].id,
       partner_id: input.partnerId,
-      product_type: line.productType,
-      base_amount: line.baseAmount,
-      commission_amount: computeCommission(line.baseAmount, line.quantity, scheme),
+      product_type: "pillow",
+      basis: "order",
+      base_amount: round2(eligible.reduce((sum, it) => sum + Math.max(0, Number(it.total_price ?? 0)), 0)),
+      commission_amount: round2(Math.max(0, amount)),
       status: "held",
       delivered_at: input.deliveredAt,
       release_at: ra ? ra.toISOString() : null,
-    });
-  }
-  if (rows.length === 0) return;
-
-  const { error } = await admin
-    .from("commissions")
-    .upsert(rows, { onConflict: "order_item_id", ignoreDuplicates: true });
+    },
+    { onConflict: "order_item_id", ignoreDuplicates: true },
+  );
   if (error) throw new Error(error.message);
+  return true;
 }
 
 /**
- * Void the commissions for exactly the order_items tied to an RMA (a refund
- * resolution reverses the sale). Idempotent — already-void rows are untouched;
- * exchange/replacement never reach here (they settle to `completed`, not `refunded`).
+ * Void what an RMA refund reverses. A row on a refunded line goes (the retired
+ * per-unit rows). And a refunded customised premium pillow means the order is no
+ * Qualifying Sale (Schedule: no Eligible Product refunded), so the order's flat
+ * commission goes too, whichever line it sits on. Idempotent — already-void rows
+ * are untouched; exchange/replacement never reach here (they settle to
+ * `completed`, not `refunded`).
  */
 export async function voidCommissionsForRma(
   admin: SupabaseClient,
@@ -96,18 +95,40 @@ export async function voidCommissionsForRma(
   const ids = (items ?? []).map((i) => i.order_item_id).filter(Boolean);
   if (ids.length === 0) return;
 
+  const voided = { status: "void", voided_at: new Date().toISOString() };
   const { error } = await admin
     .from("commissions")
-    .update({ status: "void", voided_at: new Date().toISOString() })
+    .update(voided)
     .in("order_item_id", ids)
     .neq("status", "void");
   if (error) throw new Error(error.message);
+
+  const { data: lines, error: linesErr } = await admin
+    .from("order_items")
+    .select("order_id, kind, customization_snapshot")
+    .in("id", ids);
+  if (linesErr) throw new Error(linesErr.message);
+  const orderIds = [
+    ...new Set(
+      (lines ?? [])
+        .filter((l) => isEligibleOrderItem(l as CommissionOrderItem))
+        .map((l) => l.order_id as string),
+    ),
+  ];
+  if (orderIds.length === 0) return;
+  const { error: orderErr } = await admin
+    .from("commissions")
+    .update(voided)
+    .in("order_id", orderIds)
+    .eq("basis", "order")
+    .neq("status", "void");
+  if (orderErr) throw new Error(orderErr.message);
 }
 
 /**
  * Void EVERY commission on an order (a full refund reverses the whole sale).
- * Complements {@link voidCommissionsForRma}: the RMA path voids per-item on a
- * refund resolution; this covers a full refund issued OUTSIDE an RMA (e.g. a
+ * Complements {@link voidCommissionsForRma}: the RMA path voids on a refund
+ * resolution; this covers a full refund issued OUTSIDE an RMA (e.g. a
  * staff Stripe-dashboard refund), which otherwise leaves commission held/released
  * on a fully-refunded order. Idempotent — already-void rows are untouched.
  */

@@ -9,12 +9,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
+  PARTNER_TERMS_COLUMNS,
+  partnerTermsOf,
+  type PartnerTerms,
+  type PartnerTermsRow,
+} from "@/lib/partner-terms";
+import {
   generateReferralCode,
   isValidReferralCodeFormat,
   normalizeReferralCode,
 } from "./attribution";
 
-export type ReferralPartner = { id: string; name: string; referral_code: string | null };
+export type ReferralPartner = {
+  id: string;
+  name: string;
+  referral_code: string | null;
+  /** Commission Pool, the partner's pick and the customer discount toggle (ADR 0034). */
+  terms: PartnerTerms;
+};
 
 /** Active partner clinic for a referral code, or null. Case-insensitive. */
 export async function getPartnerByReferralCode(
@@ -24,12 +36,13 @@ export async function getPartnerByReferralCode(
   if (!isValidReferralCodeFormat(normalized)) return null;
   const { data, error } = await supabaseAdmin()
     .from("partners")
-    .select("id, name, referral_code")
+    .select(`id, name, referral_code, ${PARTNER_TERMS_COLUMNS}`)
     .eq("type", "partner")
     .ilike("referral_code", normalized)
     .maybeSingle();
   if (error || !data) return null;
-  return data as ReferralPartner;
+  const row = data as unknown as { id: string; name: string; referral_code: string | null } & PartnerTermsRow;
+  return { id: row.id, name: row.name, referral_code: row.referral_code, terms: partnerTermsOf(row) };
 }
 
 /**

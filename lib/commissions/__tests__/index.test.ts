@@ -1,71 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
-  resolveScheme,
-  computeCommission,
   releaseAt,
   effectiveCommissionStatus,
   summarizeCommissionTotals,
   round2,
   COMMISSION_RELEASE_WINDOW_DAYS,
-  type CommissionScheme,
 } from "@/lib/commissions";
 
 const DAY = 24 * 60 * 60 * 1000;
 
-const scheme = (
-  partner_id: string | null,
-  product_type: "pillow" | "bolster",
-  kind: "flat" | "percent",
-  amount: number,
-): CommissionScheme => ({ partner_id, product_type, kind, amount });
-
-describe("resolveScheme — per-partner override wins, else DEFAULT, else null", () => {
-  const pillowDefault = scheme(null, "pillow", "percent", 10);
-  const pillowOverride = scheme("p1", "pillow", "flat", 5);
-  const bolsterDefault = scheme(null, "bolster", "percent", 8);
-  const all = [pillowDefault, pillowOverride, bolsterDefault];
-
-  it("per-partner OVERRIDE beats the DEFAULT", () => {
-    expect(resolveScheme(all, "p1", "pillow")).toBe(pillowOverride);
-  });
-  it("DEFAULT used when the partner has no override", () => {
-    expect(resolveScheme(all, "p2", "pillow")).toBe(pillowDefault);
-  });
-  it("null when neither override nor default exists for the type", () => {
-    expect(resolveScheme([pillowDefault], "p1", "bolster")).toBeNull();
-    expect(resolveScheme([], "p1", "pillow")).toBeNull();
-  });
-  it("product-type scoping: a pillow scheme is never used for bolster", () => {
-    // p1 has a pillow override but NO bolster override → bolster falls to the bolster default.
-    expect(resolveScheme(all, "p1", "bolster")).toBe(bolsterDefault);
-    // And a pillow-only set yields nothing for bolster.
-    expect(resolveScheme([pillowDefault, pillowOverride], "p1", "bolster")).toBeNull();
-  });
-});
-
-describe("computeCommission — percent = %×base, flat = amount×qty, cents-exact", () => {
-  it("percent uses the per-LINE base (quantity already folded in)", () => {
-    // baseAmount is per-unit base × qty; percent ignores the qty arg.
-    expect(computeCommission(100, 2, scheme(null, "pillow", "percent", 10))).toBe(10);
-    expect(computeCommission(250, 99, scheme(null, "pillow", "percent", 20))).toBe(50);
-  });
-  it("flat = amount per UNIT × quantity (base ignored)", () => {
-    expect(computeCommission(9999, 3, scheme(null, "pillow", "flat", 5))).toBe(15);
-    expect(computeCommission(0, 4, scheme(null, "bolster", "flat", 2.5))).toBe(10);
-  });
-  it("rounds to cents (no float dust)", () => {
-    // 33% of 10.10 = 3.333 → 3.33
-    expect(computeCommission(10.1, 1, scheme(null, "pillow", "percent", 33))).toBe(3.33);
-    // 15% of 33.33 = 4.9995 → 5.00
-    expect(computeCommission(33.33, 1, scheme(null, "pillow", "percent", 15))).toBe(5);
-  });
-  it("zero and large values", () => {
-    expect(computeCommission(0, 0, scheme(null, "pillow", "percent", 10))).toBe(0);
-    expect(computeCommission(0, 5, scheme(null, "pillow", "flat", 0))).toBe(0);
-    expect(computeCommission(1_000_000, 1, scheme(null, "pillow", "percent", 15))).toBe(150000);
-  });
-
-  it("round2 helper is cents-exact", () => {
+describe("round2", () => {
+  it("is cents-exact", () => {
     expect(round2(0.1 + 0.2)).toBe(0.3);
     expect(round2(1.005)).toBe(1.01);
   });

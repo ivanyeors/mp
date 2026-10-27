@@ -6,13 +6,11 @@ import { upsertMilestoneRung } from "./milestone-rungs-actions";
  * component — reads the rungs and renders a table + a plain server-action form (no
  * client JS). Mounted on the Partner Commissions settings page (which already gates
  * with requireAdminPage('partner-commissions')); the action re-asserts assertAdmin. Values
- * here feed both the hub progress bar and the per-unit rate bump (AC5).
+ * here feed the hub progress bar. Rungs pay no money (ADR 0034).
  */
 type RungRow = {
   tier: number;
   units_threshold: number;
-  cash_bonus: number | string;
-  rate_bump: number | string;
   perk_label: string | null;
 };
 
@@ -20,7 +18,7 @@ export async function MilestoneRungsEditor() {
   const admin = supabaseAdmin();
   const { data } = await admin
     .from("milestone_rungs")
-    .select("tier, units_threshold, cash_bonus, rate_bump, perk_label")
+    .select("tier, units_threshold, perk_label")
     .order("tier", { ascending: true });
   const rungs = (data ?? []) as RungRow[];
 
@@ -29,10 +27,9 @@ export async function MilestoneRungsEditor() {
       <div className="space-y-1">
         <h2 className="text-lg font-semibold tracking-tight">Milestone rungs</h2>
         <p className="text-sm text-muted-foreground">
-          The gamified ladder partners climb by referred pillow &amp; bolster units (a 2-unit
-          launch head start is added on top). Each rung grants a one-time cash bonus, a permanent
-          rate bump (percentage points added to the partner&apos;s commission scheme), and a perk.
-          Tiers never demote.
+          The ladder partners climb with each qualifying sale, on top of a 2-sale launch head
+          start. Each rung grants a perk. Rungs pay no cash and never change the commission,
+          because the agreement pays only the flat commission. Tiers never demote.
         </p>
       </div>
 
@@ -41,16 +38,14 @@ export async function MilestoneRungsEditor() {
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Tier</th>
-              <th className="px-4 py-2 font-medium">Units</th>
-              <th className="px-4 py-2 font-medium">Cash bonus</th>
-              <th className="px-4 py-2 font-medium">Rate bump</th>
+              <th className="px-4 py-2 font-medium">Sales</th>
               <th className="px-4 py-2 font-medium">Perk</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {rungs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
                   No rungs yet.
                 </td>
               </tr>
@@ -59,8 +54,6 @@ export async function MilestoneRungsEditor() {
                 <tr key={r.tier} className="align-top">
                   <td className="px-4 py-3 font-medium">{r.tier}</td>
                   <td className="px-4 py-3">{Number(r.units_threshold)}</td>
-                  <td className="px-4 py-3">${Number(r.cash_bonus).toFixed(2)}</td>
-                  <td className="px-4 py-3">+{Number(r.rate_bump)}%</td>
                   <td className="px-4 py-3">{r.perk_label || "—"}</td>
                 </tr>
               ))
@@ -83,20 +76,8 @@ export async function MilestoneRungsEditor() {
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Units threshold</span>
+          <span className="text-muted-foreground">Sales needed</span>
           <input type="number" name="units_threshold" min="0" step="1" defaultValue="5" required
-            className="h-9 rounded-md border bg-background px-2" />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Cash bonus ($)</span>
-          <input type="number" name="cash_bonus" min="0" step="0.01" defaultValue="25" required
-            className="h-9 rounded-md border bg-background px-2" />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Rate bump (percentage points)</span>
-          <input type="number" name="rate_bump" min="0" step="0.01" defaultValue="1" required
             className="h-9 rounded-md border bg-background px-2" />
         </label>
 

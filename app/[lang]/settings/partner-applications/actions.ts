@@ -7,11 +7,16 @@ import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "@/lib/email/application";
+import {
+  APPLICATION_EMAIL_COPY,
+  renderApplicationOutcomeEmail,
+  type ApprovalNotice,
+} from "@/lib/email/application";
 import type { EmailCopySpec } from "@/lib/email/copy";
 import { loadEmailCopy } from "@/lib/email/copy-store";
 import { dispatchPartnerEmail } from "@/lib/email/partner";
 import { getSiteOrigin } from "@/lib/site-url";
+import { ensureReferralCode } from "@/lib/referrals";
 import {
   canTransitionApplication,
   type ApplicationFields,
@@ -25,6 +30,8 @@ import {
 const PERM = "partner-applications";
 const QUEUE_PATH = "/settings/partner-applications";
 const SUPPORT_EMAIL = "sg@mpillow.com";
+/** A typo guard, far above any pool the Schedule would set. */
+const MAX_COMMISSION_POOL = 1000;
 
 /**
  * Send the outcome email through the idempotent partner ledger. The renderer
@@ -39,6 +46,7 @@ async function sendOutcomeEmail(params: {
   to: string;
   partnerUserId: string;
   partnerId: string | null;
+  notice?: ApprovalNotice;
 }): Promise<void> {
   try {
     const copy = await loadEmailCopy(APPLICATION_EMAIL_COPY[params.outcome] as EmailCopySpec);
@@ -47,6 +55,7 @@ async function sendOutcomeEmail(params: {
       {
         partnerSignInUrl: `${getSiteOrigin()}/partner`,
         supportEmail: SUPPORT_EMAIL,
+        notice: params.notice,
       },
       copy,
     );
@@ -69,13 +78,27 @@ async function sendOutcomeEmail(params: {
 
 /**
  * Approve a pending application: create/claim the partner Location row
- * (type='partner', visible=false — Staff flip visibility separately), link it,
- * mark approved, email the applicant. Idempotent: an already-linked row is a
- * no-op (never creates a second partners row).
+ * (type='partner', visible=false — Staff flip visibility separately) with the
+ * Commission Pool and customer discount Staff set (ADR 0034), link it, mark
+ * approved, issue the Promo Code and email the applicant their Approval Notice.
+ * Idempotent: an already-linked row is a no-op (never creates a second partners
+ * row).
  */
-export async function approveApplication(id: string): Promise<{ ok: true }> {
+export async function approveApplication(
+  id: string,
+  terms: { pool: number; customerDiscount: boolean },
+): Promise<{ ok: true }> {
   const actor = await assertAdmin(PERM);
   const admin = supabaseAdmin();
+
+  const pool = Number(terms?.pool);
+  if (!Number.isFinite(pool) || pool < 0 || pool > MAX_COMMISSION_POOL) {
+    throw new Error(`The Commission Pool must be between S$0 and S$${MAX_COMMISSION_POOL}.`);
+  }
+  const partnerTerms = {
+    commission_pool: Math.round(pool * 100) / 100,
+    customer_discount_enabled: terms.customerDiscount === true,
+  };
 
   const { data: row, error } = await admin
     .from("partner_users")
@@ -119,12 +142,16 @@ export async function approveApplication(id: string): Promise<{ ok: true }> {
         position: nextPosition,
         address: q.address ?? null,
         postal_code: q.postal_code ?? null,
+        ...partnerTerms,
       })
       .select("id")
       .single();
     if (partnerError) throw new Error(partnerError.message);
     partnerId = partner.id as string;
     invalidateTag("locations");
+  } else {
+    const { error: termsError } = await admin.from("partners").update(partnerTerms).eq("id", partnerId);
+    if (termsError) throw new Error(termsError.message);
   }
 
   const { error: updateError } = await admin
@@ -139,8 +166,12 @@ export async function approveApplication(id: string): Promise<{ ok: true }> {
     entityType: "partner_user",
     entityId: id,
     before: { application_status: status, partner_id: row.partner_id },
-    after: { application_status: "approved", partner_id: partnerId },
+    after: { application_status: "approved", partner_id: partnerId, ...partnerTerms },
   });
+
+  // The Approval Notice states the Promo Code (agreement clause 1.1), so it is
+  // issued now rather than on the partner's first Hub visit.
+  const promoCode = await ensureReferralCode(partnerId);
 
   await sendOutcomeEmail({
     admin,
@@ -148,6 +179,11 @@ export async function approveApplication(id: string): Promise<{ ok: true }> {
     to: row.email,
     partnerUserId: id,
     partnerId,
+    notice: {
+      promoCode,
+      territory: "Singapore",
+      commissionPool: partnerTerms.commission_pool,
+    },
   });
   revalidatePath(QUEUE_PATH);
   return { ok: true };

@@ -1,64 +1,55 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 
+/** A typo guard, far above any pool the Schedule would set. */
+const MAX_COMMISSION_POOL = 1000;
+
 /**
- * Upsert a commission scheme (#77). Staff-only (assertAdmin) — the scheme editor
- * is invisible in the Partner Hub. An empty partner = the DEFAULT scheme; a partner
- * id = a per-partner override. One scheme per (partner, product_type).
+ * Set one partner's Commission Pool and customer discount (ADR 0034). Staff-only
+ * (assertAdmin): the partner sees the pool and picks their share in the Partner
+ * Hub, but never sets the pool or the discount. A new pool prices sales held from
+ * now on; a Result already held keeps the commission and discount it was held with.
  */
-export async function upsertCommissionScheme(formData: FormData): Promise<void> {
+export async function updatePartnerTerms(formData: FormData): Promise<void> {
   const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();
 
-  const partnerId = (formData.get("partner_id") as string) || null;
-  const productType = formData.get("product_type") as string;
-  const kind = formData.get("kind") as string;
-  const amount = Number(formData.get("amount"));
+  const partnerId = String(formData.get("partner_id") ?? "");
+  const pool = Number(formData.get("commission_pool"));
+  const customerDiscount = formData.get("customer_discount") === "on";
 
-  if (productType !== "pillow" && productType !== "bolster") {
-    throw new Error("Invalid product type.");
-  }
-  if (kind !== "flat" && kind !== "percent") {
-    throw new Error("Invalid scheme kind.");
-  }
-  if (!Number.isFinite(amount) || amount < 0) {
-    throw new Error("Amount must be a non-negative number.");
+  if (!partnerId) throw new Error("Partner is required.");
+  if (!Number.isFinite(pool) || pool < 0 || pool > MAX_COMMISSION_POOL) {
+    throw new Error(`The Commission Pool must be between S$0 and S$${MAX_COMMISSION_POOL}.`);
   }
 
-  // Manual null-safe upsert: the unique index is on coalesce(partner_id, sentinel),
-  // so match on the null-aware key then update or insert.
-  let existingQ = admin
-    .from("commission_schemes")
-    .select("id")
-    .eq("product_type", productType);
-  existingQ = partnerId ? existingQ.eq("partner_id", partnerId) : existingQ.is("partner_id", null);
-  const { data: existing } = await existingQ.maybeSingle();
+  const { data: before, error: readError } = await admin
+    .from("partners")
+    .select("commission_pool, customer_discount_enabled")
+    .eq("id", partnerId)
+    .eq("type", "partner")
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!before) throw new Error("Partner not found.");
 
-  if (existing) {
-    const { error } = await admin
-      .from("commission_schemes")
-      .update({ kind, amount })
-      .eq("id", existing.id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await admin
-      .from("commission_schemes")
-      .insert({ partner_id: partnerId, product_type: productType, kind, amount });
-    if (error) throw new Error(error.message);
-  }
+  const after = { commission_pool: Math.round(pool * 100) / 100, customer_discount_enabled: customerDiscount };
+  const { error } = await admin.from("partners").update(after).eq("id", partnerId);
+  if (error) throw new Error(error.message);
 
   await recordAdminAction({
     actor,
-    action: "commission_scheme.upsert",
-    entityType: "commission_scheme",
-    entityId: partnerId ?? "default",
-    before: null,
-    after: { partner_id: partnerId, product_type: productType, kind, amount },
+    action: "partner_terms.update",
+    entityType: "partner",
+    entityId: partnerId,
+    before,
+    after,
   });
 
+  invalidateTag("locations");
   revalidatePath("/settings/partner-commissions");
 }
