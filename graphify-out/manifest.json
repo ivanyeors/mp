@@ -15498,9 +15498,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/10-ask-why-they-left.md": {
-    "mtime": 1793106581.6979725,
-    "seen": 1793106644.3834112,
-    "ast_hash": "84abd9182a96e49593c6e45af5ed6284",
+    "mtime": 1793108509.1933014,
+    "seen": 1793108581.438714,
+    "ast_hash": "b1e54db291bd0088780a6a3713c3c95a",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/lifecycle-and-metrics.md": {
@@ -15593,9 +15593,9 @@
     "ast_hash": "398f5869c55315648970ff8fda4fe0f8",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261027120000_drop_off_reasons.sql": {
+  "supabase/migrations/20261027133942_drop_off_reasons.sql": {
     "mtime": 1793103302.762401,
-    "seen": 1793104054.064294,
+    "seen": 1793108581.4383438,
     "ast_hash": "b3543c7388dfaf10d55839adc19185a8",
     "semantic_hash": ""
   }

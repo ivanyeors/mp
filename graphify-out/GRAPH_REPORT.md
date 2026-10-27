@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `000e8cac`
+- Built from commit: `2ac0c761`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -891,6 +891,7 @@
 - Slice 14 — Google Business Profile + post-visit review requests
 - 20261025120000_rate_limit_hits.sql
 - settings-routes-guarded.test.ts
+- public.drop_off_reasons
 - assert-01-email-campaigns.sql
 - assert-04-spending.sql
 - Slice 16 — Earned mentions playbook
@@ -914,7 +915,6 @@
 - LayoutError
 - Slice 06 — Roles tab: permission matrix editor + custom roles
 - ref_node_child_process
-- public.drop_off_reasons
 - decline-reason.test.ts
 - 20261002020000_ai_crawler_hits.sql
 - 20261002030000_seo_annotations.sql
@@ -4168,6 +4168,10 @@ Nodes (3): APP_DIR, EMAIL_DIR, walk()
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 14 — Google Business Profile + post-visit review requests, What to build
 
+### Community 991 - "public.drop_off_reasons"
+Cohesion: 0.53
+Nodes (4): drop_off_reasons_created_at_idx, drop_off_reasons_result_step_key, drop_off_reasons_visit_step_key, public.drop_off_reasons
+
 ### Community 994 - "Slice 16 — Earned mentions playbook"
 Cohesion: 0.40
 Nodes (4): Acceptance criteria, Blocked by, Slice 16 — Earned mentions playbook, What to build
@@ -4243,10 +4247,6 @@ Nodes (9): Acceptance criteria, Blocked by, Slice 06 — Roles tab: permission m
 ### Community 1028 - "ref_node_child_process"
 Cohesion: 0.40
 Nodes (4): CHECKS, main(), ROOT, run()
-
-### Community 1029 - "public.drop_off_reasons"
-Cohesion: 0.53
-Nodes (4): drop_off_reasons_created_at_idx, drop_off_reasons_result_step_key, drop_off_reasons_visit_step_key, public.drop_off_reasons
 
 ### Community 1045 - "A live shipping method with no courier quote is hidden, never charged a fallback"
 Cohesion: 0.40
