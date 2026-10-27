@@ -1,5 +1,8 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
+import { customerIdForResult } from "@/lib/crm/customer-link";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import {
   canAssignResult,
   loadFillingItems,
@@ -25,21 +28,32 @@ export default async function ResultDetailRoute({
   const { lang, id } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  await requireAdminPage("results", locale);
+  const ctx = await requireAdminPage("results", locale);
 
   const detail = await loadMpConfigResponseDetail(id);
   const response = detail.status === 200 ? detail.body.response : null;
 
-  const [assignPrep, fillingItems] =
+  // *Open customer* (PRD-crm-retention-loop slice 02), only for Staff who can open it.
+  const customerIdPromise =
+    response && hasPermission(ctx, "customers")
+      ? customerIdForResult(supabaseAdmin(), {
+          customer_id: typeof response.customer_id === "string" ? response.customer_id : null,
+          customer_email: typeof response.customer_email === "string" ? response.customer_email : null,
+        }).catch(() => null)
+      : Promise.resolve(null);
+
+  const [[assignPrep, fillingItems], customerId] = await Promise.all([
     response && canAssignResult(response)
-      ? await Promise.all([
+      ? Promise.all([
           loadResultAssignPrep(
             response,
             detail.status === 200 ? detail.body.suggestion.recommended : null,
           ),
           loadFillingItems(),
         ])
-      : [null, null];
+      : Promise.resolve([null, null] as const),
+    customerIdPromise,
+  ]);
 
   const initialData: ResultDetailInitialData = {
     detail:
@@ -48,6 +62,7 @@ export default async function ResultDetailRoute({
         : null,
     assignPrep: assignPrep as ResultDetailInitialData["assignPrep"],
     fillingItems,
+    customerId,
   };
 
   return <ResultDetailPage initialData={initialData} />;

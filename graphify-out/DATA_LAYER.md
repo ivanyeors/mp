@@ -467,6 +467,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
   - `confirmationPoints()` [select] — lib/email/index.ts:284
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
+  - `customerIdForResult()` [select] — lib/crm/customer-link.ts:21
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:77
   - `getCurrentCustomerId()` [select] — lib/shop/customer-addresses.ts:39
@@ -726,7 +727,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:389
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:391
-  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:548
+  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:557
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:41
@@ -1916,7 +1917,7 @@ Changed from pages: `/account/orders/[orderNumber]`
 - Written by:
   - `createRmaRequest()` [insert] — lib/rma/create.ts:141
 - Read by:
-  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:106
+  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:107
   - `openReturnedQtyByOrder()` [select] — lib/rma/create.ts:176
   - `voidCommissionsForRma()` [select] — lib/commissions/ledger.ts:92
 
@@ -1930,7 +1931,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/settings/rma/[id]`
   - `saveAdminNote()` [select,update] — app/[lang]/settings/rma/actions.ts:22
 - Read by:
   - `/settings/rma` (page) [select] — app/[lang]/settings/rma/page.tsx:49
-  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:94
+  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:95
   - `completeReturn()` [select] — app/[lang]/settings/rma/actions.ts:101
   - `issueRmaRefund()` [select] — app/[lang]/settings/rma/actions.ts:129
   - `sources/returns.ts` [select] — lib/crm/timeline/sources/returns.ts:37
@@ -1943,7 +1944,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/settings/rma/[id]`
   - `applyRmaTransition()` [insert] — lib/rma/transition.ts:73
   - `createRmaRequest()` [insert] — lib/rma/create.ts:152
 - Read by:
-  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:110
+  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:111
   - `sources/returns.ts` [select] — lib/crm/timeline/sources/returns.ts:57
 
 ### rule_graphs
@@ -2685,7 +2686,7 @@ app/[lang]/settings/results/page.tsx
 ### /settings/results/[id]
 app/[lang]/settings/results/[id]/page.tsx
 - Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/settings/inventory/configure/templates/[templateId]`
-- Loads: `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `requireAdminPage()`
+- Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `requireAdminPage()`
 - Reads: `items`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_responses`, `mp_staff`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
 - Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`

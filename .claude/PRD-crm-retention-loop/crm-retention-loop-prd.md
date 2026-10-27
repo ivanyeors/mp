@@ -3,6 +3,7 @@
 **Status:** slice 01 (the sidebar) built on `claude/hopeful-hopper-bs4ic1` (2026-10-27). Slices
 02–10 specified, not started. The stages, signals and success metrics are defined in
 [`lifecycle-and-metrics.md`](lifecycle-and-metrics.md) (draft for the owner, 2026-10-27).
+**Issue:** [#336](https://github.com/ivanyeors/mp/issues/336), with each slice a sub-issue (#337–#346)
 **Owner request (2026-10-27):** "In our settings page, sidenav: Customers, Email campaigns, Email
 templates (should be a setting/sub-page under campaigns), Results, Orders should be part of our
 CRM loop/flow. Cleanup and optimize the sidenav section first for our CRM for customers. Research

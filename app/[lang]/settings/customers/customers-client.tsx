@@ -213,6 +213,7 @@ export function CustomersClient({
     migration = null,
     initialSegments,
     canEdit = false,
+    canEmail = false,
 }: {
     initialData?: CustomersInitialData;
     /** The filters the page's URL asked for; `initialData` is page 1 of them. */
@@ -225,6 +226,8 @@ export function CustomersClient({
     initialSegments?: CustomerSegment[];
     /** `customers-edit`: saving, updating, renaming and archiving Segments. */
     canEdit?: boolean;
+    /** `campaigns`: *Email this Segment* (PRD-crm-retention-loop slice 02). */
+    canEmail?: boolean;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -382,6 +385,7 @@ export function CustomersClient({
             <SegmentsRow
                 initialSegments={initialSegments}
                 canEdit={canEdit}
+                newCampaignPath={canEmail ? to("/settings/campaigns/new") : undefined}
                 params={segmentParams(filters)}
                 activeId={segmentId}
                 listPath={to("/settings/customers")}

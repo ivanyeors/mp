@@ -109,6 +109,7 @@ export default async function SettingsCustomersPage({
                 migration={migration}
                 initialSegments={segments}
                 canEdit={canEdit}
+                canEmail={hasPermission(ctx, "campaigns")}
             />
         </CustomersPageTabs>
     );

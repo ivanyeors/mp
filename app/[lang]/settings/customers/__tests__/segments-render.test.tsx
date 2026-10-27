@@ -39,7 +39,10 @@ const SEGMENTS = [
 
 const row = { id: "c1", email: "ana@x.test", first_name: "Ana", last_name: "Tan", tags: [], total_orders: 1, total_spent: 0, created_at: "2025-01-01T00:00:00Z", has_account: false, from_shopify: false, account_providers: [], open_followups: 0 } as unknown as CustomerOverviewRow;
 
-const listFor = (url: string, { canEdit = true, segments = SEGMENTS }: { canEdit?: boolean; segments?: CustomerSegment[] } = {}) => {
+const listFor = (
+  url: string,
+  { canEdit = true, canEmail = false, segments = SEGMENTS }: { canEdit?: boolean; canEmail?: boolean; segments?: CustomerSegment[] } = {},
+) => {
   const { filters } = parseCustomerFilters(new URLSearchParams(url));
   return renderToString(
     <CustomersClient
@@ -47,6 +50,7 @@ const listFor = (url: string, { canEdit = true, segments = SEGMENTS }: { canEdit
       initialFilters={filters}
       initialSegments={segments}
       canEdit={canEdit}
+      canEmail={canEmail}
     />,
   );
 };
@@ -116,6 +120,14 @@ describe("the Segments row", () => {
 
   it("gives an editor each chip's menu", () => {
     expect(listFor("")).toContain('aria-label="More for Premium, lapsed"');
+  });
+
+  it("gives a role with campaigns and no customers-edit a menu on live Segments only (PRD-crm-retention-loop 02)", () => {
+    const html = listFor("", { canEdit: false, canEmail: true });
+    expect(html).toContain('aria-label="More for Premium, lapsed"');
+    // A Segment that needs review counts nobody, so there is nothing to email.
+    expect(html).not.toContain('aria-label="More for Old region"');
+    expect(html).not.toContain("Save as Segment");
   });
 
   it("renders nothing with no Segments and no filter", () => {

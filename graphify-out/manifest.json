@@ -6864,9 +6864,9 @@
     "semantic_hash": ""
   },
   "lib/results/admin/response-detail.ts": {
-    "mtime": 1793088377.914634,
-    "seen": 1793094919.3296993,
-    "ast_hash": "68cfcbdb5fb671b4566803ee68d8584c",
+    "mtime": 1793102858.1166282,
+    "seen": 1793103250.6105597,
+    "ast_hash": "7321cc49511eaf14527586b3387947be",
     "semantic_hash": ""
   },
   "lib/results/admin/responses-list.ts": {
@@ -13830,9 +13830,9 @@
     "semantic_hash": ""
   },
   "lib/crm/segment-rules.ts": {
-    "mtime": 1793088377.891089,
-    "seen": 1793094919.3283842,
-    "ast_hash": "e83f61189f09f629cc8678787973233f",
+    "mtime": 1793102964.73928,
+    "seen": 1793103250.6097379,
+    "ast_hash": "aca0534bc2e0b0947cb2c2a9de8942fd",
     "semantic_hash": ""
   },
   "lib/crm/segments.ts": {
@@ -14334,9 +14334,9 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/rules.ts": {
-    "mtime": 1793088377.8995843,
-    "seen": 1793094919.328848,
-    "ast_hash": "7667c91403a3e8b5ae820d6dbbb975ab",
+    "mtime": 1793102918.510752,
+    "seen": 1793103250.6100345,
+    "ast_hash": "be1b480e2b73f140521398009399b687",
     "semantic_hash": ""
   },
   "lib/email-campaigns/sender.ts": {
@@ -15432,9 +15432,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/crm-retention-loop-prd.md": {
-    "mtime": 1793096306.1699219,
-    "seen": 1793096438.8054934,
-    "ast_hash": "79715116ccdb04e391cc4f2d9c123c7b",
+    "mtime": 1793102781.1023262,
+    "seen": 1793103250.6121902,
+    "ast_hash": "838dd09c2ad9284dc9dd3e1d90775f50",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/01-crm-sidebar-group.md": {
@@ -15444,9 +15444,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/02-hand-off-links.md": {
-    "mtime": 1793094817.339298,
-    "seen": 1793094919.3319924,
-    "ast_hash": "41b722c01e2144e3aa110b10fe15106f",
+    "mtime": 1793102684.6960473,
+    "seen": 1793103250.6121948,
+    "ast_hash": "822316057ad70574b53058436684a87c",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md": {
@@ -15486,9 +15486,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/README.md": {
-    "mtime": 1793096369.7315552,
-    "seen": 1793096438.805516,
-    "ast_hash": "007af654472853b9fdd826f624b6febf",
+    "mtime": 1793102781.1018136,
+    "seen": 1793103250.612213,
+    "ast_hash": "c03f3ab2cd657f0f1678af85259a284b",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/09-shopify-order-history.md": {
@@ -15498,15 +15498,45 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/10-ask-why-they-left.md": {
-    "mtime": 1793096345.18589,
-    "seen": 1793096438.8055136,
-    "ast_hash": "6313cd56c67ffbcef771816ab4d813ff",
+    "mtime": 1793102684.9920473,
+    "seen": 1793103250.6122112,
+    "ast_hash": "72186a9d7cb7db7fdc4cbc98713a6ae4",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/lifecycle-and-metrics.md": {
-    "mtime": 1793096287.016184,
-    "seen": 1793096438.805518,
-    "ast_hash": "5f9d1980a5888acac2d91491b5079cc8",
+    "mtime": 1793102690.9211333,
+    "seen": 1793103250.612215,
+    "ast_hash": "42242d3eea602366f7edfe63be148737",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/__tests__/segment-options.test.ts": {
+    "mtime": 1793102979.1840408,
+    "seen": 1793103250.6084213,
+    "ast_hash": "cf0101ca4293c7f68eaa9ef1dbaabee1",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/segment-options.ts": {
+    "mtime": 1793102941.8407352,
+    "seen": 1793103250.6084268,
+    "ast_hash": "5758b549107a19d5f49398074a60937c",
+    "semantic_hash": ""
+  },
+  "lib/crm/__tests__/customer-link.test.ts": {
+    "mtime": 1793102816.1800444,
+    "seen": 1793103250.6096678,
+    "ast_hash": "7de62abf8a39ea4f8a5c119c75b7e829",
+    "semantic_hash": ""
+  },
+  "lib/crm/__tests__/segment-handoffs.test.ts": {
+    "mtime": 1793102975.1680408,
+    "seen": 1793103250.6096926,
+    "ast_hash": "a57f11a61bde13cbc98b389b733ba7f1",
+    "semantic_hash": ""
+  },
+  "lib/crm/customer-link.ts": {
+    "mtime": 1793102863.3603575,
+    "seen": 1793103250.6097088,
+    "ast_hash": "2767f1064258514eedc661d2e7dad7c4",
     "semantic_hash": ""
   }
 }
