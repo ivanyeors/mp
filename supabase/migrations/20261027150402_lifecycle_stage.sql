@@ -25,6 +25,9 @@
 --    order: lapsed (last purchase before now less 24 months), at_risk (before
 --    now less 12 months), loyal (3 or more), repeat (2), new (1), lead (none).
 --    The cut-offs are strict, as the *Last order* filter's (`monthsBefore`).
+--    Months and days are counted in UTC whatever the session's TimeZone, as
+--    `monthsBefore` counts them: in another zone Postgres would clamp a month
+--    end on that zone's calendar.
 --
 --    customer_lifecycle_delivery(purchases, last_purchase_at, delivered_at,
 --    now): for a dated *New* only, the one purchase's delivery:
@@ -65,8 +68,8 @@ set search_path = ''
 as $$
   select case
     when coalesce(p_purchases, 0) <= 0                                    then 'lead'
-    when p_last_purchase_at < p_now - interval '24 months'                then 'lapsed'
-    when p_last_purchase_at < p_now - interval '12 months'                then 'at_risk'
+    when p_last_purchase_at < ((p_now at time zone 'UTC') - interval '24 months') at time zone 'UTC' then 'lapsed'
+    when p_last_purchase_at < ((p_now at time zone 'UTC') - interval '12 months') at time zone 'UTC' then 'at_risk'
     when p_purchases >= 3                                                 then 'loyal'
     when p_purchases = 2                                                  then 'repeat'
     else                                                                       'new'
@@ -88,7 +91,7 @@ as $$
     when p_last_purchase_at is null
       or public.customer_lifecycle_stage(p_purchases, p_last_purchase_at, p_now) <> 'new' then null
     when p_delivered_at is null                                           then 'awaiting_delivery'
-    when p_delivered_at > p_now - interval '30 days'                      then 'delivered'
+    when p_delivered_at > ((p_now at time zone 'UTC') - interval '30 days') at time zone 'UTC' then 'delivered'
     else                                                                       'settled'
   end
 $$;

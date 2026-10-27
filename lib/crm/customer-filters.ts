@@ -478,7 +478,9 @@ export { monthsBefore };
 /**
  * Applies the filters and the sort to a query on `admin_customer_overview`.
  * Paging is the caller's (`range`). Pure: it only calls the query's methods,
- * and *Last order* counts back from `now`.
+ * and *Last order* counts back from `now`. *Stage* is the one exception: the
+ * view computes `lifecycle_stage` with the database's own `now()`, so `now`
+ * does not move it (PRD-crm-retention-loop slice 03).
  *
  * `order: false` applies the filters only and leaves the order to the caller:
  * a Segment's count needs none, and `resolveSegment` (lib/crm/segments.ts)

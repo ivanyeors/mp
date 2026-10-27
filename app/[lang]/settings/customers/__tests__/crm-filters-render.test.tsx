@@ -158,6 +158,10 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toContain('title="At risk: Last purchase 12 to 24 months ago."');
     expect(html).toContain("Awaiting delivery");
     expect(html).toContain("No dates yet");
+    // On phones too, beside the badge in the Name cell, not only in the md+ Stage column.
+    const nameCells = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]).filter((c) => c.includes("md:hidden"));
+    expect(nameCells.some((c) => c.includes("Awaiting delivery"))).toBe(true);
+    expect(nameCells.some((c) => c.includes("No dates yet"))).toBe(true);
   });
 
   it("puts each row's cells under their own headers", () => {

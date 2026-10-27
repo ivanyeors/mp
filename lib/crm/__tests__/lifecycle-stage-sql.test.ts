@@ -43,9 +43,12 @@ function latestOverview(): string {
 describe("customer_lifecycle_stage", () => {
   const fn = latestFunction("customer_lifecycle_stage");
 
-  it("cuts at the TypeScript's months, strictly, Lapsed before At risk", () => {
-    const lapsed = fn.indexOf(`p_last_purchase_at < p_now - interval '${LAPSED_AFTER_MONTHS} months' then 'lapsed'`);
-    const atRisk = fn.indexOf(`p_last_purchase_at < p_now - interval '${AT_RISK_AFTER_MONTHS} months' then 'at_risk'`);
+  // In UTC whatever the session's TimeZone, as monthsBefore counts.
+  const before = (interval: string) => `((p_now at time zone 'UTC') - interval '${interval}') at time zone 'UTC'`;
+
+  it("cuts at the TypeScript's months, strictly and in UTC, Lapsed before At risk", () => {
+    const lapsed = fn.indexOf(`p_last_purchase_at < ${before(`${LAPSED_AFTER_MONTHS} months`)} then 'lapsed'`);
+    const atRisk = fn.indexOf(`p_last_purchase_at < ${before(`${AT_RISK_AFTER_MONTHS} months`)} then 'at_risk'`);
     expect(lapsed).toBeGreaterThan(-1);
     expect(atRisk).toBeGreaterThan(lapsed);
   });
@@ -68,7 +71,9 @@ describe("customer_lifecycle_delivery", () => {
   const fn = latestFunction("customer_lifecycle_delivery");
 
   it("settles at the TypeScript's days, for a dated New only", () => {
-    expect(fn).toContain(`p_delivered_at > p_now - interval '${SETTLED_AFTER_DAYS} days' then 'delivered'`);
+    expect(fn).toContain(
+      `p_delivered_at > ((p_now at time zone 'UTC') - interval '${SETTLED_AFTER_DAYS} days') at time zone 'UTC' then 'delivered'`,
+    );
     expect(fn).toContain("p_last_purchase_at is null or public.customer_lifecycle_stage(p_purchases, p_last_purchase_at, p_now) <> 'new' then null");
     for (const d of LIFECYCLE_DELIVERIES) expect(fn).toContain(`'${d}'`);
   });
@@ -88,8 +93,12 @@ describe("admin_customer_overview", () => {
     const pu = view.slice(view.indexOf("as last_purchase_delivered_at"));
     const statuses = pu.match(/o\.status not in \(([^)]*)\)/)![1]!.split(",").map((s) => s.trim().replace(/'/g, ""));
     expect(new Set(statuses)).toEqual(new Set(NOT_A_PURCHASE));
-    expect(pu).toContain("o.paid_at is not null");
-    expect(pu).toContain("i.kind = 'goods'");
-    expect(pu).toContain(") pu on pu.customer_id = c.id");
+    // The whole where clause, so a loosened or negated rule fails here and not only on a database.
+    expect(pu).toContain(
+      "where o.customer_id is not null and o.paid_at is not null " +
+        "and o.status not in ('pending', 'cancelled', 'refunded', 'payment_failed') " +
+        "and exists (select 1 from public.order_items i where i.order_id = o.id and i.kind = 'goods') " +
+        "group by o.customer_id ) pu on pu.customer_id = c.id",
+    );
   });
 });

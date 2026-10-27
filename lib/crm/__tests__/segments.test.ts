@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import { customerFilterParams, parseCustomerFilters } from "@/lib/crm/customer-filters";
 import type { CustomerOverviewRow, PurchaseClass } from "@/lib/crm/customer-overview";
+import { LIFECYCLE_STAGES } from "@/lib/crm/lifecycle-stage";
 import { SEGMENT_FILTERS_VERSION, parseSegmentFilters, segmentParams } from "@/lib/crm/segment-rules";
 
 /**
@@ -63,6 +64,7 @@ function overviewRow(n: number): Partial<CustomerOverviewRow> {
     last_paid_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
     // Slice 03: *Last order* reads purchases. Here every paid Order is one.
     last_purchase_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
+    lifecycle_stage: LIFECYCLE_STAGES[n % LIFECYCLE_STAGES.length],
     bought: BOUGHT[n % BOUGHT.length],
     last_readjusted_at: n % 4 === 1 ? "2026-01-10T02:00:00.000Z" : null,
     search_text: `c${n}@x.test ${n % 11 === 0 ? "mei" : `first${n}`} ${n % 13 === 0 ? "tan" : `last${n}`}`,
@@ -133,6 +135,9 @@ describe("a Segment and the same filters in the URL", () => {
     "tags=vip",
     "search=mei",
     "search=tan&readjusted=ever",
+    // PRD-crm-retention-loop slice 03: *Stage: At risk* saved as a Segment.
+    "stage=at-risk,lapsed",
+    "stage=lead&source=shopify",
   ])("return identical Customers: %s", async (url) => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     try {

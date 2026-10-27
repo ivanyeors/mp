@@ -61,7 +61,7 @@ import {
     type CustomerSegment,
 } from "@/lib/crm/segment-rules";
 import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
-import { LifecycleStageBadge, LifecycleStageCell } from "./lifecycle-stage-badge";
+import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
 import { MigrationCard } from "./migration-card";
 import { SegmentsRow } from "./segments-row";
 
@@ -578,6 +578,11 @@ export function CustomersClient({
                                                     stage={customer.lifecycle_stage}
                                                     undated={customer.lifecycle_undated}
                                                 />
+                                                {lifecycleNote(customer) ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {lifecycleNote(customer)}
+                                                    </span>
+                                                ) : null}
                                                 <AccountStatus customer={customer} compact />
                                             </span>
                                         </TableCell>

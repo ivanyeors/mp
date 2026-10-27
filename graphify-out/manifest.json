@@ -13134,9 +13134,9 @@
     "semantic_hash": ""
   },
   "lib/crm/customer-filters.ts": {
-    "mtime": 1793113559.0122309,
-    "seen": 1793114509.4066281,
-    "ast_hash": "86e027ea7cdef3ef326a250d0e19e3db",
+    "mtime": 1793115494.1321409,
+    "seen": 1793115996.612407,
+    "ast_hash": "11aa499bb6e0a92dd45d8cbde1873041",
     "semantic_hash": ""
   },
   "lib/crm/customer-overview.ts": {
@@ -13824,9 +13824,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segments.test.ts": {
-    "mtime": 1793113606.520348,
-    "seen": 1793114509.406607,
-    "ast_hash": "9ac13b4fd93a8818eda1741861a38bfc",
+    "mtime": 1793115525.251761,
+    "seen": 1793115996.6123836,
+    "ast_hash": "c3841eca2ebf4ab547348e301ee98035",
     "semantic_hash": ""
   },
   "lib/crm/segment-rules.ts": {
@@ -13836,9 +13836,9 @@
     "semantic_hash": ""
   },
   "lib/crm/segments.ts": {
-    "mtime": 1793088377.891089,
-    "seen": 1793103694.6046398,
-    "ast_hash": "dd36753010f31dddbdd17063ce5e6101",
+    "mtime": 1793115494.134067,
+    "seen": 1793115996.6124759,
+    "ast_hash": "4b475d978ae3566b72e9ee4b4fff0e04",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020131000_customer_segments.sql": {
@@ -15582,9 +15582,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md": {
-    "mtime": 1793113366.6939838,
-    "seen": 1793114509.4106843,
-    "ast_hash": "912d84cdb0e0e98ee950289a1fa274e4",
+    "mtime": 1793115542.6332505,
+    "seen": 1793115996.616687,
+    "ast_hash": "e734ae88162b8f2d9033c084d2bf4102",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/04-stage-chips.md": {
@@ -15648,9 +15648,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/lifecycle-stage-sql.test.ts": {
-    "mtime": 1793113764.3481803,
-    "seen": 1793114509.4065795,
-    "ast_hash": "54552c11244dea98cb9e681b99b9b082",
+    "mtime": 1793115469.5169652,
+    "seen": 1793115996.612351,
+    "ast_hash": "db8b5d5e7610f2468f9ad17614de1601",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/lifecycle-stage.test.ts": {
@@ -15684,9 +15684,9 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261027150402_lifecycle_stage.sql": {
-    "mtime": 1793113466.784187,
-    "seen": 1793114509.4103732,
-    "ast_hash": "10dc66d456900ed460ecfba635bd975f",
+    "mtime": 1793115480.1971605,
+    "seen": 1793115996.6163187,
+    "ast_hash": "4c7bbe756661c8ffd81453929efb858f",
     "semantic_hash": ""
   }
 }

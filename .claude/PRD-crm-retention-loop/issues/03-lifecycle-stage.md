@@ -75,6 +75,19 @@ slice 09 lands or platform Orders age.
   Customer detail's header and Stats card, with purchases and the last purchase.
 - `CONTEXT.md`: **Lifecycle stage**, with each stage's rule.
 
+## Known limits (independent review, 2026-10-27)
+
+- **A full return by RMA can leave a Customer *New*.** An RMA refunds the line prices and keeps
+  shipping (`lib/rma/refund.ts`), so the Order ends `partially_refunded`, which is still a
+  purchase. The stage reads Order status only, as decided (never returns). For the owner: count
+  an Order whose every goods line was returned as no purchase, or leave it.
+- **The list's *Orders* column is `customers.total_orders`**, which counts a paid re-adjustment fee;
+  *Last order* and the stage count purchases. A Customer whose only Order is a fee shows Orders 1,
+  Last order —, Stage *Lead*.
+- **Deploy order:** the app selects the new columns, so the migration goes to production before
+  the code. Before it, the Customers list reads as empty and a Segment using *Last order* fails.
+  The migration on its own is safe with the code before this slice.
+
 ## Acceptance criteria
 
 - [ ] The stage reads Orders only (and, until slice 09, the Shopify-era count): never reviews,
