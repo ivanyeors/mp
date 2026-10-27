@@ -169,7 +169,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/save/route.ts:56
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:87
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:420
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:418
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:185
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:483
   - `POST()` [select] — app/api/shop/checkout/route.ts:495
@@ -230,7 +230,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:70
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:477
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:419
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:417
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:391
@@ -295,7 +295,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `setTemplateKeys()` [update] — lib/filling-templates/membership.ts:140
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:479
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:422
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:420
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:46
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:406
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:61
@@ -621,7 +621,7 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:430
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:428
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:300
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:262
@@ -687,7 +687,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:368
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:311
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:163
-  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1169
+  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1163
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:272
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:165
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:186
@@ -720,7 +720,7 @@ Changed from pages: `/settings/inventory`
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:893
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:285
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:406
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:404
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:178
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:389
@@ -739,7 +739,7 @@ Changed from pages: `/settings/inventory`
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:37
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/route.ts:69
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:108
-  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1167
+  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1161
   - `commitShopifySales()` [select] — app/[lang]/settings/inventory/actions.ts:707
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:957
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:157
@@ -752,7 +752,7 @@ Changed from pages: `/settings/inventory`
   - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:436
   - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:276
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:167
-  - `linkPartToShopifyVariant()` [select] — app/[lang]/settings/inventory/actions.ts:1473
+  - `linkPartToShopifyVariant()` [select] — app/[lang]/settings/inventory/actions.ts:1467
   - `listOverlayMappingItems()` [select] — lib/product-builder/overlay-mappings.ts:24
   - `listShopListingFamilies()` [select] — lib/ecommerce/shop-listings.ts:154
   - `listShopifyAdminItems()` [select] — lib/inventory/admin/shopify-items.ts:20
@@ -1197,7 +1197,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `setDefaultFillingTemplateId()` [select,update] — lib/results/composed-sellable.ts:379
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:476
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:414
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:412
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:79
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:390
@@ -1208,7 +1208,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:59
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:69
   - `POST()` [select] — app/api/shop/checkout/route.ts:367
-  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1170
+  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1164
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:194
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:161
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:113
@@ -1273,9 +1273,9 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`
   - `POST()` [delete,upsert] — app/[lang]/settings/costings/save/route.ts:405
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:478
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:421
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:419
   - `/settings/orders` (page) [select] — components/settings/shopify-sales-section.tsx:396
-  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1168
+  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1162
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:164
   - `getBolsterFromPriceLabel()` [select] — lib/landing-page-data.ts:96
   - `getPillowXsFromPriceLabel()` [select] — lib/landing-page-data.ts:65
@@ -2087,15 +2087,15 @@ References: `bom_templates`, `items`
 Changed from pages: `/settings/integrations/shopify`
 - Written by:
   - `POST()` [upsert] — app/api/shopify/mapping/apply/route.ts:51
-  - `deleteShopifyMapping()` [delete] — app/[lang]/settings/inventory/actions.ts:1542
-  - `linkBolsterToShopifyVariant()` [upsert] — app/[lang]/settings/inventory/actions.ts:1532
-  - `linkPartToShopifyVariant()` [upsert] — app/[lang]/settings/inventory/actions.ts:1494
-  - `linkPillowToShopifyVariant()` [upsert] — app/[lang]/settings/inventory/actions.ts:1513
+  - `deleteShopifyMapping()` [delete] — app/[lang]/settings/inventory/actions.ts:1536
+  - `linkBolsterToShopifyVariant()` [upsert] — app/[lang]/settings/inventory/actions.ts:1526
+  - `linkPartToShopifyVariant()` [upsert] — app/[lang]/settings/inventory/actions.ts:1488
+  - `linkPillowToShopifyVariant()` [upsert] — app/[lang]/settings/inventory/actions.ts:1507
 - Read by:
   - `GET()` [select] — app/api/shopify/diagnostics/route.ts:19
   - `POST()` [select] — app/api/shopify/webhook/route.ts:106
-  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1160
-  - `buildShopifyUnmappedVariants()` [select] — app/[lang]/settings/inventory/actions.ts:1363
+  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1154
+  - `buildShopifyUnmappedVariants()` [select] — app/[lang]/settings/inventory/actions.ts:1357
   - `loadShopifyFacts()` [select] — lib/analytics/channel-sales.ts:509
   - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:467
   - `refreshShopifySalesQueueFromShopify()` [select] — app/[lang]/settings/inventory/actions.ts:556
@@ -2108,10 +2108,10 @@ Defined in supabase/migrations/0017_shopify_variant_overrides.sql:4
 References: `shopify_variant_mappings`
 Changed from pages: `/settings/integrations/shopify`
 - Written by:
-  - `deleteShopifyVariantOverride()` [delete] — app/[lang]/settings/inventory/actions.ts:1462
-  - `upsertShopifyVariantOverride()` [upsert] — app/[lang]/settings/inventory/actions.ts:1453
+  - `deleteShopifyVariantOverride()` [delete] — app/[lang]/settings/inventory/actions.ts:1456
+  - `upsertShopifyVariantOverride()` [upsert] — app/[lang]/settings/inventory/actions.ts:1447
 - Read by:
-  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1164
+  - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:1158
   - `syncShopifyPricingFromSupabase()` [select] — lib/shopify/pricing.ts:79
 
 ### site_settings
@@ -2450,11 +2450,10 @@ app/[lang]/settings/campaigns/new/page.tsx
 
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx
-- Server actions: `syncShopifyPricesOnly()`
 - Endpoints: `/settings/costings/save`
 - Reads: `bolster_bom_lines`, `bom_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `product_prices`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `item_prices`, `mp_staff`, `product_prices`, `product_variants`, `products`, `service_prices`, `shopify_order_lines`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `shopify_variant_mappings`, `shopify_variant_overrides`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `shopify_variant_mappings`
 
 ### /settings/costings/services
 app/[lang]/settings/costings/services/page.tsx

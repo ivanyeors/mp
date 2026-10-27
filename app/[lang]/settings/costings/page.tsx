@@ -27,11 +27,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp, CloudUpload, RotateCw, X } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCw, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
-import { syncShopifyPricesOnly } from "../inventory/actions";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -330,7 +329,6 @@ export default function CostingsPage() {
   const filterMeasureRef = useRef<HTMLDivElement>(null);
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [premiumVariantSelection, setPremiumVariantSelection] = useState<PremiumVariant>("linen");
-  const [syncingShopifyPrices, setSyncingShopifyPrices] = useState(false);
   const [onHandKpis, setOnHandKpis] = useState<OnHandValueKpis | null>(null);
   const [groupOpenStates, setGroupOpenStates] = useState<Record<ProductGroupKey, boolean>>(() =>
     Object.fromEntries(
@@ -1287,33 +1285,10 @@ export default function CostingsPage() {
     }
   };
 
-  const syncPricesToShopify = async () => {
-    setSyncingShopifyPrices(true);
-    try {
-      const res = await syncShopifyPricesOnly();
-      const stats = res?.prices ?? null;
-      toast.success(
-        stats
-          ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
-          : "Shopify prices synced",
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't sync Shopify prices.");
-    } finally {
-      setSyncingShopifyPrices(false);
-    }
-  };
-
-  // Phones: the two refresh/sync actions move into the bottom dock. Save stays
-  // in MobileStickyActionBar — it carries the "Unsaved changes" line, which a
+  // Phones: Refresh moves into the bottom dock. Save stays in
+  // MobileStickyActionBar — it carries the "Unsaved changes" line, which a
   // dock icon cannot, and the bar only appears when there is something to save.
   useMobileDockActions([
-    {
-      id: "sync-shopify",
-      title: syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify",
-      icon: CloudUpload,
-      onClick: () => void syncPricesToShopify(),
-    },
     { id: "refresh", title: "Refresh", icon: RotateCw, onClick: () => void load() },
   ]);
 
@@ -1343,14 +1318,6 @@ export default function CostingsPage() {
           </InfoTip>
         </div>
         <PageActions>
-          <Button
-            variant="secondary"
-            className={cn(pageActionClassName, pageActionDockedClassName)}
-            onClick={() => void syncPricesToShopify()}
-            disabled={saving || syncingShopifyPrices}
-          >
-            {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
-          </Button>
           <Button
             variant="secondary"
             className={cn(pageActionClassName, pageActionDockedClassName)}
