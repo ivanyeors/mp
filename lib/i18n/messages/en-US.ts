@@ -25,21 +25,21 @@ export const enUS: Messages = {
       ctaCustomise: "Customise",
       ctaBookAppointment: "Book an appointment",
       seoAnswer:
-        "Mpillow is Singapore's made-to-measure Science of Sleep brand for every body shape and size. Designed for chronic neck stiffness and sleep posture, with customisable cervical fit measured in-store.",
+        "Mpillow is a custom cervical pillow from Singapore for chronic neck stiffness. We measure you in-store, then fit it to how you sleep. We call it the Science of Sleep.",
     },
     sizeMatters: {
       title: "Why size matters for a customised cervical pillow in Singapore",
       description:
-        "Shoulder length sets pillow height — see how Mpillow's modular layers are measured to your neck curve and sleep position.",
+        "Your shoulder length sets your pillow height. See how we measure you and shape the modular layers to your neck curve and sleep position.",
     },
     ambassadors: {
-      title: "How you stand is how you sleep — real body builds",
+      title: "How you stand is how you sleep",
       description:
-        "Consumer ambassadors Skyjin and Piggie show bespoke Mpillow fit for side and back sleep. Clinical partners: see Our Partners.",
+        "See how we fitted an Mpillow to each of our consumer ambassadors, Skyjin and Piggie, for side and back sleeping. You'll find our clinical partners on our partners page.",
     },
     pickYourMpillow: {
       title: "Pick your Mpillow",
-      subtitle: "We have Mpillow for every body.",
+      subtitle: "There's an Mpillow for every body.",
       specs: {
         customisation: "Customisation",
         fitControl: "Fit control",
@@ -47,77 +47,77 @@ export const enUS: Messages = {
       products: {
         basic: {
           title: "Basic",
-          description: "Entry custom-fit cervical pillow for occasional neck tension",
-          badge: "Standard Fit",
+          description: "Choose Basic for occasional neck tension. It's a cervical pillow sized to your shoulder length.",
+          badge: "Standard fit",
         },
         premium: {
           title: "Premium",
           description:
-            "Consultative in-store fit for chronic neck pain — FibreCool options + cervical neck support accessory",
-          badge: "Custom Fit",
+            "Choose Premium for chronic neck pain and a consultative in-store fitting. FibreCool and cervical neck support are optional.",
+          badge: "Custom fit",
         },
       },
       buttonCustomise: "Customise",
       fromPricePrefix: "From",
     },
     neckPains: {
-      title: "Neck pain from sleep — or the desk?",
+      title: "Is your neck pain from sleep or the desk?",
       description:
-        "Premium Mpillow plus cervical neck support help overnight alignment after long screen days. Open Learn more for the tech-neck recovery story — modular support fitted to your posture and sleep style.",
+        "Long screen days can leave your neck stiff. Premium Mpillow is fitted to how you sleep, and an optional cervical neck support inside helps keep your neck in line overnight.",
       feelTitle: "What you’ll feel",
-      feelSupported: { label: "More supported", description: "neck and head posture." },
-      feelFit: { label: "Better fit", description: "for your height and sleep style." },
-      feelUpkeep: { label: "Easier upkeep", description: "with washable components." },
+      feelSupported: { label: "Your neck feels supported", description: "as your head rests at the right height." },
+      feelFit: { label: "The fit matches your body", description: "because the height is set by your shoulder length and sleep position." },
+      feelUpkeep: { label: "Upkeep is easy", description: "since the components are washable." },
     },
     whyChoose: {
       cards: [
-        { key: "why-01", label: "01", title: "Adjustable height", description: "Dial loft to your shoulder length and sleep position" },
-        { key: "why-02", label: "02", title: "100% washable", description: "Wash covers and components without retiring the pillow" },
-        { key: "why-03", label: "03", title: "Designed for your sleep style", description: "Shape supports back and side sleepers in one pillow" },
-        { key: "why-04", label: "04", title: "Customisable width", description: "Sized for different shoulder widths and body builds" },
+        { key: "why-01", label: "01", title: "Adjustable height", description: "Set the height to your shoulder length and sleep position." },
+        { key: "why-02", label: "02", title: "100% washable", description: "Wash the covers and components instead of replacing the pillow." },
+        { key: "why-03", label: "03", title: "Designed for your sleep style", description: "One shape supports you on your back and on your side." },
+        { key: "why-04", label: "04", title: "Customisable width", description: "The width is sized to your shoulders and build." },
         {
           key: "why-05",
           label: "05",
           title: "Modular & serviceable",
-          description: "Replace layers without replacing the whole pillow",
+          description: "Replace layers without replacing the whole pillow.",
         },
       ],
     },
     mbolster: {
       title: "Mbolster",
       description:
-        "Custom-length by height for kids through adults in the same household — dial in side-sleep torso support with adjustable firmness.",
-      subtitle: "Part of the same Science of Sleep system as Mpillow",
-      buttonCustomise: "Customise mbolster",
+        "Mbolster is sized by height for everyone in your household, from kids to adults. You can adjust the firmness for side sleeping.",
+      subtitle: "It pairs with Mpillow as part of the same Science of Sleep system.",
+      buttonCustomise: "Customise Mbolster",
       fromPricePrefix: "From",
       specs: { customisation: "Customisation", fitControl: "Fit control" },
     },
     credibility: {
       cards: [
-        { key: "cred-01", title: "Singapore Good Design 2022", description: "Award-winning Science of Sleep design" },
-        { key: "cred-02", title: "7 years", description: "Seven years refining cervical fit" },
-        { key: "cred-03", title: "Patented", description: "Patented modular support across markets" },
+        { key: "cred-01", title: "Singapore Good Design 2022", description: "The design behind our Science of Sleep pillows won this award." },
+        { key: "cred-02", title: "7 years", description: "We've spent seven years refining cervical fit." },
+        { key: "cred-03", title: "Patented", description: "Our modular design is patented in multiple countries." },
       ],
     },
     review: {
-      title: "Dr Steven Hulme's Mpillow Review",
-      subtitle: "Clinician review of Mpillow's customised cervical support for neck pain — Singapore.",
-      videoTitle: "Dr Steven Hulme's Mpillow Review",
+      title: "Dr Steven Hulme's Mpillow review",
+      subtitle: "Watch a clinician review of Mpillow, the customised cervical pillow from Singapore, for people with neck pain.",
+      videoTitle: "Dr Steven Hulme's Mpillow review",
     },
     founder: {
       title: "A note from our founder",
       subtitle: "Why we built this company",
       paragraphs: [
-        "What you're buying isn't just a product — it's everything that went into it: the art, the design, the long nights, the hard work, the setbacks, the breakthroughs, the persistence, the dedication, the time, and the love.",
-        "A truly good product isn't made by copying what already exists. It's made by listening closely to real people and building around their needs and pain points. We've poured thousands of hours into research and refinement — learning from mistakes, taking feedback to heart, and continuing even when it was difficult. And through it all, we've held on to one belief: if we keep showing up with honest intention and help others, God will open the way.",
-        "That is why we measure: shoulder length, neck curve, and sleep position set a cervical fit one-size foam cannot match. Science of Sleep starts with your body, not a stock loft.",
+        "When you buy an Mpillow, you're buying everything that went into it. That includes the design, the long nights and hard work, the setbacks and breakthroughs, and a great deal of time and love.",
+        "A truly good product comes from listening closely to real people and building around their needs and pain points, rather than copying what already exists. We've poured thousands of hours into research and refinement. We learned from our mistakes and kept going when it was difficult. Through it all, we've held on to one belief, that if we keep showing up with honest intention and keep helping others, God will open the way.",
+        "That's why we measure you before we build your pillow. Your shoulder length, neck curve and sleep position set your cervical fit, and one-size foam can't match that. The Science of Sleep starts with your body.",
       ],
       name: "Darren Yeo",
       role: "Founder",
     },
     stories: {
       title: "Hear from Singapore customers",
-      subtitle: "Real Google reviews on custom-fit sleep and neck comfort.",
+      subtitle: "Read real Google reviews from our customers about custom-fit sleep and neck comfort.",
     },
   },
   slides: {
@@ -148,7 +148,7 @@ export const enUS: Messages = {
         "Watch Skyjin's testimonial on how he finds the Mpillow to be the only pillow that can fit his size and build perfectly and give him the right support.",
     },
     sizeMatters: {
-      trigger: "Learn More",
+      trigger: "Learn more",
       title: "Science of Sleep — why size matters",
       description: "Size matters — a pillow should fit you, not the other way around.",
       pressQuote: {

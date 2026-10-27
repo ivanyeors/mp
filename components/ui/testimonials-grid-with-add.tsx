@@ -86,8 +86,8 @@ export function AddReviewCard({
           <div className="bg-primary/10 mb-4 rounded-full p-4">
             <Plus className="text-primary h-8 w-8" aria-hidden="true" />
           </div>
-          <h3 className="mb-2 text-lg font-semibold">Add Your Review</h3>
-          <p className="text-muted-foreground text-sm">Share your experience with our product</p>
+          <h3 className="mb-2 text-lg font-semibold">Add your review</h3>
+          <p className="text-muted-foreground text-sm">Share your Mpillow experience on Google.</p>
         </CardContent>
       </Card>
     </a>

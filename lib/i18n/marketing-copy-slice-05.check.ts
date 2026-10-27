@@ -26,7 +26,7 @@ assert.doesNotMatch(enUS.slides.sizeMatters.title, BANNED);
 const cred = enUS.home.credibility.cards.map((c) => c.description).join(" ");
 assert.match(cred, /Science of Sleep/i);
 assert.match(cred, /cervical fit/i);
-assert.match(cred, /patented modular/i);
+assert.match(cred, /patented modular|modular design is patented/i);
 assert.doesNotMatch(cred, BANNED);
 
 // --- Review subtitle ---
