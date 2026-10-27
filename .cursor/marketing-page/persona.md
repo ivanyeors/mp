@@ -15,7 +15,7 @@ Under all three personas: habitual pillow buyers who never find the right fit; c
 
 - Chronic neck pain / stiffness; receptive to Premium bespoke and in-person fitting as a clinical signal.
 - Lead the **first viewport** and Premium path (hero, Size Matters, credibility, clinician review, founder, appointment CTAs).
-- Brand frame: **Science of Sleep** — measurement-led cervical fit, not gift copy.
+- Brand frame: measurement-led cervical fit, not gift copy. Never use "Science of Sleep" (retired).
 
 ## 2. Tech Neck professionals
 

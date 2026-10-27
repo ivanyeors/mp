@@ -14,17 +14,17 @@ const BANNED = /\b(prescribe|treat|cure|rehab)\b/i;
 const LOCAL_AMB = /local\s+ambassadors?/i;
 
 // --- Size Matters slide title ---
-assert.match(enUS.slides.sizeMatters.title, /Science of Sleep/i);
+assert.doesNotMatch(enUS.slides.sizeMatters.title, /Science of Sleep/i);
 assert.match(enUS.slides.sizeMatters.title, /why size matters/i);
 assert.equal(
   enUS.slides.sizeMatters.description,
-  "Size matters — a pillow should fit you, not the other way around."
+  "A pillow should fit you, not the other way around."
 );
 assert.doesNotMatch(enUS.slides.sizeMatters.title, BANNED);
 
 // --- Credibility tiles ---
 const cred = enUS.home.credibility.cards.map((c) => c.description).join(" ");
-assert.match(cred, /Science of Sleep/i);
+assert.doesNotMatch(cred, /Science of Sleep/i);
 assert.match(cred, /cervical fit/i);
 assert.match(cred, /patented modular|modular design is patented/i);
 assert.doesNotMatch(cred, BANNED);
@@ -46,11 +46,11 @@ assert.doesNotMatch(founder, BANNED);
 
 // --- Ambassadors: Consumer framing, never Local Ambassadors ---
 assert.match(enUS.home.ambassadors.title, /how you stand is how you sleep/i);
-assert.match(enUS.home.ambassadors.description, /Consumer ambassadors/i);
+assert.match(enUS.home.ambassadors.description, /our ambassadors/i);
 assert.match(enUS.home.ambassadors.description, /Skyjin/i);
 assert.match(enUS.home.ambassadors.description, /Our Partners/i);
 assert.doesNotMatch(enUS.home.ambassadors.title + enUS.home.ambassadors.description, LOCAL_AMB);
-assert.match(enUS.slides.ambassadors.ambassadorsTitle, /Consumer Ambassadors/i);
+assert.match(enUS.slides.ambassadors.ambassadorsTitle, /our ambassadors/i);
 assert.doesNotMatch(enUS.slides.ambassadors.ambassadorsTitle, LOCAL_AMB);
 assert.doesNotMatch(enUS.home.ambassadors.description, BANNED);
 

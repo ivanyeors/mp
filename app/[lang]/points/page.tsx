@@ -9,7 +9,7 @@ import { POINTS_TERMS_UPDATED, pointsTermsSections } from "@/lib/points/terms";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Mpillow Points",
+  title: "How points work",
   description: "How Mpillow points work: earning, using, expiry and the rules that apply.",
 };
 

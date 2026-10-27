@@ -353,9 +353,9 @@ export function AppDock() {
                 ) : null}
               </AnimatePresence>
               <form action={signOutAction} method="post">
-                <button type="submit" className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`} aria-label="Logout">
+                <button type="submit" className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`} aria-label="Sign out">
                   <DockItem className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm">
-                    <DockLabel>Logout</DockLabel>
+                    <DockLabel>Sign out</DockLabel>
                     <DockIcon>
                       <LogOut className="h-full w-full text-neutral-300" />
                     </DockIcon>
