@@ -464,7 +464,7 @@ describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
     expect(h.db.order_items.map((i) => i.sku)).toEqual(["RESULT-M-premium", "RESULT-BOLSTER-medium"]);
     // Both builds move stock, each tagged with its own Result.
     expect(h.db.inventory_transactions.map((t) => (t.metadata as Row).result_id)).toEqual([ID, ID, BOLSTER]);
-    expect(h.createHeldCommissionsForOrder.mock.calls[0][1].lines).toHaveLength(2);
+    expect(h.createHeldCommissionsForOrder.mock.calls[0][1].items).toHaveLength(2);
 
     expect(row(ID)).toMatchObject({ status: "captured", order_id: "orders-1", final_amount: 110 });
     expect(row(BOLSTER)).toMatchObject({ status: "captured", order_id: "orders-1", final_amount: 60 });

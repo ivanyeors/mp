@@ -13,7 +13,6 @@ import { sendMilestoneReachedEmail } from "@/lib/email/partner";
 import {
   ENDOWED_UNITS,
   currentTierFor,
-  cumulativeRateBump,
   milestoneState,
   ratchetTier,
   sortRungs,
@@ -21,8 +20,6 @@ import {
   type MilestoneRung,
   type MilestoneState,
 } from "./index";
-
-const PRODUCT_TYPES = ["pillow", "bolster"] as const;
 
 /** The admin-tunable rung ladder, threshold-ascending. */
 export async function loadRungs(admin: SupabaseClient): Promise<MilestoneRung[]> {
@@ -88,58 +85,15 @@ async function ensureMilestoneRow(
 }
 
 /**
- * Raise the partner's commission scheme OVERRIDE so the cumulative rate bump feeds
- * #77 for SUBSEQUENT orders. rate_bump is percentage points added to the DEFAULT
- * percent scheme per product_type. Monotonic: never lowers an existing amount (an
- * admin's manual override is respected). Mirrors the null-safe upsert in the
- * partner-commissions server action.
- */
-async function bumpPartnerSchemes(
-  admin: SupabaseClient,
-  partnerId: string,
-  rateBump: number,
-): Promise<void> {
-  if (rateBump <= 0) return;
-  for (const productType of PRODUCT_TYPES) {
-    // Base = the DEFAULT (null-partner) scheme for this product type. A rate bump is
-    // percentage-points, so it only makes sense on a percent default; with a flat
-    // $/unit default, writing a percent override would be a blowout — skip it.
-    const { data: def } = await admin
-      .from("commission_schemes")
-      .select("kind, amount")
-      .is("partner_id", null)
-      .eq("product_type", productType)
-      .maybeSingle();
-    if (def?.kind !== "percent") continue;
-    const desired = Number(def?.amount ?? 0) + rateBump;
-
-    const { data: existing } = await admin
-      .from("commission_schemes")
-      .select("id, amount")
-      .eq("partner_id", partnerId)
-      .eq("product_type", productType)
-      .maybeSingle();
-
-    if (existing) {
-      if (Number(existing.amount) >= desired) continue; // never demote a manual override
-      await admin
-        .from("commission_schemes")
-        .update({ kind: "percent", amount: desired })
-        .eq("id", existing.id);
-    } else {
-      await admin
-        .from("commission_schemes")
-        .insert({ partner_id: partnerId, product_type: productType, kind: "percent", amount: desired });
-    }
-  }
-}
-
-/**
  * Rung-crossing hook. Call right AFTER createHeldCommissionsForOrder (both capture
  * sites). Idempotent + ratcheting: detects tiers newly crossed since the stored
- * max_tier, records each one-time cash bonus (unique on (partner_id, tier)), bumps
- * the scheme rate, and climbs max_tier. A no-op when nothing new is crossed. Must be
- * called best-effort (try/catch) by the caller — never break capture/payment.
+ * max_tier, records each crossing and its perk (unique on (partner_id, tier)), and
+ * climbs max_tier. A no-op when nothing new is crossed. Must be called best-effort
+ * (try/catch) by the caller — never break capture/payment.
+ *
+ * Rungs pay no money (ADR 0034): the Referral Partner Agreement pays the Schedule's
+ * flat commission and nothing else (clause 7.8), so a crossing grants no cash
+ * bonus and no rate bump, whatever a rung row still holds.
  */
 export async function applyMilestoneProgress(
   admin: SupabaseClient,
@@ -153,26 +107,26 @@ export async function applyMilestoneProgress(
   const newTier = ratchetTier(storedTier, currentTierFor(units, rungs));
   if (newTier <= storedTier) return; // no newly-crossed rung
 
-  // Record each newly-crossed rung's one-time bonus (idempotent via unique key).
+  // Record each newly-crossed rung (idempotent via unique key). No cash: see above.
   for (const rung of rungs.filter((r) => r.tier > storedTier && r.tier <= newTier)) {
     const { error } = await admin
       .from("milestone_bonuses")
       .insert({
         partner_id: partnerId,
         tier: rung.tier,
-        cash_bonus: rung.cash_bonus,
+        cash_bonus: 0,
         perk_label: rung.perk_label,
       });
     // 23505 = unique violation → bonus already granted; any other error is unexpected.
     if (error && error.code !== "23505") throw new Error(error.message);
 
     // Milestone-reached email (#84): idempotent on entity_id = `${partnerId}:tier${tier}`.
-    // Best-effort — an email failure must not abort the rate bump / ratchet below.
+    // Best-effort — an email failure must not abort the ratchet below.
     try {
       await sendMilestoneReachedEmail(admin, {
         partnerId,
         tier: rung.tier,
-        cashBonus: rung.cash_bonus,
+        cashBonus: 0,
         perkLabel: rung.perk_label,
       });
     } catch (e) {
@@ -186,9 +140,6 @@ export async function applyMilestoneProgress(
     .update({ max_tier: newTier })
     .eq("partner_id", partnerId)
     .lt("max_tier", newTier);
-
-  // Permanent rate bump for SUBSEQUENT orders (#77 resolveScheme picks up the override).
-  await bumpPartnerSchemes(admin, partnerId, cumulativeRateBump(newTier, rungs));
 }
 
 export interface MilestoneDashboard extends MilestoneState {

@@ -1,5 +1,10 @@
 # Partner referrals: single-credit closer-wins attribution, delivery-aligned commission release, clinic-margin framing
 
+> Amended by ADR 0034 (2026-10-27): commission is now the agreement's flat Commission Pool, once
+> per order holding a customised premium pillow, with the partner's own share and an optional
+> customer discount. The per-unit schemes and milestone money below are retired; attribution and
+> release stand.
+
 The partner portal (Partner Hub) pays partners for pillow/bolster units on
 attributed **Orders**. Four linked decisions define the money model:
 

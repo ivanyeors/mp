@@ -90,8 +90,11 @@ successful capture, never at hold.
    and inserts the Result as `held`. It reads stock only to set sticky
    `is_pre_order`. A discount code is checked here and its terms kept on the
    Result (`coupon_terms`); every later repricing takes them off the goods
-   (ADR 0033). Money only — a discount never changes what is built or
-   deducted.
+   (ADR 0033). A partner's code typed on a customised premium pillow does
+   the same with the partner's unused Commission Pool when Staff pass it to
+   customers (`coupon_id` null), and the hold fixes the partner's commission
+   on the Result (`partner_commission`, ADR 0034). Money only — a discount
+   never changes what is built or deducted.
 2. **Assign** (`POST /api/results/[id]/assign`, Staff, from Admin Panel →
    Results).
    - Checks shortages against `inventory_balances`. While the customer still
@@ -110,7 +113,9 @@ successful capture, never at hold.
    4. Insert the Order with `paid_at = now`. Each build becomes one goods
       `order_items` row with `variant_id = null`. Service lines are
       `kind 'service'` and never deducted. A discount code goes on the Order
-      as `coupon_id` / `discount_amount`, and the coupon's use is counted.
+      as `coupon_id` / `discount_amount`, and the coupon's use is counted. An
+      attributed Order holding a customised premium pillow gets one held
+      `commissions` row for the hold's `partner_commission` (ADR 0034).
    5. **Deduct**: one `sale` row per build line, metadata
       `{order_id, result_id, role}`. If the insert fails, the Order is flagged
       `needs_attention`. The deduction is not rolled back or retried.

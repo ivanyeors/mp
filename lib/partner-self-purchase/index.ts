@@ -7,8 +7,7 @@
  * admin-set rate (percent of MSRP, or flat $ off per unit), applied to the first
  * N commissionable units where N = remaining cap (unit_cap − already-consumed).
  * Over-cap units keep MSRP. The order stays UNATTRIBUTED (partner_id null), so no
- * commission/milestone is earned — mirrors commission's flat/percent semantics
- * (see lib/commissions computeCommission), only it discounts instead of pays.
+ * commission/milestone is earned.
  */
 
 export type SelfPurchaseKind = "flat" | "percent";

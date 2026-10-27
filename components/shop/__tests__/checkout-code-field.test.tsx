@@ -27,7 +27,7 @@ describe("CheckoutCodeField", () => {
   });
 
   it("says a referral code is active, and whose it is", () => {
-    expect(render({ state: "referral", code: "ABCD2345", partnerName: "Spine Clinic" })).toContain(
+    expect(render({ state: "referral", code: "ABCD2345", partnerName: "Spine Clinic", discount: 0 })).toContain(
       "Referral code active — referred by Spine Clinic",
     );
   });

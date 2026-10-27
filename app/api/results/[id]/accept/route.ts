@@ -51,7 +51,7 @@ const BodySchema = z.object({
   topupSessionId: z.string().min(1).optional(),
 });
 
-const ACCEPT_COLUMNS = `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source, coupon_id, coupon_code` as const;
+const ACCEPT_COLUMNS = `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source, partner_commission, coupon_id, coupon_code` as const;
 
 export async function POST(
   req: Request,
@@ -698,46 +698,54 @@ export async function POST(
     console.error("Ledger write failed after capture", e);
   }
 
-  // Held commission for an attributed in-store order (#77). Base = pillow/bolster
-  // BASE price only (build.basePrice = composed MSRP; excludes preference/add-on
-  // MSRPs, shipping, tax). Best-effort: money is already captured and the order
-  // exists, so a commission-write failure is logged, never fatal.
+  // The partner's commission for an attributed order (ADR 0034): flat, once per
+  // Qualifying Sale, and only when it holds a customised premium pillow. The hold
+  // fixed the amount the day the customer paid; a Result without one is priced on
+  // today's terms. Best-effort: money is already captured and the order exists, so
+  // a commission-write failure is logged, never fatal.
   if (row.partner_id) {
+    let qualifies = false;
     try {
-      await createHeldCommissionsForOrder(admin, {
+      qualifies = await createHeldCommissionsForOrder(admin, {
         orderId: order.id,
         partnerId: row.partner_id,
         // Null for shipped orders: release is dated from real delivery, not capture.
         deliveredAt: inStoreHandover ? now : null,
-        lines: members.map((m, i) => ({
-          orderItemId: orderItemIds[i],
-          productType: productTypeOf(m.row),
-          baseAmount: m.build.basePrice,
-          quantity: 1,
+        amount: row.partner_commission == null ? null : Number(row.partner_commission),
+        items: members.map((m, i) => ({
+          id: orderItemIds[i],
+          kind: "goods",
+          total_price: m.build.pricing.goods,
+          customization_snapshot: {
+            result_id: m.row.id as string,
+            product_type: productTypeOf(m.row),
+            assigned_tier: m.row.assigned_tier,
+          },
         })),
       });
     } catch (e) {
       console.error("Commission creation failed after capture", e);
     }
-    // Milestone rung-crossing (#79): detect newly-crossed rungs and apply the
-    // one-time bonus + permanent rate bump + ratchet. Best-effort — the money is
+    // Milestone progress (#79): counts Qualifying Sales. Best-effort — the money is
     // already captured, so a milestone failure is logged, never fatal.
     try {
       await applyMilestoneProgress(admin, row.partner_id);
     } catch (e) {
       console.error("Milestone progress failed after capture", e);
     }
-    // Referral-earned email (#84): fires once per attributed order (entity_id =
+    // Referral-earned email (#84): fires once per Qualifying Sale (entity_id =
     // order id). delivered_at is stamped at in-store handover, so release is dated.
     // Best-effort — never break capture.
-    try {
-      await sendReferralEarnedEmail(admin, {
-        partnerId: row.partner_id,
-        orderId: order.id,
-        currency: row.currency ?? "SGD",
-      });
-    } catch (e) {
-      console.error("Referral-earned email failed after capture", e);
+    if (qualifies) {
+      try {
+        await sendReferralEarnedEmail(admin, {
+          partnerId: row.partner_id,
+          orderId: order.id,
+          currency: row.currency ?? "SGD",
+        });
+      } catch (e) {
+        console.error("Referral-earned email failed after capture", e);
+      }
     }
   }
 

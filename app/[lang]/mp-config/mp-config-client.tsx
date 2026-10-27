@@ -180,6 +180,7 @@ import {
 } from "@/components/configurator/preview-contact-fields";
 import {
   checkoutCodeDiscount,
+  checkoutCodeDiscountLabel,
   checkoutCodeFreeShipping,
   checkoutCodeToSend,
   type CheckoutCodeContext,
@@ -2810,7 +2811,7 @@ export function MpConfigClient({
       : null;
     const codeDiscount = storedCouponPricing?.discount ?? checkoutCodeDiscount(codeStatus);
     const codeFreeShipping = storedCouponPricing?.freeShipping ?? checkoutCodeFreeShipping(codeStatus);
-    const discountCode = storedCoupon?.code ?? (codeStatus.state === "discount" ? codeStatus.code : null);
+    const discountCode = storedCoupon?.code ?? checkoutCodeDiscountLabel(codeStatus);
     // Shipping joins the one price once the address has one: free_above is
     // earned by goods alone, as the hold applies it.
     const shippingAmount = quoteBlocked

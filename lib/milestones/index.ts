@@ -10,8 +10,10 @@
  *    commission row → auto-excluded.
  *  - currentTier climbs as units cross rung thresholds. The stored max_tier RATCHETS
  *    it: a tier is never demoted once reached, even if units later fall on a refund.
- *  - rate_bump is percentage points; the cumulative bump across achieved tiers is
- *    added to the partner's commission scheme override (feeds #77 for SUBSEQUENT orders).
+ *  - Since ADR 0034 each commission row is one Qualifying Sale, so the bar counts
+ *    sales; rows the retired per-unit schemes wrote still count their units.
+ *  - rate_bump is percentage points, summed here for display only. Nothing applies
+ *    it: the agreement's commission is flat, and rungs pay no money (ADR 0034).
  */
 
 export const ENDOWED_UNITS = 2;

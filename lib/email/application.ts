@@ -11,7 +11,7 @@
 // would nest one <html> document inside another.
 
 import { renderEmailShell } from "./base";
-import { link, paragraph, paragraphHtml, statusPill } from "./components";
+import { infoList, link, paragraph, paragraphHtml, statusPill } from "./components";
 import {
   defaultEmailCopy,
   defineEmailCopy,
@@ -20,11 +20,32 @@ import {
   type EmailCopy,
   type EmailCopySpec,
 } from "./copy";
+import { money } from "./format";
 import { escapeHtml } from "./html";
 import type { ApplicationOutcome } from "@/lib/partner-application";
 import type { RenderedEmail } from "./types";
 
-type Opts = { partnerSignInUrl: string; supportEmail: string };
+/**
+ * The facts the agreement's Approval Notice states (clause 1.1): the Promo Code
+ * and Territory, plus the Commission Pool Staff set at approval (ADR 0034).
+ */
+export type ApprovalNotice = {
+  promoCode: string | null;
+  territory: string;
+  /** S$ per Qualifying Sale. */
+  commissionPool: number;
+};
+
+type Opts = { partnerSignInUrl: string; supportEmail: string; notice?: ApprovalNotice };
+
+function noticeRows(notice: ApprovalNotice | undefined): Array<{ label: string; value: string; strong?: boolean }> {
+  if (!notice) return [];
+  return [
+    ...(notice.promoCode ? [{ label: "Your Promo Code", value: notice.promoCode, strong: true }] : []),
+    { label: "Territory", value: notice.territory },
+    { label: "Commission Pool", value: `${money(notice.commissionPool, "SGD")} per qualifying sale` },
+  ];
+}
 
 // ------------------------------------------------------------
 // The words of each outcome (PRD-email-templates)
@@ -101,10 +122,12 @@ const signoffText = (signoff: string) => (signoff ? ["", signoff] : []);
 
 function approved(opts: Opts, copy: CopyOf<"approved"> = defaultEmailCopy(APPLICATION_EMAIL_COPY.approved)): RenderedEmail {
   const t = filled(copy, { support_email: opts.supportEmail });
+  const notice = noticeRows(opts.notice);
   return {
     subject: t.subject,
     text: [
       t.intro,
+      ...(notice.length ? ["", ...notice.map((r) => `${r.label}: ${r.value}`)] : []),
       "",
       `${t.button}: ${opts.partnerSignInUrl}`,
       ...(t.questions ? ["", t.questions] : []),
@@ -116,6 +139,7 @@ function approved(opts: Opts, copy: CopyOf<"approved"> = defaultEmailCopy(APPLIC
       audience: "partner",
       bodyHtml: `${statusPill("Approved", "success")}
 ${paragraph(t.intro, { top: 16 })}
+${infoList(notice)}
 ${t.questions ? paragraphHtml(withSupportLink(copy.questions, opts), { muted: true }) : ""}
 ${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
       cta: { href: opts.partnerSignInUrl, label: t.button },
