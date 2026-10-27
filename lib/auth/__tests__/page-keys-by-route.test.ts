@@ -60,8 +60,8 @@ const PAGES: [string[], Permission[]][] = [
   [[`${S}/rma`], ["returns"]],
   [[`${S}/docs`], ["docs"]],
   [[`${S}/users`, "app/api/admin/users", "app/api/admin/roles", "app/api/staff/telegram-operators", "app/api/staff/[id]"], ["users"]],
-  // Shared by Inventory, Shopify Link and Costings; each action names the pages that call it.
-  [[`${S}/inventory/actions.ts`], ["inventory", "shopify-link", "costings"]],
+  // Shared by Inventory and Shopify Link; each action names the pages that call it.
+  [[`${S}/inventory/actions.ts`], ["inventory", "shopify-link"]],
 ];
 
 describe("each page's routes are guarded by that page's key", () => {

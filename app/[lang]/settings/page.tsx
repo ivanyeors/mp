@@ -109,7 +109,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-1.5">
           <h2 className="text-sm font-medium">Session</h2>
           <InfoTip label="About Session">
-            <p>You&apos;re signed in with your staff account. Signing out ends your session on every device.</p>
+            <p>You&apos;re signed in with your staff account. Signing out ends your session on this device only.</p>
           </InfoTip>
         </div>
         <Button
@@ -118,7 +118,7 @@ export default function SettingsPage() {
             try {
               setLoggingOut(true);
               const supabase = createSupabaseBrowserClient();
-              await supabase.auth.signOut();
+              await supabase.auth.signOut({ scope: "local" });
               router.replace(
                 withLocale(
                   `/account/login?next=${encodeURIComponent(withLocale("/settings", locale))}`,

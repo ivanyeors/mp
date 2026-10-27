@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = content.seo_title || content.title || product.slug;
   const description =
-    content.seo_description || content.description || `${content.title} - Custom pillow by Mpillow`;
+    content.seo_description || content.description || `Shop ${content.title} at Mpillow.`;
 
   return buildPageMetadata({
     title,

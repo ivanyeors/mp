@@ -24,7 +24,7 @@ export function landingAuthPill(role: DockSessionRole): {
   return { label: "Sign in", href: "/account/login" };
 }
 
-/** Home + Logout dock only on Admin Panel routes (not the login redirect). */
+/** Home + Sign out dock only on Admin Panel routes (not the login redirect). */
 export function isAdminPanelDockPath(basePathname: string): boolean {
   if (
     basePathname === "/settings/login" ||

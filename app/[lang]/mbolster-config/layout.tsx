@@ -5,12 +5,12 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 
 const META: Record<Locale, { title: string; description: string }> = {
   "en-US": {
-    title: "Customise Your Mbolster | Support Bolster Singapore",
+    title: "Customise your Mbolster support bolster in Singapore",
     description:
       "Design your custom Mbolster support bolster in Singapore. Choose length (short, medium, long), case, and add to cart. Ergonomic side-sleeping support for Singapore homes.",
   },
   "zh-CN": {
-    title: "定制您的 Mbolster | 新加坡支撑抱枕",
+    title: "在新加坡定制您的 Mbolster 支撑抱枕",
     description: "在新加坡定制您的 Mbolster 支撑抱枕。选择长度、面料并加入购物车。",
   },
 };

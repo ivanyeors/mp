@@ -15,9 +15,9 @@ import { MbolsterConfigClient } from "./mbolster-config-client";
 
 const INTRO: Record<Locale, { h1: string; lede: string }> = {
   "en-US": {
-    h1: "Customise Your Mbolster",
+    h1: "Customise your Mbolster",
     lede:
-      "Customise your Mbolster — Mpillow's custom-length support bolster for side sleepers in Singapore. Choose short, medium, or long by height — including kids — so the whole household can share the same Science of Sleep approach. Pick a washable case fabric and order online with delivery. Mbolster is built for hip–spine alignment and hug-sleep comfort, using the same ergonomic philosophy as our cervical pillows so your whole sleep setup stays consistent.",
+      "Customise your Mbolster, the custom-length support bolster from Mpillow for side sleepers in Singapore. Choose short, medium, or long by height, with sizes for kids too, so everyone in your household gets the right fit. Pick a washable case fabric and order online with delivery. Mbolster supports your hips and spine as you hug it, and follows the same ergonomic thinking as our cervical pillows, so your whole sleep setup feels consistent.",
   },
   "zh-CN": {
     h1: "定制您的 Mbolster",

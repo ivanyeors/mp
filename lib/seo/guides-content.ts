@@ -17,7 +17,7 @@ export type GuideContent = {
 const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
   "neck-pain": {
     "en-US": {
-      metaTitle: "Pillow for Neck Pain Singapore | Mpillow Guide",
+      metaTitle: "A guide to pillows for neck pain in Singapore",
       metaDescription:
         "Find the best pillow for neck pain in Singapore. Mpillow custom pillows are fitted to your sleep position and body build, measured at home or in store.",
       keywords: ["pillow for neck pain Singapore", "neck support pillow Singapore"],
@@ -51,7 +51,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       ctaLabel: "Start custom pillow customisation",
     },
     "zh-CN": {
-      metaTitle: "新加坡颈椎痛枕头指南 | Mpillow",
+      metaTitle: "新加坡颈椎痛枕头指南",
       metaDescription: "在新加坡寻找缓解颈椎痛的定制枕头。Mpillow 可在家测量，也可到店量身配置。",
       keywords: ["新加坡 颈椎痛 枕头"],
       h1: "新加坡颈椎痛枕头指南",
@@ -73,7 +73,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
   },
   "cervical-pillow": {
     "en-US": {
-      metaTitle: "Best Cervical Pillow Singapore | Mpillow Guide",
+      metaTitle: "A guide to the best cervical pillow in Singapore",
       metaDescription:
         "Compare cervical support pillows in Singapore. Mpillow Premium offers an optional cervical neck support accessory and a measured fit, at home or in store.",
       keywords: ["best cervical pillow Singapore", "cervical support pillow"],
@@ -102,7 +102,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       ctaLabel: "Customise your cervical pillow",
     },
     "zh-CN": {
-      metaTitle: "新加坡颈椎枕指南 | Mpillow",
+      metaTitle: "新加坡颈椎枕指南",
       metaDescription: "新加坡颈椎支撑枕对比与选购指南。",
       keywords: ["新加坡 颈椎枕"],
       h1: "新加坡最佳颈椎枕",
@@ -120,7 +120,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
   },
   "custom-pillow": {
     "en-US": {
-      metaTitle: "Customised Pillow Singapore | Mpillow Guide",
+      metaTitle: "A guide to customised pillows in Singapore",
       metaDescription:
         "Order a customised pillow in Singapore. Choose tier, size, cover and case, measured at home or in store.",
       keywords: ["customised pillow Singapore", "custom pillow Singapore"],
@@ -149,7 +149,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       ctaLabel: "Start customised pillow order",
     },
     "zh-CN": {
-      metaTitle: "新加坡定制枕头 | Mpillow 指南",
+      metaTitle: "新加坡定制枕头指南",
       metaDescription: "在新加坡订购定制枕头。选择等级、尺寸和面料。",
       keywords: ["新加坡 定制枕头"],
       h1: "新加坡定制枕头",

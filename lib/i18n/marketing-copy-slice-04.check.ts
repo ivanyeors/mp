@@ -20,10 +20,11 @@ function words(s: string) {
   return t ? t.split(/\s+/).length : 0;
 }
 
-// --- Premium hero: Science of Sleep + consultative fitting ---
+// --- Premium hero: consultative fitting (Science of Sleep is retired) ---
 const premium = enUS.slides.premiumMpillow;
 const hero = `${premium.heroSubtitle} ${premium.heroParagraphs.join(" ")}`;
-assert.match(hero, /Science of Sleep/i);
+assert.doesNotMatch(hero, /Science of Sleep/i);
+assert.match(hero, /Singapore/i, "in-store fitting is Singapore only");
 assert.match(hero, /consultative/i);
 assert.match(hero, /fitting|fit/i);
 assert.doesNotMatch(hero, BANNED);
@@ -56,13 +57,13 @@ const mpSrc = read("app/[lang]/mp-config/page.tsx");
 const h1Match = mpSrc.match(/"en-US":\s*\{[\s\S]*?h1:\s*"((?:\\.|[^"\\])*)"/);
 assert.ok(h1Match, "en-US mp-config h1");
 const h1 = h1Match![1].replace(/\\"/g, '"');
-assert.equal(h1, "Customise Your Mpillow Cervical Pillow");
+assert.equal(h1, "Customise your Mpillow cervical pillow");
 assert.doesNotMatch(h1, /Mpillow Pillow/);
 
 const ledeMatch = mpSrc.match(/"en-US":\s*\{[\s\S]*?lede:\s*"((?:\\.|[^"\\])*)"/);
 assert.ok(ledeMatch, "en-US mp-config lede");
 const lede = ledeMatch![1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
-assert.match(lede, /Science of Sleep/i);
+assert.doesNotMatch(lede, /Science of Sleep/i);
 assert.match(lede, /in-store fitting/i);
 assert.match(lede, /Singapore/i);
 assert.match(lede, /modular/i);
