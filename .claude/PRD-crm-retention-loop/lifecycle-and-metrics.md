@@ -57,8 +57,9 @@ Everything after the first purchase rests on this, so it is defined once:
 - **Date of a purchase** is its `paid_at`. *Last purchase* is the latest one.
 
 Today the Customer overview's `paid_orders` and `last_paid_at` count every paid Order, re-adjustment
-fees included, so a customer who paid for a re-adjustment shows two orders. Slice 03 fixes this
-for the stage; the existing *Last order* filter has the same flaw.
+fees included, so a customer who paid for a re-adjustment shows two orders. Slice 03 adds
+`purchases` and `last_purchase_at`, which count goods only, reads the stage from them, and moves
+the *Last order* filter, sort and column onto them.
 
 ## Stages
 
@@ -88,8 +89,8 @@ is where they left, never why. Slice 10 asks them. See [Closing the loop on drop
 
 ### After the first purchase
 
-Exactly one per Customer with a purchase, checked top to bottom. The thresholds are the owner's
-to set (PRD owner decision 1). These are the recommended ones.
+Exactly one per Customer with a purchase, checked top to bottom. The thresholds were settled by
+the owner on 2026-10-27 (PRD owner decision 1).
 
 | Stage | Rule | Why this line |
 |---|---|---|

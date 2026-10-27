@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage, type AdminContext } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
-import { getAdminCustomer } from "@/lib/ecommerce/admin/customers";
+import { getAdminCustomer, getAdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import { listCustomerNotes } from "@/lib/crm/notes";
 import { getMigratedCustomer } from "@/lib/customer-migration/overview";
 import { readContactFacts } from "@/lib/crm/contact-facts";
@@ -19,6 +19,8 @@ export const runtime = "nodejs";
  * Customer detail. The `GET /api/shop/customers/[id]` request the client used
  * to make on mount is read here instead, with the Customer's notes and what the
  * Shopify import holds for them (the From Shopify card, migration slice 12).
+ * The **Lifecycle stage** (PRD-crm-retention-loop slice 03) is read from the
+ * overview, and a failed read only leaves it out.
  * The Contact and sign-in card (CRM slice 11) reads the customer row itself;
  * what is matched by phone (WhatsApp, the other numbers seen) is read here
  * once the row's number is known. The orders
@@ -42,10 +44,11 @@ export default async function CustomerDetailPage({
 
     const ctx = await requireAdminPage("customers", locale);
 
-    const [customer, notes, migration] = await Promise.all([
+    const [customer, notes, migration, lifecycle] = await Promise.all([
         getAdminCustomer(id),
         listCustomerNotes(id).catch(() => null),
         getMigratedCustomer(id),
+        getAdminCustomerLifecycle(id).catch(() => null),
     ]);
 
     const initialData: CustomerDetailInitialData = {
@@ -54,6 +57,7 @@ export default async function CustomerDetailPage({
             : { error: customer.error },
         notes,
         migration,
+        lifecycle,
         contact: customer.ok ? await readContact(customer.row as Customer, ctx) : undefined,
     };
 

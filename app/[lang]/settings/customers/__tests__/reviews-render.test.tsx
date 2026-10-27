@@ -62,6 +62,11 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   shop_review_avg_rating: null,
   review_rating: null,
   last_campaign_sent_at: null,
+  purchases: 0,
+  last_purchase_at: null,
+  lifecycle_stage: "lead",
+  lifecycle_delivery: null,
+  lifecycle_undated: false,
   ...over,
 });
 

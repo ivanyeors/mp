@@ -83,3 +83,23 @@ export async function getAdminCustomer(id: string): Promise<AdminCustomerResult>
   if (error) return { ok: false, error: "Customer not found" };
   return { ok: true, row: data };
 }
+
+/** The Customer's **Lifecycle stage** and what it is read from (PRD-crm-retention-loop slice 03). */
+export type AdminCustomerLifecycle = Pick<
+  CustomerOverviewRow,
+  "purchases" | "last_purchase_at" | "lifecycle_stage" | "lifecycle_delivery" | "lifecycle_undated"
+>;
+
+/**
+ * One Customer's stage, from the overview, for the detail page. Null when it
+ * cannot be read: the stage is a summary, never a reason to fail the page.
+ */
+export async function getAdminCustomerLifecycle(id: string): Promise<AdminCustomerLifecycle | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("admin_customer_overview")
+    .select("purchases, last_purchase_at, lifecycle_stage, lifecycle_delivery, lifecycle_undated")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as AdminCustomerLifecycle;
+}

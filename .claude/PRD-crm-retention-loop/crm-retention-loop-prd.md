@@ -176,9 +176,10 @@ graph LR
 
 ## Owner decisions
 
-1. **Stage thresholds.** Recommended: *At risk* from 12 months after the last paid Order (when
-   the yearly check-up falls due), *Lapsed* from 24 months (when points expire, ADR 0030).
-   *Loyal* from 3 paid Orders. Alternative: let the owner set them on Customers → Settings.
+1. **Settled (owner, 2026-10-27): stage thresholds.** *At risk* from 12 months after the last
+   purchase (when the yearly check-up falls due), *Lapsed* from 24 months (when points expire,
+   ADR 0030), *Loyal* from 3 purchases. Fixed in code (`lib/crm/lifecycle-stage.ts`), not a
+   setting.
 2. **Settled (owner, 2026-10-27): Shopify customers go through the same lifecycle.** Open with
    it: the platform holds only their Shopify-era order count and total, no dates or products.
    Recommended: import the Shopify orders export once (slice 09). That amends ADR 0029 decision 10

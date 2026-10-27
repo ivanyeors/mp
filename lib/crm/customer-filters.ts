@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { PURCHASE_CLASSES, type PurchaseClass } from "@/lib/crm/customer-overview";
+import { LIFECYCLE_STAGES, LIFECYCLE_STAGE_LABEL, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
+import { monthsBefore } from "@/lib/crm/months";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
@@ -89,6 +91,16 @@ const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> 
   unsubscribed: "unsubscribed",
 };
 
+/**
+ * *Stage* (PRD-crm-retention-loop slice 03): any of these **Lifecycle
+ * stages**, the overview's `lifecycle_stage`. The URL spells them with
+ * hyphens (`stage=at-risk,lapsed`), as every other filter value.
+ */
+export const STAGE_FILTERS = LIFECYCLE_STAGES;
+export type StageFilter = LifecycleStage;
+const STAGE_PARAMS = ["lead", "new", "repeat", "loyal", "at-risk", "lapsed"] as const;
+const stageParam = (stage: LifecycleStage) => stage.replace("_", "-");
+
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
 export type BoughtFilter = PurchaseClass;
@@ -98,9 +110,11 @@ export const READJUSTED_FILTERS = ["ever", "never"] as const;
 export type ReadjustedFilter = (typeof READJUSTED_FILTERS)[number];
 
 /**
- * *Last order*: the latest counted **Order** was paid within the last N
- * months (`within:6`), or more than N months ago (`over:12`). A Customer with
- * no counted Order matches neither.
+ * *Last order*: the latest **purchase** (a counted Order with a goods line,
+ * `last_purchase_at`; PRD-crm-retention-loop slice 03) was paid within the
+ * last N months (`within:6`), or more than N months ago (`over:12`). A
+ * re-adjustment fee is not a purchase. A Customer with no purchase here, a
+ * Shopify-only buyer included, matches neither.
  */
 export interface LastOrderFilter {
   when: "within" | "over";
@@ -138,6 +152,8 @@ export interface CustomerFilters {
   followups: FollowUpFilter;
   /** *Email consent*: `marketing_email` on the overview. */
   consent: ConsentFilter;
+  /** In any of these Lifecycle stages; empty for no filter. */
+  stage: StageFilter[];
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
   last_order: LastOrderFilter | null;
@@ -165,6 +181,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   points: "all",
   followups: "all",
   consent: "all",
+  stage: [],
   bought: [],
   last_order: null,
   readjusted: null,
@@ -199,6 +216,10 @@ const PARAM_SCHEMAS = {
   points: z.enum(POINTS_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
+  // As `bought`: an unknown value drops the parameter; kept in stage order, once each.
+  stage: commaList
+    .pipe(z.array(z.enum(STAGE_PARAMS)))
+    .transform((v) => STAGE_FILTERS.filter((stage) => v.includes(stageParam(stage) as (typeof STAGE_PARAMS)[number]))),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
@@ -280,7 +301,7 @@ export interface ParsedCustomerFilters {
 }
 
 export function parseCustomerFilters(params: URLSearchParams): ParsedCustomerFilters {
-  const filters: CustomerFilters = { ...DEFAULT_CUSTOMER_FILTERS, tags: [], bought: [] };
+  const filters: CustomerFilters = { ...DEFAULT_CUSTOMER_FILTERS, tags: [], stage: [], bought: [] };
   const ignored: FilterKey[] = [];
   for (const key of FILTER_KEYS) {
     const raw = params.get(key);
@@ -322,6 +343,7 @@ export function customerFilterParams(
   if (f.points !== "all") out.set("points", f.points);
   if (f.followups !== "all") out.set("followups", f.followups);
   if (f.consent !== "all") out.set("consent", f.consent);
+  if (f.stage.length) out.set("stage", f.stage.map(stageParam).join(","));
   if (f.bought.length) out.set("bought", f.bought.join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
@@ -399,6 +421,7 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   points: (v) => POINTS_LABELS[v as Exclude<PointsFilter, "all">],
   followups: () => "Has an open follow-up",
   consent: (v) => `Email ${CONSENT_LABELS[v]}`,
+  stage: (v) => `Stage: ${v.map((s) => LIFECYCLE_STAGE_LABEL[s]).join(" or ")}`,
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
@@ -430,6 +453,7 @@ export interface CustomerListQuery {
   overlaps(column: string, value: string): this;
   contains(column: string, value: string[]): this;
   eq(column: string, value: boolean | string | number): this;
+  in(column: string, values: readonly string[]): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs", value: string | null): this;
   gt(column: string, value: string | number): this;
@@ -448,20 +472,8 @@ export function pgTextArray(values: readonly string[]): string {
   return `{${values.map((v) => `"${v.replace(/["\\]/g, (ch) => `\\${ch}`)}"`).join(",")}}`;
 }
 
-/**
- * `now` less `months` calendar months, the way Postgres's
- * `now() - interval 'N months'` counts: the day is kept, or clamped to the
- * last day of a shorter month (31 March less one month is 28 February).
- */
-export function monthsBefore(now: Date, months: number): Date {
-  const d = new Date(now);
-  const day = d.getUTCDate();
-  d.setUTCDate(1);
-  d.setUTCMonth(d.getUTCMonth() - months);
-  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-  d.setUTCDate(Math.min(day, lastDay));
-  return d;
-}
+// Lives in ./months so lib/crm/lifecycle-stage can count months without this module.
+export { monthsBefore };
 
 /**
  * Applies the filters and the sort to a query on `admin_customer_overview`.
@@ -499,11 +511,12 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 
   if (filters.followups === "open") q = q.gt("open_followups", 0);
   if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
+  if (filters.stage.length) q = q.in("lifecycle_stage", filters.stage);
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
   if (filters.last_order) {
     const cutoff = monthsBefore(now, filters.last_order.months).toISOString();
-    q = filters.last_order.when === "within" ? q.gte("last_paid_at", cutoff) : q.lt("last_paid_at", cutoff);
+    q = filters.last_order.when === "within" ? q.gte("last_purchase_at", cutoff) : q.lt("last_purchase_at", cutoff);
   }
   if (filters.readjusted === "ever") q = q.not("last_readjusted_at", "is", null);
   if (filters.readjusted === "never") q = q.is("last_readjusted_at", null);
@@ -533,9 +546,9 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
         .order("account_linked_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
     case "last-order":
-      // Latest counted Order first; Customers who never ordered last.
+      // Latest purchase first; Customers with none here last.
       return q
-        .order("last_paid_at", { ascending: false, nullsFirst: false })
+        .order("last_purchase_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
     case "spend":
       return q.order("total_spent", { ascending: false }).order("created_at", { ascending: false });

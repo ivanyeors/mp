@@ -16,6 +16,7 @@
  * this list agree.
  */
 
+import type { LifecycleDelivery, LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /** Every column of `admin_customer_overview`, in the view's order. */
@@ -61,6 +62,11 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "shop_review_avg_rating",
   "review_rating",
   "last_campaign_sent_at",
+  "purchases",
+  "last_purchase_at",
+  "lifecycle_stage",
+  "lifecycle_delivery",
+  "lifecycle_undated",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -163,6 +169,20 @@ export interface CustomerOverviewRow {
    * 08; sent, or since bounced or complained); null if the campaign never did.
    */
   last_campaign_sent_at: string | null;
+  /**
+   * **Purchases** (PRD-crm-retention-loop slice 03): counted Orders with a
+   * goods line, so a re-adjustment fee is not one, plus the Shopify-era order
+   * count until slice 09 imports those Orders.
+   */
+  purchases: number;
+  /** The latest purchase here; null with none here (a Shopify-only buyer too). */
+  last_purchase_at: string | null;
+  /** The **Lifecycle stage** (lib/crm/lifecycle-stage), as of the read. */
+  lifecycle_stage: LifecycleStage;
+  /** A dated *New* Customer's one purchase on its way; null otherwise. */
+  lifecycle_delivery: LifecycleDelivery | null;
+  /** Placed by the Shopify-era count alone: no dates yet, so never At risk or Lapsed. */
+  lifecycle_undated: boolean;
 }
 
 /** Display name, or null when the Customer has none. */

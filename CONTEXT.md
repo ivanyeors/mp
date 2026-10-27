@@ -478,6 +478,14 @@ _Avoid_: "activity log" or "events table" — nothing is copied
 A named, saved set of Customers-list filters, shared by all **Staff** with `customers` and counted live. A **Segment** and the same filters in the URL always return the same **Customers**.
 _Avoid_: "list" (a Segment is a query, not a frozen set of people); "audience" (that is email marketing's word for a Segment narrowed by consent)
 
+**Purchase**:
+A counted **Order** (paid, and not pending, cancelled, refunded or payment-failed) with at least one goods line. A re-adjustment fee **Order** holds only a service line, so it is never a **Purchase**. Until the Shopify order history is imported (PRD-crm-retention-loop slice 09), a **Migrated customer**'s Shopify-era order count is added to their **Purchases**, with no dates.
+_Avoid_: counting every paid **Order** as a purchase (`paid_orders` does, re-adjustment fees included)
+
+**Lifecycle stage**:
+Where a **Customer** is in the loop, one at a time, read from their **Purchases** and nothing else (PRD-crm-retention-loop slice 03; owner, 2026-10-27), checked in order: *Lapsed* (last **Purchase** more than 24 months ago), *At risk* (12 to 24 months ago), *Loyal* (3 or more), *Repeat* (2), *New* (1), *Lead* (none). The months are calendar months and the cut-offs strict, as the *Last order* filter's. A *New* **Customer**'s one **Purchase** is *awaiting delivery*, *delivered*, or *settled* 30 days after delivery. A buyer whose every **Purchase** is Shopify-era has no dates yet: placed by count, never *At risk* or *Lapsed*. Computed by `customer_lifecycle_stage`, mirrored in `lib/crm/lifecycle-stage.ts`.
+_Avoid_: storing it, or setting it by hand (it is derived when read); moving a **Customer** by reviews, ratings, returns or notes; "churned" (say *Lapsed*)
+
 **Follow-up**:
 A dated to-do about one **Customer**, assigned to a **Staff profile**, and done or not done.
 _Avoid_: "task" or "ticket" (it is not a support queue); assigning it to a **Member** or a login — a person works as a profile

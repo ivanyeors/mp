@@ -1386,11 +1386,12 @@ Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:153
+Defined in supabase/migrations/20261027150402_lifecycle_stage.sql:104
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
+  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:98
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
   - `resolveSegment()` [select] — lib/crm/segments.ts:244
@@ -2477,7 +2478,7 @@ app/[lang]/settings/customers/page.tsx
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
 - Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
-- Loads: `getAdminCustomer()`, `getMigratedCustomer()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
+- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `mp_staff`, `order_items`, `order_timeline`, `orders`
 - Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `customer_consent_events`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `migrated_customers`, `mp_config_responses`, `order_margins`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 

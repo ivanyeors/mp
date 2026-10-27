@@ -58,6 +58,11 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   shop_review_avg_rating: null,
   review_rating: null,
   last_campaign_sent_at: null,
+  purchases: 2,
+  last_purchase_at: "2025-03-04T02:00:00Z",
+  lifecycle_stage: "repeat",
+  lifecycle_delivery: null,
+  lifecycle_undated: false,
   ...over,
 });
 
@@ -137,5 +142,37 @@ describe("Customers list: CRM filters", () => {
   it("offers the last-order and spend sorts", () => {
     const html = listFor("sort=spend");
     expect(html).toContain("Most spent");
+  });
+});
+
+// PRD-crm-retention-loop slice 03: the Lifecycle stage.
+describe("Customers list: Lifecycle stage", () => {
+  it("adds a Stage column, with a New Customer's delivery step and a Shopify-only buyer's missing dates", () => {
+    const html = listFor("", [
+      row({ id: "c1", lifecycle_stage: "at_risk", purchases: 3, last_purchase_at: "2025-03-04T02:00:00Z" }),
+      row({ id: "c2", lifecycle_stage: "new", purchases: 1, lifecycle_delivery: "awaiting_delivery" }),
+      row({ id: "c3", lifecycle_stage: "repeat", purchases: 2, last_purchase_at: null, lifecycle_undated: true }),
+    ]);
+    expect(html).toContain(">Stage<");
+    expect(html).toContain(">At risk<");
+    expect(html).toContain('title="At risk: Last purchase 12 to 24 months ago."');
+    expect(html).toContain("Awaiting delivery");
+    expect(html).toContain("No dates yet");
+  });
+
+  it("dates Last order by the latest purchase, not by a re-adjustment fee", () => {
+    const html = listFor("", [row({ last_paid_at: "2026-10-01T02:00:00Z", last_purchase_at: "2025-03-04T02:00:00Z" })]);
+    expect(html).toContain("4 Mar 2025");
+    expect(html).not.toContain("1 Oct 2026");
+  });
+
+  it("opens a stage link with its boxes ticked and its summary chip", () => {
+    const html = listFor("stage=at-risk,lapsed");
+    expect(html).toContain('id="customer-filters-panel"');
+    expect(html).toContain("Stage: At risk or Lapsed");
+    expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>1</);
+    // Each stage box says its rule.
+    expect(html).toContain("Last purchase over 24 months ago");
+    expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(2);
   });
 });

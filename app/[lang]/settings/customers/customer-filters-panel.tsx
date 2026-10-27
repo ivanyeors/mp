@@ -22,6 +22,7 @@ import {
     POINTS_LABELS,
     RATING_FILTERS,
     RATING_LABELS,
+    STAGE_FILTERS,
     customerFiltersSchema,
     describeCustomerFilters,
     type ConsentFilter,
@@ -35,9 +36,11 @@ import {
     type ReadjustedFilter,
     type ShopReviewFilter,
 } from "@/lib/crm/customer-filters";
+import { LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGE_RULE } from "@/lib/crm/lifecycle-stage";
 
 /**
- * The Customers list's CRM filters (CRM slice 04): what they bought, when
+ * The Customers list's CRM filters: the **Lifecycle stage**
+ * (PRD-crm-retention-loop slice 03); (CRM slice 04) what they bought, when
  * they last ordered, whether they have been re-adjusted, what they spent, and
  * tags; Points (PRD-loyalty-points slice 06); Email consent
  * (migration slice 07); and reviews (CRM slice 12: the Google review, Shop
@@ -81,6 +84,11 @@ export function CustomerFiltersPanel({
             ? [...LAST_ORDER_PRESETS, filters.last_order]
             : LAST_ORDER_PRESETS;
 
+    const toggleStage = (value: (typeof STAGE_FILTERS)[number], checked: boolean) => {
+        const next = checked ? [...filters.stage, value] : filters.stage.filter((s) => s !== value);
+        onChange({ stage: STAGE_FILTERS.filter((s) => next.includes(s)) });
+    };
+
     const toggleBought = (value: (typeof BOUGHT_FILTERS)[number], checked: boolean) => {
         const next = checked ? [...filters.bought, value] : filters.bought.filter((b) => b !== value);
         onChange({ bought: BOUGHT_FILTERS.filter((b) => next.includes(b)) });
@@ -88,6 +96,35 @@ export function CustomerFiltersPanel({
 
     return (
         <div className="grid min-w-0 gap-5 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <fieldset className="min-w-0 sm:col-span-2 lg:col-span-4">
+                <legend className="mb-2.5 text-sm font-medium">Stage</legend>
+                <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                    {STAGE_FILTERS.map((value) => (
+                        <div key={value} className="flex min-w-0 items-start gap-2">
+                            <Checkbox
+                                id={`${id}-stage-${value}`}
+                                checked={filters.stage.includes(value)}
+                                onCheckedChange={(checked) => toggleStage(value, checked === true)}
+                                aria-describedby={`${id}-stage-${value}-rule`}
+                                className="mt-0.5"
+                            />
+                            <div className="min-w-0">
+                                <Label htmlFor={`${id}-stage-${value}`} className="font-normal">
+                                    {LIFECYCLE_STAGE_LABEL[value]}
+                                </Label>
+                                <p id={`${id}-stage-${value}-rule`} className="text-xs text-muted-foreground">
+                                    {LIFECYCLE_STAGE_RULE[value]}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <p className="mt-2.5 text-xs text-muted-foreground">
+                    Any of those ticked. A purchase is a paid order with a product on it; a re-adjustment fee is not one.
+                    Shopify-era orders count, without dates until their history is imported.
+                </p>
+            </fieldset>
+
             <fieldset className="min-w-0 space-y-2.5">
                 <legend className="mb-2.5 text-sm font-medium">Bought</legend>
                 {BOUGHT_FILTERS.map((value) => (

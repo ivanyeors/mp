@@ -21,6 +21,10 @@ platform's data, settled once, during the migration.
 
 ## What to build
 
+- **Stop counting twice.** Slice 03 adds `migrated_customers.shopify_orders_count` to a Migrated
+  customer's purchases, with no dates (`lifecycle_undated`). The change that reads the imported
+  orders into `purchases` and `last_purchase_at` removes that count in the same migration, and
+  `lib/crm/lifecycle-stage.check.ts` gains the case.
 - **One table, staff-only** (RLS on, no policy, nothing granted to `anon` or `authenticated`):
   `customer_imported_orders`, one row per Shopify-era order: Customer, Shopify order name, date
   paid, amount, amount refunded, and its lines, each with its product class and quantity.

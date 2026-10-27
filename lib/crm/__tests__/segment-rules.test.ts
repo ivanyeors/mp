@@ -191,6 +191,7 @@ describe("choosing a Segment", () => {
       points: "all",
       consent: "all",
       followups: "all",
+      stage: [],
       bought: ["premium"],
       last_order: null,
       readjusted: "never",
@@ -221,5 +222,26 @@ describe("names and counts", () => {
     expect(formatSegmentCount(1204)).toBe("1,204");
     expect(formatSegmentCount(0)).toBe("0");
     expect(formatSegmentCount(null)).toBe("—");
+  });
+});
+
+// PRD-crm-retention-loop slice 03: *Stage: At risk* saved as a Segment is a campaign Audience.
+describe("a Segment by Lifecycle stage", () => {
+  it("saves and reads back like any other filter, at the same version", () => {
+    expect(SEGMENT_FILTERS_VERSION).toBe(2);
+    expect(parseSegmentFilters({ stage: "lapsed,at-risk" })).toEqual({ ok: true, params: { stage: "at-risk,lapsed" } });
+    const read = readSegmentFilters({ stage: "at-risk", bought: "premium" }, SEGMENT_FILTERS_VERSION);
+    expect(read).toMatchObject({ needsReview: false, ignored: [], params: { stage: "at-risk", bought: "premium" } });
+    expect(read.filters.stage).toEqual(["at_risk"]);
+  });
+
+  it("refuses a stage the list does not know", () => {
+    expect(parseSegmentFilters({ stage: "whale" })).toMatchObject({ ok: false, refused: ["stage=whale"] });
+  });
+
+  it("reads a Segment saved before stages existed unchanged", () => {
+    const read = readSegmentFilters({ bought: "premium", last_order: "over:12" }, SEGMENT_FILTERS_VERSION);
+    expect(read).toMatchObject({ needsReview: false, ignored: [], params: { bought: "premium", last_order: "over:12" } });
+    expect(read.filters.stage).toEqual([]);
   });
 });

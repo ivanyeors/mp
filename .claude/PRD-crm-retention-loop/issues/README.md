@@ -6,7 +6,7 @@ demoable path through the layers it touches.
 - **Triage label:** `needs-triage` (all slices)
 - **Tracker:** [#336](https://github.com/ivanyeors/mp/issues/336) is the PRD issue. Each slice is a
   sub-issue (#337–#346), and its row below links it.
-- **Owner decisions:** see the PRD. Slice 03 waits on decision 1 (thresholds); slice 09 on the
+- **Owner decisions:** see the PRD. Decision 1 (thresholds) is settled; slice 09 waits on the
   owner confirming the ADR 0029 amendment.
 - **Definitions:** stages, signals and metrics are in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md).
 
@@ -16,7 +16,7 @@ demoable path through the layers it touches.
 |---|-------|------|--------|------------|
 | [01](01-crm-sidebar-group.md) · [#337](https://github.com/ivanyeors/mp/issues/337) | One CRM group in the sidebar, in loop order | AFK | **built** | none |
 | [02](02-hand-off-links.md) · [#338](https://github.com/ivanyeors/mp/issues/338) | Hand-offs: every page in the loop links to the next | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | 01 |
-| [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer, derived from their Orders | AFK | not started | owner decision 1 |
+| [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer, derived from their Orders | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | none (decision 1 settled 2026-10-27) |
 | [04](04-stage-chips.md) · [#340](https://github.com/ivanyeors/mp/issues/340) | Stage chips above the Customers list, counted live | AFK | not started | 03 |
 | [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | not started | 03 |
 | [06](06-retention-numbers.md) · [#342](https://github.com/ivanyeors/mp/issues/342) | The scorecard: is the loop working? | AFK | not started | 03 |
@@ -31,7 +31,7 @@ demoable path through the layers it touches.
 graph TD
   s01[01 CRM sidebar group]
   s02[02 Hand-off links]
-  d12[Owner decision 1: thresholds]
+  d12[Owner decision 1: thresholds, settled]
   d29[Owner confirms ADR 0029 amendment]
   s09[09 Shopify-era order history]
   s10[10 Ask why they left]

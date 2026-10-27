@@ -61,6 +61,8 @@ function overviewRow(n: number): Partial<CustomerOverviewRow> {
     marketing_email: n % 5 === 0 ? "subscribed" : n % 5 === 1 ? "unsubscribed" : "not_subscribed",
     open_followups: n % 8 === 0 ? 1 : 0,
     last_paid_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
+    // Slice 03: *Last order* reads purchases. Here every paid Order is one.
+    last_purchase_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
     bought: BOUGHT[n % BOUGHT.length],
     last_readjusted_at: n % 4 === 1 ? "2026-01-10T02:00:00.000Z" : null,
     search_text: `c${n}@x.test ${n % 11 === 0 ? "mei" : `first${n}`} ${n % 13 === 0 ? "tan" : `last${n}`}`,
