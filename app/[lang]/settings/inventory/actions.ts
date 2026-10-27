@@ -1120,12 +1120,6 @@ export async function fullShopifySync() {
   return { ok: true, inventory, prices }
 }
 
-export async function syncShopifyPricesOnly() {
-  await assertAnyAdmin(['costings', 'shopify-link'])
-  const prices = await syncShopifyPricingFromSupabase()
-  return { ok: true, prices }
-}
-
 /**
  * Shape of the Shopify Admin API active-products payload, as far as the admin
  * panel needs it.

@@ -34,7 +34,7 @@ then write with the service-role client. Permissions are code; roles are data
 |---|---|---|
 | **Inventory** `/settings/inventory` | Server actions `receiveStock`, `sellPillow`, `sellBolster`, `sellFromTemplate`, `sellPart`, `addInventoryItem`, `deleteInventoryItem`, image setters. Reads `items`, `inventory_balances`, `pillow_products`, `bom_lines`, `bolster_bom_lines` directly. | `inventory_transactions`, `items`, `item_prices` (opening price; removed when an Item is deactivated), product/variant images |
 | **Configure** `/settings/inventory/configure`, `/settings/inventory/configure/[card]` | `…/configure/save`, `…/configure/templates`, `…/templates/[templateId]`, `…/fork`, `…/templates/apply`, `…/unpromoted` | `bom_lines`, `bolster_bom_lines` (fillings stripped, ADR 0003), the Default Filling Template, `bom_templates`, `bom_template_lines`, `filling_template_placements` / `bolster_template_placements` |
-| **Costings** `/settings/costings` | `/settings/costings/save`, `syncShopifyPricesOnly` | `item_prices`, `product_prices` → `product_variants` price fields → Stripe (below) |
+| **Costings** `/settings/costings` | `/settings/costings/save` | `item_prices`, `product_prices` → `product_variants` price fields → Stripe (below) |
 | **Costings → Services** `/settings/costings/services` | `/settings/costings/save` | `service_prices`, the re-adjustment policy in `site_settings` |
 | **Products** `/settings/products` | `/api/shop/products/sync-inventory`, `/api/shop/products/resync-prices`, `/api/shop/products/accessory-listings` | `products`, `product_options`, `product_variants`: the inventory projection and the **Listed** switch |
 | **Product editor** `/settings/products/[id]` | `/api/shop/products/[id]`, `…/variants`, `…/variants/[variantId]`, images | `products`, `product_variants` (`stock_quantity`, `track_inventory`), `product_images` |
@@ -66,7 +66,7 @@ flowchart TD
   svp -->|"price · compare_at_price · cost_price"| pv[(product_variants)]
   svp --> stripe["syncProductToStripeSafe()"]
   save -.->|"after the response"| rr["reResolveShopifyLineCosts()<br/>re-costs the Shopify mirror"]
-  shopifybtn["syncShopifyPricesOnly() / fullShopifySync()"] -.-> shp["Shopify prices"]
+  fullsync["fullShopifySync()<br/>Integrations → Shopify"] -.-> shp["Shopify prices"]
 ```
 
 - **Items**: upserts `item_prices {cost_price, msrp, compare_at_price}`. A row
@@ -80,6 +80,7 @@ flowchart TD
   or `item_id`. It writes `price`, `compare_at_price` and BOM `cost_price`,
   then syncs the product to Stripe. The response returns any Variants it could
   not resolve.
-- **Shopify prices** are not pushed by Save. Staff push them with "Sync prices"
-  (`syncShopifyPricesOnly`) or a full sync.
+- **Shopify prices** are not pushed from Costings. Only a full Shopify sync
+  pushes them: `fullShopifySync` (Integrations → Shopify) or
+  `POST /api/shopify/sync?prices=1`.
 - Costings never writes stock.
