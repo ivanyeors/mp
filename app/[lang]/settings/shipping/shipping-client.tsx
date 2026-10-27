@@ -220,7 +220,7 @@ function liveRateSummary(m: ShippingMethod): string {
     if (pct) parts.push(`${pct > 0 ? "+" : ""}${pct}%`);
     if (fixed) parts.push(`${fixed > 0 ? "+" : "−"}${formatCurrency(Math.abs(fixed), m.currency)}`);
     if (Number(m.rate_rounding ?? 0) > 0) parts.push(`rounded up to ${Number(m.rate_rounding).toFixed(2)}`);
-    return parts.join(" · ");
+    return parts.join(", ");
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
@@ -266,7 +266,7 @@ function couriersSummary(c: CouriersStatus): string {
     if (!c.environment) return "Not connected";
     const parts = ["Connected", c.environment === "production" ? "Production" : "Sandbox"];
     if (c.boxes !== null) parts.push(`${c.boxes} box${c.boxes === 1 ? "" : "es"}`);
-    return parts.join(" · ");
+    return parts.join(", ");
 }
 
 export default function SettingsShippingPage({
@@ -371,13 +371,13 @@ export default function SettingsShippingPage({
             });
             const json = await res.json();
             if (!res.ok) {
-                setError(apiErrorMessage(json.error, "Failed to save."));
+                setError(apiErrorMessage(json.error, "Couldn't save."));
             } else {
                 setSheetOpen(false);
                 await fetchMethods();
             }
         } catch {
-            setError("Network error. Please try again.");
+            setError("Network error. Try again.");
         } finally {
             setSaving(false);
         }
@@ -409,7 +409,7 @@ export default function SettingsShippingPage({
                         Shipping
                     </h1>
                     <InfoTip label="About Shipping">
-                        Shipping methods and delivery areas, with live courier rates and labels.
+                        Set up shipping methods and delivery areas, with live courier rates and labels.
                     </InfoTip>
                 </div>
                 <div className="flex gap-2">
@@ -419,7 +419,7 @@ export default function SettingsShippingPage({
                     </Button>
                     <Button size="sm" onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Method
+                        Add method
                     </Button>
                 </div>
             </div>
@@ -467,11 +467,11 @@ export default function SettingsShippingPage({
                 <div className="rounded-xl border border-dashed p-14 text-center">
                     <Truck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
                     <p className="text-sm font-medium text-muted-foreground">
-                        No shipping methods yet. Add your first shipping option.
+                        No shipping methods yet.
                     </p>
                     <Button size="sm" className="mt-4" onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Method
+                        Add method
                     </Button>
                 </div>
             ) : (
@@ -507,7 +507,7 @@ export default function SettingsShippingPage({
                                                 Self-collect
                                                 {(() => {
                                                     const studio = studios.find((st) => st.id === method.collect_location_id);
-                                                    return studio ? ` · ${studio.name}` : "";
+                                                    return studio ? `, ${studio.name}` : "";
                                                 })()}
                                             </Badge>
                                         )}
@@ -568,7 +568,7 @@ export default function SettingsShippingPage({
                 <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle>
-                            {editingId ? "Edit Shipping Method" : "New Shipping Method"}
+                            {editingId ? "Edit shipping method" : "New shipping method"}
                         </SheetTitle>
                     </SheetHeader>
 
@@ -898,7 +898,7 @@ export default function SettingsShippingPage({
                         <DialogTitle>Delete shipping method?</DialogTitle>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
-                        Are you sure you want to delete{" "}
+                        Delete{" "}
                         <strong>{deleteTarget ? getMethodName(deleteTarget) : ""}</strong>?
                         This cannot be undone.
                     </p>

@@ -80,10 +80,10 @@ try {
 }
 assert.ok(threw, "assertMarketingCopySafe must fail short hero seoAnswer");
 
-// --- llms.txt Science of Sleep regression ---
+// --- llms.txt: Science of Sleep is retired ---
 process.env.NEXT_PUBLIC_SITE_URL ??= "https://custom.mpillow.com";
 const llms = buildLlmsIndex([{ slug: "cervical-support", title: "Cervical Support" }]);
-assert.ok(llms.includes("Science of Sleep"), "llms index must include Science of Sleep");
+assert.ok(!llms.includes("Science of Sleep"), "llms index must not mention Science of Sleep");
 
 console.log("marketing-copy-slice-07.check.ts: ok");
 console.log("hero seoAnswer words:", wordCount(hero.seoAnswer));

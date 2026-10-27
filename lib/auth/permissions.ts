@@ -17,7 +17,7 @@ export type PermissionGroup =
   | "General"
   | "Inventory"
   | "Store"
-  | "Landing Site"
+  | "Landing site"
   | "Insights"
   | "Showroom"
   | "Integration"
@@ -35,7 +35,7 @@ type CatalogEntry = {
 };
 
 export const PERMISSION_CATALOG = [
-  { key: "api-configs", label: "API Configs", group: "General", href: "/settings/general", surface: "admin-panel" },
+  { key: "api-configs", label: "API configs", group: "General", href: "/settings/general", surface: "admin-panel" },
   { key: "appointments", label: "Appointments", group: "General", href: "/settings/appointments", surface: "admin-panel" },
   { key: "users", label: "Users & permissions", group: "General", href: "/settings/users", surface: "admin-panel" },
   // How the platform works, in plain words: Owner and Admin, and any role the owner ticks.
@@ -64,21 +64,21 @@ export const PERMISSION_CATALOG = [
   { key: "discounts", label: "Discounts", group: "Store", href: "/settings/discounts", surface: "admin-panel" },
   { key: "shipping", label: "Shipping", group: "Store", href: "/settings/shipping", surface: "admin-panel" },
 
-  { key: "page-builder", label: "Page Builder", group: "Landing Site", href: "/settings/page-builder", surface: "admin-panel", requires: ["media"] },
-  { key: "partners", label: "Partners", group: "Landing Site", href: "/settings/partners", surface: "admin-panel", requires: ["media"] },
-  { key: "partner-applications", label: "Partner applications", group: "Landing Site", href: "/settings/partner-applications", surface: "admin-panel" },
-  { key: "partner-commissions", label: "Partner Commissions", group: "Landing Site", href: "/settings/partner-commissions", surface: "admin-panel" },
-  { key: "blogs", label: "Blogs", group: "Landing Site", href: "/settings/blogs", surface: "admin-panel", requires: ["media"] },
-  { key: "faq", label: "FAQ", group: "Landing Site", href: "/settings/faq", surface: "admin-panel" },
-  { key: "forms", label: "Forms", group: "Landing Site", href: "/settings/forms", surface: "admin-panel" },
-  { key: "media", label: "Media", group: "Landing Site", href: "/settings/media", surface: "admin-panel" },
+  { key: "page-builder", label: "Page Builder", group: "Landing site", href: "/settings/page-builder", surface: "admin-panel", requires: ["media"] },
+  { key: "partners", label: "Partners", group: "Landing site", href: "/settings/partners", surface: "admin-panel", requires: ["media"] },
+  { key: "partner-applications", label: "Partner applications", group: "Landing site", href: "/settings/partner-applications", surface: "admin-panel" },
+  { key: "partner-commissions", label: "Partner commissions", group: "Landing site", href: "/settings/partner-commissions", surface: "admin-panel" },
+  { key: "blogs", label: "Blogs", group: "Landing site", href: "/settings/blogs", surface: "admin-panel", requires: ["media"] },
+  { key: "faq", label: "FAQ", group: "Landing site", href: "/settings/faq", surface: "admin-panel" },
+  { key: "forms", label: "Forms", group: "Landing site", href: "/settings/forms", surface: "admin-panel" },
+  { key: "media", label: "Media", group: "Landing site", href: "/settings/media", surface: "admin-panel" },
 
   { key: "analytics", label: "Analytics", group: "Insights", href: "/settings/analytics", surface: "admin-panel" },
-  { key: "audit-log", label: "Audit Log", group: "Insights", href: "/settings/audit-log", surface: "admin-panel" },
+  { key: "audit-log", label: "Audit log", group: "Insights", href: "/settings/audit-log", surface: "admin-panel" },
 
-  { key: "showroom", label: "Showroom Model", group: "Showroom", href: "/settings/showroom", surface: "admin-panel" },
+  { key: "showroom", label: "Showroom model", group: "Showroom", href: "/settings/showroom", surface: "admin-panel" },
 
-  { key: "shopify-link", label: "Shopify Link", group: "Integration", href: "/settings/integrations/shopify", surface: "admin-panel" },
+  { key: "shopify-link", label: "Shopify link", group: "Integration", href: "/settings/integrations/shopify", surface: "admin-panel" },
 
   { key: "telegram.google-review-reply", label: "Reply to Google reviews", group: "Telegram", surface: "telegram" },
   { key: "telegram.shop-review-moderate", label: "Moderate shop reviews", group: "Telegram", surface: "telegram" },

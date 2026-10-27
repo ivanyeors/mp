@@ -12,13 +12,13 @@ import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routi
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
 const FOOTER_LINKS = [
-  { label: "Our Partners", href: "/our-partners" },
+  { label: "Our partners", href: "/our-partners" },
   { label: "Blog", href: "/blog" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Returns & Warranty", href: "/shipping-refund-policies" },
-  { label: "Terms of Service", href: "/terms-of-service" },
+  { label: "Privacy policy", href: "/privacy-policy" },
+  { label: "Returns & warranty", href: "/shipping-refund-policies" },
+  { label: "Terms of service", href: "/terms-of-service" },
   { label: "Points", href: "/points" },
-  { label: "Contact Us", href: "/support" },
+  { label: "Contact us", href: "/support" },
   { label: "FAQ", href: "/faq" },
 ] as const;
 
@@ -113,7 +113,7 @@ export function MarketingFooter() {
 
           <nav aria-label="Footer" className="space-y-3">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Footer Menu
+              Footer menu
             </p>
             <ul className="flex flex-wrap gap-2" role="list">
               {FOOTER_LINKS.map(({ label, href }) => (

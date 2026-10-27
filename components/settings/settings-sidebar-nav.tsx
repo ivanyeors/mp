@@ -83,15 +83,15 @@ const NAV_GROUPS: NavGroup[] = [
       {
         href: "/settings",
         label: "General",
-        tooltip: "General Settings",
+        tooltip: "General",
         Icon: Settings2,
         items: [
-          { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound },
-          { href: "/settings/appointments", label: "Appointments", tooltip: "Appointment reminders", Icon: CalendarDays },
+          { href: "/settings/general", label: "API configs", tooltip: "API configurations", Icon: KeyRound },
+          { href: "/settings/appointments", label: "Appointments", tooltip: "Booking calendar", Icon: CalendarDays },
           { href: "/settings/users", label: "Users & permissions", tooltip: "Members, roles, staff profiles and Telegram", Icon: ShieldCheck },
         ],
       },
-      { href: "/settings/docs", label: "Documentation", tooltip: "How the platform works, in plain words", Icon: BookOpen },
+      { href: "/settings/docs", label: "Documentation", tooltip: "How the platform works", Icon: BookOpen },
     ],
   },
   {
@@ -115,25 +115,25 @@ const NAV_GROUPS: NavGroup[] = [
       {
         href: "/settings/products",
         label: "Products",
-        tooltip: "Product Management",
+        tooltip: "Storefront products",
         Icon: ShoppingBag,
         items: [
           { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
           { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch },
         ],
       },
-      { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle },
+      { href: "/settings/customers", label: "Customers", tooltip: "Customers", Icon: UserCircle },
       { href: "/settings/campaigns", label: "Email campaigns", tooltip: "Write and send marketing email", Icon: Mail },
-      { href: "/settings/email-templates", label: "Email templates", tooltip: "The words of every email customers and partners get", Icon: MailCheck },
-      { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
-      { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart },
+      { href: "/settings/email-templates", label: "Email templates", tooltip: "Wording of every customer and partner email", Icon: MailCheck },
+      { href: "/settings/results", label: "Results", tooltip: "Customisation submissions", Icon: ClipboardList },
+      { href: "/settings/orders", label: "Orders", tooltip: "Orders", Icon: ShoppingCart },
       { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw },
-      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag },
-      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck },
+      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount codes and points", Icon: Tag },
+      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping methods", Icon: Truck },
     ],
   },
   {
-    label: "Landing Site",
+    label: "Landing site",
     items: [
       { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard },
       {
@@ -143,32 +143,32 @@ const NAV_GROUPS: NavGroup[] = [
         Icon: Handshake,
         items: [
           { href: "/settings/partner-applications", label: "Partner applications", tooltip: "Review partner applications", Icon: ClipboardCheck },
-          { href: "/settings/partner-commissions", label: "Partner Commissions", tooltip: "Commission schemes", Icon: Percent },
+          { href: "/settings/partner-commissions", label: "Partner commissions", tooltip: "Commission schemes", Icon: Percent },
         ],
       },
-      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
-      { href: "/settings/faq", label: "FAQ", tooltip: "FAQ Management", Icon: HelpCircle },
-      { href: "/settings/forms", label: "Forms", tooltip: "Discovery source and form option lists", Icon: FormInput },
-      { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
+      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog posts", Icon: Newspaper },
+      { href: "/settings/faq", label: "FAQ", tooltip: "FAQ", Icon: HelpCircle },
+      { href: "/settings/forms", label: "Forms", tooltip: "Discovery source and form options", Icon: FormInput },
+      { href: "/settings/media", label: "Media", tooltip: "Media library", Icon: Image },
     ],
   },
   {
     label: "Insights",
     items: [
       { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
-      { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText },
+      { href: "/settings/audit-log", label: "Audit log", tooltip: "Who changed what", Icon: ScrollText },
     ],
   },
   {
     label: "Showroom",
     items: [
-      { href: "/settings/showroom", label: "Showroom Model", tooltip: "3D model of the showroom unit", Icon: Box },
+      { href: "/settings/showroom", label: "Showroom model", tooltip: "3D model of the showroom unit", Icon: Box },
     ],
   },
   {
     label: "Integration",
     items: [
-      { href: "/settings/integrations/shopify", label: "Shopify Link", tooltip: "Shopify Link", Icon: Store },
+      { href: "/settings/integrations/shopify", label: "Shopify link", tooltip: "Shopify link", Icon: Store },
     ],
   },
 ];

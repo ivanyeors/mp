@@ -60,12 +60,12 @@ export function TelegramUpdatesCard({
       try {
         const res = await fetch("/api/settings/customers/telegram-updates", { cache: "no-store" });
         const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to load Telegram updates");
+        if (!res.ok) throw new Error(payload?.error ?? "Couldn't load Telegram updates.");
         if (!cancelled) {
           setData({ settings: payload.settings, heldReminderTelegram: payload.heldReminderTelegram });
         }
       } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load Telegram updates");
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load Telegram updates.");
       }
     })();
     return () => {
@@ -85,13 +85,13 @@ export function TelegramUpdatesCard({
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(typeof payload?.error === "string" ? payload.error : "Failed to save");
+        throw new Error(typeof payload?.error === "string" ? payload.error : "Couldn't save.");
       }
       setData({ ...before, settings: payload.settings });
       toast.success("Saved");
     } catch (e) {
       setData(before);
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(null);
     }
@@ -106,9 +106,9 @@ export function TelegramUpdatesCard({
         throw new Error(typeof payload?.error === "string" ? payload.error : "Some test messages did not send");
       }
       const n = (payload.sent as string[]).length;
-      toast.success(n ? `Sent ${n} test message${n === 1 ? "" : "s"} to the Staff group.` : "Every update is off, so nothing was sent.");
+      toast.success(n ? `Sent ${n} test message${n === 1 ? "" : "s"} to the staff group.` : "Every update is off, so nothing was sent.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Send test failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't send the test.");
     } finally {
       setTesting(false);
     }
@@ -122,8 +122,8 @@ export function TelegramUpdatesCard({
       <div className="flex items-center gap-1.5">
         <h2 className="text-sm font-medium">Telegram updates</h2>
         <InfoTip label="About Telegram updates">
-          Posted to the Staff Telegram group. The Google review, sign-up and weekly updates carry
-          counts and a link only, never a customer&apos;s name or contact details. The online Result
+          Posted to the staff Telegram group. The Google review, sign-up and weekly updates carry
+          counts and a link only, never a customer&apos;s name or contact details. The online result
           notice is the build team&apos;s, and keeps its content.
         </InfoTip>
       </div>
@@ -194,10 +194,10 @@ export function TelegramUpdatesCard({
           </ul>
 
           <p className="border-t pt-3 text-xs text-muted-foreground">
-            Reminder when a held Result waits too long: {data.heldReminderTelegram ? "on" : "off"}.
-            Change it in{" "}
+            Reminder when a held result waits too long: {data.heldReminderTelegram ? "on" : "off"}.
+            Change it under Review SLA on{" "}
             <Link href={withLocale("/settings/general", locale)} className="underline underline-offset-2">
-              Settings → General
+              API configs
             </Link>
             .
           </p>

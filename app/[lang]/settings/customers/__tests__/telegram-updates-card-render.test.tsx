@@ -35,8 +35,8 @@ describe("Telegram updates card", () => {
       "3 Google reviews are waiting to be matched to customers.",
       "5 customers signed up yesterday, 3 of them from Shopify.",
       "This week: 12 new customers, 7 sign-ups, 18 review requests (9 opened), 4 Google reviews linked, 11 follow-ups done, 2 overdue.",
-      "Reminder when a held Result waits too long: <!-- -->off",
-      "Settings → General",
+      "Reminder when a held result waits too long: <!-- -->off",
+      "API configs",
     ]) {
       expect(html, text).toContain(text);
     }

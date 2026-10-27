@@ -80,10 +80,10 @@ type CategorySummary = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   cover: "Covers",
-  pillow_case: "Pillow Cases",
-  bolster_case: "Bolster Cases",
-  pillow_protector: "Pillow Protectors",
-  bolster_protector: "Bolster Protectors",
+  pillow_case: "Pillow cases",
+  bolster_case: "Bolster cases",
+  pillow_protector: "Pillow protectors",
+  bolster_protector: "Bolster protectors",
   filling: "Fillings",
   packaging: "Packaging",
   accessories: "Accessories",
@@ -129,14 +129,14 @@ const normalizeNameOrFallback = (value: string | null | undefined, fallback: str
 const describeItem = (item: ItemMetrics): string => {
   if (item.category === "filling") {
     const base = normalizeNameOrFallback(item.subtype ?? item.name, "filling");
-    return item.size ? `${base} — ${item.size}` : base;
+    return item.size ? `${base} (${item.size})` : base;
   }
   const base = normalizeNameOrFallback(item.name, item.category);
   if (item.size) {
-    return `${base} — ${item.size}`;
+    return `${base} (${item.size})`;
   }
   if (item.subtype) {
-    return `${base} — ${normalizeNameOrFallback(item.subtype, item.category)}`;
+    return `${base} (${normalizeNameOrFallback(item.subtype, item.category)})`;
   }
   return base;
 };
@@ -308,7 +308,7 @@ export default function AnalyticsClient() {
 
         setItems(nextItems);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load analytics";
+        const message = err instanceof Error ? err.message : "Couldn't load analytics.";
         setError(message);
       } finally {
         if (mode === "initial") {
@@ -346,7 +346,7 @@ export default function AnalyticsClient() {
   type InventoryMovementResult = Awaited<ReturnType<typeof getInventoryMovementWaterfall>>;
 
   const applyTimeline = useCallback((res: TimelineResult) => {
-    if (!res.ok) throw new Error("Failed to load sales timeline");
+    if (!res.ok) throw new Error("Couldn't load the sales timeline.");
 
     const labelForCategory = (category: string) => CATEGORY_LABELS[category] ?? normalizeNameOrFallback(category, category);
 
@@ -382,17 +382,17 @@ export default function AnalyticsClient() {
   }, []);
 
   const applyMpMetrics = useCallback((res: MpMetricsResult) => {
-    if (!res.ok) throw new Error("Failed to load mp-config metrics");
+    if (!res.ok) throw new Error("Couldn't load mp-config metrics.");
     setMpMetrics(res.metrics ?? []);
   }, []);
 
   const applyRealizedMargin = useCallback((res: RealizedMarginResult) => {
-    if (!res.ok) throw new Error("Failed to load realized margin");
+    if (!res.ok) throw new Error("Couldn't load the realized margin.");
     setRealizedMargin(res.summary);
   }, []);
 
   const applyInventoryMovement = useCallback((res: InventoryMovementResult) => {
-    if (!res.ok) throw new Error("Failed to load inventory movements");
+    if (!res.ok) throw new Error("Couldn't load inventory movements.");
     setInventoryRows(res.rows);
   }, []);
 
@@ -411,7 +411,7 @@ export default function AnalyticsClient() {
           })
         );
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load sales timeline";
+        const message = err instanceof Error ? err.message : "Couldn't load the sales timeline.";
         setTimelineError(message);
       } finally {
         if (mode === "initial") setTimelineLoading(false);
@@ -435,7 +435,7 @@ export default function AnalyticsClient() {
           })
         );
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load mp-config metrics";
+        const message = err instanceof Error ? err.message : "Couldn't load mp-config metrics.";
         setMpMetricsError(message);
         setMpMetrics([]);
       } finally {
@@ -462,7 +462,7 @@ export default function AnalyticsClient() {
         })
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load inventory movements";
+      const message = err instanceof Error ? err.message : "Couldn't load inventory movements.";
       setInventoryError(message);
     } finally {
       setInventoryLoading(false);
@@ -530,24 +530,24 @@ export default function AnalyticsClient() {
           size,
         });
 
-        applySlice(res.timeline, applyTimeline, "Failed to load sales timeline", setTimelineError);
-        applySlice(res.metrics, applyMpMetrics, "Failed to load mp-config metrics", (message) => {
+        applySlice(res.timeline, applyTimeline, "Couldn't load the sales timeline.", setTimelineError);
+        applySlice(res.metrics, applyMpMetrics, "Couldn't load mp-config metrics.", (message) => {
           setMpMetricsError(message);
           setMpMetrics([]);
         });
-        applySlice(res.margin, applyRealizedMargin, "Failed to load realized margin", (message) => {
+        applySlice(res.margin, applyRealizedMargin, "Couldn't load the realized margin.", (message) => {
           setRealizedMarginError(message);
           setRealizedMargin(null);
         });
         applySlice(
           res.waterfall,
           applyInventoryMovement,
-          "Failed to load inventory movements",
+          "Couldn't load inventory movements.",
           setInventoryError
         );
       } catch (err) {
         // The round trip itself failed: every card reports it, as before.
-        const message = err instanceof Error ? err.message : "Failed to load analytics";
+        const message = err instanceof Error ? err.message : "Couldn't load analytics.";
         setTimelineError(message);
         setMpMetricsError(message);
         setMpMetrics([]);
@@ -705,8 +705,8 @@ export default function AnalyticsClient() {
           <CardTitle>Product sales timeline</CardTitle>
           <InfoTip label="About Product sales timeline">
             {timelineView === "products"
-              ? "Timeline view of different products being sold over time."
-              : "Timeline view of parts sold by category over time."}
+              ? "Shows each product's sales over time."
+              : "Shows parts sold over time, by category."}
           </InfoTip>
         </div>
         <CardAction>
@@ -762,7 +762,7 @@ export default function AnalyticsClient() {
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <div className="flex items-center gap-1.5">
           <CardTitle>Results</CardTitle>
-          <InfoTip label="About Results">Mp-config answer breakdown from released results (final responses) in the selected date range.</InfoTip>
+          <InfoTip label="About Results">Breaks down the answers on released results in the selected date range.</InfoTip>
         </div>
         <CardAction>
           <Button
@@ -797,7 +797,7 @@ export default function AnalyticsClient() {
           <div className="flex items-center gap-1.5">
             <h1>Analytics</h1>
             <InfoTip label="About Analytics">
-              Retrospective channel P&L from paid Orders and the Shopify order mirror.
+              Shows channel P&L from paid orders and the Shopify order mirror.
             </InfoTip>
           </div>
           <Button disabled>Loading…</Button>
@@ -827,7 +827,7 @@ export default function AnalyticsClient() {
         <div className="flex items-center gap-1.5">
           <h1>Analytics</h1>
           <InfoTip label="About Analytics">
-            Retrospective channel P&L from paid Orders and the Shopify order mirror.
+            Shows channel P&L from paid orders and the Shopify order mirror.
           </InfoTip>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -975,7 +975,7 @@ export default function AnalyticsClient() {
                       >
                         {format(timelineDateRange.from, "MMM yyyy")}
                       </button>
-                      <span className="px-1 text-muted-foreground">–</span>
+                      <span className="px-1 text-muted-foreground">to</span>
                       <button
                         type="button"
                         className={[
@@ -1038,7 +1038,7 @@ export default function AnalyticsClient() {
             <div className="flex items-center gap-1.5">
               <CardTitle>Inventory movement</CardTitle>
               <InfoTip label="About Inventory movement">
-                Waterfall comparison between start vs end quantities. Click a part to drill into size, then type.
+                Compares start and end quantities. Click a part to drill into size, then type.
               </InfoTip>
             </div>
             <CardAction>

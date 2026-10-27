@@ -62,7 +62,7 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
     };
 
     const deletePost = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this blog post?")) return;
+        if (!confirm("Delete this blog post?")) return;
         await fetch(`/api/blogs/${id}`, { method: "DELETE" });
         fetchPosts();
     };
@@ -92,15 +92,15 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div className="flex items-center gap-1.5">
-                      <h1>Blog Management</h1>
-                      <InfoTip label="About Blog Management">
+                      <h1>Blogs</h1>
+                      <InfoTip label="About Blogs">
                         <p>Create, edit, and publish blog posts.</p>
                       </InfoTip>
                     </div>
                 </div>
                 <Button asChild size="sm" className="w-full sm:w-auto">
                     <Link href={to("/settings/blogs/new")}>
-                        <Plus className="mr-2 h-4 w-4" /> New Post
+                        <Plus className="mr-2 h-4 w-4" /> New post
                     </Link>
                 </Button>
             </div>
@@ -111,7 +111,7 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
                 </div>
             ) : posts.length === 0 ? (
                 <div className="rounded-xl border border-dashed p-12 text-center text-muted-foreground">
-                    No blog posts yet. Create a new one to get started.
+                    No blog posts yet.
                 </div>
             ) : (
                 <div className="min-w-0 rounded-xl border overflow-x-auto">

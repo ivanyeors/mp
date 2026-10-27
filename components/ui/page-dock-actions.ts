@@ -10,7 +10,7 @@ const NONE: readonly DockAction[] = [];
 
 /**
  * The dock fits three page actions beside the Admin Panel's own Home / Menu /
- * Logout on a 390px screen (measured: 344px of a 374px pill, where a fourth
+ * Sign out on a 390px screen (measured: 344px of a 374px pill, where a fourth
  * takes it to 396px and the dock starts scrolling). A page with more than
  * three keeps the rest in its header cluster.
  */

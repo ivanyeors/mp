@@ -32,7 +32,7 @@ assert.match(carousel, /relative w-full min-w-0/);
 assert.match(carousel, /min-w-0 overflow-x-auto/);
 assert.match(carousel, /overscroll-x-contain/);
 
-// Science of Sleep sheet: X clipped in the scroll viewport
+// Size Matters sheet: X clipped in the scroll viewport
 assert.match(sizeMatters, /min-w-0 flex-1 overflow-y-auto overflow-x-hidden/);
 assert.match(sizeMatters, /<Carousel\b/);
 

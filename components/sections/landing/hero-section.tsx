@@ -28,7 +28,7 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
   const c = section.content as HeroContent;
   const sep = locale === "zh-CN" ? "" : " ";
   const heroImage = c.image ?? images.landing_hero;
-  const heroAlt = c.alt ?? "Mpillow pillow hero";
+  const heroAlt = c.alt ?? "Mpillow cervical pillow on a bed";
   const titlePrefix = c.titlePrefix ?? m.home.hero.titlePrefix;
   const titleEmphasis = c.titleEmphasis ?? m.home.hero.titleEmphasis;
   const titleSuffix = c.titleSuffix ?? m.home.hero.titleSuffix;

@@ -68,7 +68,7 @@ export function ReviewSlaSection() {
       try {
         const res = await fetch("/api/results/sla-settings", { cache: "no-store" });
         const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to load SLA settings");
+        if (!res.ok) throw new Error(payload?.error ?? "Couldn't load SLA settings.");
         if (cancelled) return;
         const s = payload.settings as Partial<SlaSettingsForm>;
         setSla({
@@ -88,7 +88,7 @@ export function ReviewSlaSection() {
           maxReminders: r.maxReminders ?? REMINDER_DEFAULTS.maxReminders,
         });
       } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load SLA settings");
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load SLA settings.");
       } finally {
         if (!cancelled) setSlaLoading(false);
       }
@@ -111,7 +111,7 @@ export function ReviewSlaSection() {
         }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to save SLA settings");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't save SLA settings.");
       const s = payload.settings as Partial<SlaSettingsForm>;
       setSla({
         workingDays: s.workingDays ?? sla.workingDays,
@@ -131,7 +131,7 @@ export function ReviewSlaSection() {
       }));
       toast.success("Settings saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save SLA settings");
+      toast.error(e instanceof Error ? e.message : "Couldn't save SLA settings.");
     } finally {
       setSlaSaving(false);
     }
@@ -144,9 +144,9 @@ export function ReviewSlaSection() {
           <h2 className="text-sm font-medium">Review SLA</h2>
         </CollapsibleTrigger>
         <InfoTip label="About Review SLA">
-          Unassigned held Results expire after the working-day SLA (always before the card
-          authorization dies); those reminders go to Telegram and/or ops email. Customer
-          payment reminders are set separately, at the bottom.
+          Unassigned held results expire after the working-day SLA, always before the card
+          hold lapses. Their reminders go to Telegram, the ops email or both. Customer
+          payment reminders are set at the bottom.
         </InfoTip>
         <CollapsibleTrigger aria-label="Toggle Review SLA" className="flex flex-1 justify-end self-stretch">
           <ChevronDown
@@ -249,7 +249,7 @@ export function ReviewSlaSection() {
               <p className="text-xs text-muted-foreground mt-1.5">
                 {sla.authHoldEnabled
                   ? "Shoppers authorize the quoted amount at submit; staff capture it once the build is assigned."
-                  : "Off — shoppers submit with no card. The build still enters the queue and is quoted, and the full amount is collected later from the Result page."}
+                  : "Off. Shoppers submit without a card. The build is still queued and quoted, and the full amount is collected later from the result page."}
               </p>
             </div>
             <div className="sm:col-span-2 lg:col-span-3 border-t pt-4">
@@ -264,7 +264,7 @@ export function ReviewSlaSection() {
               <p className="mt-1.5 text-xs text-muted-foreground">
                 {reminders.enabled
                   ? reminders.maxReminders === 0
-                    ? "On, but capped at zero — nothing will be sent. Raise the cap below."
+                    ? "On, but capped at zero, so nothing is sent. Raise the cap below."
                     : `A build waiting to be paid for emails the customer after ${reminders.firstDelayDays} day${
                         reminders.firstDelayDays === 1 ? "" : "s"
                       }, then every ${reminders.intervalDays} day${
@@ -272,7 +272,7 @@ export function ReviewSlaSection() {
                       }, up to ${reminders.maxReminders} time${
                         reminders.maxReminders === 1 ? "" : "s"
                       }. Each email links to the status page to pay or cancel.`
-                  : "Off — an assigned build that nobody pays for is never chased. Staff can still send one by hand with Request payment."}
+                  : "Off. An assigned build nobody pays for is never chased. Staff can still send a reminder by hand with Request payment."}
               </p>
               <div className="mt-3 grid gap-4 sm:grid-cols-3">
                 <div className="grid gap-1.5">

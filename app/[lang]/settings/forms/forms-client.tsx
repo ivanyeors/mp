@@ -79,10 +79,10 @@ export default function FormsSettingsPage({
     try {
       const res = await fetch("/api/settings/forms/discovery-source");
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getApiErrorMessage(data.error, "Failed to load"));
+      if (!res.ok) throw new Error(getApiErrorMessage(data.error, "Couldn't load."));
       setOptions(data.catalog?.options ?? []);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load");
+      toast.error(e instanceof Error ? e.message : "Couldn't load.");
     } finally {
       setLoading(false);
     }
@@ -105,11 +105,11 @@ export default function FormsSettingsPage({
         body: JSON.stringify({ options: next }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getApiErrorMessage(data.error, "Save failed"));
+      if (!res.ok) throw new Error(getApiErrorMessage(data.error, "Couldn't save."));
       setOptions(data.catalog?.options ?? next);
       toast.success("Saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
       await load();
     } finally {
       setSaving(false);
@@ -134,7 +134,7 @@ export default function FormsSettingsPage({
 
   const archiveToggle = (id: string) => {
     if (id === OTHER_DISCOVERY_SOURCE_ID) {
-      toast.error("Other cannot be archived");
+      toast.error("Other can't be archived.");
       return;
     }
     const next = options.map((o) =>
@@ -145,7 +145,7 @@ export default function FormsSettingsPage({
 
   const removeOption = (id: string) => {
     if (id === OTHER_DISCOVERY_SOURCE_ID || options.find((o) => o.id === id)?.system) {
-      toast.error("System options cannot be deleted");
+      toast.error("System options can't be deleted.");
       return;
     }
     void save(options.filter((o) => o.id !== id));
@@ -154,15 +154,15 @@ export default function FormsSettingsPage({
   const addOption = () => {
     const id = slugify(newId || newLabels["en-US"]);
     if (!id) {
-      toast.error("Enter an id or English label");
+      toast.error("Enter an id or English label.");
       return;
     }
     if (options.some((o) => o.id === id)) {
-      toast.error("That id already exists");
+      toast.error("That id already exists.");
       return;
     }
     if (!newLabels["en-US"].trim()) {
-      toast.error("English label is required");
+      toast.error("Enter an English label.");
       return;
     }
     const other = options.find((o) => o.id === OTHER_DISCOVERY_SOURCE_ID);
@@ -196,7 +196,7 @@ export default function FormsSettingsPage({
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">Forms</h1>
           <InfoTip label="About Forms">
-            <p>Edit Discovery source options for configurator preview. Option lists only — not a customization-steps builder.</p>
+            <p>Edit the Discovery source options on the configurator preview. Customisation steps aren&apos;t edited here.</p>
           </InfoTip>
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function FormsSettingsPage({
                 <DialogHeader>
                   <DialogTitle>Add Discovery source</DialogTitle>
                   <DialogDescription>
-                    Id is stored on Results; labels can change later.
+                    The id is stored on results. Labels can change later.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
@@ -339,7 +339,7 @@ export default function FormsSettingsPage({
                                 {opt.labels["en-US"]}
                                 <span className="ml-2 font-normal text-muted-foreground">
                                   {opt.id}
-                                  {!opt.active ? " · archived" : ""}
+                                  {!opt.active ? ", archived" : ""}
                                 </span>
                               </button>
                             </CollapsibleTrigger>
@@ -403,7 +403,7 @@ export default function FormsSettingsPage({
                           >
                             {other.labels["en-US"]}
                             <span className="ml-2 font-normal text-muted-foreground">
-                              always last · not archivable
+                              Always last, can&apos;t be archived
                             </span>
                           </button>
                         </CollapsibleTrigger>

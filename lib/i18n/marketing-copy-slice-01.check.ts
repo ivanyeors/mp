@@ -48,12 +48,13 @@ assert.doesNotMatch(h1, /gift/i, "H1 must not lead with gift framing");
 assert.match(h1, /sleep right/i);
 assert.match(h1, /don.t sleep tight/i);
 
-// SEM / Science of Sleep live in the Answer lede when H1 is the brand tagline
-assert.match(hero.seoAnswer, /Science of Sleep/i);
+// SEM intents live in the Answer lede when H1 is the brand tagline. Science of Sleep is retired.
+assert.doesNotMatch(hero.seoAnswer, /Science of Sleep/i);
 assert.match(hero.seoAnswer, /Singapore/i);
 assert.match(hero.seoAnswer, /cervical/i);
 assert.match(hero.seoAnswer, /chronic neck stiffness/i);
-assert.match(hero.seoAnswer, /in-store/i);
+assert.match(hero.seoAnswer, /Singapore store|in-store/i);
+assert.match(hero.seoAnswer, /online/i, "overseas customers measure online");
 assert.doesNotMatch(hero.seoAnswer, /\bfirst\b/i, "avoid unverifiable 'first' claim");
 
 assertMarketingCopySafe(
@@ -84,9 +85,11 @@ assert.match(premium, /consultative/i);
 assert.match(premium, /cervical/i);
 assert.match(premium, /FibreCool/i);
 
-// zh-CN untouched in this slice
+// zh-CN tagline kept; lede and pick blurbs follow the en-US meaning
 assert.match(zhCN.home.hero.titlePrefix, /送上好眠/);
-assert.equal(zhCN.home.pickYourMpillow.products.basic.description, "入门定制，轻松体验");
+assert.match(zhCN.home.hero.seoAnswer, /新加坡/);
+assert.match(zhCN.home.pickYourMpillow.products.premium.description, /海外/);
+assert.doesNotMatch(zhCN.home.hero.seoAnswer, /Science of Sleep/);
 
 console.log("marketing-copy-slice-01.check.ts: ok");
 console.log("H1:", h1, `(${h1.length} chars)`);

@@ -35,11 +35,11 @@ export function WorkingAsPicker({ initial }: { initial: WorkingAsState }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profileId: id }),
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Could not switch");
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Couldn't switch.");
       window.dispatchEvent(new Event(WORKING_AS_CHANGED_EVENT));
     } catch (e) {
       setCurrent(previous);
-      toast.error(e instanceof Error ? e.message : "Could not switch");
+      toast.error(e instanceof Error ? e.message : "Couldn't switch.");
     }
   }
 

@@ -108,12 +108,12 @@ type KindFilter = "all" | "image" | "video" | "pdf";
 
 const LANDING_SLOTS: LandingSlot[] = [
     { key: "landing_hero", label: "Hero", defaultUrl: "/m-pillow-417953-web.webp" },
-    { key: "landing_size_matters", label: "Size Matters", defaultUrl: "/images/landing/size-matters.jpg" },
+    { key: "landing_size_matters", label: "Size matters", defaultUrl: "/images/landing/size-matters.jpg" },
     { key: "landing_marquee", label: "Marquee", defaultUrl: "/3way-side-sleep.jpg" },
     { key: "landing_ambassadors", label: "Ambassadors", defaultUrl: "/images/landing/ambassadors-hero.webp" },
-    { key: "landing_cervical_neck", label: "Cervical Neck", defaultUrl: "/mpillow-cervical-neck.webp" },
-    { key: "landing_basic_pillow", label: "Basic Pillow", defaultUrl: "/basic-mpillow.webp" },
-    { key: "landing_premium_pillow", label: "Premium Pillow", defaultUrl: "/DarkMpillowImage-WEB.jpg" },
+    { key: "landing_cervical_neck", label: "Cervical neck", defaultUrl: "/mpillow-cervical-neck.webp" },
+    { key: "landing_basic_pillow", label: "Basic pillow", defaultUrl: "/basic-mpillow.webp" },
+    { key: "landing_premium_pillow", label: "Premium pillow", defaultUrl: "/DarkMpillowImage-WEB.jpg" },
     { key: "landing_mbolster", label: "Mbolster", defaultUrl: "/808907f4-ac2b-499a-ace6-69933883b2f5.webp" },
     { key: "landing_founder", label: "Founder", defaultUrl: "/Darrenyeo-profileshoot_2.webp" },
 ];
@@ -272,11 +272,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             if (data.ok && Array.isArray(data.assets)) {
                 setFiles(toMediaFiles(data.assets as MediaAssetJson[]));
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to load media assets"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't load media assets."));
             }
         } catch (error) {
-            console.error("Failed to load files", error);
-            toast.error("Failed to load media files");
+            console.error("Couldn't load files.", error);
+            toast.error("Couldn't load media files.");
         } finally {
             setLoading(false);
         }
@@ -290,7 +290,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 setFolders(data.folders.map((f: MediaFolderRow) => ({ id: f.id, name: f.name })));
             }
         } catch (error) {
-            console.error("Failed to load folders", error);
+            console.error("Couldn't load folders.", error);
         }
     }, []);
 
@@ -306,7 +306,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 setOverrides(map);
             }
         } catch (error) {
-            console.error("Failed to load overrides", error);
+            console.error("Couldn't load overrides.", error);
         } finally {
             setOverridesLoading(false);
         }
@@ -319,7 +319,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             const data = await res.json();
             if (data.ok) setUsageMap(data.usages);
         } catch (error) {
-            console.error("Failed to load usages", error);
+            console.error("Couldn't load usages.", error);
         } finally {
             setUsageLoading(false);
         }
@@ -416,13 +416,13 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             const data = await res.json();
             if (data.ok) {
                 loadFiles();
-                toast.success("Image uploaded successfully");
+                toast.success("Image uploaded");
             } else {
-                toast.error(getApiErrorMessage(data.error, "Upload failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't upload."));
             }
         } catch (error) {
             console.error("Upload error", error);
-            toast.error("Upload failed");
+            toast.error("Couldn't upload.");
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -445,7 +445,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 return;
             }
             if (data.file.isFolder) {
-                toast.error("Folders cannot be imported — paste a file link");
+                toast.error("Folders can't be imported. Paste a link to a file.");
                 return;
             }
             setDrivePreview(data.file as DrivePreview);
@@ -468,12 +468,12 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             });
             const data = await res.json();
             if (!res.ok || !data.ok) {
-                toast.error(getApiErrorMessage(data.error, "Import failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't import."));
                 return;
             }
             const kind = data.asset?.kind ?? kindFromMime(drivePreview.mimeType);
             if (data.existing) {
-                toast.success("Already in library — opened existing Asset");
+                toast.success("Already in the library. Opened the existing asset.");
             } else if (kind === "image") {
                 toast.success("Imported image from Drive");
             } else {
@@ -484,7 +484,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             loadFiles();
         } catch (error) {
             console.error("Drive import error", error);
-            toast.error("Import failed");
+            toast.error("Couldn't import.");
         } finally {
             setDriveImporting(false);
         }
@@ -563,7 +563,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             });
             const data = await res.json();
             if (!res.ok || !data.ok) {
-                toast.error(getApiErrorMessage(data.error, "Rename failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't rename."));
                 return;
             }
             setFolders((prev) =>
@@ -574,7 +574,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             toast.success("Folder renamed");
         } catch (error) {
             console.error("Rename folder error", error);
-            toast.error("Rename failed");
+            toast.error("Couldn't rename.");
         } finally {
             setFolderBusy(false);
         }
@@ -601,7 +601,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             });
             const data = await res.json();
             if (!res.ok || !data.ok) {
-                toast.error(getApiErrorMessage(data.error, "Save failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't save."));
                 return;
             }
             const updated: MediaFile = {
@@ -618,7 +618,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             toast.success("Saved");
         } catch (error) {
             console.error("Save meta error", error);
-            toast.error("Save failed");
+            toast.error("Couldn't save.");
         } finally {
             setSavingMeta(false);
         }
@@ -670,11 +670,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 toast.success("Asset deleted");
                 loadUsages();
             } else {
-                toast.error(getApiErrorMessage(data.error, "Delete failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't delete."));
             }
         } catch (error) {
             console.error("Delete error", error);
-            toast.error("Delete failed");
+            toast.error("Couldn't delete.");
         }
     };
 
@@ -709,11 +709,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 toast.success(`Updated "${slot.label}" image`);
                 loadUsages();
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to update"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't update."));
             }
         } catch (error) {
             console.error("Set slot error", error);
-            toast.error("Failed to update");
+            toast.error("Couldn't update.");
         } finally {
             setSavingSlot(null);
             setPickerSlot(null);
@@ -736,11 +736,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 toast.success(`Reset "${slot.label}" to default`);
                 loadUsages();
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to reset"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't reset."));
             }
         } catch (error) {
             console.error("Reset slot error", error);
-            toast.error("Failed to reset");
+            toast.error("Couldn't reset.");
         } finally {
             setSavingSlot(null);
         }
@@ -790,11 +790,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 loadUsages();
                 loadOverrides();
             } else {
-                toast.error(getApiErrorMessage(data.error, "Replace failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't replace."));
             }
         } catch (error) {
             console.error("Replace error", error);
-            toast.error("Replace failed");
+            toast.error("Couldn't replace.");
         } finally {
             setReplacing(false);
         }
@@ -836,7 +836,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         switch (type) {
             case "blog_featured": return "Featured in";
             case "blog_inline": return "Inline in";
-            case "landing_slot": return "Landing Page";
+            case "landing_slot": return "Landing page";
             case "landing_section": return "Page builder";
             case "product_image": return "Product";
             case "product_variant": return "Variant";
@@ -859,9 +859,9 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             <section className="space-y-4">
                 <div>
                     <div className="flex items-center gap-1.5">
-                      <h1 className="text-2xl font-bold tracking-tight">Landing Page Images</h1>
-                      <InfoTip label="About Landing Page Images">
-                        <p>Customise the images shown on the front page. Click an image slot to choose from your media gallery.</p>
+                      <h1 className="text-2xl font-bold tracking-tight">Landing page images</h1>
+                      <InfoTip label="About landing page images">
+                        <p>Customise the images on the front page. Click a slot to pick one from the media library.</p>
                       </InfoTip>
                     </div>
                 </div>
@@ -941,9 +941,9 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <div className="flex items-center gap-1.5">
-                          <h2 className="text-2xl font-bold tracking-tight">Media Library</h2>
-                          <InfoTip label="About Media Library">
-                            <p>Company Media Assets — upload images or import from Google Drive.</p>
+                          <h2 className="text-2xl font-bold tracking-tight">Media library</h2>
+                          <InfoTip label="About media library">
+                            <p>Upload images or import them from Google Drive.</p>
                           </InfoTip>
                         </div>
                     </div>
@@ -959,7 +959,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         />
                         <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                             {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                            {uploading ? "Uploading..." : "Upload Image"}
+                            {uploading ? "Uploading…" : "Upload image"}
                         </Button>
                     </div>
                 </div>
@@ -1013,7 +1013,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 </div>
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">
                                     {kindFromMime(drivePreview.mimeType)}
-                                    {drivePreview.size != null ? ` · ${(drivePreview.size / 1024).toFixed(1)} KB` : ""}
+                                    {drivePreview.size != null ? `, ${(drivePreview.size / 1024).toFixed(1)} KB` : ""}
                                 </div>
                                 {kindFromMime(drivePreview.mimeType) !== "image" &&
                                     kindFromMime(drivePreview.mimeType) !== "other" && (
@@ -1058,7 +1058,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <div className="flex gap-1 border rounded-lg p-1">
                             {([
                                 { value: "all", label: "All" },
-                                { value: "in_use", label: "In Use" },
+                                { value: "in_use", label: "In use" },
                                 { value: "unused", label: "Unused" },
                             ] as const).map((opt) => (
                                 <button
@@ -1306,7 +1306,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             <SheetHeader>
                                 <SheetTitle className="truncate pr-8">{detailFile.name}</SheetTitle>
                                 <SheetDescription>
-                                    {(detailFile.kind ?? "image").toUpperCase()} ·{" "}
+                                    {(detailFile.kind ?? "image").toUpperCase()},{" "}
                                     {formatAdminDate(detailFile.created_at)}
                                 </SheetDescription>
                             </SheetHeader>
@@ -1573,7 +1573,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             }}
                                         >
                                             <ArrowLeftRight className="mr-2 h-4 w-4" />
-                                            Replace Everywhere
+                                            Replace everywhere
                                         </Button>
                                     )}
                                     <Button
@@ -1664,7 +1664,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             <Dialog open={!!replaceFile} onOpenChange={(open) => !open && setReplaceFile(null)}>
                 <DialogContent className="max-w-3xl max-h-[80dvh] overflow-hidden flex flex-col">
                     <DialogHeader>
-                        <DialogTitle>Replace Image Everywhere</DialogTitle>
+                        <DialogTitle>Replace image everywhere</DialogTitle>
                         <DialogDescription>
                             Choose a new image to replace <strong>{replaceFile?.name}</strong> in all {getUsageCount(replaceFile)} {getUsageCount(replaceFile) === 1 ? "place" : "places"} it&apos;s used.
                         </DialogDescription>
@@ -1734,7 +1734,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-destructive" />
-                            Image In Use
+                            Image in use
                         </DialogTitle>
                         <DialogDescription>
                             This image is currently used in {deleteConfirm?.usages.length}{" "}
@@ -1767,7 +1767,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             }}
                         >
                             <ArrowLeftRight className="mr-2 h-4 w-4" />
-                            Replace First
+                            Replace first
                         </Button>
                         <Button
                             variant="destructive"
@@ -1775,7 +1775,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             disabled={deleting}
                         >
                             {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Delete Anyway
+                            Delete anyway
                         </Button>
                     </DialogFooter>
                 </DialogContent>

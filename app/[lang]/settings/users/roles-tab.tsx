@@ -110,12 +110,12 @@ export function RolesTab({
         body: JSON.stringify({ permissions: [...current(role)] }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Save failed");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't save.");
       setRoles((rs) => rs.map((r) => (r.id === role.id ? (payload.role as RoleRow) : r)));
       discard(role);
       toast.success(`${role.name} saved`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(null);
     }
@@ -158,7 +158,7 @@ export function RolesTab({
               <SelectContent>
                 {roles.map((r) => (
                   <SelectItem key={r.id} value={r.id} textValue={r.name}>
-                    {r.name} · {r.memberCount}
+                    {r.name} ({r.memberCount})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -337,7 +337,7 @@ function RoleDetailSheet({
         body: body ? JSON.stringify(body) : undefined,
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed");
+      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
       if (method === "DELETE") {
         toast.success(`${role.name} deleted`);
         onDeleted(role.id);
@@ -348,7 +348,7 @@ function RoleDetailSheet({
       setName(null);
       setDescription(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
@@ -476,14 +476,14 @@ function CreateRoleDialog({
         }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to create role");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't create the role.");
       toast.success(`${name} created`);
       setName("");
       setDescription("");
       setFrom("none");
       onCreated(payload.role as RoleRow);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create role");
+      toast.error(err instanceof Error ? err.message : "Couldn't create the role.");
     } finally {
       setBusy(false);
     }

@@ -366,7 +366,7 @@ export default function SettingsOrdersPage({
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 <SummaryCard
                     icon={ShoppingCart}
-                    label="Total Orders"
+                    label="Total orders"
                     value={summaryStats ? String(summaryStats.total_orders) : "—"}
                     loading={summaryStatsLoading}
                 />
@@ -378,21 +378,21 @@ export default function SettingsOrdersPage({
                 />
                 <SummaryCard
                     icon={TrendingUp}
-                    label="Avg Order Value"
+                    label="Avg order value"
                     value={summaryStats ? formatSGD(summaryStats.avg_order_value) : "—"}
                     loading={summaryStatsLoading}
                 />
                 {!summaryStatsLoading && summaryStats && (
                     <SummaryCard
                         icon={TrendingUp}
-                        label="Gross Margin"
-                        value={`${formatSGD(summaryStats.total_gross_margin ?? 0)}${summaryStats.avg_margin_pct != null ? ` · ${formatMarginPct(summaryStats.avg_margin_pct)} avg` : ""}`}
+                        label="Gross margin"
+                        value={`${formatSGD(summaryStats.total_gross_margin ?? 0)}${summaryStats.avg_margin_pct != null ? ` (${formatMarginPct(summaryStats.avg_margin_pct)} avg)` : ""}`}
                         loading={summaryStatsLoading}
                     />
                 )}
                 <SummaryCard
                     icon={Clock}
-                    label="Pending Orders"
+                    label="Pending orders"
                     value={summaryStats ? String(summaryStats.pending_orders) : "—"}
                     loading={summaryStatsLoading}
                 />
@@ -404,7 +404,7 @@ export default function SettingsOrdersPage({
             >
                 <TabsList>
                     <TabsTrigger value="platform">Orders</TabsTrigger>
-                    <TabsTrigger value="shopify">Shopify Sales</TabsTrigger>
+                    <TabsTrigger value="shopify">Shopify sales</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="platform" className="space-y-6 mt-6">
@@ -570,7 +570,7 @@ export default function SettingsOrdersPage({
             {totalPages > 1 && (
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
                     <p className="text-sm text-muted-foreground">
-                        Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of{" "}
+                        Showing {(page - 1) * LIMIT + 1} to {Math.min(page * LIMIT, total)} of{" "}
                         {total} order{total !== 1 ? "s" : ""}
                     </p>
                     <Pagination className="w-auto mx-0">

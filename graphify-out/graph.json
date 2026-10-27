@@ -13963,7 +13963,7 @@
       "file_type": "code",
       "norm_label": "declarations",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L179"
+      "source_location": "L178"
     },
     {
       "id": "lib_email_theme_pilltone",
@@ -13976,7 +13976,7 @@
       "file_type": "code",
       "norm_label": "pilltone",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L159"
+      "source_location": "L158"
     },
     {
       "id": "lib_points_expiry_pointsexpiryremindermonths",
@@ -60025,7 +60025,7 @@
       "file_type": "code",
       "norm_label": "css()",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L205"
+      "source_location": "L204"
     },
     {
       "id": "lib_email_theme_cssvalue",
@@ -60037,7 +60037,7 @@
       "file_type": "code",
       "norm_label": "cssvalue()",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L197"
+      "source_location": "L196"
     },
     {
       "id": "lib_email_theme_typestyle",
@@ -60049,7 +60049,7 @@
       "file_type": "code",
       "norm_label": "typestyle()",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L216"
+      "source_location": "L215"
     },
     {
       "id": "lib_points_tests_refunds_pinned_test_from",
@@ -71125,7 +71125,7 @@
       "file_type": "code",
       "norm_label": "post()",
       "source_file": "app/auth/signout/route.ts",
-      "source_location": "L14"
+      "source_location": "L15"
     },
     {
       "id": "lib_auth_post_auth_redirect_resolvepostauthredirect",
@@ -121840,7 +121840,7 @@
       "node_kind": "heading",
       "norm_label": "flagged ambiguities",
       "source_file": "CONTEXT.md",
-      "source_location": "L994"
+      "source_location": "L998"
     },
     {
       "id": "context_language",
@@ -121864,7 +121864,7 @@
       "node_kind": "heading",
       "norm_label": "learn-more slide-in section recipes (approved)",
       "source_file": "CONTEXT.md",
-      "source_location": "L928"
+      "source_location": "L932"
     },
     {
       "id": "context_loyalty_points_adr_0030",
@@ -145599,7 +145599,7 @@
       "file_type": "code",
       "norm_label": "footer_links",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L133"
+      "source_location": "L132"
     },
     {
       "id": "lib_email_theme_layout",
@@ -145632,7 +145632,7 @@
       "file_type": "code",
       "norm_label": "partner_footer_links",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L144"
+      "source_location": "L143"
     },
     {
       "id": "lib_email_theme_pill",
@@ -145643,7 +145643,7 @@
       "file_type": "code",
       "norm_label": "pill",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L172"
+      "source_location": "L171"
     },
     {
       "id": "lib_email_theme_radius",
@@ -145665,7 +145665,7 @@
       "file_type": "code",
       "norm_label": "social_links",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L151"
+      "source_location": "L150"
     },
     {
       "id": "lib_email_theme_space",
@@ -145687,7 +145687,7 @@
       "file_type": "code",
       "norm_label": "table_reset",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L231"
+      "source_location": "L230"
     },
     {
       "id": "lib_email_theme_table_reset_style",
@@ -145698,7 +145698,7 @@
       "file_type": "code",
       "norm_label": "table_reset_style",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L234"
+      "source_location": "L233"
     },
     {
       "id": "lib_email_theme_type",
@@ -145720,7 +145720,7 @@
       "file_type": "code",
       "norm_label": "unitless_properties",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L186"
+      "source_location": "L185"
     },
     {
       "id": "lib_points_tests_refunds_pinned_test",
@@ -173862,7 +173862,7 @@
       "file_type": "code",
       "norm_label": "clientat",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L76"
+      "source_location": "L77"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_faqat",
@@ -173873,7 +173873,7 @@
       "file_type": "code",
       "norm_label": "faqat",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L75"
+      "source_location": "L76"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_fibreline",
@@ -173884,7 +173884,7 @@
       "file_type": "code",
       "norm_label": "fibreline",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L32"
+      "source_location": "L33"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_h1",
@@ -173895,7 +173895,7 @@
       "file_type": "code",
       "norm_label": "h1",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L58"
+      "source_location": "L59"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_h1match",
@@ -173906,7 +173906,7 @@
       "file_type": "code",
       "norm_label": "h1match",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L56"
+      "source_location": "L57"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_introat",
@@ -173917,7 +173917,7 @@
       "file_type": "code",
       "norm_label": "introat",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L74"
+      "source_location": "L75"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_lede",
@@ -173928,7 +173928,7 @@
       "file_type": "code",
       "norm_label": "lede",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L64"
+      "source_location": "L65"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_ledematch",
@@ -173939,7 +173939,7 @@
       "file_type": "code",
       "norm_label": "ledematch",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L62"
+      "source_location": "L63"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_ledewords",
@@ -173950,7 +173950,7 @@
       "file_type": "code",
       "norm_label": "ledewords",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L70"
+      "source_location": "L71"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_mpsrc",
@@ -173961,7 +173961,7 @@
       "file_type": "code",
       "norm_label": "mpsrc",
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L55"
+      "source_location": "L56"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_04_check_root",
@@ -199112,7 +199112,7 @@
       "file_type": "code",
       "norm_label": "about",
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L33"
+      "source_location": "L34"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_03_check_discover",
@@ -199123,7 +199123,7 @@
       "file_type": "code",
       "norm_label": "discover",
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L38"
+      "source_location": "L39"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_03_check_lede",
@@ -199134,7 +199134,7 @@
       "file_type": "code",
       "norm_label": "lede",
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L52"
+      "source_location": "L53"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_03_check_ledematch",
@@ -199145,7 +199145,7 @@
       "file_type": "code",
       "norm_label": "ledematch",
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L50"
+      "source_location": "L51"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_03_check_pagesrc",
@@ -199156,7 +199156,7 @@
       "file_type": "code",
       "norm_label": "pagesrc",
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L49"
+      "source_location": "L50"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_03_check_root",
@@ -199178,7 +199178,7 @@
       "file_type": "code",
       "norm_label": "w",
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L59"
+      "source_location": "L60"
     },
     {
       "id": "lib_i18n_marketing_copy_slice_05_check",
@@ -236711,7 +236711,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/auth/signout/route.ts",
-      "source_location": "L16",
+      "source_location": "L17",
       "weight": 1.0
     },
     {
@@ -236723,7 +236723,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/auth/signout/route.ts",
-      "source_location": "L17",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
@@ -236735,7 +236735,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/auth/signout/route.ts",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -272471,7 +272471,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L208",
+      "source_location": "L207",
       "weight": 1.0
     },
     {
@@ -272483,7 +272483,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/email/theme.ts",
-      "source_location": "L218",
+      "source_location": "L217",
       "weight": 1.0
     },
     {
@@ -488659,7 +488659,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/auth/signout/route.ts",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0
     },
     {
@@ -527445,7 +527445,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CONTEXT.md",
-      "source_location": "L928",
+      "source_location": "L932",
       "weight": 1.0
     },
     {
@@ -527456,7 +527456,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CONTEXT.md",
-      "source_location": "L994",
+      "source_location": "L998",
       "weight": 1.0
     },
     {
@@ -572578,7 +572578,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L133",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -572589,7 +572589,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L144",
+      "source_location": "L143",
       "weight": 1.0
     },
     {
@@ -572600,7 +572600,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L151",
+      "source_location": "L150",
       "weight": 1.0
     },
     {
@@ -572611,7 +572611,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L159",
+      "source_location": "L158",
       "weight": 1.0
     },
     {
@@ -572622,7 +572622,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L172",
+      "source_location": "L171",
       "weight": 1.0
     },
     {
@@ -572633,7 +572633,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L179",
+      "source_location": "L178",
       "weight": 1.0
     },
     {
@@ -572644,7 +572644,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L186",
+      "source_location": "L185",
       "weight": 1.0
     },
     {
@@ -572655,7 +572655,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L197",
+      "source_location": "L196",
       "weight": 1.0
     },
     {
@@ -572666,7 +572666,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L205",
+      "source_location": "L204",
       "weight": 1.0
     },
     {
@@ -572677,7 +572677,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L216",
+      "source_location": "L215",
       "weight": 1.0
     },
     {
@@ -572688,7 +572688,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L231",
+      "source_location": "L230",
       "weight": 1.0
     },
     {
@@ -572699,7 +572699,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email/theme.ts",
-      "source_location": "L234",
+      "source_location": "L233",
       "weight": 1.0
     },
     {
@@ -574855,7 +574855,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -574866,7 +574866,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L38",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -574877,7 +574877,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L49",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -574888,7 +574888,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L50",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -574899,7 +574899,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L52",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -574910,7 +574910,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L59",
+      "source_location": "L60",
       "weight": 1.0
     },
     {
@@ -574954,7 +574954,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L32",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -574965,7 +574965,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L55",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -574976,7 +574976,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L56",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -574987,7 +574987,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L58",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
@@ -574998,7 +574998,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L62",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -575009,7 +575009,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L64",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -575020,7 +575020,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L70",
+      "source_location": "L71",
       "weight": 1.0
     },
     {
@@ -575031,7 +575031,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L74",
+      "source_location": "L75",
       "weight": 1.0
     },
     {
@@ -575042,7 +575042,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L75",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -575053,7 +575053,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/i18n/marketing-copy-slice-04.check.ts",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -646722,7 +646722,7 @@
       "confidence_score": 0.95,
       "context": "FeatureCarouselContent",
       "source_file": "CONTEXT.md",
-      "source_location": "L925",
+      "source_location": "L929",
       "weight": 1.0
     },
     {
@@ -647046,7 +647046,7 @@
       "confidence_score": 0.95,
       "context": "SplitHeroContent",
       "source_file": "CONTEXT.md",
-      "source_location": "L925",
+      "source_location": "L929",
       "weight": 1.0
     },
     {
@@ -653622,7 +653622,7 @@
       "confidence_score": 0.95,
       "context": "image",
       "source_file": "CONTEXT.md",
-      "source_location": "L839",
+      "source_location": "L843",
       "weight": 1.0
     },
     {
@@ -654174,7 +654174,7 @@
       "confidence_score": 0.95,
       "context": "kind",
       "source_file": "CONTEXT.md",
-      "source_location": "L1012",
+      "source_location": "L1016",
       "weight": 1.0
     },
     {
@@ -672902,7 +672902,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/auth/signout/route.ts",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0,
       "context": "POST"
     },
@@ -690567,5 +690567,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ed0caccfb4fd20befbd38dfe563f4bee94c8063f"
+  "built_at_commit": "c0a419435d7344820b6fd7fd2429de0167243a50"
 }

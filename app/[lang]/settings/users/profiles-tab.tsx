@@ -19,7 +19,7 @@ async function send(url: string, method: "POST" | "PATCH", body: unknown): Promi
     body: JSON.stringify(body),
   });
   const payload = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(payload?.error ?? "Failed");
+  if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
   return payload.row as StaffProfile;
 }
 
@@ -64,7 +64,7 @@ export function ProfilesTab({
       toast.success(done);
       return true;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Something went wrong.");
       return false;
     } finally {
       setBusyId(null);
@@ -77,7 +77,7 @@ export function ProfilesTab({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          The people who work under each login. Results are tagged with who measured them; Telegram access is linked
+          These are the people who work under each login. Results are tagged with who measured them; Telegram access is linked
           to a profile.
         </p>
         <label className="flex shrink-0 items-center gap-2 text-sm">
@@ -102,7 +102,7 @@ export function ProfilesTab({
                 {roleName.get(m.roleId) ?? "—"}
               </span>
               {m.status !== "active" ? (
-                <span className="text-xs text-muted-foreground">· {m.status === "invited" ? "Invited" : "Deactivated"}</span>
+                <span className="text-xs text-muted-foreground">{m.status === "invited" ? "Invited" : "Deactivated"}</span>
               ) : null}
             </div>
             <ul className="divide-y">

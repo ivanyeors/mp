@@ -94,7 +94,7 @@ assert.doesNotMatch(shell, /onSelect=\{setSelectedSlug\}/, "no selection path by
 
 // Every alt field the inspector offers must actually reach the page.
 for (const [file, fallback] of [
-  ["components/sections/landing/hero-section.tsx", "Mpillow pillow hero"],
+  ["components/sections/landing/hero-section.tsx", "Mpillow cervical pillow on a bed"],
   ["components/sections/landing/neck-pains-section.tsx", "Mpillow cervical neck support"],
 ] as const) {
   const src = readCode(file);

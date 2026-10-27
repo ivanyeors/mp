@@ -41,7 +41,7 @@ function StatusPill({ status, detail }: { status: MemberStatus; detail?: string 
       {STATUS_LABEL[status]}
       {detail ? (
         <span className="font-normal" suppressHydrationWarning>
-          &nbsp;· {detail}
+          ,&nbsp;{detail}
         </span>
       ) : null}
     </span>
@@ -93,11 +93,11 @@ export function MembersTab({
         body: JSON.stringify(body),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Update failed");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't update.");
       setMembers((rows) => rows.map((r) => (r.id === member.id ? (payload.member as MemberRow) : r)));
       toast.success(`${member.email} updated`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't update.");
     } finally {
       setBusyId(null);
     }
@@ -147,7 +147,7 @@ export function MembersTab({
         { method: action === "resend" ? "POST" : "DELETE" },
       );
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed");
+      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
       if (action === "revoke") {
         setMembers((rows) => rows.filter((r) => r.id !== m.id));
         toast.success(`Invite to ${m.email} revoked`);
@@ -158,7 +158,7 @@ export function MembersTab({
         else toast.error("The email failed to send. Try Resend again in a minute.");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusyId(null);
     }
@@ -231,7 +231,7 @@ export function MembersTab({
           <Loader2 className="mx-auto h-5 w-5 animate-spin" />
         </div>
       ) : members.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">No Members yet.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">No members yet.</p>
       ) : (
         <>
           {/* Phone: one card per Member. */}
@@ -328,7 +328,7 @@ function InviteDialog({
         body: JSON.stringify({ email, role_id: selected, profile_name: profileName.trim() || null }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to invite");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't invite.");
       if (payload.emailSent) toast.success(`Invite sent to ${email}`);
       else toast.error("Invite saved, but the email failed to send. Use Resend on their row.");
       setEmail("");
@@ -336,7 +336,7 @@ function InviteDialog({
       setOpen(false);
       await onInvited();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to invite");
+      toast.error(e instanceof Error ? e.message : "Couldn't invite.");
     } finally {
       setInviting(false);
     }
@@ -399,7 +399,7 @@ function InviteDialog({
                 onChange={(e) => setProfileName(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                The person Results are tagged with. Leave empty to use {suggestedName ? `"${suggestedName}"` : "the email"}.
+                The person results are tagged with. Leave empty to use {suggestedName ? `"${suggestedName}"` : "the email"}.
               </p>
             </div>
             <DialogFooter>

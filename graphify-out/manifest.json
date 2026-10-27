@@ -150,15 +150,15 @@
     "semantic_hash": ""
   },
   "lib/auth/dock-chrome.ts": {
-    "mtime": 1793074427.6860297,
-    "seen": 1793074886.5392897,
-    "ast_hash": "c0017a7d82976fc0f535c770db746111",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0573614,
+    "ast_hash": "6a005ef6bcb8c2fb718575584e2a2464",
     "semantic_hash": ""
   },
   "lib/auth/permissions.ts": {
-    "mtime": 1793074427.6860297,
-    "seen": 1793074886.5392995,
-    "ast_hash": "d2fc1ac0a9cbb843113a569120ef58a6",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0573814,
+    "ast_hash": "458d964b87a635e54a4b2f6fe0420b72",
     "semantic_hash": ""
   },
   "lib/auth/post-auth-redirect.ts": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "lib/google/places-reviews.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398026,
-    "ast_hash": "5ec487c80e760e12295fd9cea9b5b9b3",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0582833,
+    "ast_hash": "b75d3ef71280ebc5fc55fcd03daa8d5d",
     "semantic_hash": ""
   },
   "lib/i18n/__tests__/currencies.test.ts": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-01.check.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398133,
-    "ast_hash": "31cbc20d2504dff316fc7110f4dd287c",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0582993,
+    "ast_hash": "18a014945d447c453b1c5624ccc3f1b2",
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-02.check.ts": {
@@ -672,21 +672,21 @@
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-03.check.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398161,
-    "ast_hash": "9620a5cea23903a77cf5a00976aeb1f9",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0583036,
+    "ast_hash": "f0750e20d006435487c17268ae088eaf",
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-04.check.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398173,
-    "ast_hash": "fab5b47a4f52279892e880e7a2b82b56",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0583055,
+    "ast_hash": "d1e4cfd9de5e7a561a2f5c6cc87544d8",
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-05.check.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398185,
-    "ast_hash": "fba232b6a60db8ea6bbd52fde8080c35",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0583074,
+    "ast_hash": "13303fb372ff12add4ccee17c0c85b6d",
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-06.check.ts": {
@@ -696,15 +696,15 @@
     "semantic_hash": ""
   },
   "lib/i18n/marketing-copy-slice-07.check.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398204,
-    "ast_hash": "6cf68541e9c15888e4789f24a455ff47",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0583112,
+    "ast_hash": "f5c089605f64d8ea9af06fc53c8994c2",
     "semantic_hash": ""
   },
   "lib/i18n/messages/en-US.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398235,
-    "ast_hash": "9f02ea70c082984b01b9f5b9c1bb08a2",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.058316,
+    "ast_hash": "be04884264004d6324250c661d8861be",
     "semantic_hash": ""
   },
   "lib/i18n/messages/index.ts": {
@@ -720,9 +720,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/messages/zh-CN.ts": {
-    "mtime": 1793074427.7340298,
-    "seen": 1793074886.5398273,
-    "ast_hash": "a263085f8085d6ec18bedcb363067384",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0583234,
+    "ast_hash": "9c7c6d73a596a2df0579291382a2a4c5",
     "semantic_hash": ""
   },
   "lib/i18n/routing.ts": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "lib/page-faq/defaults.ts": {
-    "mtime": 1793074427.7420297,
-    "seen": 1793074886.539923,
-    "ast_hash": "241c88125fbf3a3399350bd60f792534",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0585322,
+    "ast_hash": "09525487ee0c83c321fcfefa53c728b5",
     "semantic_hash": ""
   },
   "lib/page-faq/index.ts": {
@@ -1218,9 +1218,9 @@
     "semantic_hash": ""
   },
   "lib/seo/guides-content.ts": {
-    "mtime": 1793074427.7580297,
-    "seen": 1793074886.540274,
-    "ast_hash": "ba48dcf29163d682af871b295c1b01fe",
+    "mtime": 1793084670.0558362,
+    "seen": 1793084819.0591633,
+    "ast_hash": "42426d033f88bb7dd6844aeda68caf9a",
     "semantic_hash": ""
   },
   "lib/seo/index.ts": {
@@ -1248,9 +1248,9 @@
     "semantic_hash": ""
   },
   "lib/seo/llms-index.ts": {
-    "mtime": 1793074427.7580297,
-    "seen": 1793074886.5402818,
-    "ast_hash": "7bc417d1b92078ae65a1f82ca6d51216",
+    "mtime": 1793084670.0558362,
+    "seen": 1793084819.0591795,
+    "ast_hash": "ee88bdaff854126f58d71cb805dd53b5",
     "semantic_hash": ""
   },
   "lib/seo/locale-url.ts": {
@@ -1278,9 +1278,9 @@
     "semantic_hash": ""
   },
   "lib/seo/seo.check.ts": {
-    "mtime": 1793074427.7580297,
-    "seen": 1793074886.5402882,
-    "ast_hash": "0c0e9ca5da88778cbe0dea68a6779c9b",
+    "mtime": 1793084670.0558362,
+    "seen": 1793084819.059195,
+    "ast_hash": "fac0c0dfcaa1a36be1b839569a722fd6",
     "semantic_hash": ""
   },
   "lib/sheet/__tests__/landing-slide-ins-compliance.test.ts": {
@@ -2406,9 +2406,9 @@
     "semantic_hash": ""
   },
   "app/auth/signout/route.ts": {
-    "mtime": 1793074427.7220297,
-    "seen": 1793074886.5389853,
-    "ast_hash": "6dbaa2399dd6581de15afedf66b708b0",
+    "mtime": 1793084670.0478363,
+    "seen": 1793084819.0568936,
+    "ast_hash": "35074561da9fdc6cd1130c532fad79f1",
     "semantic_hash": ""
   },
   "app/llms.txt/route.ts": {
@@ -3246,9 +3246,9 @@
     "semantic_hash": ""
   },
   "lib/product-builder/overlays.check.ts": {
-    "mtime": 1793074427.7460296,
-    "seen": 1793074886.540001,
-    "ast_hash": "0fb8a1e22ea97345ed70b54fd71a4215",
+    "mtime": 1793084670.0558362,
+    "seen": 1793084819.0586762,
+    "ast_hash": "e8f5b5491d0fcbf044adc00443fe7149",
     "semantic_hash": ""
   },
   "lib/product-builder/overlays.ts": {
@@ -5838,9 +5838,9 @@
     "semantic_hash": ""
   },
   ".cursor/marketing-page/persona.md": {
-    "mtime": 1793074427.7620296,
-    "seen": 1793074886.5418541,
-    "ast_hash": "7d72e44d9420fc6cdea0bd2bc51ecaee",
+    "mtime": 1793084670.0238364,
+    "seen": 1793084819.0620792,
+    "ast_hash": "0935aa7b17f6e2445b3589e24483136c",
     "semantic_hash": ""
   },
   ".cursor/marketing-page/product-slide-sections.md": {
@@ -5874,9 +5874,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793074427.7660298,
-    "seen": 1793074886.5418675,
-    "ast_hash": "e68d7a82aefec196ffdbbca096d4f81a",
+    "mtime": 1793084670.0238364,
+    "seen": 1793084819.0621061,
+    "ast_hash": "6f58c5fae9064ed75630545cf2ef1685",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -5964,9 +5964,9 @@
     "semantic_hash": ""
   },
   "data/blogs/the-complete-guide-to-choosing-the-right-bolster-in-singapore.mdx": {
-    "mtime": 1793074427.7860298,
-    "seen": 1793074886.54189,
-    "ast_hash": "dd102180a1174e28de8c66c143869e3e",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0621502,
+    "ast_hash": "d19f0bd17ef7640339c67b3398da8e81",
     "semantic_hash": ""
   },
   "data/blogs/the-ultimate-guide-to-cervical-support-pillows-for-neck-pain-relief.mdx": {
@@ -7164,9 +7164,9 @@
     "semantic_hash": ""
   },
   "lib/email/theme.ts": {
-    "mtime": 1793074427.7300298,
-    "seen": 1793074886.5397692,
-    "ast_hash": "9618a1bb6e738e835ec6f1106faf1403",
+    "mtime": 1793084670.0518363,
+    "seen": 1793084819.0582254,
+    "ast_hash": "e139d358f2aa37ce5d58fcb7804dfa6f",
     "semantic_hash": ""
   },
   "scripts/build-auth-email-templates.ts": {

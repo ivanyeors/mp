@@ -24,8 +24,9 @@ function words(s: string) {
 const home = enUS.home.mbolster;
 assert.match(home.description, /kids|children/i);
 assert.match(home.description, /adult/i);
-assert.match(home.description + " " + home.subtitle, /household|Science of Sleep/i);
-assert.match(home.subtitle, /Science of Sleep/i);
+assert.match(home.description + " " + home.subtitle, /household/i);
+assert.match(home.subtitle, /Mpillow/);
+assert.doesNotMatch(home.description + home.subtitle, /Science of Sleep/i);
 assert.doesNotMatch(home.description + home.subtitle, FORBIDDEN_OFFER);
 assert.doesNotMatch(home.description + home.subtitle, BANNED);
 
@@ -36,7 +37,7 @@ assert.match(about, /adult/i);
 assert.doesNotMatch(about, FORBIDDEN_OFFER);
 
 const discover = slide.discoverParagraphs.join(" ");
-assert.match(discover, /Science of Sleep/i);
+assert.doesNotMatch(discover, /Science of Sleep/i);
 assert.match(discover, /Mpillow/i);
 assert.match(discover, /household/i);
 assert.doesNotMatch(discover, FORBIDDEN_OFFER);
