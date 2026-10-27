@@ -1,7 +1,8 @@
 # PRD — CRM retention loop: one menu, one loop, and the hand-offs between its pages
 
 **Status:** slice 01 (the sidebar) built on `claude/hopeful-hopper-bs4ic1` (2026-10-27). Slices
-02–08 specified, not started.
+02–10 specified, not started. The stages, signals and success metrics are defined in
+[`lifecycle-and-metrics.md`](lifecycle-and-metrics.md) (draft for the owner, 2026-10-27).
 **Owner request (2026-10-27):** "In our settings page, sidenav: Customers, Email campaigns, Email
 templates (should be a setting/sub-page under campaigns), Results, Orders should be part of our
 CRM loop/flow. Cleanup and optimize the sidenav section first for our CRM for customers. Research
@@ -10,7 +11,7 @@ through an industry best approach to retaining customers for recurring/returning
 **Builds on:** `PRD-customer-crm` (ADR 0028: notes, timeline, Segments, follow-ups, aftercare,
 reviews), `PRD-email-marketing` and `PRD-campaign-send-flow` (Email campaigns),
 `PRD-email-templates`, `PRD-loyalty-points` (ADR 0030).
-**Owner decisions:** three open. See [Owner decisions](#owner-decisions).
+**Owner decisions:** three open, one settled. See [Owner decisions](#owner-decisions).
 
 ## Problem statement
 
@@ -128,17 +129,23 @@ graph LR
    also show on the mobile menu's tiles.
 2. **Hand-offs (02).** Result → Customer; Return → Customer and Order; Segment → *Email this
    Segment*; a campaign's Segment audience → that Segment's list.
-3. **A lifecycle stage on every Customer (03)**, derived in the Customer overview from facts it
-   already has, never stored: *Prospect*, *New*, *Repeat*, *Loyal*, *At risk*, *Lapsed*, and
-   *Earlier buyer* (see decision 2). A `stage=` filter, so a stage is a Segment and an Audience.
+3. **A lifecycle stage on every Customer (03)**, derived in the Customer overview, never stored:
+   *Lead* before a purchase, then *New*, *Repeat*, *Loyal*, *At risk* and *Lapsed*
+   ([`lifecycle-and-metrics.md`](lifecycle-and-metrics.md#stages)). Shopify customers go through
+   the same stages. A `stage=` filter, so a stage is a Segment and an Audience.
 4. **Stage chips above the Customers list (04)**, with live counts, beside the Segments row.
 5. **The next step on the Customer (05)**: their stage and the one thing the loop suggests next,
    from pure rules over facts on the page.
-6. **Retention numbers (06)**: repeat purchase rate by Adobe's formula, customers by stage, and
-   the median days from first to second order.
+6. **The scorecard (06)**: the headline *Returning customer rate* and metrics M1 to M25, each a
+   rate over a monthly cohort ([`lifecycle-and-metrics.md`](lifecycle-and-metrics.md#success-metrics)).
 7. **Playbooks (07)**: ready-written campaigns per stage, each opening on the stage's Segment,
    sent in waves through the existing flow.
 8. **Sign-off (08)**: the owner's walk round the loop on production.
+9. **Shopify-era order history, settled once (09)**: the Shopify orders export imported one time
+   as this platform's staff-only purchase history, so Migrated customers get dates and products
+   and go through the same lifecycle.
+10. **Ask why they left (10)**: one closed question where people drop off or turn a quote down,
+    answers that offer help on the spot, and a *Why people leave* card that closes the loop.
 
 ## Decisions
 
@@ -152,14 +159,17 @@ graph LR
 3. **The stage is derived, never stored**, as every other status on the overview is
    (`lib/crm/customer-overview.ts`). Changing a threshold re-sorts everyone at once, with no
    backfill.
-4. **The stage reads orders only.** Never reviews, ratings, returns or notes: the stage chooses
+4. **A purchase is a paid Order with a goods line.** A re-adjustment fee is its own service
+   Order and is not a purchase; it is the *re-adjusted* signal. Shopify-era orders are purchases
+   once slice 09 imports them.
+5. **The stage reads orders only.** Never reviews, ratings, returns or notes: the stage chooses
    campaign audiences, and nothing about how a customer feels may decide who is asked for a
    review (`PRD-customer-crm` README, sixth hazard).
-5. **Playbooks are campaigns, not automation.** Each is a ready-written draft that Staff send in
+6. **Playbooks are campaigns, not automation.** Each is a ready-written draft that Staff send in
    waves. That keeps consent, suppression, the pause rule and Resend's plan exactly as
    `PRD-campaign-send-flow` built them, and needs no third cron (`PRD-customer-crm` README,
    fourth hazard).
-6. **Aftercare stays out of campaigns.** The review request and the check-up are service
+7. **Aftercare stays out of campaigns.** The review request and the check-up are service
    messages with their own rules (CRM slices 07, 08). A playbook never asks for a review and never
    carries an aftercare message.
 
@@ -168,10 +178,11 @@ graph LR
 1. **Stage thresholds.** Recommended: *At risk* from 12 months after the last paid Order (when
    the yearly check-up falls due), *Lapsed* from 24 months (when points expire, ADR 0030).
    *Loyal* from 3 paid Orders. Alternative: let the owner set them on Customers → Settings.
-2. **Customers who bought only before the move.** A **Migrated customer** carries a Shopify-era
-   order count and amount (`migrated_customers`), but no order dates were imported. Recommended:
-   their own stage, *Earlier buyer*, until they order here. Guessing a date would put them in the
-   wrong playbook. Their invitation campaign already targets them.
+2. **Settled (owner, 2026-10-27): Shopify customers go through the same lifecycle.** Open with
+   it: the platform holds only their Shopify-era order count and total, no dates or products.
+   Recommended: import the Shopify orders export once (slice 09). That amends ADR 0029 decision 10
+   on the Staff side only: customers still see no Shopify order history. The owner confirms the
+   amendment before slice 09 starts.
 3. **Returns / RMA in the CRM group.** Not in the original list, placed there because a return is
    a step in the customer's loop and is linked to the Customer. Reversible in one line.
 
@@ -185,6 +196,11 @@ no Shopify dependency (`CLAUDE.md`). New:
   `subscribed` at the moment of each send. The stage chips say so.
 - **Order statuses.** The stage counts what the overview's `paid_orders` counts: paid, and not
   pending, cancelled, refunded or failed. A refund moves a customer back a stage; that is right.
+
+- **Asking why is a message too.** The one follow-up to a Lead whose hold ended carries no offer
+  and goes once; counsel confirms it is a service message before it is switched on (slice 10).
+- **Paid re-adjustments are not purchases.** The overview's `paid_orders` and `last_paid_at`
+  count them today, which also skews the *Last order* filter. Slice 03 counts goods only.
 
 ## Out of scope
 

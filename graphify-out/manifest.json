@@ -15432,9 +15432,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/crm-retention-loop-prd.md": {
-    "mtime": 1793094755.2112994,
-    "seen": 1793094919.3319867,
-    "ast_hash": "6feea7e07d7317d793336bafbe79c20f",
+    "mtime": 1793096306.1699219,
+    "seen": 1793096438.8054934,
+    "ast_hash": "79715116ccdb04e391cc4f2d9c123c7b",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/01-crm-sidebar-group.md": {
@@ -15450,9 +15450,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md": {
-    "mtime": 1793094817.3427432,
-    "seen": 1793094919.3319945,
-    "ast_hash": "3de2adb66cf25696536757bd045d9da8",
+    "mtime": 1793096354.0758307,
+    "seen": 1793096438.8054998,
+    "ast_hash": "8f39693d53ddc5274cf19b21251c527c",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/04-stage-chips.md": {
@@ -15468,9 +15468,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md": {
-    "mtime": 1793094817.3497808,
-    "seen": 1793094919.3320014,
-    "ast_hash": "924e0230a03d1c35acb0cd0a7c41a9c0",
+    "mtime": 1793096345.1856635,
+    "seen": 1793096438.805505,
+    "ast_hash": "5474b75cbbce8d2bf47385b22e827239",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/07-stage-playbooks.md": {
@@ -15486,9 +15486,27 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/README.md": {
-    "mtime": 1793094827.8912978,
-    "seen": 1793094919.3320086,
-    "ast_hash": "9c164b13aafce936a8a9ee861413ca16",
+    "mtime": 1793096369.7315552,
+    "seen": 1793096438.805516,
+    "ast_hash": "007af654472853b9fdd826f624b6febf",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-crm-retention-loop/issues/09-shopify-order-history.md": {
+    "mtime": 1793096354.075217,
+    "seen": 1793096438.805512,
+    "ast_hash": "9909dea6ab405205dbf1f33111abbd45",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-crm-retention-loop/issues/10-ask-why-they-left.md": {
+    "mtime": 1793096345.18589,
+    "seen": 1793096438.8055136,
+    "ast_hash": "6313cd56c67ffbcef771816ab4d813ff",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-crm-retention-loop/lifecycle-and-metrics.md": {
+    "mtime": 1793096287.016184,
+    "seen": 1793096438.805518,
+    "ast_hash": "5f9d1980a5888acac2d91491b5079cc8",
     "semantic_hash": ""
   }
 }
