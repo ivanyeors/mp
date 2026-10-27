@@ -11,6 +11,9 @@ import {
 } from "@/lib/checkout-code";
 import { BOLSTER_LENGTHS } from "@/lib/results/composed-sellable";
 import { resultCouponLineItems } from "@/lib/results/discount";
+import { getPartnerContext } from "@/lib/auth/partner";
+import { isSelfReferral } from "@/lib/referrals";
+import { referralDiscountFor, sgtDate } from "@/lib/partner-terms";
 
 export const runtime = "nodejs";
 
@@ -78,8 +81,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, kind: "unknown" });
   }
   if (resolved.kind === "referral") {
-    // The partner's name is the feedback; never its id.
-    return NextResponse.json({ ok: true, kind: "referral", partner_name: resolved.partner.name });
+    // The partner's name is the feedback; never its id. What it takes off is the
+    // pool the partner leaves, when Staff pass it on, on a customised premium
+    // pillow only (ADR 0034); never on the partner's own build, which the hold
+    // would not attribute either.
+    const partner = resolved.partner;
+    let discount = 0;
+    if (context.flow === "customisation") {
+      const build =
+        context.build.product_type === "pillow"
+          ? { productType: "pillow", tier: context.build.tier }
+          : { productType: "bolster" };
+      discount = Math.min(context.goods, referralDiscountFor(partner.terms, build, sgtDate(new Date())));
+      if (discount > 0) {
+        const session = await getPartnerContext();
+        if (await isSelfReferral(partner.id, { sessionPartnerId: session?.partnerId, email })) discount = 0;
+      }
+    }
+    return NextResponse.json({ ok: true, kind: "referral", partner_name: partner.name, discount_amount: discount });
   }
 
   const coupon = resolved.coupon;

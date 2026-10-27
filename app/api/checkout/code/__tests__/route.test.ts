@@ -101,7 +101,8 @@ describe("POST /api/checkout/code", () => {
 
   it("names the partner for a referral code, never its id", async () => {
     const json = await (await post({ code: " abcd2345 ", context: shop(100) })).json();
-    expect(json).toEqual({ ok: true, kind: "referral", partner_name: "Spine Clinic" });
+    // A shop order holds no customised premium pillow, so the code takes nothing off.
+    expect(json).toEqual({ ok: true, kind: "referral", partner_name: "Spine Clinic", discount_amount: 0 });
     expect(JSON.stringify(json)).not.toContain("partner-1");
   });
 

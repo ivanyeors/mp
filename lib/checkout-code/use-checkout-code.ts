@@ -61,7 +61,12 @@ export function useCheckoutCode(
               message: res.status === 429 && typeof json.error === "string" ? json.error : CHECK_FAILED,
             });
           } else if (json.kind === "referral") {
-            settle({ state: "referral", code: normalized, partnerName: String(json.partner_name ?? "") });
+            settle({
+              state: "referral",
+              code: normalized,
+              partnerName: String(json.partner_name ?? ""),
+              discount: Math.max(0, Number(json.discount_amount) || 0),
+            });
           } else if (json.kind === "discount") {
             settle({
               state: "discount",

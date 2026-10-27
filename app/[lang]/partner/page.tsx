@@ -9,6 +9,7 @@ import { getSiteOrigin } from "@/lib/site-url";
 import { ReacceptForm } from "@/components/partner/reaccept-form";
 import { ReferralShareCard } from "@/components/partner/referral-share-card";
 import { MilestoneTrack } from "@/components/partner/milestone-track";
+import { CommissionChoiceCard } from "@/components/partner/commission-choice-card";
 import { MoneyReferralsPanel } from "@/components/partner/money-referrals-panel";
 import { PayoutSummary } from "@/components/partner/payout-summary";
 import { SelfPurchaseAllowanceCard } from "@/components/partner/self-purchase-allowance-card";
@@ -79,7 +80,8 @@ export default async function PartnerHubPage({
             <CardDescription>
               Open the configurator in partner mode. Your customer answers the same
               questions and enters their own card for the authorization hold — nothing
-              is charged to you, and the order is credited to you.
+              is charged to you, and the order is credited to you. Commission is paid on
+              customised premium pillows.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
@@ -101,6 +103,8 @@ export default async function PartnerHubPage({
         <>
           {/* Milestone track = the gamified spine the partner sees first (#79). */}
           <MilestoneTrack partnerId={ctx.partnerId} />
+          {/* The pool and the partner's share of it (ADR 0034, clause 7.2). */}
+          <CommissionChoiceCard partnerId={ctx.partnerId} />
           {/* Money totals + referral pipeline + masked per-referral rows (#80). */}
           <MoneyReferralsPanel partnerId={ctx.partnerId} />
           {/* Commission balance + payout history with proof (#81). */}

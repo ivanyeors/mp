@@ -46,6 +46,7 @@ import {
   resolveAttribution,
 } from "@/lib/referrals/attribution";
 import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
+import { commissionInEffect, referralDiscountFor, sgtDate } from "@/lib/partner-terms";
 import { getPartnerContext } from "@/lib/auth/partner";
 import {
   CHECKOUT_CODE_MAX_LENGTH,
@@ -662,13 +663,66 @@ export async function POST(req: Request) {
     );
   }
 
-  // The one code field (ADR 0033). A discount code is checked now, as shop
-  // checkout checks one, on this build's goods: limits count every live Result
-  // already holding it, except this one and its companion. What the Result keeps
-  // is the coupon's terms, which every repricing takes off the goods from here
-  // on. A Paired build's Mbolster never carries it: the Mpillow does.
+  // The one code field (ADR 0033): a partner's referral code or a discount code.
   const typedCode = await resolveCheckoutCode(input.code);
-  let coupon: { id: string; code: string; terms: ResultCouponTerms } | null = null;
+
+  // Referral attribution (#74/#78): assist > typed > windowed link stamp.
+  // A partner-assisted run (#78) re-resolves the launch code server-side and
+  // wins over any typed code / link. Discovery source never attributes.
+  // STAMP only — no commission.
+  const assistPartner = input.partnerAssistCode
+    ? await getPartnerByReferralCode(input.partnerAssistCode)
+    : null;
+  // One code per order (ADR 0033): the legacy referralCode only counts when
+  // the code field is empty, so it cannot stack with a discount code.
+  const typedPartner =
+    typedCode?.kind === "referral"
+      ? typedCode.partner
+      : !input.code?.trim() && input.referralCode
+        ? await getPartnerByReferralCode(input.referralCode)
+        : null;
+  let linkPartner: Awaited<ReturnType<typeof getPartnerByReferralCode>> = null;
+  const visitorId = parseVisitorId(readCookie(req, VISITOR_COOKIE));
+  if (visitorId) {
+    const { data: visitor } = await admin
+      .from("analytics_visitors")
+      .select("ref_code, ref_stamped_at")
+      .eq("id", visitorId)
+      .maybeSingle();
+    if (
+      visitor?.ref_code &&
+      isWithinReferralWindow(visitor.ref_stamped_at as string | null, new Date())
+    ) {
+      linkPartner = await getPartnerByReferralCode(visitor.ref_code as string);
+    }
+  }
+  // A partner's own code, assist link or referral link on their own build
+  // attributes nothing: no commission or milestone progress at Accept.
+  const sessionPartnerId =
+    assistPartner || typedPartner || linkPartner ? (await getPartnerContext())?.partnerId : null;
+  const notSelf = async (partnerId: string | null | undefined) =>
+    partnerId && !(await isSelfReferral(partnerId, { sessionPartnerId, email: input.email })) ? partnerId : null;
+  const attribution = resolveAttribution({
+    assistPartnerId: await notSelf(assistPartner?.id),
+    typedPartnerId: await notSelf(typedPartner?.id),
+    linkPartnerId: await notSelf(linkPartner?.id),
+  });
+  const attributedPartner =
+    attribution.source === "assist"
+      ? assistPartner
+      : attribution.source === "typed"
+        ? typedPartner
+        : attribution.source === "link"
+          ? linkPartner
+          : null;
+  const attributedRefCode = attributedPartner?.referral_code ?? null;
+
+  // A discount code is checked now, as shop checkout checks one, on this build's
+  // goods: limits count every live Result already holding it, except this one and
+  // its companion. What the Result keeps is the coupon's terms, which every
+  // repricing takes off the goods from here on. A Paired build's Mbolster never
+  // carries it: the Mpillow does.
+  let coupon: { id: string | null; code: string; terms: ResultCouponTerms } | null = null;
   if (typedCode?.kind === "coupon") {
     const check = await checkCoupon(typedCode.coupon, goods.subtotal, undefined, undefined, {
       customerEmail: input.email,
@@ -687,6 +741,24 @@ export async function POST(req: Request) {
       code: typedCode.coupon.code,
       terms: couponTermsOf(typedCode.coupon),
     };
+  }
+  // The referring partner's terms (ADR 0034). The commission is fixed now, the day
+  // the customer pays (clause 7.2), and Accept pays exactly it. When Staff pass the
+  // pool the partner leaves on to customers, a customer who typed the partner's
+  // code gets it off a customised premium pillow, kept as the Result's terms like
+  // a discount code's (no coupon behind it), so every repricing takes it off too.
+  // One code per order: a typed discount code means no partner code was typed.
+  const today = sgtDate(new Date());
+  const partnerCommission = attributedPartner ? commissionInEffect(attributedPartner.terms, today) : null;
+  if (!coupon && attribution.source === "typed" && typedPartner?.referral_code) {
+    const off = referralDiscountFor(typedPartner.terms, composedKey, today);
+    if (off > 0) {
+      coupon = {
+        id: null,
+        code: typedPartner.referral_code,
+        terms: { discount_type: "fixed_amount", discount_value: off, max_discount: null },
+      };
+    }
   }
   const couponPricing = resultCouponPricing(coupon?.terms ?? null, goods.subtotal);
 
@@ -869,61 +941,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: routeGate.reason }, { status: 409 });
   }
 
-  // Referral attribution (#74/#78): assist > typed > windowed link stamp.
-  // A partner-assisted run (#78) re-resolves the launch code server-side and
-  // wins over any typed code / link. Discovery source never attributes.
-  // STAMP only — no commission.
-  const assistPartner = input.partnerAssistCode
-    ? await getPartnerByReferralCode(input.partnerAssistCode)
-    : null;
-  // One code per order (ADR 0033): the legacy referralCode only counts when
-  // the code field is empty, so it cannot stack with a discount code.
-  const typedPartner =
-    typedCode?.kind === "referral"
-      ? typedCode.partner
-      : !input.code?.trim() && input.referralCode
-        ? await getPartnerByReferralCode(input.referralCode)
-        : null;
-  let linkPartnerId: string | null = null;
-  let linkRefCode: string | null = null;
-  const visitorId = parseVisitorId(readCookie(req, VISITOR_COOKIE));
-  if (visitorId) {
-    const { data: visitor } = await admin
-      .from("analytics_visitors")
-      .select("ref_code, ref_stamped_at")
-      .eq("id", visitorId)
-      .maybeSingle();
-    if (
-      visitor?.ref_code &&
-      isWithinReferralWindow(visitor.ref_stamped_at as string | null, new Date())
-    ) {
-      const linkPartner = await getPartnerByReferralCode(visitor.ref_code as string);
-      if (linkPartner) {
-        linkPartnerId = linkPartner.id;
-        linkRefCode = linkPartner.referral_code;
-      }
-    }
-  }
-  // A partner's own code, assist link or referral link on their own build
-  // attributes nothing: no commission or milestone progress at Accept.
-  const sessionPartnerId =
-    assistPartner || typedPartner || linkPartnerId ? (await getPartnerContext())?.partnerId : null;
-  const notSelf = async (partnerId: string | null | undefined) =>
-    partnerId && !(await isSelfReferral(partnerId, { sessionPartnerId, email: input.email })) ? partnerId : null;
-  const attribution = resolveAttribution({
-    assistPartnerId: await notSelf(assistPartner?.id),
-    typedPartnerId: await notSelf(typedPartner?.id),
-    linkPartnerId: await notSelf(linkPartnerId),
-  });
-  const attributedRefCode =
-    attribution.source === "assist"
-      ? assistPartner?.referral_code ?? null
-      : attribution.source === "typed"
-        ? typedPartner?.referral_code ?? null
-        : attribution.source === "link"
-          ? linkRefCode
-          : null;
-
   const row = {
     id: resultId,
     data: input.measurements ?? {},
@@ -960,6 +977,7 @@ export async function POST(req: Request) {
     ref_code: attributedRefCode,
     // How it attributed (assist>typed>link) — #80 reads this for PDPA masking.
     attribution_source: attribution.source,
+    partner_commission: partnerCommission,
     // Null clears a code a re-submit dropped.
     coupon_id: coupon?.id ?? null,
     coupon_code: coupon?.code ?? null,

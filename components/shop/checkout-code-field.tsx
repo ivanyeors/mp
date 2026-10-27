@@ -18,8 +18,9 @@ type Props = {
 
 /**
  * The one optional code at checkout (ADR 0033): a partner's referral code or a
- * discount code. Either kind says it is active once accepted; a discount also
- * says what it takes off, and the page's total moves with it.
+ * discount code. Either kind says it is active once accepted; a discount, or a
+ * partner's code that carries one (ADR 0034), also says what it takes off, and
+ * the page's total moves with it.
  */
 export function CheckoutCodeField({
   id,
@@ -73,6 +74,7 @@ function CheckoutCodeStatusText({
       return (
         <Active>
           Referral code active{status.partnerName ? ` — referred by ${status.partnerName}` : ""}
+          {status.discount > 0 ? `, ${formatAmount(status.discount)} off` : ""}
         </Active>
       );
     case "discount":

@@ -21,8 +21,8 @@ export async function MilestoneTrack({ partnerId }: { partnerId: string }) {
   const d = await loadMilestoneDashboard(supabaseAdmin(), partnerId);
 
   const nextLabel = d.nextRung
-    ? `${d.unitsToNext} pillow${d.unitsToNext === 1 ? "" : "s"} to your next reward`
-    : "Top tier reached — every pillow still counts";
+    ? `${d.unitsToNext} sale${d.unitsToNext === 1 ? "" : "s"} to your next reward`
+    : "Top tier reached. Every sale still counts";
 
   return (
     <Card>
@@ -31,7 +31,7 @@ export async function MilestoneTrack({ partnerId }: { partnerId: string }) {
           <div>
             <CardTitle>Your progress</CardTitle>
             <CardDescription>
-              Tier {d.currentTier} · {d.units} pillows credited
+              Tier {d.currentTier} · {d.units} sales credited
             </CardDescription>
           </div>
           {d.topPercent !== null ? (
@@ -57,7 +57,7 @@ export async function MilestoneTrack({ partnerId }: { partnerId: string }) {
 
         {/* Endowed start — always stated with its reason (AC2). */}
         <p className="text-xs text-muted-foreground">
-          Includes a head start of {d.endowedUnits} pillows ({d.endowedReason}).
+          Includes a head start of {d.endowedUnits} sales ({d.endowedReason}).
         </p>
 
         {d.perks.length > 0 ? (

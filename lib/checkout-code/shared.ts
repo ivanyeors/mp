@@ -30,7 +30,11 @@ export type CheckoutCodeContext =
 export type CheckoutCodeStatus =
   | { state: "idle" }
   | { state: "checking" }
-  | { state: "referral"; code: string; partnerName: string }
+  /**
+   * A partner's code. `discount` is the pool the partner leaves, when Mpillow
+   * passes it on, on a customised premium pillow (ADR 0034); 0 otherwise.
+   */
+  | { state: "referral"; code: string; partnerName: string; discount: number }
   /** `discount` null: nothing priced yet to take it off (`flow: "none"`). */
   | { state: "discount"; code: string; discount: number | null; freeShipping: boolean }
   /** A discount code that exists but cannot be used on this order, and why. */
@@ -41,7 +45,14 @@ export type CheckoutCodeStatus =
 
 /** The discount the page may show, or 0. */
 export function checkoutCodeDiscount(status: CheckoutCodeStatus): number {
-  return status.state === "discount" ? (status.discount ?? 0) : 0;
+  if (status.state === "discount") return status.discount ?? 0;
+  return status.state === "referral" ? status.discount : 0;
+}
+
+/** The code a Discount row names, when the code takes money off. */
+export function checkoutCodeDiscountLabel(status: CheckoutCodeStatus): string | null {
+  if (status.state === "discount") return status.code;
+  return status.state === "referral" && status.discount > 0 ? status.code : null;
 }
 
 export function checkoutCodeFreeShipping(status: CheckoutCodeStatus): boolean {

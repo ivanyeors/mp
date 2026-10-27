@@ -319,6 +319,8 @@ export function sampleApplication(fixture: EmailFixture = "happy") {
     partnerSignInUrl: `${ORIGIN}/partner`,
     // The support address lands in a mailto: href and in link text.
     supportEmail: pick(fixture, "sg@mpillow.com"),
+    // The Approval Notice facts; the decline email ignores them.
+    notice: { promoCode: pick(fixture, "BRIGHT8K2"), territory: pick(fixture, "Singapore"), commissionPool: 50 },
   };
 }
 
