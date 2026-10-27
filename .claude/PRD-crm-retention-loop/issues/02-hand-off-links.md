@@ -1,8 +1,8 @@
 # 02 — Hand-offs: every page in the loop links to the next
 
-**Issue:** not filed
+**Issue:** see the README table
 **Type:** AFK
-**Status:** not started
+**Status:** being built on `claude/crm-loop-handoffs-dropoff`
 **Blocked by:** 01
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
@@ -13,29 +13,34 @@ from that Customer's Segment, *Email this Segment* opens a new campaign already 
 
 ## What to build
 
-- **Result → Customer.** The Result's contact block links the name or email to
-  `/settings/customers/<id>`. The Customer is the Result's `customer_id`, else the Customer whose
-  email matches `customer_email`, matched as `lib/results/owner.ts` does. Shown only to Staff
-  holding `customers`; with no match, the email stays plain text.
-- **Return → Customer and Order.** The Return's header links the email to the Customer
-  (`rma_requests.customer_id`) and the order number to `/settings/orders/<id>`, each only for
-  Staff holding `customers` or `orders`.
-- **Segment → new campaign.** The Segment chip's menu on Customers gains *Email this Segment*,
-  shown only with `campaigns`. It opens `/settings/campaigns/new?segment=<id>`. The new page
-  reads `segment`, checks the Segment exists and is not archived, and starts a blank draft with
-  that Segment as its Audience. An unknown id falls back to today's default draft.
-- **Campaign → Segment.** On a campaign whose Audience is a Segment, the Segment's name links to
-  the Customers list with its filters (`customerFilterParams`), for Staff holding `customers`.
+- **Result → Customer.** The admin Result page (`/settings/results/[id]`) links the customer's
+  email to `/settings/customers/<id>` with *Open customer*. The Customer is the Result's
+  `customer_id` when that Customer exists; otherwise the one Customer whose email equals
+  `customer_email`, case-insensitively, as `lib/results/owner.ts` matches. Two or more matches,
+  or none, link nothing. Resolved on the server, only for Staff holding `customers`.
+- **Return → Customer and Order.** The Return page (`/settings/rma/[id]`) links the email to the
+  Customer (`rma_requests.customer_id`) for Staff holding `customers`, and the order number to
+  `/settings/orders/<id>` for Staff holding `orders`. Without the key, plain text as today.
+- **Segment → new campaign.** Each Segment chip's menu on Customers gains *Email this Segment*
+  for Staff holding `campaigns` (the menu now shows with `customers-edit` **or** `campaigns`;
+  *Rename* and *Archive* stay `customers-edit` only). It is not offered on a Segment that needs
+  review. It opens `/settings/campaigns/new?segment=<id>`.
+- **New campaign from a Segment.** `/settings/campaigns/new` reads `segment`. A live Segment
+  (a uuid among `listSegments()`) starts a blank draft: the Segment's name as the campaign
+  name, no subject, no body, no button, Audience *Segment* with it chosen. Anything else
+  starts today's default draft.
+- **Campaign → Segment.** Under the Segment field on a campaign, *See who is in it* links to the
+  Customers list with that Segment's filters, for Staff holding `customers`.
 
 ## Acceptance criteria
 
-- [ ] Each link appears only for Staff who can open its target; the target's guard is unchanged.
-- [ ] A guest Result matched by email links to that Customer.
-- [ ] `?segment=` with an archived or unknown id never selects it.
-- [ ] No link carries customer data in its URL beyond the record's id.
+- [ ] Each link appears only for Staff who can open its target; every target's guard is unchanged.
+- [ ] A guest Result matched by email links to that Customer; an ambiguous email links nothing.
+- [ ] `?segment=` with an archived, unknown or malformed id starts the default draft.
+- [ ] No link carries anything in its URL beyond a record's id or a Segment's filters.
 
 ## Verify
 
 ```bash
-pnpm exec vitest run "app/[lang]/settings/campaigns" "app/[lang]/settings/customers" "app/[lang]/settings/results" "app/[lang]/settings/rma"
+pnpm exec vitest run lib/crm "app/[lang]/settings/campaigns" "app/[lang]/settings/customers"
 ```

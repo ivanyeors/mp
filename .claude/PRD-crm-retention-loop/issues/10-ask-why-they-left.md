@@ -1,47 +1,64 @@
 # 10 — Ask why they left, and close the loop
 
-**Issue:** not filed
-**Type:** AFK, then HITL (counsel on the follow-up message; the owner on the wording)
-**Status:** not started
-**Blocked by:** none for the on-site question; 02 for the Follow-up
-**Labels:** `enhancement`, `needs-triage`, `P2`, `area:storefront`, `area:admin`, `area:analytics`
+**Issue:** see the README table
+**Type:** part 1 AFK; part 2 HITL (counsel on the follow-up message, the owner on the wording)
+**Status:** part 1 being built on `claude/crm-loop-handoffs-dropoff`; part 2 not started
+**Blocked by:** part 1 none; part 2 counsel, and customisation appointments linked to a person
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
 ## Goal
 
 We know why people leave, not only where (owner, 2026-10-27: "follow up closely on enabling us
 to ask them why, to close the feedback loop"). The demo: a visitor leaving the configurator
-answers *Not sure about the size* and is offered *Book a fitting*; on Analytics, *Why people
-leave* shows that answer as the top reason at the configurator this week.
+answers *Not sure about the size or feel* and is offered a fitting or a chat; on Analytics,
+*Why people leave* shows that answer by step and by week.
 
-## What to build
+Defined in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md#closing-the-loop-on-drop-offs).
 
-As set out in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md#closing-the-loop-on-drop-offs):
+## Part 1: what this build adds
 
-- **On the site.** A small, dismissable card on the configurators and checkout when the visitor
-  moves to leave: on desktop the pointer leaving the page, on a phone going back or switching tab
-  after they have started. Once per Visitor per 30 days. One question, the fixed options and
-  *Other*, the options in a random order. Never blocks, never covers the form.
-- **Help on the spot.** *Not sure about the size or feel* offers booking and chat; *Try in person*
-  offers the studios; *Something did not work* asks what happened and tells Staff.
-- **On the decline step.** The same question, optional, on the Result's decline confirmation.
-- **After a hold ends.** One message, 2 days after a hold was released or expired without an
-  Order: one question, each answer a one-tap link, no offer, once per Result. Off until counsel
-  confirms it is a service message.
-- **After an appointment with no purchase.** A Follow-up for the Staff member, 14 days on, with
-  a reason to record. Needs customisation appointments linked to a person, which they are not
-  today (`CONTEXT.md`, **Appointment**).
-- **Storage.** `drop_off_reasons`: the Visit or the Result, the step, the reason, optional text,
-  the time. Server-only. Anonymous answers stay anonymous.
-- **Closing the loop.** A *Why people leave* card on Analytics: reasons by step and by week,
-  beside the Drop-off graph. A weekly Telegram line with counts only. Each reason has an owner
-  named on the card.
-- **Words.** `CONTEXT.md` gains **Drop-off reason**: self-reported, apart from a **Drop-off**,
-  which records where. ADR 0007 is amended to say so.
+- **The question on the site.** On the configurators (`/mp-config`, `/mp-basic`,
+  `/mbolster-config`) and checkout (`/shop/checkout`), a small, dismissable card asks *"What
+  stopped you today?"*:
+  - **When:** only after the visitor has started (20 seconds on the page and one interaction),
+    then either the pointer leaves the top of the window (desktop) or 60 seconds pass with no
+    interaction (any device). Never while a field has focus.
+  - **How often:** once per browser per 30 days, whichever step asked.
+  - **Answers**, in a random order with *Other* last: *Not sure about the size or feel*, *I want
+    to try it in person first*, *The price*, *Delivery cost or time*, *Something did not work*,
+    *Just looking for now*, *Other*. *Something did not work* and *Other* take an optional line
+    of text, up to 500 characters.
+- **Help on the spot**, after an answer: size or feel offers *Chat with us* and *Book a fitting*;
+  in person offers *See our studios and book*; delivery links the delivery policy; the rest say
+  thank you. No answer offers a discount.
+- **On the decline step.** The Result's *Decline this build?* dialog asks the same question,
+  optional, with the decline-specific answers (*I changed my mind about the build* in place of
+  *Just looking*). The answer travels with the decline and is stored only if the decline succeeds.
+- **Storage.** `drop_off_reasons` (server-only: RLS on, no policy, nothing granted to `anon` or
+  `authenticated`): step, reason, optional text, the page path, the Visit and Visitor ids from the
+  journey tracker when present, the Result for a decline, the time. One answer per Visit per step.
+  `POST /api/analytics/drop-off-reason` validates with zod and is rate limited per IP.
+- **Closing the loop.** A *Why people leave* card on Analytics (`analytics`): answers by step and
+  reason for the last 30, 90 or 365 days, a weekly count, the area each reason points to, and the
+  latest typed answers. Text answers are shown to Staff only.
+- **Words.** `CONTEXT.md` gains **Drop-off reason**: self-reported, kept apart from a
+  **Drop-off**, which records where. ADR 0007 gains an amendment saying so.
 
-## Acceptance criteria
+## Part 2: later
 
-- [ ] A visitor sees the question at most once in 30 days, and never mid-form.
-- [ ] Every answer is stored with its step; the anonymous ones carry no contact details.
-- [ ] No text answer reaches Telegram.
-- [ ] The follow-up message is off until counsel's answer is recorded in this file.
+- After a hold is released or expires without an Order: one message 2 days later, one-tap
+  answers, no offer, once per Result. Off until counsel confirms it is a service message.
+- After a customisation appointment with no purchase in 14 days: a Follow-up with a reason to
+  record. Needs customisation appointments linked to a person (`CONTEXT.md`, **Appointment**).
+- A weekly Telegram line with counts only, chained onto `results-sla`.
+
+## Acceptance criteria (part 1)
+
+- [ ] A browser sees the question at most once in 30 days, never before the visitor has started,
+  never while a field has focus, and never on Admin Panel pages.
+- [ ] Every answer is stored with its step; an anonymous answer carries no contact details.
+- [ ] A second answer for the same Visit and step is ignored, not an error.
+- [ ] The endpoint refuses an unknown step or reason, text over 500 characters, and floods.
+- [ ] A decline with a reason stores it; a decline that fails stores nothing; a decline without
+  one behaves exactly as before.
 - [ ] Offering help never offers a discount.

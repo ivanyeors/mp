@@ -298,6 +298,6 @@ matches something we can change.
   Control Act before it is switched on, as with the check-up reminder
   ([PDPC](https://www.pdpc.gov.sg/-/media/Files/PDPC/PDF-Files/Legislation-and-Guidelines/Response-to-Feedback-for-2nd-Public-Consultation---8-Nov-2018.pdf)).
   WhatsApp needs an approved utility template, and goes only to someone who wrote to us there.
-- **The loop closes** on a *Why people leave* card: reasons by step and by week, beside M6, and a
-  weekly count in Telegram with no customer details. Each reason has a named owner who decides
-  the fix.
+- **The loop closes** on a *Why people leave* card: reasons by step and by week, beside M6, each
+  naming the area it points to (sizing, in-store, pricing, delivery, a bug), and later a weekly
+  count in Telegram with no customer details.
