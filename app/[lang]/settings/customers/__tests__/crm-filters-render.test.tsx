@@ -160,6 +160,18 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toContain("No dates yet");
   });
 
+  it("puts each row's cells under their own headers", () => {
+    const html = listFor("", [row({ lifecycle_stage: "loyal", purchases: 3 })]);
+    // `<th ` and `<th>`, not `<thead`.
+    const headers = [...html.matchAll(/<th[\s>][^>]*>?([^<]*)</g)].map((m) => m[1]);
+    const body = html.slice(html.indexOf("<tbody"));
+    const cells = [...body.matchAll(/<td[^>]*>/g)].map((m) => m.index!);
+    const cellOf = (at: number) => cells.filter((i) => i < at).length - 1;
+    expect(cellOf(body.indexOf("ana@x.test</td>"))).toBe(headers.indexOf("Email"));
+    // The last badge: the first is the phone layout's, inside the Name cell.
+    expect(cellOf(body.lastIndexOf(">Loyal<"))).toBe(headers.indexOf("Stage"));
+  });
+
   it("dates Last order by the latest purchase, not by a re-adjustment fee", () => {
     const html = listFor("", [row({ last_paid_at: "2026-10-01T02:00:00Z", last_purchase_at: "2025-03-04T02:00:00Z" })]);
     expect(html).toContain("4 Mar 2025");

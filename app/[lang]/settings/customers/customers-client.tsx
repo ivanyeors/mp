@@ -581,11 +581,11 @@ export function CustomersClient({
                                                 <AccountStatus customer={customer} compact />
                                             </span>
                                         </TableCell>
-                                        <TableCell className="px-4 hidden md:table-cell">
-                                            <LifecycleStageCell customer={customer} />
-                                        </TableCell>
                                         <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground">
                                             {customer.email}
+                                        </TableCell>
+                                        <TableCell className="px-4 hidden md:table-cell">
+                                            <LifecycleStageCell customer={customer} />
                                         </TableCell>
                                         <TableCell className="px-4 hidden md:table-cell">
                                             <AccountStatus customer={customer} />
