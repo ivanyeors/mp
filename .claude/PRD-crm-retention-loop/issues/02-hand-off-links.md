@@ -2,7 +2,7 @@
 
 **Issue:** see the README table
 **Type:** AFK
-**Status:** being built on `claude/crm-loop-handoffs-dropoff`
+**Status:** built on `claude/crm-loop-handoffs-dropoff`
 **Blocked by:** 01
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 

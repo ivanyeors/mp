@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { DeclineReasonSchema } from "@/lib/analytics/drop-off/schema";
+import { recordDropOffReason } from "@/lib/analytics/drop-off/store";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { releaseHold } from "@/lib/authorization-hold";
@@ -17,6 +19,9 @@ export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
   token: z.string().uuid().optional(),
+  // *What made you decide?* (PRD-crm-retention-loop slice 10): optional, and a
+  // malformed one is dropped rather than refusing the decline.
+  reason: DeclineReasonSchema.optional().catch(undefined),
 });
 
 export async function POST(
@@ -95,6 +100,24 @@ export async function POST(
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
   await cascadeEnding(admin, plan, "declined");
+
+  // Why they declined, recorded only now that the decline has happened.
+  // Best-effort: the decline stands whatever becomes of its answer.
+  if (parsed.data.reason) {
+    try {
+      await recordDropOffReason(admin, {
+        step: "quote_decline",
+        reason: parsed.data.reason.reason,
+        other_text: parsed.data.reason.text,
+        path: null,
+        visit_id: null,
+        visitor_id: null,
+        result_id: id,
+      });
+    } catch (e) {
+      console.error("Result decline reason not recorded", { resultId: id, error: e instanceof Error ? e.message : e });
+    }
+  }
 
   const restartPath =
     row.product_type === "bolster" ? "/mbolster-config" : "/mp-config";

@@ -11,6 +11,7 @@ import { MarketingFooter } from "@/components/ui/marketing-footer";
 import { SonnerProvider } from "@/components/ui/sonner-provider";
 import { RouteScope } from "@/components/route-scope";
 import { ApiRequestTracker } from "@/components/api-request-tracker";
+import { DropOffQuestion } from "@/components/analytics/drop-off-question";
 import { JourneyTracker } from "@/components/analytics/journey-tracker";
 import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
@@ -110,6 +111,7 @@ export default async function RootLayout({
           <RegisterSW />
           <ApiRequestTracker />
           <JourneyTracker />
+          <DropOffQuestion />
           <AnalyticsNoticeBar />
           <TopLoadingBar />
           {/*

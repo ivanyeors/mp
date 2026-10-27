@@ -720,7 +720,7 @@ Changed from pages: `/settings/inventory`
   - `renameInventoryItem()` [update] — app/[lang]/settings/inventory/actions.ts:861
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:893
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:285
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:286
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:404
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:178
@@ -865,7 +865,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:70
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:135
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
-  - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:35
+  - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:40
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:113
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
@@ -1577,6 +1577,15 @@ Defined in supabase/migrations/20261025130000_coupon_usage_decrement.sql:13
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:132
 - Called by:
   - `DELETE()` — app/api/landing-sections/publish/route.ts:90
+
+### drop_off_reasons
+Defined in supabase/migrations/20261027120000_drop_off_reasons.sql:21
+References: `mp_config_responses`
+Changed from pages: `/results/[id]`
+- Written by:
+  - `recordDropOffReason()` [insert] — lib/analytics/drop-off/store.ts:36
+- Read by:
+  - `readDropOffSummary()` [select] — lib/analytics/drop-off/store.ts:127
 
 ### email_campaign_stats
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:297
@@ -2389,16 +2398,16 @@ app/[lang]/results/page.tsx
 ### /results/[id]
 app/[lang]/results/[id]/page.tsx
 - Endpoints: `/api/results [GET]`, `/api/results/[id] [GET]`, `/api/results/[id]/accept [POST]`, `/api/results/[id]/decline [POST]`, `/api/results/[id]/reorder [POST]`
-- Changes, through its actions, endpoints and their calls: `commission_schemes`, `commissions`, `coupons`, `customers`, `inventory_transactions`, `milestone_bonuses`, `mp_config_responses`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `result_bolster_filling_placements`, `result_filling_placements`
+- Changes, through its actions, endpoints and their calls: `commission_schemes`, `commissions`, `coupons`, `customers`, `drop_off_reasons`, `inventory_transactions`, `milestone_bonuses`, `mp_config_responses`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `result_bolster_filling_placements`, `result_filling_placements`
 - Reads, through the same: `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `bom_templates`, `config_upload`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `milestone_rungs`, `partner_users`, `partners`, `pillow_products`, `points_ledger`, `product_prices`, `service_prices`, `shipping_methods`, `tax_rates`
 
 ### /settings/analytics
 app/[lang]/settings/analytics/page.tsx
-- Server actions: `addTargetQuery()`, `createSeoAnnotation()`, `deleteSeoAnnotation()`, `getAiAnswers()`, `getAnalyticsDashboard()`, `getChannelMix()`, `getCrawlerActivity()`, `getInventoryMovementWaterfall()`, `getMpConfigMetricsBreakdown()`, `getProspectJourneyNodeDetails()`, `getProspectJourneyTransitions()`, `getRealizedMarginSummary()`, `getSearchQueries()`, `getSearchVisibility()`, `getSeoAnnotations()`, `getShopifySalesTimeline()`, `importAiReports()`, `removeTargetQuery()`
+- Server actions: `addTargetQuery()`, `createSeoAnnotation()`, `deleteSeoAnnotation()`, `getAiAnswers()`, `getAnalyticsDashboard()`, `getChannelMix()`, `getCrawlerActivity()`, `getDropOffReasons()`, `getInventoryMovementWaterfall()`, `getMpConfigMetricsBreakdown()`, `getProspectJourneyNodeDetails()`, `getProspectJourneyTransitions()`, `getRealizedMarginSummary()`, `getSearchQueries()`, `getSearchVisibility()`, `getSeoAnnotations()`, `getShopifySalesTimeline()`, `importAiReports()`, `removeTargetQuery()`
 - Loads: `requireAdminPage()`
 - Reads: `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `items`, `pillow_products`, `product_prices`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `seo_annotations`, `seo_daily_metrics`, `seo_target_queries`
-- Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `inventory_transactions`, `items`, `mp_config_responses`, `order_margins`, `orders`, `pillow_products`, `product_prices`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
+- Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `drop_off_reasons`, `inventory_transactions`, `items`, `mp_config_responses`, `order_margins`, `orders`, `pillow_products`, `product_prices`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
 
 ### /settings/appointments
 app/[lang]/settings/appointments/page.tsx

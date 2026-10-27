@@ -2,7 +2,7 @@
 
 **Issue:** see the README table
 **Type:** part 1 AFK; part 2 HITL (counsel on the follow-up message, the owner on the wording)
-**Status:** part 1 being built on `claude/crm-loop-handoffs-dropoff`; part 2 not started
+**Status:** part 1 built on `claude/crm-loop-handoffs-dropoff` (migration `20261027120000_drop_off_reasons.sql` to apply to production); part 2 not started
 **Blocked by:** part 1 none; part 2 counsel, and customisation appointments linked to a person
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 

@@ -15,7 +15,7 @@ demoable path through the layers it touches.
 | # | Title | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
 | [01](01-crm-sidebar-group.md) · [#337](https://github.com/ivanyeors/mp/issues/337) | One CRM group in the sidebar, in loop order | AFK | **built** | none |
-| [02](02-hand-off-links.md) · [#338](https://github.com/ivanyeors/mp/issues/338) | Hand-offs: every page in the loop links to the next | AFK | **being built** | 01 |
+| [02](02-hand-off-links.md) · [#338](https://github.com/ivanyeors/mp/issues/338) | Hand-offs: every page in the loop links to the next | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | 01 |
 | [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer, derived from their Orders | AFK | not started | owner decision 1 |
 | [04](04-stage-chips.md) · [#340](https://github.com/ivanyeors/mp/issues/340) | Stage chips above the Customers list, counted live | AFK | not started | 03 |
 | [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | not started | 03 |
@@ -23,7 +23,7 @@ demoable path through the layers it touches.
 | [07](07-stage-playbooks.md) · [#343](https://github.com/ivanyeors/mp/issues/343) | Playbooks: a ready-written campaign for each stage | AFK, then HITL | not started | 02, 03 |
 | [08](08-signoff.md) · [#344](https://github.com/ivanyeors/mp/issues/344) | Sign-off: the owner walks the loop on production | HITL | not started | 01–07, 09, 10 |
 | [09](09-shopify-order-history.md) · [#345](https://github.com/ivanyeors/mp/issues/345) | Shopify-era order history, settled once, for the same lifecycle | AFK, then HITL | not started | owner confirms the ADR 0029 amendment |
-| [10](10-ask-why-they-left.md) · [#346](https://github.com/ivanyeors/mp/issues/346) | Ask why they left, and close the loop | part 1 AFK, part 2 HITL | **part 1 being built** | none (part 1) |
+| [10](10-ask-why-they-left.md) · [#346](https://github.com/ivanyeors/mp/issues/346) | Ask why they left, and close the loop | part 1 AFK, part 2 HITL | **part 1 built** (`claude/crm-loop-handoffs-dropoff`) | none (part 1) |
 
 ## Dependency graph
 

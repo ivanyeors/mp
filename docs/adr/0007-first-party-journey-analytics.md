@@ -24,3 +24,16 @@ Staff on Admin Panel → Analytics can see channel P&L (ADR 0006) but not why **
 - Glossary: **Visitor**, **Visit**, **Prospect**, **Entry source**, **Drop-off** in `CONTEXT.md`; keep **Discovery source** distinct.
 - Schema and ingest land in follow-on slices; this ADR locks identity, SoT, viz shape, and Prospect-default before tables exist.
 - Hobby cron budget: prefer chaining GA sync onto an existing job when a dedicated cron would blow the free-tier limit (same constraint class as ADR 0006).
+
+## Amendment (2026-10-27): Drop-off reasons, asked
+
+A **Drop-off** stays what it was: where a Visit ended, never why. Why is now asked, as a separate
+fact, the **Drop-off reason** (PRD-crm-retention-loop slice 10, `drop_off_reasons`):
+
+- one closed question on the configurators and at checkout, as a visitor who has started moves
+  to leave, at most once per browser per 30 days; and on a Result's decline step;
+- self-reported and anonymous, tied to the Visit and Visitor ids (decision 3 still governs any
+  merge to a person) or to the Result for a decline;
+- never written into `analytics_visits`, never inferred from a path, and shown to Staff on
+  Analytics beside the Drop-off graph as *Why people leave*.
+
