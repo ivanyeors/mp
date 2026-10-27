@@ -15,6 +15,7 @@ export type PermissionSurface = "admin-panel" | "telegram";
 
 export type PermissionGroup =
   | "General"
+  | "CRM"
   | "Inventory"
   | "Store"
   | "Landing site"
@@ -41,6 +42,21 @@ export const PERMISSION_CATALOG = [
   // How the platform works, in plain words: Owner and Admin, and any role the owner ticks.
   { key: "docs", label: "Documentation", group: "General", href: "/settings/docs", surface: "admin-panel" },
 
+  // The customer loop, ordered as the sidebar's CRM group (PRD-crm-retention-loop).
+  { key: "customers", label: "Customers", group: "CRM", href: "/settings/customers", surface: "admin-panel" },
+  // Seeing the Customers page is `customers`; every change on it is this key (CRM slice 10).
+  { key: "customers-edit", label: "Customers: make changes (Customers page)", group: "CRM", surface: "admin-panel", requires: ["customers"] },
+  // Importing is a change, so it sits on `customers-edit` (migration slice 02, CRM slice 10).
+  { key: "customer-import", label: "Customer import (Customers page)", group: "CRM", surface: "admin-panel", requires: ["customers", "customers-edit"] },
+  { key: "results", label: "Results", group: "CRM", href: "/settings/results", surface: "admin-panel" },
+  { key: "orders", label: "Orders", group: "CRM", href: "/settings/orders", surface: "admin-panel" },
+  { key: "returns", label: "Returns / RMA", group: "CRM", href: "/settings/rma", surface: "admin-panel" },
+  // Sending marketing email to the customer list (PRD-email-marketing). Its own key, held by
+  // Owner and Admin only, as `customer-import` is: Manager and Staff hold `customers`.
+  { key: "campaigns", label: "Email campaigns", group: "CRM", href: "/settings/campaigns", surface: "admin-panel" },
+  // The words of every email the platform sends (PRD-email-templates): Owner and Admin only.
+  { key: "email-templates", label: "Email templates", group: "CRM", href: "/settings/email-templates", surface: "admin-panel" },
+
   { key: "inventory", label: "Inventory", group: "Inventory", href: "/settings/inventory", surface: "admin-panel" },
   { key: "costings", label: "Costings", group: "Inventory", href: "/settings/costings", surface: "admin-panel" },
 
@@ -48,19 +64,6 @@ export const PERMISSION_CATALOG = [
   { key: "categories", label: "Categories (Products tab)", group: "Store", surface: "admin-panel", requires: ["products"] },
   { key: "configure", label: "Configure", group: "Store", href: "/settings/inventory/configure", surface: "admin-panel" },
   { key: "rules-engine", label: "Rules Engine", group: "Store", href: "/settings/product-builder/rules-engine", surface: "admin-panel" },
-  { key: "customers", label: "Customers", group: "Store", href: "/settings/customers", surface: "admin-panel" },
-  // Seeing the Customers page is `customers`; every change on it is this key (CRM slice 10).
-  { key: "customers-edit", label: "Customers: make changes (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers"] },
-  // Importing is a change, so it sits on `customers-edit` (migration slice 02, CRM slice 10).
-  { key: "customer-import", label: "Customer import (Customers page)", group: "Store", surface: "admin-panel", requires: ["customers", "customers-edit"] },
-  // Sending marketing email to the customer list (PRD-email-marketing). Its own key, held by
-  // Owner and Admin only, as `customer-import` is: Manager and Staff hold `customers`.
-  { key: "campaigns", label: "Email campaigns", group: "Store", href: "/settings/campaigns", surface: "admin-panel" },
-  // The words of every email the platform sends (PRD-email-templates): Owner and Admin only.
-  { key: "email-templates", label: "Email templates", group: "Store", href: "/settings/email-templates", surface: "admin-panel" },
-  { key: "results", label: "Results", group: "Store", href: "/settings/results", surface: "admin-panel" },
-  { key: "orders", label: "Orders", group: "Store", href: "/settings/orders", surface: "admin-panel" },
-  { key: "returns", label: "Returns / RMA", group: "Store", href: "/settings/rma", surface: "admin-panel" },
   { key: "discounts", label: "Discounts", group: "Store", href: "/settings/discounts", surface: "admin-panel" },
   { key: "shipping", label: "Shipping", group: "Store", href: "/settings/shipping", surface: "admin-panel" },
 

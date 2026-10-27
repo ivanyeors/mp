@@ -76,7 +76,12 @@ type NavGroup = {
   items: NavItem[];
 };
 
-const NAV_GROUPS: NavGroup[] = [
+/** A count of work waiting on a page; urgent when some of it is late or stuck. */
+type NavBadge = { count: number; urgent: boolean; title: string };
+
+const BADGE_URGENT = "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200";
+
+export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Admin Panel",
     items: [
@@ -92,6 +97,27 @@ const NAV_GROUPS: NavGroup[] = [
         ],
       },
       { href: "/settings/docs", label: "Documentation", tooltip: "How the platform works", Icon: BookOpen },
+    ],
+  },
+  {
+    // The customer loop, in the order a customer goes round it: who they are,
+    // what they customised, what they bought, a return, and the email that
+    // brings them back (PRD-crm-retention-loop).
+    label: "CRM",
+    items: [
+      { href: "/settings/customers", label: "Customers", tooltip: "Profiles, segments, follow-ups and reviews", Icon: UserCircle },
+      { href: "/settings/results", label: "Results", tooltip: "Customisation submissions", Icon: ClipboardList },
+      { href: "/settings/orders", label: "Orders", tooltip: "Payment, fulfilment and delivery", Icon: ShoppingCart },
+      { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw },
+      {
+        href: "/settings/campaigns",
+        label: "Email campaigns",
+        tooltip: "Write and send marketing email",
+        Icon: Mail,
+        items: [
+          { href: "/settings/email-templates", label: "Email templates", tooltip: "Wording of every customer and partner email", Icon: MailCheck },
+        ],
+      },
     ],
   },
   {
@@ -122,12 +148,6 @@ const NAV_GROUPS: NavGroup[] = [
           { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch },
         ],
       },
-      { href: "/settings/customers", label: "Customers", tooltip: "Customers", Icon: UserCircle },
-      { href: "/settings/campaigns", label: "Email campaigns", tooltip: "Write and send marketing email", Icon: Mail },
-      { href: "/settings/email-templates", label: "Email templates", tooltip: "Wording of every customer and partner email", Icon: MailCheck },
-      { href: "/settings/results", label: "Results", tooltip: "Customisation submissions", Icon: ClipboardList },
-      { href: "/settings/orders", label: "Orders", tooltip: "Orders", Icon: ShoppingCart },
-      { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw },
       { href: "/settings/discounts", label: "Discounts", tooltip: "Discount codes and points", Icon: Tag },
       { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping methods", Icon: Truck },
     ],
@@ -184,25 +204,22 @@ function canSee(item: NavItem, permissions: Permission[]): boolean {
   return permissions.includes(perm);
 }
 
-/** A parent is visible when it or any of its children is visible. */
-function itemVisible(item: NavItem, permissions: Permission[]): boolean {
-  if (canSee(item, permissions)) return true;
-  return (item.items ?? []).some((sub) => canSee(sub, permissions));
+/**
+ * The items a role sees. A parent it cannot open gives way to the children it
+ * can, so a role holding Email templates without Email campaigns gets a link
+ * that opens, not one that bounces to the denied notice.
+ */
+export function visibleItems(items: NavItem[], permissions: Permission[]): NavItem[] {
+  return items.flatMap((item) => {
+    const subs = (item.items ?? []).filter((sub) => canSee(sub, permissions));
+    if (canSee(item, permissions)) return [{ ...item, items: subs }];
+    return subs;
+  });
 }
 
 /** Flatten nested items into peers for the mobile icon grid. */
-function flattenNavItems(items: NavItem[], permissions: Permission[]): NavItem[] {
-  const out: NavItem[] = [];
-  for (const item of items) {
-    if (!itemVisible(item, permissions)) continue;
-    if (canSee(item, permissions)) {
-      out.push({ href: item.href, label: item.label, tooltip: item.tooltip, Icon: item.Icon });
-    }
-    for (const sub of item.items ?? []) {
-      if (canSee(sub, permissions)) out.push(sub);
-    }
-  }
-  return out;
+function flattenNavItems(items: NavItem[]): NavItem[] {
+  return items.flatMap(({ items: subs, ...item }) => [item, ...(subs ?? [])]);
 }
 
 type AdminStatus = "checking" | "authed" | "unauth";
@@ -395,13 +412,30 @@ export function SettingsSidebarNav({
   }
 
   const groups = NAV_GROUPS
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => itemVisible(item, permissions)),
-    }))
+    .map((group) => ({ ...group, items: visibleItems(group.items, permissions) }))
     .filter((group) => group.items.length > 0);
 
   const activeHref = findActiveHref(basePathname, NAV_GROUPS);
+
+  // Work waiting in the CRM, on its sidebar item and on its mobile tile.
+  const badges = new Map<string, NavBadge>();
+  if (resultsQueue > 0) {
+    badges.set("/settings/results", {
+      count: resultsQueue,
+      urgent: resultsStuck > 0,
+      title:
+        resultsStuck > 0
+          ? `${resultsStuck} stuck, ${resultsQueue - resultsStuck} awaiting assignment`
+          : `${resultsQueue} awaiting assignment`,
+    });
+  }
+  if (customersBadge) {
+    badges.set("/settings/customers", {
+      count: customersBadge.total,
+      urgent: customersBadge.urgent,
+      title: customersBadge.title,
+    });
+  }
 
   const header = (
     <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
@@ -428,39 +462,47 @@ export function SettingsSidebarNav({
           <SheetTitle>Menu</SheetTitle>
         </SheetHeader>
         <div className="overflow-y-auto px-3 pb-[calc(4rem+var(--safe-bottom))]">
-          {groups.map((group) => {
-            const tiles = flattenNavItems(group.items, permissions);
-            if (!tiles.length) return null;
-            return (
-              <div key={group.label} className="mb-4">
-                <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {group.label}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {tiles.map(({ href, label, tooltip, Icon }) => {
-                    const isActive = activeHref === href;
-                    return (
-                      <Link
-                        key={href}
-                        href={to(href)}
-                        title={tooltip}
-                        onClick={() => setMenuOpen(false)}
-                        className={cn(
-                          "flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-sm font-medium transition-colors",
-                          isActive
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-background text-foreground hover:bg-accent"
-                        )}
-                      >
-                        <Icon className="size-6 shrink-0" />
-                        <span className="line-clamp-2 leading-tight">{label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
+          {groups.map((group) => (
+            <div key={group.label} className="mb-4">
+              <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {flattenNavItems(group.items).map(({ href, label, tooltip, Icon }) => {
+                  const isActive = activeHref === href;
+                  const badge = badges.get(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={to(href)}
+                      title={badge ? `${tooltip}. ${badge.title}` : tooltip}
+                      onClick={() => setMenuOpen(false)}
+                      className={cn(
+                        "relative flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-sm font-medium transition-colors",
+                        isActive
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-foreground hover:bg-accent"
+                      )}
+                    >
+                      <Icon className="size-6 shrink-0" />
+                      <span className="line-clamp-2 leading-tight">{label}</span>
+                      {badge ? (
+                        <span
+                          className={cn(
+                            "absolute right-2 top-2 min-w-5 rounded-md px-1 text-xs font-medium tabular-nums",
+                            badge.urgent ? BADGE_URGENT : "bg-muted text-foreground",
+                          )}
+                        >
+                          {badge.count}
+                          <span className="sr-only">. {badge.title}</span>
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </SheetContent>
     </Sheet>
@@ -482,9 +524,9 @@ export function SettingsSidebarNav({
                     <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                     <SidebarMenu>
                       {group.items.map(({ href, label, tooltip, Icon, items }) => {
-                        const isActive = activeHref === href ||
-                          (items?.some((sub) => sub.href === activeHref) ?? false);
-                        const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
+                        const subs = items ?? [];
+                        const isActive = activeHref === href || subs.some((sub) => sub.href === activeHref);
+                        const badge = badges.get(href);
 
                         return (
                           <SidebarMenuItem key={href}>
@@ -494,38 +536,18 @@ export function SettingsSidebarNav({
                                 <span>{label}</span>
                               </Link>
                             </SidebarMenuButton>
-                            {href === "/settings/results" && resultsQueue > 0 ? (
+                            {badge ? (
                               <SidebarMenuBadge
-                                className={
-                                  resultsStuck > 0
-                                    ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
-                                    : undefined
-                                }
-                                title={
-                                  resultsStuck > 0
-                                    ? `${resultsStuck} stuck, ${resultsQueue - resultsStuck} awaiting assignment`
-                                    : `${resultsQueue} awaiting assignment`
-                                }
+                                className={badge.urgent ? BADGE_URGENT : undefined}
+                                title={badge.title}
                               >
-                                {resultsQueue}
-                              </SidebarMenuBadge>
-                            ) : null}
-                            {href === "/settings/customers" && customersBadge ? (
-                              <SidebarMenuBadge
-                                className={
-                                  customersBadge.urgent
-                                    ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
-                                    : undefined
-                                }
-                                title={customersBadge.title}
-                              >
-                                {customersBadge.total}
+                                {badge.count}
                               </SidebarMenuBadge>
                             ) : null}
 
-                            {visibleSubs.length ? (
+                            {subs.length ? (
                               <SidebarMenuSub>
-                                {visibleSubs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
+                                {subs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
                                   <SidebarMenuSubItem key={subHref}>
                                     <SidebarMenuSubButton
                                       asChild

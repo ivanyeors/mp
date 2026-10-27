@@ -54,8 +54,8 @@ const params = Promise.resolve({ lang: "en-US" });
 beforeEach(() => vi.clearAllMocks());
 
 describe("campaigns in the catalog", () => {
-  it("is its own sidebar page under Store", () => {
-    expect(permissionEntry("campaigns")).toMatchObject({ label: "Email campaigns", group: "Store", href: "/settings/campaigns" });
+  it("is its own sidebar page under CRM", () => {
+    expect(permissionEntry("campaigns")).toMatchObject({ label: "Email campaigns", group: "CRM", href: "/settings/campaigns" });
     expect(permissionForHref("/settings/campaigns")).toBe("campaigns");
     expect(permissionForHref("/settings/campaigns/new")).toBe("campaigns");
   });

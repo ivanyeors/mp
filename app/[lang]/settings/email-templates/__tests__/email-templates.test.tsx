@@ -90,8 +90,8 @@ beforeEach(() => {
 });
 
 describe("email-templates in the catalog", () => {
-  it("is its own sidebar page under Store, held by Owner and Admin only", () => {
-    expect(permissionEntry("email-templates")).toMatchObject({ label: "Email templates", group: "Store", href: "/settings/email-templates" });
+  it("is its own sidebar page under CRM, held by Owner and Admin only", () => {
+    expect(permissionEntry("email-templates")).toMatchObject({ label: "Email templates", group: "CRM", href: "/settings/email-templates" });
     expect(permissionForHref("/settings/email-templates/order.refund")).toBe("email-templates");
     for (const role of Object.keys(ROLE_ROWS) as RoleKey[]) {
       expect(hasPermission({ permissions: permissionsForRoleRow(ROLE_ROWS[role]) }, "email-templates"), role).toBe(role === "owner" || role === "admin");

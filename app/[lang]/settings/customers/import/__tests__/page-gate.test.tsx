@@ -60,7 +60,7 @@ describe("customer-import in the catalog", () => {
   it("is a tab of the Customers page that requires customers-edit", () => {
     expect(permissionEntry("customer-import" as Permission)).toMatchObject({
       label: "Customer import (Customers page)",
-      group: "Store",
+      group: "CRM",
       surface: "admin-panel",
       requires: ["customers", "customers-edit"],
     });
