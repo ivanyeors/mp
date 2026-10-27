@@ -79,7 +79,7 @@ function BandMeter({ text, band, locale }: { text: string; band: CopyBand; local
         }`}
       >
         {value}/{band.max} {band.unit}
-        {over ? " — too long" : under ? ` — min ${band.min}` : ""}
+        {over ? " (too long)" : under ? ` (min ${band.min})` : ""}
       </span>
     </div>
   );
@@ -120,7 +120,7 @@ function ImageField({
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Image URL or pick from media..."
+          placeholder="Image URL or pick from media…"
           className="flex-1"
         />
         <ImagePicker onSelect={(s) => onChange(s.url, s.assetId, s.alt)}>
@@ -420,14 +420,14 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
       if (!res.ok) {
         const err = await res.json().catch(() => null);
         throw new Error(
-          typeof err?.error === "string" ? err.error : "Failed to save section",
+          typeof err?.error === "string" ? err.error : "Couldn't save the section.",
         );
       }
       const { section: updated } = await res.json();
       toast.success("Section updated");
       onSave(updated);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save section");
+      toast.error(err instanceof Error ? err.message : "Couldn't save the section.");
     }
   };
 
@@ -445,7 +445,7 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
       toast.success("Section reset to defaults");
       onSave(updated);
     } catch {
-      toast.error("Failed to reset section");
+      toast.error("Couldn't reset the section.");
     }
   };
 
@@ -461,11 +461,11 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
           .trim();
         return (
           <>
-            <ImageField label="Hero Image" value={(content.image as string) ?? ""} onChange={setImage} />
-            <Field label="Image Alt Text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Describes the image for screen readers" /></Field>
-            <Field label="Title Prefix"><Input value={get("titlePrefix")} onChange={(e) => set("titlePrefix", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Title Emphasis"><Input value={get("titleEmphasis")} onChange={(e) => set("titleEmphasis", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Title Suffix"><Input value={get("titleSuffix")} onChange={(e) => set("titleSuffix", e.target.value)} placeholder="i18n default" /></Field>
+            <ImageField label="Hero image" value={(content.image as string) ?? ""} onChange={setImage} />
+            <Field label="Image alt text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Describes the image for screen readers" /></Field>
+            <Field label="Title prefix"><Input value={get("titlePrefix")} onChange={(e) => set("titlePrefix", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Title emphasis"><Input value={get("titleEmphasis")} onChange={(e) => set("titleEmphasis", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Title suffix"><Input value={get("titleSuffix")} onChange={(e) => set("titleSuffix", e.target.value)} placeholder="Default copy" /></Field>
             {h1 !== "" && (
               <div className="rounded-md border bg-muted/40 px-3 py-2">
                 <p className="text-xs text-muted-foreground">Headline (all three fields together)</p>
@@ -474,11 +474,11 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
               </div>
             )}
             <Field label="Subtitle">
-              <Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" rows={2} />
+              <Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="Default copy" rows={2} />
               <BandMeter text={get("subtitle")} band={HERO_SUBTITLE_BAND} locale={locale} />
             </Field>
-            <Field label="Customise Button Label"><Input value={get("ctaCustomiseLabel")} onChange={(e) => set("ctaCustomiseLabel", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Book Appointment Button Label"><Input value={get("ctaBookLabel")} onChange={(e) => set("ctaBookLabel", e.target.value)} placeholder="i18n default" /></Field>
+            <Field label="Customise button label"><Input value={get("ctaCustomiseLabel")} onChange={(e) => set("ctaCustomiseLabel", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Book appointment button label"><Input value={get("ctaBookLabel")} onChange={(e) => set("ctaBookLabel", e.target.value)} placeholder="Default copy" /></Field>
           </>
         );
       }
@@ -487,15 +487,15 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
         return (
           <>
             <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
-            <Field label="Image Alt Text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Defaults to the title" /></Field>
-            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Description"><Textarea value={get("description")} onChange={(e) => set("description", e.target.value)} placeholder="i18n default" rows={3} /></Field>
+            <Field label="Image alt text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Defaults to the title" /></Field>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Description"><Textarea value={get("description")} onChange={(e) => set("description", e.target.value)} placeholder="Default copy" rows={3} /></Field>
           </>
         );
 
       case "marquee":
         return (
-          <ImageField label="Marquee Image" value={(content.image as string) ?? ""} onChange={setImage} />
+          <ImageField label="Marquee image" value={(content.image as string) ?? ""} onChange={setImage} />
         );
 
       case "stories":
@@ -504,16 +504,16 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
       case "faq":
         return (
           <p className="text-sm text-muted-foreground" data-page-builder-faq-hint="">
-            Questions and answers are managed in Settings → FAQ → Page FAQs (Home surface). This section only controls placement and visibility.
+            Questions and answers live on the FAQ page, in the Page FAQs tab (Home). This section only sets where it sits and whether it shows.
           </p>
         );
 
       case "pick_your_mpillow":
         return (
           <>
-            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Subtitle"><Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" rows={2} /></Field>
-            <p className="text-xs text-muted-foreground">Product data and prices are fetched dynamically.</p>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Subtitle"><Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="Default copy" rows={2} /></Field>
+            <p className="text-xs text-muted-foreground">Products and prices come from the shop.</p>
           </>
         );
 
@@ -521,9 +521,9 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
         return (
           <>
             <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
-            <Field label="Image Alt Text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Defaults to the title" /></Field>
-            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Description"><Textarea value={get("description")} onChange={(e) => set("description", e.target.value)} placeholder="i18n default" rows={3} /></Field>
+            <Field label="Image alt text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Defaults to the title" /></Field>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Description"><Textarea value={get("description")} onChange={(e) => set("description", e.target.value)} placeholder="Default copy" rows={3} /></Field>
           </>
         );
 
@@ -556,9 +556,9 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
         return (
           <>
             <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
-            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Description"><Textarea value={get("description")} onChange={(e) => set("description", e.target.value)} placeholder="i18n default" rows={3} /></Field>
-            <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" /></Field>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Description"><Textarea value={get("description")} onChange={(e) => set("description", e.target.value)} placeholder="Default copy" rows={3} /></Field>
+            <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="Default copy" /></Field>
           </>
         );
 
@@ -568,7 +568,7 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
           <>
             {cards.length > 0 ? (
               <CardsEditor
-                label="Credibility Cards"
+                label="Credibility cards"
                 cards={cards}
                 onChange={(v) => setRaw("cards", v)}
                 locale={locale}
@@ -589,26 +589,26 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
       case "video_embed":
         return (
           <>
-            <Field label="YouTube Video ID"><Input value={(content.videoId as string) ?? ""} onChange={(e) => setRaw("videoId", e.target.value)} placeholder="e.g. nvFI6woJD9g" /></Field>
-            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" /></Field>
+            <Field label="YouTube video ID"><Input value={(content.videoId as string) ?? ""} onChange={(e) => setRaw("videoId", e.target.value)} placeholder="e.g. nvFI6woJD9g" /></Field>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="Default copy" /></Field>
           </>
         );
 
       case "founder_note":
         return (
           <>
-            <ImageField label="Founder Image" value={(content.image as string) ?? ""} onChange={setImage} />
-            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" /></Field>
+            <ImageField label="Founder image" value={(content.image as string) ?? ""} onChange={setImage} />
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="Default copy" /></Field>
             <ParagraphsEditor
               label="Paragraphs"
               paragraphs={(content.paragraphs as unknown[]) ?? []}
               onChange={(v) => setRaw("paragraphs", v)}
               locale={locale}
             />
-            <Field label="Name"><Input value={get("name")} onChange={(e) => set("name", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Role"><Input value={get("role")} onChange={(e) => set("role", e.target.value)} placeholder="i18n default" /></Field>
+            <Field label="Name"><Input value={get("name")} onChange={(e) => set("name", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Role"><Input value={get("role")} onChange={(e) => set("role", e.target.value)} placeholder="Default copy" /></Field>
           </>
         );
 
@@ -626,14 +626,14 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
         return (
           <>
             <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
-            <Field label="Alt Text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} /></Field>
+            <Field label="Alt text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} /></Field>
           </>
         );
 
       case "custom_video":
         return (
           <>
-            <Field label="YouTube Video ID"><Input value={(content.videoId as string) ?? ""} onChange={(e) => setRaw("videoId", e.target.value)} /></Field>
+            <Field label="YouTube video ID"><Input value={(content.videoId as string) ?? ""} onChange={(e) => setRaw("videoId", e.target.value)} /></Field>
             <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} /></Field>
             <Field label="Subtitle"><Input value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} /></Field>
           </>
@@ -650,10 +650,10 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
       case "shop_cta":
         return (
           <>
-            <ImageField label="Background Image" value={(content.image as string) ?? ""} onChange={setImage} />
+            <ImageField label="Background image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} /></Field>
             <Field label="Subtitle"><Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} rows={2} /></Field>
-            <Field label="Button Label"><Input value={get("buttonLabel")} onChange={(e) => set("buttonLabel", e.target.value)} placeholder="Shop now" /></Field>
+            <Field label="Button label"><Input value={get("buttonLabel")} onChange={(e) => set("buttonLabel", e.target.value)} placeholder="Shop now" /></Field>
             <Field label="Button URL">
               <Input
                 value={(content.buttonUrl as string) ?? ""}
@@ -670,7 +670,7 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
             <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Delivery to your door" /></Field>
             <Field label="Subtitle"><Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} rows={2} /></Field>
             <p className="text-xs text-muted-foreground">
-              Rates and couriers come from Settings → Shipping. Empty fields use the default copy for the language.
+              Rates and couriers come from the Shipping page. Empty fields use the default copy for the language.
             </p>
           </>
         );
@@ -690,7 +690,7 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
               />
             </Field>
             <p className="text-xs text-muted-foreground">
-              Products come from the shop — anything marked Featured and active.
+              Products come from the shop: anything that&apos;s active and marked Featured.
             </p>
           </>
         );

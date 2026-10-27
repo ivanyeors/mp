@@ -516,7 +516,7 @@ export default function OrderDetailPage({
                 body: JSON.stringify(body),
             });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Refund failed");
+            if (!res.ok) throw new Error(json.error ?? "Couldn't issue the refund.");
             setRefundOpen(false);
             setRefundAmount("");
             const updated = await fetchOrder();
@@ -525,7 +525,7 @@ export default function OrderDetailPage({
                 setRestockOpen(true);
             }
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "Refund failed");
+            setActionError(e instanceof Error ? e.message : "Couldn't issue the refund.");
         } finally {
             setRefunding(false);
         }
@@ -539,12 +539,12 @@ export default function OrderDetailPage({
                 method: "POST",
             });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Cancel failed");
+            if (!res.ok) throw new Error(json.error ?? "Couldn't cancel the order.");
             setCancelOpen(false);
             await fetchOrder();
             await fetchTimeline();
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "Cancel failed");
+            setActionError(e instanceof Error ? e.message : "Couldn't cancel the order.");
         } finally {
             setCancelling(false);
         }
@@ -564,7 +564,7 @@ export default function OrderDetailPage({
                 }),
             });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Request failed");
+            if (!res.ok) throw new Error(json.error ?? "Couldn't update the refund request.");
             setReturnAcknowledged(false);
             const updated = await fetchOrder();
             await fetchTimeline();
@@ -572,7 +572,7 @@ export default function OrderDetailPage({
                 setRestockOpen(true);
             }
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "Request failed");
+            setActionError(e instanceof Error ? e.message : "Couldn't update the refund request.");
         } finally {
             setDecidingRefund(false);
         }
@@ -589,7 +589,7 @@ export default function OrderDetailPage({
             .filter(Boolean) as Array<{ order_item_id: string; quantity: number }>;
 
         if (items.length === 0) {
-            setActionError("Enter a quantity to restock for at least one line");
+            setActionError("Enter a quantity for at least one line.");
             return;
         }
 
@@ -602,13 +602,13 @@ export default function OrderDetailPage({
                 body: JSON.stringify({ items }),
             });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Restock failed");
+            if (!res.ok) throw new Error(json.error ?? "Couldn't restock.");
             setRestockOpen(false);
             setRestockQty({});
             await fetchOrder();
             await fetchTimeline();
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "Restock failed");
+            setActionError(e instanceof Error ? e.message : "Couldn't restock.");
         } finally {
             setRestocking(false);
         }
@@ -628,7 +628,7 @@ export default function OrderDetailPage({
                 <Button variant="ghost" size="sm" asChild>
                     <Link href={to("/settings/orders")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
-                        Back to Orders
+                        Back to orders
                     </Link>
                 </Button>
                 <p className="text-muted-foreground">Order not found.</p>
@@ -673,7 +673,7 @@ export default function OrderDetailPage({
                     {/* Order Items */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Order Items</CardTitle>
+                            <CardTitle className="text-base">Order items</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
@@ -685,11 +685,11 @@ export default function OrderDetailPage({
                                         <TableHead className="px-4 text-right">Qty</TableHead>
                                         <TableHead className="px-4 text-right hidden md:table-cell">Returned</TableHead>
                                         <TableHead className="px-4 text-right hidden sm:table-cell">
-                                            Unit Price
+                                            Unit price
                                         </TableHead>
                                         {hasUnitCost && (
                                             <TableHead className="px-4 text-right hidden lg:table-cell">
-                                                Unit Cost
+                                                Unit cost
                                             </TableHead>
                                         )}
                                         <TableHead className="px-4 text-right">Total</TableHead>
@@ -811,8 +811,8 @@ export default function OrderDetailPage({
                                             <DialogTitle>Restock returned items</DialogTitle>
                                         </DialogHeader>
                                         <p className="text-sm text-muted-foreground">
-                                            Manual restock — inventory is not restored automatically on refund.
-                                            Confirming restores each product&apos;s BOM parts back into inventory.
+                                            A refund doesn&apos;t put stock back, so restock here by hand.
+                                            Confirming returns each product&apos;s BOM parts to inventory.
                                         </p>
                                         <div className="space-y-3 py-2">
                                             {(order.items ?? []).map((item) => {
@@ -907,7 +907,7 @@ export default function OrderDetailPage({
                                             const assignment =
                                                 resultSnap.product_type === "bolster"
                                                     ? `Length: ${resultSnap.assigned_length ?? "—"}`
-                                                    : `Size ${resultSnap.assigned_size ?? "—"} · ${resultSnap.assigned_tier ?? "—"} tier`;
+                                                    : `Size ${resultSnap.assigned_size ?? "—"}, ${resultSnap.assigned_tier ?? "—"} tier`;
                                             const groups = groupBuildLinesByRole(resultSnap.build_lines);
                                             const nameByItem = new Map(
                                                 resultSnap.build_lines.map((l) => [l.item_id, l.name]),
@@ -928,7 +928,7 @@ export default function OrderDetailPage({
                                                     <div className="flex items-center justify-between gap-2">
                                                         <div className="font-medium text-sm">
                                                             {item.product_title}
-                                                            {item.variant_title ? ` — ${item.variant_title}` : ""}
+                                                            {item.variant_title ? ` (${item.variant_title})` : ""}
                                                         </div>
                                                         <Badge variant="secondary" className="text-xs shrink-0">
                                                             Result build
@@ -940,7 +940,7 @@ export default function OrderDetailPage({
                                                             <div className="font-medium capitalize">{assignment}</div>
                                                         </div>
                                                         <div>
-                                                            <span className="text-muted-foreground">Filling Template</span>
+                                                            <span className="text-muted-foreground">Filling template</span>
                                                             <div className="font-medium">
                                                                 {resultSnap.filling_template_name ??
                                                                     (resultSnap.filling_template_id != null
@@ -974,7 +974,7 @@ export default function OrderDetailPage({
                                                                             className="flex justify-between text-xs gap-2"
                                                                         >
                                                                             <span className="capitalize text-muted-foreground">
-                                                                                {section} · {subSection}
+                                                                                {section}, {subSection}
                                                                             </span>
                                                                             <span className="text-right">
                                                                                 {pieces.length ? pieces.join(", ") : "—"}
@@ -1029,7 +1029,7 @@ export default function OrderDetailPage({
                                                             href={to(`/settings/results/${resultSnap.result_id}`)}
                                                             className="text-primary hover:underline inline-flex items-center gap-1"
                                                         >
-                                                            Open Result
+                                                            Open result
                                                             <ExternalLink className="h-3 w-3" />
                                                         </Link>
                                                     </div>
@@ -1041,10 +1041,10 @@ export default function OrderDetailPage({
                                             <div key={item.id} className="rounded-lg border p-4 space-y-3">
                                                 <div className="flex items-center justify-between">
                                                     <div className="font-medium text-sm">
-                                                        {item.product_title} — {item.variant_title}
+                                                        {item.product_title} ({item.variant_title})
                                                     </div>
                                                     <Badge variant="secondary" className="text-xs">
-                                                        Customized
+                                                        Customised
                                                     </Badge>
                                                 </div>
 
@@ -1096,7 +1096,7 @@ export default function OrderDetailPage({
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Clock className="h-4 w-4" />
-                                Order Timeline
+                                Order timeline
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -1131,7 +1131,7 @@ export default function OrderDetailPage({
                             {/* Add note */}
                             <div className="flex gap-2 pt-2 border-t">
                                 <Input
-                                    placeholder="Add a note to this order..."
+                                    placeholder="Add a note to this order…"
                                     value={timelineNote}
                                     onChange={(e) => setTimelineNote(e.target.value)}
                                     onKeyDown={(e) => {
@@ -1249,7 +1249,7 @@ export default function OrderDetailPage({
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <ClipboardList className="h-4 w-4" />
-                                Mp-config Result
+                                Linked result
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -1274,7 +1274,7 @@ export default function OrderDetailPage({
                                                         </Badge>
                                                         {size && (
                                                             <span className="text-xs text-muted-foreground">
-                                                                {kind} · {size}
+                                                                {kind}, {size}
                                                             </span>
                                                         )}
                                                         <Badge variant={r.is_final ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
@@ -1320,12 +1320,12 @@ export default function OrderDetailPage({
                                     <DialogTrigger asChild>
                                         <Button size="sm" variant="outline" className="flex-1">
                                             <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                                            Link Existing
+                                            Link existing
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-lg">
                                         <DialogHeader>
-                                            <DialogTitle>Link Mp-config Result</DialogTitle>
+                                            <DialogTitle>Link a result</DialogTitle>
                                         </DialogHeader>
                                         <div className="space-y-3">
                                             <div className="flex gap-2">
@@ -1350,7 +1350,7 @@ export default function OrderDetailPage({
                                                     </div>
                                                 ) : linkCandidates.length === 0 ? (
                                                     <p className="text-sm text-muted-foreground text-center py-4">
-                                                        No unlinked results found.
+                                                        No unlinked results.
                                                     </p>
                                                 ) : (
                                                     linkCandidates.map((c) => {
@@ -1385,7 +1385,7 @@ export default function OrderDetailPage({
                                     ) : (
                                         <Plus className="mr-1.5 h-3.5 w-3.5" />
                                     )}
-                                    Create Result
+                                    Create result
                                 </Button>
                             </div>
                         </CardContent>
@@ -1462,17 +1462,17 @@ export default function OrderDetailPage({
                                 <DialogTrigger asChild>
                                     <Button size="sm" variant="outline" className="w-full">
                                         <Truck className="mr-2 h-4 w-4" />
-                                        Mark as Shipped
+                                        Mark as shipped
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                     <DialogHeader>
-                                        <DialogTitle>Mark as Shipped</DialogTitle>
+                                        <DialogTitle>Mark as shipped</DialogTitle>
                                     </DialogHeader>
                                     <div className="space-y-4 py-2">
                                         <div className="space-y-1.5">
                                             <Label htmlFor="tracking-number">
-                                                Tracking Number
+                                                Tracking number
                                             </Label>
                                             <Input
                                                 id="tracking-number"
@@ -1490,7 +1490,7 @@ export default function OrderDetailPage({
                                             </Label>
                                             <Input
                                                 id="tracking-url"
-                                                placeholder="https://..."
+                                                placeholder="https://…"
                                                 value={trackingUrl}
                                                 onChange={(e) => setTrackingUrl(e.target.value)}
                                             />
@@ -1512,7 +1512,7 @@ export default function OrderDetailPage({
                                             ) : (
                                                 <Truck className="mr-2 h-4 w-4" />
                                             )}
-                                            Confirm Shipment
+                                            Confirm shipment
                                         </Button>
                                     </DialogFooter>
                                 </DialogContent>
@@ -1619,8 +1619,8 @@ export default function OrderDetailPage({
                             )}
                             {isResultOrder && !order.refund_request_status && (
                                 <p className="text-xs text-muted-foreground pt-1">
-                                    Customised orders: customer requests refund after delivery;
-                                    approve only after in-person return.
+                                    On customised orders, the customer asks for a refund after delivery.
+                                    Approve it only once they&apos;ve returned it in person.
                                 </p>
                             )}
                             {actionError && (refundOpen || cancelOpen) && (
@@ -1646,7 +1646,7 @@ export default function OrderDetailPage({
                                             </DialogHeader>
                                             <p className="text-sm text-muted-foreground">
                                                 Refundable balance: {formatSGD(refundableRemaining)}.
-                                                Leave amount blank for a full refund. Stripe webhook updates the ledger.
+                                                Leave the amount blank to refund it all. The ledger updates once Stripe confirms.
                                             </p>
                                             <div className="space-y-1.5 py-2">
                                                 <Label htmlFor="refund-amount">Amount (optional)</Label>
@@ -1692,8 +1692,8 @@ export default function OrderDetailPage({
                                             </DialogHeader>
                                             <p className="text-sm text-muted-foreground">
                                                 {order.payment_reference && order.paid_at
-                                                    ? "This paid order will receive a full refund via Stripe."
-                                                    : "This unpaid order will be cancelled with no money moved."}
+                                                    ? "The customer gets a full refund through Stripe."
+                                                    : "This order is unpaid, so no money moves."}
                                             </p>
                                             {actionError && cancelOpen && (
                                                 <p className="text-sm text-destructive">{actionError}</p>
@@ -1725,7 +1725,7 @@ export default function OrderDetailPage({
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base flex items-center gap-2">
                                     <TrendingUp className="h-4 w-4" />
-                                    Realized Margin
+                                    Realized margin
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2 text-sm">
@@ -1782,11 +1782,11 @@ export default function OrderDetailPage({
                     {/* Notes */}
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Internal Notes</CardTitle>
+                            <CardTitle className="text-base">Internal notes</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <Textarea
-                                placeholder="Add internal notes visible only to staff..."
+                                placeholder="Notes only staff can see…"
                                 value={internalNotes}
                                 onChange={(e) => setInternalNotes(e.target.value)}
                                 rows={4}
@@ -1804,7 +1804,7 @@ export default function OrderDetailPage({
                                 ) : (
                                     <Save className="mr-2 h-4 w-4" />
                                 )}
-                                Save Notes
+                                Save notes
                             </Button>
                         </CardContent>
                     </Card>

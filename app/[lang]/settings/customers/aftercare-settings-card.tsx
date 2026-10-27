@@ -52,7 +52,7 @@ export function AftercareSettingsCard({
         if (!cancelled) setData(d);
       })
       .catch((e) => {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load Aftercare");
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load the aftercare settings.");
       });
     return () => {
       cancelled = true;
@@ -68,13 +68,13 @@ export function AftercareSettingsCard({
         body: JSON.stringify(patch),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Failed to save");
+      if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Couldn't save.");
       toast.success("Saved");
       // Today's plan depends on the window, so read the card again.
       const next = await fetchAftercareCard().catch(() => null);
       setData((d) => next ?? (d ? { ...d, settings: payload.settings } : d));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }
@@ -87,7 +87,7 @@ export function AftercareSettingsCard({
         <InfoTip label="About Aftercare">
           Service messages about something a customer bought, by email and, for customers who opted
           in, WhatsApp. They never carry an offer. Each customer can switch either channel off in
-          their Profile, or ask Staff to.
+          their profile, or ask staff to.
         </InfoTip>
       </div>
 
@@ -401,7 +401,7 @@ function ReviewRequestSection({
 async function fetchAftercareCard(): Promise<AftercareCardData> {
   const res = await fetch("/api/settings/customers/aftercare", { cache: "no-store" });
   const payload = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Failed to load Aftercare");
+  if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Couldn't load the aftercare settings.");
   return {
     settings: payload.settings,
     reviewRequests: payload.reviewRequests,
@@ -416,7 +416,7 @@ function SkipList({ title, items }: { title: string; items: Array<[string, numbe
   if (shown.length === 0) return null;
   return (
     <p className="text-muted-foreground">
-      {title}: {shown.map(([label, n]) => `${label} ${n}`).join(" · ")}
+      {title}: {shown.map(([label, n]) => `${label} ${n}`).join("; ")}
     </p>
   );
 }

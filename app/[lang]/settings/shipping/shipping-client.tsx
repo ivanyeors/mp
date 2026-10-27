@@ -377,7 +377,7 @@ export default function SettingsShippingPage({
                 await fetchMethods();
             }
         } catch {
-            setError("Network error. Try again.");
+            setError("Couldn't reach the server. Try again.");
         } finally {
             setSaving(false);
         }
@@ -684,7 +684,7 @@ export default function SettingsShippingPage({
                                 {form.collect_location_id
                                     ? "Offered on customisations only. The customer gives a name instead of an address, and the order carries the studio's address, so no courier label is bought."
                                     : studios.length === 0
-                                      ? "Self-collect needs an own studio with an address (Settings → Locations)."
+                                      ? "Self-collect needs one of your own studios with an address. Add it on the Partners page."
                                       : "Self-collect is offered on customisations only, never in shop checkout."}
                             </p>
                         </div>
@@ -900,7 +900,7 @@ export default function SettingsShippingPage({
                     <p className="text-sm text-muted-foreground">
                         Delete{" "}
                         <strong>{deleteTarget ? getMethodName(deleteTarget) : ""}</strong>?
-                        This cannot be undone.
+                        This can&apos;t be undone.
                     </p>
                     <DialogFooter>
                         <Button

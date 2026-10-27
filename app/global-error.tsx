@@ -23,7 +23,7 @@ export default function GlobalError({
           {error.digest ? ` Reference: ${error.digest}` : null}
         </p>
         <button onClick={reset} style={{ padding: "0.5rem 1.5rem" }}>
-          Try Again
+          Try again
         </button>
       </body>
     </html>

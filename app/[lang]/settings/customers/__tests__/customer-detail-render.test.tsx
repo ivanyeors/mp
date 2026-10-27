@@ -45,9 +45,9 @@ const render = (canEdit: boolean) =>
 
 /** Each edit control, as it appears in the markup. */
 const CONTROLS = [
-  "Save Changes",
-  "Add Address",
-  'placeholder="Add tag..."',
+  "Save changes",
+  "Add address",
+  'placeholder="Add a tag…"',
   'id="first-name"',
   'id="phone"',
   "<textarea",

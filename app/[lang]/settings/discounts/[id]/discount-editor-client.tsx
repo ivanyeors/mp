@@ -176,7 +176,7 @@ function buildSummary(form: CouponForm): string {
         parts.push(`${perCustomer} use${perCustomer !== 1 ? "s" : ""} per customer (sign-in required)`);
     }
 
-    return parts.join(", ") || "Configure the discount above";
+    return parts.join(", ") || "Set up the discount to see its summary.";
 }
 
 const DEFAULT_FORM: CouponForm = {
@@ -306,7 +306,7 @@ export function DiscountEditorClient({
         }));
     }, [initialCoupon]);
 
-    useSettingsBreadcrumbDetail(isNew ? "New Discount" : (form.code.trim() || null));
+    useSettingsBreadcrumbDetail(isNew ? "New discount" : (form.code.trim() || null));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
@@ -332,7 +332,7 @@ export function DiscountEditorClient({
             setForm(couponToForm(json.row));
             setAppliesTo(appliesToFromCoupon(json.row));
         } catch {
-            setError("Failed to load coupon.");
+            setError("Couldn't load the discount.");
         } finally {
             setLoading(false);
         }
@@ -449,7 +449,7 @@ export function DiscountEditorClient({
                 setError(
                     typeof json.error === "string"
                         ? json.error
-                        : "Failed to save. Check your inputs."
+                        : "Couldn't save. Check the details above."
                 );
             } else {
                 if (isNew) {
@@ -461,7 +461,7 @@ export function DiscountEditorClient({
                 }
             }
         } catch {
-            setError("Network error. Please try again.");
+            setError("Couldn't reach the server. Try again.");
         } finally {
             setSaving(false);
         }
@@ -488,12 +488,12 @@ export function DiscountEditorClient({
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">
-                        {isNew ? "New Discount" : form.code || "Edit Discount"}
+                        {isNew ? "New discount" : form.code || "Edit discount"}
                     </h1>
                     <InfoTip label="About this discount">
                         {isNew
-                            ? "Create a new discount code for your store."
-                            : "Edit discount code settings."}
+                            ? "Create a code customers enter at checkout."
+                            : "Change this discount code."}
                     </InfoTip>
                 </div>
             </div>
@@ -553,7 +553,7 @@ export function DiscountEditorClient({
                                     </Button>
                                     {copied && (
                                         <span className="self-center text-xs text-muted-foreground">
-                                            Copied!
+                                            Copied
                                         </span>
                                     )}
                                 </div>
@@ -623,7 +623,7 @@ export function DiscountEditorClient({
                                     <Label htmlFor="min_order_amount">
                                         Minimum order amount (optional)
                                     </Label>
-                                    <InfoTip label="About Minimum order amount">Leave empty for no minimum order requirement.</InfoTip>
+                                    <InfoTip label="About minimum order amount">Leave empty for no minimum.</InfoTip>
                                 </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -650,7 +650,7 @@ export function DiscountEditorClient({
                                         <Label htmlFor="max_discount">
                                             Maximum discount amount (optional)
                                         </Label>
-                                        <InfoTip label="About Maximum discount">Cap the maximum discount this code can give.</InfoTip>
+                                        <InfoTip label="About maximum discount">The most this code can take off an order.</InfoTip>
                                     </div>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -679,8 +679,8 @@ export function DiscountEditorClient({
                         <CardHeader>
                             <div className="flex items-center gap-1.5">
                                 <CardTitle className="text-base">Applies to</CardTitle>
-                                <InfoTip label="About Applies to">
-                                    Leave all unchecked to apply this discount to the entire cart. Select products and/or categories to restrict where it applies.
+                                <InfoTip label="About where this applies">
+                                    Leave everything unticked to discount the whole cart. Tick products or categories to limit it to those.
                                 </InfoTip>
                             </div>
                         </CardHeader>
@@ -791,7 +791,7 @@ export function DiscountEditorClient({
                             <div className="space-y-1.5">
                                 <div className="flex items-center gap-1.5">
                                     <Label htmlFor="usage_limit">Total usage limit (optional)</Label>
-                                    <InfoTip label="About Total usage limit">Leave empty or set 0 for unlimited total uses.</InfoTip>
+                                    <InfoTip label="About total usage limit">Leave empty or enter 0 for no limit.</InfoTip>
                                 </div>
                                 <Input
                                     id="usage_limit"
@@ -806,8 +806,8 @@ export function DiscountEditorClient({
 
                             <div className="space-y-1.5">
                                 <div className="flex items-center gap-1.5">
-                                    <Label htmlFor="per_customer_limit">Per customer limit</Label>
-                                    <InfoTip label="About Per customer limit">How many times one customer can use this code. Leave blank for no limit, open to guests. With a limit, the customer must be signed in and check out with their account email, so a new email address cannot reuse the code.</InfoTip>
+                                    <Label htmlFor="per_customer_limit">Per-customer limit</Label>
+                                    <InfoTip label="About per-customer limit">How many times one customer can use this code. Leave it blank for no limit, and guests can use it too. With a limit, customers must sign in and check out with their account email, so a new email address can&apos;t reuse the code.</InfoTip>
                                 </div>
                                 <Input
                                     id="per_customer_limit"
@@ -829,8 +829,8 @@ export function DiscountEditorClient({
                         <CardHeader>
                             <div className="flex items-center gap-1.5">
                                 <CardTitle className="text-base">Schedule</CardTitle>
-                                <InfoTip label="About Schedule">
-                                    Leave empty for no date restriction.
+                                <InfoTip label="About the schedule">
+                                    Leave both empty for no start or end date.
                                 </InfoTip>
                             </div>
                         </CardHeader>
@@ -875,7 +875,7 @@ export function DiscountEditorClient({
                                         <Label htmlFor="is_active" className="font-medium">
                                             Active
                                         </Label>
-                                        <InfoTip label="About Active">Customers can use this code when active.</InfoTip>
+                                        <InfoTip label="About the active switch">Customers can use this code while it&apos;s on.</InfoTip>
                                     </div>
                                 </div>
                                 <Switch
@@ -892,8 +892,8 @@ export function DiscountEditorClient({
                                         <span className="font-medium">
                                             {original.usage_count}
                                             {original.usage_limit !== null
-                                                ? ` / ${original.usage_limit}`
-                                                : " / Unlimited"}
+                                                ? ` of ${original.usage_limit}`
+                                                : " (no limit)"}
                                         </span>
                                     </div>
                                 </div>

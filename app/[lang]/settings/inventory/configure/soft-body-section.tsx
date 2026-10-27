@@ -59,7 +59,7 @@ function toPayload(data: Record<string, unknown>): Payload {
 }
 
 async function loadPayload(url: string): Promise<Payload | { error: string }> {
-  const fallback = "Failed to load soft body settings";
+  const fallback = "Couldn't load the soft body settings.";
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -138,7 +138,7 @@ export function SoftBodySection({ settingsPath }: { settingsPath: (path: string)
 
   const send = useCallback(
     async (method: "POST" | "DELETE", done: string) => {
-      const fallback = method === "POST" ? "Failed to save soft body settings" : "Failed to reset soft body settings";
+      const fallback = method === "POST" ? "Couldn't save the soft body settings." : "Couldn't reset the soft body settings.";
       setBusy(method === "POST" ? "save" : "reset");
       try {
         const res = await fetch(settingsPath(ROUTE), {
@@ -173,13 +173,13 @@ export function SoftBodySection({ settingsPath }: { settingsPath: (path: string)
         <h3 className="text-base font-semibold tracking-tight">Soft body</h3>
         <InfoTip label="About Soft body">
           <p>
-            How the cross-section draws the fillings of one Section, front to back: each pouch a
+            How the cross-section draws the fillings of one section, front to back: each pouch is a
             soft body that settles into the cloth case under its own weight, instead of a rounded
-            slab. The fit, the loft and the pack list do not change — only the drawing does.
+            slab. Only the drawing changes. The fit, the loft and the pack list stay the same.
           </p>
           <p>
-            Saving applies to every cross-section — the Staff x-ray, the configurator and Result
-            detail — on next load. “Reset to defaults” puts back the values the testing preview
+            Saving applies to every cross-section (the staff x-ray, the configurator and the result
+            page) on next load. “Reset to defaults” puts back the values the testing preview
             settled on.
           </p>
         </InfoTip>
@@ -187,7 +187,7 @@ export function SoftBodySection({ settingsPath }: { settingsPath: (path: string)
       {!saved ? (
         loadFailed ? (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border p-4 text-sm text-muted-foreground">
-            Soft body settings could not be loaded.
+            Couldn&apos;t load the soft body settings.
             <Button
               type="button"
               size="sm"
@@ -252,7 +252,7 @@ function SaveState({ saved, dirty }: { saved: Payload; dirty: boolean }) {
     );
   }
   if (saved.stored) {
-    return <Badge className="text-xs">{saved.updatedAt ? `Saved · ${savedAt(saved.updatedAt)}` : "Saved"}</Badge>;
+    return <Badge className="text-xs">{saved.updatedAt ? `Saved ${savedAt(saved.updatedAt)}` : "Saved"}</Badge>;
   }
   return (
     <Badge variant="outline" className="text-xs">
@@ -294,17 +294,17 @@ function SoftBodyControls({
           rangeKey="rigidity"
           value={draft.rigidity}
           defaultValue={defaults.rigidity}
-          display={(v) => `${rigidityWord(v)} · ${v}`}
+          display={(v) => `${rigidityWord(v)} (${v})`}
           disabled={off}
           onChange={(v) => set("rigidity", v)}
         />
         <SliderRow
           label="Neck firmness"
-          tip="How little a Neck support gives where it rests and where a pouch presses on it. Firm, it stays nearly round; soft, it shares a crowded cell with the pouches, squashing toward its fully squashed size."
+          tip="How little a neck support gives where it rests and where a pouch presses on it. Firm, it stays nearly round; soft, it shares a crowded cell with the pouches, squashing toward its fully squashed size."
           rangeKey="neckFirmness"
           value={draft.neckFirmness}
           defaultValue={defaults.neckFirmness}
-          display={(v) => `${v < 34 ? "soft" : v < 67 ? "medium" : "firm"} · ${v}`}
+          display={(v) => `${v < 34 ? "soft" : v < 67 ? "medium" : "firm"} (${v})`}
           disabled={off}
           onChange={(v) => set("neckFirmness", v)}
         />
@@ -320,7 +320,7 @@ function SoftBodyControls({
         />
         <SliderRow
           label="Empty case height"
-          tip="How high the case stands with nothing in it — cloth sags."
+          tip="How high the case stands with nothing in it, since cloth sags."
           rangeKey="emptyCasePct"
           value={draft.emptyCasePct}
           defaultValue={defaults.emptyCasePct}
@@ -354,7 +354,7 @@ function SoftBodyControls({
           rangeKey="steps"
           value={draft.steps}
           defaultValue={defaults.steps}
-          display={(v) => `${plural(v, "step", "steps")} · ${seconds(v)} s`}
+          display={(v) => `${plural(v, "step", "steps")} (${seconds(v)} s)`}
           disabled={off}
           onChange={(v) => set("steps", v)}
         />
@@ -515,11 +515,11 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
           <p>
             Draws the values on the left as you move them, before they are saved, on the sample
             recipes the soft cut was approved on: {SOFT_BODY_RECIPES.map((r) => r.name).join(", ")}.
-            The recipe fills the chosen Section; the cut is its side view, front to back.
+            The recipe fills the chosen section, and the cut is its side view, front to back.
           </p>
           <p>
-            Pouches are sized from Settings › Dimensions where a row exists, else the code
-            defaults — the same numbers every x-ray uses.
+            Pouches are sized from the Dimensions tab where a row exists, or else from the code
+            defaults. Every x-ray uses the same numbers.
           </p>
         </InfoTip>
         <Button
@@ -560,13 +560,13 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
 
       <div className={cn("grid gap-3", compare && "2xl:grid-cols-2")}>
         {compare && <CutFigure caption="Slabs">{drawing(slabSettings)}</CutFigure>}
-        <CutFigure caption={draft.enabled ? "Soft cut" : "Slabs — soft cut is off"}>{drawing(settings)}</CutFigure>
+        <CutFigure caption={draft.enabled ? "Soft cut" : "Slabs (soft cut is off)"}>{drawing(settings)}</CutFigure>
       </div>
 
       <div className="space-y-1 text-xs" role="status" aria-live="polite">
         {problems.length === 0 ? (
           <p className="text-muted-foreground">
-            {SECTION_LABEL[preview.section]} Section fits at Size {preview.size}.
+            {SECTION_LABEL[preview.section]} section fits at size {preview.size}.
           </p>
         ) : (
           problems.map((c) => (
@@ -579,7 +579,7 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
           ))
         )}
         {worst === "over" && <p className="text-muted-foreground">A stack that cannot close draws out of the case in red.</p>}
-        {dimsFailed && <p className="text-muted-foreground">Dimensions could not be loaded: pouches are drawn at the code defaults.</p>}
+        {dimsFailed && <p className="text-muted-foreground">Couldn&apos;t load dimensions, so pouches are drawn at the code defaults.</p>}
       </div>
     </div>
   );

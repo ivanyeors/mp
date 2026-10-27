@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
   if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 })
   const rep = ((results ?? []) as ResultScopeRow[]).find((r) => resultScopeKey(kind, r) === key)
   if (!rep) {
-    return NextResponse.json({ error: 'Mix no longer exists on any Result in this scope' }, { status: 409 })
+    return NextResponse.json({ error: 'No result here uses this mix any more.' }, { status: 409 })
   }
 
   const { data: pl, error: pErr } = await admin

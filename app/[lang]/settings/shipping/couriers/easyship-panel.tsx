@@ -141,12 +141,12 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 const json = await res.json().catch(() => null);
                 if (cancelled) return;
                 if (!res.ok || !json?.ok) {
-                    setLoadError(apiErrorMessage(json?.error, "Could not load shipping settings."));
+                    setLoadError(apiErrorMessage(json?.error, "Couldn't load shipping settings."));
                     return;
                 }
                 apply(json as SettingsPayload);
             })
-            .catch(() => !cancelled && setLoadError("Network error. Please reload."));
+            .catch(() => !cancelled && setLoadError("Couldn't reach the server. Reload the page."));
         return () => {
             cancelled = true;
         };
@@ -180,13 +180,13 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
             });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
-                toast.error(apiErrorMessage(json?.error, "Could not save shipping settings."));
+                toast.error(apiErrorMessage(json?.error, "Couldn't save shipping settings."));
                 return;
             }
             apply(json as SettingsPayload);
             toast.success("Shipping settings saved");
         } catch {
-            toast.error("Network error. Please try again.");
+            toast.error("Couldn't reach the server. Try again.");
         } finally {
             setSaving(false);
         }
@@ -208,12 +208,12 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
             });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
-                setTestResult({ ok: false, error: apiErrorMessage(json?.error, "The test quote failed.") });
+                setTestResult({ ok: false, error: apiErrorMessage(json?.error, "Couldn't get a test quote.") });
                 return;
             }
             setTestResult(json as TestResult);
         } catch {
-            setTestResult({ ok: false, error: "Network error. Please try again." });
+            setTestResult({ ok: false, error: "Couldn't reach the server. Try again." });
         } finally {
             setTesting(false);
         }
@@ -222,7 +222,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
     const copy = (value: string, what: string) => {
         navigator.clipboard?.writeText(value).then(
             () => toast.success(`${what} copied`),
-            () => toast.error("Could not copy"),
+            () => toast.error("Couldn't copy."),
         );
     };
 
@@ -233,7 +233,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 <CardHeader>
                     <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                         Courier connection
-                        <InfoTip label="About Courier connection">
+                        <InfoTip label="About courier connection">
                             Live courier rates at checkout and one-click labels from each order. The API token and
                             webhook secret are environment variables; they are never stored in the database.
                         </InfoTip>
@@ -303,7 +303,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 <CardHeader>
                     <div className="flex items-center gap-1.5">
                         <CardTitle className="text-base">Customs &amp; quotes</CardTitle>
-                        <InfoTip label="About Customs & quotes">How cross-border parcels are declared and how quotes are shown.</InfoTip>
+                        <InfoTip label="About customs & quotes">How cross-border parcels are declared and how quotes are shown.</InfoTip>
                     </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -314,8 +314,8 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="DDU">DDU — receiver pays on delivery</SelectItem>
-                                <SelectItem value="DDP">DDP — included in the shipping rate</SelectItem>
+                                <SelectItem value="DDU">DDU: receiver pays on delivery</SelectItem>
+                                <SelectItem value="DDP">DDP: included in the shipping rate</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -412,8 +412,8 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                             <PackageSearch className="h-4 w-4" />
                             Test a quote
                         </CardTitle>
-                        <InfoTip label="About Test a quote">
-                            Today&apos;s courier rates for a sample parcel, using the settings above (saved or not) and the saved Boxes.
+                        <InfoTip label="About testing a quote">
+                            Today&apos;s courier rates for a sample parcel, using the settings above (saved or not) and the saved boxes.
                             Copy a courier service id to pin it on a method.
                         </InfoTip>
                     </div>
@@ -518,7 +518,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                                         {formatCurrency(r.total_charge, r.currency)}
                                                     </td>
                                                     <td className="px-3 py-2 whitespace-nowrap">
-                                                        {r.min_days != null ? `${r.min_days}–${r.max_days ?? r.min_days} days` : "—"}
+                                                        {r.min_days != null ? `${r.min_days} to ${r.max_days ?? r.min_days} days` : "—"}
                                                     </td>
                                                     <td className="px-3 py-2">
                                                         <button
@@ -548,14 +548,14 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                                 <span className="text-xs">{m.slug}</span>
                                                 <span>
                                                     {!m.available
-                                                        ? "Not offered — no matching courier"
+                                                        ? "Not offered: no matching courier"
                                                         : m.price == null
                                                           ? "—"
                                                           : `${formatCurrency(m.price, "SGD")}${
                                                                 m.courier ? ` via ${m.courier}` : " (flat)"
                                                             }${
                                                                 m.carrier_cost != null
-                                                                    ? ` · costs us ${formatCurrency(m.carrier_cost, "SGD")}`
+                                                                    ? `, costs us ${formatCurrency(m.carrier_cost, "SGD")}`
                                                                     : ""
                                                             }`}
                                                 </span>

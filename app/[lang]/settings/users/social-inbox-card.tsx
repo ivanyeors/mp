@@ -36,10 +36,10 @@ export function SocialInboxCard() {
         const account = params.get("account");
         const webhook = params.get("webhook") ?? "";
         toast.success(`TikTok connected${account ? ` as ${account}` : ""}.`);
-        if (webhook.startsWith("failed")) toast.error(`TikTok webhook not registered — ${webhook.slice(8)}`);
-        else if (webhook === "skipped") toast.message("Webhook not registered from a non-production deployment.");
+        if (webhook.startsWith("failed")) toast.error(`Couldn't register the TikTok webhook: ${webhook.slice(8)}`);
+        else if (webhook === "skipped") toast.message("Webhooks are only registered from the production site.");
       } else {
-        toast.error(`TikTok not connected — ${params.get("reason") ?? "unknown error"}`);
+        toast.error(`Couldn't connect TikTok: ${params.get("reason") ?? "unknown error"}`);
       }
       for (const key of ["tiktok", "reason", "account", "webhook"]) params.delete(key);
       const query = params.toString();
@@ -60,10 +60,10 @@ export function SocialInboxCard() {
     try {
       const res = await fetch("/api/social-inbox/meta/connect", { method: "POST" });
       const payload = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(payload?.error ?? "Failed");
+      if (!res.ok) throw new Error(payload?.error ?? "unknown error");
       toast.success("Meta now sends Facebook and Instagram messages to this site.");
     } catch (e) {
-      toast.error(`Webhooks not connected — ${e instanceof Error ? e.message : "unknown error"}`);
+      toast.error(`Couldn't connect the webhooks: ${e instanceof Error ? e.message : "unknown error"}`);
     }
     // Either way, show what Meta now says.
     await load().then(setStatus, () => setFailed(true));
@@ -100,7 +100,7 @@ export function SocialInboxCard() {
             connected={!!setup}
             detail={
               setup
-                ? `${setup.page.name ?? "Page"} · ${setup.page.id}`
+                ? `${setup.page.name ?? "Page"} (${setup.page.id})`
                 : meta?.connected
                   ? "Page token set, but Meta refused it (below)."
                   : "Set META_PAGE_ACCESS_TOKEN (OPS checklist, part 1)."
@@ -111,7 +111,7 @@ export function SocialInboxCard() {
             connected={!!setup?.instagram}
             detail={
               setup?.instagram
-                ? `${setup.instagram.username ? `@${setup.instagram.username}` : "Account"} · ${setup.instagram.id}`
+                ? `${setup.instagram.username ? `@${setup.instagram.username}` : "Account"} (${setup.instagram.id})`
                 : setup
                   ? "No Instagram professional account is linked to the Page (Meta Business Suite → Settings → Instagram accounts)."
                   : "Uses the same Facebook Page token once Instagram is linked to the Page."
@@ -126,7 +126,7 @@ export function SocialInboxCard() {
                   ? "Meta sends Facebook and Instagram messages to the site."
                   : meta?.webhookUrl
                     ? "Not all set up yet (below)."
-                    : "Not all set up yet (below) — open this tab on the production site to connect them."
+                    : "Not all set up yet (below). Open this tab on the production site to connect them."
               }
               action={
                 meta?.webhookUrl ? (
@@ -147,7 +147,7 @@ export function SocialInboxCard() {
             connected={!!tiktok?.connected}
             detail={
               tiktok?.connected
-                ? `${tiktok.accountName ?? "Business account"}${reconnectNote(tiktok.refreshExpiresAt)}${tiktok.lastError ? ` · last refresh failed: ${tiktok.lastError}` : ""}`
+                ? `${tiktok.accountName ?? "Business account"}${reconnectNote(tiktok.refreshExpiresAt)}${tiktok.lastError ? `. Last refresh failed: ${tiktok.lastError}` : ""}`
                 : tiktok?.appConfigured
                   ? "Not connected yet."
                   : "Set TIKTOK_APP_ID and TIKTOK_APP_SECRET first (OPS checklist, part 2)."
@@ -189,7 +189,7 @@ export function SocialInboxCard() {
 
       <p className="text-xs text-muted-foreground">
         Replies go out within 24 hours of the customer&apos;s last message on Facebook and Instagram
-        {meta?.humanAgent ? " (7 days with Meta's Human Agent permission, which is on)" : ""} — after that, answer
+        {meta?.humanAgent ? " (7 days with Meta's Human Agent permission, which is on)" : ""}. After that, answer
         from the platform&apos;s own app. TikTok has no time limit but caps how many messages go to a quiet customer;
         the bot says so if a reply is refused.
       </p>
@@ -203,8 +203,8 @@ function reconnectNote(refreshExpiresAt: string | null): string {
   const ends = new Date(refreshExpiresAt);
   const days = (ends.getTime() - Date.now()) / 86_400_000;
   if (days > 30) return "";
-  if (days <= 0) return " · connection expired — reconnect";
-  return ` · reconnect by ${ends.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}`;
+  if (days <= 0) return ". The connection has expired, so reconnect";
+  return `. Reconnect by ${ends.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
 function Row({

@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
   if (!tpl) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
   if (tpl.role !== 'filling') {
-    return NextResponse.json({ error: 'Only Filling Templates can be forked per size' }, { status: 400 })
+    return NextResponse.json({ error: 'Only filling templates can be copied per size.' }, { status: 400 })
   }
   const kind = tpl.kind === 'bolster' ? 'bolster' : 'pillow'
 
@@ -83,13 +83,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
   const currentKeys = loaded.byId.get(id) ?? [tpl.key]
   if (!currentKeys.includes(key)) {
     return NextResponse.json(
-      { error: `This template does not apply to ${templateKeyLabel(kind, key)}` },
+      { error: `This template doesn't apply to ${templateKeyLabel(kind, key)}.` },
       { status: 400 },
     )
   }
   if (currentKeys.length === 1) {
     return NextResponse.json(
-      { error: 'This template already applies to one size only — edit it directly' },
+      { error: 'This template applies to one size only. Edit it directly.' },
       { status: 400 },
     )
   }

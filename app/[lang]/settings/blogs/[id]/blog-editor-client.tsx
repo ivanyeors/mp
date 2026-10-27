@@ -130,7 +130,7 @@ export default function BlogEditorPage({
     const activeContent = content[activeLocale] ?? emptyContent();
 
     useSettingsBreadcrumbDetail(
-        isNew ? "New Post" : (content["en-US"]?.title?.trim() || null),
+        isNew ? "New post" : (content["en-US"]?.title?.trim() || null),
     );
 
     const updateActiveContent = (field: keyof LocaleContent, value: string | string[]) => {
@@ -200,7 +200,7 @@ export default function BlogEditorPage({
                 if (json.ok && json.row) {
                     router.push(to(`/settings/blogs/${json.row.id}`));
                 } else {
-                    alert(json.error ?? "Failed to create post.");
+                    alert(json.error ?? "Couldn't create the post.");
                 }
             } else {
                 const res = await fetch(`/api/blogs/${postId}`, {
@@ -209,7 +209,7 @@ export default function BlogEditorPage({
                     body: JSON.stringify(payload),
                 });
                 const json = await res.json();
-                if (!json.ok) alert(json.error ?? "Failed to save.");
+                if (!json.ok) alert(json.error ?? "Couldn't save.");
                 else loadPost();
             }
         } finally {
@@ -220,7 +220,7 @@ export default function BlogEditorPage({
     // Phones: the header cluster moves into the bottom dock, within thumb reach.
     useMobileDockActions([
         { id: "save", title: saving ? "Saving…" : "Save", icon: Save, onClick: () => void handleSave() },
-        { id: "publish", title: "Save & Publish", icon: Eye, onClick: () => void handleSave("published") },
+        { id: "publish", title: "Save and publish", icon: Eye, onClick: () => void handleSave("published") },
     ]);
 
     if (loading) {
@@ -241,7 +241,7 @@ export default function BlogEditorPage({
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <h1 className="truncate">{isNew ? "New Blog Post" : "Edit Blog Post"}</h1>
+                    <h1 className="truncate">{isNew ? "New blog post" : "Edit blog post"}</h1>
                 </div>
                 <PageActions docked>
                     <Button
@@ -260,7 +260,7 @@ export default function BlogEditorPage({
                         onClick={() => handleSave("published")}
                         disabled={saving}
                     >
-                        <Eye className="mr-2 h-4 w-4" /> Save &amp; Publish
+                        <Eye className="mr-2 h-4 w-4" /> Save and publish
                     </Button>
                 </PageActions>
             </div>
@@ -331,7 +331,7 @@ export default function BlogEditorPage({
 
                 {/* SEO Description */}
                 <div className="space-y-1.5">
-                    <label className="text-sm font-medium">SEO Description ({activeLocale})</label>
+                    <label className="text-sm font-medium">SEO description ({activeLocale})</label>
                     <textarea
                         value={activeContent.description}
                         onChange={(e) => updateActiveContent("description", e.target.value)}
@@ -345,15 +345,15 @@ export default function BlogEditorPage({
                         {activeContent.description.length}/{MAX_META_DESCRIPTION_CHARS}
                         {activeContent.description.trim()
                             ? activeContent.description.length > MAX_META_DESCRIPTION_CHARS
-                                ? " · search results cut it off"
+                                ? " (too long, so search results cut it off)"
                                 : ""
-                            : " · empty, so search results show the opening of the post"}
+                            : " (empty, so search results show the start of the post)"}
                     </p>
                 </div>
 
                 {/* SEO Keywords */}
                 <div className="space-y-1.5">
-                    <label className="text-sm font-medium">SEO Keywords ({activeLocale})</label>
+                    <label className="text-sm font-medium">SEO keywords ({activeLocale})</label>
                     <input
                         type="text"
                         value={(activeContent.seo_keywords ?? []).join(", ")}
@@ -371,7 +371,7 @@ export default function BlogEditorPage({
 
                 {/* Body (Rich Text / Markdown) */}
                 <div className="space-y-1.5" data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}>
-                    <label className="text-sm font-medium">Content Body ({activeLocale})</label>
+                    <label className="text-sm font-medium">Body ({activeLocale})</label>
                     <MDEditor
                         value={activeContent.body}
                         onChange={(val) => updateActiveContent("body", val || "")}
@@ -412,7 +412,7 @@ export default function BlogEditorPage({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Hero Image URL</label>
+                    <label className="text-sm font-medium">Hero image URL</label>
                     <div className="flex gap-2">
                         <input
                             type="text"
@@ -421,7 +421,7 @@ export default function BlogEditorPage({
                                 setImageUrl(e.target.value);
                                 setImageAssetId(null);
                             }}
-                            placeholder="https://... or /images/blogs/..."
+                            placeholder="https://… or /images/blogs/…"
                             className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <ImagePicker
@@ -434,7 +434,7 @@ export default function BlogEditorPage({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Global Labels</label>
+                    <label className="text-sm font-medium">Global labels</label>
                     <input
                         type="text"
                         value={labels.join(", ")}

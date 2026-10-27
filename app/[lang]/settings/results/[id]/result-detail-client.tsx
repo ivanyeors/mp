@@ -367,7 +367,7 @@ export default function ResultDetailPage({
     try {
       const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id)}`, { method: "GET" });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to load result");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the result.");
       const response = payload?.response as MpConfigResponseRow | null;
       setRow(response);
       setOrderNumber((payload?.order_number as string) ?? null);
@@ -393,7 +393,7 @@ export default function ResultDetailPage({
         response?.filling_template_id != null ? String(response.filling_template_id) : "",
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load result");
+      toast.error(e instanceof Error ? e.message : "Couldn't load the result.");
       setRow(null);
       setSuggestion(null);
     } finally {
@@ -475,7 +475,7 @@ export default function ResultDetailPage({
       qs.set("hintSource", hintSource);
       const res = await fetch(`/api/results/assign/prep?${qs.toString()}`);
       const payload = (await res.json().catch(() => null)) as AssignPrepData | { error?: string } | null;
-      if (!res.ok) throw new Error((payload as { error?: string })?.error ?? "Failed to load assignment preview");
+      if (!res.ok) throw new Error((payload as { error?: string })?.error ?? "Couldn't load the assignment preview.");
       const prep = payload as AssignPrepData;
       setAssignPrep(prep);
       setFillingTemplates(
@@ -489,7 +489,7 @@ export default function ResultDetailPage({
         })),
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load assignment preview");
+      toast.error(e instanceof Error ? e.message : "Couldn't load the assignment preview.");
       setAssignPrep(null);
       setFillingTemplates([]);
     } finally {
@@ -584,7 +584,7 @@ export default function ResultDetailPage({
           to(`/settings/inventory/configure/templates/${encodeURIComponent(templateId)}`),
         );
         const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Failed to load template");
+        if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the template.");
         type LineRow = { item_id: number | string; quantity: number | string };
         const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({
           item_id: Number(l.item_id),
@@ -631,7 +631,7 @@ export default function ResultDetailPage({
   const assign = useCallback(async () => {
     if (!id) return;
     if (!fillingTemplateId) {
-      toast.error("Select a Filling Template");
+      toast.error("Choose a filling template.");
       return;
     }
     setAssigning(true);
@@ -656,15 +656,15 @@ export default function ResultDetailPage({
         body: JSON.stringify(body),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to assign");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't save the assignment.");
       toast.success(
         payload?.emailStatus === "sent"
-          ? "Assigned and customer notified"
+          ? "Assigned and emailed to the customer"
           : "Assigned",
       );
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to assign");
+      toast.error(e instanceof Error ? e.message : "Couldn't save the assignment.");
     } finally {
       setAssigning(false);
     }
@@ -693,7 +693,7 @@ export default function ResultDetailPage({
         { method: "POST" },
       );
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't request payment.");
       setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
       // Three outcomes, not two: emailStatus "failed" comes back with HTTP 200.
       const emailStatus = payload?.emailStatus as
@@ -706,18 +706,18 @@ export default function ResultDetailPage({
         // customer was told the price moved — not just that mail was sent.
         toast.success(
           payload?.emailTemplate === "updated"
-            ? "Repriced — sent the customer the updated build and new total"
+            ? "Repriced. The customer has the updated build and new total."
             : "Payment email sent",
         );
       } else if (emailStatus === "failed") {
-        toast.error("Could not send the payment email — the link below still works");
+        toast.error("Couldn't send the payment email. The link below still works.");
       } else {
-        toast.success("Link ready — no customer email on file");
+        toast.success("Link ready, but there's no customer email on file.");
       }
       // The route stores the recomputed total, so the amount on screen is stale.
       if (payload?.repriced === "updated") await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to request payment");
+      toast.error(e instanceof Error ? e.message : "Couldn't request payment.");
     } finally {
       setRequestingPayment(false);
     }
@@ -772,12 +772,12 @@ export default function ResultDetailPage({
     try {
       const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id)}`, { method: "GET" });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to refresh suggestion");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't refresh the suggestion.");
       setSuggestion((payload?.suggestion ?? null) as MpConfigSuggestion | null);
       const response = payload?.response as MpConfigResponseRow | null;
       if (response) setRow(response);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to refresh suggestion");
+      toast.error(e instanceof Error ? e.message : "Couldn't refresh the suggestion.");
     } finally {
       setSuggestionLoading(false);
     }
@@ -796,11 +796,11 @@ export default function ResultDetailPage({
         }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to save");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't save.");
       toast.success("Saved");
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }
@@ -808,18 +808,18 @@ export default function ResultDetailPage({
 
   const deleteRow = useCallback(async () => {
     if (!id) return;
-    const ok = window.confirm("Delete this result? This cannot be undone.");
+    const ok = window.confirm("Delete this result? This can't be undone.");
     if (!ok) return;
 
     setDeleting(true);
     try {
       const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id)}`, { method: "DELETE" });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to delete");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't delete.");
       toast.success("Deleted");
       router.push(to("/settings/results"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete");
+      toast.error(e instanceof Error ? e.message : "Couldn't delete.");
     } finally {
       setDeleting(false);
     }
@@ -844,10 +844,10 @@ export default function ResultDetailPage({
         const payload = await res.json().catch(() => null);
         if (!res.ok) {
           if (payload?.canForce) {
-            setCancelError(payload?.error ?? "Failed to release the hold");
+            setCancelError(payload?.error ?? "Couldn't release the hold.");
             return;
           }
-          throw new Error(payload?.error ?? "Failed to cancel");
+          throw new Error(payload?.error ?? "Couldn't cancel the result.");
         }
         toast.success(
           payload?.holdReleased ? "Result cancelled and hold released" : "Result cancelled",
@@ -856,7 +856,7 @@ export default function ResultDetailPage({
         setCancelError(null);
         await load();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Failed to cancel");
+        toast.error(e instanceof Error ? e.message : "Couldn't cancel the result.");
       } finally {
         setCancelling(false);
       }
@@ -880,7 +880,7 @@ export default function ResultDetailPage({
     if (canCancel) {
       actions.push({
         id: "cancel",
-        title: "Cancel Result",
+        title: "Cancel result",
         icon: Ban,
         onClick: () => setCancelDialogOpen(true),
         active: cancelDialogOpen,
@@ -902,7 +902,7 @@ export default function ResultDetailPage({
       <div className="space-y-4">
         <div>
           <h1>Result</h1>
-          <p className="text-sm text-muted-foreground">Not found or failed to load.</p>
+          <p className="text-sm text-muted-foreground">Couldn&apos;t find or load this result.</p>
         </div>
         <PageActions>
           <Button
@@ -928,7 +928,7 @@ export default function ResultDetailPage({
           <p className="text-sm text-muted-foreground break-all">{row.id}</p>
           {headerMeta ? (
             <p className="text-xs text-muted-foreground mt-1">
-              Created {headerMeta.createdAt} · Updated {headerMeta.updatedAt}
+              Created {headerMeta.createdAt}, updated {headerMeta.updatedAt}
             </p>
           ) : null}
         </div>
@@ -971,7 +971,7 @@ export default function ResultDetailPage({
               onClick={() => setCancelDialogOpen(true)}
               disabled={saving || deleting || cancelling}
             >
-              {cancelling ? "Cancelling…" : "Cancel Result"}
+              {cancelling ? "Cancelling…" : "Cancel result"}
             </Button>
           )}
           <Button
@@ -988,11 +988,11 @@ export default function ResultDetailPage({
       {cancelDialogOpen && (
         <Card className="border-destructive/40 p-4 space-y-3">
           <div>
-            <div className="text-sm font-medium">Cancel this Result?</div>
+            <div className="text-sm font-medium">Cancel this result?</div>
             <p className="text-sm text-muted-foreground">
               {row.payment_intent_id
-                ? "The authorization hold on the customer's card is released and the Result is closed. The customer would have to configure again."
-                : "The Result is closed. It has no payment hold, so nothing is refunded."}
+                ? "This releases the hold on the customer's card and closes the result. They'd have to start again."
+                : "This closes the result. There's no payment hold, so nothing is refunded."}
             </p>
           </div>
           <Field label="Reason (optional)">
@@ -1006,8 +1006,8 @@ export default function ResultDetailPage({
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {cancelError}
               <div className="mt-1 text-muted-foreground">
-                The hold could not be released — it may have already expired at Stripe.
-                Force-cancel closes the Result anyway.
+                The hold couldn&apos;t be released. It may have already expired at Stripe.
+                Force cancel closes the result anyway.
               </div>
             </div>
           )}
@@ -1018,7 +1018,7 @@ export default function ResultDetailPage({
               onClick={() => void cancelResult(Boolean(cancelError))}
               disabled={cancelling}
             >
-              {cancelling ? "Cancelling…" : cancelError ? "Force cancel" : "Cancel Result"}
+              {cancelling ? "Cancelling…" : cancelError ? "Force cancel" : "Cancel result"}
             </Button>
             <Button
               variant="secondary"
@@ -1043,8 +1043,8 @@ export default function ResultDetailPage({
             <div className="text-sm font-medium">Assignment</div>
             <p className="text-sm text-muted-foreground">
               {productType === "bolster"
-                ? "Confirm or override length and select a bolster Filling Template. Customer is emailed on save."
-                : "Confirm or override size×tier and select a Filling Template. Customer is emailed on save."}
+                ? "Confirm or change the length and choose a bolster filling template. Saving emails the customer."
+                : "Confirm or change the size and tier and choose a filling template. Saving emails the customer."}
             </p>
           </div>
 
@@ -1069,7 +1069,7 @@ export default function ResultDetailPage({
                   </>
                 )}
                 <div className="rounded-md border bg-muted/30 p-3">
-                  <div className="text-xs text-muted-foreground">Filling Template</div>
+                  <div className="text-xs text-muted-foreground">Filling template</div>
                   <div className="font-medium">
                     {row.filling_template_id != null ? `#${row.filling_template_id}` : "Custom mix"}
                   </div>
@@ -1086,7 +1086,7 @@ export default function ResultDetailPage({
                     // "Measured by" locks once the Result is held, so a wrong value
                     // can't be corrected from the Results list after that.
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Measured by Staff, so the Measurement service fee applies.
+                      Measured by staff, so the measurement fee applies.
                     </div>
                   ) : null}
                 </div>
@@ -1114,16 +1114,16 @@ export default function ResultDetailPage({
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Reprices this Result from its current configuration, emails the
-                  customer, and gives you their link to paste into WhatsApp. Safe to
-                  press twice — the same build reprices to the same total.
+                  Reprices this result from its current configuration, emails the
+                  customer and gives you their link to paste into WhatsApp. It&apos;s safe
+                  to press twice, because the same build reprices to the same total.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  If the price moved since they were last told — after{" "}
-                  <span className="font-medium">Edit configuration</span> — they get
+                  If the price changed since they were last told (after{" "}
+                  <span className="font-medium">Edit configuration</span>), they get
                   &ldquo;your build has been updated&rdquo;, showing the old total
-                  beside the new one and what their card covers. Otherwise it is a
-                  plain re-send of the build-ready email.
+                  beside the new one and what their card covers. Otherwise it re-sends
+                  the build-ready email.
                 </p>
               </div>
             </>
@@ -1176,8 +1176,8 @@ export default function ResultDetailPage({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="basic">basic</SelectItem>
-                          <SelectItem value="premium">premium</SelectItem>
+                          <SelectItem value="basic">Basic</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
                         </SelectContent>
                       </Select>
                     </Field>
@@ -1207,7 +1207,7 @@ export default function ResultDetailPage({
                         {assignPrep.productLines.map((line, idx) => (
                           <TableRow key={idx}>
                             <TableCell className="text-sm">
-                              {line.category} · {line.label}
+                              {line.category}, {line.label}
                             </TableCell>
                             <TableCell className="tabular-nums">×{line.qty}</TableCell>
                           </TableRow>
@@ -1215,7 +1215,7 @@ export default function ResultDetailPage({
                       </TableBody>
                     </Table>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No non-filling BOM configured.</p>
+                    <p className="text-sm text-muted-foreground">No parts set up besides fillings.</p>
                   )}
                 </CollapsibleContent>
               </Collapsible>
@@ -1224,18 +1224,18 @@ export default function ResultDetailPage({
                 <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium hover:bg-muted/50">
                   Filling mix
                   <span className="text-xs font-normal text-muted-foreground">
-                    {fillingTemplateId ? "Selected" : "Confirm required"}
+                    {fillingTemplateId ? "Selected" : "Needs confirming"}
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 border-t px-4 py-3">
                   {hasAssistSnapshot ? (
                     <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                       <div className="text-xs text-muted-foreground mb-1">
-                        Staff assist mix (truth on this Result)
+                        Staff assist mix (saved on this result)
                       </div>
                       <p className="text-muted-foreground">
-                        An assist-supplied filling snapshot is already on this Result. Confirm
-                        below still required — engine recommendation is reference only.
+                        This result already has a filling mix from staff assist mode. You
+                        still need to confirm it below. The engine&apos;s pick is only a reference.
                       </p>
                     </div>
                   ) : null}
@@ -1264,15 +1264,15 @@ export default function ResultDetailPage({
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-muted-foreground">Hint has no filling lines</p>
+                          <p className="text-muted-foreground">This suggestion has no fillings.</p>
                         )}
                       </>
                     ) : (
-                      <p className="text-muted-foreground">No default configured</p>
+                      <p className="text-muted-foreground">No default set</p>
                     )}
                   </div>
 
-                  <Field label="Filling Template">
+                  <Field label="Filling template">
                     <Select
                       value={fillingTemplateId}
                       onValueChange={(value) => {
@@ -1286,7 +1286,7 @@ export default function ResultDetailPage({
                             templatesLoading
                               ? "Loading…"
                               : fillingTemplates.length
-                                ? "Select template…"
+                                ? "Choose a template…"
                                 : "No templates for this size"
                           }
                         />
@@ -1306,7 +1306,7 @@ export default function ResultDetailPage({
                       {!templateHadPlacements && templateLegacyLines.length > 0 && (
                         <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                           <div className="font-medium">
-                            Legacy flat recipe — saving spatially will set placements.
+                            Legacy flat recipe. Saving gives each piece a placement.
                           </div>
                           <ul className="mt-1 list-inside list-disc text-muted-foreground">
                             {templateLegacyLines.map((l) => (
@@ -1466,7 +1466,7 @@ export default function ResultDetailPage({
                   {row.discovery_source_other ? (
                     <span className="text-muted-foreground">
                       {" "}
-                      — {row.discovery_source_other}
+                      ({row.discovery_source_other})
                     </span>
                   ) : null}
                 </div>
@@ -1503,15 +1503,15 @@ export default function ResultDetailPage({
             )}
             {row.source === "online_customization" && (
               <span className="ml-auto rounded-full bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                Online Customization
+                Online customisation
               </span>
             )}
           </div>
 
           {linkedOrder?.needs_attention && (
             <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
-              This Order needs attention — inventory could not be deducted, or the
-              payment ledger failed to record. Open the Order to resolve it.
+              This order needs attention. Inventory couldn&apos;t be deducted or the
+              payment ledger didn&apos;t record. Open the order to fix it.
             </div>
           )}
 
@@ -1560,7 +1560,7 @@ export default function ResultDetailPage({
                   formatAdminDateTime(linkedOrder.delivered_at)
                 ) : (
                   <span className="text-muted-foreground">
-                    not yet — mark it on the Order when it arrives
+                    not yet. Mark it on the order when it arrives.
                   </span>
                 )}
               </div>
@@ -1570,7 +1570,7 @@ export default function ResultDetailPage({
           {!linkedOrder?.delivered_at && (
             <p className="mt-3 text-xs text-muted-foreground">
               The return window and any partner commission are dated from delivery, so
-              this Order stays open until someone marks it delivered.
+              this order stays open until someone marks it delivered.
             </p>
           )}
         </Card>
@@ -1579,14 +1579,14 @@ export default function ResultDetailPage({
       {/* Online customization preferences (read-only, only for online-sourced results) */}
       {row.source === "online_customization" && (
         <Card className="p-4">
-          <div className="text-sm font-medium mb-3">Online Customization Preferences</div>
+          <div className="text-sm font-medium mb-3">Online customisation preferences</div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-md border bg-muted/30 p-2.5">
-              <div className="text-xs text-muted-foreground">Sleep Position</div>
+              <div className="text-xs text-muted-foreground">Sleep position</div>
               <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.sleep_position) || "—"}</div>
             </div>
             <div className="rounded-md border bg-muted/30 p-2.5">
-              <div className="text-xs text-muted-foreground">Body Type</div>
+              <div className="text-xs text-muted-foreground">Body type</div>
               <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.body_type) || "—"}</div>
             </div>
             <div className="rounded-md border bg-muted/30 p-2.5">
@@ -1596,13 +1596,13 @@ export default function ResultDetailPage({
             <div className="rounded-md border bg-muted/30 p-2.5">
               <div className="text-xs text-muted-foreground">Recommended</div>
               <div className="text-sm font-medium">
-                {safeString((row.data as Record<string, unknown>)?.online_recommended_kind) || "—"} · {safeString((row.data as Record<string, unknown>)?.online_recommended_size) || "—"}
+                {safeString((row.data as Record<string, unknown>)?.online_recommended_kind) || "—"}, {safeString((row.data as Record<string, unknown>)?.online_recommended_size) || "—"}
               </div>
             </div>
           </div>
           {safeString((row.data as Record<string, unknown>)?.notes) && (
             <div className="mt-3 rounded-md border bg-muted/30 p-2.5">
-              <div className="text-xs text-muted-foreground">Customer Notes</div>
+              <div className="text-xs text-muted-foreground">Customer notes</div>
               <div className="text-sm">{safeString((row.data as Record<string, unknown>)?.notes)}</div>
             </div>
           )}
@@ -1705,8 +1705,8 @@ export default function ResultDetailPage({
           <div>
             <div className="flex items-center gap-1.5">
               <h2>Suggestion</h2>
-              <InfoTip label="About Suggestion">
-                <p>Computed using the current inventory/BOM configuration.</p>
+              <InfoTip label="About the suggestion">
+                <p>Worked out from the current inventory and BOM.</p>
               </InfoTip>
             </div>
           </div>
@@ -1731,7 +1731,7 @@ export default function ResultDetailPage({
               <div className="text-xs text-muted-foreground">Matched active product</div>
               <div className="text-sm">
                 {suggestion.product
-                  ? `Product #${suggestion.product.id} (${suggestion.product.tier} · ${suggestion.product.size})`
+                  ? `Product #${suggestion.product.id} (${suggestion.product.tier}, ${suggestion.product.size})`
                   : "—"}
               </div>
             </div>
@@ -1750,7 +1750,7 @@ export default function ResultDetailPage({
                     {suggestion.bom.map((line, idx) => {
                       const item = line.item;
                       const label = item
-                        ? `${item.category} · ${item.name}${item.subtype ? ` (${item.subtype})` : ""}${item.size ? ` · ${item.size}` : ""}`
+                        ? `${item.category}, ${item.name}${item.subtype ? ` (${item.subtype})` : ""}${item.size ? `, ${item.size}` : ""}`
                         : "Unknown item";
                       return (
                         <TableRow key={idx}>

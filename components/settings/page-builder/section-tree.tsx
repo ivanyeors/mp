@@ -11,24 +11,24 @@ import type { LandingSection } from "@/lib/types/landing-sections";
 /** Human labels for the section type badge. */
 export const SECTION_TYPE_LABELS: Record<string, string> = {
   hero: "Hero",
-  text_image: "Text + Image",
+  text_image: "Text and image",
   marquee: "Marquee",
   stories: "Testimonials",
-  pick_your_mpillow: "Pick Your Mpillow",
-  neck_pains: "Neck Pains",
-  why_choose_highlights: "Why Choose",
-  product_card: "Product Card",
+  pick_your_mpillow: "Pick your Mpillow",
+  neck_pains: "Neck pains",
+  why_choose_highlights: "Why choose",
+  product_card: "Product card",
   credibility: "Credibility",
-  video_embed: "Video Embed",
-  founder_note: "Founder Note",
-  custom_text_image: "Custom: Text + Image",
-  custom_full_width_image: "Custom: Full-Width Image",
-  custom_video: "Custom: Video",
-  custom_rich_text: "Custom: Rich Text",
-  featured_products: "Featured Products",
-  shop_cta: "Shop CTA Banner",
+  video_embed: "Video embed",
+  founder_note: "Founder note",
+  custom_text_image: "Custom: text and image",
+  custom_full_width_image: "Custom: full-width image",
+  custom_video: "Custom: video",
+  custom_rich_text: "Custom: rich text",
+  featured_products: "Featured products",
+  shop_cta: "Shop CTA banner",
   faq: "Page FAQs",
-  delivery_estimator: "Delivery Estimator",
+  delivery_estimator: "Delivery estimator",
 };
 
 export function sectionTitle(section: LandingSection): string {
@@ -163,7 +163,7 @@ export function SectionTree({
   if (sections.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        No sections configured. Add a section to get started.
+        No sections yet. Add one to get started.
       </div>
     );
   }

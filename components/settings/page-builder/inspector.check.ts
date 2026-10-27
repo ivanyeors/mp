@@ -30,7 +30,7 @@ assert.doesNotMatch(
 
 // --- Alt text survives the picker and reaches the page ---
 assert.match(editorCode, /onSelect=\{\(s\) => onChange\(s\.url, s\.assetId, s\.alt\)\}/, "the picker's alt text is carried");
-assert.match(editorCode, /Image Alt Text/, "alt text is editable");
+assert.match(editorCode, /Image alt text/, "alt text is editable");
 for (const file of [
   "components/sections/landing/text-image-section.tsx",
   "components/sections/landing/custom-text-image-section.tsx",

@@ -64,7 +64,7 @@ export function TemplateNameEditor({
         value={draft}
         disabled={busy}
         maxLength={120}
-        aria-label="Filling Template name"
+        aria-label="Filling template name"
         className="h-8 min-w-0 flex-1"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
@@ -141,15 +141,15 @@ export function FillingTemplateTable({
     <div className="rounded-lg border lg:hidden">
       {unauthoredCount > 0 && (
         <p className="border-b px-3 py-2 text-xs text-muted-foreground">
-          {unauthoredCount} of {templates.length} Filling Template
-          {templates.length === 1 ? "" : "s"} not yet spatially authored — pieces are not laid out
+          {unauthoredCount} of {templates.length} filling template
+          {templates.length === 1 ? "" : "s"} not yet spatially authored. Their pieces aren&apos;t laid out
           across the left, center and right sections.
         </p>
       )}
       {sharedCount > 0 && (
         <p className="border-b px-3 py-2 text-xs text-muted-foreground">
           {sharedCount} of {templates.length} also{" "}
-          {kind === "bolster" ? "serve other lengths" : "serve other sizes"} — editing one edits it
+          {kind === "bolster" ? "serve other lengths" : "serve other sizes"}. Editing one edits it
           everywhere it is used.
         </p>
       )}

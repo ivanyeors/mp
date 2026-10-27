@@ -251,8 +251,8 @@ export function PreviewFrame({
           aria-pressed={mode === "select"}
           title={
             mode === "select"
-              ? "Selecting sections — switch to use the page's own buttons"
-              : "Using the page — switch back to selecting sections"
+              ? "Selecting sections. Switch to use the page's own buttons."
+              : "Using the page. Switch back to select sections."
           }
         >
           {mode === "select" ? (

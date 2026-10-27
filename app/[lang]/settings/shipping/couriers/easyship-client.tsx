@@ -60,7 +60,7 @@ async function call(method: "GET" | "PUT" | "POST", body?: unknown, query = ""):
   });
   const json = (await res.json().catch(() => ({}))) as ApiResponse;
   if (!res.ok) {
-    throw new Error(apiErrorMessage(json.error, `Request failed (${res.status})`));
+    throw new Error(apiErrorMessage(json.error, `Couldn't complete the request (${res.status}).`));
   }
   return json;
 }
@@ -94,7 +94,7 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
     if (r.sync) setSync(r.sync);
     if (r.report) {
       if (r.report.ok) toast.success("Saved and synced");
-      else toast.error("Saved, but some sync steps failed — see the report");
+      else toast.error("Saved, but some sync steps failed. See the report.");
     }
   };
 
@@ -104,7 +104,7 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
     try {
       await fn();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Request failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't complete the request.");
     } finally {
       setBusy(null);
     }
@@ -119,7 +119,7 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
   const importLive = () =>
     run("import", async () => {
       const r = await call("GET", undefined, "?live=1");
-      if (!r.live) throw new Error("No live snapshot returned");
+      if (!r.live) throw new Error("The courier account sent nothing to import.");
       const imported = importFromLive(r.live, endpoint ? new URL(endpoint).origin : null);
       setSettings((s) => ({
         ...imported,
@@ -129,7 +129,7 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
           ? { ...imported.tracking_email, allowed_statuses: s.tracking_email.allowed_statuses }
           : imported.tracking_email,
       }));
-      toast.success("Imported from courier account — review, then Save & sync");
+      toast.success("Imported from the courier account. Review it, then press Save & sync.");
     });
 
   const spin = (kind: typeof busy) => (busy === kind ? <Loader2 className="h-4 w-4 animate-spin" /> : null);
@@ -141,7 +141,7 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
           <div className="flex items-center gap-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">Couriers</h1>
             <InfoTip label="About Couriers">
-              Saved here, pushed to the courier account on every save. This page is the source of truth.
+              This page is the source of truth. Every save pushes it to the courier account.
             </InfoTip>
           </div>
           {sync.easyship_company_id && (
@@ -253,7 +253,7 @@ function SyncReportCard({ sync }: { sync: SyncView }) {
           <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
             <Badge variant={report.ok ? "default" : "destructive"}>{report.ok ? "Synced" : "Sync had errors"}</Badge>
             <span className="text-muted-foreground">
-              {new Date(sync.last_at).toLocaleString()} · {changed.length} change{changed.length === 1 ? "" : "s"},{" "}
+              {new Date(sync.last_at).toLocaleString()}: {changed.length} change{changed.length === 1 ? "" : "s"},{" "}
               {report.steps.length - changed.length} unchanged
             </span>
           </summary>
@@ -263,7 +263,7 @@ function SyncReportCard({ sync }: { sync: SyncView }) {
                 <Badge variant={ACTION_VARIANT[s.action]} className="w-24 justify-center">{s.action}</Badge>
                 <span className="text-muted-foreground">{s.area}</span>
                 <span className="break-all">{s.target}</span>
-                {s.detail && <span className="text-xs text-muted-foreground break-all">— {s.detail}</span>}
+                {s.detail && <span className="text-xs text-muted-foreground break-all">({s.detail})</span>}
               </li>
             ))}
           </ul>
@@ -296,7 +296,7 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
         <CardContent className="space-y-4 py-5">
           <div className="flex items-center gap-1.5">
             <h2 className="font-medium">Status emails</h2>
-            <InfoTip label="About Status emails">
+            <InfoTip label="About status emails">
               <p>We email the customer at these statuses, in the same template as every other email.</p>
               <p>
                 The courier account&apos;s own emails are switched off on sync while the Webhook tab sends tracking
@@ -332,7 +332,7 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
         <CardContent className="space-y-4 py-5">
           <div className="flex items-center gap-1.5">
             <h2 className="font-medium">Tracking page</h2>
-            <InfoTip label="About Tracking page">
+            <InfoTip label="About tracking page">
               The courier&apos;s public page our emails&apos; “Track your package” button opens.
             </InfoTip>
           </div>
@@ -371,7 +371,7 @@ const ADDRESS_FIELDS: Array<{ key: AddressTextKey; label: string; max: number; n
   { key: "line_1", label: "Address line 1", max: 35 },
   { key: "line_2", label: "Address line 2", max: 35, nullable: true },
   { key: "city", label: "City", max: 200 },
-  { key: "state", label: "State / region", max: 200, nullable: true },
+  { key: "state", label: "State or region", max: 200, nullable: true },
   { key: "postal_code", label: "Postal code", max: 20, nullable: true },
   { key: "country_alpha2", label: "Country (ISO-2)", max: 2 },
 ];
@@ -380,8 +380,8 @@ function AddressesSection({ addresses, update }: { addresses: EasyshipAddress[];
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Default sender, return, pickup and billing addresses. Matched to the courier account by line 1 + postal code +
-        country; other addresses there are left alone.
+        Default sender, return, pickup and billing addresses. They&apos;re matched to the courier account by line 1, postal
+        code and country. Other addresses there are left alone.
       </p>
       {addresses.map((a, i) => (
         <Card key={i}>
@@ -600,7 +600,7 @@ function WebhookSection({
           <Input readOnly value={endpoint ?? "Unavailable on this origin (needs a public https site URL)"} className="text-xs" />
           <p className="text-xs text-muted-foreground">
             {sync.webhook_secret_set
-              ? "Signing secret captured — incoming events are verified."
+              ? "Signing secret captured, so incoming events are verified."
               : "Signing secret not captured yet; the receiver rejects events until the first sync with the webhook enabled."}
           </p>
         </div>

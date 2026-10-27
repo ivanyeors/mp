@@ -115,7 +115,7 @@ const PayloadSchema = z.object({
           ctx.addIssue({
             code: "custom",
             path: [i, "msrpCents"],
-            message: "must be $0 or at least $0.50 — card payments can't be smaller",
+            message: "must be $0, or $0.50 or more. Card payments can't be smaller.",
           });
         }
       });
@@ -350,7 +350,7 @@ export async function POST(req: Request) {
     try {
       await saveServices(admin, payload.services ?? [], payload.readjustmentPolicy);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save service fees";
+      const message = err instanceof Error ? err.message : "Couldn't save service fees.";
       return NextResponse.json({ error: message }, { status: 500 });
     }
   }
@@ -427,7 +427,7 @@ export async function POST(req: Request) {
     const products = await fetchProductSummaries(admin);
     return NextResponse.json({ ok: true, products, unresolvable_variants: unresolvable.length > 0 ? unresolvable : undefined });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to save pricing";
+    const message = err instanceof Error ? err.message : "Couldn't save prices.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

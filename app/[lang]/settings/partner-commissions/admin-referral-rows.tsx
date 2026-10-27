@@ -15,9 +15,9 @@ export async function AdminReferralRows() {
     <section className="mt-12 space-y-4">
       <div className="flex items-center gap-1.5">
         <h2 className="text-xl font-semibold tracking-tight">Referral commissions</h2>
-        <InfoTip label="About Referral commissions">
-          Every attributed order, one row each. Full customer details (staff view —
-          the partner hub masks link/code referrals). Voided commission is shown struck.
+        <InfoTip label="About referral commissions">
+          One row for every attributed order, with full customer details. The Partner Hub
+          masks link and code referrals. Voided commission is struck through.
         </InfoTip>
       </div>
       <ReferralRowsTable rows={rows} adminView emptyLabel="No attributed orders yet." />

@@ -145,8 +145,8 @@ function formatAllDayLabel(startDate: string, endDateExclusive: string): string 
   const end = new Date(`${endDateExclusive}T00:00:00Z`);
   end.setUTCDate(end.getUTCDate() - 1);
   const endInclusive = end.toISOString().slice(0, 10);
-  if (endInclusive === startDate) return `All day · ${startDate}`;
-  return `All day · ${startDate} – ${endInclusive}`;
+  if (endInclusive === startDate) return `All day, ${startDate}`;
+  return `All day, ${startDate} to ${endInclusive}`;
 }
 
 /**
@@ -160,7 +160,7 @@ function summarizeAvailability(av: WeeklyAvailability): {
   const open = av.filter((d) => d.length);
   if (!open.length) return { label: "Closed", caption: "no open days" };
   const key = (d: { start: string; end: string }[]) =>
-    d.map((w) => `${w.start}–${w.end}`).join(", ");
+    d.map((w) => `${w.start} to ${w.end}`).join(", ");
   const first = key(open[0]!);
   const uniform = open.every((d) => key(d) === first);
   if (uniform) return { label: first, caption: `${open.length} open days` };
@@ -183,7 +183,7 @@ function sgtDow(date: Date): number {
 
 /** Inclusive range label for a selection (end is exclusive). */
 function formatRangeLabel(start: Date, end: Date): string {
-  return `${formatSlotLabelSgt(start.toISOString())} – ${formatSlotLabelSgt(
+  return `${formatSlotLabelSgt(start.toISOString())} to ${formatSlotLabelSgt(
     new Date(end.getTime() - 60_000).toISOString(),
   )}`;
 }
@@ -404,7 +404,7 @@ export function AppointmentsCalendar({
           events?: CalendarRangeEvent[];
           error?: string;
         };
-        if (!res.ok) throw new Error(json.error ?? "Failed to load events");
+        if (!res.ok) throw new Error(json.error ?? "Couldn't load events.");
         success(
           (json.events ?? []).map((e) => {
             const isBusy = e.kind === "busy";
@@ -447,7 +447,7 @@ export function AppointmentsCalendar({
           }),
         );
       } catch (e) {
-        const err = e instanceof Error ? e : new Error("Failed to load events");
+        const err = e instanceof Error ? e : new Error("Couldn't load events.");
         toast.error(err.message.slice(0, 280));
         failure(err);
       }
@@ -540,7 +540,7 @@ export function AppointmentsCalendar({
       next = { start: tapStart, end: tapEnd };
     }
     if (!selectAllow(next)) {
-      toast.error("That day is closed — open it first to block or set hours");
+      toast.error("That day is closed. Open it first to block time or set hours.");
       return;
     }
     // Drives the `select` callback, so the mirror and the action bar stay in sync.
@@ -586,7 +586,7 @@ export function AppointmentsCalendar({
     // An exclusive end at midnight is the end of the day, not 00:00.
     const endMin = endP.hour === 0 && endP.minute === 0 ? 1440 : endP.hour * 60 + endP.minute;
     if (endMin <= startMin) {
-      toast.error("Pick a range that starts and ends on the same day");
+      toast.error("Pick a range that starts and ends on the same day.");
       return;
     }
     const window = { start: hhmm(startMin), end: hhmm(endMin) };
@@ -630,7 +630,7 @@ export function AppointmentsCalendar({
     const av = settingsRef.current.availability;
     if (av[dow]?.length) {
       if (av.filter((d) => d.length).length <= 1) {
-        toast.error("At least one bookable day is required");
+        toast.error("Keep at least one bookable day.");
         return;
       }
       await applyPatch({ availability: withDay(av, dow, []) });
@@ -642,7 +642,7 @@ export function AppointmentsCalendar({
 
   const dayHeaderDidMount = useCallback((info: { el: HTMLElement; date: Date }) => {
     info.el.style.cursor = "pointer";
-    info.el.title = "Click to toggle bookable day";
+    info.el.title = "Click to open or close this day";
     const dow = sgtDow(info.date);
     const onClick = () => {
       void toggleRef.current(dow);
@@ -702,7 +702,7 @@ export function AppointmentsCalendar({
       ))}
       <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
         <LocationDot color={null} />
-        Other / no location
+        Other or no location
       </span>
     </>
   );
@@ -806,7 +806,7 @@ export function AppointmentsCalendar({
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <LegendSwatch className="bg-muted ring-1 ring-border" />
-                Closed day / outside hours
+                Closed day or outside hours
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <LegendSwatch className="bg-red-500/40 ring-1 ring-red-500/60" />
@@ -814,7 +814,7 @@ export function AppointmentsCalendar({
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <LegendSwatch className="bg-slate-400/50 ring-1 ring-slate-500/50" />
-                Google busy / block
+                Google busy or blocked
               </span>
 
               <span className="hidden h-4 w-px bg-border sm:block" />
@@ -858,8 +858,8 @@ export function AppointmentsCalendar({
 
               <span className="basis-full sm:ml-auto sm:basis-auto">
                 {isMobile
-                  ? "Tap a slot to block or set hours, tap again to extend · tap day chips to toggle"
-                  : "Drag to block or set hours · click day chips or headers to toggle"}
+                  ? "Tap a slot to block or set hours, then tap again to extend. Tap a day chip to open or close it."
+                  : "Drag to block or set hours. Click a day chip or header to open or close it."}
               </span>
             </div>
           </CollapsibleContent>
@@ -1085,9 +1085,9 @@ export function AppointmentsCalendar({
             </SheetTitle>
             <SheetDescription>
               {detail?.kind === "blocked"
-                ? "Local block — customers can't book this range."
+                ? "Local block. Customers can't book this time."
                 : detailEvent?.kind === "busy"
-                  ? "Google Calendar busy / blocked time (read-only)"
+                  ? "Busy or blocked in Google Calendar (read-only)"
                   : detailEvent?.cancelled
                     ? "Cancelled Google Calendar event (read-only)"
                     : "Google Calendar event (read-only)"}
@@ -1100,7 +1100,7 @@ export function AppointmentsCalendar({
                 <div>
                   <dt className="text-muted-foreground">When</dt>
                   <dd className="tabular-nums">
-                    {formatSlotLabelSgt(detail.start)} –{" "}
+                    {formatSlotLabelSgt(detail.start)} to{" "}
                     {formatSlotLabelSgt(
                       new Date(new Date(detail.end).getTime() - 60_000).toISOString(),
                     )}
@@ -1130,7 +1130,7 @@ export function AppointmentsCalendar({
                   <dd className="tabular-nums">
                     {detailEvent.allDay
                       ? formatAllDayLabel(detailEvent.startsAt, detailEvent.endsAt)
-                      : `${formatSlotLabelSgt(detailEvent.startsAt)} – ${formatSlotLabelSgt(detailEvent.endsAt)}`}
+                      : `${formatSlotLabelSgt(detailEvent.startsAt)} to ${formatSlotLabelSgt(detailEvent.endsAt)}`}
                   </dd>
                 </div>
                 {detailEvent.description ? (

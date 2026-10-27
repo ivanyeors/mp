@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   // Filling Templates are sale-path only; warehouse Apply uses role=warehouse templates.
   if (tpl.role === 'filling') {
     return NextResponse.json(
-      { error: 'Filling Templates cannot be applied to the active warehouse BOM' },
+      { error: "Filling templates can't be applied to the active warehouse BOM." },
       { status: 400 },
     )
   }
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       .eq('is_active', true)
       .maybeSingle()
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
-    if (!product?.id) return NextResponse.json({ error: `No active pillow product found for size ${tpl.key}` }, { status: 400 })
+    if (!product?.id) return NextResponse.json({ error: `There's no active pillow in size ${tpl.key}.` }, { status: 400 })
 
     // Replace bom_lines for this product_id
     const { error: delErr } = await admin.from('bom_lines').delete().eq('product_id', product.id)

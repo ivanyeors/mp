@@ -287,7 +287,7 @@ export function AppointmentsSettingsSheet({
       };
       if (!res.ok) {
         throw new Error(
-          typeof json.error === "string" ? json.error : "Invalid settings",
+          typeof json.error === "string" ? json.error : "These settings aren't valid.",
         );
       }
       if (json.settings) {
@@ -296,7 +296,7 @@ export function AppointmentsSettingsSheet({
         onOpenChange(false);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }
@@ -347,7 +347,7 @@ export function AppointmentsSettingsSheet({
             <TabsContent value="locations" className="space-y-3">
               <SectionHeading
                 title="Bookable locations"
-                hint={`${bookableCount} of ${addressed.length} taking bookings · switches apply immediately`}
+                hint={`${bookableCount} of ${addressed.length} taking bookings. Switches apply at once.`}
               />
               {addressed.length === 0 ? (
                 <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
@@ -356,7 +356,7 @@ export function AppointmentsSettingsSheet({
                     className="underline underline-offset-2"
                     href={withLocale("/settings/partners", locale)}
                   >
-                    Add one in Settings → Locations
+                    Add one on the Partners page
                   </Link>
                   .
                 </p>
@@ -507,8 +507,8 @@ export function AppointmentsSettingsSheet({
                     ${serviceFees.readjustment.toFixed(2)}
                   </span>
                   {serviceFees.freeVisits > 0
-                    ? ` · ${serviceFees.freeVisits} free visit${serviceFees.freeVisits === 1 ? "" : "s"} within ${serviceFees.freeWindowDays} days of purchase for Premium Mpillow`
-                    : " · no complimentary visits"}
+                    ? `, with ${serviceFees.freeVisits} free visit${serviceFees.freeVisits === 1 ? "" : "s"} within ${serviceFees.freeWindowDays} days of purchase for Premium Mpillow`
+                    : ", with no complimentary visits"}
                   .{" "}
                   <Link
                     href={withLocale("/settings/costings/services", locale)}
@@ -530,8 +530,8 @@ export function AppointmentsSettingsSheet({
                   <Label htmlFor="wa-enabled">WhatsApp notifications</Label>
                   <p className="text-sm text-muted-foreground">
                     Booking confirmations, day-before reminders, morning-of nudges,
-                    and replies to Confirm or Reschedule. Off pauses all of them —
-                    bookings, calendar events, and email invites are unaffected.
+                    and replies to Confirm or Reschedule. Off pauses all of them.
+                    Bookings, calendar events and email invites are unaffected.
                   </p>
                 </div>
                 <Switch

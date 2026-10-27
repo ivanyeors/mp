@@ -178,7 +178,7 @@ export function ProductEditorClient({
     );
 
     useSettingsBreadcrumbDetail(
-        isNew ? "New Product" : (content["en-US"]?.title?.trim() || null),
+        isNew ? "New product" : (content["en-US"]?.title?.trim() || null),
     );
 
     // ── Images ──
@@ -228,7 +228,7 @@ export function ProductEditorClient({
     // Free-form creation is retired — products come from inventory.
     useEffect(() => {
         if (isNew) {
-            toast.message("Use Add from inventory on the Products page");
+            toast.message("Products come from inventory. Use Sync from Inventory on the Products page.");
             router.replace("../products");
         }
     }, [isNew, router]);
@@ -241,7 +241,7 @@ export function ProductEditorClient({
             const res = await fetch(`/api/shop/products/${id}`);
             const data = await res.json();
             if (!data.ok) {
-                toast.error("Product not found");
+                toast.error("Couldn't find this product.");
                 return;
             }
             const p: LoadedProduct = data.row;
@@ -264,7 +264,7 @@ export function ProductEditorClient({
                 (p.product_images ?? p.images ?? []).sort((a, b) => a.position - b.position)
             );
         } catch {
-            toast.error("Failed to load product");
+            toast.error("Couldn't load the product.");
         } finally {
             setLoading(false);
         }
@@ -309,8 +309,8 @@ export function ProductEditorClient({
 
     // ── Save product ──
     const handleSave = async () => {
-        if (!slug.trim()) { toast.error("Slug is required"); return; }
-        if (!content["en-US"]?.title?.trim()) { toast.error("English title is required"); return; }
+        if (!slug.trim()) { toast.error("Enter a slug."); return; }
+        if (!content["en-US"]?.title?.trim()) { toast.error("Enter an English title."); return; }
 
         setSaving(true);
         try {
@@ -341,19 +341,19 @@ export function ProductEditorClient({
 
             const data = await res.json();
             if (!data.ok) {
-                toast.error(getApiErrorMessage(data.error, "Save failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't save."));
                 return;
             }
 
             toast.success(isNew ? "Product created" : "Product saved");
             if (data.stripe && data.stripe.synced === false) {
-                toast.warning(`Saved, but Stripe sync failed: ${data.stripe.error ?? "unknown"}. Use "Sync to Stripe".`);
+                toast.warning(`Saved, but couldn't sync to Stripe: ${data.stripe.error ?? "unknown error"}. Use Sync to Stripe to try again.`);
             }
             if (isNew && data.row?.id) {
                 router.push(`../products/${data.row.id}`);
             }
         } catch {
-            toast.error("Save failed");
+            toast.error("Couldn't save.");
         } finally {
             setSaving(false);
         }
@@ -362,7 +362,7 @@ export function ProductEditorClient({
     // ── Images ──
     const addImage = async (selection: { assetId: string; url: string; alt?: string | null }) => {
         if (isNew) {
-            toast.error("Save the product first before adding images");
+            toast.error("Save the product before adding images.");
             return;
         }
         try {
@@ -380,10 +380,10 @@ export function ProductEditorClient({
                 setImages((prev) => [...prev, data.row]);
                 toast.success("Image added");
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to add image"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't add the image."));
             }
         } catch {
-            toast.error("Failed to add image");
+            toast.error("Couldn't add the image.");
         }
     };
 
@@ -395,10 +395,10 @@ export function ProductEditorClient({
                 setImages((prev) => prev.filter((img) => img.id !== imageId));
                 toast.success("Image removed");
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to remove image"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't remove the image."));
             }
         } catch {
-            toast.error("Failed to remove image");
+            toast.error("Couldn't remove the image.");
         }
     };
 
@@ -417,7 +417,7 @@ export function ProductEditorClient({
             if (!res.ok) throw new Error();
         } catch {
             setImages(prev);
-            toast.error("Failed to reorder images");
+            toast.error("Couldn't reorder the images.");
         }
     };
 
@@ -455,11 +455,11 @@ export function ProductEditorClient({
 
     const handleVariantSave = async () => {
         if (isNew) {
-            toast.error("Save the product first before adding variants");
+            toast.error("Save the product before adding variants.");
             return;
         }
         const price = parseFloat(variantForm.price);
-        if (isNaN(price) || price < 0) { toast.error("Price must be a valid number"); return; }
+        if (isNaN(price) || price < 0) { toast.error("Enter a valid price."); return; }
 
         setVariantSaving(true);
         try {
@@ -493,7 +493,7 @@ export function ProductEditorClient({
             }
 
             const data = await res.json();
-            if (!data.ok) { toast.error(getApiErrorMessage(data.error, "Failed to save variant")); return; }
+            if (!data.ok) { toast.error(getApiErrorMessage(data.error, "Couldn't save the variant.")); return; }
 
             if (editingVariant) {
                 setVariants((prev) => prev.map((v) => v.id === editingVariant.id ? data.row : v));
@@ -502,11 +502,11 @@ export function ProductEditorClient({
             }
             toast.success(editingVariant ? "Variant updated" : "Variant added");
             if (data.stripe && data.stripe.synced === false) {
-                toast.warning(`Saved, but Stripe sync failed: ${data.stripe.error ?? "unknown"}. Use "Sync to Stripe".`);
+                toast.warning(`Saved, but couldn't sync to Stripe: ${data.stripe.error ?? "unknown error"}. Use Sync to Stripe to try again.`);
             }
             setVariantDialogOpen(false);
         } catch {
-            toast.error("Failed to save variant");
+            toast.error("Couldn't save the variant.");
         } finally {
             setVariantSaving(false);
         }
@@ -521,10 +521,10 @@ export function ProductEditorClient({
                 setVariants((prev) => prev.filter((v) => v.id !== variantId));
                 toast.success("Variant deleted");
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to delete variant"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't delete the variant."));
             }
         } catch {
-            toast.error("Failed to delete variant");
+            toast.error("Couldn't delete the variant.");
         }
     };
 
@@ -540,13 +540,13 @@ export function ProductEditorClient({
                 setVariants((prev) => prev.map((x) => x.id === v.id ? data.row : x));
             }
         } catch {
-            toast.error("Failed to update variant");
+            toast.error("Couldn't update the variant.");
         }
     };
 
     // ── Stripe ──
     const handleSyncToStripe = async () => {
-        if (isNew) { toast.error("Save the product first"); return; }
+        if (isNew) { toast.error("Save the product first."); return; }
         setSyncingStripe(true);
         try {
             const res = await fetch("/api/stripe/sync", {
@@ -559,17 +559,17 @@ export function ProductEditorClient({
                 setStripeProductId(data.stripeProductId ?? stripeProductId);
                 toast.success("Synced to Stripe");
             } else {
-                toast.error(getApiErrorMessage(data.error, "Sync failed"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't sync to Stripe."));
             }
         } catch {
-            toast.error("Sync failed");
+            toast.error("Couldn't sync to Stripe.");
         } finally {
             setSyncingStripe(false);
         }
     };
 
     const handleGeneratePaymentLink = async () => {
-        if (isNew) { toast.error("Save the product first"); return; }
+        if (isNew) { toast.error("Save the product first."); return; }
         setGeneratingLink(true);
         try {
             const res = await fetch("/api/stripe/payment-link", {
@@ -582,10 +582,10 @@ export function ProductEditorClient({
                 setStripePaymentLink(data.url ?? data.stripe_payment_link ?? null);
                 toast.success("Payment link generated");
             } else {
-                toast.error(getApiErrorMessage(data.error, "Failed to generate link"));
+                toast.error(getApiErrorMessage(data.error, "Couldn't generate the link."));
             }
         } catch {
-            toast.error("Failed to generate link");
+            toast.error("Couldn't generate the link.");
         } finally {
             setGeneratingLink(false);
         }
@@ -626,7 +626,7 @@ export function ProductEditorClient({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <Label htmlFor={`desc-${locale}`}>Short Description</Label>
+                    <Label htmlFor={`desc-${locale}`}>Short description</Label>
                     <Textarea
                         id={`desc-${locale}`}
                         value={loc.description ?? ""}
@@ -664,7 +664,7 @@ export function ProductEditorClient({
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold">
-                        {isNew ? "New Product" : (content["en-US"]?.title || "Edit Product")}
+                        {isNew ? "New product" : (content["en-US"]?.title || "Edit product")}
                     </h1>
                     {!isNew && (
                         <p className="text-sm text-muted-foreground mt-0.5">/{slug}</p>
@@ -678,13 +678,13 @@ export function ProductEditorClient({
 
             {isAutoGenerated && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    This product is auto-generated from inventory. Product type, slug, and variants are managed by the inventory system. Price, cost, and compare-at come from Costings.
+                    This product is built from inventory, which sets its type, slug and variants. Price, cost and compare-at come from Costings.
                 </div>
             )}
             {!isAutoGenerated && !isNew && !variants.some((v) => v.item_id != null || v.pillow_product_id != null || v.price_key != null) && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     <Badge variant="outline" className="mr-2 border-amber-400 text-amber-800">Legacy</Badge>
-                    Not inventory-linked. Price is hand-editable. Link to an inventory item or retire this product.
+                    This product isn&apos;t linked to inventory, so its price is edited by hand. Link it to an inventory item or retire it.
                 </div>
             )}
 
@@ -718,14 +718,14 @@ export function ProductEditorClient({
                             <ImagePicker onSelect={addImage}>
                                 <Button variant="outline" size="sm" type="button">
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Add Image
+                                    Add image
                                 </Button>
                             </ImagePicker>
                         </CardHeader>
                         <CardContent>
                             {images.length === 0 ? (
                                 <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                                    No images yet. Click &quot;Add Image&quot; to attach media.
+                                    No images yet.
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -748,7 +748,7 @@ export function ProductEditorClient({
                                                     <Badge
                                                         variant="outline"
                                                         className="bg-background/80 text-xs px-1 py-0"
-                                                        title="Base image from Inventory. Change it in Settings › Inventory."
+                                                        title="Base image from inventory. Change it on the Inventory page."
                                                     >
                                                         From inventory
                                                     </Badge>
@@ -806,7 +806,7 @@ export function ProductEditorClient({
                                 {!isAutoGenerated && (
                                     <Button variant="outline" size="sm" type="button" onClick={openAddVariant}>
                                         <Plus className="mr-2 h-4 w-4" />
-                                        Add Variant
+                                        Add variant
                                     </Button>
                                 )}
                             </CardHeader>
@@ -814,14 +814,14 @@ export function ProductEditorClient({
                                 <CardContent className="pt-0">
                                     {variants.length === 0 ? (
                                         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                                            No variants yet. Click &quot;Add Variant&quot; to create one.
+                                            No variants yet.
                                         </div>
                                     ) : (
                                         <div className="rounded-lg border overflow-hidden">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead>Title / Options</TableHead>
+                                                        <TableHead>Title and options</TableHead>
                                                         <TableHead>SKU</TableHead>
                                                         <TableHead>Price</TableHead>
                                                         <TableHead>Stock</TableHead>
@@ -948,7 +948,7 @@ export function ProductEditorClient({
                             </div>
                             <Button onClick={handleSave} disabled={saving} className="w-full">
                                 <Save className="mr-2 h-4 w-4" />
-                                {saving ? "Saving…" : "Save Product"}
+                                {saving ? "Saving…" : "Save product"}
                             </Button>
                         </CardContent>
                     </Card>
@@ -964,7 +964,7 @@ export function ProductEditorClient({
                                 <p className="text-lg font-semibold">
                                     {priceRange.min === priceRange.max
                                         ? formatPrice(priceRange.min, priceRange.currency)
-                                        : `${formatPrice(priceRange.min, priceRange.currency)} – ${formatPrice(priceRange.max, priceRange.currency)}`
+                                        : `${formatPrice(priceRange.min, priceRange.currency)} to ${formatPrice(priceRange.max, priceRange.currency)}`
                                     }
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-2">
@@ -981,7 +981,7 @@ export function ProductEditorClient({
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
-                                <Label>Stripe Product ID</Label>
+                                <Label>Stripe product ID</Label>
                                 <div className="flex items-center gap-2">
                                     <Badge variant={stripeProductId ? "secondary" : "outline"} className="text-xs truncate max-w-full">
                                         {stripeProductId ?? "Not synced"}
@@ -999,7 +999,7 @@ export function ProductEditorClient({
                             </Button>
 
                             <div className="space-y-1.5 pt-2 border-t">
-                                <Label>Payment Link</Label>
+                                <Label>Payment link</Label>
                                 {stripePaymentLink ? (
                                     <div className="flex items-center gap-1.5">
                                         <Input
@@ -1036,7 +1036,7 @@ export function ProductEditorClient({
                                     onClick={handleGeneratePaymentLink}
                                     disabled={generatingLink || isNew || !stripeProductId}
                                 >
-                                    {generatingLink ? "Generating…" : "Generate Link"}
+                                    {generatingLink ? "Generating…" : "Generate link"}
                                 </Button>
                             </div>
                         </CardContent>
@@ -1099,7 +1099,7 @@ export function ProductEditorClient({
 
                             {/* Product type */}
                             <div className="space-y-1.5">
-                                <Label htmlFor="type-select">Product Type</Label>
+                                <Label htmlFor="type-select">Product type</Label>
                                 <Select
                                     value={productType}
                                     onValueChange={(v) => setProductType(v as ProductType)}
@@ -1161,7 +1161,7 @@ export function ProductEditorClient({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="seo-title-en">SEO Title (EN)</Label>
+                                        <Label htmlFor="seo-title-en">SEO title (EN)</Label>
                                         <Input
                                             id="seo-title-en"
                                             value={content["en-US"]?.seo_title ?? ""}
@@ -1170,17 +1170,17 @@ export function ProductEditorClient({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="seo-answer-en">Answer lede (EN) — 60–120 words for AEO</Label>
+                                        <Label htmlFor="seo-answer-en">Answer lede (EN, 60 to 120 words)</Label>
                                         <Textarea
                                             id="seo-answer-en"
                                             value={content["en-US"]?.seo_answer ?? ""}
                                             onChange={(e) => updateContent("en-US", "seo_answer", e.target.value)}
-                                            placeholder="Direct answer shown under product H1"
+                                            placeholder="A direct answer shown under the product title"
                                             rows={3}
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="seo-desc-en">SEO Description (EN)</Label>
+                                        <Label htmlFor="seo-desc-en">SEO description (EN)</Label>
                                         <Textarea
                                             id="seo-desc-en"
                                             value={content["en-US"]?.seo_description ?? ""}
@@ -1190,7 +1190,7 @@ export function ProductEditorClient({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="seo-title-zh">SEO Title (ZH)</Label>
+                                        <Label htmlFor="seo-title-zh">SEO title (ZH)</Label>
                                         <Input
                                             id="seo-title-zh"
                                             value={content["zh-CN"]?.seo_title ?? ""}
@@ -1208,7 +1208,7 @@ export function ProductEditorClient({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="seo-desc-zh">SEO Description (ZH)</Label>
+                                        <Label htmlFor="seo-desc-zh">SEO description (ZH)</Label>
                                         <Textarea
                                             id="seo-desc-zh"
                                             value={content["zh-CN"]?.seo_description ?? ""}
@@ -1228,7 +1228,7 @@ export function ProductEditorClient({
             <Dialog open={variantDialogOpen} onOpenChange={setVariantDialogOpen}>
                 <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editingVariant ? "Edit Variant" : "Add Variant"}</DialogTitle>
+                        <DialogTitle>{editingVariant ? "Edit variant" : "Add variant"}</DialogTitle>
                     </DialogHeader>
 
                     <div className="grid grid-cols-2 gap-4 py-2">
@@ -1268,13 +1268,13 @@ export function ProductEditorClient({
                                 className={isAutoGenerated ? "bg-muted cursor-not-allowed" : ""}
                             />
                             {isAutoGenerated && (
-                                <p className="text-xs text-muted-foreground">Set via Costings → MSRP</p>
+                                <p className="text-xs text-muted-foreground">Set the MSRP in Costings</p>
                             )}
                         </div>
 
                         <div className="space-y-1.5">
                             <Label htmlFor="vf-compare">
-                                {isAutoGenerated ? "Compare-at (from Costings)" : "Compare-at Price"}
+                                {isAutoGenerated ? "Compare-at (from Costings)" : "Compare-at price"}
                             </Label>
                             <Input
                                 id="vf-compare"
@@ -1288,13 +1288,13 @@ export function ProductEditorClient({
                                 className={isAutoGenerated ? "bg-muted cursor-not-allowed" : ""}
                             />
                             {isAutoGenerated && (
-                                <p className="text-xs text-muted-foreground">Set via Costings → Compare-at</p>
+                                <p className="text-xs text-muted-foreground">Set compare-at in Costings</p>
                             )}
                         </div>
 
                         <div className="space-y-1.5">
                             <Label htmlFor="vf-cost">
-                                {isAutoGenerated ? "Cost Price (from Costings)" : "Cost Price"}
+                                {isAutoGenerated ? "Cost price (from Costings)" : "Cost price"}
                             </Label>
                             <Input
                                 id="vf-cost"
@@ -1308,13 +1308,13 @@ export function ProductEditorClient({
                                 className={isAutoGenerated ? "bg-muted cursor-not-allowed" : ""}
                             />
                             {isAutoGenerated && (
-                                <p className="text-xs text-muted-foreground">Derived from BOM / item cost</p>
+                                <p className="text-xs text-muted-foreground">Worked out from the BOM and item costs</p>
                             )}
                         </div>
 
                         {!isAutoGenerated && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="vf-stock">Stock Quantity</Label>
+                                <Label htmlFor="vf-stock">Stock quantity</Label>
                                 <Input
                                     id="vf-stock"
                                     type="number"
@@ -1385,7 +1385,7 @@ export function ProductEditorClient({
                             Cancel
                         </Button>
                         <Button onClick={handleVariantSave} disabled={variantSaving}>
-                            {variantSaving ? "Saving…" : editingVariant ? "Update" : "Add Variant"}
+                            {variantSaving ? "Saving…" : editingVariant ? "Update" : "Add variant"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
