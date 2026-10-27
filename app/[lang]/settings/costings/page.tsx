@@ -147,7 +147,7 @@ const PRODUCT_GROUP_DEFINITIONS: ProductGroupDefinition[] = [
   {
     key: "basic",
     title: "Basic Mpillow",
-    description: "Basic Mpillow sizes (XS–XL) share the same cost build.",
+    description: "Basic Mpillow sizes XS to XL share one cost build.",
     filter: (product) => product.kind === "pillow" && product.pillowKind === "basic",
     countLabel: "sizes",
     defaultOpen: true,
@@ -158,15 +158,15 @@ const PRODUCT_GROUP_DEFINITIONS: ProductGroupDefinition[] = [
     description: "Premium fabrics get their own pricing when configured.",
     filter: (product) => product.kind === "pillow" && product.pillowKind === "premium",
     countLabel: "sizes",
-    emptyState: "No premium Mpillow variants have been configured yet.",
+    emptyState: "No premium Mpillow sizes yet.",
   },
   {
     key: "bolster",
     title: "Mbolster",
-    description: "Bolster variants (short/medium/long) are listed here.",
+    description: "Bolsters are priced by length.",
     filter: (product) => product.kind === "bolster",
-    countLabel: "variants",
-    emptyState: "No bolster variants configured yet.",
+    countLabel: "lengths",
+    emptyState: "No bolster lengths yet.",
   },
 ];
 
@@ -295,7 +295,7 @@ const computeProductComponentsCostCents = (
 const EMPTY_DRAFT_ROW: DraftRow = { costPrice: "", msrp: "", compareAt: "" };
 
 const PART_COLUMNS: SheetColumn[] = [
-  { key: "costPrice", label: "Cost Price", placeholder: "$0.00", prefix: "$" },
+  { key: "costPrice", label: "Cost price", placeholder: "$0.00", prefix: "$" },
   { key: "msrp", label: "MSRP", placeholder: "$0.00", prefix: "$" },
   { key: "compareAt", label: "Compare-at", placeholder: "(optional)", prefix: "$" },
 ];
@@ -665,7 +665,7 @@ export default function CostingsPage() {
       setHasPendingEdit(false);
       applyBaseline({ ...nextBaseline, ...productBaseline });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load costings";
+      const message = err instanceof Error ? err.message : "Couldn't load costings.";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -925,7 +925,7 @@ export default function CostingsPage() {
         : product.variant
         ? BOLSTER_VARIANT_TITLES[product.variant]
         : product.label;
-    const secondaryLabel = product.kind === "pillow" ? "Pillow Size" : "Bolster Variant";
+    const secondaryLabel = product.kind === "pillow" ? "Pillow size" : "Bolster length";
     return (
       <div
         key={product.key}
@@ -1251,7 +1251,7 @@ export default function CostingsPage() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        const message = payload?.error ?? "Failed to save costings";
+        const message = payload?.error ?? "Couldn't save costings.";
         throw new Error(message);
       }
       if (payload?.products && Array.isArray(payload.products)) {
@@ -1280,7 +1280,7 @@ export default function CostingsPage() {
       toast.success("Costings saved");
       await load();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save costings";
+      const message = err instanceof Error ? err.message : "Couldn't save costings.";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -1298,7 +1298,7 @@ export default function CostingsPage() {
           : "Shopify prices synced",
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
+      toast.error(e instanceof Error ? e.message : "Couldn't sync Shopify prices.");
     } finally {
       setSyncingShopifyPrices(false);
     }
@@ -1325,7 +1325,7 @@ export default function CostingsPage() {
     return (
       <div className="space-y-4">
         <div className="text-2xl font-semibold">Costings</div>
-        <p className="text-sm text-muted-foreground">No parts are currently active. Add items to begin tracking pricing.</p>
+        <p className="text-sm text-muted-foreground">No active parts yet. Add items in Inventory first.</p>
         <Button variant="secondary" onClick={load} disabled={saving}>
           Refresh
         </Button>
@@ -1339,7 +1339,7 @@ export default function CostingsPage() {
         <div className="flex items-center gap-1.5">
           <h1>Costings</h1>
           <InfoTip label="About Costings">
-            Track cost price and MSRP for each part to keep your pricing consistent.
+            Set cost and MSRP for every item and product.
           </InfoTip>
         </div>
         <PageActions>
@@ -1376,7 +1376,7 @@ export default function CostingsPage() {
           <div className="flex items-center gap-1.5">
             <h2 className="text-base font-medium">On-hand stock value</h2>
             <InfoTip label="About On-hand stock value">
-              As of now — current warehouse stock × Costings prices (not a sales date range).
+              Values today&apos;s warehouse stock at Costings prices, not over a sales date range.
             </InfoTip>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
@@ -1386,7 +1386,7 @@ export default function CostingsPage() {
                 <CardTitle className="text-lg tabular-nums sm:text-2xl">{currencyFormatter.format(onHandKpis.costValue)}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
-                Across {onHandKpis.totalItems} active items; reflects on-hand cost exposure.
+                Covers {onHandKpis.totalItems} active items.
               </CardContent>
             </Card>
             <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
@@ -1395,7 +1395,7 @@ export default function CostingsPage() {
                 <CardTitle className="text-lg tabular-nums sm:text-2xl">{currencyFormatter.format(onHandKpis.msrpValue)}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
-                Assumes every stocked unit sells at full list price.
+                Assumes every stocked unit sells at MSRP.
               </CardContent>
             </Card>
             <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
@@ -1404,7 +1404,7 @@ export default function CostingsPage() {
                 <CardTitle className="text-lg tabular-nums sm:text-2xl">{currencyFormatter.format(onHandKpis.marginValue)}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
-                Difference between current MSRP value and cost basis.
+                It&apos;s the MSRP value minus cost.
               </CardContent>
             </Card>
             <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
@@ -1413,7 +1413,7 @@ export default function CostingsPage() {
                 <CardTitle className="text-lg tabular-nums sm:text-2xl">{formatPercent(onHandKpis.weightedMarginPct)}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
-                Weighted by MSRP across all stocked SKUs with pricing coverage.
+                It&apos;s the unrealized margin as a share of MSRP value.
               </CardContent>
             </Card>
           </div>
@@ -1428,7 +1428,7 @@ export default function CostingsPage() {
             <div className="flex items-center gap-1.5">
               <h2>Products</h2>
               <InfoTip label="About Products">
-                Cost price is calculated from configured components. Enter MSRP and (optionally) compare-at for Shopify strikethrough pricing.
+                Cost comes from the BOM. Enter MSRP, plus compare-at for a strikethrough price.
               </InfoTip>
             </div>
             <div className="space-y-4">
@@ -1450,7 +1450,7 @@ export default function CostingsPage() {
           <div className="flex items-center gap-1.5">
             <h2>Parts</h2>
             <InfoTip label="About Parts">
-              Enter values as dollars. Leave blank to clear existing pricing for a part.
+              Enter dollars. Leave a field blank to clear it.
             </InfoTip>
           </div>
           <div className="space-y-6">

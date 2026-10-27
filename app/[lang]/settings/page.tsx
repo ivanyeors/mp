@@ -35,7 +35,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-1.5">
           <h1>General</h1>
           <InfoTip label="About General">
-            <p>Basic preferences for your account.</p>
+            <p>Choose a theme or sign out.</p>
           </InfoTip>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default function SettingsPage() {
                 <Sun className="h-5 w-5" />
                 <div className="font-medium">Light</div>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">Bright, clean interface.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Suits bright rooms.</p>
             </div>
           </label>
 
@@ -79,7 +79,7 @@ export default function SettingsPage() {
                 <Moon className="h-5 w-5" />
                 <div className="font-medium">Dark</div>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">Dimmed theme for low light.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Suits dim rooms.</p>
             </div>
           </label>
 
@@ -99,7 +99,7 @@ export default function SettingsPage() {
                 <Monitor className="h-5 w-5" />
                 <div className="font-medium">System</div>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">Match your OS preference.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Matches your device.</p>
             </div>
           </label>
         </div>
@@ -109,7 +109,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-1.5">
           <h2 className="text-sm font-medium">Session</h2>
           <InfoTip label="About Session">
-            <p>Signed in with your staff account. Sign out to end this session on this device.</p>
+            <p>You&apos;re signed in with your staff account. Signing out ends your session on every device.</p>
           </InfoTip>
         </div>
         <Button
@@ -133,7 +133,7 @@ export default function SettingsPage() {
           className="w-full sm:w-auto"
         >
           {loggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-          Logout
+          Sign out
         </Button>
       </div>
     </div>

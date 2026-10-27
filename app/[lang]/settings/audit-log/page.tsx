@@ -85,7 +85,7 @@ export default async function AuditLogPage({
       <div className="flex items-center gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
         <InfoTip label="About Audit log">
-          A read-only record of mutating admin actions, newest first.
+          A read-only record of every change staff make, newest first.
         </InfoTip>
       </div>
 
@@ -125,7 +125,7 @@ export default async function AuditLogPage({
                   <td className="px-4 py-3">
                     {r.actor_email ?? "—"}
                     {r.actor_profile_id && profileName.get(r.actor_profile_id) ? (
-                      <span className="text-muted-foreground"> · {profileName.get(r.actor_profile_id)}</span>
+                      <span className="text-muted-foreground"> as {profileName.get(r.actor_profile_id)}</span>
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-xs">{r.action}</td>

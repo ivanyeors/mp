@@ -58,15 +58,15 @@ export default async function PartnerCommissionsPage({
   return (
     <div className="mx-auto w-full max-w-4xl">
       <div className="flex items-center gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight">Partner Commissions</h1>
-        <InfoTip label="About Partner Commissions">
+        <h1 className="text-2xl font-semibold tracking-tight">Partner commissions</h1>
+        <InfoTip label="About Partner commissions">
           <p>
-            Commission schemes for partner-referred pillow &amp; bolster units. Held on capture,
-            released {COMMISSION_RELEASE_WINDOW_DAYS} days after delivery, voided on refund.
+            Set commission for partner-referred pillows and bolsters. It is held on capture,
+            released {COMMISSION_RELEASE_WINDOW_DAYS} days after delivery, and voided on refund.
           </p>
           <p>
-            Staff only — never shown in the Partner Hub. Milestone rungs, self-purchase rates, and
-            payouts are managed below.
+            Only staff see this. It never appears in the Partner Hub. Milestone rungs, self-purchase
+            rates and payouts are below.
           </p>
         </InfoTip>
       </div>
@@ -113,12 +113,12 @@ export default async function PartnerCommissionsPage({
         action={upsertCommissionScheme}
         className="mt-8 grid max-w-xl grid-cols-1 gap-4 rounded-lg border p-4 sm:grid-cols-2"
       >
-        <h2 className="sm:col-span-2 text-sm font-medium">Add / update a scheme</h2>
+        <h2 className="sm:col-span-2 text-sm font-medium">Add or update a scheme</h2>
 
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Partner (blank = DEFAULT)</span>
+          <span className="text-muted-foreground">Partner (leave blank for the default)</span>
           <select name="partner_id" defaultValue="" className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm">
-            <option value="">— DEFAULT —</option>
+            <option value="">Default</option>
             {partners.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

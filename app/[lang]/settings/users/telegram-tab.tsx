@@ -32,7 +32,7 @@ async function call(url: string, method: "POST" | "PATCH" | "DELETE", body?: unk
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const payload = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Failed");
+  if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Something went wrong.");
   return payload as { row?: TelegramLinkRow; linkCode?: string };
 }
 
@@ -83,7 +83,7 @@ export function TelegramAccessTab({
     try {
       await fn();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusyId(null);
     }
@@ -100,9 +100,9 @@ export function TelegramAccessTab({
       const row = payload.row!;
       setLinks((rows) => [...rows, row]);
       setIssued({ name: profile.name, code: payload.linkCode!, expiresAt: row.link_code_expires_at });
-      toast.success(`${profile.name} linked — share their code`);
+      toast.success(`${profile.name} linked. Share their code.`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to link");
+      toast.error(e instanceof Error ? e.message : "Couldn't link.");
     } finally {
       setLinking(false);
     }
@@ -141,13 +141,13 @@ export function TelegramAccessTab({
       const res = await fetch("/api/staff/telegram-operators/preview", { method: "POST" });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload?.ok) {
-        throw new Error(payload?.error ? `Telegram: ${payload.error}` : "Preview failed");
+        throw new Error(payload?.error ? `Telegram: ${payload.error}` : "Couldn't send the preview.");
       }
       toast.success(
         `Sent ${payload.sent} preview messages to the measurements group${payload.usedClaude ? ", with replies drafted by Claude" : ""}.`,
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Preview failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't send the preview.");
     } finally {
       setPreviewing(false);
     }
@@ -158,7 +158,7 @@ export function TelegramAccessTab({
       await navigator.clipboard.writeText(text);
       toast.success("Copied");
     } catch {
-      toast.error("Copy failed — select the text instead");
+      toast.error("Couldn't copy. Select the text instead.");
     }
   }
 
@@ -283,17 +283,17 @@ export function TelegramAccessTab({
                       {profile?.name ?? "Unknown profile"}
                     </p>
                     <p className="break-all text-xs text-muted-foreground">
-                      {member?.email ?? "—"} · {role?.name ?? "no role"}
-                      {member?.status === "deactivated" ? " · login deactivated" : ""}
-                      {member?.status === "invited" ? " · login not accepted yet" : ""}
-                      {profile?.archivedAt ? " · profile archived" : ""}
+                      {member?.email ?? "—"}, {role?.name ?? "no role"}
+                      {member?.status === "deactivated" ? ", login deactivated" : ""}
+                      {member?.status === "invited" ? ", login not accepted yet" : ""}
+                      {profile?.archivedAt ? ", profile archived" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {telegramLinked
                         ? `Telegram ${link.telegram_username ? `@${link.telegram_username}` : `ID ${link.telegram_user_id}`}`
                         : link.link_code_expires_at && new Date(link.link_code_expires_at) > new Date()
-                          ? `Waiting for /link — code expires ${formatAdminDateTime(link.link_code_expires_at)}`
-                          : "Not linked — issue a new code"}
+                          ? `Waiting for /link. The code expires ${formatAdminDateTime(link.link_code_expires_at)}.`
+                          : "Not linked. Issue a new code."}
                     </p>
                   </div>
                   <span
@@ -322,7 +322,7 @@ export function TelegramAccessTab({
                     const actorMay = actor.grantsAll || actor.permissions.has(a);
                     const checked = link.actions.includes(a);
                     const why = !roleHas
-                      ? `${member?.email ?? "This login"}'s role (${role?.name ?? "none"}) doesn't include this — change it on Roles.`
+                      ? `${member?.email ?? "This login"}'s role (${role?.name ?? "none"}) doesn't include this. Change it on Roles.`
                       : !actorMay
                         ? "Your role doesn't have this action."
                         : null;

@@ -273,7 +273,7 @@ export function CategoriesManager() {
                 .map((c) => c.id);
             setExpandedIds(new Set(topIds));
         } catch (err) {
-            console.error("Failed to fetch categories", err);
+            console.error("Couldn't fetch categories.", err);
         } finally {
             setLoading(false);
         }
@@ -381,7 +381,7 @@ export function CategoriesManager() {
             setSheetOpen(false);
             fetchCategories();
         } catch (err) {
-            console.error("Failed to save category", err);
+            console.error("Couldn't save the category.", err);
         } finally {
             setSaving(false);
         }
@@ -399,7 +399,7 @@ export function CategoriesManager() {
             setDeleteTarget(null);
             fetchCategories();
         } catch (err) {
-            console.error("Failed to delete category", err);
+            console.error("Couldn't delete the category.", err);
         } finally {
             setDeleting(false);
         }
@@ -432,7 +432,7 @@ export function CategoriesManager() {
                     </InfoTip>
                 </div>
                 <Button size="sm" className="w-full sm:w-auto" onClick={openCreate}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Category
+                    <Plus className="mr-2 h-4 w-4" /> Add category
                 </Button>
             </div>
 
@@ -443,7 +443,7 @@ export function CategoriesManager() {
                 </div>
             ) : categories.length === 0 ? (
                 <div className="rounded-xl border border-dashed p-12 text-center text-muted-foreground">
-                    No categories yet. Add your first category to get started.
+                    No categories yet.
                 </div>
             ) : (
                 <div className="rounded-xl border overflow-x-auto">
@@ -479,7 +479,7 @@ export function CategoriesManager() {
                 <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle>
-                            {editingCategory ? "Edit Category" : "Add Category"}
+                            {editingCategory ? "Edit category" : "Add category"}
                         </SheetTitle>
                         <SheetDescription>
                             {editingCategory
@@ -587,7 +587,7 @@ export function CategoriesManager() {
 
                         {/* Parent category */}
                         <div className="space-y-2">
-                            <Label>Parent Category</Label>
+                            <Label>Parent category</Label>
                             <Select
                                 value={form.parent_id || "none"}
                                 onValueChange={(v) =>
@@ -639,7 +639,7 @@ export function CategoriesManager() {
                             disabled={saving || !form.content["en-US"].name.trim()}
                         >
                             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {editingCategory ? "Save Changes" : "Create Category"}
+                            {editingCategory ? "Save changes" : "Create category"}
                         </Button>
                     </div>
                 </SheetContent>
@@ -652,9 +652,9 @@ export function CategoriesManager() {
             >
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Category</DialogTitle>
+                        <DialogTitle>Delete category</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete{" "}
+                            Delete{" "}
                             <span className="font-medium text-foreground">
                                 {deleteTarget ? getDisplayName(deleteTarget) : "this category"}
                             </span>
@@ -664,7 +664,7 @@ export function CategoriesManager() {
                                     This category has sub-categories that may also be affected.{" "}
                                 </span>
                             )}
-                            This action cannot be undone.
+                            This can&apos;t be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

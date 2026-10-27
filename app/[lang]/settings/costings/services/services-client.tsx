@@ -32,8 +32,8 @@ type Initial = { services: ServicePrices; readjustmentPolicy: ReadjustmentPolicy
 
 /** When each fee is charged — the operator's reminder of what the number does. */
 const CHARGED_WHEN: Record<ServiceKey, string> = {
-  measurement_premium: "Staff measure a Premium Mpillow customer.",
-  measurement_basic: "Staff measure a Basic Mpillow customer. Mbolster has no measurement fee.",
+  measurement_premium: "staff measure a Premium Mpillow customer.",
+  measurement_basic: "staff measure a Basic Mpillow customer. Mbolster has no measurement fee.",
   readjustment: "a re-adjustment is booked and isn't complimentary.",
 };
 
@@ -101,16 +101,16 @@ export default function ServiceFeesClient({
       const msrp = toCents(draft.services[key].msrp);
       if (msrp == null) out[`${key}.msrp`] = "Enter a price, e.g. 50.00";
       else if (key === "readjustment" && !isValidReadjustmentFeeCents(msrp)) {
-        out[`${key}.msrp`] = "$0 or at least $0.50 — card payments can't be smaller";
+        out[`${key}.msrp`] = "Enter $0, or $0.50 or more. Card payments can't be smaller.";
       }
       const cost = draft.services[key].cost.trim();
       if (cost !== "" && toCents(cost) == null) out[`${key}.cost`] = "Enter a cost or leave it empty";
     }
     if (toCount(draft.freeVisits, READJUSTMENT_POLICY_LIMITS.freeVisits) == null) {
-      out.freeVisits = `0–${READJUSTMENT_POLICY_LIMITS.freeVisits}`;
+      out.freeVisits = `Enter 0 to ${READJUSTMENT_POLICY_LIMITS.freeVisits}.`;
     }
     if (toCount(draft.freeWindowDays, READJUSTMENT_POLICY_LIMITS.freeWindowDays) == null) {
-      out.freeWindowDays = `0–${READJUSTMENT_POLICY_LIMITS.freeWindowDays} days`;
+      out.freeWindowDays = `Enter 0 to ${READJUSTMENT_POLICY_LIMITS.freeWindowDays} days.`;
     }
     return out;
   }, [draft]);
@@ -137,13 +137,13 @@ export default function ServiceFeesClient({
         }),
       });
       const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.services) throw new Error(body?.error ?? "Failed to save service fees");
+      if (!res.ok || !body?.services) throw new Error(body?.error ?? "Couldn't save service fees.");
       const next = toDraft({ services: body.services, readjustmentPolicy: body.readjustmentPolicy });
       setSaved(next);
       setDraft(next);
       toast.success("Service fees saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save service fees");
+      toast.error(e instanceof Error ? e.message : "Couldn't save service fees.");
     } finally {
       setSaving(false);
     }
@@ -158,11 +158,11 @@ export default function ServiceFeesClient({
         <div className="flex items-center gap-1.5">
           <h1>Service fees</h1>
           <InfoTip label="About Service fees">
-            Measurement and re-adjustment are priced here like everything else in{" "}
+            What customers pay for measurement and re-adjustment, set like everything else in{" "}
             <Link href={withLocale("/settings/costings", locale)} className="underline underline-offset-4">
               Costings
             </Link>
-            : this is what the customer pays. Changes apply on the next quote — no deploy.
+            . Changes apply from the next quote.
           </InfoTip>
         </div>
         <PageActions>
@@ -194,7 +194,7 @@ export default function ServiceFeesClient({
               <div className="flex items-center gap-1.5">
                 <CardTitle className="text-base">Services</CardTitle>
                 <InfoTip label="About Services">
-                  Fees are added to a total automatically — Staff never type them, and customers never choose them in
+                  Fees are added to a total automatically. Staff never type them, and customers never choose them in
                   a cart.
                 </InfoTip>
               </div>
@@ -282,7 +282,7 @@ export default function ServiceFeesClient({
                 <p className="mt-2 text-xs text-destructive">
                   {[errors.freeVisits && `Free visits: ${errors.freeVisits}`, errors.freeWindowDays && `Window: ${errors.freeWindowDays}`]
                     .filter(Boolean)
-                    .join(" · ")}
+                    .join(" ")}
                 </p>
               ) : null}
             </CardContent>

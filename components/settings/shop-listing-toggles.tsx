@@ -15,10 +15,10 @@ import type { ShopListingFamily } from "@/lib/ecommerce/shop-listings";
 const CATEGORY_TITLES: Record<string, string> = {
   accessories: "Accessories",
   cover: "Covers",
-  pillow_case: "Pillow Cases",
-  pillow_protector: "Pillow Protectors",
-  bolster_case: "Bolster Cases",
-  bolster_protector: "Bolster Protectors",
+  pillow_case: "Pillow cases",
+  pillow_protector: "Pillow protectors",
+  bolster_case: "Bolster cases",
+  bolster_protector: "Bolster protectors",
 };
 
 function priceLabel(family: ShopListingFamily): string {
@@ -26,7 +26,7 @@ function priceLabel(family: ShopListingFamily): string {
   if (family.msrpMax == null || family.msrpMin === family.msrpMax) {
     return formatCurrency(family.msrpMin);
   }
-  return `${formatCurrency(family.msrpMin)} – ${formatCurrency(family.msrpMax)}`;
+  return `${formatCurrency(family.msrpMin)} to ${formatCurrency(family.msrpMax)}`;
 }
 
 /**
@@ -49,10 +49,10 @@ export function ShopListingToggles() {
     try {
       const res = await fetch("/api/shop/products/accessory-listings");
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed to load inventory");
+      if (!res.ok) throw new Error(json.error ?? "Couldn't load inventory.");
       setFamilies(json.rows ?? []);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load inventory");
+      toast.error(err instanceof Error ? err.message : "Couldn't load inventory.");
       setFamilies([]);
     } finally {
       setLoading(false);
@@ -76,7 +76,7 @@ export function ShopListingToggles() {
         body: JSON.stringify({ item_ids: family.itemIds, listed }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? "Failed to update");
+      if (!res.ok) throw new Error(json.error ?? "Couldn't update.");
       toast.success(listed ? `${family.title} is now in the shop` : `${family.title} removed from the shop`);
       // A publish mints a product id and slug, so re-read rather than guess.
       if (json.action === "publish") void load();
@@ -84,7 +84,7 @@ export function ShopListingToggles() {
       setFamilies((prev) =>
         prev.map((f) => (f.key === family.key ? { ...f, listed: !listed } : f)),
       );
-      toast.error(err instanceof Error ? err.message : "Failed to update");
+      toast.error(err instanceof Error ? err.message : "Couldn't update.");
     } finally {
       setPendingKey(null);
     }
@@ -161,9 +161,9 @@ export function ShopListingToggles() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {family.sizes.length > 0 && `${family.sizes.length} sizes · `}
+                      {family.sizes.length > 0 && `${family.sizes.length} sizes, `}
                       {priceLabel(family)}
-                      {!family.priced && " · set an MSRP in Costings to sell this"}
+                      {!family.priced && ". Set an MSRP in Costings to sell this."}
                     </div>
                   </div>
                   <Switch

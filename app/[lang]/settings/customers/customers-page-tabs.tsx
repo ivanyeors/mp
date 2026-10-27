@@ -80,9 +80,9 @@ export function CustomersPageTabs({
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
           <InfoTip label="About Customers">
-            <p>Browse and manage your Customers.</p>
+            <p>Browse and manage your customers.</p>
             <p>
-              A Customer is <em>signed up</em> once they have signed in with their email at least once.
+              A customer is <em>signed up</em> once they have signed in with their email.
               Until then they have <em>no account</em>, only a record from checkout or the Shopify import.
             </p>
           </InfoTip>

@@ -34,11 +34,11 @@ function useDirectory(initialMembers?: MemberRow[], initialRoles?: RoleRow[]) {
     try {
       const res = await fetch("/api/admin/users");
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to load Members");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't load members.");
       setMembers((payload?.members ?? []) as MemberRow[]);
       setRoles((payload?.roles ?? []) as RoleRow[]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load Members");
+      toast.error(e instanceof Error ? e.message : "Couldn't load members.");
     } finally {
       setLoading(false);
     }
@@ -70,10 +70,10 @@ function useProfiles(initial?: StaffProfile[]) {
     try {
       const res = await fetch("/api/staff?includeArchived=1");
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to load Staff profiles");
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't load staff profiles.");
       setRows((payload?.rows ?? []) as StaffProfile[]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load Staff profiles");
+      toast.error(e instanceof Error ? e.message : "Couldn't load staff profiles.");
     }
   }, []);
 
@@ -117,11 +117,11 @@ export function UsersClient({
       fetch("/api/staff/telegram-operators")
         .then(async (res) => {
           const payload = await res.json().catch(() => null);
-          if (!res.ok) throw new Error(payload?.error ?? "Failed to load Telegram access");
+          if (!res.ok) throw new Error(payload?.error ?? "Couldn't load Telegram access.");
           setLinks((payload?.rows ?? []) as TelegramLinkRow[]);
         })
         .catch((e: unknown) => {
-          toast.error(e instanceof Error ? e.message : "Failed to load Telegram access");
+          toast.error(e instanceof Error ? e.message : "Couldn't load Telegram access.");
         }),
     [],
   );
@@ -150,7 +150,7 @@ export function UsersClient({
       <div className="flex items-center gap-1.5">
         <h1>Users &amp; permissions</h1>
         <InfoTip label="About Users & permissions">
-          Who can sign in to the Admin Panel, the people who work under each login, and which pages and
+          Choose who can sign in to the Admin Panel, who works under each login, and which pages and
           Telegram actions each role can use.
         </InfoTip>
       </div>

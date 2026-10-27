@@ -48,7 +48,7 @@ assert.match(
   "old Product Builder URL redirects to the tab",
 );
 const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
-const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing Site"'));
+const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing site"'));
 assert.doesNotMatch(nav, /\/settings\/product-builder"/, "no standalone Product Builder nav entry");
 assert.match(storeGroup, /\/settings\/product-builder\/rules-engine"/, "Rules Engine stays under Store > Products");
 assert.equal(permissionForHref("/settings/product-builder/rules-engine"), "rules-engine", "Rules Engine has its own key");

@@ -65,10 +65,10 @@ export default function AppointmentSettingsPage({
       try {
         const res = await fetch("/api/settings/appointments/locations");
         const json = (await res.json()) as { locations?: ResolvedLocation[]; error?: string };
-        if (!res.ok) throw new Error(json.error ?? "Failed to load locations");
+        if (!res.ok) throw new Error(json.error ?? "Couldn't load locations.");
         if (!cancelled && json.locations) setLocations(json.locations);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Failed to load locations");
+        toast.error(e instanceof Error ? e.message : "Couldn't load locations.");
       }
     })();
     return () => {
@@ -90,10 +90,10 @@ export default function AppointmentSettingsPage({
           settings?: AppointmentSettings;
           error?: string;
         };
-        if (!res.ok) throw new Error(json.error ?? "Failed to load");
+        if (!res.ok) throw new Error(json.error ?? "Couldn't load.");
         if (!cancelled && json.settings) setSettings(json.settings);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Failed to load settings");
+        toast.error(e instanceof Error ? e.message : "Couldn't load settings.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -149,7 +149,7 @@ export default function AppointmentSettingsPage({
         rolled = withDerivedHours(rolled);
         setSettings(rolled);
         settingsRef.current = rolled;
-        toast.error(e instanceof Error ? e.message : "Save failed");
+        toast.error(e instanceof Error ? e.message : "Couldn't save.");
         throw e;
       } finally {
         setSavingAvailability(false);
@@ -183,7 +183,7 @@ export default function AppointmentSettingsPage({
         });
         const json = (await res.json()) as { error?: unknown };
         if (!res.ok) {
-          throw new Error(typeof json.error === "string" ? json.error : "Save failed");
+          throw new Error(typeof json.error === "string" ? json.error : "Couldn't save.");
         }
         toast.success(bookable ? "Location now taking bookings" : "Location paused");
       } catch (e) {
@@ -192,7 +192,7 @@ export default function AppointmentSettingsPage({
         );
         setLocations(rolled);
         locationsRef.current = rolled;
-        toast.error(e instanceof Error ? e.message : "Save failed");
+        toast.error(e instanceof Error ? e.message : "Couldn't save.");
         throw e;
       }
     };
@@ -222,9 +222,8 @@ export default function AppointmentSettingsPage({
             <h1 className="text-xl font-semibold">Appointments</h1>
             <InfoTip label="About Appointments">
               <p>
-                Manage bookable hours and blocks on the calendar. Events from your
-                connected Google Calendar (including all-day) appear alongside your
-                availability.
+                Set bookable hours and blocks. Events from your connected Google
+                Calendar, all-day ones too, show alongside them.
               </p>
             </InfoTip>
           </div>

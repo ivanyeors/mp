@@ -132,7 +132,7 @@ function ReviewCell({ customer }: { customer: CustomerOverviewRow }) {
     return (
         <span className="text-sm whitespace-nowrap">
             {first}
-            {rest.length > 0 && <span className="block text-xs text-muted-foreground">{rest.join(" · ")}</span>}
+            {rest.length > 0 && <span className="block text-xs text-muted-foreground">{rest.join(", ")}</span>}
         </span>
     );
 }
@@ -408,8 +408,8 @@ export function CustomersClient({
                     <SelectContent>
                         <SelectItem value="all">All accounts</SelectItem>
                         {/* An account is bound by the email they signed in with (CRM 11). */}
-                        <SelectItem value="signed-up">Signed up · email verified</SelectItem>
-                        <SelectItem value="no-account">No account · email not verified</SelectItem>
+                        <SelectItem value="signed-up">Signed up, email verified</SelectItem>
+                        <SelectItem value="no-account">No account, email not verified</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -464,8 +464,8 @@ export function CustomersClient({
                     <SelectContent>
                         <SelectItem value="newest">Newest first</SelectItem>
                         <SelectItem value="oldest">Oldest first</SelectItem>
-                        <SelectItem value="name-asc">Name A–Z</SelectItem>
-                        <SelectItem value="name-desc">Name Z–A</SelectItem>
+                        <SelectItem value="name-asc">Name A to Z</SelectItem>
+                        <SelectItem value="name-desc">Name Z to A</SelectItem>
                         <SelectItem value="signed-up">Recently signed up</SelectItem>
                         <SelectItem value="last-order">Last order</SelectItem>
                         <SelectItem value="spend">Most spent</SelectItem>
@@ -527,7 +527,7 @@ export function CustomersClient({
                                     Orders
                                 </TableHead>
                                 <TableHead className="px-4 text-right hidden md:table-cell">
-                                    Total Spent
+                                    Total spent
                                 </TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell">Last order</TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell">Review</TableHead>
@@ -633,7 +633,7 @@ export function CustomersClient({
             {totalPages > 1 && (
                 <div className="flex min-w-0 flex-col items-center gap-2 overflow-x-auto sm:flex-row sm:flex-wrap sm:justify-between">
                     <p className="text-sm text-muted-foreground">
-                        Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of{" "}
+                        Showing {(page - 1) * LIMIT + 1} to {Math.min(page * LIMIT, total)} of{" "}
                         {total} customer{total !== 1 ? "s" : ""}
                     </p>
                     <Pagination className="mx-0 w-auto max-w-full">

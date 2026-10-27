@@ -72,7 +72,7 @@ export const getInventoryItemLabelParts = (item: InventoryItemLike) => {
 
 export const getInventoryItemDisplayLabel = (item: InventoryItemLike): string => {
   const { variant, categoryTitle, sizeLabel } = getInventoryItemLabelParts(item);
-  return sizeLabel ? `${variant} ${categoryTitle} - ${sizeLabel}` : `${variant} ${categoryTitle}`;
+  return sizeLabel ? `${variant} ${categoryTitle} (${sizeLabel})` : `${variant} ${categoryTitle}`;
 };
 
 type InventoryItemLabelProps<T extends InventoryItemLike = InventoryItemLike> = {
