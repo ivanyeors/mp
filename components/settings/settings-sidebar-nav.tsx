@@ -198,10 +198,15 @@ export const NAV_GROUPS: NavGroup[] = [
  * The key comes from the permission catalog by href, so the sidebar and the
  * page guard cannot disagree; a page with no catalog entry is open to any Staff.
  */
-function canSee(item: NavItem, permissions: Permission[]): boolean {
-  const perm = permissionForHref(item.href);
+/** Whether a role can open an Admin Panel page; one no key guards is open to all Staff. */
+export function canOpen(href: string, permissions: Permission[]): boolean {
+  const perm = permissionForHref(href);
   if (!perm) return true;
   return permissions.includes(perm);
+}
+
+function canSee(item: NavItem, permissions: Permission[]): boolean {
+  return canOpen(item.href, permissions);
 }
 
 /**
@@ -444,7 +449,7 @@ export function SettingsSidebarNav({
         <SidebarTrigger />
       </div>
       <div className="min-w-0 flex-1">
-        <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
+        <SettingsBreadcrumbTrail basePathname={basePathname} to={to} permissions={permissions} />
       </div>
       {initialAuth?.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
     </header>
@@ -587,9 +592,11 @@ export function SettingsSidebarNav({
 function SettingsBreadcrumbTrail({
   basePathname,
   to,
+  permissions,
 }: {
   basePathname: string;
   to: (href: string) => string;
+  permissions: Permission[];
 }) {
   const detailLabel = useSettingsBreadcrumbDetailLabel();
   const crumbs = buildSettingsBreadcrumbs(basePathname, NAV_GROUPS, detailLabel);
@@ -603,7 +610,8 @@ function SettingsBreadcrumbTrail({
             <Fragment key={`${crumb.label}-${i}`}>
               {i > 0 ? <BreadcrumbSeparator /> : null}
               <BreadcrumbItem className={isLast ? "min-w-0" : "shrink-0"}>
-                {isLast || !crumb.href ? (
+                {/* A crumb the role cannot open is a label, like the item `visibleItems` hides. */}
+                {isLast || !crumb.href || !canOpen(crumb.href, permissions) ? (
                   <BreadcrumbPage className="truncate" title={crumb.label}>
                     {crumb.label}
                   </BreadcrumbPage>

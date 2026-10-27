@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import {
   DROP_OFF_REASON_AREA,
   DROP_OFF_REASON_LABEL,
@@ -21,8 +22,13 @@ const WINDOWS = [
 
 const n = (v: number) => v.toLocaleString("en-SG");
 const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0);
-const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-SG", { day: "numeric", month: "short", timeZone: "UTC" });
+const shortDate = (iso: string, withYear = false) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-SG", {
+    day: "numeric",
+    month: "short",
+    ...(withYear ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  });
 
 /**
  * *Why people leave* (PRD-crm-retention-loop slice 10): what visitors say
@@ -57,6 +63,10 @@ export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
   const loading = !error && (!data || data.days !== days);
   const top = data?.byReason[0]?.count ?? 0;
   const weekMax = Math.max(1, ...(data?.weeks.map((w) => w.count) ?? [0]));
+  // A window that crosses New Year needs the year on its dates.
+  const withYear = Boolean(data && data.weeks[0]?.weekStart.slice(0, 4) !== data.weeks.at(-1)?.weekStart.slice(0, 4));
+  const weekLabel = (w: { weekStart: string; partial: boolean }) =>
+    `Week of ${shortDate(w.weekStart, withYear)}${w.partial ? " (part week)" : ""}`;
 
   return (
     <Card>
@@ -65,10 +75,16 @@ export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
           <CardTitle className="text-base">Why people leave</CardTitle>
           <CardDescription>
             What visitors tell us stopped them, on the configurators and at checkout, and why shoppers declined a
-            quote. Self-reported and anonymous.
+            quote. Self-reported; nobody is asked for a name or email.
           </CardDescription>
         </div>
-        <Tabs value={String(days)} onValueChange={(v) => setDays(Number(v))}>
+        <Tabs
+          value={String(days)}
+          onValueChange={(v) => {
+            setDays(Number(v));
+            setError(null);
+          }}
+        >
           <TabsList>
             {WINDOWS.map((w) => (
               <TabsTrigger key={w.days} value={String(w.days)}>
@@ -95,6 +111,11 @@ export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
           </p>
         ) : (
           <>
+            {data.capped ? (
+              <p className="text-xs text-muted-foreground">
+                Counting the newest {n(data.capped)} answers in this window; older ones are left out.
+              </p>
+            ) : null}
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg border p-3">
                 <dt className="text-xs text-muted-foreground">Answers</dt>
@@ -148,26 +169,29 @@ export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
                 {data.weeks.map((w) => (
                   <div
                     key={w.weekStart}
-                    title={`Week of ${shortDate(w.weekStart)}: ${n(w.count)}`}
+                    title={`${weekLabel(w)}: ${n(w.count)}`}
                     className="flex h-full min-w-0 flex-1 items-end"
                   >
                     <div
-                      className="w-full rounded-t-[4px] bg-chart-2"
+                      className={cn("w-full rounded-t-[4px]", w.partial ? "bg-chart-2/40" : "bg-chart-2")}
                       style={{ height: w.count ? `${Math.max(4, (w.count / weekMax) * 100)}%` : "0" }}
                     />
                   </div>
                 ))}
               </div>
               <div className="flex justify-between text-xs text-muted-foreground" aria-hidden>
-                <span>{shortDate(data.weeks[0]!.weekStart)}</span>
-                <span>{shortDate(data.weeks.at(-1)!.weekStart)}</span>
+                <span>{shortDate(data.weeks[0]!.weekStart, withYear)}</span>
+                <span>{shortDate(data.weeks.at(-1)!.weekStart, withYear)}</span>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Weeks start on Monday. Paler bars are part weeks: the start of the window and this week so far.
+              </p>
               <table className="sr-only">
                 <caption>Answers per week</caption>
                 <tbody>
                   {data.weeks.map((w) => (
                     <tr key={w.weekStart}>
-                      <th scope="row">Week of {shortDate(w.weekStart)}</th>
+                      <th scope="row">{weekLabel(w)}</th>
                       <td>{w.count}</td>
                     </tr>
                   ))}
@@ -186,7 +210,12 @@ export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
                       <p className="break-words">{t.text}</p>
                       <p className="text-xs text-muted-foreground">
                         {DROP_OFF_REASON_LABEL[t.reason]} · {DROP_OFF_STEP_LABEL[t.step]} ·{" "}
-                        {new Date(t.at).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(t.at).toLocaleDateString("en-SG", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          timeZone: "Asia/Singapore",
+                        })}
                       </p>
                     </li>
                   ))}

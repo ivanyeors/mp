@@ -111,7 +111,7 @@ The end of a **Visit** without conversion: last page, last section when known, a
 _Avoid_: bounce (too narrow); exit intent; “why they left” as captured fact
 
 **Drop-off reason**:
-What a person tells us stopped them, asked on the configurators and at checkout as they move to leave, and on a **Result**'s decline step (`drop_off_reasons`; PRD-crm-retention-loop slice 10). Self-reported: one closed answer, with optional text on *Something did not work* and *Other*. Anonymous: tied to the **Visit** and **Visitor** ids, or for a decline to the **Result**, never to contact details. Kept apart from a **Drop-off**, which records only where a **Visit** ended. Asked at most once per browser per 30 days; the reply offers help, never a discount.
+What a person tells us stopped them, asked on the configurators and at checkout as they move to leave, and on a **Result**'s decline step (`drop_off_reasons`; PRD-crm-retention-loop slice 10). Self-reported: one closed answer, with optional text on *Something did not work* and *Other*. Holds no contact details: tied to the **Visit** and **Visitor** ids, or for a decline to the **Result**. A **Visitor** merged to a person links their answers to them too, so the card promises only that it asks for no name or email, never that answers are anonymous. Kept apart from a **Drop-off**, which records only where a **Visit** ended. Asked at most once per browser per 30 days; the reply offers help, never a discount.
 _Avoid_: treating it as a **Drop-off** or the reverse; inferring a reason nobody gave; **Discovery source** (how they found us, not why they left)
 
 **Filling Template**:

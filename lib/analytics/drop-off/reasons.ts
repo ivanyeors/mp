@@ -62,7 +62,7 @@ export const DROP_OFF_STEP_LABEL: Record<DropOffStep, string> = {
 export const REASONS_FOR_STEP: Record<DropOffStep, readonly DropOffReason[]> = {
   configurator: ["size_or_feel", "try_in_person", "price", "delivery", "not_working", "just_looking", "other"],
   checkout: ["size_or_feel", "try_in_person", "price", "delivery", "not_working", "just_looking", "other"],
-  quote_decline: ["size_or_feel", "try_in_person", "price", "delivery", "changed_mind", "other"],
+  quote_decline: ["size_or_feel", "try_in_person", "price", "delivery", "not_working", "changed_mind", "other"],
 };
 
 /** Answers that take a line of text. */
@@ -99,9 +99,20 @@ export function isEngaged(input: { enteredAt: number; interactions: number; now:
   return input.interactions >= 1 && input.now - input.enteredAt >= ENGAGED_AFTER_MS;
 }
 
+/**
+ * How near the top edge the pointer's last position may be. A fast flick to
+ * the tabs reports its last position a few pixels inside the window, not at 0.
+ */
+const EXIT_EDGE_PX = 10;
+
 /** The pointer left through the top of the window, toward the tabs or the address bar. */
 export function isExitIntent(event: { clientY: number; relatedTarget: unknown }): boolean {
-  return event.relatedTarget == null && event.clientY <= 0;
+  return event.relatedTarget == null && event.clientY < EXIT_EDGE_PX;
+}
+
+/** Staff editing a Result in the storefront configurator (`?edit=1`, lib/results/staff-edit) are not visitors. */
+export function isStaffEdit(search: string): boolean {
+  return new URLSearchParams(search).get("edit") === "1";
 }
 
 /** A step's answers in a random order, *Other* always last, so position does not lead the answer. */

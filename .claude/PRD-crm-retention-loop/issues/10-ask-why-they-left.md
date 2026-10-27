@@ -20,9 +20,11 @@ Defined in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md#closing-t
 - **The question on the site.** On the configurators (`/mp-config`, `/mp-basic`,
   `/mbolster-config`) and checkout (`/shop/checkout`), a small, dismissable card asks *"What
   stopped you today?"*:
-  - **When:** only after the visitor has started (20 seconds on the page and one interaction),
-    then either the pointer leaves the top of the window (desktop) or 60 seconds pass with no
-    interaction (any device). Never while a field has focus.
+  - **When:** only after the visitor has started (20 seconds on the page and a tap, click or
+    key), then either the pointer leaves the top of the window (desktop) or 60 seconds pass with
+    no activity (any device). Never while a field has focus, and never while Staff edit a Result
+    in the configurator (`?edit=1`). Moving to another page closes it; an answer already picked
+    is still recorded, filed on the page that asked.
   - **How often:** once per browser per 30 days, whichever step asked.
   - **Answers**, in a random order with *Other* last: *Not sure about the size or feel*, *I want
     to try it in person first*, *The price*, *Delivery cost or time*, *Something did not work*,
@@ -37,7 +39,8 @@ Defined in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md#closing-t
 - **Storage.** `drop_off_reasons` (server-only: RLS on, no policy, nothing granted to `anon` or
   `authenticated`): step, reason, optional text, the page path, the Visit and Visitor ids from the
   journey tracker when present, the Result for a decline, the time. One answer per Visit per step.
-  `POST /api/analytics/drop-off-reason` validates with zod and is rate limited per IP.
+  `POST /api/analytics/drop-off-reason` takes JSON only, validates with zod, checks the page
+  against the step, and allows six answers an hour per address, counted across instances.
 - **Closing the loop.** A *Why people leave* card on Analytics (`analytics`): answers by step and
   reason for the last 30, 90 or 365 days, a weekly count, the area each reason points to, and the
   latest typed answers. Text answers are shown to Staff only.
@@ -56,7 +59,8 @@ Defined in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md#closing-t
 
 - [ ] A browser sees the question at most once in 30 days, never before the visitor has started,
   never while a field has focus, and never on Admin Panel pages.
-- [ ] Every answer is stored with its step; an anonymous answer carries no contact details.
+- [ ] Every answer is stored with its step and carries no contact details; the card promises only
+  that it asks for no name or email.
 - [ ] A second answer for the same Visit and step is ignored, not an error.
 - [ ] The endpoint refuses an unknown step or reason, text over 500 characters, and floods.
 - [ ] A decline with a reason stores it; a decline that fails stores nothing; a decline without

@@ -467,7 +467,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
   - `confirmationPoints()` [select] — lib/email/index.ts:284
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
-  - `customerIdForResult()` [select] — lib/crm/customer-link.ts:21
+  - `customerIdForResult()` [select] — lib/crm/customer-link.ts:22
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:77
   - `getCurrentCustomerId()` [select] — lib/shop/customer-addresses.ts:39
@@ -1585,7 +1585,7 @@ Changed from pages: `/results/[id]`
 - Written by:
   - `recordDropOffReason()` [insert] — lib/analytics/drop-off/store.ts:36
 - Read by:
-  - `readDropOffSummary()` [select] — lib/analytics/drop-off/store.ts:127
+  - `readDropOffSummary()` [select] — lib/analytics/drop-off/store.ts:153
 
 ### email_campaign_stats
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:297

@@ -32,8 +32,9 @@ fact, the **Drop-off reason** (PRD-crm-retention-loop slice 10, `drop_off_reason
 
 - one closed question on the configurators and at checkout, as a visitor who has started moves
   to leave, at most once per browser per 30 days; and on a Result's decline step;
-- self-reported and anonymous, tied to the Visit and Visitor ids (decision 3 still governs any
-  merge to a person) or to the Result for a decline;
+- self-reported and holding no contact details, tied to the Visit and Visitor ids or to the
+  Result for a decline. Decision 3 still governs any merge to a person, and a merged Visitor's
+  answers are theirs, so the card says it asks for no name or email, not that it is anonymous;
 - never written into `analytics_visits`, never inferred from a path, and shown to Staff on
   Analytics beside the Drop-off graph as *Why people leave*.
 

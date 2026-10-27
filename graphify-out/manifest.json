@@ -5874,9 +5874,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793103677.2205844,
-    "seen": 1793104054.0653856,
-    "ast_hash": "fee85cc13bb727c81123deae44577659",
+    "mtime": 1793105590.1893654,
+    "seen": 1793106644.3844073,
+    "ast_hash": "c085e0ba6f4a00b22864ff662cd1e7d2",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -6048,9 +6048,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0007-first-party-journey-analytics.md": {
-    "mtime": 1793103677.221315,
-    "seen": 1793104054.0654323,
-    "ast_hash": "bc414c012a85f3fd0922f9b2cb15dd8d",
+    "mtime": 1793105590.1933792,
+    "seen": 1793106644.3844998,
+    "ast_hash": "6998b6f84d404a90186378c827f55f7d",
     "semantic_hash": ""
   },
   "docs/adr/0008-spatial-filling-placements.md": {
@@ -13830,9 +13830,9 @@
     "semantic_hash": ""
   },
   "lib/crm/segment-rules.ts": {
-    "mtime": 1793102964.73928,
-    "seen": 1793103250.6097379,
-    "ast_hash": "aca0534bc2e0b0947cb2c2a9de8942fd",
+    "mtime": 1793105590.1953137,
+    "seen": 1793106644.3809106,
+    "ast_hash": "3ea8da163fda47cc3d044333ef29bcb1",
     "semantic_hash": ""
   },
   "lib/crm/segments.ts": {
@@ -15498,15 +15498,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/10-ask-why-they-left.md": {
-    "mtime": 1793103995.6301079,
-    "seen": 1793104054.0645113,
-    "ast_hash": "965bb1d30c140958840a15d51bd5f083",
+    "mtime": 1793106581.6979725,
+    "seen": 1793106644.3834112,
+    "ast_hash": "84abd9182a96e49593c6e45af5ed6284",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/lifecycle-and-metrics.md": {
-    "mtime": 1793102690.9211333,
-    "seen": 1793103250.612215,
-    "ast_hash": "42242d3eea602366f7edfe63be148737",
+    "mtime": 1793105590.1889544,
+    "seen": 1793106644.383415,
+    "ast_hash": "7ff2e7754db0fcf91ab82e39294a48e5",
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/__tests__/segment-options.test.ts": {
@@ -15522,9 +15522,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-link.test.ts": {
-    "mtime": 1793102816.1800444,
-    "seen": 1793103250.6096678,
-    "ast_hash": "7de62abf8a39ea4f8a5c119c75b7e829",
+    "mtime": 1793105590.1948984,
+    "seen": 1793106644.3808405,
+    "ast_hash": "367d30cd4d25e34b682d8dd5b5461831",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segment-handoffs.test.ts": {
@@ -15534,9 +15534,9 @@
     "semantic_hash": ""
   },
   "lib/crm/customer-link.ts": {
-    "mtime": 1793102863.3603575,
-    "seen": 1793103250.6097088,
-    "ast_hash": "2767f1064258514eedc661d2e7dad7c4",
+    "mtime": 1793105590.1950889,
+    "seen": 1793106644.3808844,
+    "ast_hash": "d79220885d64b19355461c076adbf552",
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/drop-off-actions.ts": {
@@ -15546,15 +15546,15 @@
     "semantic_hash": ""
   },
   "app/api/analytics/drop-off-reason/__tests__/route.test.ts": {
-    "mtime": 1793103407.1492736,
-    "seen": 1793104054.061221,
-    "ast_hash": "726d93a6a3c9650594a3eba8b4b67327",
+    "mtime": 1793105590.191823,
+    "seen": 1793106644.3797944,
+    "ast_hash": "0b6c9465bbe8ee886211d93747204732",
     "semantic_hash": ""
   },
   "app/api/analytics/drop-off-reason/route.ts": {
-    "mtime": 1793103527.050421,
-    "seen": 1793104054.0612235,
-    "ast_hash": "58ca92fca23fd0abfd380739cae13001",
+    "mtime": 1793105590.1920245,
+    "seen": 1793106644.379799,
+    "ast_hash": "07feeaf52edbbc1bff20e76c042356d6",
     "semantic_hash": ""
   },
   "app/api/results/[id]/decline/__tests__/decline-reason.test.ts": {
@@ -15564,33 +15564,33 @@
     "semantic_hash": ""
   },
   "lib/analytics/drop-off/__tests__/reasons.test.ts": {
-    "mtime": 1793103527.0513759,
-    "seen": 1793104054.0618882,
-    "ast_hash": "3c8ee64ab972cbee69e698958d70110f",
+    "mtime": 1793105590.1936316,
+    "seen": 1793106644.3805099,
+    "ast_hash": "052e5d233b813a593f8685aa6ba0b10f",
     "semantic_hash": ""
   },
   "lib/analytics/drop-off/__tests__/store.test.ts": {
-    "mtime": 1793103392.0281792,
-    "seen": 1793104054.06189,
-    "ast_hash": "b76d5167c7d200ad833e8dac0a1c1b42",
+    "mtime": 1793105590.193862,
+    "seen": 1793106644.380512,
+    "ast_hash": "5d85b3acba4a0e118e20883338889407",
     "semantic_hash": ""
   },
   "lib/analytics/drop-off/reasons.ts": {
-    "mtime": 1793103527.0497415,
-    "seen": 1793104054.061891,
-    "ast_hash": "d4b3afa159ed7338f1756bf94dbf1167",
+    "mtime": 1793105590.1940873,
+    "seen": 1793106644.3805141,
+    "ast_hash": "b9b82a035f31929228a027feb54b2383",
     "semantic_hash": ""
   },
   "lib/analytics/drop-off/schema.ts": {
-    "mtime": 1793103527.0498958,
-    "seen": 1793104054.0618923,
-    "ast_hash": "f04c646391dbdc88fe162970d568efd2",
+    "mtime": 1793105590.1942947,
+    "seen": 1793106644.380516,
+    "ast_hash": "f710a9dbe2fd577854af0a72671d51c2",
     "semantic_hash": ""
   },
   "lib/analytics/drop-off/store.ts": {
-    "mtime": 1793103331.2880325,
-    "seen": 1793104054.061894,
-    "ast_hash": "fc98558b6867dc139847873b38f76541",
+    "mtime": 1793105590.1945493,
+    "seen": 1793106644.3805182,
+    "ast_hash": "398f5869c55315648970ff8fda4fe0f8",
     "semantic_hash": ""
   },
   "supabase/migrations/20261027120000_drop_off_reasons.sql": {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV_GROUPS, visibleItems } from "@/components/settings/settings-sidebar-nav";
+import { NAV_GROUPS, canOpen, visibleItems } from "@/components/settings/settings-sidebar-nav";
 import { buildSettingsBreadcrumbs } from "@/components/settings/settings-breadcrumbs";
 import { permissionEntry, permissionForHref, type Permission } from "@/lib/auth/permissions";
 
@@ -56,5 +56,22 @@ describe("visibleItems", () => {
   it("hides what the role does not hold", () => {
     expect(shown(["orders"])).toEqual([["/settings/orders", []]]);
     expect(shown([])).toEqual([]);
+  });
+});
+
+// The trail links a crumb only when the role can open it (`canOpen`), as the menu does.
+describe("breadcrumb links", () => {
+  it("leaves Email campaigns a label for a role holding Email templates alone", () => {
+    const crumbs = buildSettingsBreadcrumbs("/settings/email-templates", NAV_GROUPS);
+    const linked = (permissions: Permission[]) =>
+      crumbs.slice(0, -1).map((c) => [c.label, Boolean(c.href && canOpen(c.href, permissions))]);
+    expect(linked(["email-templates"])).toEqual([
+      ["Admin Panel", true],
+      ["Email campaigns", false],
+    ]);
+    expect(linked(["email-templates", "campaigns"])).toEqual([
+      ["Admin Panel", true],
+      ["Email campaigns", true],
+    ]);
   });
 });

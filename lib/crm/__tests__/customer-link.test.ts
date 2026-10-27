@@ -48,4 +48,19 @@ describe("customerIdForResult", () => {
     twins.customers!.push({ id: GONE, email: "MEI@example.com" });
     expect(await find({ customer_id: null, customer_email: "mei@example.com" }, twins)).toBeNull();
   });
+
+  // A failed read is not "no such Customer": the email could name someone else.
+  it("links nothing when reading the Result's own Customer fails", async () => {
+    let emailLookups = 0;
+    const query = {
+      select: () => query,
+      eq: () => query,
+      maybeSingle: async () => ({ data: null, error: { message: "timeout" } }),
+      ilike: () => ((emailLookups += 1), query),
+      limit: async () => ({ data: [{ id: ANN }], error: null }),
+    };
+    const admin = { from: () => query };
+    expect(await customerIdForResult(admin as never, { customer_id: MEI, customer_email: "ann_lee@example.com" })).toBeNull();
+    expect(emailLookups).toBe(0);
+  });
 });

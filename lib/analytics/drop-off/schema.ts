@@ -12,12 +12,16 @@ import {
  * Server-side, apart from ./reasons so the storefront bundle carries no zod.
  */
 
+// Control characters other than tab and newline have no place in a typed
+// answer, and Postgres refuses NUL in text outright.
+const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
 const optionalText = z
   .string()
   .max(DROP_OFF_TEXT_MAX)
   .optional()
   .nullable()
-  .transform((v) => (v?.trim() ? v.trim() : null));
+  .transform((v) => v?.replace(CONTROL_CHARS, "").trim() || null);
 
 /** One answer from the storefront card, as the ingest route accepts it. */
 export const SiteDropOffAnswerSchema = z
@@ -25,7 +29,8 @@ export const SiteDropOffAnswerSchema = z
     step: z.enum(SITE_DROP_OFF_STEPS),
     reason: z.enum(DROP_OFF_REASONS),
     text: optionalText,
-    path: z.string().max(200).optional().nullable(),
+    // The page it was asked on, checked against the step by the route.
+    path: z.string().min(1).max(200),
     visitId: z.string().uuid().optional().nullable(),
     visitorId: z.string().uuid().optional().nullable(),
   })

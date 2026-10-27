@@ -43,10 +43,13 @@ describe("recordDropOffReason", () => {
 });
 
 describe("weekStartOf", () => {
-  it("is the Monday of the week, UTC", () => {
+  it("is the Monday of the week in Singapore, not in UTC", () => {
     expect(weekStartOf(Date.parse("2026-10-27T12:00:00Z"))).toBe("2026-10-26");
-    expect(weekStartOf(Date.parse("2026-10-26T00:00:00Z"))).toBe("2026-10-26");
-    expect(weekStartOf(Date.parse("2026-10-25T23:59:59Z"))).toBe("2026-10-19");
+    // Monday 00:00 in Singapore is Sunday 16:00 UTC.
+    expect(weekStartOf(Date.parse("2026-10-25T16:00:00Z"))).toBe("2026-10-26");
+    expect(weekStartOf(Date.parse("2026-10-25T15:59:59Z"))).toBe("2026-10-19");
+    // A Monday-morning answer in Singapore is still Sunday in UTC.
+    expect(weekStartOf(Date.parse("2026-10-25T23:59:59Z"))).toBe("2026-10-26");
   });
 });
 
@@ -75,10 +78,17 @@ describe("summariseDropOffs", () => {
 
   it("lists every week in the window, oldest first, and the typed answers newest first", () => {
     const s = summariseDropOffs(rows, { days: 30, now: NOW });
-    expect(s.weeks.at(-1)).toEqual({ weekStart: "2026-10-26", count: 2 });
+    expect(s.weeks.at(-1)).toEqual({ weekStart: "2026-10-26", count: 2, partial: true });
     expect(s.weeks.reduce((a, w) => a + w.count, 0)).toBe(6);
     expect(s.weeks.map((w) => w.weekStart)).toEqual([...s.weeks.map((w) => w.weekStart)].sort());
     expect(s.latestText.map((t) => t.text)).toEqual(["button froze", "bought elsewhere"]);
+  });
+
+  it("marks the window's first week and the running week as part weeks, and only those", () => {
+    const s = summariseDropOffs(rows, { days: 30, now: NOW });
+    expect(s.weeks[0]!.partial).toBe(true);
+    expect(s.weeks.at(-1)!.partial).toBe(true);
+    expect(s.weeks.slice(1, -1).every((w) => !w.partial)).toBe(true);
   });
 
   it("is empty, not missing, with nothing to count", () => {
@@ -90,6 +100,30 @@ describe("summariseDropOffs", () => {
 });
 
 describe("readDropOffSummary", () => {
+  const many = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      id: `r${String(i).padStart(5, "0")}`,
+      step: "configurator",
+      reason: "price",
+      other_text: null,
+      created_at: new Date(NOW.getTime() - (i + 1) * 60_000).toISOString(),
+    }));
+
+  // Supabase answers at most 1,000 rows and drops the rest without an error.
+  it("pages past a thousand answers", async () => {
+    const db: FakeDb = { drop_off_reasons: many(2_500) };
+    const s = await readDropOffSummary(fakeSupabaseAdmin(db) as never, { days: 30, now: NOW });
+    expect(s.total).toBe(2_500);
+    expect(s.capped).toBeUndefined();
+  });
+
+  it("counts the newest answers past its cap, and says so", async () => {
+    const db: FakeDb = { drop_off_reasons: many(2_500) };
+    const s = await readDropOffSummary(fakeSupabaseAdmin(db) as never, { days: 30, now: NOW, cap: 2_000 });
+    expect(s.total).toBe(2_000);
+    expect(s.capped).toBe(2_000);
+  });
+
   it("reads the window's rows and summarises them", async () => {
     const db: FakeDb = { drop_off_reasons: rows() };
     const s = await readDropOffSummary(fakeSupabaseAdmin(db) as never, { days: 30, now: NOW });

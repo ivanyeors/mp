@@ -53,23 +53,35 @@ export interface DropOffSummary {
   byReason: { reason: DropOffReason; count: number; byStep: Record<DropOffStep, number> }[];
   /** Answers per step. */
   byStep: Record<DropOffStep, number>;
-  /** Answers per week (weeks start on Monday, UTC), oldest first, every week in the window. */
-  weeks: { weekStart: string; count: number }[];
+  /**
+   * Answers per week (weeks start on Monday in Singapore), oldest first, every
+   * week in the window. The first week starts before the window and the last
+   * is still running, so either may be `partial`.
+   */
+  weeks: { weekStart: string; count: number; partial: boolean }[];
   /** The latest typed answers, newest first. */
   latestText: { step: DropOffStep; reason: DropOffReason; text: string; at: string }[];
+  /** Set when the window held more answers than were read: the newest `capped` were counted. */
+  capped?: number;
 }
 
 export const SUMMARY_DAYS = [30, 90, 365] as const;
 export type SummaryDays = (typeof SUMMARY_DAYS)[number];
 const LATEST_TEXT = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
+/** Singapore keeps UTC+8 all year, so a fixed offset is its wall clock. */
+const SGT_OFFSET_MS = 8 * 60 * 60 * 1000;
 
-/** Monday 00:00 UTC of the week holding `ms`, as `YYYY-MM-DD`. */
+/** Monday of the Singapore week holding `ms`, as `YYYY-MM-DD`. */
 export function weekStartOf(ms: number): string {
-  const d = new Date(ms);
+  const d = new Date(ms + SGT_OFFSET_MS);
   const sinceMonday = (d.getUTCDay() + 6) % 7;
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - sinceMonday)).toISOString().slice(0, 10);
 }
+
+/** The instant a `weekStartOf` week begins: Monday 00:00 in Singapore. */
+const weekStartMs = (weekStart: string) => Date.parse(`${weekStart}T00:00:00Z`) - SGT_OFFSET_MS;
 
 /** Pure: the Analytics card's numbers from the window's rows. */
 export function summariseDropOffs(rows: readonly DropOffRow[], { days, now }: { days: number; now: Date }): DropOffSummary {
@@ -113,23 +125,48 @@ export function summariseDropOffs(rows: readonly DropOffRow[], { days, now }: { 
     total: inWindow.length,
     byReason,
     byStep,
-    weeks: [...weeks.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([weekStart, count]) => ({ weekStart, count })),
+    weeks: [...weeks.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([weekStart, count]) => {
+        const start = weekStartMs(weekStart);
+        return { weekStart, count, partial: start < since || start + WEEK_MS > now.getTime() };
+      }),
     latestText,
   };
 }
 
-/** The rows the card needs, at most `cap` of the newest, then summarised. */
+// Supabase answers at most 1,000 rows and drops the rest without an error, so
+// the window is paged, newest first, with `id` last for a total order.
+const PAGE_ROWS = 1000;
+/** More than a year of answers at the rate a person is asked; past it, the newest are counted and the card says so. */
+export const SUMMARY_ROW_CAP = 50_000;
+
+/** The window's rows, paged, then summarised. */
 export async function readDropOffSummary(
   admin: SupabaseClient,
-  { days, now = new Date(), cap = 10_000 }: { days: number; now?: Date; cap?: number },
+  { days, now = new Date(), cap = SUMMARY_ROW_CAP }: { days: number; now?: Date; cap?: number },
 ): Promise<DropOffSummary> {
   const since = new Date(now.getTime() - days * DAY_MS).toISOString();
-  const { data, error } = await admin
-    .from("drop_off_reasons")
-    .select("step, reason, other_text, created_at")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(cap);
-  if (error) throw new Error(error.message);
-  return summariseDropOffs((data ?? []) as DropOffRow[], { days, now });
+  const rows: DropOffRow[] = [];
+  let capped = false;
+  for (;;) {
+    const { data, error } = await admin
+      .from("drop_off_reasons")
+      .select("step, reason, other_text, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(rows.length, rows.length + PAGE_ROWS - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as DropOffRow[];
+    rows.push(...page);
+    if (page.length < PAGE_ROWS) break;
+    if (rows.length >= cap) {
+      capped = true;
+      rows.length = cap;
+      break;
+    }
+  }
+  const summary = summariseDropOffs(rows, { days, now });
+  return capped ? { ...summary, capped: cap } : summary;
 }

@@ -913,6 +913,20 @@ function ResultStatusPage() {
               />
             </>
           ) : null}
+          {declineReason ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-muted-foreground"
+              onClick={() => {
+                setDeclineReason(null);
+                setDeclineText("");
+              }}
+            >
+              Clear my answer
+            </Button>
+          ) : null}
         </fieldset>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" disabled={acting} onClick={() => setDeclineOpen(false)}>

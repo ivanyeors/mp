@@ -271,7 +271,7 @@ matches something we can change.
 
 | Who | When | How | Stored as |
 |---|---|---|---|
-| A Visitor in a configurator or at checkout | they move to leave, once per Visitor per 30 days, never in the way | a small card: "What stopped you finishing your custom pillow today?" | a **Drop-off reason** on the Visit, anonymous |
+| A Visitor in a configurator or at checkout | they move to leave, once per Visitor per 30 days, never in the way | a small card: "What stopped you finishing your custom pillow today?" | a **Drop-off reason** on the Visit, with no name or email asked |
 | A shopper turning a quote down | on the decline step itself | the same question, optional, before they confirm | a **decline reason** on the Result |
 | A Lead whose hold was released or expired | 2 days after it ended, once | one email or WhatsApp, each answer a one-tap link, no offer | a reason on the Result |
 | A customisation appointment with no purchase in 14 days | then | a Follow-up for the Staff member who saw them, with a reason to record | a reason on the Follow-up |
@@ -292,7 +292,9 @@ matches something we can change.
 - A Drop-off reason is self-reported, kept apart from a Drop-off, which records where they left.
   That is the line ADR 0007 draws, and `CONTEXT.md` gains the term with that definition, as it
   did for Discovery source.
-- An anonymous answer stays anonymous. Text answers are Staff-only and never shown in Telegram.
+- An answer holds no contact details, and the card says only that it asks for none: a Visitor
+  later merged to a person links their answers to them. Text answers are Staff-only and never
+  shown in Telegram.
 - The email or WhatsApp to a Lead asks one question about their own unfinished purchase, carries
   no offer and goes once. Counsel confirms it is a service message under the PDPA and the Spam
   Control Act before it is switched on, as with the check-up reminder

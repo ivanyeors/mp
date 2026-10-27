@@ -6,6 +6,7 @@ import {
   dropOffStepForPath,
   isEngaged,
   isExitIntent,
+  isStaffEdit,
   mayAsk,
   shuffledReasons,
 } from "@/lib/analytics/drop-off/reasons";
@@ -48,8 +49,16 @@ describe("when to ask", () => {
   it("reads exit intent as the pointer leaving through the top of the window", () => {
     expect(isExitIntent({ clientY: -2, relatedTarget: null })).toBe(true);
     expect(isExitIntent({ clientY: 0, relatedTarget: null })).toBe(true);
+    // A fast flick to the tabs last reports a few pixels inside the window.
+    expect(isExitIntent({ clientY: 6, relatedTarget: null })).toBe(true);
     expect(isExitIntent({ clientY: 300, relatedTarget: null })).toBe(false);
     expect(isExitIntent({ clientY: -2, relatedTarget: {} })).toBe(false);
+  });
+
+  it("never asks Staff editing a Result in the configurator", () => {
+    expect(isStaffEdit("?result=abc&edit=1")).toBe(true);
+    expect(isStaffEdit("?result=abc")).toBe(false);
+    expect(isStaffEdit("")).toBe(false);
   });
 });
 
@@ -80,12 +89,22 @@ describe("SiteDropOffAnswerSchema", () => {
     expect(SiteDropOffAnswerSchema.safeParse({ ...ok, reason: "other", text: "x".repeat(501) }).success).toBe(false);
     expect(SiteDropOffAnswerSchema.safeParse({ ...ok, email: "a@b.c" }).success).toBe(false);
     expect(SiteDropOffAnswerSchema.safeParse({ ...ok, visitId: "not-a-uuid" }).success).toBe(false);
+    expect(SiteDropOffAnswerSchema.safeParse({ ...ok, path: undefined }).success).toBe(false);
+  });
+
+  it("strips control characters Postgres would refuse from typed text", () => {
+    expect(SiteDropOffAnswerSchema.parse({ ...ok, reason: "other", text: "a\u0000b\u001Fc\nd" }).text).toBe("abc\nd");
+    expect(SiteDropOffAnswerSchema.parse({ ...ok, reason: "other", text: "\u0000" }).text).toBeNull();
   });
 });
 
 describe("DeclineReasonSchema", () => {
-  it("takes the decline's answers only", () => {
+  it("takes the decline's answers only: Changed my mind in place of Just looking", () => {
     expect(DeclineReasonSchema.parse({ reason: "changed_mind" })).toEqual({ reason: "changed_mind", text: null });
+    expect(DeclineReasonSchema.parse({ reason: "not_working", text: "Card page froze" })).toEqual({
+      reason: "not_working",
+      text: "Card page froze",
+    });
     expect(DeclineReasonSchema.safeParse({ reason: "just_looking" }).success).toBe(false);
   });
 });
