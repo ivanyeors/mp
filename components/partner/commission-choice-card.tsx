@@ -84,7 +84,11 @@ export async function CommissionChoiceCard({ partnerId }: { partnerId: string })
             : "The part of the pool you don't take goes back to Mpillow."}
         </p>
 
-        <CommissionChoiceForm pool={terms.pool} current={waitingTakes ?? takes} />
+        <CommissionChoiceForm
+          pool={terms.pool}
+          current={waitingTakes ?? takes}
+          customerDiscount={terms.customerDiscount}
+        />
       </CardContent>
     </Card>
   );
