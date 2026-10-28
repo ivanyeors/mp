@@ -10,11 +10,10 @@ the decision is ADR 0036. Verified against production data on 2026-10-28.
 flowchart TD
   o[(orders · paid_at)] --> pm[(order_margins)]
   o --> oi[(order_items<br/>unit_cost · total_cost)]
-  so[(shopify_orders · paid_at)] --> sl[(shopify_order_lines<br/>unit_cost · total_cost · is_others)]
+  so[(shopify_orders · paid_at)] --> sl[(shopify_order_lines<br/>total_cost · is_others)]
   pm --> load["loadSalesReport()<br/>lib/analytics/channel-sales.ts"]
   oi --> load
   sl --> load
-  ctx["loadShopifyMirrorCostingsContext()<br/>why a line has no cost"] --> load
   load --> rep["buildSalesReport()<br/>lib/analytics/sold-lines.ts"]
   rep --> kpi["Revenue · Gross margin · Margin % · Cost coverage"]
   rep --> gaps["Sales with no cost"]
@@ -31,10 +30,8 @@ cards, the breakdown and the timeline therefore add up to the same totals.
   and tax.
   - An Order's comes from `order_margins` (gross margin + COGS: the subtotal
     less discount, scaled by refunds through the money ledger).
-  - A Shopify order's is its lines' list prices, capped at what the customer
-    paid (`total_price`), less `amount_refunded`. The mirror keeps no discount
-    figure, so the cap is how a discount comes off. On an order with both a
-    discount and shipping, the shipping can still hide part of the discount.
+  - A Shopify order's is read from the mirror as recorded: its lines' gross
+    less `amount_refunded`.
   - An order's revenue is spread over its lines by list price.
 - **COGS** is the cost frozen on each line when it sold, less restocked returns.
 - **Gross margin** is costed revenue minus COGS, and **Margin %** is a share
@@ -44,22 +41,17 @@ cards, the breakdown and the timeline therefore add up to the same totals.
 ## A sale with no cost is never $0 cost
 
 A line with no frozen cost is reported as uncosted revenue. It stays in
-Revenue, out of the margin, and appears under **Sales with no cost** with the
-reason and the page that fixes it. Before 2026-10-28 such lines counted as
-costing $0, which showed their whole revenue as profit; that is how the page
-reported 86.6% for May–Oct 2026.
+Revenue, out of the margin, and appears under **Sales with no cost**. Before
+2026-10-28 such lines counted as costing $0, which showed their whole revenue
+as profit; that is how the page reported 86.6% for May–Oct 2026, when $37,216
+of $86,306 of sales had no cost.
 
-| Reason | Fix |
-|---|---|
-| An Item in the build has no cost price | Costings. Shopify lines re-cost on the next Costings save (`reResolveShopifyLineCosts`) |
-| The product has no recipe | Configure |
-| A Shopify variant is not mapped | Integrations → Shopify |
-| A platform line recorded no cost | Cannot be fixed afterwards: an Order keeps the cost it sold with |
+The Shopify order mirror is a read-only input (`CONTEXT.md`): Analytics reads
+its costs as stored and works out none of its own. A Service takes no stock;
+its line carries the cost set in Costings → Service fees, and none (counted as
+$0) when that is blank.
 
-A Service takes no stock. Its line carries the cost set in Costings → Service
-fees, and none (counted as $0) when that is blank.
-
-## How each sale is costed
+## How a platform sale is costed
 
 | Channel | Written by | Cost of one unit |
 |---|---|---|
@@ -67,18 +59,11 @@ fees, and none (counted as $0) when that is blank.
 | Staff-made Order | `POST /api/shop/orders` | The same, per Variant line. A line with no Variant has no cost |
 | Result | `POST /api/results/[id]/accept` | `assembleBuild`'s COGS for the build frozen on the line |
 | Service | Result accept, `POST /api/readjustments/checkout` | `service_prices.cost_price` |
-| Shopify | `upsertShopifyOrderMirror`, `reResolveShopifyLineCosts` | `resolveShopifyMappingUnitCost`: a part is its Item; a pillow or bolster is its warehouse template (`shopify_variant_mappings.default_template_id`, the build the Shopify sales queue deducted), else its Composed sellable's recipe plus its Default Filling Template's pack |
 
-Every platform channel costs an Item with no cost price at $0, as Result accept
-and the Costings build cost do. A Shopify line instead stays uncosted until
-every Item in its build has a cost, and then re-costs itself.
-
-A recipe carries no fillings (ADR 0003). Until 2026-10-28 shop checkout and the
-Shopify mirror costed a pillow from its recipe, so neither counted its fillings.
-`scripts/recost-shopify-mirror.ts` re-costs the Shopify lines frozen that way, once.
-Estimated in SQL against production on 2026-10-28: 761 lines re-cost, 323 get a
-cost for the first time, and none lose one. For May–Oct 2026 that moves COGS
-from $11,428 to $15,631 and uncosted list revenue from $37,216 to $21,216.
+An Item with no cost price counts as $0, as Result accept and the Costings
+build cost count it. Until 2026-10-28 shop checkout costed a customised pillow
+from its Variant's `cost_price`, which is its recipe's cost; a recipe carries
+no fillings (ADR 0003), so the fillings were left out.
 
 ## Months, paging and stock
 
@@ -109,14 +94,3 @@ from $11,428 to $15,631 and uncosted list revenue from $37,216 to $21,216.
 `?tab=` keeps a tab linkable. A tab mounts only while open, so it loads only
 its own cards. The period applies to every tab except Search visibility, which
 keeps its own range.
-
-## Known gaps
-
-- **Shopify discounts.** The mirror has no discount column, so an order that has
-  both a discount and shipping still reports some of the discount as revenue.
-- **Gift vouchers sold on Shopify** count as revenue when sold. A voucher is
-  paid in advance for a later sale; it is not yet a sale.
-- **Legacy Shopify service Items.** Shopify's measurement and re-adjustment
-  variants map to Items 38–40, which Costings costs at their full MSRP, so
-  they show a 0% margin. On the platform a Service is costed from Costings →
-  Service fees.

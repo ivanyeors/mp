@@ -21,9 +21,6 @@ export type SoldChannel = "orders" | "shopify";
 
 export type SoldLineGroup = "pillow" | "bolster" | "part" | "service" | "unmapped";
 
-/** Where a missing cost is fixed: Costings, Configure (a recipe), or the Shopify variant mapping. */
-export type CostGapFix = "costings" | "configure" | "mapping";
-
 export type SoldLine = {
   group: SoldLineGroup;
   /**
@@ -41,7 +38,6 @@ export type SoldLine = {
   cost: number | null;
   /** Why `cost` is null. */
   uncostedReason?: string | null;
-  uncostedFix?: CostGapFix | null;
 };
 
 export type SoldOrder = {
@@ -88,7 +84,6 @@ export type CostGap = {
   key: string;
   label: string;
   reason: string;
-  fix: CostGapFix | null;
   lines: number;
   units: number;
   revenue: number;
@@ -282,7 +277,6 @@ function gaps(lines: AllocatedLine[]): CostGap[] {
       key: l.key,
       label: l.label,
       reason,
-      fix: l.uncostedFix ?? null,
       lines: 0,
       units: 0,
       revenue: 0,

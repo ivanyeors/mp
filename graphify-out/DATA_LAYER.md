@@ -180,7 +180,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `loadAvailabilityContext()` [select] — lib/shopify/sync.ts:39
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:263
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:133
-  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:567
+  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:474
   - `syncBolsterProducts()` [select] — lib/ecommerce/inventory-sync.ts:177
 
 ### bolster_buildable
@@ -201,7 +201,6 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:392
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:155
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:344
-  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:569
 
 ### bolster_template_placements
 Defined in supabase/migrations/20260719000001_spatial_filling_placements.sql:18
@@ -218,7 +217,6 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/api/results/hold/route.ts:473
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:251
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
-  - `loadTemplatePacks()` [select] — lib/shopify/order-mirror-ingest.ts:672
 
 ### bom_lines
 Defined in supabase/migrations/0001_inventory.sql:22
@@ -238,7 +236,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:196
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:132
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:219
-  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:564
+  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:473
   - `loadVariantLabels()` [select] — lib/stripe/variant-labels.ts:83
   - `pillowDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:140
 
@@ -270,7 +268,6 @@ Changed from pages: `/settings/inventory`, `/settings/inventory/configure/[card]
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:88
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:183
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:30
-  - `loadTemplatePacks()` [select] — lib/shopify/order-mirror-ingest.ts:680
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:50
   - `templateBuildSaleRows()` [select] — app/[lang]/settings/inventory/actions.ts:232
 
@@ -581,7 +578,6 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/api/results/hold/route.ts:492
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
-  - `loadTemplatePacks()` [select] — lib/shopify/order-mirror-ingest.ts:662
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
 ### google_places_polls
@@ -683,7 +679,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:294
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:134
   - `loadPillowComponents()` [select] — lib/results/composed-sellable.ts:121
-  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:570
+  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:475
   - `orderLinesCosts()` [select] — lib/ecommerce/order-line-cost.ts:44
   - `priceCompanionBolster()` [select] — lib/results/paired-hold.ts:56
   - `publishAllUnpublishedAccessories()` [select] — lib/ecommerce/from-inventory.ts:198
@@ -745,7 +741,7 @@ Changed from pages: `/settings/inventory`
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:206
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:135
   - `loadFillingItems()` [select] — lib/results/admin/detail-prep.ts:133
-  - `loadItems()` [select] — lib/analytics/channel-sales.ts:50
+  - `loadItems()` [select] — lib/analytics/channel-sales.ts:45
   - `loadPayload()` [select] — app/[lang]/settings/product-builder/dimensions/route.ts:36
   - `loadPillowComponents()` [select] — lib/results/composed-sellable.ts:103
   - `loadResumeFinish()` [select] — lib/results/resume-finish.ts:63
@@ -947,7 +943,7 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:169
   - `loadOrderItem()` [select] — lib/ecommerce/restock-order.ts:33
   - `loadOrderShippableLines()` [select] — lib/shipping/lines.ts:93
-  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:103
+  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:98
   - `voidCommissionsForRma()` [select] — lib/commissions/ledger.ts:106
 
 ### order_margins
@@ -956,7 +952,7 @@ Defined in supabase/migrations/20260702120000_order_margins.sql:8
   - `listAdminOrders()` [select] — lib/ecommerce/admin/orders-list.ts:99
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:23
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:74
-  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:100
+  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:95
 
 ### order_payments
 Defined in supabase/migrations/20260630130001_money_ledger.sql:19
@@ -1064,7 +1060,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadOrderInfo()` [select] — lib/commissions/referral-rows.ts:141
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:56
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:185
-  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:87
+  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:82
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:206
   - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:41
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:391
@@ -1213,10 +1209,10 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:177
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:195
   - `loadPillows()` [select] — lib/aftercare/review-request-server.ts:167
-  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:125
+  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:120
   - `loadPreOrderTriggerAtHold()` [select] — lib/configurator/pre-order-persist.ts:37
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:239
-  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:561
+  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:472
   - `loadVariantLabels()` [select] — lib/stripe/variant-labels.ts:82
   - `pillowDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:141
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:116
@@ -1326,7 +1322,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/costi
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:141
   - `listShopListingFamilies()` [select] — lib/ecommerce/shop-listings.ts:168
   - `loadExistingVariants()` [select] — lib/ecommerce/shop-listings.ts:123
-  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:119
+  - `loadPlatformSoldOrders()` [select] — lib/analytics/channel-sales.ts:114
   - `loadShippableLines()` [select] — lib/shipping/lines.ts:57
   - `main()` [select] — scripts/costings-sync-prices.ts:64
   - `publishAllUnpublishedAccessories()` [select] — lib/ecommerce/from-inventory.ts:199
@@ -2039,33 +2035,32 @@ Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:27
 References: `shopify_orders`
 Changed from pages: `/settings/costings`, `/settings/costings/services`, `/settings/integrations/shopify`
 - Written by:
-  - `applyShopifyRefund()` [select,update] — lib/shopify/order-mirror-ingest.ts:816
-  - `main()` [select,upsert] — scripts/recost-shopify-mirror.ts:40
-  - `reResolveShopifyLineCosts()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:934
-  - `upsertShopifyOrderMirror()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:739
+  - `applyShopifyRefund()` [select,update] — lib/shopify/order-mirror-ingest.ts:643
+  - `reResolveShopifyLineCosts()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:760
+  - `upsertShopifyOrderMirror()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:566
 - Read by:
-  - `loadShopifySoldOrders()` [select] — lib/analytics/channel-sales.ts:235
+  - `loadShopifySoldOrders()` [select] — lib/analytics/channel-sales.ts:230
 
 ### shopify_order_refunds
 Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:58
 References: `shopify_orders`
 - Written by:
-  - `applyShopifyRefund()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:798
+  - `applyShopifyRefund()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:625
 
 ### shopify_orders
 Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:8
 - Written by:
-  - `applyShopifyRefund()` [select,update] — lib/shopify/order-mirror-ingest.ts:804
-  - `upsertShopifyOrderMirror()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:730
+  - `applyShopifyRefund()` [select,update] — lib/shopify/order-mirror-ingest.ts:631
+  - `upsertShopifyOrderMirror()` [select,upsert] — lib/shopify/order-mirror-ingest.ts:557
 - Read by:
-  - `loadShopifySoldOrders()` [select] — lib/analytics/channel-sales.ts:222
+  - `loadShopifySoldOrders()` [select] — lib/analytics/channel-sales.ts:217
 
 ### shopify_sync_state
 Defined in supabase/migrations/20260715013000_shopify_order_mirror_schema.sql:76
 - Written by:
-  - `advanceShopifySyncCursor()` [upsert] — lib/shopify/order-mirror-ingest.ts:915
+  - `advanceShopifySyncCursor()` [upsert] — lib/shopify/order-mirror-ingest.ts:742
 - Read by:
-  - `getShopifySyncState()` [select] — lib/shopify/order-mirror-ingest.ts:885
+  - `getShopifySyncState()` [select] — lib/shopify/order-mirror-ingest.ts:712
 
 ### shopify_variant_mappings
 Defined in supabase/migrations/0010_shopify_inventory_sync.sql:5
@@ -2081,7 +2076,8 @@ Changed from pages: `/settings/integrations/shopify`
   - `GET()` [select] — app/api/shopify/diagnostics/route.ts:19
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:661
   - `buildShopifyUnmappedVariants()` [select] — app/[lang]/settings/inventory/actions.ts:864
-  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:554
+  - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:467
+  - `loadShopifySoldOrders()` [select] — lib/analytics/channel-sales.ts:250
   - `syncShopifyInventoryFromBuildable()` [select] — lib/shopify/sync.ts:162
   - `syncShopifyPricingFromSupabase()` [select] — lib/shopify/pricing.ts:76
 
@@ -2380,7 +2376,7 @@ app/[lang]/settings/analytics/page.tsx
 - Loads: `requireAdminPage()`
 - Reads: `bom_template_lines`, `bom_templates`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `seo_annotations`, `seo_daily_metrics`, `seo_target_queries`
-- Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bolster_bom_lines`, `bolster_length_config`, `bolster_template_placements`, `bom_lines`, `bom_template_lines`, `bom_templates`, `drop_off_reasons`, `filling_template_placements`, `inventory_transactions`, `item_prices`, `items`, `mp_config_responses`, `order_items`, `order_margins`, `orders`, `pillow_products`, `product_variants`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
+- Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bom_template_lines`, `bom_templates`, `drop_off_reasons`, `inventory_transactions`, `items`, `mp_config_responses`, `order_items`, `order_margins`, `orders`, `pillow_products`, `product_variants`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
 
 ### /settings/appointments
 app/[lang]/settings/appointments/page.tsx
@@ -2436,14 +2432,14 @@ app/[lang]/settings/costings/page.tsx
 - Endpoints: `/settings/costings/builds`, `/settings/costings/save`
 - Reads: `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `inventory_balances`, `items`, `pillow_products`, `product_prices`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `item_prices`, `mp_staff`, `product_prices`, `product_variants`, `products`, `service_prices`, `shopify_order_lines`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_length_config`, `bolster_template_placements`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `inventory_balances`, `items`, `pillow_products`, `shopify_variant_mappings`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `shopify_variant_mappings`
 
 ### /settings/costings/services
 app/[lang]/settings/costings/services/page.tsx
 - Endpoints: `/settings/costings/save`
 - Loads: `loadReadjustmentPolicy()`, `loadServicePrices()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `item_prices`, `mp_staff`, `product_prices`, `product_variants`, `products`, `service_prices`, `shopify_order_lines`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_length_config`, `bolster_template_placements`, `bom_lines`, `bom_template_lines`, `filling_template_placements`, `items`, `pillow_products`, `shopify_variant_mappings`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `items`, `pillow_products`, `shopify_variant_mappings`
 
 ### /settings/customers
 app/[lang]/settings/customers/page.tsx
@@ -2538,7 +2534,7 @@ app/[lang]/settings/integrations/shopify/page.tsx
 - Loads: `listShopifyAdminItems()`, `requireAdminPage()`
 - Reads: `items`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `shopify_order_lines`, `shopify_variant_mappings`, `shopify_variant_overrides`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_length_config`, `bolster_template_placements`, `bom_lines`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `inventory_balances`, `item_prices`, `items`, `pillow_products`, `product_buildable`, `product_prices`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `bom_templates`, `inventory_balances`, `item_prices`, `items`, `pillow_products`, `product_buildable`, `product_prices`
 
 ### /settings/inventory
 app/[lang]/settings/inventory/page.tsx

@@ -9,13 +9,8 @@
 
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
-import {
-  loadShopifyMirrorCostingsContext,
-  shopifyMappingBuildLines,
-  shopifyMappingUncostedItemIds,
-} from "@/lib/shopify/order-mirror-ingest";
 import { sgMonthRange, type SgMonthRange } from "./sg-calendar";
-import { buildSalesReport, type CostGapFix, type SalesReport, type SoldLine, type SoldOrder } from "./sold-lines";
+import { buildSalesReport, type SalesReport, type SoldLine, type SoldOrder } from "./sold-lines";
 
 export type AnalyticsChannel = "all" | "orders" | "shopify";
 
@@ -221,12 +216,12 @@ async function loadShopifySoldOrders(admin: AdminClient, range: SgMonthRange): P
   const orders = (await selectAll(() =>
     admin
       .from("shopify_orders")
-      .select("shopify_order_id,paid_at,total_price,amount_refunded")
+      .select("shopify_order_id,paid_at,amount_refunded")
       .not("paid_at", "is", null)
       .gte("paid_at", range.from.toISOString())
       .lt("paid_at", range.toExclusive.toISOString())
       .order("shopify_order_id"),
-  )) as Array<{ shopify_order_id: number; paid_at: string; total_price: unknown; amount_refunded: unknown }>;
+  )) as Array<{ shopify_order_id: number; paid_at: string; amount_refunded: unknown }>;
   if (!orders.length) return [];
 
   const lines = (await selectAllIn(
@@ -239,33 +234,42 @@ async function loadShopifySoldOrders(admin: AdminClient, range: SgMonthRange): P
         .order("shopify_line_item_id"),
   )) as MirrorLine[];
 
-  // The same Costings context the mirror is costed with, so a gap's reason is
-  // the reason the ingest could not cost it.
-  const ctx = await loadShopifyMirrorCostingsContext(
-    admin,
+  // Which inventory product each Shopify variant was mapped to, read as stored:
+  // the mirror is a read-only input (CONTEXT.md), so Analytics costs nothing itself.
+  type MappingRow = {
+    shopify_variant_id: number;
+    kind: string;
+    pillow_size: string | null;
+    pillow_kind: string | null;
+    bolster_variant: string | null;
+    item_id: number | null;
+  };
+  const mappings = (await selectAllIn(
     lines.map((l) => Number(l.shopify_variant_id)).filter((v) => Number.isFinite(v) && v > 0),
+    (chunk) =>
+      admin
+        .from("shopify_variant_mappings")
+        .select("shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id")
+        .in("shopify_variant_id", chunk)
+        .order("shopify_variant_id"),
+  )) as MappingRow[];
+  const mappingByVariant = new Map(mappings.map((m) => [Number(m.shopify_variant_id), m]));
+  const itemById = await loadItems(
+    admin,
+    mappings.filter((m) => m.kind === "part" && m.item_id != null).map((m) => Number(m.item_id)),
   );
-  const uncostedByVariant = new Map<number, number[]>();
-  const itemIds = new Set<number>();
-  for (const m of ctx.mappingsByVariantId.values()) {
-    if (m.kind === "part" && m.item_id != null) itemIds.add(m.item_id);
-    const missing = shopifyMappingUncostedItemIds(m, ctx);
-    uncostedByVariant.set(m.shopify_variant_id, missing);
-    missing.forEach((id) => itemIds.add(id));
-  }
-  const itemById = await loadItems(admin, [...itemIds]);
 
   const linesByOrder = new Map<number, SoldLine[]>();
   for (const li of lines) {
     const title = li.title || "Untitled line";
     const variantId = li.shopify_variant_id != null ? Number(li.shopify_variant_id) : null;
-    const mapping = variantId != null ? ctx.mappingsByVariantId.get(variantId) : undefined;
+    const mapping = variantId != null ? mappingByVariant.get(variantId) : undefined;
     const totalCost = moneyOrNull(li.total_cost);
     const cost = !li.is_others && totalCost != null ? totalCost : null;
 
     let line: Omit<SoldLine, "units" | "gross" | "cost">;
     if (mapping?.kind === "part" && mapping.item_id != null) {
-      const item = itemById.get(mapping.item_id);
+      const item = itemById.get(Number(mapping.item_id));
       line = {
         group: "part",
         key: `item:${mapping.item_id}`,
@@ -281,34 +285,13 @@ async function loadShopifySoldOrders(admin: AdminClient, range: SgMonthRange): P
       line = { group: "unmapped", key: `unmapped:${title}`, label: title };
     }
 
-    let uncostedReason: string | null = null;
-    let uncostedFix: CostGapFix | null = null;
-    if (cost == null) {
-      const missing = variantId != null ? (uncostedByVariant.get(variantId) ?? []) : [];
-      if (!mapping || line.group === "unmapped") {
-        uncostedReason = "Not mapped to an inventory product, so it has no build to cost.";
-        uncostedFix = variantId != null ? "mapping" : null;
-      } else if (missing.length) {
-        const names = missing.map((id) => itemLabel(itemById.get(id), `Item ${id}`));
-        uncostedReason = `No cost price in Costings for ${names.join(", ")}.`;
-        uncostedFix = "costings";
-      } else if (!shopifyMappingBuildLines(mapping, ctx)?.length) {
-        uncostedReason = "Its product has no recipe in Configure to cost.";
-        uncostedFix = "configure";
-      } else {
-        uncostedReason = "Costings can cost it now; it is re-costed the next time Costings is saved.";
-        uncostedFix = "costings";
-      }
-    }
-
     const list = linesByOrder.get(Number(li.shopify_order_id)) ?? [];
     list.push({
       ...line,
       units: Math.max(0, Math.floor(Number(li.quantity ?? 0))),
       gross: money(li.gross_revenue),
       cost,
-      uncostedReason,
-      uncostedFix,
+      uncostedReason: cost == null ? "No cost in the Shopify order mirror." : null,
     });
     linesByOrder.set(Number(li.shopify_order_id), list);
   }
@@ -316,15 +299,11 @@ async function loadShopifySoldOrders(admin: AdminClient, range: SgMonthRange): P
   return orders.map((o) => {
     const orderLines = linesByOrder.get(Number(o.shopify_order_id)) ?? [];
     const listed = orderLines.reduce((sum, l) => sum + l.gross, 0);
-    // The mirror keeps line list prices, not Shopify's discounts. What the
-    // customer paid caps the goods revenue, so a discounted order is not
-    // reported at list price; shipping and tax only ever raise `total_price`.
-    const paid = money(o.total_price);
-    const goods = paid > 0 ? Math.min(listed, paid) : listed;
+    // Mirror nets, as the mirror has always been read: line gross less refunds.
     return {
       channel: "shopify" as const,
       paidAt: o.paid_at,
-      productRevenue: Math.max(0, goods - money(o.amount_refunded)),
+      productRevenue: Math.max(0, listed - money(o.amount_refunded)),
       lines: orderLines,
     };
   });

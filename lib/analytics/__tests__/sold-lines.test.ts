@@ -27,8 +27,7 @@ const uncostedPillowS = {
   units: 1,
   gross: 400,
   cost: null,
-  uncostedReason: "No cost price in Costings for Zip Lock Bag (S).",
-  uncostedFix: "costings" as const,
+  uncostedReason: "No cost in the Shopify order mirror.",
 };
 
 describe("allocateOrderRevenue", () => {
@@ -129,8 +128,7 @@ describe("buildSalesReport", () => {
         channel: "shopify",
         key: "pillow:premium:S",
         label: "Size S",
-        reason: "No cost price in Costings for Zip Lock Bag (S).",
-        fix: "costings",
+        reason: "No cost in the Shopify order mirror.",
         lines: 1,
         units: 1,
         revenue: 400,

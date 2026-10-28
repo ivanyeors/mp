@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,8 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalyticsChannel } from "@/lib/analytics/channel-sales";
 import { sgMonthKey } from "@/lib/analytics/sg-calendar";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { getSalesReport } from "./actions";
 
 const MarginBreakdownVisx = dynamic(() => import("./MarginBreakdownVisx").then((m) => m.MarginBreakdownVisx), {
@@ -31,12 +27,6 @@ const integer = new Intl.NumberFormat("en-SG");
 function pct(value: number | null): string {
   return value == null || Number.isNaN(value) ? "—" : `${value.toFixed(1)}%`;
 }
-
-const FIX_LINKS = {
-  costings: { href: "/settings/costings", label: "Costings" },
-  configure: { href: "/settings/inventory/configure", label: "Configure" },
-  mapping: { href: "/settings/integrations/shopify", label: "Shopify mapping" },
-} as const;
 
 /** A server month instant as a local Date on that month's 1st, whatever the browser's timezone. */
 function localMonth(iso: string): Date {
@@ -63,8 +53,6 @@ function Kpi({ label, value, note, loading }: { label: string; value: string; no
  * such instead of as profit.
  */
 export function SalesTab({ from, to, dateRange }: { from: string; to: string; dateRange: { from: Date; to: Date } }) {
-  const pathname = usePathname() ?? "/";
-  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const [channel, setChannel] = useState<AnalyticsChannel>("all");
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,9 +165,8 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
             <div className="flex items-center gap-1.5">
               <CardTitle>Sales with no cost</CardTitle>
               <InfoTip label="About sales with no cost">
-                A sale is costed from the build it shipped. Until every Item in that build has a cost price, its revenue
-                stays out of the margin. Shopify sales are re-costed as soon as Costings is saved; a platform order keeps
-                the cost it was sold with.
+                A sale keeps the cost recorded when it sold. One with none stays out of the margin rather than counting
+                as free. Shopify sales are read from the order mirror as recorded.
               </InfoTip>
             </div>
             <CardDescription>
@@ -188,14 +175,13 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="py-2 pr-3 font-medium">Sold as</th>
                     <th className="py-2 pr-3 font-medium">Why it has no cost</th>
                     <th className="py-2 pr-3 text-right font-medium">Units</th>
-                    <th className="py-2 pr-3 text-right font-medium">Revenue</th>
-                    <th className="py-2 font-medium">Fix in</th>
+                    <th className="py-2 text-right font-medium">Revenue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -209,16 +195,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
                       </td>
                       <td className="py-1.5 pr-3 text-muted-foreground">{g.reason}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">{integer.format(g.units)}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums">{currency.format(g.revenue)}</td>
-                      <td className="py-1.5">
-                        {g.fix ? (
-                          <Link className="underline underline-offset-2" href={withLocale(FIX_LINKS[g.fix].href, locale)}>
-                            {FIX_LINKS[g.fix].label}
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
+                      <td className="py-1.5 text-right tabular-nums">{currency.format(g.revenue)}</td>
                     </tr>
                   ))}
                 </tbody>

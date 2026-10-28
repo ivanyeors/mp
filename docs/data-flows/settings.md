@@ -65,7 +65,7 @@ flowchart TD
   pp --> svp
   svp -->|"price · compare_at_price · cost_price"| pv[(product_variants)]
   svp --> stripe["syncProductToStripeSafe()"]
-  save -.->|"after the response"| rr["reResolveShopifyLineCosts()<br/>costs the Shopify mirror's uncosted lines"]
+  save -.->|"after the response"| rr["reResolveShopifyLineCosts()<br/>re-costs the Shopify mirror"]
   fullsync["fullShopifySync()<br/>Integrations → Shopify"] -.-> shp["Shopify prices"]
 ```
 
