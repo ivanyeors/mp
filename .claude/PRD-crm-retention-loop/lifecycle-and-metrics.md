@@ -1,7 +1,8 @@
 # Customer lifecycle and success metrics
 
-**Status:** draft for the owner, 2026-10-27. Defines the stages, the signals and the metrics that
-slices 03–10 build. Nothing here is built yet.
+**Status:** defines the stages, the signals and the metrics that slices 03–11 build. The stages
+were settled by the owner on 2026-10-27 (thresholds) and 2026-10-28 (the funnel); slices 03 and
+10 (part 1) are built.
 **Owner input (2026-10-27):** the scenarios in [Where the owner's scenarios land](#where-the-owners-scenarios-land);
 "we need to treat Shopify customers as the same customer lifecycle"; and "we should follow up
 closely on enabling us to ask them why, to close the feedback loop" for visitors who drop off.
@@ -28,17 +29,18 @@ graph LR
     V[Visitor] --> E[Engaged] --> L[Lead] --> Q[Quoted]
   end
   subgraph B[After the first purchase]
-    N[New] --> R[Repeat] --> Y[Loyal]
+    N[New] --> Y[Loyal]
     N --> K[At risk]
-    R --> K
     Y --> K
-    K --> X[Lapsed]
   end
   Q --> N
   L --> N
   E --> N
-  K -. wins back .-> R
-  X -. wins back .-> R
+  K -. wins back .-> Y
+  L -. unsubscribes .-> X[Lost]
+  N -. unsubscribes .-> X
+  Y -. unsubscribes .-> X
+  K -. unsubscribes .-> X
   V -. drops off .-> D((Drop-off))
   E -. drops off .-> D
   L -. goes cold .-> D
@@ -87,28 +89,38 @@ How each one ends without a purchase:
 **Why** someone dropped off is not recorded anywhere today. ADR 0007 is explicit that a Drop-off
 is where they left, never why. Slice 10 asks them. See [Closing the loop on drop-offs](#closing-the-loop-on-drop-offs).
 
-### After the first purchase
+### The funnel on every Customer
 
-Exactly one per Customer with a purchase, checked top to bottom. The thresholds were settled by
-the owner on 2026-10-27 (PRD owner decision 1).
+Owner, 2026-10-28: *Lead > New > Loyal (subscribers / repeat purchases / bookings) > At risk
+(Lapsed) > Lost*, the brackets being sub-statuses within the main stage (PRD owner decision 4).
+Exactly one stage per Customer, checked in this order; the thresholds were settled on 2026-10-27
+(owner decision 1). Slice 03 builds it: [`issues/03-lifecycle-stage.md`](issues/03-lifecycle-stage.md).
 
-| Stage | Rule | Why this line |
-|---|---|---|
-| **Lapsed** | last purchase over 24 months ago | points expire at 24 months (ADR 0030) |
-| **At risk** | last purchase 12 to 24 months ago | the yearly check-up falls due at 12 |
-| **Loyal** | 3 or more purchases | |
-| **Repeat** | 2 purchases | the second purchase is the hardest one to win |
-| **New** | 1 purchase | |
+| Order | Stage | Sub-status | Rule | Why this line |
+|---|---|---|---|---|
+| 1 | **Lost** | | unsubscribed from marketing, with no purchase or attended booking since | they told us; nothing more is sent |
+| 2 | **Lead** | | no purchase and no attended booking yet | |
+| 3 | **At risk** | *Lapsed* over 24 months | no purchase or attended booking for over 12 months | the yearly check-up falls due at 12; points expire at 24 (ADR 0030) |
+| 4 | **Loyal** | *Repeat purchases*, *Bookings* (*Subscriber* with Renew) | 2 or more purchases, or an attended Re-adjustment booking | the second purchase is the hardest one to win |
+| 5 | **New** | *Awaiting delivery*, *Delivered*, *Settled* | 1 purchase | |
+
+**The goal is Renew** (owner, 2026-10-28): a monthly service that collects a customer's pillows
+and sends them back. A subscriber is *Loyal · Subscriber*, checked before *Lost*, and never *At
+risk* while subscribed. Renew is another piece of work; the stage gains that one check when it
+lands. **Lost** is the owner's "cancels the subscription and unsubscribes from email / all
+marketing": until Renew exists nobody has a subscription to cancel, so unsubscribing is enough.
+Everyone between *New* and *Lost* is who marketing works on, until they subscribe or unsubscribe.
 
 **New** has a delivery state, because a first-time buyer's experience is decided here:
 *awaiting delivery* → *delivered* → *settled* (30 days after delivery, when the return window
 closes, ADR 0011).
 
 **A customer whose every purchase was refunded** has no purchase left, so they go back to
-**Lead**, with the *returned* signal set. They are not counted as a buyer.
+**Lead** (unless they attended a booking), with the *returned* signal set.
 
-**Winning back** is a move, not a stage: an At risk or Lapsed customer who buys again goes to
-Repeat or Loyal, and the move is counted (metric M21).
+**Winning back** is a move, not a stage: an *At risk* customer who buys again or attends a
+booking goes to *Loyal*, and the move is counted (metric M21). A *Lost* customer who buys, attends a
+booking, or subscribes again leaves *Lost* the same way.
 
 ## Signals
 
@@ -183,8 +195,8 @@ platform records. Stars, where we have them, sit beside it.
 | M17 | Second purchase within 12 months | By first purchase month | Slice 06 |
 | M18 | One-time buyers | Customers with 1 purchase, first purchase over 12 months ago ÷ all customers that old | Slice 06 |
 | M19 | Time to second purchase | Median days, first to second purchase | Slice 06 |
-| M20 | Customers by stage | New, Repeat, Loyal, At risk, Lapsed, and the trend | Slices 03, 04 |
-| M21 | Win-back | At risk or Lapsed at the start of a quarter who bought during it | Slice 06 |
+| M20 | Customers by stage | Lead, New, Loyal, At risk (Lapsed), Lost, and the trend | Slices 03, 04 |
+| M21 | Win-back | At risk at the start of a quarter who bought or attended a booking during it | Slice 06 |
 | M22 | Campaign to purchase | Customers sent a campaign who bought within 30 days, against the same stage not sent it | Slice 06 |
 | M23 | Imported customers | Claimed ÷ imported; bought here ÷ claimed | Today, partly (claims) |
 | M24 | Points | Points spent ÷ points earned; points expired | Slice 06 |
@@ -204,9 +216,9 @@ sixth hazard).
 | 4. Bought and left a Google review | any after purchase | Google review linked | M10, M11 |
 | 5. Bought and left no review | any after purchase | asked, not linked; or not asked yet | M10 |
 | 6. Bought a pillow, no re-adjustment | New and later | not re-adjusted | M12 |
-| 7. Bought a pillow, came back for a re-adjustment | New and later | re-adjusted | M12, headline |
+| 7. Bought a pillow, came back for a re-adjustment | New, then Loyal (Bookings) | re-adjusted | M12, headline |
 | 8. Bought more than one pillow | any after purchase | more than one pillow | M14 |
-| 9. Bought nothing after the first purchase | New, then At risk, then Lapsed | | M16–M18 |
+| 9. Bought nothing after the first purchase | New, then At risk, then At risk (Lapsed) | | M16–M18 |
 
 Added to fill the gaps:
 
@@ -234,8 +246,8 @@ who first bought here.
 
 **What the platform holds for them today:** a Shopify-era order count and total spent
 (`migrated_customers`). It holds no order dates and no products, and the Shopify order mirror
-has no customer fields. With a count alone they could be placed as New, Repeat or Loyal, but never as
-At risk or Lapsed, and *bought a pillow* or *more than one pillow* would be unknown.
+has no customer fields. With a count alone they could be placed as New or Loyal, but never as
+At risk, and *bought a pillow* or *more than one pillow* would be unknown.
 
 **Recommended (slice 09): settle their order history once, during the migration.** Import
 Shopify's orders export one time, as `CLAUDE.md` directs for Shopify-era facts. Each order
@@ -252,7 +264,7 @@ amend the Staff side so the history counts toward the lifecycle. The owner confi
 09 starts.
 
 Until slice 09 lands, a Migrated customer with Shopify-era orders and no purchase here is placed
-by count (New, Repeat or Loyal). They are not given a date, and the list marks them *no dates
+by count (New or Loyal). They are not given a date, and the list marks them *no dates
 yet*.
 
 ## Closing the loop on drop-offs

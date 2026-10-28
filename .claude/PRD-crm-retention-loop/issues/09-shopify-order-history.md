@@ -10,12 +10,12 @@
 
 A customer who bought on the old shop goes through the same lifecycle as one who bought here
 (owner, 2026-10-27). The demo: a Migrated customer who bought two Premium Mpillows in 2024 shows
-*Repeat* until 2025, then *At risk*, with *more than one pillow* set.
+*Loyal · Repeat purchases* until 2025, then *At risk*, with *more than one pillow* set.
 
 ## Why
 
 `migrated_customers` holds a Shopify-era order count and total spent, and nothing else. No
-dates, so no customer can be At risk or Lapsed; no products, so *bought a pillow* is unknown. The
+dates, so no customer can be At risk; no products, so *bought a pillow* is unknown. The
 Shopify order mirror has no customer fields. `CLAUDE.md`: Shopify-era facts become this
 platform's data, settled once, during the migration.
 

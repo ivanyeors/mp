@@ -22,8 +22,8 @@ March. Add a follow-up?*
   2. an Order paid and not delivered → *Waiting on delivery*;
   3. review request due → *Review request goes on {date}* (it is automatic; nothing to press);
   4. check-up due and not booked → *Check-up due*, with *Add follow-up*;
-  5. *At risk* or *Lapsed* and subscribed → *In the {stage} Segment for the next campaign*;
-  6. *At risk* or *Lapsed* and not subscribed → *Add follow-up* (a personal call, not marketing);
+  5. *At risk* and subscribed → *In the At risk Segment for the next campaign*;
+  6. *At risk* and not subscribed → *Add follow-up* (a personal call, not marketing);
   7. points expiring within 3 months → *Points expire on {date}*.
 - A *Next step* line at the top of the Customer detail, above the cards.
 

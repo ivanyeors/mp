@@ -131,7 +131,8 @@ graph LR
 2. **Hand-offs (02).** Result → Customer; Return → Customer and Order; Segment → *Email this
    Segment*; a campaign's Segment audience → that Segment's list.
 3. **A lifecycle stage on every Customer (03)**, derived in the Customer overview, never stored:
-   *Lead* before a purchase, then *New*, *Repeat*, *Loyal*, *At risk* and *Lapsed*
+   the funnel *Lead > New > Loyal > At risk > Lost*, with sub-statuses inside a stage (*Loyal ·
+   Repeat purchases*, *At risk · Lapsed*)
    ([`lifecycle-and-metrics.md`](lifecycle-and-metrics.md#stages)). Shopify customers go through
    the same stages. A `stage=` filter, so a stage is a Segment and an Audience.
 4. **Stage chips above the Customers list (04)**, with live counts, beside the Segments row.
@@ -147,6 +148,8 @@ graph LR
    and go through the same lifecycle.
 10. **Ask why they left (10)**: one closed question where people drop off or turn a quote down,
     answers that offer help on the spot, and a *Why people leave* card that closes the loop.
+11. **Ask why they unsubscribe (11)**: one optional question on the page that confirms an
+    unsubscribe, after it has taken effect, with the answer kept on the *Lost* Customer.
 
 ## Decisions
 
@@ -163,9 +166,10 @@ graph LR
 4. **A purchase is a paid Order with a goods line.** A re-adjustment fee is its own service
    Order and is not a purchase; it is the *re-adjusted* signal. Shopify-era orders are purchases
    once slice 09 imports them.
-5. **The stage reads orders only.** Never reviews, ratings, returns or notes: the stage chooses
-   campaign audiences, and nothing about how a customer feels may decide who is asked for a
-   review (`PRD-customer-crm` README, sixth hazard).
+5. **The stage reads purchases, attended bookings and marketing consent only** (owner decision
+   4). Never reviews, ratings, returns or notes: the stage chooses campaign audiences, and nothing
+   about how a customer feels may decide who is asked for a review (`PRD-customer-crm` README,
+   sixth hazard).
 6. **Playbooks are campaigns, not automation.** Each is a ready-written draft that Staff send in
    waves. That keeps consent, suppression, the pause rule and Resend's plan exactly as
    `PRD-campaign-send-flow` built them, and needs no third cron (`PRD-customer-crm` README,
@@ -178,8 +182,8 @@ graph LR
 
 1. **Settled (owner, 2026-10-27): stage thresholds.** *At risk* from 12 months after the last
    purchase (when the yearly check-up falls due), *Lapsed* from 24 months (when points expire,
-   ADR 0030), *Loyal* from 3 purchases. Fixed in code (`lib/crm/lifecycle-stage.ts`), not a
-   setting.
+   ADR 0030). Fixed in code (`lib/crm/lifecycle-stage.ts`), not a setting. *Loyal* from 3
+   purchases was replaced by decision 4.
 2. **Settled (owner, 2026-10-27): Shopify customers go through the same lifecycle.** Open with
    it: the platform holds only their Shopify-era order count and total, no dates or products.
    Recommended: import the Shopify orders export once (slice 09). That amends ADR 0029 decision 10
@@ -187,6 +191,14 @@ graph LR
    amendment before slice 09 starts.
 3. **Returns / RMA in the CRM group.** Not in the original list, placed there because a return is
    a step in the customer's loop and is linked to the Customer. Reversible in one line.
+4. **Settled (owner, 2026-10-28): the funnel.** *Lead > New > Loyal (subscribers / repeat
+   purchases / bookings) > At risk (Lapsed) > Lost*, the brackets being sub-statuses. A *Lead*
+   has bought nothing; *New* has bought, subscribed to email or not; *Lost* "cancels the
+   subscription and unsubscribes from email / all marketing communications". The goal stage is a
+   Renew subscriber (a monthly pillow collection and return), built in other work. Until Renew
+   exists, unsubscribing alone makes a Customer *Lost*; an attended **Re-adjustment booking**
+   (including one booked from the check-up reminder) is a booking, and restarts the *At risk*
+   clock as a purchase does.
 
 ## Hazards
 
@@ -194,8 +206,9 @@ Inherited, unchanged: consent only for marketing (`PRD-email-marketing`), no rev
 (`PRD-customer-crm`), Resend's plan (`PRD-campaign-send-flow`), no third cron, no PII in Telegram,
 no Shopify dependency (`CLAUDE.md`). New:
 
-- **A stage is not consent.** *Lapsed* is everyone lapsed; the Audience still narrows it to
-  `subscribed` at the moment of each send. The stage chips say so.
+- **A stage is not consent.** *At risk* is everyone at risk, subscribed or not; the Audience
+  still narrows it to `subscribed` at the moment of each send. The stage chips say so. *Lost* is
+  only ever unsubscribed, so a campaign to it sends nothing.
 - **Order statuses.** The stage counts what the overview's `paid_orders` counts: paid, and not
   pending, cancelled, refunded or failed. A refund moves a customer back a stage; that is right.
 

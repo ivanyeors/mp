@@ -8,8 +8,8 @@
 
 ## Goal
 
-Staff see the shape of the customer base at a glance. The demo: a row reads *New 120 · Repeat 40
-· Loyal 12 · At risk 85 · Lapsed 30*; choosing one filters the list.
+Staff see the shape of the customer base at a glance. The demo: a row reads *Lead 540 · New 1,280
+· Loyal 340 · At risk 85 · Lost 12*; choosing one filters the list.
 
 ## What to build
 

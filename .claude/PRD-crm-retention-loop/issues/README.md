@@ -5,9 +5,9 @@ demoable path through the layers it touches.
 
 - **Triage label:** `needs-triage` (all slices)
 - **Tracker:** [#336](https://github.com/ivanyeors/mp/issues/336) is the PRD issue. Each slice is a
-  sub-issue (#337–#346), and its row below links it.
-- **Owner decisions:** see the PRD. Decision 1 (thresholds) is settled; slice 09 waits on the
-  owner confirming the ADR 0029 amendment.
+  sub-issue, and its row below links it.
+- **Owner decisions:** see the PRD. Decisions 1 (thresholds) and 4 (the funnel, 2026-10-28) are
+  settled; slice 09 waits on the owner confirming the ADR 0029 amendment.
 - **Definitions:** stages, signals and metrics are in [`../lifecycle-and-metrics.md`](../lifecycle-and-metrics.md).
 
 ## Slices
@@ -16,7 +16,7 @@ demoable path through the layers it touches.
 |---|-------|------|--------|------------|
 | [01](01-crm-sidebar-group.md) · [#337](https://github.com/ivanyeors/mp/issues/337) | One CRM group in the sidebar, in loop order | AFK | **built** | none |
 | [02](02-hand-off-links.md) · [#338](https://github.com/ivanyeors/mp/issues/338) | Hand-offs: every page in the loop links to the next | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | 01 |
-| [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer, derived from their Orders | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | none (decision 1 settled 2026-10-27) |
+| [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer: Lead, New, Loyal, At risk, Lost | AFK | **built** (`claude/crm-loop-handoffs-dropoff`), reworked into the funnel 2026-10-28 | none (decisions 1 and 4 settled) |
 | [04](04-stage-chips.md) · [#340](https://github.com/ivanyeors/mp/issues/340) | Stage chips above the Customers list, counted live | AFK | not started | 03 |
 | [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | not started | 03 |
 | [06](06-retention-numbers.md) · [#342](https://github.com/ivanyeors/mp/issues/342) | The scorecard: is the loop working? | AFK | not started | 03 |
@@ -24,6 +24,7 @@ demoable path through the layers it touches.
 | [08](08-signoff.md) · [#344](https://github.com/ivanyeors/mp/issues/344) | Sign-off: the owner walks the loop on production | HITL | not started | 01–07, 09, 10 |
 | [09](09-shopify-order-history.md) · [#345](https://github.com/ivanyeors/mp/issues/345) | Shopify-era order history, settled once, for the same lifecycle | AFK, then HITL | not started | owner confirms the ADR 0029 amendment |
 | [10](10-ask-why-they-left.md) · [#346](https://github.com/ivanyeors/mp/issues/346) | Ask why they left, and close the loop | part 1 AFK, part 2 HITL | **part 1 built** (`claude/crm-loop-handoffs-dropoff`) | none (part 1) |
+| [11](11-why-they-unsubscribe.md) | Ask why they unsubscribe, and keep it on the Lost Customer | AFK, then HITL | not started | 03 |
 
 ## Dependency graph
 
@@ -35,6 +36,8 @@ graph TD
   d29[Owner confirms ADR 0029 amendment]
   s09[09 Shopify-era order history]
   s10[10 Ask why they left]
+  s11[11 Why they unsubscribe]
+  d4[Owner decision 4: the funnel, settled]
   s03[03 Lifecycle stage]
   s04[04 Stage chips]
   s05[05 Next step]
@@ -44,6 +47,8 @@ graph TD
 
   s01 --> s02
   d12 --> s03
+  d4 --> s03
+  s03 --> s11
   s03 --> s04
   s03 --> s05
   s03 --> s06

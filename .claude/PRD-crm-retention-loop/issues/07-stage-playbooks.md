@@ -19,14 +19,15 @@ Segment.
 | Second purchase | *New*, 60 days after delivery | How to care for their Mpillow, the Mbolster that pairs with it | a discount code |
 | Thank you | *Loyal* | A first look at what is new, their points and milestone | a discount code |
 | We miss you | *At risk* | What is new since their last Order, their points balance and expiry | a review request |
-| Welcome back | *Lapsed* | The re-adjustment service, what changed, how to reach us | a review request |
+| Welcome back | *At risk · Lapsed* | The re-adjustment service, what changed, how to reach us | a review request |
 
 ## What to build
 
 - Each playbook as a draft beside `FIRST_CAMPAIGN_DRAFT` (`lib/email-campaigns/rules.ts`), passing
   `CampaignDraftSchema`, with `pointsCheck` respected.
 - *New campaign* offers the playbooks as starting points; each opens its stage's Segment (slice
-  04's) as the Audience.
+  04's) as the Audience. *Welcome back* needs the *Lapsed* sub-status as a filter, which the
+  Stage filter does not choose yet (slice 03 chooses main stages only): add it here.
 - Everything else is the existing send flow: test, readiness, waves within Resend's plan.
 
 ## Acceptance criteria

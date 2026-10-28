@@ -5838,9 +5838,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793165488.2676218,
-    "seen": 1793165563.3190043,
-    "ast_hash": "61f44c06b0103a991e9c72d1c167277b",
+    "mtime": 1793165756.5207705,
+    "seen": 1793165832.9910276,
+    "ast_hash": "dd56b2835c923a784b02d7ec2127c573",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -15690,9 +15690,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/crm-retention-loop-prd.md": {
-    "mtime": 1793113378.2035522,
-    "seen": 1793165563.3176541,
-    "ast_hash": "b6ea87c7fb92831d8a11c7d199a98024",
+    "mtime": 1793165717.2310429,
+    "seen": 1793165832.9898229,
+    "ast_hash": "7795ebec2d94b943796776abccbfcce9",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/01-crm-sidebar-group.md": {
@@ -15708,21 +15708,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md": {
-    "mtime": 1793158584.0721896,
-    "seen": 1793165563.3176594,
-    "ast_hash": "134327585be7777e8c85d70b929ce99a",
+    "mtime": 1793165717.2296505,
+    "seen": 1793165832.9898322,
+    "ast_hash": "a1a9c275958390ed82b96e73c69a0e15",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/04-stage-chips.md": {
-    "mtime": 1793094817.343298,
-    "seen": 1793165563.3176606,
-    "ast_hash": "320af0370be0bbbac47245d964646b50",
+    "mtime": 1793165724.5834055,
+    "seen": 1793165832.9898343,
+    "ast_hash": "8902e98a45c83bcff8801380cb439dda",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/05-next-step-on-customer.md": {
-    "mtime": 1793094817.3473504,
-    "seen": 1793165563.3176625,
-    "ast_hash": "2fa60511b16baa664041919babdeaeeb",
+    "mtime": 1793165724.5838857,
+    "seen": 1793165832.9898365,
+    "ast_hash": "5962104299611d36cadbbfd254c91e2c",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md": {
@@ -15732,9 +15732,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/07-stage-playbooks.md": {
-    "mtime": 1793094817.351298,
-    "seen": 1793165563.3176663,
-    "ast_hash": "3ceadf5bd4accdd335fa2f116711df10",
+    "mtime": 1793165729.6672428,
+    "seen": 1793165832.989841,
+    "ast_hash": "37cb8b08996a7541c1910e837aba4205",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/08-signoff.md": {
@@ -15744,9 +15744,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/09-shopify-order-history.md": {
-    "mtime": 1793114195.7008736,
-    "seen": 1793165563.3176703,
-    "ast_hash": "9ca1d6bf993fb77d148449dddcb27b93",
+    "mtime": 1793165724.584596,
+    "seen": 1793165832.9898462,
+    "ast_hash": "604555cf81a4bd54c1945814cbd2a821",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/10-ask-why-they-left.md": {
@@ -15756,15 +15756,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/README.md": {
-    "mtime": 1793113384.5732496,
-    "seen": 1793165563.317674,
-    "ast_hash": "be736e46ecd8e8b9cec7536f22fd5143",
+    "mtime": 1793165756.5178392,
+    "seen": 1793165832.989854,
+    "ast_hash": "a52d3a4e8b5bdeca17119aa1bddc70d7",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/lifecycle-and-metrics.md": {
-    "mtime": 1793114195.7001884,
-    "seen": 1793165563.3176756,
-    "ast_hash": "7dbb42cdb3ea8418744ad5ada4cdfdb9",
+    "mtime": 1793165717.2304833,
+    "seen": 1793165832.9898565,
+    "ast_hash": "86d2dc8958e56c06d3e4c007a32e7d0a",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-crm-retention-loop/issues/11-why-they-unsubscribe.md": {
+    "mtime": 1793165756.3476243,
+    "seen": 1793165832.9898517,
+    "ast_hash": "32211bb6cc2d3df97be9843034612f46",
     "semantic_hash": ""
   }
 }
