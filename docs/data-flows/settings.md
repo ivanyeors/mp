@@ -34,7 +34,7 @@ then write with the service-role client. Permissions are code; roles are data
 |---|---|---|
 | **Inventory** `/settings/inventory` | Server actions `receiveStock`, `sellCart`, `sellPart`, `addInventoryItem`, `deleteInventoryItem`, image setters. Reads `items`, `inventory_balances`, `pillow_products`, `bom_lines`, `bolster_bom_lines` directly. | `inventory_transactions`, `items`, `item_prices` (opening price; removed when an Item is deactivated), product/variant images |
 | **Configure** `/settings/inventory/configure`, `/settings/inventory/configure/[card]` | `…/configure/save`, `…/configure/templates`, `…/templates/[templateId]`, `…/fork`, `…/templates/apply`, `…/unpromoted` | `bom_lines`, `bolster_bom_lines` (fillings stripped, ADR 0003), the Default Filling Template, `bom_templates`, `bom_template_lines`, `filling_template_placements` / `bolster_template_placements` |
-| **Costings** `/settings/costings` | `/settings/costings/save` | `item_prices`, `product_prices` → `product_variants` price fields → Stripe (below) |
+| **Costings** `/settings/costings` | `/settings/costings/save`; reads `/settings/costings/builds` | `item_prices`, `product_prices` → `product_variants` price fields → Stripe (below) |
 | **Costings → Services** `/settings/costings/services` | `/settings/costings/save` | `service_prices`, the re-adjustment policy in `site_settings` |
 | **Products** `/settings/products` | `/api/shop/products/sync-inventory`, `/api/shop/products/resync-prices`, `/api/shop/products/accessory-listings` | `products`, `product_options`, `product_variants`: the inventory projection and the **Listed** switch |
 | **Product editor** `/settings/products/[id]` | `/api/shop/products/[id]`, `…/variants`, `…/variants/[variantId]`, images | `products`, `product_variants` (`stock_quantity`, `track_inventory`), `product_images` |
@@ -73,6 +73,13 @@ flowchart TD
   with all three empty is deleted.
 - **Composed sellables**: upserts `product_prices` on `key`. Pillows by size ×
   tier (premium also by fabric family), bolsters by length.
+- **Build cost** is shown, never stored. A card has one cost per Filling
+  Template serving its size: the composed BOM plus that template's Derived pack
+  list, the sum `assembleBuild` makes. A premium fabric's build ships that
+  fabric's case, and a Basic build leaves out a template's neck support.
+  `GET /settings/costings/builds` supplies the pack lists, because the
+  placement tables are service-role only. `lib/costings/build-costs.ts` does
+  the arithmetic.
 - **Services**: upserts `service_prices` and writes the re-adjustment policy to
   `site_settings`. This skips the Variant/Stripe sync.
 - **Variant mirror**: every `products.is_auto_generated` product resolves each

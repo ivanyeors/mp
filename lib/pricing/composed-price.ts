@@ -83,10 +83,26 @@ export function baselineCaseMsrpByFamily(
   caseOptions: PricedComponent[],
 ): Record<string, number> {
   const out: Record<string, number> = {};
+  for (const [family, c] of Object.entries(baselineCaseByFamily(caseOptions))) {
+    out[family] = c.msrp!;
+  }
+  return out;
+}
+
+/**
+ * The case each family's Costings row was priced with: the cheapest priced member,
+ * the lower item id on a tie. Costings reads it to cost the build the row prices.
+ */
+export function baselineCaseByFamily(
+  caseOptions: PricedComponent[],
+): Record<string, PricedComponent> {
+  const out: Record<string, PricedComponent> = {};
   for (const c of caseOptions) {
     if (!c.family || c.msrp == null) continue;
     const seen = out[c.family];
-    out[c.family] = seen == null ? c.msrp : Math.min(seen, c.msrp);
+    if (seen == null || c.msrp < seen.msrp! || (c.msrp === seen.msrp && c.item_id < seen.item_id)) {
+      out[c.family] = c;
+    }
   }
   return out;
 }

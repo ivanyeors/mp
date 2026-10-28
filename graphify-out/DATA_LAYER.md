@@ -169,7 +169,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/save/route.ts:56
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:87
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:418
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:522
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:483
   - `POST()` [select] — app/api/shop/checkout/route.ts:495
@@ -198,6 +198,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:170
   - `setDefaultFillingTemplateId()` [update] — lib/results/composed-sellable.ts:401
 - Read by:
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:524
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:392
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:155
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:344
@@ -227,7 +228,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:70
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:477
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:417
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:521
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:391
@@ -264,6 +265,7 @@ Changed from pages: `/settings/inventory`, `/settings/inventory/configure/[card]
   - `PUT()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:246
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:483
+  - `GET()` [select] — app/[lang]/settings/costings/builds/route.ts:61
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:69
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:38
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:275
@@ -286,8 +288,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `setTemplateKeys()` [update] — lib/filling-templates/membership.ts:140
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:479
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:420
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:46
+  - `GET()` [select] — app/[lang]/settings/costings/builds/route.ts:47
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:61
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/route.ts:105
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:82
@@ -600,7 +602,7 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:428
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:526
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:180
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:300
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:267
@@ -691,7 +693,7 @@ Changed from pages: `/settings/inventory`
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:400
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:285
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:404
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:508
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:176
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:389
@@ -1174,7 +1176,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `setDefaultFillingTemplateId()` [select,update] — lib/results/composed-sellable.ts:379
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:476
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:412
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:516
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:181
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:79
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:390
@@ -1249,7 +1251,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`
   - `POST()` [delete,upsert] — app/[lang]/settings/costings/save/route.ts:405
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:478
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:419
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:523
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:669
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:164
   - `getBolsterFromPriceLabel()` [select] — lib/landing-page-data.ts:96
@@ -2405,10 +2407,10 @@ app/[lang]/settings/campaigns/new/page.tsx
 
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx
-- Endpoints: `/settings/costings/save`
-- Reads: `bolster_bom_lines`, `bom_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `product_prices`
+- Endpoints: `/settings/costings/builds`, `/settings/costings/save`
+- Reads: `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `inventory_balances`, `items`, `pillow_products`, `product_prices`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `item_prices`, `mp_staff`, `product_prices`, `product_variants`, `products`, `service_prices`, `shopify_order_lines`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `shopify_variant_mappings`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `inventory_balances`, `items`, `pillow_products`, `shopify_variant_mappings`
 
 ### /settings/costings/services
 app/[lang]/settings/costings/services/page.tsx
