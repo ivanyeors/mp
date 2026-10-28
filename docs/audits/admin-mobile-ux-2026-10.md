@@ -15,9 +15,10 @@ first, and the shared causes behind most of them.
 - **Device.** An iPhone-class viewport, 390×844 with touch and a mobile user
   agent, signed in as an Owner. A second metrics-only pass ran at 360px, the
   width of a small Android phone.
-- **Coverage.** 45 menu routes, 10 detail pages, every tab of each page's main
-  tab list, the first Add/New/Edit dialog on each page, and the Admin Menu
-  sheet.
+- **Coverage.** 45 menu routes (38 distinct screens once redirects are
+  merged), 15 detail and editor pages, 16 tabs (every tab of each page's main
+  tab list), and 8 dialogs: the first Add/New/Edit dialog on each page, plus
+  the Admin Menu sheet.
 - **Probe.** On every page an in-page probe measured:
   - horizontal page scroll;
   - elements cut off by a clipping ancestor;
