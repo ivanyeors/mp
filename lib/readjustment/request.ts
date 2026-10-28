@@ -8,6 +8,7 @@
 import { z } from "zod/v4";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { LANGUAGE_PREFERENCES } from "@/lib/appointments/language";
 import { normalizePhone } from "@/lib/appointments/phone";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import { isOfferableSlot } from "@/lib/appointments/slots";
@@ -42,6 +43,7 @@ export const ReadjustmentBookingSchema = z
     end_iso: z.string().min(1),
     guest_name: z.string().trim().min(1).max(200),
     phone: z.string().min(1),
+    language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
   })
   .refine((b) => Boolean(b.order_item_id) !== Boolean(b.unlisted), {
     message: "Pick one of your purchases, or say it isn't listed",

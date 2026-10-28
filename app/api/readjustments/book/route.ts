@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { tooManyRequests } from "@/lib/rate-limit";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
+import { languagePreferenceNotes } from "@/lib/appointments/language";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import {
@@ -111,7 +112,10 @@ export async function POST(req: Request) {
         email: customer.email,
         appointmentType: "readjustment",
         settings,
-        notes: bookingNotes(target, quote.complimentary ? { kind: "complimentary" } : { kind: "no_fee" }),
+        notes: [
+          ...bookingNotes(target, quote.complimentary ? { kind: "complimentary" } : { kind: "no_fee" }),
+          ...languagePreferenceNotes(body.language_preference),
+        ],
         readjustmentBookingId: booking.id,
         onEventCreated: async (id) => {
           eventId = id;

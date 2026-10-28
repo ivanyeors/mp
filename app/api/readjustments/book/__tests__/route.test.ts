@@ -172,6 +172,16 @@ describe("POST /api/readjustments/book", () => {
     ]);
   });
 
+  it("puts the guest's language preference on the event for Staff", async () => {
+    expect((await post({ language_preference: "mandarin" })).status).toBe(200);
+    expect(h.bookCalendarSlot.mock.calls[0][0].notes.at(-1)).toBe("Language preference: Mandarin");
+  });
+
+  it("refuses a language outside the list", async () => {
+    expect((await post({ language_preference: "klingon" })).status).toBe(400);
+    expect(h.bookings).toEqual([]);
+  });
+
   it("answers a lost race for the last free visit with a re-quote, booking nothing", async () => {
     h.insertError = { code: "23505", message: "duplicate key" };
     const res = await post();
