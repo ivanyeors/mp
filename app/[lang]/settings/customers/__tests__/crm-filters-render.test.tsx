@@ -170,6 +170,16 @@ describe("Customers list: Lifecycle stage", () => {
     expect(nameCells.some((c) => c.includes("Unsubscribed"))).toBe(true);
   });
 
+  it("never gives a Lost buyer the Shopify no-dates note or tooltip", () => {
+    const html = listFor("", [
+      row({ lifecycle_stage: "lost", lifecycle_detail: null, lifecycle_undated: true, last_purchase_at: null, marketing_email: "unsubscribed", marketing_email_updated_at: "2026-09-02T03:00:00Z" }),
+    ]);
+    expect(html).toContain('title="Lost: Unsubscribed from marketing, with no purchase or attended booking since."');
+    expect(html).toContain("Unsubscribed 2 Sept 2026");
+    expect(html).not.toContain("No dates yet");
+    expect(html).not.toContain("Placed by their Shopify-era order count");
+  });
+
   it("puts each row's cells under their own headers", () => {
     const html = listFor("", [row({ lifecycle_stage: "lost", lifecycle_detail: null, purchases: 3 })]);
     // `<th ` and `<th>`, not `<thead`.

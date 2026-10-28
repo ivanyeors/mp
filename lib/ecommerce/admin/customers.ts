@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { applyCustomerFilters, parseCustomerFilters, type CustomerListQuery } from "@/lib/crm/customer-filters";
-import { CUSTOMER_OVERVIEW_SELECT, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
+import { CUSTOMER_OVERVIEW_SELECT, type CustomerOverviewColumn, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
 
 /**
  * Admin customer reads shared by `GET /api/shop/customers`,
@@ -84,17 +84,24 @@ export async function getAdminCustomer(id: string): Promise<AdminCustomerResult>
   return { ok: true, row: data };
 }
 
-/** The Customer's **Lifecycle stage** and what it is read from (PRD-crm-retention-loop slice 03). */
-export type AdminCustomerLifecycle = Pick<
-  CustomerOverviewRow,
-  | "purchases"
-  | "last_purchase_at"
-  | "attended_bookings"
-  | "lifecycle_stage"
-  | "lifecycle_detail"
-  | "lifecycle_undated"
-  | "marketing_email_updated_at"
->;
+/**
+ * What the detail page reads for the **Lifecycle stage** (PRD-crm-retention-loop
+ * slice 03): the stage and the facts it is read from. The type is this list,
+ * so dropping a column the page shows fails to compile there.
+ */
+export const CUSTOMER_LIFECYCLE_COLUMNS = [
+  "purchases",
+  "last_purchase_at",
+  "attended_bookings",
+  "last_readjusted_at",
+  "lifecycle_stage",
+  "lifecycle_detail",
+  "lifecycle_undated",
+  "marketing_email_updated_at",
+] as const satisfies readonly CustomerOverviewColumn[];
+
+/** The Customer's **Lifecycle stage** and what it is read from. */
+export type AdminCustomerLifecycle = Pick<CustomerOverviewRow, (typeof CUSTOMER_LIFECYCLE_COLUMNS)[number]>;
 
 /**
  * One Customer's stage, from the overview, for the detail page. Null when it
@@ -103,11 +110,10 @@ export type AdminCustomerLifecycle = Pick<
 export async function getAdminCustomerLifecycle(id: string): Promise<AdminCustomerLifecycle | null> {
   const { data, error } = await supabaseAdmin()
     .from("admin_customer_overview")
-    .select(
-      "purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated, marketing_email_updated_at",
-    )
+    .select(CUSTOMER_LIFECYCLE_COLUMNS.join(", "))
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
-  return data as AdminCustomerLifecycle;
+  // A joined column list is a plain string to the client's types, so the row is typed here.
+  return data as unknown as AdminCustomerLifecycle;
 }

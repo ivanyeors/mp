@@ -845,6 +845,15 @@ export function CustomerDetailClient({
                                                   : "None"}
                                         </span>
                                     </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock className="h-4 w-4" />
+                                            <span>Last booking</span>
+                                        </div>
+                                        <span className="font-semibold">
+                                            {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}
+                                        </span>
+                                    </div>
                                 </>
                             ) : null}
                             <div className="flex items-center justify-between text-sm">

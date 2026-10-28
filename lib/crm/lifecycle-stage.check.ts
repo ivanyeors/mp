@@ -10,7 +10,8 @@
  *
  *   1. every row of lib/crm/__tests__/lifecycle-stage-cases.ts goes through
  *      `customer_lifecycle_stage` and `customer_lifecycle_detail` with its
- *      own `now`, and must give the table's answer, as the TypeScript does;
+ *      own `now`, in a UTC session and a Singapore one, and must give the
+ *      table's answer, as the TypeScript does;
  *   2. a fixture of Customers, Orders, lines, Re-adjustment bookings,
  *      unsubscribes and Shopify-era counts is inserted, and the overview's
  *      purchases, last_purchase_at, attended_bookings, stage, sub-status and
@@ -48,6 +49,9 @@ if (!url) {
   process.exit(0);
 }
 const psql = (sql: string) => runPsql(url, sql);
+
+/** Session zones the case table runs in. */
+const ZONES = ["UTC", "Asia/Singapore"];
 
 const DAY = 86_400_000;
 const now = new Date();
@@ -231,9 +235,10 @@ function main() {
 
   // --- 1. the table, through the functions ----------------------------------
   const ts = (v: string | null) => `${lit(v)}::timestamptz`;
-  const caseSql = LIFECYCLE_CASES.map(
+  // Run in UTC and again in Singapore: the rule counts months in UTC whatever the session's zone.
+  const caseSql = (zone: string) => LIFECYCLE_CASES.map(
     (c, i) =>
-      `select '@@case_${i}@@'::text || jsonb_build_object(
+      `select '@@case_${zone}_${i}@@'::text || jsonb_build_object(
         'stage', public.customer_lifecycle_stage(${c.purchases}, ${ts(c.lastPurchaseAt)}, ${c.bookings}, ${ts(c.lastBookingAt)}, ${ts(c.unsubscribedAt)}, ${ts(c.now)}),
         'detail', public.customer_lifecycle_detail(${c.purchases}, ${ts(c.lastPurchaseAt)}, ${ts(c.lastPurchaseDeliveredAt)}, ${c.bookings}, ${ts(c.lastBookingAt)}, ${ts(c.unsubscribedAt)}, ${ts(c.now)}));`,
   );
@@ -243,8 +248,8 @@ function main() {
   const results = psql(
     [
       "begin;",
+      ...ZONES.flatMap((zone) => [`set local time zone '${zone}';`, ...caseSql(zone)]),
       "set local time zone 'UTC';",
-      ...caseSql,
       fixtureSql(),
       `select '@@overview@@'::text || coalesce(jsonb_agg(to_jsonb(o)), '[]') from (select id, purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated from public.admin_customer_overview where ${inFixture}) o;`,
       ...LIFECYCLE_STAGES.map((s) => filterQuery(`stage_${s}`, `stage=${stageParam(s)}`)),
@@ -264,17 +269,19 @@ function main() {
     ].join("\n"),
   );
 
-  LIFECYCLE_CASES.forEach((c, i) => {
-    const sql = json<{ stage: string; detail: string | null }>(results, `case_${i}`);
-    const at = new Date(c.now);
-    const ts = { stage: lifecycleStage(c, at), detail: lifecycleDetail(c, at) };
-    if (sql.stage !== ts.stage || sql.detail !== ts.detail) {
-      diffs.push(`case "${c.name}": SQL ${JSON.stringify(sql)}, TypeScript ${JSON.stringify(ts)}`);
-    }
-    if (sql.stage !== c.stage || sql.detail !== c.detail) {
-      diffs.push(`case "${c.name}": SQL ${JSON.stringify(sql)}, the table says ${JSON.stringify({ stage: c.stage, detail: c.detail })}`);
-    }
-  });
+  for (const zone of ZONES) {
+    LIFECYCLE_CASES.forEach((c, i) => {
+      const sql = json<{ stage: string; detail: string | null }>(results, `case_${zone}_${i}`);
+      const at = new Date(c.now);
+      const ts = { stage: lifecycleStage(c, at), detail: lifecycleDetail(c, at) };
+      if (sql.stage !== ts.stage || sql.detail !== ts.detail) {
+        diffs.push(`case "${c.name}" in ${zone}: SQL ${JSON.stringify(sql)}, TypeScript ${JSON.stringify(ts)}`);
+      }
+      if (sql.stage !== c.stage || sql.detail !== c.detail) {
+        diffs.push(`case "${c.name}" in ${zone}: SQL ${JSON.stringify(sql)}, the table says ${JSON.stringify({ stage: c.stage, detail: c.detail })}`);
+      }
+    });
+  }
 
   // --- 2. the overview over the fixture -------------------------------------
   const overview = new Map(json<OverviewRow[]>(results, "overview").map((r) => [r.id, r]));
@@ -345,7 +352,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `compared ${LIFECYCLE_CASES.length} cases through the functions, ${FIXTURE.length} fixture Customers through the overview, and ${LIFECYCLE_STAGES.length + 1} stage filters`,
+    `compared ${LIFECYCLE_CASES.length} cases through the functions in ${ZONES.join(" and ")}, ${FIXTURE.length} fixture Customers through the overview, and ${LIFECYCLE_STAGES.length + 1} stage filters`,
   );
   console.log("lifecycle-stage.check.ts: ok (rolled back; nothing written)");
 }

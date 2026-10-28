@@ -1388,7 +1388,7 @@ Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
-  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:104
+  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:111
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
   - `resolveSegment()` [select] — lib/crm/segments.ts:245

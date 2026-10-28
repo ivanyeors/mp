@@ -122,7 +122,8 @@ export function CustomerFiltersPanel({
                 <p className="mt-2.5 text-xs text-muted-foreground">
                     Any of those ticked. A purchase is a paid order with a product on it; a re-adjustment fee is not one,
                     but the re-adjustment it pays for counts as a booking once attended. Shopify-era orders count,
-                    without dates until their history is imported. Lost means unsubscribed from marketing email.
+                    without dates until their history is imported. Lost means unsubscribed from marketing email, with no
+                    purchase or attended booking since.
                 </p>
             </fieldset>
 

@@ -75,6 +75,8 @@ export const LIFECYCLE_CASES: LifecycleCase[] = [
   row({ name: "29 February, on the clamped day", now: "2028-02-29T00:00:00.000Z", purchases: 1, lastPurchaseAt: "2027-02-28T00:00:00.000Z", lastPurchaseDeliveredAt: LONG_DELIVERED, stage: "new", detail: "settled" }),
   row({ name: "29 February, a second before the clamped day", now: "2028-02-29T00:00:00.000Z", purchases: 1, lastPurchaseAt: "2027-02-27T23:59:59.000Z", lastPurchaseDeliveredAt: LONG_DELIVERED, stage: "at_risk" }),
   row({ name: "29 February, two years back on the clamped day: not yet lapsed", now: "2028-02-29T00:00:00.000Z", purchases: 2, lastPurchaseAt: "2026-02-28T00:00:00.000Z", stage: "at_risk" }),
+  // A session in Singapore would cut a day early here; the rule counts in UTC (lifecycle-stage.check.ts runs this table in both).
+  row({ name: "the day before 29 February, in UTC", now: "2028-02-28T20:00:00.000Z", purchases: 1, lastPurchaseAt: "2027-02-28T10:00:00.000Z", lastPurchaseDeliveredAt: LONG_DELIVERED, stage: "at_risk" }),
   row({ name: "29 February, two years back and a second: lapsed", now: "2028-02-29T00:00:00.000Z", purchases: 2, lastPurchaseAt: "2026-02-27T23:59:59.000Z", stage: "at_risk", detail: "lapsed" }),
 
   // Shopify-era orders only, until slice 09: placed by count, no dates, never at risk.

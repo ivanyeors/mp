@@ -287,6 +287,7 @@ describe("Customer detail: Lifecycle stage", () => {
     purchases: 1,
     last_purchase_at: "2026-10-01T02:00:00Z",
     attended_bookings: 0,
+    last_readjusted_at: null,
     lifecycle_stage: "new",
     lifecycle_detail: "delivered",
     lifecycle_undated: false,
@@ -304,10 +305,22 @@ describe("Customer detail: Lifecycle stage", () => {
     expect(html).toContain("1 Oct 2026");
   });
 
-  it("says why a Customer is Loyal", () => {
-    const html = withStage(lifecycle({ purchases: 1, attended_bookings: 2, lifecycle_stage: "loyal", lifecycle_detail: "bookings" }));
+  it("says why a Customer is Loyal, with their bookings and the latest one", () => {
+    const html = withStage(
+      lifecycle({
+        purchases: 1,
+        attended_bookings: 2,
+        last_readjusted_at: "2026-09-08T03:00:00Z",
+        lifecycle_stage: "loyal",
+        lifecycle_detail: "bookings",
+      }),
+    );
     expect(html).toContain(">Loyal<");
     expect(html).toContain(">Bookings<");
+    const value = (label: string) => html.match(new RegExp(`>${label}<[\\s\\S]*?font-semibold">([^<]*)<`))?.[1];
+    expect(value("Purchases")).toBe("1");
+    expect(value("Bookings attended")).toBe("2");
+    expect(value("Last booking")).toBe("8 Sept 2026");
   });
 
   it("says a Shopify-only buyer's last purchase was on Shopify, with no dates yet", () => {

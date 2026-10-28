@@ -6786,9 +6786,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/admin/customers.ts": {
-    "mtime": 1793166065.276515,
-    "seen": 1793166713.29254,
-    "ast_hash": "5b5fd3cddf6a3654d7fa9e57c02d8d01",
+    "mtime": 1793168572.7153585,
+    "seen": 1793168667.3495343,
+    "ast_hash": "92ed9f4661c109d71e08b64766869e32",
     "semantic_hash": ""
   },
   "lib/ecommerce/admin/order-detail.ts": {
@@ -13098,14 +13098,14 @@
     "semantic_hash": ""
   },
   "lib/crm/customer-filters.ts": {
-    "mtime": 1793166065.2771466,
-    "seen": 1793166713.2921166,
+    "mtime": 1793167814.211645,
+    "seen": 1793168667.3491635,
     "ast_hash": "8e0ff0b25c3e0da915a9f87633d90582",
     "semantic_hash": ""
   },
   "lib/crm/customer-overview.ts": {
-    "mtime": 1793166065.2760167,
-    "seen": 1793166713.2921224,
+    "mtime": 1793168249.631649,
+    "seen": 1793168667.3491693,
     "ast_hash": "b642e59758b56b07aec3e6a8994bd91c",
     "semantic_hash": ""
   },
@@ -15624,9 +15624,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/lifecycle-stage-cases.ts": {
-    "mtime": 1793165996.7476268,
-    "seen": 1793166713.292073,
-    "ast_hash": "ea6827d65a2f9c741c4bce934709865d",
+    "mtime": 1793168435.6208131,
+    "seen": 1793168667.3491175,
+    "ast_hash": "9155930b8db5551b667179d56327af30",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/lifecycle-stage-sql.test.ts": {
@@ -15660,20 +15660,20 @@
     "semantic_hash": ""
   },
   "lib/crm/lifecycle-stage.check.ts": {
-    "mtime": 1793166417.134029,
-    "seen": 1793166713.2921424,
-    "ast_hash": "e0dc094c957e8a1af56f6c78d72ddb01",
+    "mtime": 1793168435.6228566,
+    "seen": 1793168667.3491914,
+    "ast_hash": "9a5d8141538a64b194e177b1913798b1",
     "semantic_hash": ""
   },
   "lib/crm/lifecycle-stage.ts": {
-    "mtime": 1793165954.1396263,
-    "seen": 1793166713.2921464,
-    "ast_hash": "5f0c63ba3008455c10148760612fac98",
+    "mtime": 1793168435.62339,
+    "seen": 1793168667.349195,
+    "ast_hash": "a00bf78cf061233cda2f1667c36a99f8",
     "semantic_hash": ""
   },
   "lib/crm/months.ts": {
-    "mtime": 1793113492.3545468,
-    "seen": 1793165563.3144543,
+    "mtime": 1793167680.1196434,
+    "seen": 1793168667.3491979,
     "ast_hash": "e03eb41e19e9ad64503a5e00fcafd104",
     "semantic_hash": ""
   },
@@ -15774,8 +15774,8 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261028090000_lifecycle_funnel.sql": {
-    "mtime": 1793165931.9638798,
-    "seen": 1793166713.2951252,
+    "mtime": 1793167483.1691926,
+    "seen": 1793168667.3524933,
     "ast_hash": "43cd8cadcd83b726f220bef215ed75c2",
     "semantic_hash": ""
   }
