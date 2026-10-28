@@ -136,7 +136,7 @@ describe("a Segment and the same filters in the URL", () => {
     "search=mei",
     "search=tan&readjusted=ever",
     // PRD-crm-retention-loop slice 03: *Stage: At risk* saved as a Segment.
-    "stage=at-risk,lapsed",
+    "stage=at-risk,lost",
     "stage=lead&source=shopify",
   ])("return identical Customers: %s", async (url) => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });

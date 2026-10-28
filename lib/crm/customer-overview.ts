@@ -16,7 +16,7 @@
  * this list agree.
  */
 
-import type { LifecycleDelivery, LifecycleStage } from "@/lib/crm/lifecycle-stage";
+import type { LifecycleDetail, LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
 /** Every column of `admin_customer_overview`, in the view's order. */
@@ -65,8 +65,9 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "purchases",
   "last_purchase_at",
   "lifecycle_stage",
-  "lifecycle_delivery",
+  "lifecycle_detail",
   "lifecycle_undated",
+  "attended_bookings",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -179,10 +180,15 @@ export interface CustomerOverviewRow {
   last_purchase_at: string | null;
   /** The **Lifecycle stage** (lib/crm/lifecycle-stage), as of the read. */
   lifecycle_stage: LifecycleStage;
-  /** A dated *New* Customer's one purchase on its way; null otherwise. */
-  lifecycle_delivery: LifecycleDelivery | null;
-  /** Placed by the Shopify-era count alone: no dates yet, so never At risk or Lapsed. */
+  /**
+   * The sub-status within the stage: a dated *New* Customer's delivery, why
+   * they are *Loyal*, or *Lapsed* within *At risk*; null otherwise.
+   */
+  lifecycle_detail: LifecycleDetail | null;
+  /** Placed by the Shopify-era count alone: no dates yet, so never At risk. */
   lifecycle_undated: boolean;
+  /** Attended **Re-adjustment bookings**; the latest is `last_readjusted_at`. */
+  attended_bookings: number;
 }
 
 /** Display name, or null when the Customer has none. */

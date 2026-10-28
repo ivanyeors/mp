@@ -87,7 +87,13 @@ export async function getAdminCustomer(id: string): Promise<AdminCustomerResult>
 /** The Customer's **Lifecycle stage** and what it is read from (PRD-crm-retention-loop slice 03). */
 export type AdminCustomerLifecycle = Pick<
   CustomerOverviewRow,
-  "purchases" | "last_purchase_at" | "lifecycle_stage" | "lifecycle_delivery" | "lifecycle_undated"
+  | "purchases"
+  | "last_purchase_at"
+  | "attended_bookings"
+  | "lifecycle_stage"
+  | "lifecycle_detail"
+  | "lifecycle_undated"
+  | "marketing_email_updated_at"
 >;
 
 /**
@@ -97,7 +103,9 @@ export type AdminCustomerLifecycle = Pick<
 export async function getAdminCustomerLifecycle(id: string): Promise<AdminCustomerLifecycle | null> {
   const { data, error } = await supabaseAdmin()
     .from("admin_customer_overview")
-    .select("purchases, last_purchase_at, lifecycle_stage, lifecycle_delivery, lifecycle_undated")
+    .select(
+      "purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated, marketing_email_updated_at",
+    )
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;

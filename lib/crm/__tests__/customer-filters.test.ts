@@ -663,12 +663,13 @@ describe("searchParamsFromRecord", () => {
 // PRD-crm-retention-loop slice 03: *Stage*, the overview's lifecycle_stage.
 describe("the Stage filter", () => {
   it("reads hyphenated stages into the overview's words, in stage order, once each", () => {
-    expect(parseCustomerFilters(new URLSearchParams("stage=lapsed,at-risk,lapsed")).filters.stage).toEqual(["at_risk", "lapsed"]);
+    expect(parseCustomerFilters(new URLSearchParams("stage=lost,at-risk,lost")).filters.stage).toEqual(["at_risk", "lost"]);
     expect(parseCustomerFilters(new URLSearchParams("stage=lead")).filters.stage).toEqual(["lead"]);
   });
 
   it("drops the whole parameter for an unknown stage, the underscore spelling included", () => {
-    for (const bad of ["stage=vip", "stage=at_risk", "stage=new,whale", "stage="]) {
+    // `repeat` and `lapsed` were stages before the funnel (2026-10-28); Lapsed is now At risk's sub-status.
+    for (const bad of ["stage=vip", "stage=at_risk", "stage=new,whale", "stage=repeat", "stage=lapsed", "stage="]) {
       const { filters, ignored } = parseCustomerFilters(new URLSearchParams(bad));
       expect(filters.stage, bad).toEqual([]);
       if (bad !== "stage=") expect(ignored, bad).toEqual(["stage"]);
@@ -676,28 +677,28 @@ describe("the Stage filter", () => {
   });
 
   it("writes the same URL back, and nothing for no stage", () => {
-    const { filters } = parseCustomerFilters(new URLSearchParams("stage=lapsed,at-risk"));
-    expect(customerFilterParams(filters).toString()).toBe("stage=at-risk%2Clapsed");
+    const { filters } = parseCustomerFilters(new URLSearchParams("stage=lost,at-risk"));
+    expect(customerFilterParams(filters).toString()).toBe("stage=at-risk%2Clost");
     expect(customerFilterParams({ stage: [] }).toString()).toBe("");
   });
 
   it("is one `in` on lifecycle_stage", () => {
-    expect(query("stage=at-risk,lapsed").calls).toEqual([
-      ["in", "lifecycle_stage", ["at_risk", "lapsed"]],
+    expect(query("stage=at-risk,lost").calls).toEqual([
+      ["in", "lifecycle_stage", ["at_risk", "lost"]],
       ["order", "created_at", { ascending: false }],
     ]);
   });
 
   it("labels and clears like every other filter", () => {
-    const filters = parseCustomerFilters(new URLSearchParams("stage=at-risk,lapsed&bought=premium")).filters;
-    expect(describeCustomerFilters(filters)[0]).toEqual({ key: "stage", label: "Stage: At risk or Lapsed" });
+    const filters = parseCustomerFilters(new URLSearchParams("stage=at-risk,lost&bought=premium")).filters;
+    expect(describeCustomerFilters(filters)[0]).toEqual({ key: "stage", label: "Stage: At risk or Lost" });
     expect(clearCustomerFilter(filters, "stage")).toMatchObject({ stage: [], bought: ["premium"] });
   });
 
   it("goes to PostgREST as in.(…)", () => {
-    const { filters } = parseCustomerFilters(new URLSearchParams("stage=at-risk,lapsed"));
+    const { filters } = parseCustomerFilters(new URLSearchParams("stage=at-risk,lost"));
     const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
     const q = applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW });
-    expect((q as unknown as { url: URL }).url.searchParams.get("lifecycle_stage")).toBe("in.(at_risk,lapsed)");
+    expect((q as unknown as { url: URL }).url.searchParams.get("lifecycle_stage")).toBe("in.(at_risk,lost)");
   });
 });

@@ -94,11 +94,12 @@ const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> 
 /**
  * *Stage* (PRD-crm-retention-loop slice 03): any of these **Lifecycle
  * stages**, the overview's `lifecycle_stage`. The URL spells them with
- * hyphens (`stage=at-risk,lapsed`), as every other filter value.
+ * hyphens (`stage=at-risk,lost`), as every other filter value. Main stages
+ * only: a sub-status (*Lapsed*) is not a filter yet.
  */
 export const STAGE_FILTERS = LIFECYCLE_STAGES;
 export type StageFilter = LifecycleStage;
-const STAGE_PARAMS = ["lead", "new", "repeat", "loyal", "at-risk", "lapsed"] as const;
+const STAGE_PARAMS = ["lead", "new", "loyal", "at-risk", "lost"] as const;
 const stageParam = (stage: LifecycleStage) => stage.replace("_", "-");
 
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */

@@ -229,7 +229,7 @@ describe("names and counts", () => {
 describe("a Segment by Lifecycle stage", () => {
   it("saves and reads back like any other filter, at the same version", () => {
     expect(SEGMENT_FILTERS_VERSION).toBe(2);
-    expect(parseSegmentFilters({ stage: "lapsed,at-risk" })).toEqual({ ok: true, params: { stage: "at-risk,lapsed" } });
+    expect(parseSegmentFilters({ stage: "lost,at-risk" })).toEqual({ ok: true, params: { stage: "at-risk,lost" } });
     const read = readSegmentFilters({ stage: "at-risk", bought: "premium" }, SEGMENT_FILTERS_VERSION);
     expect(read).toMatchObject({ needsReview: false, ignored: [], params: { stage: "at-risk", bought: "premium" } });
     expect(read.filters.stage).toEqual(["at_risk"]);

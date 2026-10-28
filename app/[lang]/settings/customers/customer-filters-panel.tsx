@@ -98,7 +98,7 @@ export function CustomerFiltersPanel({
         <div className="grid min-w-0 gap-5 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
             <fieldset className="min-w-0 sm:col-span-2 lg:col-span-4">
                 <legend className="mb-2.5 text-sm font-medium">Stage</legend>
-                <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-5">
                     {STAGE_FILTERS.map((value) => (
                         <div key={value} className="flex min-w-0 items-start gap-2">
                             <Checkbox
@@ -120,8 +120,9 @@ export function CustomerFiltersPanel({
                     ))}
                 </div>
                 <p className="mt-2.5 text-xs text-muted-foreground">
-                    Any of those ticked. A purchase is a paid order with a product on it; a re-adjustment fee is not one.
-                    Shopify-era orders count, without dates until their history is imported.
+                    Any of those ticked. A purchase is a paid order with a product on it; a re-adjustment fee is not one,
+                    but the re-adjustment it pays for counts as a booking once attended. Shopify-era orders count,
+                    without dates until their history is imported. Lost means unsubscribed from marketing email.
                 </p>
             </fieldset>
 

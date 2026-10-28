@@ -17,6 +17,7 @@ import {
     Clock,
     Package,
     Repeat,
+    CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -821,6 +822,15 @@ export function CustomerDetailClient({
                                             </span>
                                         </div>
                                         <span className="font-semibold">{lifecycle.purchases}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <CalendarCheck className="h-4 w-4" />
+                                            <span title="Re-adjustment bookings they came in for, including ones booked from the check-up reminder.">
+                                                Bookings attended
+                                            </span>
+                                        </div>
+                                        <span className="font-semibold">{lifecycle.attended_bookings}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2 text-muted-foreground">

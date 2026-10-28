@@ -65,8 +65,9 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   purchases: 0,
   last_purchase_at: null,
   lifecycle_stage: "lead",
-  lifecycle_delivery: null,
+  lifecycle_detail: null,
   lifecycle_undated: false,
+  attended_bookings: 0,
   ...over,
 });
 

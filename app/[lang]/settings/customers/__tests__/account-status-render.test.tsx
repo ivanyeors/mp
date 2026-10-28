@@ -66,8 +66,9 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   purchases: 0,
   last_purchase_at: null,
   lifecycle_stage: "lead",
-  lifecycle_delivery: null,
+  lifecycle_detail: null,
   lifecycle_undated: false,
+  attended_bookings: 0,
   ...over,
 });
 
@@ -282,32 +283,48 @@ describe("Customer detail: Lifecycle stage", () => {
       />,
     );
 
-  it("shows the stage beside the name and in Stats, with purchases and the last one", () => {
-    const html = withStage({
-      purchases: 1,
-      last_purchase_at: "2026-10-01T02:00:00Z",
-      lifecycle_stage: "new",
-      lifecycle_delivery: "delivered",
-      lifecycle_undated: false,
-    });
+  const lifecycle = (over: Partial<AdminCustomerLifecycle>): AdminCustomerLifecycle => ({
+    purchases: 1,
+    last_purchase_at: "2026-10-01T02:00:00Z",
+    attended_bookings: 0,
+    lifecycle_stage: "new",
+    lifecycle_detail: "delivered",
+    lifecycle_undated: false,
+    marketing_email_updated_at: null,
+    ...over,
+  });
+
+  it("shows the stage beside the name and in Stats, with purchases, bookings and the last purchase", () => {
+    const html = withStage(lifecycle({}));
     expect(html.match(/>New</g)?.length).toBe(2);
     expect(html).toContain("Delivered");
     expect(html).toContain(">Purchases<");
+    expect(html).toContain(">Bookings attended<");
     expect(html).toContain(">Last purchase<");
     expect(html).toContain("1 Oct 2026");
   });
 
-  it("says a Shopify-only buyer's last purchase was on Shopify, with no dates yet", () => {
-    const html = withStage({
-      purchases: 3,
-      last_purchase_at: null,
-      lifecycle_stage: "loyal",
-      lifecycle_delivery: null,
-      lifecycle_undated: true,
-    });
+  it("says why a Customer is Loyal", () => {
+    const html = withStage(lifecycle({ purchases: 1, attended_bookings: 2, lifecycle_stage: "loyal", lifecycle_detail: "bookings" }));
     expect(html).toContain(">Loyal<");
-    expect(html).toContain("No dates yet");
+    expect(html).toContain(">Bookings<");
+  });
+
+  it("says a Shopify-only buyer's last purchase was on Shopify, with no dates yet", () => {
+    const html = withStage(
+      lifecycle({ purchases: 3, last_purchase_at: null, lifecycle_stage: "loyal", lifecycle_detail: "repeat_purchases", lifecycle_undated: true }),
+    );
+    expect(html).toContain(">Loyal<");
+    expect(html).toContain("Repeat purchases · No dates yet");
     expect(html).toContain("On Shopify");
+  });
+
+  it("says when a Lost Customer unsubscribed", () => {
+    const html = withStage(
+      lifecycle({ lifecycle_stage: "lost", lifecycle_detail: null, marketing_email_updated_at: "2026-10-12T03:00:00Z" }),
+    );
+    expect(html.match(/>Lost</g)?.length).toBe(2);
+    expect(html).toContain("Unsubscribed 12 Oct 2026");
   });
 
   it("leaves the stage out when it could not be read", () => {

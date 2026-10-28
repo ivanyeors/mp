@@ -24,7 +24,7 @@ demoable path through the layers it touches.
 | [08](08-signoff.md) · [#344](https://github.com/ivanyeors/mp/issues/344) | Sign-off: the owner walks the loop on production | HITL | not started | 01–07, 09, 10 |
 | [09](09-shopify-order-history.md) · [#345](https://github.com/ivanyeors/mp/issues/345) | Shopify-era order history, settled once, for the same lifecycle | AFK, then HITL | not started | owner confirms the ADR 0029 amendment |
 | [10](10-ask-why-they-left.md) · [#346](https://github.com/ivanyeors/mp/issues/346) | Ask why they left, and close the loop | part 1 AFK, part 2 HITL | **part 1 built** (`claude/crm-loop-handoffs-dropoff`) | none (part 1) |
-| [11](11-why-they-unsubscribe.md) | Ask why they unsubscribe, and keep it on the Lost Customer | AFK, then HITL | not started | 03 |
+| [11](11-why-they-unsubscribe.md) · [#352](https://github.com/ivanyeors/mp/issues/352) | Ask why they unsubscribe, and keep it on the Lost Customer | AFK, then HITL | not started | 03 |
 
 ## Dependency graph
 

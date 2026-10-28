@@ -1,6 +1,6 @@
 # 11 — Ask why they unsubscribe, and keep it on the Lost Customer
 
-**Issue:** see the README table
+**Issue:** [#352](https://github.com/ivanyeors/mp/issues/352)
 **Type:** AFK, then HITL (the owner on the answer wording)
 **Status:** not started
 **Blocked by:** 03 (the *Lost* stage)
