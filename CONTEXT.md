@@ -350,8 +350,8 @@ Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cu
 _Avoid_: deducting stock for a Shopify sale; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
 
 **Others**:
-Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
-_Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
+Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Analytics reports their revenue as uncosted: in Revenue, out of the margin %, and listed under Sales with no cost with the reason (ADR 0036). A mapped pillow or bolster is costed from its whole build (its warehouse template, else recipe plus **Default Filling Template**), never its recipe alone. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
+_Avoid_: dropping unmapped lines from totals; silently understating Shopify sales; counting an uncosted line as costing $0
 
 ## Shopify customer migration (ADR 0029)
 
@@ -648,7 +648,8 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 - After assign, Admin Panel revisions are what the shopper reviews; on **Accept** or **Decline** the **Result** keeps that **Filling configuration** snapshot for records/analytics. Payment Stripe-capture happens only on Accept (when a hold exists) — not on Decline.
 - One **Filling Template** (or **Filling configuration**) owns all nine **cells**. Pack list / stock / COGS = flattened inventory **Item** lines derived from placements (**A**). Per-**cell** editor: inventory-linked fillings only; UI starts at 1 piece, max 5 pieces per cell in v1.
 - Spatial persistence — resolved (**B** refined / **Q10-A**): dedicated **placement** rows are the “where” source of truth; flat pack list is always derived; **Warehouse template** stays non-filling (ADR 0003).
-- Analytics is retrospective P&L: sales windows use **`paid_at`** on platform **Orders** and the **Shopify order mirror**. On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
+- Analytics is retrospective P&L: sales windows use **`paid_at`** on platform **Orders** and the **Shopify order mirror**, in Singapore calendar months. Margin % is gross margin over costed revenue; a sale with no cost is reported as uncosted, never as $0 cost (ADR 0036). On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
+- A sale's COGS is frozen from the stock it took: a platform line costs the Items its sale deducts; a Shopify pillow or bolster its whole build, fillings included.
 - **Analytics channel** All = paid **Orders** ∪ **Shopify order mirror** only.
 - A **Visitor** has zero or more **Visits**; each **Visit** has one **Entry source** and may end in a **Drop-off** or a paid **Order**
 - A **Prospect** is a **Visitor** with no paid **Order**; after payment they are no longer a **Prospect**

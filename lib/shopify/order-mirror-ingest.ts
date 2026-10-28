@@ -3,7 +3,8 @@
  * Takes no stock.
  */
 
-import { resolveVariantCost } from '@/lib/shop/price-sync'
+import { derivePackList } from '@/lib/spatial-fillings/core'
+import { selectAll, selectAllIn } from '@/lib/supabase/select-all'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
 export type MappingKind = 'pillow' | 'bolster' | 'part'
@@ -15,6 +16,12 @@ export type ShopifyVariantMapping = {
   pillow_kind: 'basic' | 'premium' | null
   bolster_variant: string | null
   item_id: number | null
+  /**
+   * The Shopify-era warehouse template this variant was built from: the whole
+   * build (case, cover, protector, packaging and fillings) that the Shopify sales
+   * queue took out of stock for every sale of it.
+   */
+  default_template_id?: number | null
 }
 
 export type BomLine = { item_id: number; quantity: number }
@@ -22,9 +29,14 @@ export type BomLine = { item_id: number; quantity: number }
 export type CostingsContext = {
   mappingsByVariantId: Map<number, ShopifyVariantMapping>
   pillowProductIdByKindSize: Map<string, number>
+  /** A recipe's non-filling lines (ADR 0003: a recipe carries no fillings). */
   bomByPillowProductId: Map<number, BomLine[]>
   bomByBolsterVariant: Map<string, BomLine[]>
   costByItemId: Map<number, number>
+  /** A template's pack: its placements, one unit each, or its flat lines when it has none. */
+  templateLinesById?: Map<number, BomLine[]>
+  defaultFillingTemplateByPillowProductId?: Map<number, number>
+  defaultFillingTemplateByBolsterVariant?: Map<string, number>
 }
 
 export type ShopifyOrderLineLike = {
@@ -166,43 +178,74 @@ export function selectShopifyPaidAt(order: ShopifyOrderLike): string | null {
   return order.created_at ?? null
 }
 
-/** Unit COGS from Costings rollup via mapping → BOM / item_prices. Null → Others. */
-export function resolveShopifyMappingUnitCost(
+type BuildContext = Omit<CostingsContext, 'mappingsByVariantId'>
+
+/**
+ * The Items one unit of a mapped Shopify variant is built from, or `null` when
+ * the mapping names no build we can find.
+ *
+ * - A part is its Item.
+ * - A pillow or bolster with a warehouse template is that template: the build
+ *   the Shopify sales queue deducted for it, fillings included.
+ * - Otherwise its Composed sellable's build, as the platform ships one: the
+ *   recipe plus the Default Filling Template's pack.
+ *
+ * The recipe alone is never the build. It carries no fillings (ADR 0003), so
+ * costing it alone left every Shopify pillow's fillings out of COGS.
+ */
+export function shopifyMappingBuildLines(
   mapping: ShopifyVariantMapping,
-  ctx: Pick<
-    CostingsContext,
-    'pillowProductIdByKindSize' | 'bomByPillowProductId' | 'bomByBolsterVariant' | 'costByItemId'
-  >,
-): number | null {
+  ctx: BuildContext,
+): BomLine[] | null {
   if (mapping.kind === 'part') {
-    if (mapping.item_id == null) return null
-    return resolveVariantCost(
-      { item_id: mapping.item_id, pillow_product_id: null, option1: null },
-      ctx.bomByPillowProductId,
-      ctx.bomByBolsterVariant,
-      ctx.costByItemId,
-    )
+    return mapping.item_id == null ? null : [{ item_id: mapping.item_id, quantity: 1 }]
   }
-  if (mapping.kind === 'pillow' && mapping.pillow_size) {
+  if (mapping.kind !== 'pillow' && mapping.kind !== 'bolster') return null
+
+  const warehouse =
+    mapping.default_template_id != null ? ctx.templateLinesById?.get(Number(mapping.default_template_id)) : undefined
+  if (warehouse?.length) return warehouse
+
+  let recipe: BomLine[] | undefined
+  let fillingTemplateId: number | undefined
+  if (mapping.kind === 'pillow') {
+    if (!mapping.pillow_size) return null
     const pk = mapping.pillow_kind ?? 'basic'
-    const pillowProductId = ctx.pillowProductIdByKindSize.get(`${pk}:${mapping.pillow_size}`) ?? null
+    const pillowProductId = ctx.pillowProductIdByKindSize.get(`${pk}:${mapping.pillow_size}`)
     if (pillowProductId == null) return null
-    return resolveVariantCost(
-      { item_id: null, pillow_product_id: pillowProductId, option1: null },
-      ctx.bomByPillowProductId,
-      ctx.bomByBolsterVariant,
-      ctx.costByItemId,
-    )
+    recipe = ctx.bomByPillowProductId.get(pillowProductId)
+    fillingTemplateId = ctx.defaultFillingTemplateByPillowProductId?.get(pillowProductId)
+  } else {
+    if (!mapping.bolster_variant) return null
+    recipe = ctx.bomByBolsterVariant.get(mapping.bolster_variant)
+    fillingTemplateId = ctx.defaultFillingTemplateByBolsterVariant?.get(mapping.bolster_variant)
   }
-  if (mapping.kind === 'bolster' && mapping.bolster_variant) {
-    return resolveVariantCost(
-      { item_id: null, pillow_product_id: null, option1: mapping.bolster_variant },
-      ctx.bomByPillowProductId,
-      ctx.bomByBolsterVariant,
-      ctx.costByItemId,
-    )
+  if (!recipe?.length) return null
+  const fillings = fillingTemplateId != null ? (ctx.templateLinesById?.get(fillingTemplateId) ?? []) : []
+  return [...recipe, ...fillings]
+}
+
+/** Items in a mapped variant's build with no cost price in Costings. */
+export function shopifyMappingUncostedItemIds(mapping: ShopifyVariantMapping, ctx: BuildContext): number[] {
+  const lines = shopifyMappingBuildLines(mapping, ctx) ?? []
+  return [...new Set(lines.filter((l) => !ctx.costByItemId.has(l.item_id)).map((l) => l.item_id))]
+}
+
+/**
+ * Unit COGS of a mapped variant from Costings: its build's lines × item cost.
+ * Null when there is no build or any Item in it has no cost; the line is then
+ * Others, and graduates when Costings gains the missing cost.
+ */
+export function resolveShopifyMappingUnitCost(mapping: ShopifyVariantMapping, ctx: BuildContext): number | null {
+  const lines = shopifyMappingBuildLines(mapping, ctx)
+  if (!lines?.length) return null
+  let total = 0
+  for (const l of lines) {
+    const cost = ctx.costByItemId.get(l.item_id)
+    if (cost == null) return null
+    total += cost * l.quantity
   }
-  return null
+  return total
 }
 
 export function buildMirrorLineFromShopify(
@@ -300,6 +343,54 @@ export function planReResolveMirrorLines(
       total_cost: nextTotal,
       mapping_kind: nextKind,
       is_others: isOthers,
+      updated_at: at,
+    })
+  }
+  return patches
+}
+
+/**
+ * One-time correction for pillow and bolster lines frozen before their builds
+ * included fillings (2026-10-28). Until then a mapped pillow or bolster was
+ * costed from its recipe alone, which carries no fillings (ADR 0003), so every
+ * such Shopify sale understated COGS by its fillings. This re-costs those lines
+ * from the build `shopifyMappingBuildLines` resolves, the one the Shopify sales
+ * queue deducted.
+ *
+ * It overrides the freeze rule once, on purpose: the frozen number was wrong,
+ * not out of date. Parts were costed right and are left alone. A restocked
+ * return stays out of COGS. A line whose build cannot be costed keeps what it
+ * has, so a correction never turns a costed line into a gap.
+ */
+export function planMirrorBuildRecost(
+  lines: MirrorLineRow[],
+  ctx: CostingsContext,
+  at = nowIso(),
+): MirrorLineRow[] {
+  const patches: MirrorLineRow[] = []
+  for (const line of lines) {
+    const mapping =
+      line.shopify_variant_id != null ? ctx.mappingsByVariantId.get(line.shopify_variant_id) : undefined
+    if (!mapping || (mapping.kind !== 'pillow' && mapping.kind !== 'bolster')) continue
+    const unit = resolveShopifyMappingUnitCost(mapping, ctx)
+    if (unit == null) continue
+    const nextUnit = round2(unit)
+
+    const oldUnit = line.unit_cost != null ? Number(line.unit_cost) : null
+    const oldTotal = line.total_cost != null ? Number(line.total_cost) : null
+    const restocked =
+      !line.is_others && oldUnit && oldTotal != null
+        ? Math.max(0, Math.round((oldUnit * line.quantity - oldTotal) / oldUnit))
+        : 0
+    const nextTotal = round2(nextUnit * Math.max(0, line.quantity - restocked))
+
+    if (!line.is_others && oldUnit === nextUnit && oldTotal === nextTotal) continue
+    patches.push({
+      ...line,
+      unit_cost: nextUnit,
+      total_cost: nextTotal,
+      mapping_kind: mapping.kind,
+      is_others: false,
       updated_at: at,
     })
   }
@@ -456,32 +547,31 @@ export async function loadShopifyMirrorCostingsContext(
   variantIds: number[],
 ): Promise<CostingsContext> {
   const unique = Array.from(new Set(variantIds.filter((id) => Number.isFinite(id) && id > 0)))
-  const [
-    { data: mappings, error: mErr },
-    { data: pillowProducts, error: pErr },
-    { data: bomLines, error: bErr },
-    { data: bolsterLines, error: blErr },
-    { data: itemPrices, error: iErr },
-  ] = await Promise.all([
-    unique.length
-      ? admin
-          .from('shopify_variant_mappings')
-          .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id')
-          .in('shopify_variant_id', unique)
-      : Promise.resolve({ data: [] as ShopifyVariantMapping[], error: null }),
-    admin.from('pillow_products').select('id,kind,size').eq('is_active', true),
-    admin.from('bom_lines').select('product_id,item_id,quantity'),
-    admin.from('bolster_bom_lines').select('variant,item_id,quantity'),
-    admin.from('item_prices').select('item_id,cost_price'),
+  type MappingDbRow = Omit<ShopifyVariantMapping, 'default_template_id'> & { default_template_id: number | null }
+  type RecipeRow = { item_id: number; quantity: number; items: { category: string } | { category: string }[] | null }
+  const [mappings, pillowProducts, bomLines, bolsterLines, bolsterConfig, itemPrices] = await Promise.all([
+    selectAllIn(unique, (ids) =>
+      admin
+        .from('shopify_variant_mappings')
+        .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,default_template_id')
+        .in('shopify_variant_id', ids)
+        .order('shopify_variant_id'),
+    ) as Promise<MappingDbRow[]>,
+    selectAll(() =>
+      admin.from('pillow_products').select('id,kind,size,default_filling_template_id').eq('is_active', true).order('id'),
+    ),
+    selectAll(() =>
+      admin.from('bom_lines').select('id,product_id,item_id,quantity,items(category)').order('id'),
+    ) as Promise<Array<RecipeRow & { product_id: number }>>,
+    selectAll(() =>
+      admin.from('bolster_bom_lines').select('id,variant,item_id,quantity,items(category)').order('id'),
+    ) as Promise<Array<RecipeRow & { variant: string }>>,
+    selectAll(() => admin.from('bolster_length_config').select('variant,default_filling_template_id').order('variant')),
+    selectAll(() => admin.from('item_prices').select('item_id,cost_price').order('item_id')),
   ])
-  if (mErr) throw new Error(mErr.message)
-  if (pErr) throw new Error(pErr.message)
-  if (bErr) throw new Error(bErr.message)
-  if (blErr) throw new Error(blErr.message)
-  if (iErr) throw new Error(iErr.message)
 
   const mappingsByVariantId = new Map<number, ShopifyVariantMapping>()
-  for (const m of mappings ?? []) {
+  for (const m of mappings) {
     mappingsByVariantId.set(Number(m.shopify_variant_id), {
       shopify_variant_id: Number(m.shopify_variant_id),
       kind: m.kind as MappingKind,
@@ -489,16 +579,33 @@ export async function loadShopifyMirrorCostingsContext(
       pillow_kind: (m.pillow_kind as 'basic' | 'premium' | null) ?? null,
       bolster_variant: m.bolster_variant ?? null,
       item_id: m.item_id != null ? Number(m.item_id) : null,
+      default_template_id: m.default_template_id != null ? Number(m.default_template_id) : null,
     })
   }
 
   const pillowProductIdByKindSize = new Map<string, number>()
-  for (const p of pillowProducts ?? []) {
+  const defaultFillingTemplateByPillowProductId = new Map<number, number>()
+  for (const p of pillowProducts) {
     pillowProductIdByKindSize.set(`${String(p.kind || 'basic')}:${String(p.size)}`, Number(p.id))
+    if (p.default_filling_template_id != null) {
+      defaultFillingTemplateByPillowProductId.set(Number(p.id), Number(p.default_filling_template_id))
+    }
+  }
+  const defaultFillingTemplateByBolsterVariant = new Map<string, number>()
+  for (const c of bolsterConfig) {
+    if (c.default_filling_template_id != null) {
+      defaultFillingTemplateByBolsterVariant.set(String(c.variant), Number(c.default_filling_template_id))
+    }
   }
 
+  // A recipe carries no fillings (ADR 0003); a stray filling line on one is ignored,
+  // as `composedBuildLines` ignores it when a sale deducts.
+  const isFilling = (r: RecipeRow) =>
+    (Array.isArray(r.items) ? r.items[0] : r.items)?.category === 'filling'
+
   const bomByPillowProductId = new Map<number, BomLine[]>()
-  for (const b of bomLines ?? []) {
+  for (const b of bomLines) {
+    if (isFilling(b)) continue
     const pid = Number(b.product_id)
     const list = bomByPillowProductId.get(pid) ?? []
     list.push({ item_id: Number(b.item_id), quantity: Number(b.quantity) })
@@ -506,7 +613,8 @@ export async function loadShopifyMirrorCostingsContext(
   }
 
   const bomByBolsterVariant = new Map<string, BomLine[]>()
-  for (const b of bolsterLines ?? []) {
+  for (const b of bolsterLines) {
+    if (isFilling(b)) continue
     const v = String(b.variant)
     const list = bomByBolsterVariant.get(v) ?? []
     list.push({ item_id: Number(b.item_id), quantity: Number(b.quantity) })
@@ -514,11 +622,20 @@ export async function loadShopifyMirrorCostingsContext(
   }
 
   const costByItemId = new Map<number, number>()
-  for (const ip of itemPrices ?? []) {
+  for (const ip of itemPrices) {
     if (ip.cost_price == null) continue
     const c = Number.parseFloat(String(ip.cost_price))
     if (Number.isFinite(c)) costByItemId.set(Number(ip.item_id), c)
   }
+
+  const templateIds = [
+    ...Array.from(mappingsByVariantId.values())
+      .map((m) => m.default_template_id)
+      .filter((id): id is number => id != null),
+    ...defaultFillingTemplateByPillowProductId.values(),
+    ...defaultFillingTemplateByBolsterVariant.values(),
+  ]
+  const templateLinesById = await loadTemplatePacks(admin, templateIds)
 
   return {
     mappingsByVariantId,
@@ -526,7 +643,63 @@ export async function loadShopifyMirrorCostingsContext(
     bomByPillowProductId,
     bomByBolsterVariant,
     costByItemId,
+    templateLinesById,
+    defaultFillingTemplateByPillowProductId,
+    defaultFillingTemplateByBolsterVariant,
   }
+}
+
+/**
+ * Templates' packs in bulk, by the rule `loadFillingTemplatePack` applies to one:
+ * placements, one unit each, when the template has them; its flat lines otherwise.
+ */
+async function loadTemplatePacks(admin: AdminClient, templateIds: number[]): Promise<Map<number, BomLine[]>> {
+  const ids = [...new Set(templateIds.filter((id) => Number.isFinite(id) && id > 0))]
+  const packs = new Map<number, BomLine[]>()
+  if (!ids.length) return packs
+  const [pillowPlacements, bolsterPlacements, lines] = await Promise.all([
+    selectAllIn(ids, (chunk) =>
+      admin
+        .from('filling_template_placements')
+        .select('template_id,item_id')
+        .in('template_id', chunk)
+        .order('template_id')
+        .order('section')
+        .order('sub_section')
+        .order('slot'),
+    ),
+    selectAllIn(ids, (chunk) =>
+      admin
+        .from('bolster_template_placements')
+        .select('template_id,item_id')
+        .in('template_id', chunk)
+        .order('template_id')
+        .order('slot'),
+    ),
+    selectAllIn(ids, (chunk) =>
+      admin
+        .from('bom_template_lines')
+        .select('template_id,item_id,quantity')
+        .in('template_id', chunk)
+        .order('template_id')
+        .order('item_id'),
+    ),
+  ])
+  const placementsBy = new Map<number, Array<{ item_id: number }>>()
+  for (const p of [...pillowPlacements, ...bolsterPlacements]) {
+    const tid = Number(p.template_id)
+    placementsBy.set(tid, [...(placementsBy.get(tid) ?? []), { item_id: Number(p.item_id) }])
+  }
+  const linesBy = new Map<number, BomLine[]>()
+  for (const l of lines) {
+    const tid = Number(l.template_id)
+    linesBy.set(tid, [...(linesBy.get(tid) ?? []), { item_id: Number(l.item_id), quantity: Number(l.quantity) }])
+  }
+  for (const id of ids) {
+    const pack = derivePackList(placementsBy.get(id) ?? [], linesBy.get(id) ?? [])
+    if (pack.length) packs.set(id, pack.map((l) => ({ item_id: l.item_id, quantity: l.count })))
+  }
+  return packs
 }
 
 export type UpsertShopifyOrderMirrorResult =
@@ -757,22 +930,23 @@ export async function reResolveShopifyLineCosts(opts?: {
   const at = nowIso(opts?.now)
   const variantFilter = opts?.variantIds?.filter((id) => Number.isFinite(id) && id > 0)
 
-  let q = admin
-    .from('shopify_order_lines')
-    .select(
-      'shopify_line_item_id,shopify_order_id,shopify_variant_id,sku,title,quantity,gross_revenue,unit_cost,total_cost,mapping_kind,is_others,updated_at',
-    )
-    .or('is_others.eq.true,unit_cost.is.null')
+  const gaps = () =>
+    admin
+      .from('shopify_order_lines')
+      .select(
+        'shopify_line_item_id,shopify_order_id,shopify_variant_id,sku,title,quantity,gross_revenue,unit_cost,total_cost,mapping_kind,is_others,updated_at',
+      )
+      .or('is_others.eq.true,unit_cost.is.null')
+  // Paged: a gap list past 1,000 lines would otherwise graduate only its first page.
+  const lines = (
+    variantFilter?.length
+      ? await selectAllIn(variantFilter, (ids) =>
+          gaps().in('shopify_variant_id', ids).order('shopify_line_item_id'),
+        )
+      : await selectAll(() => gaps().order('shopify_line_item_id'))
+  ) as MirrorLineRow[]
+  if (!lines.length) return { updated: 0 }
 
-  if (variantFilter?.length) {
-    q = q.in('shopify_variant_id', variantFilter)
-  }
-
-  const { data: rows, error } = await q
-  if (error) throw new Error(error.message)
-  if (!rows?.length) return { updated: 0 }
-
-  const lines = rows as MirrorLineRow[]
   const variantIds = Array.from(
     new Set(
       lines

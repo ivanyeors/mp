@@ -1,63 +1,41 @@
-import type { ConfigLine, FillingLine } from "@/lib/types/customization";
+/** One Item and how many of it a unit takes out of stock. */
+export type CostLine = { item_id: number; quantity: number };
 
-/** Full BOM cost from a customization snapshot (all config + filling lines). */
-export function calculateCustomizationBomCost(
-  config_lines: ConfigLine[],
-  filling_lines: FillingLine[],
-  costByItem: Map<number, number>,
-): number {
+/**
+ * Cost of a build from Costings: `quantity × cost` per line. An Item with no
+ * cost price adds 0, the rule `assembleBuild` freezes a Result's COGS by and the
+ * Costings page shows a build cost by, so every platform sale is costed alike.
+ */
+export function buildLinesCost(lines: CostLine[], costByItem: Map<number, number>): number {
   let total = 0;
-  for (const line of filling_lines) {
+  for (const line of lines) {
     total += line.quantity * (costByItem.get(line.item_id) ?? 0);
   }
-  for (const line of config_lines) {
-    total += line.quantity * (costByItem.get(line.item_id) ?? 0);
-  }
-  return total;
+  return Math.round(total * 100) / 100;
 }
 
-/** Addon COGS only: extra component qty above base BOM × item cost. */
-export function calculateAddonCost(
-  componentQuantities: ConfigLine[],
-  baseQuantities: Map<number, number>,
-  costByItem: Map<number, number>,
-): number {
-  let total = 0;
-  for (const comp of componentQuantities) {
-    const baseQty = baseQuantities.get(comp.item_id) ?? 0;
-    const extraQty = Math.max(0, comp.quantity - baseQty);
-    if (extraQty > 0) {
-      total += extraQty * (costByItem.get(comp.item_id) ?? 0);
-    }
-  }
-  return total;
-}
-
+/**
+ * COGS frozen on an order line at sale.
+ *
+ * A line whose sale takes Items out of stock costs exactly those Items
+ * (`stockLinesForOrderItem`): a customised pillow's chosen cover and case, its
+ * recipe and its fillings. Costing the Variant's own `cost_price` plus extras
+ * instead left the fillings out, because a recipe carries none (ADR 0003). A
+ * Variant with no Item behind it is costed at its own `cost_price`.
+ */
 export function resolveOrderItemUnitCost(params: {
   variantCostPrice: number | null;
   quantity: number;
-  customization?: {
-    config_lines: ConfigLine[];
-    baseQuantities: Map<number, number>;
-    costByItem: Map<number, number>;
-  };
+  /** What one unit deducts; `null` or empty when the Variant has no Item behind it. */
+  buildLines?: CostLine[] | null;
+  costByItem?: Map<number, number>;
 }): { unit_cost: number | null; total_cost: number | null } {
-  if (!params.customization) {
-    const unit_cost = params.variantCostPrice;
-    return {
-      unit_cost,
-      total_cost: unit_cost != null ? unit_cost * params.quantity : null,
-    };
-  }
-
-  const addonCost = calculateAddonCost(
-    params.customization.config_lines,
-    params.customization.baseQuantities,
-    params.customization.costByItem,
-  );
-  const unit_cost = (params.variantCostPrice ?? 0) + addonCost;
+  const unit_cost =
+    params.buildLines?.length
+      ? buildLinesCost(params.buildLines, params.costByItem ?? new Map())
+      : params.variantCostPrice;
   return {
     unit_cost,
-    total_cost: unit_cost * params.quantity,
+    total_cost: unit_cost != null ? Math.round(unit_cost * params.quantity * 100) / 100 : null,
   };
 }

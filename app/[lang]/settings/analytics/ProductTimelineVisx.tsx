@@ -36,6 +36,9 @@ type ProductTimelineVisxProps = {
 
 const palette = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"] as const;
 
+/** Series drawn on their own; the rest fold into one, so no colour is ever reused. */
+const NAMED_SERIES = palette.length - 1;
+
 const tooltipStyles: CSSProperties = {
   ...(defaultStyles as CSSProperties),
   backgroundColor: "var(--popover)",
@@ -132,14 +135,25 @@ function Chart({
     }>;
   }>();
 
-  const xScale = useMemo(
-    () =>
-      scaleTime<number>({
-        domain: [dateRange.from, dateRange.to],
-        range: [0, innerWidth],
-      }),
-    [dateRange, innerWidth]
-  );
+  // Points sit on each month's 1st, so the axis runs first month to last month;
+  // ending at the range's last day left an empty month after the last point.
+  const xScale = useMemo(() => {
+    const first = months[0] ?? startOfMonth(dateRange.from);
+    const last = months[months.length - 1] ?? first;
+    const domain: [Date, Date] =
+      first.getTime() === last.getTime()
+        ? [addMonths(first, -1), addMonths(first, 1)]
+        : [first, last];
+    return scaleTime<number>({ domain, range: [0, innerWidth] });
+  }, [months, dateRange.from, innerWidth]);
+
+  // One tick per month (thinned to fit), never several ticks inside one month.
+  const monthTicks = useMemo(() => {
+    const step = Math.max(1, Math.ceil(months.length / Math.max(2, Math.floor(innerWidth / 70))));
+    return months.filter((_, idx) => idx % step === 0);
+  }, [months, innerWidth]);
+  const spansYears =
+    months.length > 0 && months[0].getFullYear() !== months[months.length - 1].getFullYear();
 
   const yScale = useMemo(() => {
     const allValues = products.flatMap((p) => p.data.map((d) => valueForMetric(d)));
@@ -178,7 +192,7 @@ function Chart({
 
     const breakdown = products
       .map((product, idx) => {
-        const color = palette[idx % palette.length];
+        const color = product.color ?? palette[Math.min(idx, palette.length - 1)];
         const match =
           product.data.find(
             (pt) =>
@@ -244,7 +258,7 @@ function Chart({
           />
 
           {products.map((product, idx) => {
-            const color = palette[idx % palette.length];
+            const color = product.color ?? palette[Math.min(idx, palette.length - 1)];
             return (
               <LinePath
                 key={product.id}
@@ -252,7 +266,7 @@ function Chart({
                 x={(d) => xScale(d.date)}
                 y={(d) => yScale(valueForMetric(d))}
                 stroke={color}
-                strokeWidth={2.5}
+                strokeWidth={2}
                 strokeOpacity={0.95}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -266,14 +280,14 @@ function Chart({
             scale={xScale}
             stroke="var(--border)"
             tickStroke="var(--border)"
-            numTicks={Math.max(2, Math.floor(innerWidth / 90))}
+            tickValues={monthTicks}
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
               fontSize: axisFontSize,
               textAnchor: "middle",
               dy: "0.6em",
             })}
-            tickFormat={(date) => format(date as Date, "MMM")}
+            tickFormat={(date) => format(date as Date, spansYears ? "MMM yy" : "MMM")}
           />
 
           <AxisLeft
@@ -329,8 +343,8 @@ function Chart({
 
       {/* Legend (below chart) */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:gap-x-4 sm:text-xs">
-        {products.slice(0, 5).map((product, idx) => {
-          const color = palette[idx % palette.length];
+        {products.map((product, idx) => {
+          const color = product.color ?? palette[Math.min(idx, palette.length - 1)];
           return (
             <div key={product.id} className="flex items-center gap-2">
               <div className="size-2 rounded-sm" style={{ backgroundColor: color }} />
@@ -338,7 +352,6 @@ function Chart({
             </div>
           );
         })}
-        {products.length > 5 && <span className="text-muted-foreground">+{products.length - 5} more</span>}
       </div>
 
       {tooltipOpen && tooltipData && (
@@ -399,12 +412,34 @@ export function ProductTimelineVisx({
   currency,
 }: ProductTimelineVisxProps) {
   const filteredProducts = useMemo(() => {
-    return products.map((product) => ({
-      ...product,
-      data: product.data.filter(
-        (d) => d.date >= dateRange.from && d.date <= dateRange.to
-      ),
-    })).filter((product) => product.data.length > 0);
+    const inRange = products
+      .map((product) => ({
+        ...product,
+        data: product.data.filter((d) => d.date >= dateRange.from && d.date <= dateRange.to),
+      }))
+      .filter((product) => product.data.length > 0);
+    // Ranked by revenue over the range, whichever metric is shown, so switching
+    // Units ⇄ Revenue never repaints a series. Past four, the rest fold into one
+    // line in the last colour, so a colour never stands for two series.
+    const total = (p: ProductTimeline) => p.data.reduce((sum, d) => sum + d.revenue, 0);
+    const ranked = [...inRange].sort((a, b) => total(b) - total(a) || a.name.localeCompare(b.name));
+    if (ranked.length <= palette.length) {
+      return ranked.map((p, idx) => ({ ...p, color: palette[idx] }));
+    }
+    const named = ranked.slice(0, NAMED_SERIES).map((p, idx) => ({ ...p, color: palette[idx] }));
+    const rest = ranked.slice(NAMED_SERIES);
+    const folded: ProductTimeline = {
+      id: "__rest__",
+      name: `All others (${rest.length})`,
+      category: "rest",
+      color: palette[NAMED_SERIES],
+      data: rest[0].data.map((pt, i) => ({
+        date: pt.date,
+        units: rest.reduce((sum, p) => sum + (p.data[i]?.units ?? 0), 0),
+        revenue: rest.reduce((sum, p) => sum + (p.data[i]?.revenue ?? 0), 0),
+      })),
+    };
+    return [...named, folded];
   }, [products, dateRange]);
 
   const months = useMemo(() => {
