@@ -35,7 +35,7 @@ flowchart LR
   `item_id`, `quantity_signed` (never 0), `reason`, `metadata` jsonb and
   `created_at`. Nothing updates or deletes rows, and no trigger or SQL function
   writes them. One partial unique index guards in-store cart sales
-  (`20261027140000_stock_deduction_guards.sql`). Every writer is TypeScript using the service-role client
+  (`20261028033625_stock_deduction_guards.sql`). Every writer is TypeScript using the service-role client
   (`supabaseAdmin()`), because RLS gives staff read access only.
 - **On-hand** is the `inventory_balances` view: `sum(quantity_signed)` per
   `item_id`. An Item with no rows has no balance row; callers treat that as 0.

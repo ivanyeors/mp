@@ -14166,15 +14166,15 @@
     "semantic_hash": ""
   },
   "docs/data-flows/inventory.md": {
-    "mtime": 1793116069.735972,
-    "seen": 1793116172.2314332,
-    "ast_hash": "9f486e6bf32d7b554a2512358408be8c",
+    "mtime": 1793158629.242437,
+    "seen": 1793158686.8998113,
+    "ast_hash": "3b23782572f6a54738dd5374f468580f",
     "semantic_hash": ""
   },
   "docs/data-flows/purchases-to-inventory.md": {
-    "mtime": 1793116046.291857,
-    "seen": 1793116172.2314353,
-    "ast_hash": "b7015a59875946f5c60ea1b172847223",
+    "mtime": 1793158629.2415001,
+    "seen": 1793158686.899815,
+    "ast_hash": "0b7873f0cb92d91fcdaea82a92410bba",
     "semantic_hash": ""
   },
   "docs/data-flows/settings.md": {
@@ -15467,9 +15467,9 @@
     "ast_hash": "339e9bc2f06a097d2b934ddd3d4731ea",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261027140000_stock_deduction_guards.sql": {
+  "supabase/migrations/20261028033625_stock_deduction_guards.sql": {
     "mtime": 1793115423.62782,
-    "seen": 1793116172.2302809,
+    "seen": 1793158686.8978589,
     "ast_hash": "eb92402a9369fda23217e0f287cb6e22",
     "semantic_hash": ""
   }

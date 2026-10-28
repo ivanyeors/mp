@@ -89210,29 +89210,29 @@
       "source_location": "L8"
     },
     {
-      "id": "supabase_migrations_20261027140000_stock_deduction_guards",
-      "label": "20261027140000_stock_deduction_guards.sql",
+      "id": "supabase_migrations_20261028033625_stock_deduction_guards",
+      "label": "20261028033625_stock_deduction_guards.sql",
       "_origin": "ast",
       "community": 1008,
       "community_name": "idx_inventory_transactions_sale_line_item",
       "file_type": "code",
-      "norm_label": "20261027140000_stock_deduction_guards.sql",
-      "source_file": "supabase/migrations/20261027140000_stock_deduction_guards.sql",
+      "norm_label": "20261028033625_stock_deduction_guards.sql",
+      "source_file": "supabase/migrations/20261028033625_stock_deduction_guards.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261027140000_stock_deduction_guards_idx_inventory_transactions_sale_line_item",
+      "id": "supabase_migrations_20261028033625_stock_deduction_guards_idx_inventory_transactions_sale_line_item",
       "label": "idx_inventory_transactions_sale_line_item",
       "_origin": "ast",
       "community": 1008,
       "community_name": "idx_inventory_transactions_sale_line_item",
       "file_type": "code",
       "norm_label": "idx_inventory_transactions_sale_line_item",
-      "source_file": "supabase/migrations/20261027140000_stock_deduction_guards.sql",
+      "source_file": "supabase/migrations/20261028033625_stock_deduction_guards.sql",
       "source_location": "L6"
     },
     {
-      "id": "supabase_migrations_20261027140000_stock_deduction_guards_sql_public_inventory_transactions",
+      "id": "supabase_migrations_20261028033625_stock_deduction_guards_sql_public_inventory_transactions",
       "label": "public.inventory_transactions",
       "_origin": "ast",
       "community": 1008,
@@ -628470,13 +628470,13 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261027140000_stock_deduction_guards",
-      "target": "supabase_migrations_20261027140000_stock_deduction_guards_idx_inventory_transactions_sale_line_item",
+      "source": "supabase_migrations_20261028033625_stock_deduction_guards",
+      "target": "supabase_migrations_20261028033625_stock_deduction_guards_idx_inventory_transactions_sale_line_item",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261027140000_stock_deduction_guards.sql",
+      "source_file": "supabase/migrations/20261028033625_stock_deduction_guards.sql",
       "source_location": "L6",
       "weight": 1.0
     },
@@ -634767,13 +634767,13 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261027140000_stock_deduction_guards_idx_inventory_transactions_sale_line_item",
-      "target": "supabase_migrations_20261027140000_stock_deduction_guards_sql_public_inventory_transactions",
+      "source": "supabase_migrations_20261028033625_stock_deduction_guards_idx_inventory_transactions_sale_line_item",
+      "target": "supabase_migrations_20261028033625_stock_deduction_guards_sql_public_inventory_transactions",
       "relation": "indexes",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261027140000_stock_deduction_guards.sql",
+      "source_file": "supabase/migrations/20261028033625_stock_deduction_guards.sql",
       "source_location": "L6",
       "weight": 1.0
     },
@@ -693317,5 +693317,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c5a3063f0222573bfee25344d278b408b24068f0"
+  "built_at_commit": "ce3b95f58f8d4a7a832d798bc573243ebc57c98a"
 }

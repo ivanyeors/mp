@@ -57,7 +57,7 @@ goods, and every other call sees it set and stops.
   so a retry deducts, and rethrows.
 - An Order that already has `sale` rows tagged with its `order_id` is only
   claimed, never deducted again. Rows written before the claim existed count.
-  Migration `20261027140000_stock_deduction_guards.sql` back-filled the claim
+  Migration `20261028033625_stock_deduction_guards.sql` back-filled the claim
   on every such Order.
 - **`deductOrderStockOrFlag`** tries `deductOrderStock` up to N times. If
   every attempt fails, it flags the Order `needs_attention` and writes a
