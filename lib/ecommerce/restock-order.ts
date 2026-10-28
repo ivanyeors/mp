@@ -4,12 +4,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  isBolsterCustomizedItem,
-  isBolsterVariant,
-  mergeBolsterCustomLines,
-  mergePillowCustomLines,
-} from "./inventory-deduction";
+import { stockLinesForOrderItem } from "./inventory-deduction";
 
 interface OrderItemRow {
   id: string;
@@ -20,13 +15,6 @@ interface OrderItemRow {
   customization_id?: string | null;
   customization_snapshot?: Record<string, unknown> | null;
 }
-
-type CustomizationSnapshot = {
-  product_type?: string;
-  bolster_variant?: string;
-  config_lines?: Array<{ item_id: number; quantity: number }>;
-  filling_lines?: Array<{ item_id: number; quantity: number }>;
-};
 
 /** Pure guard: cannot restock more product units than were sold. */
 export function restockQuantityAllowed(
@@ -103,7 +91,7 @@ async function resultRestockTransactions(
   return reverseSaleRows(data ?? [], item.quantity, units, { ...metadata, result_id: resultId });
 }
 
-/** BOM-aware positive inventory rows for `units` of one order line. */
+/** Positive inventory rows for `units` of one order line, resolved as its sale was. */
 async function buildRestockTransactions(
   admin: SupabaseClient,
   item: OrderItemRow,
@@ -112,81 +100,21 @@ async function buildRestockTransactions(
 ): Promise<RestockRow[]> {
   if (!item.variant_id) return resultRestockTransactions(admin, item, units, metadata);
 
-  const { data: variant } = await admin
+  const { data: variant, error } = await admin
     .from("product_variants")
     .select("id, pillow_product_id, item_id, track_inventory, option1")
     .eq("id", item.variant_id)
-    .single();
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!variant) return [];
 
-  if (!variant || !variant.track_inventory) return [];
-
-  const snapshot = (item.customization_snapshot ?? {}) as CustomizationSnapshot;
-  const meta = { ...metadata };
-
-  if (isBolsterCustomizedItem(variant, item, snapshot)) {
-    const bolsterVariant =
-      (isBolsterVariant(snapshot.bolster_variant) ? snapshot.bolster_variant : null) ??
-      (isBolsterVariant(variant.option1?.toLowerCase()) ? variant.option1!.toLowerCase() : null);
-    if (!bolsterVariant) return [];
-
-    const lines = await mergeBolsterCustomLines(bolsterVariant, snapshot.config_lines ?? []);
-    return lines.map((line) => ({
-      item_id: line.item_id,
-      quantity_signed: line.quantity * units,
-      reason: "receive",
-      metadata: meta,
-    }));
-  }
-
-  if (variant.pillow_product_id && item.customization_id && item.customization_snapshot) {
-    const lines = await mergePillowCustomLines(variant.pillow_product_id, snapshot);
-    return lines.map((line) => ({
-      item_id: line.item_id,
-      quantity_signed: line.quantity * units,
-      reason: "receive",
-      metadata: meta,
-    }));
-  }
-
-  if (variant.pillow_product_id) {
-    const { data: bomLines } = await admin
-      .from("bom_lines")
-      .select("item_id, quantity")
-      .eq("product_id", variant.pillow_product_id);
-    return (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => ({
-      item_id: bl.item_id,
-      quantity_signed: bl.quantity * units,
-      reason: "receive",
-      metadata: meta,
-    }));
-  }
-
-  const bolsterVariant = variant.option1?.toLowerCase();
-  if (isBolsterVariant(bolsterVariant)) {
-    const { data: bomLines } = await admin
-      .from("bolster_bom_lines")
-      .select("item_id, quantity")
-      .eq("variant", bolsterVariant);
-    return (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => ({
-      item_id: bl.item_id,
-      quantity_signed: bl.quantity * units,
-      reason: "receive",
-      metadata: meta,
-    }));
-  }
-
-  if (variant.item_id) {
-    return [
-      {
-        item_id: variant.item_id,
-        quantity_signed: units,
-        reason: "receive",
-        metadata: meta,
-      },
-    ];
-  }
-
-  return [];
+  const lines = (await stockLinesForOrderItem(admin, variant, item)) ?? [];
+  return lines.map((line) => ({
+    item_id: line.item_id,
+    quantity_signed: line.quantity * units,
+    reason: "receive",
+    metadata: { ...metadata },
+  }));
 }
 
 /**

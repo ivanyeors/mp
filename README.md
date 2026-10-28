@@ -3,7 +3,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Shopify inventory sync (buildable → Shopify)
 
 This repo can keep Shopify variant inventory in sync with the platform’s computed availability:
-- **Shopify → Platform**: Shopify order webhook decrements component inventory via existing inventory actions.
+- **Shopify → Platform**: the Shopify order webhook feeds the read-only Shopify order mirror for Analytics. Shopify sales take no stock.
 - **Platform → Shopify**: The platform computes “buildable” counts and sets Shopify variant inventory to match.
 
 ### Required environment variables
