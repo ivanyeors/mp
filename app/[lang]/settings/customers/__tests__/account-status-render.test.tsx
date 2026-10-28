@@ -295,9 +295,9 @@ describe("Customer detail: Lifecycle stage", () => {
     ...over,
   });
 
-  it("shows the stage beside the name and in Stats, with purchases, bookings and the last purchase", () => {
+  it("shows the stage beside the name with its note, and purchases, bookings and the last purchase in Stats", () => {
     const html = withStage(lifecycle({}));
-    expect(html.match(/>New</g)?.length).toBe(2);
+    expect(html.match(/>New</g)?.length).toBe(1);
     expect(html).toContain("Delivered");
     expect(html).toContain(">Purchases<");
     expect(html).toContain(">Bookings attended<");
@@ -317,7 +317,7 @@ describe("Customer detail: Lifecycle stage", () => {
     );
     expect(html).toContain(">Loyal<");
     expect(html).toContain(">Bookings<");
-    const value = (label: string) => html.match(new RegExp(`>${label}<[\\s\\S]*?font-semibold">([^<]*)<`))?.[1];
+    const value = (label: string) => html.match(new RegExp(`>${label}<[\\s\\S]*?<dd[^>]*>([^<]*)<`))?.[1];
     expect(value("Purchases")).toBe("1");
     expect(value("Bookings attended")).toBe("2");
     expect(value("Last booking")).toBe("8 Sept 2026");
@@ -336,7 +336,7 @@ describe("Customer detail: Lifecycle stage", () => {
     const html = withStage(
       lifecycle({ lifecycle_stage: "lost", lifecycle_detail: null, marketing_email_updated_at: "2026-10-12T03:00:00Z" }),
     );
-    expect(html.match(/>Lost</g)?.length).toBe(2);
+    expect(html.match(/>Lost</g)?.length).toBe(1);
     expect(html).toContain("Unsubscribed 12 Oct 2026");
   });
 

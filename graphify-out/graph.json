@@ -693230,7 +693230,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/customer-detail-client.tsx",
-      "source_location": "L222",
+      "source_location": "L223",
       "weight": 1.0,
       "context": "GET,PATCH"
     },
@@ -693242,7 +693242,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/customer-detail-client.tsx",
-      "source_location": "L259",
+      "source_location": "L260",
       "weight": 1.0,
       "context": "GET,POST"
     },
@@ -693349,7 +693349,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/customer-detail-client.tsx",
-      "source_location": "L245",
+      "source_location": "L246",
       "weight": 1.0,
       "context": "GET"
     },
