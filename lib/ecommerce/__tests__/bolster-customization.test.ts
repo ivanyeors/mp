@@ -10,7 +10,7 @@ import {
   type MpConfigCustomizationRow,
 } from "@/lib/ecommerce/mp-config-sync";
 import {
-  mergeConfigLinesWithNonFillingBom,
+  mergeBuildLines,
   isBolsterCustomizedItem,
   isBolsterVariant,
   buildSaleDeductionTransactions,
@@ -298,19 +298,19 @@ describe("isBolsterVariant", () => {
   });
 });
 
-describe("mergeConfigLinesWithNonFillingBom", () => {
-  it("keeps config lines and adds missing non-filling BOM defaults", () => {
-    const configLines = [
-      { item_id: 101, quantity: 1 },
-      { item_id: 102, quantity: 2 },
+describe("mergeBuildLines", () => {
+  it("keeps chosen lines and adds the defaults nobody chose against", () => {
+    const chosen = [
+      { item_id: 101, quantity: 1, category: "protector" },
+      { item_id: 102, quantity: 2, category: "packaging" },
     ];
-    const bomDefaults = [
-      { item_id: 101, quantity: 1 },
-      { item_id: 103, quantity: 1 },
-      { item_id: 104, quantity: 3 },
+    const defaults = [
+      { item_id: 101, quantity: 1, category: "protector" },
+      { item_id: 103, quantity: 1, category: "packaging" },
+      { item_id: 104, quantity: 3, category: "packaging" },
     ];
 
-    expect(mergeConfigLinesWithNonFillingBom(configLines, bomDefaults)).toEqual([
+    expect(mergeBuildLines(chosen, defaults)).toEqual([
       { item_id: 101, quantity: 1 },
       { item_id: 102, quantity: 2 },
       { item_id: 103, quantity: 1 },
@@ -318,25 +318,59 @@ describe("mergeConfigLinesWithNonFillingBom", () => {
     ]);
   });
 
-  it("does not overwrite config quantities with BOM quantities for shared items", () => {
-    const configLines = [{ item_id: 101, quantity: 3 }];
-    const bomDefaults = [{ item_id: 101, quantity: 1 }];
+  it("does not overwrite chosen quantities with default quantities for shared items", () => {
+    expect(
+      mergeBuildLines(
+        [{ item_id: 101, quantity: 3, category: "protector" }],
+        [{ item_id: 101, quantity: 1, category: "protector" }],
+      ),
+    ).toEqual([{ item_id: 101, quantity: 3 }]);
+  });
 
-    expect(mergeConfigLinesWithNonFillingBom(configLines, bomDefaults)).toEqual([
-      { item_id: 101, quantity: 3 },
+  it("replaces the default cover and case with the chosen ones, by role", () => {
+    const chosen = [
+      { item_id: 201, quantity: 1, category: "cover" },
+      { item_id: 202, quantity: 1, category: "case" },
+    ];
+    const defaults = [
+      { item_id: 301, quantity: 1, category: "cover" },
+      { item_id: 302, quantity: 1, category: "pillow_case" },
+      { item_id: 303, quantity: 1, category: "pillow_protector" },
+    ];
+
+    expect(mergeBuildLines(chosen, defaults)).toEqual([
+      { item_id: 201, quantity: 1 },
+      { item_id: 202, quantity: 1 },
+      { item_id: 303, quantity: 1 },
     ]);
   });
 
-  it("simulates bolster snapshot merge: user cover/case + packaging BOM default", () => {
-    const snapshotConfig = [
-      { item_id: 101, quantity: 1 },
-      { item_id: 102, quantity: 1 },
+  it("ships the default fillings when none were chosen, and only the chosen ones otherwise", () => {
+    const defaults = [
+      { item_id: 401, quantity: 1, category: "bolster_case" },
+      { item_id: 501, quantity: 4, category: "filling" },
     ];
-    const nonFillingBom = [{ item_id: 999, quantity: 1 }];
 
-    const merged = mergeConfigLinesWithNonFillingBom(snapshotConfig, nonFillingBom);
-    expect(merged).toHaveLength(3);
-    expect(merged.map((l) => l.item_id)).toEqual([101, 102, 999]);
+    expect(mergeBuildLines([{ item_id: 402, quantity: 1, category: "case" }], defaults)).toEqual([
+      { item_id: 402, quantity: 1 },
+      { item_id: 501, quantity: 4 },
+    ]);
+    expect(mergeBuildLines([{ item_id: 502, quantity: 2, category: "filling" }], defaults)).toEqual([
+      { item_id: 502, quantity: 2 },
+      { item_id: 401, quantity: 1 },
+    ]);
+  });
+
+  it("drops zero-quantity lines, which the ledger refuses", () => {
+    expect(
+      mergeBuildLines(
+        [{ item_id: 101, quantity: 0, category: "protector" }],
+        [
+          { item_id: 101, quantity: 1, category: "protector" },
+          { item_id: 102, quantity: 1, category: "packaging" },
+        ],
+      ),
+    ).toEqual([{ item_id: 102, quantity: 1 }]);
   });
 });
 
@@ -392,12 +426,13 @@ describe("bolster checkout → deduction → mp_config pipeline (unit-level)", (
       )
     ).toBe(true);
 
-    const merged = mergeConfigLinesWithNonFillingBom(
-      (snapshot.config_lines as { item_id: number; quantity: number }[]).map((l) => ({
+    const merged = mergeBuildLines(
+      (snapshot.config_lines as ConfigLine[]).map((l) => ({
         item_id: l.item_id,
         quantity: l.quantity,
+        category: l.category,
       })),
-      [{ item_id: 999, quantity: 1 }]
+      [{ item_id: 999, quantity: 1, category: "packaging" }]
     );
 
     const transactions = buildSaleDeductionTransactions(

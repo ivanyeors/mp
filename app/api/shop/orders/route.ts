@@ -3,6 +3,7 @@ import { z } from "zod";
 import { listAdminOrders } from "@/lib/ecommerce/admin/orders-list";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { deductStockWhenSold } from "@/lib/ecommerce/order-stock";
 
 export const runtime = "nodejs";
 
@@ -120,11 +121,17 @@ export async function POST(req: Request) {
     message: "Order created manually by admin.",
   });
 
+  // Created as already sold: its goods leave stock now, like a paid shop Order.
+  const stock = await deductStockWhenSold(admin, order.id, null, order.status);
+
   const { data: fullOrder } = await admin
     .from("orders")
     .select("*, order_items(*)")
     .eq("id", order.id)
     .single();
 
-  return NextResponse.json({ ok: true, row: fullOrder ?? order }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, row: fullOrder ?? order, ...(stock && !stock.ok ? { stock_error: stock.error } : {}) },
+    { status: 201 },
+  );
 }

@@ -140,6 +140,8 @@ export function createFakeSupabase(
 }
 
 export const GOOGLE_REVIEW_DEFAULTS: Row = {
+  source: "business_profile",
+  maps_uri: null,
   star_rating: null,
   comment: null,
   reviewer_name: null,

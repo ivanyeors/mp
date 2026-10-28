@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +18,9 @@ import { collectLowStockCategories } from "@/lib/inventory/part-category-low-sto
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronDown, ImageIcon, Plus, RotateCw, ShoppingCart, Trash2 } from "lucide-react";
 import {
-  sellPillow,
   sellPart,
   receiveStock,
-  sellBolster,
-  sellFromTemplate,
+  sellCart,
   listTemplates,
   listFillingTemplates,
   addInventoryItem,
@@ -592,58 +590,44 @@ export default function InventoryPage() {
     });
   };
 
+  // One id per cart: re-selling the same cart after a timeout or a double click
+  // is refused by the ledger instead of deducting twice. A changed cart is a new sale.
+  const [selling, setSelling] = useState(false);
+  const saleIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    saleIdRef.current = null;
+  }, [cart]);
+
   const sellFromCart = async () => {
-    const pillowLines = cart.pillows;
-    const partEntries = Object.entries(cart.parts);
+    if (selling) return;
+    const pillowLines = cart.pillows.filter((l) => l.quantity > 0);
+    const partEntries = Object.entries(cart.parts).filter(([, qty]) => Number(qty) > 0);
     if (pillowLines.length === 0 && partEntries.length === 0) {
       toast.message("Cart is empty");
       return;
     }
+    const builds: Array<{ templateId: number; fillingTemplateId: number; quantity: number }> = [];
+    for (const line of pillowLines) {
+      if (!line.templateId || !line.fillingTemplateId) {
+        toast.error('A cart line has no template or filling mix.');
+        return;
+      }
+      builds.push({ templateId: line.templateId, fillingTemplateId: line.fillingTemplateId, quantity: line.quantity });
+    }
+    const parts = partEntries.map(([itemId, qty]) => ({ itemId: Number(itemId), quantity: Number(qty) }));
+    saleIdRef.current ??= crypto.randomUUID();
+    setSelling(true);
     try {
-      // Process pillows
-      // Index products once instead of scanning the list for every cart line.
-      const productByKind = new Map<string, Product>();
-      for (const p of products) {
-        const productKey = `${p.size}:${p.kind}`;
-        if (!productByKind.has(productKey)) productByKind.set(productKey, p);
-      }
-      for (const line of pillowLines) {
-        if (line.quantity <= 0) continue;
-        if (line.templateId) {
-          if (!line.fillingTemplateId) {
-            toast.error('A cart line has no filling template.');
-            return;
-          }
-          await sellFromTemplate({
-            templateId: line.templateId,
-            fillingTemplateId: line.fillingTemplateId,
-            quantity: line.quantity,
-          });
-          continue;
-        }
-        if (line.kind === 'bolster') {
-          await sellBolster({ quantity: line.quantity, variant: line.bolsterVariant ?? 'medium' });
-          continue;
-        }
-        const size = String(line.pillowSize ?? line.label);
-        const kind: PillowKind = line.pillowKind === 'premium' ? 'premium' : 'basic';
-        const product = productByKind.get(`${size}:${kind}`);
-        if (product) await sellPillow({ productId: product.id, quantity: line.quantity });
-      }
-      // Process parts
-      for (const [itemIdStr, qty] of partEntries) {
-        const itemId = Number(itemIdStr);
-        if (qty > 0) {
-          await sellPart({ itemId, quantity: qty as number });
-        }
-      }
+      const result = await sellCart({ saleId: saleIdRef.current, builds, parts });
       setCart({ pillows: [], parts: {} });
       await load();
-      toast.success("Sale completed");
+      toast.success(result.alreadySold ? "This cart was already sold" : "Sale completed");
       setCartOpen(false);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Couldn't sell.";
       toast.error(message);
+    } finally {
+      setSelling(false);
     }
   };
 
@@ -690,10 +674,10 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
     if (entries.length === 0) { toast.message('No parts are configured.'); return; }
     setSavingCustomPillow(true);
     try {
-      for (const l of entries) {
-        const total = Math.max(0, Number(l.quantity) * qty);
-        if (total > 0) await sellPart({ itemId: l.item_id, quantity: total });
-      }
+      const parts = entries
+        .map((l) => ({ itemId: l.item_id, quantity: Math.max(0, Number(l.quantity) * qty) }))
+        .filter((p) => p.quantity > 0);
+      await sellCart({ saleId: crypto.randomUUID(), parts });
       setCustomPillowQty('');
       await load();
       toast.success('Custom pillow sold');
@@ -713,10 +697,10 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
     if (entries.length === 0) { toast.message('No parts are configured.'); return; }
     setSavingCustomBolster(true);
     try {
-      for (const l of entries) {
-        const total = Math.max(0, Number(l.quantity) * qty);
-        if (total > 0) await sellPart({ itemId: l.item_id, quantity: total });
-      }
+      const parts = entries
+        .map((l) => ({ itemId: l.item_id, quantity: Math.max(0, Number(l.quantity) * qty) }))
+        .filter((p) => p.quantity > 0);
+      await sellCart({ saleId: crypto.randomUUID(), parts });
       setCustomBolsterQty('');
       await load();
       toast.success('Custom bolster sold');
@@ -1060,7 +1044,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             </div>
           </div>
           <SheetFooter>
-            <Button onClick={sellFromCart} className="w-full">Sell</Button>
+            <Button onClick={sellFromCart} disabled={selling} className="w-full">{selling ? 'Selling…' : 'Sell'}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>

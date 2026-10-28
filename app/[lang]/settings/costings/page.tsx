@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -27,7 +28,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp, RotateCw, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, ChevronDown, ChevronUp, RotateCw, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
@@ -46,6 +48,16 @@ import {
   computeOnHandValueKpis,
   type OnHandValueKpis,
 } from "@/lib/costings/on-hand-value-kpis";
+import {
+  buildCostOptions,
+  costRange,
+  familyCaseItemId,
+  marginPct,
+  swapComponent,
+  type BuildCostOption,
+  type BuildCosts,
+} from "@/lib/costings/build-costs";
+import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -59,6 +71,8 @@ type ItemRow = {
   name: string;
   size: string | null;
   subtype: string | null;
+  /** Case fabric family (`items.price_family`); selects a premium Costings row. */
+  price_family?: string | null;
   pricing?: PriceRecord | PriceRecord[] | null;
 };
 
@@ -83,6 +97,7 @@ type ProductComponentGroup = {
   rows: ProductComponentDetail[];
 };
 
+/** One Costings price row: a basic size, a bolster length, or a premium size in one case fabric. */
 type ProductRow = {
   key: string;
   kind: "pillow" | "bolster";
@@ -96,10 +111,50 @@ type ProductRow = {
   costCents: number | null;
   msrpCents: number | null;
   components: ProductComponent[];
-  // Premium pillows can vary by fabric variant (e.g. Linen vs Fibrecool).
-  // When available, we use the latest BOM template lines for that (size,variant)
-  // so parts + cost reflect the selected premium variant.
-  premiumComponentsByVariant?: Partial<Record<PremiumVariant, ProductComponent[]>>;
+  defaultFillingTemplateId: number | null;
+};
+
+/**
+ * One product card: a Composed sellable with every price row it carries. Premium
+ * holds one row per case fabric, picked on the card, so a size is one card.
+ */
+type ProductCard = {
+  key: string;
+  kind: "pillow" | "bolster";
+  label: string;
+  primaryLabel: string;
+  size?: PillowSize;
+  pillowKind?: PillowKind;
+  variant?: BolsterVariant;
+  /** Configure card slug: `premium-XS`, `basic-M`, `bolster-short`. */
+  configureSlug: string;
+  components: ProductComponent[];
+  defaultFillingTemplateId: number | null;
+  priceRows: ProductRow[];
+};
+
+/** An active Filling Template with the sizes it serves and its Derived pack list. */
+type FillingTemplate = {
+  id: number;
+  kind: "pillow" | "bolster";
+  name: string;
+  keys: string[];
+  pack: Array<{ itemId: number; count: number }>;
+};
+
+/** A card's build in one price row: its parts, the case it ships, and a cost per Filling Template. */
+type FamilyBuild = {
+  row: ProductRow;
+  family: PremiumVariant | null;
+  components: ProductComponent[];
+  /** Premium only: no active case of this fabric exists at this size, so it cannot be built. */
+  missingCase: boolean;
+  costs: BuildCosts;
+};
+
+type CardBuild = {
+  families: FamilyBuild[];
+  defaultTemplateName: string | null;
 };
 
 type ProductSaveRow = {
@@ -136,7 +191,7 @@ type ProductGroupDefinition = {
   key: ProductGroupKey;
   title: string;
   description: string;
-  filter: (product: ProductRow) => boolean;
+  filter: (card: ProductCard) => boolean;
   countLabel?: string;
   defaultOpen?: boolean;
   emptyState?: string;
@@ -146,24 +201,24 @@ const PRODUCT_GROUP_DEFINITIONS: ProductGroupDefinition[] = [
   {
     key: "basic",
     title: "Basic Mpillow",
-    description: "Basic Mpillow sizes XS to XL share one cost build.",
-    filter: (product) => product.kind === "pillow" && product.pillowKind === "basic",
+    description: "One price per size. Build cost depends on the filling template.",
+    filter: (card) => card.kind === "pillow" && card.pillowKind === "basic",
     countLabel: "sizes",
     defaultOpen: true,
   },
   {
     key: "premium",
     title: "Premium Mpillow",
-    description: "Premium fabrics get their own pricing when configured.",
-    filter: (product) => product.kind === "pillow" && product.pillowKind === "premium",
+    description: "Each case fabric has its own price. Build cost depends on the filling template.",
+    filter: (card) => card.kind === "pillow" && card.pillowKind === "premium",
     countLabel: "sizes",
     emptyState: "No premium Mpillow sizes yet.",
   },
   {
     key: "bolster",
     title: "Mbolster",
-    description: "Bolsters are priced by length.",
-    filter: (product) => product.kind === "bolster",
+    description: "Priced by length. Build cost depends on the filling template.",
+    filter: (card) => card.kind === "bolster",
     countLabel: "lengths",
     emptyState: "No bolster lengths yet.",
   },
@@ -175,7 +230,7 @@ const getPillowSizeIndex = (value?: PillowSize): number =>
 const getBolsterVariantIndex = (value?: BolsterVariant): number =>
   value ? BOLSTER_VARIANT_ORDER.get(value) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
 
-const sortProductRows = (items: ProductRow[]): ProductRow[] =>
+const sortProductCards = (items: ProductCard[]): ProductCard[] =>
   [...items].sort((left, right) => {
     if (left.kind === "pillow" && right.kind === "pillow") {
       const leftIndex = getPillowSizeIndex(left.size);
@@ -205,6 +260,23 @@ const PREMIUM_VARIANT_TITLES: Record<PremiumVariant, string> = {
 };
 
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
+
+/** Category order inside a build breakdown: what the pillow is, then what it ships in. */
+const BUILD_CATEGORY_ORDER = [
+  "cover",
+  "case",
+  "pillow_case",
+  "bolster_case",
+  "protector",
+  "pillow_protector",
+  "bolster_protector",
+  "filling",
+  "accessories",
+  "packaging",
+];
+
+/** The case categories, as `lib/results/composed-sellable` reads them. */
+const CASE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
 
 const FILTER_TAG_COLLAPSED_ROW_LIMIT = 3;
 
@@ -242,12 +314,12 @@ const formatFromCents = (cents: number | null): string => {
 };
 
 const formatCentsLabel = (cents: number | null): string => {
-  if (cents === null) return "—";
+  if (cents === null) return "Not set";
   return `$${formatFromCents(cents)}`;
 };
 
 const formatDraftCurrencyLabel = (value: string | undefined): string => {
-  if (!value || value.trim() === "") return "—";
+  if (!value || value.trim() === "") return "Not set";
   return `$${value}`;
 };
 
@@ -275,20 +347,32 @@ const parseToCents = (value: string): number | null => {
   return Math.round(num * 100);
 };
 
-const computeProductComponentsCostCents = (
-  components: ProductComponent[],
-  costMap: Map<number, number | null>,
-): number | null => {
-  if (components.length === 0) return 0;
-  let total = 0;
-  for (const component of components) {
-    const cost = costMap.get(component.itemId);
-    if (cost === undefined || cost === null) {
-      continue; // skip components without cost so we still show partial totals
-    }
-    total += cost * component.quantity;
-  }
-  return Math.round(total);
+const formatCentsRange = (range: { min: number; max: number } | null): string => {
+  if (!range) return "Not set";
+  if (range.min === range.max) return formatCentsLabel(range.min);
+  return `${formatCentsLabel(range.min)} to ${formatCentsLabel(range.max)}`;
+};
+
+const formatMarginRange = (values: Array<number | null>): string | null => {
+  const known = values.filter((v): v is number => v !== null).map((v) => Math.round(v));
+  if (known.length === 0) return null;
+  const min = Math.min(...known);
+  const max = Math.max(...known);
+  return min === max ? `${min}%` : `${min}% to ${max}%`;
+};
+
+/** Margin of one build at a row's MSRP, counting a Neck support's own MSRP as sold with it. */
+const optionMargin = (option: BuildCostOption, msrpCents: number | null): number | null => {
+  if (msrpCents === null || option.extraChargeCents === null) return null;
+  return marginPct(msrpCents + option.extraChargeCents, option.buildCents);
+};
+
+/** What a price row's builds cost; none when the row cannot be built at all. */
+const buildCostCents = (build: FamilyBuild): number[] => {
+  if (build.missingCase) return [];
+  return build.costs.options.length > 0
+    ? build.costs.options.map((option) => option.buildCents)
+    : [build.costs.baseCents];
 };
 
 const EMPTY_DRAFT_ROW: DraftRow = { costPrice: "", msrp: "", compareAt: "" };
@@ -328,7 +412,12 @@ export default function CostingsPage() {
   const [filterMeasureVersion, setFilterMeasureVersion] = useState(0);
   const filterMeasureRef = useRef<HTMLDivElement>(null);
   const filterContainerRef = useRef<HTMLDivElement>(null);
-  const [premiumVariantSelection, setPremiumVariantSelection] = useState<PremiumVariant>("linen");
+  const [fillingTemplates, setFillingTemplates] = useState<FillingTemplate[]>([]);
+  const [fillingTemplatesError, setFillingTemplatesError] = useState<string | null>(null);
+  // The case fabric and Filling Template the open sheet is previewing. A null
+  // template means the card's first build: its default, else its cheapest.
+  const [sheetFamily, setSheetFamily] = useState<PremiumVariant>("linen");
+  const [sheetTemplateId, setSheetTemplateId] = useState<number | null>(null);
   const [onHandKpis, setOnHandKpis] = useState<OnHandValueKpis | null>(null);
   const [groupOpenStates, setGroupOpenStates] = useState<Record<ProductGroupKey, boolean>>(() =>
     Object.fromEntries(
@@ -372,7 +461,12 @@ export default function CostingsPage() {
     setLoading(true);
     try {
       type RawItemRow = ItemRow & { pricing?: PriceRecord | PriceRecord[] | null };
-      type RawPillowRow = { id: number; size: string; kind: PillowKind | string | null };
+      type RawPillowRow = {
+        id: number;
+        size: string;
+        kind: PillowKind | string | null;
+        default_filling_template_id: number | null;
+      };
       type RawBomLine = { product_id: number; item_id: number; quantity: number | string };
       type RawBolsterLine = { variant: string; item_id: number; quantity: number | string };
       type RawProductPrice = {
@@ -383,14 +477,23 @@ export default function CostingsPage() {
         msrp: string | number | null;
         compare_at_price?: string | number | null;
       };
-      type RawTemplate = {
-        id: number | string;
-        key: string;
-        pillow_variant: string | null;
-        updated_at: string;
-        lines?: Array<{ item_id: number | string; quantity: number | string }> | null;
-      };
+      type RawBolsterConfig = { variant: string; default_filling_template_id: number | null };
       type BalanceRow = { item_id: number; on_hand: string | number | null };
+
+      // Placements are service-role only, so the Derived pack lists come from the
+      // server. Not fatal: prices still load and edit without them.
+      const templatesRequest = fetch(settingsPath("/settings/costings/builds"), { cache: "no-store" })
+        .then(async (response) => {
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !payload?.ok) {
+            throw new Error(payload?.error ?? "Couldn't load Filling Templates.");
+          }
+          return { templates: payload.templates as FillingTemplate[], error: null };
+        })
+        .catch((err: unknown) => ({
+          templates: [] as FillingTemplate[],
+          error: err instanceof Error ? err.message : "Couldn't load Filling Templates.",
+        }));
 
       const [
         { data: itemsData, error: itemsError },
@@ -398,12 +501,13 @@ export default function CostingsPage() {
         { data: bomData, error: bomError },
         { data: bolsterData, error: bolsterError },
         { data: productPricesData, error: productPricesError },
-        { data: templateData, error: templateError },
+        { data: bolsterConfigData, error: bolsterConfigError },
         { data: balanceRows, error: balancesError },
+        templatesResult,
       ] = await Promise.all([
         supabaseClient
           .from("items")
-          .select("id,category,name,size,subtype,pricing:item_prices!left(cost_price,msrp,compare_at_price)")
+          .select("id,category,name,size,subtype,price_family,pricing:item_prices!left(cost_price,msrp,compare_at_price)")
           .eq("is_active", true)
           .order("category", { ascending: true })
           .order("name", { ascending: true })
@@ -411,21 +515,16 @@ export default function CostingsPage() {
           .order("subtype", { ascending: true, nullsFirst: false }),
         supabaseClient
           .from("pillow_products")
-          .select("id,size,kind")
+          .select("id,size,kind,default_filling_template_id")
           .eq("is_active", true)
           .order("size", { ascending: true }),
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
         supabaseClient.from("bolster_bom_lines").select("variant,item_id,quantity"),
         supabaseClient.from("product_prices").select("key,kind,product_id,variant,msrp,compare_at_price"),
-        supabaseClient
-          .from("bom_templates")
-          .select("id,key,pillow_variant,updated_at,lines:bom_template_lines(item_id,quantity)")
-          .eq("kind", "pillow")
-          .eq("pillow_kind", "premium")
-          .in("pillow_variant", PREMIUM_VARIANTS as unknown as string[])
-          .order("updated_at", { ascending: false }),
+        supabaseClient.from("bolster_length_config").select("variant,default_filling_template_id"),
         // ponytail: as-of-now KPIs from balances + item_prices only — no Shopify mirror
         supabaseClient.from("inventory_balances").select("item_id,on_hand"),
+        templatesRequest,
       ]);
 
       if (itemsError) throw new Error(itemsError.message);
@@ -433,7 +532,7 @@ export default function CostingsPage() {
       if (bomError) throw new Error(bomError.message);
       if (bolsterError) throw new Error(bolsterError.message);
       if (productPricesError) throw new Error(productPricesError.message);
-      if (templateError) throw new Error(templateError.message);
+      if (bolsterConfigError) throw new Error(bolsterConfigError.message);
       if (balancesError) throw new Error(balancesError.message);
 
       const balanceMap = new Map<number, number>();
@@ -442,12 +541,13 @@ export default function CostingsPage() {
       });
 
       const rows = (itemsData ?? []) as RawItemRow[];
-      const nextItems = rows.map(({ id, category, name, size, subtype }) => ({
+      const nextItems = rows.map(({ id, category, name, size, subtype, price_family }) => ({
         id,
         category,
         name,
         size,
         subtype,
+        price_family: price_family ?? null,
       }));
       const nextDraft: DraftState = {};
       const nextBaseline: BaselineState = {};
@@ -479,7 +579,12 @@ export default function CostingsPage() {
       const bolsterLines = (bolsterData ?? []) as RawBolsterLine[];
       const pillowProducts = (pillowData ?? []) as RawPillowRow[];
       const productPrices = (productPricesData ?? []) as RawProductPrice[];
-      const templates = (templateData ?? []) as RawTemplate[];
+      const bolsterDefaults = new Map<string, number | null>(
+        ((bolsterConfigData ?? []) as RawBolsterConfig[]).map((row) => [
+          row.variant,
+          row.default_filling_template_id == null ? null : Number(row.default_filling_template_id),
+        ]),
+      );
 
       const bomByProduct = new Map<number, ProductComponent[]>();
       bomLines.forEach((line) => {
@@ -493,26 +598,6 @@ export default function CostingsPage() {
         list.push({ itemId, quantity });
         bomByProduct.set(productId, list);
       });
-
-      // Premium variant BOM templates (optional): pick the latest template per (size,variant).
-      // We use these for displaying parts + computing cost for premium variant selection.
-      const premiumTemplateComponentsBySizeVariant = new Map<string, ProductComponent[]>();
-      for (const t of templates) {
-        const sizeKey = String(t.key);
-        const variant = String(t.pillow_variant ?? "").toLowerCase();
-        if (!sizeKey) continue;
-        if (variant !== "linen" && variant !== "fibrecool") continue;
-        const k = `${sizeKey}:${variant}`;
-        if (premiumTemplateComponentsBySizeVariant.has(k)) continue; // already have latest due to ordering
-        const rawLines = Array.isArray(t.lines) ? t.lines : [];
-        const components = rawLines
-          .map((l) => ({
-            itemId: Number(l.item_id),
-            quantity: Number(l.quantity),
-          }))
-          .filter((c) => Number.isFinite(c.itemId) && c.itemId > 0 && Number.isFinite(c.quantity) && c.quantity > 0);
-        premiumTemplateComponentsBySizeVariant.set(k, components);
-      }
 
       const bolsterByVariant: Record<BolsterVariant, ProductComponent[]> = {
         short: [],
@@ -590,9 +675,9 @@ export default function CostingsPage() {
               ? PREMIUM_VARIANTS.map((variant) => ({
                   key: premiumPillowKey(product.id, variant),
                   variant,
-                  label: `Premium Pillow — ${product.size} (${PREMIUM_VARIANT_TITLES[variant]})`,
+                  label: `Premium Mpillow ${product.size}, ${PREMIUM_VARIANT_TITLES[variant]}`,
                 }))
-              : [{ key: pillowKey(product.id), label: `Basic Pillow — ${product.size}` }];
+              : [{ key: pillowKey(product.id), label: `Basic Mpillow ${product.size}` }];
 
           priceRows.forEach(({ key, variant, label }) => {
             const price =
@@ -617,14 +702,8 @@ export default function CostingsPage() {
               costCents,
               msrpCents,
               components,
-              ...(pillowKind === "premium"
-                ? {
-                    premiumComponentsByVariant: {
-                      linen: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:linen`) ?? components,
-                      fibrecool: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:fibrecool`) ?? components,
-                    },
-                  }
-                : {}),
+              defaultFillingTemplateId:
+                product.default_filling_template_id == null ? null : Number(product.default_filling_template_id),
             });
           });
         });
@@ -645,16 +724,19 @@ export default function CostingsPage() {
         productRows.push({
           key,
           kind: "bolster",
-          label: `Bolster — ${BOLSTER_VARIANT_TITLES[variant]}`,
+          label: `Mbolster ${BOLSTER_VARIANT_TITLES[variant]}`,
           variant,
           costCents,
           msrpCents,
           components,
+          defaultFillingTemplateId: bolsterDefaults.get(variant) ?? null,
         });
       });
 
       setItems(nextItems);
       setProducts(productRows);
+      setFillingTemplates(templatesResult.templates);
+      setFillingTemplatesError(templatesResult.error);
       const loadedDraft = { ...nextDraft, ...productDraft };
       commitDraftDebounced.cancel();
       draftRef.current = loadedDraft;
@@ -668,7 +750,7 @@ export default function CostingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [applyBaseline, commitDraftDebounced]);
+  }, [applyBaseline, commitDraftDebounced, settingsPath]);
 
   useEffect(() => {
     load();
@@ -878,79 +960,168 @@ export default function CostingsPage() {
     return map;
   }, [items, committedDraft]);
 
-  const productCostDisplay = useMemo(() => {
-    const map = new Map<string, string>();
-    products.forEach((product) => {
-      const totalCents = computeProductComponentsCostCents(product.components, itemCostByIdFromDraft);
-      map.set(product.key, totalCents === null ? "" : formatFromCents(totalCents));
-    });
+  const productCards = useMemo(() => {
+    const byKey = new Map<string, ProductCard>();
+    for (const row of products) {
+      const cardKey = row.kind === "pillow" ? `card:pillow:${row.productId}` : `card:bolster:${row.variant}`;
+      const existing = byKey.get(cardKey);
+      if (existing) {
+        existing.priceRows.push(row);
+        continue;
+      }
+      const pillowKind = row.pillowKind ?? "basic";
+      const lengthTitle = row.variant ? BOLSTER_VARIANT_TITLES[row.variant] : row.label;
+      byKey.set(cardKey, {
+        key: cardKey,
+        kind: row.kind,
+        label:
+          row.kind === "pillow"
+            ? `${pillowKind === "premium" ? "Premium" : "Basic"} Mpillow ${row.size}`
+            : `Mbolster ${lengthTitle}`,
+        primaryLabel: row.kind === "pillow" ? String(row.size ?? row.label) : lengthTitle,
+        size: row.size,
+        pillowKind: row.pillowKind,
+        variant: row.variant,
+        configureSlug: row.kind === "pillow" ? `${pillowKind}-${row.size}` : `bolster-${row.variant}`,
+        components: row.components,
+        defaultFillingTemplateId: row.defaultFillingTemplateId,
+        priceRows: [row],
+      });
+    }
+    return Array.from(byKey.values());
+  }, [products]);
+
+  // Each card's cost in every price row, once per Filling Template serving its size.
+  // Keyed off `committedDraft` like the memos above, so an edited part cost or case
+  // MSRP moves every build that uses it as soon as the debounce lands.
+  const cardBuilds = useMemo(() => {
+    const msrpCentsOf = (itemId: number) => parseToCents(committedDraft[itemKey(itemId)]?.msrp ?? "");
+    const neckSupportMsrpByItem = new Map<number, number | null>(
+      items.filter((item) => isNeckSupportItem(item)).map((item) => [item.id, msrpCentsOf(item.id)]),
+    );
+    const caseItems = items.filter((item) => CASE_CATEGORIES.has(item.category));
+    const map = new Map<string, CardBuild>();
+    for (const card of productCards) {
+      const scope = card.kind === "pillow" ? card.size : card.variant;
+      const templates = fillingTemplates.filter(
+        (template) => template.kind === card.kind && scope !== undefined && template.keys.includes(scope),
+      );
+      const bomCaseLine = card.components.find((component) =>
+        CASE_CATEGORIES.has(itemMap.get(component.itemId)?.category ?? ""),
+      );
+      const bomCaseItem = bomCaseLine ? itemMap.get(bomCaseLine.itemId) : undefined;
+      const families = card.priceRows.map((row): FamilyBuild => {
+        let components = card.components;
+        let missingCase = false;
+        if (row.premiumVariant) {
+          // Each fabric's row was priced with that fabric's case, so its build ships
+          // that case, whichever one the BOM happens to carry.
+          const caseItemId = familyCaseItemId({
+            bomCase: bomCaseItem
+              ? { itemId: bomCaseItem.id, family: bomCaseItem.price_family ?? null, msrpCents: msrpCentsOf(bomCaseItem.id) }
+              : null,
+            family: row.premiumVariant,
+            candidates: caseItems
+              .filter((item) => item.size === card.size || item.size === null)
+              .map((item) => ({ itemId: item.id, family: item.price_family ?? null, msrpCents: msrpCentsOf(item.id) })),
+          });
+          if (caseItemId === null) missingCase = true;
+          else if (bomCaseLine) components = swapComponent(card.components, bomCaseLine.itemId, caseItemId);
+          else components = [...card.components, { itemId: caseItemId, quantity: 1 }];
+        }
+        return {
+          row,
+          family: row.premiumVariant ?? null,
+          components,
+          missingCase,
+          costs: buildCostOptions({
+            baseComponents: components,
+            // A fabric with no case here cannot be built, so it has no build to cost.
+            templates: missingCase ? [] : templates,
+            defaultTemplateId: card.defaultFillingTemplateId,
+            costByItem: itemCostByIdFromDraft,
+            neckSupportMsrpByItem,
+            allowNeckSupport: card.kind === "pillow" && card.pillowKind === "premium",
+          }),
+        };
+      });
+      map.set(card.key, {
+        families,
+        defaultTemplateName: families[0]?.costs.options.find((option) => option.isDefault)?.name ?? null,
+      });
+    }
     return map;
-  }, [products, itemCostByIdFromDraft]);
+  }, [productCards, fillingTemplates, items, itemMap, itemCostByIdFromDraft, committedDraft]);
 
   const groupedProducts = useMemo(() => {
     const assigned = new Set<string>();
     return PRODUCT_GROUP_DEFINITIONS.map((group) => {
-      const groupProducts = products.filter((product) => {
-        if (assigned.has(product.key)) return false;
-        if (!group.filter(product)) return false;
-        assigned.add(product.key);
+      const cards = productCards.filter((card) => {
+        if (assigned.has(card.key)) return false;
+        if (!group.filter(card)) return false;
+        assigned.add(card.key);
         return true;
       });
-      return { ...group, products: sortProductRows(groupProducts) };
+      return { ...group, cards: sortProductCards(cards) };
     });
-  }, [products]);
+  }, [productCards]);
 
   const handleGroupOpenChange = useCallback((groupKey: ProductGroupKey, open: boolean) => {
     setGroupOpenStates((prev) => ({ ...prev, [groupKey]: open }));
   }, []);
 
-  const getPillowSizeLabel = (label: string) => {
-    const parts = label
-      .split(/[—–]/)
-      .map((part) => part.trim())
-      .filter(Boolean);
-    if (parts.length >= 2) return parts[parts.length - 1];
-    return label.trim();
-  };
-
-  const renderProductCard = (product: ProductRow) => {
-    const current = draft[product.key] ?? { costPrice: "", msrp: "", compareAt: "" };
-    const costDisplay = productCostDisplay.get(product.key) ?? current.costPrice;
-    const partsCount = product.components.filter((component) => component.quantity > 0).length;
-    const primaryLabel =
-      product.kind === "pillow"
-        ? getPillowSizeLabel(product.label)
-        : product.variant
-        ? BOLSTER_VARIANT_TITLES[product.variant]
-        : product.label;
-    const secondaryLabel = product.kind === "pillow" ? "Pillow size" : "Bolster length";
+  const renderProductCard = (card: ProductCard) => {
+    const build = cardBuilds.get(card.key);
+    const families = build?.families ?? [];
+    const range = costRange(families.flatMap(buildCostCents));
+    const templateCount = families[0]?.costs.options.length ?? 0;
+    const secondaryLabel = card.kind === "pillow" ? "Pillow size" : "Bolster length";
+    const msrpLabel = (row: ProductRow) => formatDraftCurrencyLabel(draft[row.key]?.msrp);
     return (
       <div
-        key={product.key}
+        key={card.key}
         role="button"
         tabIndex={0}
         className="space-y-2 rounded-lg border p-3 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none sm:space-y-3 sm:p-4"
-        onClick={() => openProductSheet(product.key)}
+        onClick={() => openProductSheet(card.key)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openProductSheet(product.key);
+            openProductSheet(card.key);
           }
         }}
       >
         <div>
           <div className="text-xs text-muted-foreground">{secondaryLabel}</div>
-          <div className="text-xl font-semibold sm:text-2xl">{primaryLabel}</div>
+          <div className="text-xl font-semibold sm:text-2xl">{card.primaryLabel}</div>
         </div>
-        <div className="text-xs text-muted-foreground">{partsCount} parts configured</div>
+        <div className="space-y-0.5 text-xs text-muted-foreground">
+          <div>{templateCount === 1 ? "1 filling template" : `${templateCount} filling templates`}</div>
+          <div className="truncate">
+            {build?.defaultTemplateName ? `Default is ${build.defaultTemplateName}` : "No default set"}
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div>
-            <div className="text-xs text-muted-foreground">Cost</div>
-            <div className="font-medium">{formatDraftCurrencyLabel(costDisplay)}</div>
+            <div className="text-xs text-muted-foreground">Build cost</div>
+            <div className="font-medium tabular-nums">{formatCentsRange(range)}</div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">MSRP</div>
-            <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
+            {card.priceRows.length > 1 ? (
+              <div className="space-y-0.5">
+                {card.priceRows.map((row) => (
+                  <div key={row.key} className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {row.premiumVariant ? PREMIUM_VARIANT_TITLES[row.premiumVariant] : row.label}
+                    </span>
+                    <span className="font-medium tabular-nums">{msrpLabel(row)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="font-medium tabular-nums">{card.priceRows[0] ? msrpLabel(card.priceRows[0]) : "Not set"}</div>
+            )}
           </div>
         </div>
         <div className="hidden sm:block">
@@ -962,88 +1133,73 @@ export default function CostingsPage() {
     );
   };
 
-  const activeProduct = useMemo(() => {
+  const activeCard = useMemo(() => {
     if (!productSheetKey) return null;
-    return products.find((product) => product.key === productSheetKey) ?? null;
-  }, [productSheetKey, products]);
+    return productCards.find((card) => card.key === productSheetKey) ?? null;
+  }, [productSheetKey, productCards]);
 
-  const activeProductDraft = useMemo(() => {
-    if (!activeProduct) return null;
-    return draft[activeProduct.key] ?? { costPrice: "", msrp: "", compareAt: "" };
-  }, [activeProduct, draft]);
+  const activeBuild = activeCard ? cardBuilds.get(activeCard.key) ?? null : null;
+  const activeFamily =
+    activeBuild?.families.find((build) => build.family === sheetFamily) ?? activeBuild?.families[0] ?? null;
+  const activeOptions = activeFamily?.costs.options ?? [];
+  const activeOption =
+    activeOptions.find((option) => option.templateId === sheetTemplateId) ?? activeOptions[0] ?? null;
+  const activeRowDraft = activeFamily ? draft[activeFamily.row.key] ?? EMPTY_DRAFT_ROW : null;
+  const activeMsrpCents = parseToCents(activeRowDraft?.msrp ?? "");
 
-  const activeProductComponentsSource = useMemo(() => {
-    if (!activeProduct) return [];
-    if (
-      activeProduct.kind === "pillow" &&
-      activeProduct.pillowKind === "premium" &&
-      activeProduct.premiumComponentsByVariant
-    ) {
-      return (
-        activeProduct.premiumComponentsByVariant[premiumVariantSelection] ??
-        activeProduct.components
-      );
-    }
-    return activeProduct.components;
-  }, [activeProduct, premiumVariantSelection]);
-
-  const activeProductCostDisplay = useMemo(() => {
-    if (!activeProduct) return "";
-    const fromComponents = computeProductComponentsCostCents(activeProductComponentsSource, itemCostByIdFromDraft);
-    if (fromComponents !== null) {
-      return formatFromCents(fromComponents);
-    }
-    const display = productCostDisplay.get(activeProduct.key);
-    if (display && display !== "") {
-      return display;
-    }
-    return formatFromCents(activeProduct.costCents ?? null);
-  }, [activeProduct, productCostDisplay, itemCostByIdFromDraft, activeProductComponentsSource]);
-
-  const activeProductComponents = useMemo(() => {
-    if (!activeProduct) return [];
-    const groups = new Map<string, ProductComponentGroup>();
-    activeProductComponentsSource.forEach((component) => {
-      if (!component || component.quantity <= 0) return;
-      const item = itemMap.get(component.itemId);
-      if (!item) return;
-      const category = item.category;
-      const group = groups.get(category) ?? {
-        key: category,
-        title: getInventoryCategoryTitle(category),
-        rows: [],
-      };
-      const costEach = itemCostByIdFromDraft.get(item.id) ?? null;
-      const totalCost = costEach !== null ? costEach * component.quantity : null;
-      group.rows.push({
-        item,
-        quantity: component.quantity,
-        costEach,
-        totalCost,
+  /** A build's lines grouped by category, in build order, with their costs. */
+  const groupBuildLines = useCallback(
+    (components: ProductComponent[]): ProductComponentGroup[] => {
+      const groups = new Map<string, ProductComponentGroup>();
+      components.forEach((component) => {
+        if (component.quantity <= 0) return;
+        // Costings loads active Items only, but a BOM can still point at an
+        // inactive one. It is listed rather than dropped, so a cost it leaves
+        // out is visible.
+        const item = itemMap.get(component.itemId) ?? {
+          id: component.itemId,
+          category: "inactive",
+          name: `Item ${component.itemId}`,
+          size: null,
+          subtype: null,
+        };
+        const group = groups.get(item.category) ?? {
+          key: item.category,
+          title: getInventoryCategoryTitle(item.category),
+          rows: [],
+        };
+        const costEach = itemCostByIdFromDraft.get(item.id) ?? null;
+        group.rows.push({
+          item,
+          quantity: component.quantity,
+          costEach,
+          totalCost: costEach !== null ? costEach * component.quantity : null,
+        });
+        groups.set(item.category, group);
       });
-      groups.set(category, group);
-    });
-    const sortIndex = (category: string) => {
-      const index = CATEGORY_ORDER.indexOf(category);
-      return index === -1 ? Number.MAX_SAFE_INTEGER : index;
-    };
-    return Array.from(groups.values())
-      .sort((left, right) => {
-        const leftIndex = sortIndex(left.key);
-        const rightIndex = sortIndex(right.key);
-        if (leftIndex !== rightIndex) return leftIndex - rightIndex;
-        return left.title.localeCompare(right.title);
-      })
-      .map((group) => ({
-        ...group,
-        rows: group.rows.sort((a, b) =>
-          getInventoryItemDisplayLabel(a.item).localeCompare(getInventoryItemDisplayLabel(b.item)),
-        ),
-      }));
-  }, [activeProduct, itemCostByIdFromDraft, itemMap, activeProductComponentsSource]);
+      const sortIndex = (category: string) => {
+        const index = BUILD_CATEGORY_ORDER.indexOf(category);
+        return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+      };
+      return Array.from(groups.values())
+        .sort((left, right) => sortIndex(left.key) - sortIndex(right.key) || left.title.localeCompare(right.title))
+        .map((group) => ({
+          ...group,
+          rows: group.rows.sort((a, b) =>
+            getInventoryItemDisplayLabel(a.item).localeCompare(getInventoryItemDisplayLabel(b.item)),
+          ),
+        }));
+    },
+    [itemMap, itemCostByIdFromDraft],
+  );
 
-  const openProductSheet = useCallback((productKey: string) => {
-    setProductSheetKey(productKey);
+  const activePartGroups = activeFamily ? groupBuildLines(activeFamily.components) : [];
+  const activeFillingGroups = activeOption ? groupBuildLines(activeOption.lines) : [];
+
+  const openProductSheet = useCallback((cardKey: string) => {
+    setProductSheetKey(cardKey);
+    setSheetFamily("linen");
+    setSheetTemplateId(null);
     setProductSheetOpen(true);
   }, []);
 
@@ -1395,7 +1551,8 @@ export default function CostingsPage() {
             <div className="flex items-center gap-1.5">
               <h2>Products</h2>
               <InfoTip label="About Products">
-                Cost comes from the BOM. Enter MSRP, plus compare-at for a strikethrough price.
+                Build cost is the parts plus the filling template a build is assigned. Enter MSRP, plus compare-at
+                for a strikethrough price.
               </InfoTip>
             </div>
             <div className="space-y-4">
@@ -1403,7 +1560,7 @@ export default function CostingsPage() {
                 <ProductGroupSection
                   key={group.key}
                   group={group}
-                  products={group.products}
+                  cards={group.cards}
                   isOpen={Boolean(groupOpenStates[group.key])}
                   onOpenChange={(open) => handleGroupOpenChange(group.key, open)}
                   renderProductCard={renderProductCard}
@@ -1562,139 +1719,199 @@ export default function CostingsPage() {
         </section>
       </div>
 
-      <Sheet open={productSheetOpen && Boolean(activeProduct)} onOpenChange={handleSheetOpenChange}>
-        <SheetContent side="right" className="flex w-full flex-col max-md:max-h-[92svh] sm:max-w-xl">
+      <Sheet open={productSheetOpen && Boolean(activeCard)} onOpenChange={handleSheetOpenChange}>
+        <SheetContent side="right" className="flex w-full flex-col max-md:max-h-[92svh] sm:max-w-2xl">
           <SheetHeader>
-            <SheetTitle>{activeProduct?.label ?? "Product details"}</SheetTitle>
-            <SheetDescription>Review configured parts and adjust pricing.</SheetDescription>
+            <SheetTitle>{activeCard?.label ?? "Product details"}</SheetTitle>
+            <SheetDescription>Set the price, then compare what each filling template costs to build.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4">
-            {activeProduct ? (
+            {activeCard && activeBuild && activeFamily && activeRowDraft ? (
               <>
                 <div className="space-y-4">
-                  {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
+                  {activeBuild.families.length > 1 ? (
                     <div className="space-y-2">
-                      <div className="text-sm font-medium">Component variant</div>
-                      <Select
-                        value={premiumVariantSelection}
-                        onValueChange={(value) => {
-                          if (value === "linen" || value === "fibrecool") {
-                            setPremiumVariantSelection(value);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-full" aria-label="Select premium variant">
-                          <SelectValue placeholder="Select variant…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PREMIUM_VARIANTS.map((variant) => (
-                            <SelectItem key={variant} value={variant}>
-                              {PREMIUM_VARIANT_TITLES[variant]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="text-sm font-medium">Case fabric</div>
+                      <div role="radiogroup" aria-label="Case fabric" className="grid grid-cols-2 gap-2">
+                        {activeBuild.families.map((build) => {
+                          const title = build.family ? PREMIUM_VARIANT_TITLES[build.family] : build.row.label;
+                          const selected = build === activeFamily;
+                          const msrpCents = parseToCents(draft[build.row.key]?.msrp ?? "");
+                          const margin = formatMarginRange(
+                            build.costs.options.map((option) => optionMargin(option, msrpCents)),
+                          );
+                          return (
+                            <button
+                              key={build.row.key}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              onClick={() => build.family && setSheetFamily(build.family)}
+                              className={cn(
+                                "space-y-1 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                selected ? "border-primary bg-primary/5" : "border-border",
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-medium">{title}</span>
+                                {selected ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                              </div>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-lg font-semibold tabular-nums">{formatCentsLabel(msrpCents)}</span>
+                                <span className="text-xs text-muted-foreground">MSRP</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {build.missingCase
+                                  ? `No ${title} case at this size`
+                                  : `Build ${formatCentsRange(costRange(buildCostCents(build)))}`}
+                              </div>
+                              {margin ? <div className="text-xs text-muted-foreground">Margin {margin}</div> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : null}
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Cost price</div>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          $
-                        </span>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={activeProductCostDisplay}
-                          placeholder="0.00"
-                          disabled
-                          className="pl-6"
-                          aria-label={`Cost price for ${activeProduct.label}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium">MSRP</div>
-                      </div>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          $
-                        </span>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={activeProductDraft?.msrp ?? ""}
-                          placeholder="0.00"
-                          onChange={(event) =>
-                            handleInputChange(activeProduct.key, "msrp", event.target.value)
-                          }
-                          onBlur={() => handleBlur(activeProduct.key, "msrp")}
-                          className="pl-6"
-                          aria-label={`MSRP for ${activeProduct.label}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium">Compare-at</div>
-                      </div>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          $
-                        </span>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={activeProductDraft?.compareAt ?? ""}
-                          placeholder="(optional)"
-                          onChange={(event) =>
-                            handleInputChange(activeProduct.key, "compareAt", event.target.value)
-                          }
-                          onBlur={() => handleBlur(activeProduct.key, "compareAt")}
-                          className="pl-6"
-                          aria-label={`Compare-at for ${activeProduct.label}`}
-                        />
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <PriceInput
+                      label={activeFamily.family ? `${PREMIUM_VARIANT_TITLES[activeFamily.family]} MSRP` : "MSRP"}
+                      value={activeRowDraft.msrp}
+                      placeholder="0.00"
+                      onChange={(value) => handleInputChange(activeFamily.row.key, "msrp", value)}
+                      onBlur={() => handleBlur(activeFamily.row.key, "msrp")}
+                      ariaLabel={`MSRP for ${activeFamily.row.label}`}
+                    />
+                    <PriceInput
+                      label={
+                        activeFamily.family ? `${PREMIUM_VARIANT_TITLES[activeFamily.family]} compare-at` : "Compare-at"
+                      }
+                      value={activeRowDraft.compareAt}
+                      placeholder="(optional)"
+                      onChange={(value) => handleInputChange(activeFamily.row.key, "compareAt", value)}
+                      onBlur={() => handleBlur(activeFamily.row.key, "compareAt")}
+                      ariaLabel={`Compare-at for ${activeFamily.row.label}`}
+                    />
                   </div>
                 </div>
+
                 <Separator />
-                {activeProductComponents.length > 0 ? (
-                  <div className="space-y-4">
-                    {activeProductComponents.map((group) => (
-                      <Section key={group.key} title={group.title}>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className={STICKY_PART_HEAD}>Part</TableHead>
-                              <TableHead className="min-w-[3.5rem] sm:w-[70px]">Qty</TableHead>
-                              <TableHead className="min-w-[6rem] whitespace-nowrap sm:w-1/5 sm:min-w-0">Cost Each</TableHead>
-                              <TableHead className="min-w-[6rem] whitespace-nowrap sm:w-1/5 sm:min-w-0">Total Cost</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {group.rows.map((detail) => (
-                              <TableRow key={detail.item.id}>
-                                <TableCell className={STICKY_PART_CELL}>
-                                  <InventoryItemLabel item={detail.item} />
-                                </TableCell>
-                                <TableCell className="tabular-nums">{detail.quantity}</TableCell>
-                                <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.costEach)}</TableCell>
-                                <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.totalCost)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </Section>
-                    ))}
-                  </div>
+
+                {activeFamily.missingCase && activeFamily.family ? (
+                  <p className="text-sm text-muted-foreground">
+                    There is no active {PREMIUM_VARIANT_TITLES[activeFamily.family]} case at this size, so this fabric
+                    cannot be built here yet.
+                  </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No parts configured for this product.</p>
+                  <>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-sm font-medium">Build cost by filling template</h3>
+                          <InfoTip label="About build cost">
+                            A build costs its parts plus the filling template it is assigned. A neck support is charged
+                            at its own MSRP, so its margin counts that too. Basic Mpillow is built without one.
+                          </InfoTip>
+                        </div>
+                        {activeOptions.length > 1 ? (
+                          <span className="text-xs text-muted-foreground">
+                            {formatCentsRange(costRange(activeOptions.map((option) => option.buildCents)))} across{" "}
+                            {activeOptions.length} templates
+                          </span>
+                        ) : null}
+                      </div>
+                      {fillingTemplatesError ? (
+                        <p className="text-sm text-destructive">{fillingTemplatesError}</p>
+                      ) : activeOptions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No filling template serves this {activeCard.kind === "pillow" ? "size" : "length"} yet, so the
+                          cost below is its parts alone.
+                        </p>
+                      ) : (
+                        <div role="radiogroup" aria-label="Filling templates" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {activeOptions.map((option) => {
+                            const selected = option.templateId === activeOption?.templateId;
+                            const margin = optionMargin(option, activeMsrpCents);
+                            return (
+                              <button
+                                key={option.templateId}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                onClick={() => setSheetTemplateId(option.templateId)}
+                                className={cn(
+                                  "space-y-1 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                  selected ? "border-primary bg-primary/5" : "border-border",
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="min-w-0 truncate text-sm font-medium">{option.name}</span>
+                                  {option.isDefault ? <Badge variant="secondary">Default</Badge> : null}
+                                </div>
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="text-lg font-semibold tabular-nums">{formatCentsLabel(option.buildCents)}</span>
+                                  <span className="text-xs text-muted-foreground tabular-nums">
+                                    {margin === null ? "No MSRP" : `${Math.round(margin)}% margin`}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Mix {formatCentsLabel(option.fillingCents)} for {option.pieces}{" "}
+                                  {option.pieces === 1 ? "piece" : "pieces"}
+                                </div>
+                                {option.neckSupport === "charged" ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    {option.extraChargeCents === null
+                                      ? "Its neck support has no MSRP"
+                                      : `Neck support adds ${formatCentsLabel(option.extraChargeCents)} to the price`}
+                                  </div>
+                                ) : option.neckSupport === "left_out" ? (
+                                  <div className="text-xs text-muted-foreground">Built without its neck support</div>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={settingsPath(`/settings/inventory/configure/${activeCard.configureSlug}`)}>
+                          Edit filling templates
+                        </Link>
+                      </Button>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 className="text-sm font-medium">
+                          {activeOption ? `Build with ${activeOption.name}` : "Parts"}
+                          {activeFamily.family ? ` in ${PREMIUM_VARIANT_TITLES[activeFamily.family]}` : ""}
+                        </h3>
+                        <span className="text-sm font-semibold tabular-nums">
+                          {formatCentsLabel(activeOption?.buildCents ?? activeFamily.costs.baseCents)}
+                        </span>
+                      </div>
+                      {(activeOption?.uncostedItemIds ?? activeFamily.costs.baseUncostedItemIds).length > 0 ? (
+                        <p className="text-xs text-amber-600 dark:text-amber-500">
+                          Some parts have no cost price, so this build costs at least this much.
+                        </p>
+                      ) : null}
+                      <BuildLines
+                        title="Parts"
+                        subtotalCents={activeFamily.costs.baseCents}
+                        groups={activePartGroups}
+                        emptyState="No parts configured for this product."
+                      />
+                      {activeOption ? (
+                        <BuildLines
+                          title={`Fillings from ${activeOption.name}`}
+                          subtotalCents={activeOption.fillingCents}
+                          groups={activeFillingGroups}
+                          emptyState="This template has no pieces yet."
+                        />
+                      ) : null}
+                    </div>
+                  </>
                 )}
               </>
             ) : (
@@ -1731,20 +1948,20 @@ export default function CostingsPage() {
 
 type ProductGroupSectionProps = {
   group: ProductGroupDefinition;
-  products: ProductRow[];
+  cards: ProductCard[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  renderProductCard: (product: ProductRow) => ReactNode;
+  renderProductCard: (card: ProductCard) => ReactNode;
 };
 
 function ProductGroupSection({
   group,
-  products,
+  cards,
   isOpen,
   onOpenChange,
   renderProductCard,
 }: ProductGroupSectionProps) {
-  const summaryLabel = `${products.length} ${group.countLabel ?? "variants"} configured`;
+  const summaryLabel = `${cards.length} ${group.countLabel ?? "variants"} configured`;
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange}>
       <div className="overflow-hidden rounded-2xl border bg-background">
@@ -1767,13 +1984,13 @@ function ProductGroupSection({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="border-t px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
-          {products.length === 0 ? (
+          {cards.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {group.emptyState ?? `No ${group.title} products configured yet.`}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => renderProductCard(product))}
+              {cards.map((card) => renderProductCard(card))}
             </div>
           )}
         </CollapsibleContent>
@@ -1804,6 +2021,93 @@ function Section({
         {title}
       </div>
       <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function PriceInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+  onBlur,
+  ariaLabel,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">{label}</div>
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+        <Input
+          type="text"
+          inputMode="decimal"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onBlur}
+          className="pl-6"
+          aria-label={ariaLabel}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** One part of a build breakdown: its lines by category, with a subtotal. */
+function BuildLines({
+  title,
+  subtotalCents,
+  groups,
+  emptyState,
+}: {
+  title: string;
+  subtotalCents: number;
+  groups: ProductComponentGroup[];
+  emptyState: string;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-sm tabular-nums text-muted-foreground">{formatCentsLabel(subtotalCents)}</div>
+      </div>
+      {groups.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyState}</p>
+      ) : (
+        groups.map((group) => (
+          <Section key={group.key} title={group.title}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={STICKY_PART_HEAD}>Part</TableHead>
+                  <TableHead className="min-w-[3.5rem] sm:w-[70px]">Qty</TableHead>
+                  <TableHead className="min-w-[6rem] whitespace-nowrap sm:w-1/5 sm:min-w-0">Cost each</TableHead>
+                  <TableHead className="min-w-[6rem] whitespace-nowrap sm:w-1/5 sm:min-w-0">Total cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {group.rows.map((detail) => (
+                  <TableRow key={detail.item.id}>
+                    <TableCell className={STICKY_PART_CELL}>
+                      <InventoryItemLabel item={detail.item} />
+                    </TableCell>
+                    <TableCell className="tabular-nums">{detail.quantity}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.costEach)}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.totalCost)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Section>
+        ))
+      )}
     </div>
   );
 }

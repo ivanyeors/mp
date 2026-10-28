@@ -34,7 +34,8 @@ flowchart LR
 - **`inventory_transactions`** (`0001_inventory.sql`) has one row per movement:
   `item_id`, `quantity_signed` (never 0), `reason`, `metadata` jsonb and
   `created_at`. Nothing updates or deletes rows, and no trigger or SQL function
-  writes them. Every writer is TypeScript using the service-role client
+  writes them. One partial unique index guards in-store cart sales
+  (`20261028033625_stock_deduction_guards.sql`). Every writer is TypeScript using the service-role client
   (`supabaseAdmin()`), because RLS gives staff read access only.
 - **On-hand** is the `inventory_balances` view: `sum(quantity_signed)` per
   `item_id`. An Item with no rows has no balance row; callers treat that as 0.
@@ -55,13 +56,13 @@ flowchart LR
 
   | keys | writer |
   |---|---|
-  | `order_id`, `customization_id` | shop deduction (`deductInventoryForOrder`) |
-  | `order_id`, `result_id`, `role` | Result accept (`role` = composed / filling / preference / addon) |
+  | `order_id`, `customization_id`? | Variant lines of an Order (`deductInventoryForOrder`) |
+  | `order_id`, `result_id`, `role` | Result lines of an Order (`role` = composed / filling / preference / addon) |
   | `order_id`, `order_item_id`, `restock`, `stripe_refund_id`? | `restockOrderItem` |
-  | `shopify_queue_id`, `shopify_order_id`, `shopify_line_item_id` (+ `template_*` or `replace_lines`) | Shopify commit |
-  | `template_*`, `filling_template_*` | manual `sellFromTemplate` |
+  | `shopify_queue_id`, `shopify_order_id`, `shopify_line_item_id` (+ `template_*` or `replace_lines`) | the removed Shopify sales commit; old rows only |
+  | `sale_id`, `sale_line` (+ `template_*`, `filling_template_*` on a build) | in-store cart `sellCart`; unique per sale × line × Item |
   | `converted_from_item_id` / `converted_to_item_id` | altered-filling conversion |
-  | none | manual `sellPillow`, `sellPart`, `sellBolster`, plain receive |
+  | none | manual `sellPart`, plain receive |
 
 ### What can be built
 
@@ -120,8 +121,8 @@ flowchart TD
   `insertStockIn`, from `addInventoryItem`.
 - **Restocking returned goods** is a deliberate Staff action on the Order
   detail page (`POST /api/shop/orders/[id]/restock`, permission `orders`):
-  - `restockOrderItem` resolves Items through the Variant the same way shop
-    deduction does, writes `receive` rows and adds to
+  - `restockOrderItem` resolves Items through the Variant with the same
+    `stockLinesForOrderItem` the sale used, writes `receive` rows and adds to
     `order_items.returned_quantity`.
   - A Result Order line has no Variant. Its restock reverses that Result's
     own `sale` rows (matched on `order_id` + `result_id`).
@@ -167,11 +168,8 @@ flowchart LR
   part category is marked low when it limits builds to 30% or less of what the
   other parts allow. `item_thresholds` and `setThreshold` exist, but nothing
   reads the table and nothing calls the action.
-- **Shopify stock levels** are pushed only:
-  - after a Shopify sales commit (`syncShopifyInventoryForDepletedItems`), or
-  - on a full sync (`fullShopifySync`, `POST /api/shopify/sync`).
-
-  Shop sales, Result accepts, manual sells and receives do not push.
+- **Shopify stock levels** are pushed only on a full sync (`fullShopifySync`,
+  `POST /api/shopify/sync`). No sale or receive pushes.
 - **Costings KPIs**: on-hand value (at cost, potential MSRP revenue, margin) is
   read as-of-now from `inventory_balances` on the Costings page, not Analytics.
 

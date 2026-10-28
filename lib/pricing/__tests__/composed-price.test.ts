@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   UNKEYED,
+  baselineCaseByFamily,
   baselineCaseMsrpByFamily,
   priceComposedBuild,
   type PricedComponent,
@@ -194,5 +195,19 @@ describe("baselineCaseMsrpByFamily", () => {
       { item_id: 2, msrp: 65, family: "linen" },
     ]);
     expect(out).toEqual({ linen: 65 });
+  });
+});
+
+describe("baselineCaseByFamily", () => {
+  it("names the case each row was priced with, the lower id on a tie", () => {
+    const out = baselineCaseByFamily([
+      { item_id: 9, msrp: 65, family: "linen" },
+      { item_id: 6, msrp: 65, family: "linen" },
+      { item_id: 7, msrp: 72, family: "linen" },
+      { item_id: 32, msrp: 88, family: "fibrecool" },
+      { item_id: 37, msrp: null, family: "fibrecool" },
+    ]);
+    expect(out.linen.item_id).toBe(6);
+    expect(out.fibrecool.item_id).toBe(32);
   });
 });

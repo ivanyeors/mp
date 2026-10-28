@@ -346,8 +346,8 @@ Admin Panel → Analytics view filter: `all` | `orders` | `shopify`. **All** = p
 _Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-store sell” toggle in v1
 
 **Shopify order mirror**:
-Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Distinct from `shopify_sales_queue` (ops inventory commit). Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only.
-_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
+Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only. Shopify sales take no stock: the Shopify sales queue that once committed them to inventory was removed (2026-10-27).
+_Avoid_: deducting stock for a Shopify sale; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
 
 **Others**:
 Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
@@ -445,15 +445,15 @@ _Avoid_: measuring the window from order/ship date
 ## Reviews (PRD-google-review-replies)
 
 **Google review**:
-A review of the business on Google Maps, read through the Google Business Profile API and kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us.
-_Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read-only, never stored)
+A review of the business on Google Maps, kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us. Read through the Google Business Profile API, or, until Google approves that API, through the Places API once a week (`source` `places`, ADR 0035): Google's five most relevant reviews only, answered on Google Maps by hand, and deleted 30 days after they are stored.
+_Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read once a week, read-only, never stored)
 
 **Shop review**:
 A review a signed-in **Customer** leaves on a **Storefront product** (`product_reviews`). Starts `pending`; a **Shop moderator** approves it onto the product page or rejects it. No public reply.
 _Avoid_: "product review" when the source matters on a Telegram card — the card says SHOP REVIEW
 
 **Review card**:
-The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft, and nothing reaches Google until someone taps Post on the version they are looking at.
+The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft (unless it is a **Team note**), and nothing reaches Google until someone taps Post on the version they are looking at. A card for a review read through the Places API has Open on Google Maps / Mark replied / Skip instead: the reply is pasted on Google Maps, and Mark replied records the draft on screen as what was posted.
 _Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
 
 **Reply type**:
@@ -561,7 +561,7 @@ The Telegram message in the measurements group for one inbound **Customer messag
 _Avoid_: calling it a **Review card** — those carry buttons and a draft; a Message card is answered by replying
 
 **Team note**:
-A reply under a **Message card** that starts with `//`. It stays in the group and is never sent to the customer.
+A reply under a **Message card** or a Google **Review card** that starts with `//`. It stays in the group: never sent to the customer, and never a review's draft.
 
 **Reply window**:
 How long after a person's last **Customer message** the platform accepts our reply through the API: 24 hours on Facebook and Instagram (7 days with Meta's Human Agent permission). Past it the bot refuses and says to answer from the platform's own app. TikTok has no time limit; it caps the number of messages instead (up to 10 in a new chat's first 48 hours, 3 once the person has been quiet for 48 hours, until they write again) and its refusal is passed on in words.
@@ -649,7 +649,7 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 - One **Filling Template** (or **Filling configuration**) owns all nine **cells**. Pack list / stock / COGS = flattened inventory **Item** lines derived from placements (**A**). Per-**cell** editor: inventory-linked fillings only; UI starts at 1 piece, max 5 pieces per cell in v1.
 - Spatial persistence — resolved (**B** refined / **Q10-A**): dedicated **placement** rows are the “where” source of truth; flat pack list is always derived; **Warehouse template** stays non-filling (ADR 0003).
 - Analytics is retrospective P&L: sales windows use **`paid_at`** on platform **Orders** and the **Shopify order mirror**. On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
-- **Analytics channel** All = paid **Orders** ∪ **Shopify order mirror** only; `shopify_sales_queue` is ops, not a finance channel.
+- **Analytics channel** All = paid **Orders** ∪ **Shopify order mirror** only.
 - A **Visitor** has zero or more **Visits**; each **Visit** has one **Entry source** and may end in a **Drop-off** or a paid **Order**
 - A **Prospect** is a **Visitor** with no paid **Order**; after payment they are no longer a **Prospect**
 - **Entry source** is machine-captured at **Visit** start; **Discovery source** is self-reported later on the **Result** — never the same field

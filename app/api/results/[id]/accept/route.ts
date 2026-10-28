@@ -31,6 +31,7 @@ import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { incrementCouponUsage } from "@/lib/ecommerce/discounts";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
+import { deductOrderStockOrFlag } from "@/lib/ecommerce/order-stock";
 import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -749,22 +750,11 @@ export async function POST(
     }
   }
 
-  // Deduct inventory only after successful capture (US37).
-  const transactions = members.flatMap((m) =>
-    m.build.lines.map((line) => ({
-      item_id: line.item_id,
-      quantity_signed: -line.quantity,
-      reason: "sale" as const,
-      metadata: { order_id: order.id, result_id: m.row.id, role: line.role },
-    })),
-  );
-  if (transactions.length > 0) {
-    const { error: txErr } = await admin.from("inventory_transactions").insert(transactions);
-    if (txErr) {
-      await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
-      console.error("Inventory deduction failed after capture", txErr);
-    }
-  }
+  // Deduct inventory only after successful capture (US37): each build's lines, as
+  // frozen on its order line above. Retried here; if every attempt fails the
+  // Order is flagged and Staff deduct it from the Order page. The money is
+  // captured, so this never fails the Accept.
+  await deductOrderStockOrFlag(admin, order.id, 3);
 
   await admin.from("order_timeline").insert({
     order_id: order.id,

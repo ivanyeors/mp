@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
+import { deductStockWhenSold } from "@/lib/ecommerce/order-stock";
 
 function requireAuth() {
   return assertAdmin("orders");
@@ -46,6 +47,8 @@ export async function updateOrderStatus(
     before,
     after: { status: data.status },
   });
+
+  await deductStockWhenSold(admin, orderId, before?.status, data.status);
 
   revalidatePath("/settings/orders");
   return { ok: true, row: data };
@@ -92,6 +95,8 @@ export async function fulfillOrder(
       shipped_at: data.shipped_at,
     },
   });
+
+  await deductStockWhenSold(admin, orderId, before?.status, data.status);
 
   const timelineMessage = trackingNumber
     ? `Order shipped. Tracking: ${trackingNumber}${trackingUrl ? ` — ${trackingUrl}` : ""}`

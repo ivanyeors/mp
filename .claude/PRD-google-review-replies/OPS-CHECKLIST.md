@@ -2,6 +2,31 @@
 
 Everything below happens outside the code. Steps 1–2 are the slow part (Google's review); the shop
 review cards and the Telegram access tab work as soon as the migration is applied (steps 7–8).
+Until step 1 is approved, Google reviews come through the Places API (step 0).
+
+**Where it stands:** Settings → Users & permissions → Telegram → **Google Maps reviews** checks all
+of this live and says which step is missing.
+
+## 0. Until Google approves: the Places API
+
+Nothing to set: it uses the landing page's `GOOGLE_MAPS_API_KEY` and `GOOGLE_PLACE_ID`, and runs
+from the daily `results-sla` cron, reading once a week. It stands down by itself once
+`GOOGLE_BUSINESS_*` is set (step 4).
+
+- **Budget.** One billed Place Details Enterprise + Atmosphere read a week (1,000 free a month,
+  shared with the landing page's weekly read). Capped at 60 reads a month by default;
+  `GOOGLE_PLACES_POLL_MONTHLY_CAP` changes it, up to 500. Usage: Google Cloud Console → Google Maps
+  Platform → Metrics, or the Telegram tab.
+- **The key** must be allowed to call Places API (New) from the server. If it is restricted to HTTP
+  referrers, `GOOGLE_MAPS_API_REFERRER` must match an allowed referrer (as for the landing page).
+- **Run it now** (still counted against the cap):
+
+  ```bash
+  curl -H "Authorization: Bearer $CRON_SECRET" https://custom.mpillow.com/api/cron/google-places-reviews
+  ```
+
+- Cards from Places are answered on Google Maps, then **Mark replied**. Places shows only five
+  reviews; others arrive as a "didn't come through as a card" note with a link.
 
 ## 1. Business Profile API access (Google approval)
 
@@ -93,8 +118,10 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://custom.mpillow.com/api/cron
 
 ## 7. Database
 
-Apply `supabase/migrations/20261002060000_google_review_replies.sql` and
-`20261002070000_google_review_reopen.sql` (`pnpm db:push` applies both, in order).
+Apply `supabase/migrations/20261002060000_google_review_replies.sql`,
+`20261002070000_google_review_reopen.sql`, `20261028040928_google_reviews_places_source.sql`
+and `20261028041004_google_places_polls_server_only.sql`
+(`pnpm db:push` applies them in order).
 
 ## 8. Telegram access
 
@@ -135,5 +162,7 @@ npx tsx --env-file=.env.local scripts/telegram-review-preview.ts --dry-run   # p
 - **Card says "Google posting isn't connected yet"** — `GOOGLE_BUSINESS_*` env is missing.
 - **"Google did not take the reply"** — the reason from Google is on the card; edit by replying to
   the card, then Post again.
-- **No cards for Google reviews** — run the manual sync above and read its JSON: `skipped:
-  "not_configured"` means env; a 403/429 means API approval or quota.
+- **No cards for Google reviews** — open the Telegram tab's **Google Maps reviews** card first. Or
+  run the manual sync above and read its JSON: `skipped: "not_configured"` means env; a 403/429
+  means API approval or quota. Until approval, the Places run's JSON says `skipped: "not_due"`
+  (read less than a week ago), `"monthly_cap"`, or the Places error.

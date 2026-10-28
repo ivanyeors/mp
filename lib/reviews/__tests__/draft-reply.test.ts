@@ -114,6 +114,11 @@ describe("draftReviewReply", () => {
       update: { previousRating: 5, previousReply: "Thank you, Ben!" },
     });
     expect(draftInputFor({ ...row, reopened_at: null }).update).toBeNull();
+    // Places shows no replies, so the one marked replied is what we said.
+    expect(draftInputFor({ ...row, source: "places", google_reply: null, posted_reply: "Thanks, Ben!" }).update).toEqual({
+      previousRating: 5,
+      previousReply: "Thanks, Ben!",
+    });
   });
 
   it("does not leak an anonymous reviewer's name", () => {
