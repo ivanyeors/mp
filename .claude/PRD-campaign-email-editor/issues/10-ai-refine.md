@@ -1,10 +1,10 @@
 # 10 — ✨ Refine: subject-line ideas, a preview line, and rewriting one block
 
-**Issue:** not filed
+**Issue:** [#364](https://github.com/ivanyeors/mp/issues/364) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
 **Blocked by:** 09 (the shared client, facts, schema checks and limits)
-**Labels:** `enhancement`, `needs-triage`, `P3`, `area:admin`, `area:email`
+**Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 
 ## Goal
 

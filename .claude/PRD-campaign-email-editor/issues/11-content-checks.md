@@ -1,6 +1,6 @@
 # 11 — Content checks before send: links, images, size, words
 
-**Issue:** not filed
+**Issue:** [#366](https://github.com/ivanyeors/mp/issues/366) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
 **Blocked by:** 03, 05. Extends `PRD-campaign-send-flow`'s checklist.
@@ -23,14 +23,14 @@ warnings beside the block), in *Ready to send?*, and again before each wave. The
 | Every link and button is a full `https://` address that answers (HEAD, then GET; 2xx or 3xx) | yes | a dead link in a sent email cannot be fixed |
 | Every image has alt text | yes | screen readers, and images off by default in some clients |
 | Every image is an email rendition at an absolute https URL (slice 05) | yes | classic Outlook shows no WebP |
-| The rendered HTML is under 90 KB | yes | Gmail clips messages over 102 KB, and the clip hides the unsubscribe link |
+| The rendered HTML is under 100 KB (advisory from 85 KB) | yes | Gmail clips messages over 102 KB, and the clip hides the unsubscribe link |
 | No `[placeholder]` left from a Starter (slice 08) | yes | |
 | No banned clinical words (`checkBannedClinical`) | yes | the claim rules of the landing page apply to email too |
 | Points only while points are live (`pointsCheck`, today's rule, over every block) | yes | |
 | Every product is still Listed (slice 07) | yes | |
 | Subject over 60 characters | advisory | phones cut it off |
 | No preview line | advisory | the inbox shows the start of the email instead |
-| More image than words (rendered text under ~25% of the email) | advisory | image-only email reads as spam and fails with images off |
+| An email with images but under 300 characters of words | advisory | the 60/40 image rule is folklore, but an image-only email says nothing with images off and is a spam signal |
 | Blocks still marked *Drafted with AI* (slice 09) | advisory | a person should read every line |
 
 - In the Send card's checklist (`sendSteps`, `lib/email-campaigns/send-flow.ts`) these join as

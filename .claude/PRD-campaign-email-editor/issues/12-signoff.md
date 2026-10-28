@@ -1,6 +1,6 @@
 # 12 — Sign-off: the owner builds a real EDM and checks it in every inbox
 
-**Issue:** not filed
+**Issue:** [#367](https://github.com/ivanyeors/mp/issues/367) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** HITL
 **Status:** not started
 **Blocked by:** 01–11

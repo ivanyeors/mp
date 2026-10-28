@@ -1,6 +1,6 @@
 # 08 — Start from: a blank email, a Starter, or a past campaign
 
-**Issue:** not filed
+**Issue:** [#362](https://github.com/ivanyeors/mp/issues/362) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
 **Blocked by:** 04 (the editor)

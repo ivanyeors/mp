@@ -1,6 +1,6 @@
 # 09 — ✨ Generate draft: Claude writes the email from its subject
 
-**Issue:** not filed
+**Issue:** [#363](https://github.com/ivanyeors/mp/issues/363) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
 **Blocked by:** 03 (typed blocks), 04 (the editor). 07 for the optional product picker.
@@ -39,11 +39,15 @@ test. Nothing was sent, saved or invented on their behalf.
 - `claude-opus-5-5`, `output_config.effort: "medium"` (set explicitly; PRD decision 10),
   server-side fallbacks on (`server-side-fallback-2026-07-01`, `fallbacks: "default"`), as
   `draft-reply.ts` does.
-- **Structured output.** `output_config.format` is a Zod schema (`zodOutputFormat`) of the
-  editor's own block types: `{ subjects: string[3], preheaders: string[2], blocks: EmailBlock[],
-  button: { label, target } | null, reviewerNotes: string[] }`. `target` is chosen from a fixed
-  list (sign in · a chosen product · book a fitting · shop), never a URL the model writes. No
-  images, no HTML, no footer, no sender, no unsubscribe: the renderer owns those.
+- **Structured output.** `output_config.format` is a Zod schema (`zodOutputFormat`) built from
+  the editor's own block types (slice 03): `{ subjects: string[3], preheaders: string[2],
+  blocks: (heading | text | buttons | divider | products)[], reviewerNotes: string[] }`. Text
+  runs may be bold or italic and may hold the *first name* Merge field, but carry no `href`.
+  A button's `target` is chosen from the fixed list (sign in · shop · book a fitting · customise ·
+  a picked product), and a products block may only name products Staff picked: never a URL the
+  model writes. No images (Staff choose photos), no HTML, no footer, sender or unsubscribe: the
+  renderer owns those. The content model is flat on purpose, because structured outputs take no
+  recursive schema.
 - The schema cannot enforce lengths, so code does: each block is re-parsed with the editor's own
   `EmailBlockSchema`, the same one a save uses. A draft that does not parse is retried once,
   then reported.

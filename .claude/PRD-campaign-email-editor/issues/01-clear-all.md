@@ -1,6 +1,6 @@
 # 01 — Clear all: empty the email in one click, with Undo
 
-**Issue:** not filed
+**Issue:** [#355](https://github.com/ivanyeors/mp/issues/355) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
 **Blocked by:** none (built on today's editor; slice 04 carries it into the block editor)
