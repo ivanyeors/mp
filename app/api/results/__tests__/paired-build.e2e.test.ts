@@ -626,6 +626,40 @@ describe("Paired build — accept", () => {
     expect(perResult.size).toBe(f.rows("inventory_transactions").length);
   });
 
+  it("STOCK: a failed stock write after capture is retried, and the builds are deducted once", async () => {
+    await pairAssigned();
+    f.db.faults.push({ table: "inventory_transactions", op: "insert", error: { code: "XX000", message: "connection reset" } });
+    const res = await accept();
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const order = orders()[0];
+    expect(order.inventory_deducted_at).toBeTruthy();
+    expect(order.needs_attention).toBeFalsy();
+    const deducted = f.rows("inventory_transactions");
+    expect(new Set(deducted.map((t) => (t.metadata as Row).result_id))).toEqual(new Set([ANCHOR, COMP]));
+    expect(deducted.every((t) => (t.metadata as Row).order_id === order.id && (t.metadata as Row).role)).toBe(true);
+  });
+
+  it("STOCK: when every stock write fails the Order is flagged, unclaimed, and Staff's Deduct stock takes it once", async () => {
+    await pairAssigned();
+    for (let i = 0; i < 3; i++) {
+      f.db.faults.push({ table: "inventory_transactions", op: "insert", error: { code: "XX000", message: "connection reset" } });
+    }
+    expect((await accept()).status).toBe(200);
+    const order = orders()[0];
+    expect(order.needs_attention).toBe(true);
+    expect(order.inventory_deducted_at ?? null).toBeNull();
+    expect(f.rows("inventory_transactions")).toEqual([]);
+    expect(f.rows("order_timeline").some((e) => e.order_id === order.id && e.event_type === "stock_not_deducted")).toBe(true);
+
+    const { deductOrderStock } = await import("@/lib/ecommerce/order-stock");
+    const admin = f.fakeAdmin as unknown as Parameters<typeof deductOrderStock>[0];
+    expect(await deductOrderStock(admin, String(order.id))).toBe("deducted");
+    expect(await deductOrderStock(admin, String(order.id))).toBe("already_deducted");
+    const deducted = f.rows("inventory_transactions");
+    expect(new Set(deducted.map((t) => (t.metadata as Row).result_id))).toEqual(new Set([ANCHOR, COMP]));
+    expect(new Set(deducted.map((t) => `${(t.metadata as Row).result_id}:${t.item_id}`)).size).toBe(deducted.length);
+  });
+
   it("'Remove Mbolster' (decline the companion) keeps the hold; accept captures only the pillow's final", async () => {
     await pairAssigned();
     const pi = String(R(ANCHOR).payment_intent_id);

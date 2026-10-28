@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyWebhookSecret } from '@/lib/shopify/env'
 import { verifyShopifyWebhookHmac } from '@/lib/shopify/verify'
-import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 import {
   bestEffortApplyRefundMirror,
   bestEffortUpsertOrderMirror,
@@ -12,38 +10,18 @@ import type { ShopifyOrderLike } from '@/lib/shopify/order-mirror-ingest'
 
 export const runtime = 'nodejs'
 
-type ShopifyOrder = {
-  id: number
-  name?: string | null
-  created_at?: string | null
-  fulfillment_status?: string | null
-  financial_status?: string | null
-  line_items?: Array<{
-    id: number
-    title?: string | null
-    sku: string | null
-    quantity: number
-    variant_id: number | null
-  }>
-}
-
-type MappingRow = {
-  shopify_variant_id: number
-  kind: 'pillow' | 'bolster' | 'part'
-  pillow_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | null
-  pillow_kind: 'basic' | 'premium' | null
-  bolster_variant: 'short' | 'medium' | 'long' | null
-  item_id: number | null
-  default_template_id?: number | null
-}
-
-function isShopifyOrder(value: unknown): value is ShopifyOrder {
+function isShopifyOrder(value: unknown): value is ShopifyOrderLike {
   if (!value || typeof value !== 'object') return false
   const v = value as { id?: unknown; line_items?: unknown }
   if (typeof v.id !== 'number') return false
   return Array.isArray(v.line_items)
 }
 
+/**
+ * Shopify order and refund webhooks feed the Shopify order mirror, the read-only
+ * Analytics input (CONTEXT.md). Shopify sales take no stock here: this platform
+ * replaces Shopify, and its stock moves only through its own sales.
+ */
 export async function POST(req: NextRequest) {
   const webhookSecret = getShopifyWebhookSecret()
 
@@ -54,10 +32,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
   }
 
-  const topic = req.headers.get('x-shopify-topic') || null
-  const shopDomain = req.headers.get('x-shopify-shop-domain') || null
-  const webhookId = req.headers.get('x-shopify-webhook-id') || null
-
   let payload: unknown = null
   try {
     payload = rawBody ? JSON.parse(rawBody) : null
@@ -65,125 +39,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
   }
 
-  // Refunds: mirror only (no sales-queue). Failures logged; 200 so Shopify does not hammer retries.
+  // Failures are logged; 200 so Shopify does not hammer retries. The mirror
+  // catch-up cron recovers a missed order.
   if (isShopifyRefundPayload(payload)) {
     await bestEffortApplyRefundMirror(payload)
     return NextResponse.json({ ok: true, refund: true })
   }
 
-  // Only process order-like payloads; respond 200 for unhandled topics to prevent retries.
+  // Only order-like payloads are mirrored; 200 for unhandled topics to prevent retries.
   if (!isShopifyOrder(payload)) {
     return NextResponse.json({ ok: true, ignored: true })
   }
-  const order = payload
 
-  const admin = supabaseAdmin()
-
-  // Idempotency: if we've processed this order id, queue is done — still best-effort mirror
-  // (recovers prior mirror failure on Shopify redelivery; upsert is idempotent).
-  const { data: existing } = await admin
-    .from('shopify_processed_orders')
-    .select('shopify_order_id')
-    .eq('shopify_order_id', order.id)
-    .maybeSingle()
-
-  if (existing?.shopify_order_id) {
-    await bestEffortUpsertOrderMirror(order as ShopifyOrderLike)
-    return NextResponse.json({ ok: true, duplicate: true })
-  }
-
-  // Load mappings for all variant_ids in this order.
-  const variantIds = Array.from(
-    new Set(
-      (order.line_items ?? [])
-        .map(li => li.variant_id)
-        .filter((v): v is number => typeof v === 'number' && Number.isFinite(v)),
-    ),
-  )
-
-  const mappingByVariantId = new Map<number, MappingRow>()
-  if (variantIds.length) {
-    const { data: mappings } = await admin
-      .from('shopify_variant_mappings')
-      .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,default_template_id')
-      .in('shopify_variant_id', variantIds)
-    ;(mappings ?? []).forEach((m: MappingRow) => {
-      mappingByVariantId.set(Number(m.shopify_variant_id), m)
-    })
-  }
-
-  // Build actions based on mappings; ignore unmapped items (but record them for visibility).
-  const mappedLines: Array<{ mapping: MappingRow; qty: number; sku: string | null; variantTitle: string | null; lineItemId: number | null }> = []
-  const unmappedLines: Array<{ variant_id: number | null; sku: string | null; quantity: number }> = []
-
-  for (const li of order.line_items ?? []) {
-    const qty = Math.max(0, Math.floor(Number(li.quantity ?? 0)))
-    if (!qty) continue
-    const variantId = typeof li.variant_id === 'number' ? li.variant_id : null
-    if (!variantId) {
-      unmappedLines.push({ variant_id: variantId, sku: li.sku ?? null, quantity: qty })
-      continue
-    }
-    const mapping = mappingByVariantId.get(variantId)
-    if (!mapping) {
-      unmappedLines.push({ variant_id: variantId, sku: li.sku ?? null, quantity: qty })
-      continue
-    }
-    mappedLines.push({ mapping, qty, sku: li.sku ?? null, variantTitle: li.title ?? null, lineItemId: li.id ?? null })
-  }
-
-  // Enqueue mapped lines for manual template selection / commit in the platform UI.
-  try {
-    const queueRows = mappedLines.map((line, lineIndex) => {
-      const m = line.mapping
-      return {
-        shopify_order_id: order.id,
-        shopify_order_name: order.name ?? null,
-        shopify_order_created_at: order.created_at ?? null,
-        shopify_line_item_id: resolveShopifyQueueLineItemId(order.id, lineIndex, line.lineItemId),
-        shopify_variant_id: Number(m.shopify_variant_id),
-        kind: m.kind,
-        pillow_size: m.kind === 'pillow' ? m.pillow_size : null,
-        pillow_kind: m.kind === 'pillow' ? (m.pillow_kind ?? 'basic') : null,
-        bolster_variant: m.kind === 'bolster' ? m.bolster_variant : null,
-        item_id: m.kind === 'part' ? m.item_id : null,
-        quantity: line.qty,
-        product_title: null,
-        variant_title: line.variantTitle,
-        sku: line.sku,
-        chosen_template_id: (m.kind === 'pillow' || m.kind === 'bolster') ? (m.default_template_id ?? null) : null,
-        fulfillment_status: (order.fulfillment_status ?? null),
-        metadata: { shopify_topic: topic, shop_domain: shopDomain, webhook_id: webhookId },
-      }
-    })
-    if (queueRows.length) {
-      const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
-        onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
-      })
-      if (qErr) throw new Error(qErr.message)
-    }
-
-    // Mark processed after successful application.
-    const { error: insErr } = await admin.from('shopify_processed_orders').insert({
-      shopify_order_id: order.id,
-      webhook_id: webhookId,
-      topic,
-      shop_domain: shopDomain,
-      payload: { ...(order as unknown as Record<string, unknown>), _mp: { mapped: mappedLines.length, unmapped: unmappedLines } },
-    })
-    if (insErr) throw new Error(insErr.message)
-
-    // Finance mirror: after queue success. Failure must not undo queue (catch-up retries).
-    await bestEffortUpsertOrderMirror(order as ShopifyOrderLike)
-
-    // Inventory on Shopify only changes after stock-out in the UI (scoped push).
-    return NextResponse.json({ ok: true, mapped: mappedLines.length, unmapped: unmappedLines.length })
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Webhook processing failed'
-    console.error('Shopify webhook processing failed', message)
-    // Return 200 so Shopify doesn't keep retrying indefinitely; you can re-run sync manually.
-    return NextResponse.json({ ok: false, error: message, mapped: mappedLines.length, unmapped: unmappedLines.length })
-  }
+  // Idempotent upsert: a redelivered order is mirrored again, harmlessly.
+  await bestEffortUpsertOrderMirror(payload)
+  return NextResponse.json({ ok: true })
 }
-
-

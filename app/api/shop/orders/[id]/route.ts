@@ -3,6 +3,7 @@ import { z } from "zod";
 import { loadAdminOrderDetail } from "@/lib/ecommerce/admin/order-detail";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { deductStockWhenSold } from "@/lib/ecommerce/order-stock";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     update.delivered_at = new Date().toISOString();
   }
 
+  const { data: before } = await admin.from("orders").select("status").eq("id", id).maybeSingle();
+
   const { data, error } = await admin
     .from("orders")
     .update(update)
@@ -74,6 +77,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const stock = await deductStockWhenSold(admin, id, before?.status, data.status);
+  if (stock && !stock.ok) {
+    return NextResponse.json({ ok: true, row: { ...data, needs_attention: true }, stock_error: stock.error });
   }
 
   return NextResponse.json({ ok: true, row: data });
