@@ -1386,7 +1386,7 @@ Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261027150402_lifecycle_stage.sql:107
+Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429

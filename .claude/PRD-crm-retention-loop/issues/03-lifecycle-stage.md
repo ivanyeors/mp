@@ -2,7 +2,7 @@
 
 **Issue:** [#339](https://github.com/ivanyeors/mp/issues/339)
 **Type:** AFK
-**Status:** built on `claude/crm-loop-handoffs-dropoff` (migration to apply to production)
+**Status:** built on `claude/crm-loop-handoffs-dropoff`; migration `20261028033330_lifecycle_stage.sql` applied to production 2026-10-28
 **Blocked by:** none. Owner decision 1 settled 2026-10-27: *At risk* from 12 months, *Lapsed* from
 24. Slice 09 brings Shopify-era dates; this slice does not wait for it.
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:db`
