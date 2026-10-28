@@ -71,6 +71,7 @@ import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 import { orderEarnLine, pointsUsedRow, type OrderEarn } from "@/lib/points/order-lines";
 import { collectLocationOf } from "@/lib/shipping/self-collect";
+import { isSoldOrderStatus } from "@/lib/ecommerce/sold-status";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -248,7 +249,6 @@ export default function OrderDetailPage({
     const [creating, setCreating] = useState(false);
 
     // Inventory deduction status
-    const [inventoryDeducted, setInventoryDeducted] = useState<boolean | null>(null);
 
     // Refund / cancel / restock
     const [refundOpen, setRefundOpen] = useState(false);
@@ -259,6 +259,8 @@ export default function OrderDetailPage({
     const [restockOpen, setRestockOpen] = useState(false);
     const [restockQty, setRestockQty] = useState<Record<string, string>>({});
     const [restocking, setRestocking] = useState(false);
+    const [deductingStock, setDeductingStock] = useState(false);
+    const [stockError, setStockError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [returnAcknowledged, setReturnAcknowledged] = useState(false);
     const [decidingRefund, setDecidingRefund] = useState(false);
@@ -309,14 +311,6 @@ export default function OrderDetailPage({
             fetchTimeline();
         }
     }, [fetchOrder, fetchTimeline]);
-
-    // Derive inventory deduction status from timeline
-    useEffect(() => {
-        if (timeline.length > 0 && order) {
-            const hasPaymentConfirmed = timeline.some((e) => e.event_type === "payment_confirmed");
-            setInventoryDeducted(hasPaymentConfirmed && order.status !== "pending");
-        }
-    }, [timeline, order]);
 
     const updateStatus = async () => {
         if (!newStatus || !order) return;
@@ -575,6 +569,22 @@ export default function OrderDetailPage({
             setActionError(e instanceof Error ? e.message : "Couldn't update the refund request.");
         } finally {
             setDecidingRefund(false);
+        }
+    };
+
+    const handleDeductStock = async () => {
+        setDeductingStock(true);
+        setStockError(null);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/deduct-stock`, { method: "POST" });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Couldn't deduct stock.");
+            await fetchOrder();
+            await fetchTimeline();
+        } catch (e) {
+            setStockError(e instanceof Error ? e.message : "Couldn't deduct stock.");
+        } finally {
+            setDeductingStock(false);
         }
     };
 
@@ -878,15 +888,16 @@ export default function OrderDetailPage({
                                 <CardTitle className="text-base flex items-center gap-2">
                                     <ClipboardList className="h-4 w-4" />
                                     Build snapshot
-                                    {inventoryDeducted === true && (
+                                    {order.inventory_deducted_at ? (
                                         <Badge variant="outline" className="ml-auto text-xs text-green-600 border-green-300">
                                             Inventory deducted
                                         </Badge>
-                                    )}
-                                    {inventoryDeducted === false && order.status !== "pending" && (
-                                        <Badge variant="outline" className="ml-auto text-xs text-red-600 border-red-300">
-                                            Deduction missing
-                                        </Badge>
+                                    ) : (
+                                        isSoldOrderStatus(order.status) && (
+                                            <Badge variant="outline" className="ml-auto text-xs text-red-600 border-red-300">
+                                                Deduction missing
+                                            </Badge>
+                                        )
                                     )}
                                 </CardTitle>
                             </CardHeader>
@@ -1549,6 +1560,24 @@ export default function OrderDetailPage({
                                     {order.paid_at ? formatDate(order.paid_at) : "—"}
                                 </span>
                             </div>
+                            {(order.inventory_deducted_at || isSoldOrderStatus(order.status)) && (
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-muted-foreground">Stock</span>
+                                    {order.inventory_deducted_at ? (
+                                        <span>Deducted {formatDate(order.inventory_deducted_at)}</span>
+                                    ) : (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handleDeductStock}
+                                            disabled={deductingStock}
+                                        >
+                                            {deductingStock ? "Deducting…" : "Deduct stock"}
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                            {stockError && <p className="text-sm text-destructive">{stockError}</p>}
                             {Number(order.amount_refunded ?? 0) > 0 && (
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Refunded</span>

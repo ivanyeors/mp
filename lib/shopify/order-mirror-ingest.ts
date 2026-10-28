@@ -1,6 +1,6 @@
 /**
  * Shopify order-mirror ingest (finance facts). Shared by webhook + catch-up.
- * Does not touch shopify_sales_queue.
+ * Takes no stock.
  */
 
 import { resolveVariantCost } from '@/lib/shop/price-sync'

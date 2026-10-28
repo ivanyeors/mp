@@ -4,8 +4,8 @@
  * Proves webhook mirror wiring without live Shopify:
  * - paid path invokes upsert (via bestEffort → ingest)
  * - refund path invokes apply
- * - mirror failure does not throw (queue-safe policy)
- * - route still enqueues shopify_sales_queue
+ * - mirror failure does not throw (the webhook still answers 200)
+ * - route takes no stock: the Shopify sales queue is gone
  */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -184,14 +184,14 @@ async function main() {
     assert.equal(result.ok, false)
   }
 
-  // --- route wiring: paid → upsert helper; refund → apply; queue unchanged ---
+  // --- route wiring: paid → upsert helper; refund → apply; no stock, no queue ---
   {
     const route = readFileSync(join(process.cwd(), 'app/api/shopify/webhook/route.ts'), 'utf8')
     assert.match(route, /bestEffortUpsertOrderMirror/)
     assert.match(route, /bestEffortApplyRefundMirror/)
     assert.match(route, /isShopifyRefundPayload/)
-    assert.match(route, /shopify_sales_queue/)
-    assert.match(route, /Finance mirror: after queue success/)
+    assert.doesNotMatch(route, /shopify_sales_queue/)
+    assert.doesNotMatch(route, /inventory_transactions/)
   }
 
   console.log('webhook-mirror.check.ts: PASS')

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendShippingEmail } from "@/lib/email";
+import { deductStockWhenSold } from "./order-stock";
 
 export interface MarkShippedInput {
   trackingNumber?: string | null;
@@ -31,6 +32,7 @@ export async function markOrderShipped(
   if (input.trackingNumber) update.tracking_number = input.trackingNumber;
   if (input.trackingUrl) update.tracking_url = input.trackingUrl;
 
+  const { data: before } = await admin.from("orders").select("status").eq("id", orderId).maybeSingle();
   const { data, error } = await admin.from("orders").update(update).eq("id", orderId).select("*").single();
   if (error || !data) {
     const notFound = !data || /not found|no rows/i.test(error?.message ?? "");
@@ -38,6 +40,8 @@ export async function markOrderShipped(
       ? { ok: false, status: 404, error: "Order not found" }
       : { ok: false, status: 500, error: error!.message };
   }
+  // Shipping an Order nobody confirmed still sends its goods out.
+  await deductStockWhenSold(admin, orderId, before?.status, "shipped");
 
   const message =
     input.message ??

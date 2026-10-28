@@ -275,6 +275,8 @@ export interface Order {
   payment_method: string | null;
   payment_reference: string | null;
   paid_at: string | null;
+  /** When this Order's goods left stock; null until they have. Staff-only. */
+  inventory_deducted_at?: string | null;
   tracking_number: string | null;
   tracking_url: string | null;
   /** Courier the shopper chose at checkout, or the label's courier (Easyship). Customer-visible. */

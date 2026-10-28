@@ -48,7 +48,6 @@ const PRICE_TABLE_READERS: Record<string, string> = {
   "app/[lang]/settings/costings/page.tsx": "the Costings editor — the source of truth's own UI",
   "app/[lang]/settings/costings/save/route.ts": "writes Costings, then reprojects variants",
   "app/[lang]/settings/analytics/MarginByProductVisx.tsx": "reporting; reads MSRP, never charges",
-  "components/settings/shopify-sales-section.tsx": "reporting against the Shopify mirror",
   "lib/landing-page-data.ts": '"from $X" marketing label; shows the cheapest family row',
   "lib/results/composed-sellable.ts": "THE loader — every money path goes through it",
   "lib/shop/price-sync.ts": "projects Costings into product_variants for the storefront",

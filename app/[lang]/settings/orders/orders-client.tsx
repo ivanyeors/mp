@@ -38,8 +38,6 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShopifySalesSection } from "@/components/settings/shopify-sales-section";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatAdminDateTimeMY } from "@/lib/format/admin-date";
@@ -227,7 +225,6 @@ export default function SettingsOrdersPage({
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [page, setPage] = useState(1);
-    const [ordersTab, setOrdersTab] = useState<"platform" | "shopify">("platform");
     const dateRangeError =
         dateFrom && dateTo && dateFrom > dateTo
             ? "From date must be on or before To date."
@@ -398,16 +395,7 @@ export default function SettingsOrdersPage({
                 />
             </div>
 
-            <Tabs
-                value={ordersTab}
-                onValueChange={(v) => setOrdersTab(v === "shopify" ? "shopify" : "platform")}
-            >
-                <TabsList>
-                    <TabsTrigger value="platform">Orders</TabsTrigger>
-                    <TabsTrigger value="shopify">Shopify sales</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="platform" className="space-y-6 mt-6">
+            <div className="space-y-6">
             {/* Toolbar */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -623,12 +611,7 @@ export default function SettingsOrdersPage({
                     </Pagination>
                 </div>
             )}
-                </TabsContent>
-
-                <TabsContent value="shopify" className="mt-6">
-                    <ShopifySalesSection />
-                </TabsContent>
-            </Tabs>
+            </div>
         </div>
     );
 }
