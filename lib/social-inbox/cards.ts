@@ -1,4 +1,4 @@
-import { PREVIEW_CARD_PREFIX, formatCardDate } from "@/lib/reviews/cards";
+import { PREVIEW_CARD_PREFIX, TEAM_NOTE_PREFIX, formatCardDate } from "@/lib/reviews/cards";
 import { PLATFORM_APPS, PLATFORM_NAMES, type SocialPlatform } from "@/lib/social-inbox/platforms";
 import type { InboundAttachment } from "@/lib/social-inbox/types";
 
@@ -22,8 +22,6 @@ export const INBOX_CARD_HEADERS: Record<SocialPlatform, string> = {
 export const SENT_NOTE_PREFIX = "📤 Sent to ";
 /** Someone answered from the platform's own app instead. */
 export const ECHO_NOTE_PREFIX = "↪️ Answered in ";
-/** A staff reply that starts with this stays in the group. */
-export const TEAM_NOTE_PREFIX = "//";
 
 const ECHO_SOURCES: Record<SocialPlatform, string> = {
   facebook: "Meta Business Suite",

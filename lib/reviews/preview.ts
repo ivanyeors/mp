@@ -46,6 +46,8 @@ function sampleRow(now: Date, overrides: Partial<GoogleReviewRow>): GoogleReview
   return {
     id: PREVIEW_REVIEW_ID,
     review_name: "accounts/preview/locations/preview/reviews/preview",
+    source: "business_profile",
+    maps_uri: null,
     star_rating: 5,
     comment: null,
     reviewer_name: null,
@@ -136,6 +138,18 @@ function googleSamples(now: Date): GoogleSample[] {
         acted_by_name: "Ivan",
       }),
       sampleReply: null,
+    },
+    {
+      what: "a new 4★ review read through the Places API, answered on Google Maps by hand",
+      row: sampleRow(now, {
+        source: "places",
+        review_name: "places/preview/reviews/preview",
+        star_rating: 4,
+        reviewer_name: "Priya S.",
+        comment: "Lovely team and the fitting was quick. Still getting used to the firmer feel.",
+      }),
+      sampleReply:
+        "Thank you, Priya! We're glad the fitting felt quick and that you enjoyed meeting the team. A firmer feel can take a week or two to settle into, and if it still doesn't feel right after that, we're always happy to fine-tune it. We look forward to seeing you again.",
     },
   ];
 }

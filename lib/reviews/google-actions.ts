@@ -14,7 +14,8 @@ import {
 
 /**
  * What a review manager can do to a Google review card: post the current
- * draft, replace it with their own words, or skip.
+ * draft (or, for a review read through the Places API, record that they posted
+ * it on Google Maps themselves), replace it with their own words, or skip.
  *
  * Every write is a guarded update on `status` (and on `draft_version` where
  * the draft matters), so two people tapping at once cannot both act, and a
@@ -34,7 +35,7 @@ function actorFields(actor: Actor) {
   return { acted_by_telegram_user_id: actor.telegramUserId, acted_by_name: actor.name };
 }
 
-async function explainMiss(id: string, expectedVersion?: number): Promise<ActionFailure> {
+async function explainMiss(id: string, expectedVersion?: number, action?: "post" | "done"): Promise<ActionFailure> {
   const row = await getGoogleReview(id);
   if (!row) return { ok: false, reason: "not_found", message: "This review is no longer in the inbox." };
   if (row.status !== "pending") {
@@ -43,7 +44,20 @@ async function explainMiss(id: string, expectedVersion?: number): Promise<Action
   if (expectedVersion !== undefined && row.draft_version !== expectedVersion) {
     return { ok: false, reason: "stale", message: "The draft just changed — check the updated card first.", row };
   }
-  if (!row.draft_reply) return { ok: false, reason: "invalid", message: "There is no draft to post yet.", row };
+  if (action === "post" && row.source === "places") {
+    return {
+      ok: false,
+      reason: "invalid",
+      message: "This review came through the Places API, which can't post. Reply on Google Maps, then tap Mark replied.",
+      row,
+    };
+  }
+  if (action === "done" && row.source !== "places") {
+    return { ok: false, reason: "invalid", message: "This review can now be answered from here — use Post reply on the updated card.", row };
+  }
+  if (action === "post" && !row.draft_reply) {
+    return { ok: false, reason: "invalid", message: "There is no draft to post yet.", row };
+  }
   return { ok: false, reason: "invalid", message: "Nothing changed — try again.", row };
 }
 
@@ -68,11 +82,46 @@ export async function claimGoogleReviewPost(
     .update({ status: "posting", last_error: null, ...actorFields(actor) })
     .eq("id", id)
     .eq("status", "pending")
+    .eq("source", "business_profile")
     .eq("draft_version", version)
     .not("draft_reply", "is", null)
     .select(GOOGLE_REVIEW_COLUMNS)
     .maybeSingle();
-  if (!data) return explainMiss(id, version);
+  if (!data) return explainMiss(id, version, "post");
+  return { ok: true, row: data as GoogleReviewRow };
+}
+
+/**
+ * Mark replied, for a review read through the Places API: a review manager
+ * posted the reply on Google Maps themselves. Records the draft they were
+ * looking at as what was posted — the Places API cannot show us the reply, so
+ * this is the only record of it.
+ */
+export async function markGoogleReviewReplied(
+  id: string,
+  version: number,
+  actor: Actor,
+): Promise<{ ok: true; row: GoogleReviewRow } | ActionFailure> {
+  const row = await getGoogleReview(id);
+  if (!row || row.source !== "places" || row.status !== "pending" || row.draft_version !== version) {
+    return explainMiss(id, version, "done");
+  }
+  const { data } = await supabaseAdmin()
+    .from("google_reviews")
+    .update({
+      status: "posted",
+      posted_reply: row.draft_reply,
+      posted_at: new Date().toISOString(),
+      last_error: null,
+      ...actorFields(actor),
+    })
+    .eq("id", id)
+    .eq("status", "pending")
+    .eq("source", "places")
+    .eq("draft_version", version)
+    .select(GOOGLE_REVIEW_COLUMNS)
+    .maybeSingle();
+  if (!data) return explainMiss(id, version, "done");
   return { ok: true, row: data as GoogleReviewRow };
 }
 

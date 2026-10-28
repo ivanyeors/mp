@@ -13,7 +13,11 @@ import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 
 const TELEGRAM_TIMEOUT_MS = 5_000;
 
-export type InlineKeyboardButton = { text: string; callback_data: string };
+/** A button that calls back to the bot, or one that opens a link. */
+export type InlineKeyboardButton = { text: string } & (
+  | { callback_data: string; url?: never }
+  | { url: string; callback_data?: never }
+);
 export type InlineKeyboardMarkup = { inline_keyboard: InlineKeyboardButton[][] };
 
 type TelegramResponse<T> = { ok: boolean; result?: T; description?: string };

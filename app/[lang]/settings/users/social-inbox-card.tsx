@@ -95,7 +95,7 @@ export function SocialInboxCard() {
         <p className="text-destructive">Couldn&apos;t load the connection status.</p>
       ) : (
         <ul className="space-y-3">
-          <Row
+          <ConnectionRow
             name="Facebook Messenger"
             connected={!!setup}
             detail={
@@ -106,7 +106,7 @@ export function SocialInboxCard() {
                   : "Set META_PAGE_ACCESS_TOKEN (OPS checklist, part 1)."
             }
           />
-          <Row
+          <ConnectionRow
             name="Instagram"
             connected={!!setup?.instagram}
             detail={
@@ -118,7 +118,7 @@ export function SocialInboxCard() {
             }
           />
           {setup ? (
-            <Row
+            <ConnectionRow
               name="Meta webhooks"
               connected={setup.problems.length === 0}
               detail={
@@ -142,7 +142,7 @@ export function SocialInboxCard() {
               }
             />
           ) : null}
-          <Row
+          <ConnectionRow
             name="TikTok"
             connected={!!tiktok?.connected}
             detail={
@@ -207,7 +207,8 @@ function reconnectNote(refreshExpiresAt: string | null): string {
   return `. Reconnect by ${ends.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
-function Row({
+/** One connection on the Telegram tab: name, Connected / Not connected, what it means, and its button. */
+export function ConnectionRow({
   name,
   connected,
   detail,

@@ -334,6 +334,8 @@ describe("isInboxUpdate", () => {
     expect(isInboxUpdate(msg({ text: undefined, caption: "photo" }))).toBe(true);
     expect(isInboxUpdate(msg({ reply_to_message: { message_id: 7, caption: card.text } }))).toBe(true);
     expect(isInboxUpdate(msg({ text: "/stock" }))).toBe(false);
+    // A team note starts with "/" but is not a command: the inventory bot must not answer it.
+    expect(isInboxUpdate(msg({ text: "// she ordered last week" }))).toBe(true);
     expect(isInboxUpdate(msg({ chat: { id: 12345 } }))).toBe(false);
     expect(isInboxUpdate(msg({ reply_to_message: { message_id: 7, text: "Enter quantity for IN – x" } }))).toBe(false);
     expect(isInboxUpdate(msg({ reply_to_message: undefined }))).toBe(false);

@@ -583,21 +583,35 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
+### google_places_polls
+Defined in supabase/migrations/20261028035135_google_reviews_places_source.sql:29
+- Written by:
+  - `claimPlacesRead()` [select,update,upsert] — lib/reviews/places-poll.ts:91
+  - `pollPlacesReviews()` [update] — lib/reviews/places-poll.ts:202
+- Read by:
+  - `getPlacesPollStatus()` [select] — lib/reviews/places-poll.ts:244
+  - `lastRatingCount()` [select] — lib/reviews/places-poll.ts:124
+  - `lastSuccessfulRead()` [select] — lib/reviews/places-poll.ts:112
+
 ### google_reviews
 Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 - Written by:
-  - `claimGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:66
-  - `deliverGoogleReviewCard()` [update] — lib/reviews/google-sync.ts:197
-  - `executeGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:86
+  - `adoptPlacesRow()` [update] — lib/reviews/google-sync.ts:453
+  - `claimGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:80
+  - `deliverGoogleReviewCard()` [update] — lib/reviews/google-sync.ts:219
+  - `executeGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:135
   - `main()` [select,upsert] — scripts/google-reviews-backfill.ts:52
-  - `setStaffDraft()` [update] — lib/reviews/google-actions.ts:135
-  - `skipGoogleReview()` [update] — lib/reviews/google-actions.ts:158
-  - `syncGoogleReviews()` [select,update,upsert] — lib/reviews/google-sync.ts:261
-  - `writeClaudeDraft()` [update] — lib/reviews/google-sync.ts:171
+  - `markGoogleReviewReplied()` [update] — lib/reviews/google-actions.ts:109
+  - `purgeExpiredPlacesReviews()` [delete] — lib/reviews/places-poll.ts:140
+  - `setStaffDraft()` [update] — lib/reviews/google-actions.ts:184
+  - `skipGoogleReview()` [update] — lib/reviews/google-actions.ts:207
+  - `syncGoogleReviews()` [select,update,upsert] — lib/reviews/google-sync.ts:287
+  - `writeClaudeDraft()` [update] — lib/reviews/google-sync.ts:193
 - Read by:
-  - `deliverPendingCards()` [select] — lib/reviews/google-sync.ts:387
-  - `getGoogleReview()` [select] — lib/reviews/google-reviews.ts:51
-  - `getGoogleReviewByCard()` [select] — lib/reviews/google-reviews.ts:64
+  - `deliverPendingCards()` [select] — lib/reviews/google-sync.ts:470
+  - `getGoogleReview()` [select] — lib/reviews/google-reviews.ts:61
+  - `getGoogleReviewByCard()` [select] — lib/reviews/google-reviews.ts:74
+  - `storedCounts()` [select] — lib/reviews/status.ts:201
 
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
@@ -828,7 +842,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 - Written by:
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
-  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:110
+  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:111
   - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:317
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:71
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:135
@@ -2682,10 +2696,10 @@ app/[lang]/settings/showroom/page.tsx
 
 ### /settings/users
 app/[lang]/settings/users/page.tsx
-- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/social-inbox/meta/connect [POST]`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
+- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/reviews/google/status [GET]`, `/api/social-inbox/meta/connect [POST]`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
 - Loads: `listMembers()`, `listRoles()`, `listStaffProfiles()`, `listTelegramLinks()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_roles`, `admin_users`, `mp_staff`, `social_channel_tokens`, `telegram_operators`
-- Reads, through the same: `mp_config_responses`
+- Reads, through the same: `google_places_polls`, `google_reviews`, `mp_config_responses`
 
 ### /shipping-refund-policies
 app/[lang]/shipping-refund-policies/page.tsx

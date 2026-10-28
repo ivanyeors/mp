@@ -96,7 +96,11 @@ export function draftInputFor(row: GoogleReviewRow): ReviewForDraft {
     reviewerName: row.reviewer_name,
     reviewerIsAnonymous: row.reviewer_is_anonymous,
     update: row.reopened_at
-      ? { previousRating: row.reopened_from_rating, previousReply: row.google_reply }
+      ? {
+          previousRating: row.reopened_from_rating,
+          // Places can't show us replies: what was marked replied is the only record.
+          previousReply: row.source === "places" ? row.posted_reply : row.google_reply,
+        }
       : null,
   };
 }
