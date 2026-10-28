@@ -1002,6 +1002,7 @@
   "1000": "assert-05-claim-to-checkout.sql",
   "1001": "Article: What Is The Best Pillow For Neck Pain In Singapore",
   "1002": "Slice 02 — Page FAQ store: schema, surface_key, CRUD helpers, bilingual seed, self-check",
+  "1003": "20261028041004_google_places_polls_server_only.sql",
   "1006": "Slice 05 — Chained daily catch-up / backfill",
   "1008": "idx_inventory_transactions_sale_line_item",
   "1009": "Slice 06 — Operator assign + customer notify (platform only)",

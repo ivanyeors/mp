@@ -18,7 +18,8 @@
 --   place's review count at the last read, to notice reviews the Places API
 --   does not show (it returns at most 5, by relevance).
 --
--- Server-only, as google_reviews: RLS on with no policies, client grants revoked.
+-- Server-only, as google_reviews: RLS on with no policies; client grants are
+-- revoked in 20261028041004_google_places_polls_server_only.sql.
 
 alter table google_reviews add column if not exists source text not null default 'business_profile'
   check (source in ('business_profile', 'places'));
@@ -36,10 +37,8 @@ create table if not exists google_places_polls (
   updated_at     timestamptz not null default now()
 );
 
-drop trigger if exists trg_google_places_polls_updated_at on google_places_polls;
-create trigger trg_google_places_polls_updated_at
+create or replace trigger trg_google_places_polls_updated_at
 before update on google_places_polls
 for each row execute procedure set_updated_at();
 
 alter table google_places_polls enable row level security;
-revoke all on public.google_places_polls from anon, authenticated;
