@@ -99,10 +99,11 @@ assert.match(select, /cn\(className, "inset-x-0 w-full min-w-0 max-w-none px-0 p
 assert.match(settingsNav, /overflow-x-clip md:overflow-x-visible/);
 assert.match(settingsNav, /pb-\[calc\(0\.75rem\+var\(--app-dock-clearance\)\)\]/);
 
-// analytics date chips ≥44px; journey filters are deliberately compact (they
-// sit in a panel over the pan/zoom graph) and fill their filter group, and the
-// toolbar clears the safe-top inset
-assert.match(analytics, /inline-flex min-h-11 items-center/);
+// analytics date chips ≥44px, sharing the row on a phone, with a pressed tint;
+// journey filters are deliberately compact (they sit in a panel over the
+// pan/zoom graph) and fill their filter group, and the toolbar clears the
+// safe-top inset
+assert.match(analytics, /inline-flex min-h-11 flex-1 items-center justify-center[^"]*active:bg-press sm:flex-none/);
 assert.ok((journey.match(/className="h-8 w-full min-h-8 text-xs"/g) ?? []).length >= 2, "journey: compact full-width filters");
 assert.match(journey, /top-\[calc\(0\.5rem\+var\(--safe-top\)\)\]/);
 

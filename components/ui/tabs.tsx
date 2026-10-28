@@ -153,7 +153,7 @@ function TabsList({
           data-slot="tabs-list-summary"
           aria-expanded={open}
           onClick={() => setOpen((previous) => !previous)}
-          className="bg-muted text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-transparent px-3 text-sm font-medium focus-visible:ring-[3px] max-md:h-11"
+          className="bg-muted text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-transparent px-3 text-sm font-medium focus-visible:ring-[3px] active:bg-press max-md:h-11"
         >
           <span className="min-w-0 truncate text-left">{activeLabel}</span>
           <ChevronDown

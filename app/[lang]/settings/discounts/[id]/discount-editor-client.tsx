@@ -885,7 +885,7 @@ export function DiscountEditorClient({
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
                                     <div className="flex items-center gap-1.5">
-                                        <Label htmlFor="is_active" className="font-medium">
+                                        <Label htmlFor="is_active" className="cursor-pointer font-medium max-md:-my-[15px] max-md:py-[15px] max-md:active:opacity-60">
                                             Active
                                         </Label>
                                         <InfoTip label="About the active switch">Customers can use this code while it&apos;s on.</InfoTip>

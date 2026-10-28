@@ -57,32 +57,14 @@ import { usePathname } from "next/navigation";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  bold,
-  italic,
-  link,
-  orderedListCommand,
-  quote,
-  title,
-  unorderedListCommand,
-  type ICommand,
-} from "@uiw/react-md-editor/commands";
+  MOBILE_MD_COMMANDS,
+  MOBILE_MD_EXTRA_COMMANDS,
+} from "@/components/settings/markdown-toolbar";
 
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor").then((mod) => mod.default),
   { ssr: false },
 );
-
-// The full toolbar wraps to three rows of 20px icons on a phone; the blog editor
-// uses the same short set.
-const MOBILE_MD_COMMANDS: ICommand[] = [
-  bold,
-  italic,
-  title,
-  link,
-  quote,
-  unorderedListCommand,
-  orderedListCommand,
-];
 
 const menuItemClassName = "max-md:min-h-11";
 
@@ -545,6 +527,7 @@ export default function PartnersSettingsPage({
                 height={280}
                 preview="edit"
                 commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+                extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
               />
             </div>
 
@@ -804,6 +787,7 @@ export default function PartnersSettingsPage({
               // Side-by-side halves are ~170px wide on a phone; the toolbar still toggles the preview.
               preview={isMobile ? "edit" : "live"}
               commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+              extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
             />
           </div>
           <Button onClick={handleSaveAgreement} disabled={savingAgreement}>

@@ -43,6 +43,11 @@ import type {
 } from "@/lib/types/ecommerce";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import {
+    MOBILE_MD_COMMANDS,
+    MOBILE_MD_EXTRA_COMMANDS,
+} from "@/components/settings/markdown-toolbar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { stripePriceIdOf, stripeProductIdOf } from "@/lib/stripe/mode";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import {
@@ -146,6 +151,7 @@ export function ProductEditorClient({
     const router = useRouter();
     const params = useParams();
     const { resolvedTheme } = useTheme();
+    const isMobile = useIsMobile();
     const id = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? "new";
     const isNew = id === "new";
 
@@ -685,6 +691,8 @@ export function ProductEditorClient({
                             onChange={(val) => updateContent(locale, "body", val ?? "")}
                             height={300}
                             preview="edit"
+                            commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+                            extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
                         />
                     </div>
                 </div>
@@ -804,7 +812,7 @@ export function ProductEditorClient({
                                                         aria-label="Move image earlier"
                                                         disabled={idx === 0}
                                                         onClick={() => moveImage(idx, -1)}
-                                                        className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 shadow-sm disabled:invisible"
+                                                        className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 shadow-sm active:bg-press disabled:invisible"
                                                     >
                                                         <ChevronLeft className="h-4 w-4" />
                                                     </button>
@@ -813,7 +821,7 @@ export function ProductEditorClient({
                                                         aria-label="Move image later"
                                                         disabled={idx === images.length - 1}
                                                         onClick={() => moveImage(idx, 1)}
-                                                        className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 shadow-sm disabled:invisible"
+                                                        className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 shadow-sm active:bg-press disabled:invisible"
                                                     >
                                                         <ChevronRight className="h-4 w-4" />
                                                     </button>
@@ -823,7 +831,7 @@ export function ProductEditorClient({
                                                 type="button"
                                                 aria-label="Remove image"
                                                 onClick={() => deleteImage(img.id)}
-                                                className="absolute top-1 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+                                                className="absolute top-1 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm active:opacity-80"
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                             </button>
@@ -1196,7 +1204,7 @@ export function ProductEditorClient({
                                     onChange={(e) => setFeatured(e.target.checked)}
                                     className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
                                 />
-                                <Label htmlFor="featured-checkbox" className="cursor-pointer">
+                                <Label htmlFor="featured-checkbox" className="cursor-pointer max-md:min-h-11 max-md:flex-1 max-md:active:opacity-60">
                                     Featured product
                                 </Label>
                             </div>

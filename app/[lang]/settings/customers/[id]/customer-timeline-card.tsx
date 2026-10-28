@@ -169,7 +169,7 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
                             size="sm"
                             variant={selected.length === 0 ? "default" : "outline"}
                             aria-pressed={selected.length === 0}
-                            className="h-7 shrink-0 rounded-full px-3 text-xs"
+                            className="h-7 min-w-11 shrink-0 rounded-full px-3 text-xs"
                             onClick={() => choose(null)}
                         >
                             All

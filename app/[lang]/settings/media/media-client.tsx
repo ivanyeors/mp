@@ -1102,7 +1102,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <select
                             value={folderFilter}
                             onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
-                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[180px]"
+                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary active:bg-press sm:min-w-[180px]"
                             aria-label="Filter by folder"
                         >
                             <option value="all">All folders</option>
@@ -1116,7 +1116,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <select
                             value={tagFilter}
                             onChange={(e) => setTagFilter(e.target.value)}
-                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[160px]"
+                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary active:bg-press sm:min-w-[160px]"
                             aria-label="Filter by tag"
                         >
                             <option value="all">All tags</option>
@@ -1192,7 +1192,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             return (
                                 <div
                                     key={file.id}
-                                    className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md transition-all cursor-pointer"
+                                    className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md transition-all cursor-pointer active:opacity-80"
                                     onClick={() => openDetail(file)}
                                 >
                                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
@@ -1426,7 +1426,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             onChange={(e) =>
                                                 setEditFolderId(e.target.value ? e.target.value : null)
                                             }
-                                            className="w-full max-md:min-h-11 text-base md:text-sm border rounded-md px-3 py-2 bg-background"
+                                            className="w-full max-md:min-h-11 text-base md:text-sm border rounded-md px-3 py-2 bg-background active:bg-press"
                                         >
                                             <option value="">Unfiled</option>
                                             {folders.map((f) => (

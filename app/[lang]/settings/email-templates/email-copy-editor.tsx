@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft, Copy, Loader2, RotateCcw, Send } from "lucide-react";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SentenceField } from "@/components/settings/sentence-field";
 import { Textarea } from "@/components/ui/textarea";
 import type { CopyField, EmailCopy, EmailCopySpec } from "@/lib/email/copy";
 import type { SavedCopy } from "@/lib/email/copy-admin";
@@ -23,33 +24,6 @@ import { previewEmailCopy, resetEmailCopy, saveEmailCopy, sendEmailCopyTest } fr
 const isLong = (f: CopyField) => f.multiline || f.default.length > 80;
 /** A one-line field that holds a sentence: a single-line input cuts it off on a phone. */
 const isSentence = (f: CopyField) => !isLong(f) && f.default.length > 40;
-
-/**
- * One line of words that wraps instead of scrolling sideways, and grows to fit.
- * `field-sizing: content` (in Textarea) does the growing; where a browser lacks it
- * (iOS Safari), the height follows the text here. Enter is ignored: the field is
- * saved as one line.
- */
-function SentenceField(props: ComponentProps<typeof Textarea>) {
-    const ref = useRef<HTMLTextAreaElement>(null);
-    useLayoutEffect(() => {
-        const el = ref.current;
-        if (!el || CSS.supports("field-sizing", "content")) return;
-        el.style.height = "auto";
-        el.style.height = `${el.scrollHeight + 2}px`;
-    }, [props.value]);
-    return (
-        <Textarea
-            ref={ref}
-            rows={1}
-            className="min-h-9 resize-none max-md:min-h-11"
-            onKeyDown={(e) => {
-                if (e.key === "Enter") e.preventDefault();
-            }}
-            {...props}
-        />
-    );
-}
 
 function Section({ title, note, children }: { title?: string; note?: string; children: ReactNode }) {
     return (

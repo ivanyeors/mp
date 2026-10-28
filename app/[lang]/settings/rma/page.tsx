@@ -78,7 +78,7 @@ export default async function RmaQueuePage({
           id="status"
           name="status"
           defaultValue={status ?? ""}
-          className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
+          className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base active:bg-press md:text-sm"
         >
           <option value="">All statuses</option>
           {RMA_STATUSES.map((s) => (

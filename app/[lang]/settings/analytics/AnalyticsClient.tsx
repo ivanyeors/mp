@@ -972,7 +972,7 @@ export default function AnalyticsClient() {
                       <button
                         type="button"
                         className={[
-                          "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium transition-colors",
+                          "inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors active:bg-press sm:flex-none",
                           (activeTimelineDateEdge === "from" && isTimelineCalendarOpen) || hoverTimelineDateEdge === "from"
                             ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -990,7 +990,7 @@ export default function AnalyticsClient() {
                       <button
                         type="button"
                         className={[
-                          "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium transition-colors",
+                          "inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors active:bg-press sm:flex-none",
                           (activeTimelineDateEdge === "to" && isTimelineCalendarOpen) || hoverTimelineDateEdge === "to"
                             ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",

@@ -135,7 +135,7 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
                   className={cn(
                     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors max-md:min-h-11",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    mode === m ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
+                    mode === m ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent active:bg-press",
                   )}
                 >
                   {m === "materials" ? "Materials" : "Zones"}
@@ -250,7 +250,10 @@ function ToggleRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-3 max-md:min-h-11 max-md:items-center">
-      <label htmlFor={id} className="min-w-0 cursor-pointer text-sm">
+      <label
+        htmlFor={id}
+        className="min-w-0 cursor-pointer text-sm max-md:flex max-md:min-h-11 max-md:flex-1 max-md:flex-col max-md:justify-center max-md:active:opacity-60"
+      >
         {label}
         {hint ? <span className="block text-xs text-muted-foreground">{hint}</span> : null}
       </label>

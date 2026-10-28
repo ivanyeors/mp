@@ -30,9 +30,9 @@ export const runtime = "nodejs";
 const rmaActionBase =
   "inline-flex w-full items-center justify-center rounded-md px-3 text-sm transition-colors " +
   "h-9 max-md:h-auto max-md:min-h-14 max-md:whitespace-normal max-md:py-2 max-md:leading-tight md:w-auto";
-const rmaPrimaryAction = `${rmaActionBase} bg-primary text-primary-foreground hover:opacity-90`;
-const rmaSecondaryAction = `${rmaActionBase} border bg-background hover:bg-accent`;
-const rmaDestructiveAction = `${rmaActionBase} border border-destructive text-destructive hover:bg-destructive/10`;
+const rmaPrimaryAction = `${rmaActionBase} bg-primary text-primary-foreground hover:opacity-90 active:opacity-80`;
+const rmaSecondaryAction = `${rmaActionBase} border bg-background hover:bg-accent active:bg-press`;
+const rmaDestructiveAction = `${rmaActionBase} border border-destructive text-destructive hover:bg-destructive/10 active:bg-destructive/20`;
 
 type ItemRow = {
   id: string;
@@ -145,7 +145,7 @@ export default async function RmaDetailPage({
           Return{" "}
           {rma.orders?.order_number != null ? (
             orderHref ? (
-              <Link href={orderHref} className="underline-offset-4 hover:underline">
+              <Link href={orderHref} className="underline-offset-4 hover:underline active:opacity-60">
                 for #{rma.orders.order_number}
               </Link>
             ) : (
@@ -160,7 +160,7 @@ export default async function RmaDetailPage({
             <>
               {" · "}
               {customerHref ? (
-                <Link href={customerHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                <Link href={customerHref} className="font-medium text-foreground underline-offset-4 hover:underline active:opacity-60">
                   {rma.customers.email}
                 </Link>
               ) : (

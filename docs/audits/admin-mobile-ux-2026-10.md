@@ -132,17 +132,82 @@ these changes; nothing in the before run used them.
   - The email template's one-line fields, which are now auto-growing.
 - **Unchanged by design:** S3. The shell still clips, not scrolls, sideways
   overflow; `mobile-overflow.check.ts` holds it.
-- **Open:** the campaign *Subject* and *Preview line* inputs still cut long
-  copy.
+- **Fixed in the second pass:** the campaign *Subject* and *Preview line*
+  inputs wrap and grow instead of cutting long copy.
 
-**Left to do:**
-- **Analytics charts:** 52 chart marks and toggles have no pressed state,
-  there are 217 crowded pairs, and 36 targets are under 44px.
-- **Markdown toolbars** in the product and blog editors: 22 and 11 targets
-  under 44px.
-- **`SheetGrid`:** the desktop grid itself is unchanged on phones.
-- **A real-device pass** on iOS Safari and Android Chrome: `:active`
-  timing, the tap-highlight change and the drawer drag.
+### Second pass: the leftovers (28 October 2026)
+
+Same 48 screens, same probe, on a fresh production build:
+
+| | First pass | Second pass |
+|---|---|---|
+| Tap targets with **any pressed state** | 1,099 of 1,234 (89%) | **1,145 of 1,220 (94%)** |
+| Tap targets **under 44px** | 102 | **13** |
+| Neighbouring targets **closer than 8px** | 248 pairs | **37 pairs** |
+| Targets with `hover:` feedback only | 26 | **0** |
+| Total height of the 48 screens | 121,315px | 121,584px (+269px) |
+
+The height grew where targets grew: Inventory movement rows are now 44px, the
+Markdown toolbar is two rows of 44px buttons, and a long campaign subject now
+shows in full.
+
+**What changed:**
+- **Prospect journey graph:**
+  - On a phone it opens at actual size on the entry column, with the first row
+    below the toolbar. Fitted, its nodes were 40×23px chips with 3px text.
+    *Fit* still shows the whole graph.
+  - One finger pans and two fingers pinch. Before, panning needed a space bar
+    or a middle button.
+  - A vertical swipe still scrolls the page, except in fullscreen.
+  - A tap opens a node, and an opened node moves fully on screen. A tap on a
+    line shows its numbers; a tap on empty canvas closes the nodes.
+  - A touched node tints while pressed. A finger on an open panel or a dive
+    button still pans and pinches.
+  - The breadcrumb, a single word that does nothing outside a dive, is hidden
+    on phones.
+- **Inventory movement:** each drill-down row is one strip across its label and
+  bar, 44px tall on a phone, and tints while pressed. Only the 13px label was
+  tappable before.
+- **Markdown toolbars** (product, blog and partner editors) share one short
+  phone toolbar: 44px buttons and the app's pressed tint. The library's red
+  pressed text is gone. Split view and fullscreen are left out on phones.
+- **Campaign *Subject* and *Preview line*** use the email templates' growing
+  one-line field, now shared as `SentenceField`. Pasted line breaks become
+  spaces.
+- **`SheetGrid`:**
+  - On a touch screen a tap opens a cell's editor. A phone has no typing-to-edit
+    and no reliable double-tap, so cells could not be changed at all before.
+  - Cells are 44px tall, and the keyboard hint becomes "Tap a cell to change it."
+  - On Dimensions, a row's status and reset ride in the pinned first column
+    instead of two columns past the edge.
+- **Long tail:**
+  - Pressed tints on native selects, the phone tab picker, RMA actions, image
+    reorder buttons, media cards and the Showroom's *Colour by* buttons.
+  - 44px label rows beside switches and checkboxes: campaign greeting and send
+    options, *Points are on*, a discount's *Active*, *Insure shipments*,
+    *Featured product* and the Showroom toggles.
+  - The Bookable days chips are 48px wide.
+
+**What is left, by design:**
+- **Prospect journey (35 crowded pairs):** a node-link graph's lines cross and
+  overlap. On a phone a line is a secondary target, so a finger on one pans
+  like the canvas, and a still tap shows its numbers.
+- **Not counted by the probe:** nodes and Inventory movement rows tint through
+  React state, which a class-based probe can't see.
+- **The selected tab or chip has no pressed tint:** pressing it again does
+  nothing.
+- **6 "small" timeline links on Customer detail:** each one stretches over its
+  whole row with an `::after`, which the probe does not measure.
+- **2 inline text buttons on Couriers, and 1 heading link on RMA detail:**
+  these are links inside a sentence.
+
+`components/settings/mobile-touch.check.ts` holds the second pass.
+
+**Left to do:** a real-device pass on iOS Safari and Android Chrome. Check:
+- `:active` timing and the tap-highlight change.
+- The drawer drag.
+- The journey graph's pan, pinch and tap.
+- That a tap on a `SheetGrid` cell brings up the number keyboard.
 
 ---
 

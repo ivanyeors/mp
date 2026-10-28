@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SentenceField } from "@/components/settings/sentence-field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -508,14 +509,14 @@ export function CampaignEditor({
                         ) : null}
 
                         <Field label="Subject" htmlFor="c-subject" error={fieldErrors.subject}>
-                            <Input id="c-subject" value={subject} disabled={locked} maxLength={CAMPAIGN_LIMITS.subject} onChange={(e) => setSubject(e.target.value)} />
+                            <SentenceField id="c-subject" value={subject} disabled={locked} maxLength={CAMPAIGN_LIMITS.subject} onChange={(e) => setSubject(e.target.value)} />
                         </Field>
                         <Field label="Preview line" htmlFor="c-preheader" hint="Shown after the subject in most inboxes. Optional." error={fieldErrors.preheader}>
-                            <Input id="c-preheader" value={preheader} disabled={locked} maxLength={CAMPAIGN_LIMITS.preheader} onChange={(e) => setPreheader(e.target.value)} />
+                            <SentenceField id="c-preheader" value={preheader} disabled={locked} maxLength={CAMPAIGN_LIMITS.preheader} onChange={(e) => setPreheader(e.target.value)} />
                         </Field>
 
                         <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="c-greeting">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
+                            <Label htmlFor="c-greeting" className="cursor-pointer max-md:min-h-11 max-md:flex-1 max-md:active:opacity-60">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
                             <Switch id="c-greeting" checked={greeting} disabled={locked} onCheckedChange={setGreeting} />
                         </div>
 
@@ -709,7 +710,7 @@ export function CampaignEditor({
                                 />
                             </Field>
                             {stats && stats.failed > 0 ? (
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                                     <Checkbox checked={retryFailed} onCheckedChange={(v) => {
                                             setRetryFailed(v === true);
                                             setPlan(null);
@@ -718,7 +719,7 @@ export function CampaignEditor({
                                 </label>
                             ) : null}
                             {pauseFailing ? (
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                                     <Checkbox checked={resume} onCheckedChange={(v) => {
                                             setResume(v === true);
                                             setPlan(null);

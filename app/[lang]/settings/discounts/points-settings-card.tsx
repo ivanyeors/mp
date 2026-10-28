@@ -227,7 +227,7 @@ export function PointsSettingsCard() {
                     <>
                         <div className="flex items-center justify-between gap-3">
                             <div>
-                                <Label htmlFor="points-enabled">Points are on</Label>
+                                <Label htmlFor="points-enabled" className="cursor-pointer max-md:-my-[15px] max-md:py-[15px] max-md:active:opacity-60">Points are on</Label>
                                 <p className="text-xs text-muted-foreground">
                                     Off: customers see nothing, and no order earns or spends.
                                 </p>

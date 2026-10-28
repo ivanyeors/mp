@@ -749,7 +749,7 @@ export function AppointmentsCalendar({
         <div className="border-t border-border px-3 py-2.5">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
             <span className="text-xs text-muted-foreground sm:text-sm">Bookable days</span>
-            <div className="flex w-full gap-2 sm:w-auto sm:gap-1" role="group" aria-label="Bookable days">
+            <div className="flex w-full gap-1 sm:w-auto" role="group" aria-label="Bookable days">
               {DAY_CHIPS.map((d) => {
                 const on = settings.bookableDays.includes(d.value);
                 return (

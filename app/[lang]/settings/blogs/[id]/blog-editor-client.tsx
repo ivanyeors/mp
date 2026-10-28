@@ -17,15 +17,9 @@ import { useTheme } from "next-themes";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MAX_META_DESCRIPTION_CHARS } from "@/lib/seo/meta-description";
 import {
-    bold,
-    italic,
-    title,
-    link,
-    quote,
-    unorderedListCommand,
-    orderedListCommand,
-    type ICommand,
-} from "@uiw/react-md-editor/commands";
+    MOBILE_MD_COMMANDS,
+    MOBILE_MD_EXTRA_COMMANDS,
+} from "@/components/settings/markdown-toolbar";
 import { rehypeStripUnsafeHtml } from "@/lib/blog-editor/strip-unsafe-html";
 
 const MDEditor = dynamic(
@@ -36,17 +30,6 @@ const MDEditor = dynamic(
 // The preview parses raw HTML; strip anything that could run script in the
 // Admin Panel (public posts never render raw HTML at all).
 const PREVIEW_OPTIONS = { rehypePlugins: [rehypeStripUnsafeHtml] };
-
-// ponytail: reduced toolbar so it fits a phone without horizontal overflow
-const MOBILE_MD_COMMANDS: ICommand[] = [
-    bold,
-    italic,
-    title,
-    link,
-    quote,
-    unorderedListCommand,
-    orderedListCommand,
-];
 
 type LocaleContent = {
     title: string;
@@ -380,6 +363,7 @@ export default function BlogEditorPage({
                         preview="edit"
                         previewOptions={PREVIEW_OPTIONS}
                         commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+                        extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
                         className="w-full rounded-lg border focus-within:ring-2 focus-within:ring-primary overflow-hidden"
                     />
                     <p className="text-xs text-muted-foreground">Supports Markdown formatting</p>
@@ -403,7 +387,7 @@ export default function BlogEditorPage({
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary active:bg-press"
                         >
                             <option value="draft">Draft</option>
                             <option value="published">Published</option>

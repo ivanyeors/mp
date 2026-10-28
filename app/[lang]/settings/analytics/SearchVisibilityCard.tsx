@@ -509,7 +509,7 @@ export function AnnotationsPanel({ annotations, onChange }: { annotations: Annot
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           aria-label="Category"
-          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm max-md:h-11"
+          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm active:bg-press max-md:h-11"
         >
           {ANNOTATION_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -532,7 +532,7 @@ export function AnnotationsPanel({ annotations, onChange }: { annotations: Annot
 export function CrawlerPanel({ crawlers, annotations }: { crawlers: Crawlers; annotations?: Annotation[] }) {
   if (!crawlers.hasData) {
     return (
-      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground max-md:p-4">
         No crawler hits recorded yet. Counting starts once the <code className="rounded bg-muted px-1">ai_crawler_hits</code>{" "}
         migration is applied and the next deploy is live; AI crawlers usually show up within days.
       </div>
@@ -1023,7 +1023,7 @@ export function SearchVisibilityCard() {
             <Skeleton className="h-[180px]" />
           </div>
         ) : !data?.hasData ? (
-          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground max-md:p-4">
             No Search Console data yet. Once the service account and env vars are set, run{" "}
             <code className="rounded bg-muted px-1">npm run seo:gsc-backfill</code> to load 16 months; the daily cron keeps
             it current after that. Setup steps: <code className="rounded bg-muted px-1">.claude/PRD-search-visibility/GOOGLE-ACCESS-SETUP.md</code>.
@@ -1035,7 +1035,7 @@ export function SearchVisibilityCard() {
           </div>
         )}
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">Visits by channel</h3>
             <div className="text-xs text-muted-foreground">Where visits came from, with AI assistants as their own channel.</div>
@@ -1049,7 +1049,7 @@ export function SearchVisibilityCard() {
           )}
         </section>
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">AI answers</h3>
             <div className="text-xs text-muted-foreground">
@@ -1059,7 +1059,7 @@ export function SearchVisibilityCard() {
           <AiAnswersPanel ai={ai} annotations={annotations} onImported={refreshAi} />
         </section>
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">AI crawlers</h3>
             <div className="text-xs text-muted-foreground">
@@ -1075,7 +1075,7 @@ export function SearchVisibilityCard() {
           )}
         </section>
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">Annotations</h3>
             <div className="text-xs text-muted-foreground">
