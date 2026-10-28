@@ -592,7 +592,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
 ### google_places_polls
-Defined in supabase/migrations/20261027140000_google_reviews_places_source.sql:29
+Defined in supabase/migrations/20261028035135_google_reviews_places_source.sql:29
 - Written by:
   - `claimPlacesRead()` [select,update,upsert] — lib/reviews/places-poll.ts:91
   - `pollPlacesReviews()` [update] — lib/reviews/places-poll.ts:202
