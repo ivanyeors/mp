@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { humanizeToken } from "@/lib/rma/admin-view";
 import { nextStatuses, type RmaStatus } from "@/lib/rma/transitions";
@@ -64,7 +65,7 @@ type RmaRow = {
   tracking_url: string | null;
   created_at: string;
   orders: { order_number: number | string | null; id: string } | null;
-  customers: { email: string | null } | null;
+  customers: { id: string; email: string | null } | null;
 };
 
 function formatTimestamp(iso: string): string {
@@ -85,7 +86,7 @@ export default async function RmaDetailPage({
   const { lang, id } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  await requireAdminPage("returns", locale);
+  const ctx = await requireAdminPage("returns", locale);
 
   const admin = supabaseAdmin();
   const to = (href: string) => withLocale(href, locale);
@@ -94,7 +95,7 @@ export default async function RmaDetailPage({
   const { data: rmaData } = await admin
     .from("rma_requests")
     .select(
-      "id, status, resolution, reason, customer_note, admin_note, photo_urls, tracking_number, tracking_url, created_at, orders(id, order_number), customers(email)",
+      "id, status, resolution, reason, customer_note, admin_note, photo_urls, tracking_number, tracking_url, created_at, orders(id, order_number), customers(id, email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -120,6 +121,11 @@ export default async function RmaDetailPage({
   const next = nextStatuses(rma.status as RmaStatus);
   const isRefund = rma.resolution === "refund";
   const hasActions = next.length > 0;
+  // Hand-offs to the Customer and the Order (PRD-crm-retention-loop slice 02),
+  // each only for Staff who can open it.
+  const customerHref =
+    rma.customers?.id && hasPermission(ctx, "customers") ? to(`/settings/customers/${rma.customers.id}`) : null;
+  const orderHref = rma.orders?.id && hasPermission(ctx, "orders") ? to(`/settings/orders/${rma.orders.id}`) : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -135,12 +141,32 @@ export default async function RmaDetailPage({
 
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Return {rma.orders?.order_number != null ? `for #${rma.orders.order_number}` : ""}
+          Return{" "}
+          {rma.orders?.order_number != null ? (
+            orderHref ? (
+              <Link href={orderHref} className="underline-offset-4 hover:underline">
+                for #{rma.orders.order_number}
+              </Link>
+            ) : (
+              `for #${rma.orders.order_number}`
+            )
+          ) : null}
         </h1>
         <p className="text-sm text-muted-foreground">
           {humanizeToken(rma.status)} · {rma.resolution} · opened{" "}
           {formatTimestamp(rma.created_at)}
-          {rma.customers?.email ? ` · ${rma.customers.email}` : ""}
+          {rma.customers?.email ? (
+            <>
+              {" · "}
+              {customerHref ? (
+                <Link href={customerHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                  {rma.customers.email}
+                </Link>
+              ) : (
+                rma.customers.email
+              )}
+            </>
+          ) : null}
         </p>
       </div>
 

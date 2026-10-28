@@ -11,6 +11,7 @@ import { MarketingFooter } from "@/components/ui/marketing-footer";
 import { SonnerProvider } from "@/components/ui/sonner-provider";
 import { RouteScope } from "@/components/route-scope";
 import { ApiRequestTracker } from "@/components/api-request-tracker";
+import { DropOffQuestionMount } from "@/components/analytics/drop-off-question-mount";
 import { JourneyTracker } from "@/components/analytics/journey-tracker";
 import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
@@ -130,6 +131,8 @@ export default async function RootLayout({
               <SupportChatRoot />
             </CartProvider>
           </CurrencyProvider>
+          {/* After the page in reading order: screen readers meet it where it appears. */}
+          <DropOffQuestionMount />
           <SonnerProvider />
         </ThemeProvider>
         {isProd ? <SpeedInsights /> : null}

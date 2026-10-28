@@ -50,7 +50,8 @@ import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./sen
 import { CheckList, StatusIcon } from "./send-parts";
 import { WaveTable } from "./wave-table";
 
-export type SegmentOption = { id: string; name: string };
+/** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
+export type SegmentOption = { id: string; name: string; customersHref?: string | null };
 
 type ButtonChoice = "none" | "sign_in" | "url";
 
@@ -131,6 +132,8 @@ export function CampaignEditor({
     const [name, setName] = useState(initial.name);
     const [audience, setAudience] = useState<CampaignAudience>(initial.audience);
     const [segmentId, setSegmentId] = useState(initial.segmentId ?? "");
+    // The chosen Segment's Customers list (PRD-crm-retention-loop slice 02).
+    const chosenSegmentHref = segments.find((s) => s.id === segmentId)?.customersHref ?? null;
     const [subject, setSubject] = useState(initial.subject);
     const [preheader, setPreheader] = useState(initial.preheader ?? "");
     const [greeting, setGreeting] = useState(initial.greeting);
@@ -466,7 +469,23 @@ export function CampaignEditor({
                             <Field
                                 label="Segment"
                                 htmlFor="c-segment"
-                                hint={segments.length ? "Save segments from the filters on the Customers list." : "No segments yet. Save one from the filters on the Customers list."}
+                                hint={
+                                    segments.length ? (
+                                        <>
+                                            Save segments from the filters on the Customers list.
+                                            {chosenSegmentHref ? (
+                                                <>
+                                                    {" "}
+                                                    <Link href={chosenSegmentHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                                                        See who is in it
+                                                    </Link>
+                                                </>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        "No segments yet. Save one from the filters on the Customers list."
+                                    )
+                                }
                             >
                                 <Select value={segmentId} onValueChange={setSegmentId}>
                                     <SelectTrigger id="c-segment" className="w-full justify-between" disabled={locked || !segments.length}>

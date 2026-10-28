@@ -447,6 +447,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
   - `confirmationPoints()` [select] — lib/email/index.ts:284
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
+  - `customerIdForResult()` [select] — lib/crm/customer-link.ts:22
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:77
   - `getCurrentCustomerId()` [select] — lib/shop/customer-addresses.ts:39
@@ -706,13 +707,13 @@ Changed from pages: `/settings/inventory`
   - `renameInventoryItem()` [update] — app/[lang]/settings/inventory/actions.ts:368
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:400
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:285
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:286
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:508
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:176
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:389
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
-  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:548
+  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:557
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:41
@@ -847,7 +848,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:71
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:135
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
-  - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:35
+  - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:40
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:113
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
@@ -1382,14 +1383,15 @@ Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:153
+Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
+  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:111
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
-  - `resolveSegment()` [select] — lib/crm/segments.ts:244
+  - `resolveSegment()` [select] — lib/crm/segments.ts:245
 
 ### admin_google_reviews_unlinked
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:321
@@ -1567,6 +1569,15 @@ Defined in supabase/migrations/20261025130000_coupon_usage_decrement.sql:13
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:132
 - Called by:
   - `DELETE()` — app/api/landing-sections/publish/route.ts:90
+
+### drop_off_reasons
+Defined in supabase/migrations/20261027133942_drop_off_reasons.sql:21
+References: `mp_config_responses`
+Changed from pages: `/results/[id]`
+- Written by:
+  - `recordDropOffReason()` [insert] — lib/analytics/drop-off/store.ts:36
+- Read by:
+  - `readDropOffSummary()` [select] — lib/analytics/drop-off/store.ts:153
 
 ### email_campaign_stats
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:297
@@ -1907,7 +1918,7 @@ Changed from pages: `/account/orders/[orderNumber]`
 - Written by:
   - `createRmaRequest()` [insert] — lib/rma/create.ts:141
 - Read by:
-  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:106
+  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:107
   - `openReturnedQtyByOrder()` [select] — lib/rma/create.ts:176
   - `voidCommissionsForRma()` [select] — lib/commissions/ledger.ts:91
 
@@ -1921,7 +1932,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/settings/rma/[id]`
   - `saveAdminNote()` [select,update] — app/[lang]/settings/rma/actions.ts:22
 - Read by:
   - `/settings/rma` (page) [select] — app/[lang]/settings/rma/page.tsx:49
-  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:94
+  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:95
   - `completeReturn()` [select] — app/[lang]/settings/rma/actions.ts:101
   - `issueRmaRefund()` [select] — app/[lang]/settings/rma/actions.ts:129
   - `sources/returns.ts` [select] — lib/crm/timeline/sources/returns.ts:37
@@ -1934,7 +1945,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/settings/rma/[id]`
   - `applyRmaTransition()` [insert] — lib/rma/transition.ts:73
   - `createRmaRequest()` [insert] — lib/rma/create.ts:152
 - Read by:
-  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:110
+  - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:111
   - `sources/returns.ts` [select] — lib/crm/timeline/sources/returns.ts:57
 
 ### rule_graphs
@@ -2359,16 +2370,16 @@ app/[lang]/results/page.tsx
 ### /results/[id]
 app/[lang]/results/[id]/page.tsx
 - Endpoints: `/api/results [GET]`, `/api/results/[id] [GET]`, `/api/results/[id]/accept [POST]`, `/api/results/[id]/decline [POST]`, `/api/results/[id]/reorder [POST]`
-- Changes, through its actions, endpoints and their calls: `commissions`, `coupons`, `customers`, `inventory_transactions`, `milestone_bonuses`, `mp_config_responses`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `product_variants`, `result_bolster_filling_placements`, `result_filling_placements`
+- Changes, through its actions, endpoints and their calls: `commissions`, `coupons`, `customers`, `drop_off_reasons`, `inventory_transactions`, `milestone_bonuses`, `mp_config_responses`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `product_variants`, `result_bolster_filling_placements`, `result_filling_placements`
 - Reads, through the same: `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `bom_templates`, `config_upload`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `milestone_rungs`, `partner_users`, `partners`, `pillow_products`, `points_ledger`, `product_prices`, `service_prices`, `shipping_methods`, `tax_rates`
 
 ### /settings/analytics
 app/[lang]/settings/analytics/page.tsx
-- Server actions: `addTargetQuery()`, `createSeoAnnotation()`, `deleteSeoAnnotation()`, `getAiAnswers()`, `getAnalyticsDashboard()`, `getChannelMix()`, `getCrawlerActivity()`, `getInventoryMovementWaterfall()`, `getMpConfigMetricsBreakdown()`, `getProspectJourneyNodeDetails()`, `getProspectJourneyTransitions()`, `getRealizedMarginSummary()`, `getSearchQueries()`, `getSearchVisibility()`, `getSeoAnnotations()`, `getShopifySalesTimeline()`, `importAiReports()`, `removeTargetQuery()`
+- Server actions: `addTargetQuery()`, `createSeoAnnotation()`, `deleteSeoAnnotation()`, `getAiAnswers()`, `getAnalyticsDashboard()`, `getChannelMix()`, `getCrawlerActivity()`, `getDropOffReasons()`, `getInventoryMovementWaterfall()`, `getMpConfigMetricsBreakdown()`, `getProspectJourneyNodeDetails()`, `getProspectJourneyTransitions()`, `getRealizedMarginSummary()`, `getSearchQueries()`, `getSearchVisibility()`, `getSeoAnnotations()`, `getShopifySalesTimeline()`, `importAiReports()`, `removeTargetQuery()`
 - Loads: `requireAdminPage()`
 - Reads: `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `items`, `pillow_products`, `product_prices`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `seo_annotations`, `seo_daily_metrics`, `seo_target_queries`
-- Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `inventory_transactions`, `items`, `mp_config_responses`, `order_margins`, `orders`, `pillow_products`, `product_prices`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
+- Reads, through the same: `admin_roles`, `admin_users`, `ai_crawler_hits`, `analytics_events`, `analytics_visits`, `bom_lines`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `drop_off_reasons`, `inventory_transactions`, `items`, `mp_config_responses`, `order_margins`, `orders`, `pillow_products`, `product_prices`, `shopify_order_lines`, `shopify_orders`, `shopify_variant_mappings`
 
 ### /settings/appointments
 app/[lang]/settings/appointments/page.tsx
@@ -2443,7 +2454,7 @@ app/[lang]/settings/customers/page.tsx
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
 - Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
-- Loads: `getAdminCustomer()`, `getMigratedCustomer()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
+- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `inventory_transactions`, `mp_staff`, `order_items`, `order_timeline`, `orders`, `product_variants`
 - Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `customer_consent_events`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `migrated_customers`, `mp_config_responses`, `order_margins`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 
@@ -2654,7 +2665,7 @@ app/[lang]/settings/results/page.tsx
 ### /settings/results/[id]
 app/[lang]/settings/results/[id]/page.tsx
 - Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/settings/inventory/configure/templates/[templateId]`
-- Loads: `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `requireAdminPage()`
+- Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `requireAdminPage()`
 - Reads: `items`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_responses`, `mp_staff`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
 - Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`

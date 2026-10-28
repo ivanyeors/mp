@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
-import { AlertTriangle, Bookmark, Loader2, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Bookmark, Loader2, Mail, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,8 @@ import {
     SEGMENT_NAME_MAX,
     formatSegmentCount,
     sameSegmentFilters,
-    segmentKey,
+    segmentCampaignHref,
+    segmentHref,
     type CustomerSegment,
     type SegmentParams,
 } from "@/lib/crm/segment-rules";
@@ -39,6 +41,10 @@ import {
  * With `customers-edit`: *Save as Segment* when a filter is active; with a
  * Segment chosen and the filters changed, *Update {name}* or *Save as new*;
  * *Rename* and *Archive* in each chip's menu. The routes refuse without it.
+ *
+ * With `campaigns`: *Email this Segment* in the same menu opens a new campaign
+ * already sent to it (PRD-crm-retention-loop slice 02). Not on a Segment that
+ * needs review, which counts nobody until it is updated.
  *
  * A Segment that *needs review* (a filter it was saved with is no longer one
  * the list knows) shows no count: it counts no Customers until it is updated.
@@ -65,6 +71,7 @@ type NameDialog = { mode: "create" } | { mode: "rename"; segment: CustomerSegmen
 export function SegmentsRow({
     initialSegments,
     canEdit,
+    newCampaignPath,
     params,
     activeId,
     listPath,
@@ -75,6 +82,8 @@ export function SegmentsRow({
     initialSegments?: CustomerSegment[];
     /** `customers-edit`. */
     canEdit: boolean;
+    /** The new campaign page, when the role holds `campaigns`; undefined hides *Email this Segment*. */
+    newCampaignPath?: string;
     /** The list's filters now, as a Segment would save them. */
     params: SegmentParams;
     /** The Segment chosen on this list, if any. */
@@ -214,7 +223,9 @@ export function SegmentsRow({
                 </span>
                 {list.map((s) => {
                     const isActive = active?.id === s.id;
-                    const href = `${listPath}${Object.keys(s.params).length ? `?${segmentKey(s.params)}` : ""}`;
+                    const emailHref = segmentCampaignHref(newCampaignPath, s);
+                    const hasMenu = canEdit || emailHref !== null;
+                    const href = segmentHref(listPath, s.params);
                     return (
                         <span
                             key={s.id}
@@ -231,7 +242,7 @@ export function SegmentsRow({
                                     e.preventDefault();
                                     onChoose(s);
                                 }}
-                                className={`inline-flex min-h-8 min-w-0 items-center gap-1.5 py-1 pl-3 ${canEdit ? "pr-1" : "pr-3"}`}
+                                className={`inline-flex min-h-8 min-w-0 items-center gap-1.5 py-1 pl-3 ${hasMenu ? "pr-1" : "pr-3"}`}
                             >
                                 <span className="truncate font-medium">{s.name}</span>
                                 {s.needsReview ? (
@@ -247,7 +258,7 @@ export function SegmentsRow({
                                     </Badge>
                                 )}
                             </a>
-                            {canEdit && (
+                            {hasMenu && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <button
@@ -259,18 +270,30 @@ export function SegmentsRow({
                                         </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => openName({ mode: "rename", segment: s })}>
-                                            Rename
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            variant="destructive"
-                                            onSelect={() => {
-                                                setError(null);
-                                                setArchiving(s);
-                                            }}
-                                        >
-                                            Archive
-                                        </DropdownMenuItem>
+                                        {emailHref && (
+                                            <DropdownMenuItem asChild>
+                                                <Link href={emailHref}>
+                                                    <Mail className="h-4 w-4" />
+                                                    Email this Segment
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        )}
+                                        {canEdit && (
+                                            <>
+                                                <DropdownMenuItem onSelect={() => openName({ mode: "rename", segment: s })}>
+                                                    Rename
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    variant="destructive"
+                                                    onSelect={() => {
+                                                        setError(null);
+                                                        setArchiving(s);
+                                                    }}
+                                                >
+                                                    Archive
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}

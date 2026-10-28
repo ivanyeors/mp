@@ -406,3 +406,28 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   audience: "imported_not_signed_in",
   segmentId: null,
 };
+
+/**
+ * The draft a new campaign starts from (PRD-crm-retention-loop slice 02).
+ * `?segment=<id>` from *Email this Segment* on Customers starts a blank one
+ * sent to that Segment and named after it, when the id is a live Segment that
+ * does not need review; anything else starts {@link FIRST_CAMPAIGN_DRAFT}.
+ */
+export function newCampaignDraft(
+  segmentParam: string | string[] | undefined,
+  segments: readonly { id: string; name: string; needsReview: boolean }[],
+): CampaignDraft {
+  const id = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
+  const segment = id ? segments.find((s) => s.id === id && !s.needsReview) : undefined;
+  if (!segment) return FIRST_CAMPAIGN_DRAFT;
+  return {
+    name: segment.name.slice(0, CAMPAIGN_LIMITS.name),
+    subject: "",
+    preheader: null,
+    body: "",
+    greeting: true,
+    button: null,
+    audience: "segment",
+    segmentId: segment.id,
+  };
+}

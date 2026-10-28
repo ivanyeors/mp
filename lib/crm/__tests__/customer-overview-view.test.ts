@@ -7,9 +7,12 @@ import { MIGRATION_SUMMARY_COLUMNS } from "@/lib/customer-migration/overview";
  * The Customer overview is one SQL view and one TypeScript column list
  * (migration slice 12; ADR 0029 (k)). Later slices extend the view with
  * `create or replace view`, adding columns at the end, and add the same column
- * to the list. Removing a column is a rebuild: `drop view` and `create view`
- * in one migration (PRD-loyalty-points slice 06), which also recreates the
- * Migration card's summary, the view that reads the overview. This keeps the
+ * to the list. Renaming one is `alter view … rename column` before the
+ * `create or replace view` in the same migration (PRD-crm-retention-loop
+ * slice 03's `lifecycle_delivery` → `lifecycle_detail`). Removing a column is
+ * a rebuild: `drop view` and `create view` in one migration
+ * (PRD-loyalty-points slice 06), which also recreates the Migration card's
+ * summary, the view that reads the overview. This keeps the
  * two equal, and keeps the view server-only: security_invoker, no `*`, and no
  * grant to anon or authenticated.
  */
@@ -26,13 +29,26 @@ function dropsBefore(sql: string, view: string, index: number): boolean {
   return drop !== null && drop.index < index;
 }
 
+/** The `alter view … rename column` in `sql` before `index`, as old name → new name. */
+function renamesBefore(sql: string, view: string, index: number): Map<string, string> {
+  const re = new RegExp(`alter view (?:if exists )?(?:public\\.)?${view} rename column ([a-z_0-9]+) to ([a-z_0-9]+)`, "gi");
+  return new Map([...sql.matchAll(re)].filter((m) => m.index < index).map((m) => [m[1]!, m[2]!] as const));
+}
+
 /** Every definition of `view`, in migration order, with the file that holds it. */
 function definitions(view: string) {
   const re = new RegExp(`create (?:or replace )?view (?:public\\.)?${view}\\b([^;]*?)\\bas\\s+select\\s+([^;]*);`, "gi");
   return files.flatMap(({ name, sql }) =>
     [...sql.matchAll(re)].map((m) => {
       const [, options, body] = m;
-      return { name, sql, options, list: selectList(body), rebuilt: dropsBefore(sql, view, m.index) };
+      return {
+        name,
+        sql,
+        options,
+        list: selectList(body),
+        rebuilt: dropsBefore(sql, view, m.index),
+        renames: renamesBefore(sql, view, m.index),
+      };
     }),
   );
 }
@@ -89,12 +105,21 @@ describe.each(VIEWS)("$view", ({ view, columns }) => {
     expect(columnNames(latest.list)).toEqual([...columns]);
   });
 
-  it("only ever adds columns at the end, unless the same migration drops the view first", () => {
+  it("only ever adds columns at the end, unless the same migration renames one or drops the view first", () => {
     // Postgres refuses `create or replace view` that drops or reorders one.
     for (let i = 1; i < defs.length; i++) {
       if (defs[i].rebuilt) continue;
-      const before = columnNames(defs[i - 1].list);
+      const before = columnNames(defs[i - 1].list).map((c) => defs[i].renames.get(c) ?? c);
       expect(columnNames(defs[i].list).slice(0, before.length), defs[i].name).toEqual(before);
+    }
+  });
+
+  it("renames a column only for a migration that restates the view after it", () => {
+    for (const { name, sql } of files) {
+      const re = new RegExp(`alter view (?:if exists )?(?:public\\.)?${view} rename column`, "gi");
+      for (const m of sql.matchAll(re)) {
+        expect(defs.some((d) => d.name === name && d.renames.size > 0), `${name} at ${m.index}`).toBe(true);
+      }
     }
   });
 

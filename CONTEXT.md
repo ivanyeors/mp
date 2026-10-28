@@ -110,6 +110,10 @@ _Avoid_: **Discovery source** (self-reported on **Result**); referral source; ca
 The end of a **Visit** without conversion: last page, last section when known, and dwell — not a surveyed reason.
 _Avoid_: bounce (too narrow); exit intent; “why they left” as captured fact
 
+**Drop-off reason**:
+What a person tells us stopped them, asked on the configurators and at checkout as they move to leave, and on a **Result**'s decline step (`drop_off_reasons`; PRD-crm-retention-loop slice 10). Self-reported: one closed answer, with optional text on *Something did not work* and *Other*. Holds no contact details: tied to the **Visit** and **Visitor** ids, or for a decline to the **Result**. A **Visitor** merged to a person links their answers to them too, so the card promises only that it asks for no name or email, never that answers are anonymous. Kept apart from a **Drop-off**, which records only where a **Visit** ended. Asked at most once per browser per 30 days; the reply offers help, never a discount.
+_Avoid_: treating it as a **Drop-off** or the reverse; inferring a reason nobody gave; **Discovery source** (how they found us, not why they left)
+
 **Filling Template**:
 A named filling recipe in the **Admin Panel** (Configure) catalog for **Mpillow** (and bolster where applicable), scoped to **one or more sizes** (lengths for **Mbolster**). Nothing in a recipe is size-specific — the nine **cells**, the **Derived pack list** and the canonical fingerprint are identical whatever the pillow measures — so one recipe commonly serves several sizes rather than being re-authored per size. The set of sizes it serves is its **Size membership**. One template = all nine **cells** (**Section** × **sub-section**) as a single recipe. The persisted model must record **where** each filling **Item** goes (**Section** + **sub-section** + order within the cell) — not only a flat item list. A flat BOM projection (summed `item_id × count` across cells) is derived for stock/COGS display. A **Composed sellable** may designate one active template as its **Default Filling Template**. **Staff assist mode** may load and mutate a template’s mix for the live session, but must not create a catalog **Filling Template** from the configurator — create and **Promote** happen only in the **Admin Panel**. Every filling line must reference an inventory **Item** (no free-text shapes). Fillings never come from guest customer input or from raw filling lines on the composed sellable BOM. Affects COGS and fulfillment, not sell price.
 
@@ -473,6 +477,14 @@ _Avoid_: "activity log" or "events table" — nothing is copied
 **Segment**:
 A named, saved set of Customers-list filters, shared by all **Staff** with `customers` and counted live. A **Segment** and the same filters in the URL always return the same **Customers**.
 _Avoid_: "list" (a Segment is a query, not a frozen set of people); "audience" (that is email marketing's word for a Segment narrowed by consent)
+
+**Purchase**:
+A counted **Order** (paid, and not pending, cancelled, refunded or payment-failed) with at least one goods line. A re-adjustment fee **Order** holds only a service line, so it is never a **Purchase**. Until the Shopify order history is imported (PRD-crm-retention-loop slice 09), a **Migrated customer**'s Shopify-era order count is added to their **Purchases**, with no dates.
+_Avoid_: counting every paid **Order** as a purchase (`paid_orders` does, re-adjustment fees included)
+
+**Lifecycle stage**:
+Where a **Customer** is in the funnel *Lead > New > Loyal > At risk > Lost*, one stage at a time, some with a sub-status (PRD-crm-retention-loop slice 03; owner, 2026-10-27 and 2026-10-28). Read from their **Purchases**, their attended **Re-adjustment bookings** and their **Marketing consent**, and nothing else, checked in order: *Lost* (unsubscribed, with no **Purchase** or attended booking since), *Lead* (neither yet), *At risk* (the latest of either more than 12 calendar months ago; sub-status *Lapsed* past 24), *Loyal* (2 or more **Purchases**, sub-status *Repeat purchases*; or an attended booking, *Bookings*), *New* (1 **Purchase**; sub-status *awaiting delivery*, *delivered*, or *settled* 30 days after delivery). The cut-offs are strict, as the *Last order* filter's. A buyer whose every **Purchase** is Shopify-era has no dates yet: placed by count, never *At risk*. A Renew subscriber will be *Loyal · Subscriber*, checked first, when Renew exists. Computed by `customer_lifecycle_stage` and `customer_lifecycle_detail`, mirrored in `lib/crm/lifecycle-stage.ts`.
+_Avoid_: storing it, or setting it by hand (it is derived when read); moving a **Customer** by reviews, ratings, returns or notes; "churned" (say *At risk*, or *Lost* once they unsubscribe); calling an attended booking a **Visit** (a browsing session)
 
 **Follow-up**:
 A dated to-do about one **Customer**, assigned to a **Staff profile**, and done or not done.

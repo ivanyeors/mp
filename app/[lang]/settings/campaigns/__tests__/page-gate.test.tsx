@@ -54,8 +54,8 @@ const params = Promise.resolve({ lang: "en-US" });
 beforeEach(() => vi.clearAllMocks());
 
 describe("campaigns in the catalog", () => {
-  it("is its own sidebar page under Store", () => {
-    expect(permissionEntry("campaigns")).toMatchObject({ label: "Email campaigns", group: "Store", href: "/settings/campaigns" });
+  it("is its own sidebar page under CRM", () => {
+    expect(permissionEntry("campaigns")).toMatchObject({ label: "Email campaigns", group: "CRM", href: "/settings/campaigns" });
     expect(permissionForHref("/settings/campaigns")).toBe("campaigns");
     expect(permissionForHref("/settings/campaigns/new")).toBe("campaigns");
   });
@@ -72,7 +72,7 @@ describe("/settings/campaigns", () => {
   it.each(["manager", "fulfilment", "viewer"] as const)("sends %s to the denied page", async (role) => {
     signInAs(role);
     await expect(ListPage({ params })).rejects.toThrow("REDIRECT /settings?denied=campaigns");
-    await expect(NewPage({ params })).rejects.toThrow("REDIRECT /settings?denied=campaigns");
+    await expect(NewPage({ params, searchParams: Promise.resolve({}) })).rejects.toThrow("REDIRECT /settings?denied=campaigns");
   });
 });
 

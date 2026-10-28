@@ -4,7 +4,8 @@ import { listSegments } from "@/lib/crm/segments";
 import { getCampaign, getCampaignStats, readWaveStats } from "@/lib/email-campaigns/store";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { CampaignEditor, type SegmentOption } from "../campaign-editor";
+import { CampaignEditor } from "../campaign-editor";
+import { segmentOptions } from "../segment-options";
 
 export const runtime = "nodejs";
 
@@ -25,7 +26,7 @@ export default async function EmailCampaignPage({ params }: { params: Promise<{ 
         listSegments().catch(() => []),
         readWaveStats(admin, id).then((w) => w.own).catch(() => []),
     ]);
-    const options: SegmentOption[] = segments.map((s) => ({ id: s.id, name: s.name }));
+    const options = segmentOptions(segments, ctx, locale);
     // The Segment it was saved with stays choosable even if it was archived since.
     if (campaign.segmentId && !options.some((s) => s.id === campaign.segmentId)) {
         options.push({ id: campaign.segmentId, name: "(archived Segment)" });

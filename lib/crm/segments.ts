@@ -220,7 +220,8 @@ type IdQuery = CustomerListQuery & {
  * - **Stable on a long run.** Pages are keyed by id (`id > last`, ordered by
  *   id), never by offset, so a Customer added or changed mid-run cannot shift
  *   a page: each id is yielded once. Every page counts *Last order* from the
- *   same `now`.
+ *   same `now`; *Stage* is read with the database's `now()` per page, which
+ *   only matters for a run that crosses a stage's cut-off mid-way.
  * - **It stops on an empty page**, not a short one, so a project whose API
  *   returns fewer rows than `pageSize` (PostgREST's `max_rows`) still yields
  *   every Customer.

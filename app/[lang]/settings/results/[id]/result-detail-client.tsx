@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -140,6 +141,7 @@ type MpConfigResponseRow = {
   payment_intent_id?: string | null;
   /** Discount code held with (ADR 0033); every repricing takes it off the goods. */
   coupon_code?: string | null;
+  customer_id?: string | null;
   customer_email?: string | null;
   customer_phone?: string | null;
   discovery_source?: string | null;
@@ -226,6 +228,12 @@ export type ResultDetailInitialData = {
   } | null;
   assignPrep: AssignPrepData | null;
   fillingItems: BolsterListItem[] | null;
+  /**
+   * The Customer this Result belongs to, for *Open customer*
+   * (PRD-crm-retention-loop slice 02). Null when the viewer lacks `customers`
+   * or no single Customer matches.
+   */
+  customerId?: string | null;
 };
 
 /**
@@ -300,6 +308,7 @@ export default function ResultDetailPage({
   const id = params?.id;
 
   const [seed] = useState(() => deriveSeed(initialData));
+  const customerId = initialData?.customerId ?? null;
 
   const [loading, setLoading] = useState(!initialData?.detail);
   const [saving, setSaving] = useState(false);
@@ -1428,6 +1437,7 @@ export default function ResultDetailPage({
 
           {(row.authorized_amount != null ||
             row.customer_email ||
+            customerId ||
             row.customer_phone ||
             row.discovery_source) && (
             <div className="grid gap-3 sm:grid-cols-2 text-sm border-t pt-3">
@@ -1445,10 +1455,21 @@ export default function ResultDetailPage({
                   <span className="font-medium">{row.coupon_code}</span>
                 </div>
               )}
-              {row.customer_email && (
+              {(row.customer_email || customerId) && (
                 <div>
-                  <span className="text-muted-foreground">Email: </span>
+                  <span className="text-muted-foreground">{row.customer_email ? "Email: " : "Customer"}</span>
                   {row.customer_email}
+                  {customerId ? (
+                    <>
+                      {row.customer_email ? " · " : ": "}
+                      <Link
+                        href={to(`/settings/customers/${customerId}`)}
+                        className="font-medium underline-offset-4 hover:underline"
+                      >
+                        Open customer
+                      </Link>
+                    </>
+                  ) : null}
                 </div>
               )}
               {row.customer_phone && (

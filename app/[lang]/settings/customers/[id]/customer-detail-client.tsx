@@ -15,6 +15,9 @@ import {
     ShoppingCart,
     DollarSign,
     Clock,
+    Package,
+    Repeat,
+    CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +58,8 @@ import { MarketingConsentCard } from "./marketing-consent-card";
 import { PointsCard } from "./points-card";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
+import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
+import { LifecycleStageBadge, lifecycleNote } from "../lifecycle-stage-badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -127,6 +132,8 @@ export type CustomerDetailInitialData = {
     migration?: MigratedCustomerResult;
     /** WhatsApp and the other numbers seen, matched by phone on the server (CRM slice 11). */
     contact?: ContactFactsResult;
+    /** The Lifecycle stage (PRD-crm-retention-loop slice 03); null when it could not be read. */
+    lifecycle?: AdminCustomerLifecycle | null;
 };
 
 const emptyAddress: AddressFormState = {
@@ -175,6 +182,7 @@ export function CustomerDetailClient({
             ? (initialData.customer.row as Customer)
             : null;
     const [customer, setCustomer] = useState<Customer | null>(initialRow);
+    const lifecycle = initialData?.lifecycle ?? null;
     const [loading, setLoading] = useState(!initialData);
 
     // The RSC page already read the customer — skip that mount fetch once. The
@@ -377,8 +385,13 @@ export function CustomerDetailClient({
                         Customers
                     </Link>
                 </Button>
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
+                        {lifecycle ? (
+                            <LifecycleStageBadge stage={lifecycle.lifecycle_stage} undated={lifecycle.lifecycle_undated} />
+                        ) : null}
+                    </div>
                     <p className="text-sm text-muted-foreground mt-0.5">
                         Customer since {formatDate(customer.created_at)}
                     </p>
@@ -784,6 +797,65 @@ export function CustomerDetailClient({
                             <CardTitle className="text-base">Stats</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
+                            {lifecycle ? (
+                                <>
+                                    <div className="flex items-start justify-between gap-3 text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Repeat className="h-4 w-4" />
+                                            <span>Stage</span>
+                                        </div>
+                                        <span className="flex flex-col items-end gap-0.5 text-right">
+                                            <LifecycleStageBadge
+                                                stage={lifecycle.lifecycle_stage}
+                                                undated={lifecycle.lifecycle_undated}
+                                            />
+                                            {lifecycleNote(lifecycle) ? (
+                                                <span className="text-xs text-muted-foreground">{lifecycleNote(lifecycle)}</span>
+                                            ) : null}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Package className="h-4 w-4" />
+                                            <span title="Paid orders with a product on them, Shopify-era orders included. A re-adjustment fee is not one.">
+                                                Purchases
+                                            </span>
+                                        </div>
+                                        <span className="font-semibold">{lifecycle.purchases}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <CalendarCheck className="h-4 w-4" />
+                                            <span title="Re-adjustment bookings they came in for, including ones booked from the check-up reminder.">
+                                                Bookings attended
+                                            </span>
+                                        </div>
+                                        <span className="font-semibold">{lifecycle.attended_bookings}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock className="h-4 w-4" />
+                                            <span>Last purchase</span>
+                                        </div>
+                                        <span className="font-semibold">
+                                            {lifecycle.last_purchase_at
+                                                ? formatDate(lifecycle.last_purchase_at)
+                                                : lifecycle.lifecycle_undated
+                                                  ? "On Shopify"
+                                                  : "None"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock className="h-4 w-4" />
+                                            <span>Last booking</span>
+                                        </div>
+                                        <span className="font-semibold">
+                                            {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}
+                                        </span>
+                                    </div>
+                                </>
+                            ) : null}
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                     <ShoppingCart className="h-4 w-4" />

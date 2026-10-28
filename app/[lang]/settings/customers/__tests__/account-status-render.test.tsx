@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
+import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 
 /**
@@ -62,6 +63,12 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   shop_review_avg_rating: null,
   review_rating: null,
   last_campaign_sent_at: null,
+  purchases: 0,
+  last_purchase_at: null,
+  lifecycle_stage: "lead",
+  lifecycle_detail: null,
+  lifecycle_undated: false,
+  attended_bookings: 0,
   ...over,
 });
 
@@ -262,5 +269,80 @@ describe("Customer detail: From Shopify card", () => {
 
   it("says so when the facts could not be read", () => {
     expect(detail(customer({}), { ok: false })).toContain("Could not load what the Shopify import holds");
+  });
+});
+
+// PRD-crm-retention-loop slice 03: the Lifecycle stage on the Customer.
+describe("Customer detail: Lifecycle stage", () => {
+  const withStage = (lifecycle: AdminCustomerLifecycle | null) =>
+    renderToString(
+      <CustomerDetailClient
+        initialData={{ customer: { ok: true, row: customer({}) }, notes: [], lifecycle }}
+        canEdit={false}
+        viewer={{ userId: "u1", grantsAll: false }}
+      />,
+    );
+
+  const lifecycle = (over: Partial<AdminCustomerLifecycle>): AdminCustomerLifecycle => ({
+    purchases: 1,
+    last_purchase_at: "2026-10-01T02:00:00Z",
+    attended_bookings: 0,
+    last_readjusted_at: null,
+    lifecycle_stage: "new",
+    lifecycle_detail: "delivered",
+    lifecycle_undated: false,
+    marketing_email_updated_at: null,
+    ...over,
+  });
+
+  it("shows the stage beside the name and in Stats, with purchases, bookings and the last purchase", () => {
+    const html = withStage(lifecycle({}));
+    expect(html.match(/>New</g)?.length).toBe(2);
+    expect(html).toContain("Delivered");
+    expect(html).toContain(">Purchases<");
+    expect(html).toContain(">Bookings attended<");
+    expect(html).toContain(">Last purchase<");
+    expect(html).toContain("1 Oct 2026");
+  });
+
+  it("says why a Customer is Loyal, with their bookings and the latest one", () => {
+    const html = withStage(
+      lifecycle({
+        purchases: 1,
+        attended_bookings: 2,
+        last_readjusted_at: "2026-09-08T03:00:00Z",
+        lifecycle_stage: "loyal",
+        lifecycle_detail: "bookings",
+      }),
+    );
+    expect(html).toContain(">Loyal<");
+    expect(html).toContain(">Bookings<");
+    const value = (label: string) => html.match(new RegExp(`>${label}<[\\s\\S]*?font-semibold">([^<]*)<`))?.[1];
+    expect(value("Purchases")).toBe("1");
+    expect(value("Bookings attended")).toBe("2");
+    expect(value("Last booking")).toBe("8 Sept 2026");
+  });
+
+  it("says a Shopify-only buyer's last purchase was on Shopify, with no dates yet", () => {
+    const html = withStage(
+      lifecycle({ purchases: 3, last_purchase_at: null, lifecycle_stage: "loyal", lifecycle_detail: "repeat_purchases", lifecycle_undated: true }),
+    );
+    expect(html).toContain(">Loyal<");
+    expect(html).toContain("Repeat purchases · No dates yet");
+    expect(html).toContain("On Shopify");
+  });
+
+  it("says when a Lost Customer unsubscribed", () => {
+    const html = withStage(
+      lifecycle({ lifecycle_stage: "lost", lifecycle_detail: null, marketing_email_updated_at: "2026-10-12T03:00:00Z" }),
+    );
+    expect(html.match(/>Lost</g)?.length).toBe(2);
+    expect(html).toContain("Unsubscribed 12 Oct 2026");
+  });
+
+  it("leaves the stage out when it could not be read", () => {
+    const html = withStage(null);
+    expect(html).not.toContain(">Purchases<");
+    expect(html).toContain(">Total orders<");
   });
 });

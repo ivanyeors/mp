@@ -106,6 +106,26 @@ export function chosenSegmentFilters(params: SegmentParams): Pick<CustomerFilter
   return Object.fromEntries(CUSTOMER_FILTER_KEYS.map((k) => [k, out[k]])) as Pick<CustomerFilters, CustomerFilterKey>;
 }
 
+/**
+ * *Email this Segment* (PRD-crm-retention-loop slice 02): the new campaign
+ * page sent to this Segment, or null when the role cannot send campaigns
+ * (`newCampaignPath` undefined) or the Segment needs review and so counts
+ * nobody until it is updated.
+ */
+export function segmentCampaignHref(
+  newCampaignPath: string | undefined,
+  segment: Pick<CustomerSegment, "id" | "needsReview">,
+): string | null {
+  if (!newCampaignPath || segment.needsReview) return null;
+  return `${newCampaignPath}?segment=${encodeURIComponent(segment.id)}`;
+}
+
+/** The Customers list showing a Segment: `listPath` with its filters, or bare when it has none. */
+export function segmentHref(listPath: string, params: SegmentParams): string {
+  const key = segmentKey(params);
+  return key ? `${listPath}?${key}` : listPath;
+}
+
 /** The parameters as one canonical string: what *same filters* means. */
 export function segmentKey(params: SegmentParams): string {
   const out = new URLSearchParams();

@@ -91,6 +91,25 @@ function resolveVisitId(nowIso: string): {
   return { visitId, isNewVisit: true, closeVisitId };
 }
 
+/**
+ * The current Visit and Visitor ids, without starting either: the drop-off
+ * question (PRD-crm-retention-loop slice 10) ties its answer to the Visit the
+ * tracker already opened, and to nothing when there is none.
+ */
+export function readJourneyIds(): { visitId: string | null; visitorId: string | null } {
+  try {
+    const visitId = sessionStorage.getItem(VISIT_KEY);
+    const visitorId = readCookie(VISITOR_COOKIE);
+    const uuid = /^[0-9a-f-]{36}$/i;
+    return {
+      visitId: visitId && uuid.test(visitId) ? visitId : null,
+      visitorId: visitorId && uuid.test(visitorId) ? visitorId : null,
+    };
+  } catch {
+    return { visitId: null, visitorId: null };
+  }
+}
+
 function currentVisitContext(): { visitorId: string; visitId: string } | null {
   const visitId = sessionStorage.getItem(VISIT_KEY);
   if (!visitId || !/^[0-9a-f-]{36}$/i.test(visitId)) return null;

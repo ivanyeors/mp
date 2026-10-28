@@ -29,6 +29,14 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { trackGaEventOnce } from "@/lib/analytics/ga-events";
+import {
+  DROP_OFF_REASON_LABEL,
+  DROP_OFF_TEXT_MAX,
+  TEXT_REASONS,
+  shuffledReasons,
+  type DropOffReason,
+} from "@/lib/analytics/drop-off/reasons";
+import { Textarea } from "@/components/ui/textarea";
 import { clearPairedHandoff } from "@/lib/configurator/paired-mbolster";
 
 type BuildSummary = {
@@ -217,6 +225,10 @@ function ResultStatusPage() {
   const [myResults, setMyResults] = useState<ResultListRow[]>([]);
   const [acting, setActing] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
+  // *What made you decide?* on the decline step (PRD-crm-retention-loop slice 10): optional.
+  const [declineOrder] = useState(() => shuffledReasons("quote_decline"));
+  const [declineReason, setDeclineReason] = useState<DropOffReason | null>(null);
+  const [declineText, setDeclineText] = useState("");
   const [removeOpen, setRemoveOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const topupSessionId = searchParams.get("topup_session_id");
@@ -362,7 +374,17 @@ function ResultStatusPage() {
       const res = await fetch(`/api/results/${id}/decline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(token ? { token } : {}),
+        body: JSON.stringify({
+          ...(token ? { token } : {}),
+          ...(declineReason
+            ? {
+                reason: {
+                  reason: declineReason,
+                  text: TEXT_REASONS.includes(declineReason) ? declineText.trim() || null : null,
+                },
+              }
+            : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Decline failed");
@@ -851,6 +873,61 @@ function ResultStatusPage() {
               : "Your card authorization hold will be released and you will need to start customisation again. This cannot be undone."}
           </DialogDescription>
         </DialogHeader>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">
+            What made you decide? <span className="font-normal text-muted-foreground">(optional)</span>
+          </legend>
+          <div className="grid gap-1.5">
+            {declineOrder.map((reason) => (
+              <label
+                key={reason}
+                className={cn(
+                  "flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm",
+                  declineReason === reason ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="decline-reason"
+                  value={reason}
+                  checked={declineReason === reason}
+                  onChange={() => setDeclineReason(reason)}
+                  className="accent-primary"
+                />
+                {DROP_OFF_REASON_LABEL[reason]}
+              </label>
+            ))}
+          </div>
+          {declineReason && TEXT_REASONS.includes(declineReason) ? (
+            <>
+              <label htmlFor="decline-reason-text" className="sr-only">
+                Tell us more
+              </label>
+              <Textarea
+                id="decline-reason-text"
+                rows={2}
+                maxLength={DROP_OFF_TEXT_MAX}
+                placeholder="Tell us more (optional)"
+                value={declineText}
+                onChange={(e) => setDeclineText(e.target.value)}
+              />
+            </>
+          ) : null}
+          {declineReason ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-muted-foreground"
+              onClick={() => {
+                setDeclineReason(null);
+                setDeclineText("");
+              }}
+            >
+              Clear my answer
+            </Button>
+          ) : null}
+        </fieldset>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" disabled={acting} onClick={() => setDeclineOpen(false)}>
             Keep reviewing

@@ -61,6 +61,7 @@ import {
     type CustomerSegment,
 } from "@/lib/crm/segment-rules";
 import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
+import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
 import { MigrationCard } from "./migration-card";
 import { SegmentsRow } from "./segments-row";
 
@@ -104,11 +105,12 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 }
 
 /**
- * The filters that live in the Filters panel rather than the toolbar: CRM
- * slice 04's, Points (PRD-loyalty-points slice 06), migration slice 07's
+ * The filters that live in the Filters panel rather than the toolbar: the
+ * Lifecycle stage (PRD-crm-retention-loop slice 03), CRM slice 04's, Points (PRD-loyalty-points slice 06), migration slice 07's
  * Email consent, and CRM slice 12's reviews.
  */
 const PANEL_FILTERS: CustomerFilterKey[] = [
+    "stage",
     "bought",
     "last_order",
     "readjusted",
@@ -213,6 +215,7 @@ export function CustomersClient({
     migration = null,
     initialSegments,
     canEdit = false,
+    canEmail = false,
 }: {
     initialData?: CustomersInitialData;
     /** The filters the page's URL asked for; `initialData` is page 1 of them. */
@@ -225,6 +228,8 @@ export function CustomersClient({
     initialSegments?: CustomerSegment[];
     /** `customers-edit`: saving, updating, renaming and archiving Segments. */
     canEdit?: boolean;
+    /** `campaigns`: *Email this Segment* (PRD-crm-retention-loop slice 02). */
+    canEmail?: boolean;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -382,6 +387,7 @@ export function CustomersClient({
             <SegmentsRow
                 initialSegments={initialSegments}
                 canEdit={canEdit}
+                newCampaignPath={canEmail ? to("/settings/campaigns/new") : undefined}
                 params={segmentParams(filters)}
                 activeId={segmentId}
                 listPath={to("/settings/customers")}
@@ -522,6 +528,7 @@ export function CustomersClient({
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
                                 <TableHead className="px-4">Name</TableHead>
                                 <TableHead className="px-4 hidden sm:table-cell">Email</TableHead>
+                                <TableHead className="px-4 hidden md:table-cell">Stage</TableHead>
                                 <TableHead className="px-4 hidden md:table-cell">Account</TableHead>
                                 <TableHead className="px-4 text-right hidden md:table-cell">
                                     Orders
@@ -565,13 +572,25 @@ export function CustomersClient({
                                             <span className="block text-xs text-muted-foreground mt-0.5 sm:hidden">
                                                 {customer.email}
                                             </span>
-                                            {/* The Account column is hidden below md: show it here instead. */}
-                                            <span className="mt-1 block md:hidden">
+                                            {/* The Stage and Account columns are hidden below md: show them here instead. */}
+                                            <span className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                                                <LifecycleStageBadge
+                                                    stage={customer.lifecycle_stage}
+                                                    undated={customer.lifecycle_undated}
+                                                />
+                                                {lifecycleNote(customer) ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {lifecycleNote(customer)}
+                                                    </span>
+                                                ) : null}
                                                 <AccountStatus customer={customer} compact />
                                             </span>
                                         </TableCell>
                                         <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground">
                                             {customer.email}
+                                        </TableCell>
+                                        <TableCell className="px-4 hidden md:table-cell">
+                                            <LifecycleStageCell customer={customer} />
                                         </TableCell>
                                         <TableCell className="px-4 hidden md:table-cell">
                                             <AccountStatus customer={customer} />
@@ -587,7 +606,7 @@ export function CustomersClient({
                                             className="px-4 hidden lg:table-cell text-sm text-muted-foreground whitespace-nowrap"
                                             suppressHydrationWarning
                                         >
-                                            {formatDate(customer.last_paid_at)}
+                                            {formatDate(customer.last_purchase_at)}
                                         </TableCell>
                                         {/* Dates in Singapore time, so the server render and the browser agree. */}
                                         <TableCell className="px-4 hidden lg:table-cell">

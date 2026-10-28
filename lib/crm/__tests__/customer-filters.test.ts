@@ -40,6 +40,7 @@ function recorder() {
     overlaps: record("overlaps"),
     contains: record("contains"),
     eq: record("eq"),
+    in: record("in"),
     is: record("is"),
     not: record("not"),
     gt: record("gt"),
@@ -214,7 +215,7 @@ describe("applyCustomerFilters", () => {
 
   it("sorts by last order, never-ordered last, and by spend", () => {
     expect(query("sort=last-order").calls).toEqual([
-      ["order", "last_paid_at", { ascending: false, nullsFirst: false }],
+      ["order", "last_purchase_at", { ascending: false, nullsFirst: false }],
       newest,
     ]);
     expect(query("sort=spend").calls).toEqual([["order", "total_spent", { ascending: false }], newest]);
@@ -272,8 +273,8 @@ describe("applyCustomerFilters", () => {
   });
 
   it("counts the last order back from now, in calendar months", () => {
-    expect(query("last_order=within:6").calls).toEqual([["gte", "last_paid_at", "2026-04-21T04:00:00.000Z"], newest]);
-    expect(query("last_order=over:12").calls).toEqual([["lt", "last_paid_at", "2025-10-21T04:00:00.000Z"], newest]);
+    expect(query("last_order=within:6").calls).toEqual([["gte", "last_purchase_at", "2026-04-21T04:00:00.000Z"], newest]);
+    expect(query("last_order=over:12").calls).toEqual([["lt", "last_purchase_at", "2025-10-21T04:00:00.000Z"], newest]);
   });
 
   it("maps re-adjusted ever and never to the attended booking's date", () => {
@@ -290,7 +291,7 @@ describe("applyCustomerFilters", () => {
     expect(ignored).toEqual([]);
     expect(calls).toEqual([
       ["overlaps", "bought", '{"premium"}'],
-      ["lt", "last_paid_at", "2025-10-21T04:00:00.000Z"],
+      ["lt", "last_purchase_at", "2025-10-21T04:00:00.000Z"],
       ["is", "last_readjusted_at", null],
       newest,
     ]);
@@ -484,7 +485,7 @@ describe("on the real Supabase query builder", () => {
   it("sends the PRD's list as three plain filters", () => {
     const url = urlOf("bought=premium&last_order=over:12&readjusted=never");
     expect(url.searchParams.get("bought")).toBe('ov.{"premium"}');
-    expect(url.searchParams.get("last_paid_at")).toBe("lt.2025-10-21T04:00:00.000Z");
+    expect(url.searchParams.get("last_purchase_at")).toBe("lt.2025-10-21T04:00:00.000Z");
     expect(url.searchParams.get("last_readjusted_at")).toBe("is.null");
     expect(url.searchParams.has("or")).toBe(false);
   });
@@ -565,6 +566,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "shop_review",
       "sort",
       "source",
+      "stage",
       "tags",
     ]);
     expect(CUSTOMER_FILTER_PARAMS).not.toContain("view");
@@ -587,6 +589,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "search",
       "shop_review",
       "source",
+      "stage",
       "tags",
     ]);
   });
@@ -654,5 +657,48 @@ describe("searchParamsFromRecord", () => {
     expect(searchParamsFromRecord({ account: ["no-account", "signed-up"], source: "shopify", x: undefined }).toString()).toBe(
       "account=no-account&source=shopify",
     );
+  });
+});
+
+// PRD-crm-retention-loop slice 03: *Stage*, the overview's lifecycle_stage.
+describe("the Stage filter", () => {
+  it("reads hyphenated stages into the overview's words, in stage order, once each", () => {
+    expect(parseCustomerFilters(new URLSearchParams("stage=lost,at-risk,lost")).filters.stage).toEqual(["at_risk", "lost"]);
+    expect(parseCustomerFilters(new URLSearchParams("stage=lead")).filters.stage).toEqual(["lead"]);
+  });
+
+  it("drops the whole parameter for an unknown stage, the underscore spelling included", () => {
+    // `repeat` and `lapsed` were stages before the funnel (2026-10-28); Lapsed is now At risk's sub-status.
+    for (const bad of ["stage=vip", "stage=at_risk", "stage=new,whale", "stage=repeat", "stage=lapsed", "stage="]) {
+      const { filters, ignored } = parseCustomerFilters(new URLSearchParams(bad));
+      expect(filters.stage, bad).toEqual([]);
+      if (bad !== "stage=") expect(ignored, bad).toEqual(["stage"]);
+    }
+  });
+
+  it("writes the same URL back, and nothing for no stage", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("stage=lost,at-risk"));
+    expect(customerFilterParams(filters).toString()).toBe("stage=at-risk%2Clost");
+    expect(customerFilterParams({ stage: [] }).toString()).toBe("");
+  });
+
+  it("is one `in` on lifecycle_stage", () => {
+    expect(query("stage=at-risk,lost").calls).toEqual([
+      ["in", "lifecycle_stage", ["at_risk", "lost"]],
+      ["order", "created_at", { ascending: false }],
+    ]);
+  });
+
+  it("labels and clears like every other filter", () => {
+    const filters = parseCustomerFilters(new URLSearchParams("stage=at-risk,lost&bought=premium")).filters;
+    expect(describeCustomerFilters(filters)[0]).toEqual({ key: "stage", label: "Stage: At risk or Lost" });
+    expect(clearCustomerFilter(filters, "stage")).toMatchObject({ stage: [], bought: ["premium"] });
+  });
+
+  it("goes to PostgREST as in.(…)", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("stage=at-risk,lost"));
+    const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
+    const q = applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW });
+    expect((q as unknown as { url: URL }).url.searchParams.get("lifecycle_stage")).toBe("in.(at_risk,lost)");
   });
 });

@@ -27,13 +27,7 @@
  * covered by lib/crm/__tests__/purchase-lines.test.ts.
  */
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import {
-  applyCustomerFilters,
-  parseCustomerFilters,
-  pgTextArray,
-  type CustomerListQuery,
-} from "@/lib/crm/customer-filters";
+import { applyCustomerFilters, parseCustomerFilters } from "@/lib/crm/customer-filters";
 import { boughtClasses, isCountedOrder, purchaseLine, type PurchaseLine } from "@/lib/crm/purchase-lines";
 import type { OrderRow } from "@/lib/readjustment/purchases";
 import {
@@ -49,6 +43,7 @@ import {
   monthsAgo,
   type PillowIds,
 } from "./__tests__/purchase-lines-fixture";
+import { SqlFilter, psqlJson as json, runPsql, sqlJsonLiteral as jsonLit, sqlLiteral as lit } from "./__tests__/sql-check";
 
 const url = process.env.CRM_CHECK_DATABASE_URL;
 if (!url) {
@@ -56,77 +51,7 @@ if (!url) {
   process.exit(0);
 }
 
-/** A SQL literal: standard_conforming_strings is on, so only quotes are doubled. */
-const lit = (v: string | number | boolean | null): string =>
-  v === null ? "null" : typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v);
-const jsonLit = (v: unknown) => (v === null || v === undefined ? "null" : `${lit(JSON.stringify(v))}::jsonb`);
-
-/** Runs `sql` in one psql session; each `@@name@@<value>` output line is one result. */
-function psql(sql: string): Map<string, string> {
-  const out = execFileSync("psql", [url!, "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"], {
-    input: sql,
-    encoding: "utf8",
-    maxBuffer: 512 * 1024 * 1024,
-  });
-  const results = new Map<string, string>();
-  for (const line of out.split("\n")) {
-    const m = line.match(/^@@([^@]+)@@(.*)$/);
-    if (m) results.set(m[1], m[2]);
-  }
-  return results;
-}
-const json = <T>(results: Map<string, string>, name: string): T => {
-  const v = results.get(name);
-  assert.ok(v !== undefined, `no result named ${name}`);
-  return JSON.parse(v) as T;
-};
-
-/**
- * `applyCustomerFilters`'s calls as a SQL `where`, the way PostgREST reads
- * them: like/ilike rewrite every `*` to `%`, `ov` is `&&`, `is` / `not.is`.
- */
-class SqlFilter implements CustomerListQuery {
-  readonly where: string[] = [];
-  ilike(column: string, pattern: string) {
-    this.where.push(`${column} ilike ${lit(pattern.replaceAll("*", "%"))}`);
-    return this;
-  }
-  overlaps(column: string, value: string) {
-    this.where.push(`${column} && ${lit(value)}::text[]`);
-    return this;
-  }
-  contains(column: string, value: string[]) {
-    this.where.push(`${column} @> ${lit(pgTextArray(value))}::text[]`);
-    return this;
-  }
-  eq(column: string, value: boolean | string) {
-    this.where.push(`${column} = ${lit(value)}`);
-    return this;
-  }
-  is(column: string) {
-    this.where.push(`${column} is null`);
-    return this;
-  }
-  not(column: string, operator: "is" | "cs", value: string | null) {
-    this.where.push(operator === "is" ? `${column} is not null` : `not (${column} @> ${lit(String(value))}::text[])`);
-    return this;
-  }
-  gt(column: string, value: number) {
-    this.where.push(`${column} > ${lit(value)}`);
-    return this;
-  }
-  gte(column: string, value: string | number) {
-    this.where.push(`${column} >= ${lit(value)}`);
-    return this;
-  }
-  lt(column: string, value: string) {
-    this.where.push(`${column} < ${lit(value)}`);
-    return this;
-  }
-  order() {
-    return this;
-  }
-}
+const psql = (sql: string) => runPsql(url!, sql);
 
 const now = new Date();
 const fixtureCustomerIds = Object.values(CUSTOMERS).map((c) => c.id);
@@ -231,8 +156,9 @@ select '@@orders@@'::text || coalesce(jsonb_agg(jsonb_build_object(
 )), '[]') from public.orders o;`;
 
 // The hand-written query for the acceptance filter, over the base tables and
-// not the views: a Premium pillow on a counted Order, the latest counted Order
-// more than 12 months ago, and no attended Re-adjustment booking.
+// not the views: a Premium pillow on a counted Order, the latest purchase (a
+// counted Order with a goods line, PRD-crm-retention-loop slice 03) more than
+// 12 months ago, and no attended Re-adjustment booking.
 const HAND_WRITTEN = `
 select '@@hand_written@@'::text || coalesce(jsonb_agg(c.id order by c.id), '[]')
 from public.customers c
@@ -265,7 +191,8 @@ where c.${inFixture}
          from public.orders o
         where o.customer_id = c.id
           and o.paid_at is not null
-          and o.status not in ('pending', 'cancelled', 'refunded', 'payment_failed')) < now() - interval '12 months'
+          and o.status not in ('pending', 'cancelled', 'refunded', 'payment_failed')
+          and exists (select 1 from public.order_items i where i.order_id = o.id and i.kind = 'goods')) < now() - interval '12 months'
   and not exists (
     select 1 from public.readjustment_bookings b
      where b.customer_id = c.id and b.status = 'attended');`;
