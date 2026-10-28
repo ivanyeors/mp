@@ -532,6 +532,9 @@ export function ProductConfigurationCard() {
   const viewportTransform = `translate(${view.x} ${view.y}) scale(${view.scale})`;
   const dendrogramPadding = width < 480 ? 36 : 64;
 
+  const treeReady =
+    !loadingTemplates && templates.length > 0 && !loadingTree && !!tree && width >= 10 && height >= 10;
+
   return (
     <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
@@ -593,27 +596,29 @@ export function ProductConfigurationCard() {
       <CardContent className="space-y-3 px-4 sm:px-6">
         {error && <div className="text-sm text-destructive">{error}</div>}
 
-        <div ref={ref} className="relative h-[520px] w-full overflow-hidden rounded-xl border bg-card">
-          {loadingTemplates ? (
-            <div className="p-3 sm:p-4">
-              <Skeleton className="h-[28px] w-[260px] rounded-lg" />
-              <Skeleton className="mt-4 h-[440px] w-full rounded-xl" />
-            </div>
-          ) : templates.length === 0 ? (
-            <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground sm:p-6">
-              No BOM templates found yet. Create one in Settings → Inventory → Configure → Templates.
-            </div>
-          ) : loadingTree ? (
-            <div className="p-3 sm:p-4">
-              <Skeleton className="h-[28px] w-[380px] rounded-lg" />
-              <Skeleton className="mt-4 h-[440px] w-full rounded-xl" />
-            </div>
-          ) : !tree || width < 10 || height < 10 ? (
-            <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground sm:p-6">
-              {selectedLabel ? "No parts found for this template." : "Select a template."}
-            </div>
-          ) : (
-            <>
+        {/* Phones: the zoom controls sit under the drawing, not over its node labels.
+            From md they float in its corner as before. */}
+        <div className="relative">
+          <div ref={ref} className="relative h-[520px] w-full overflow-hidden rounded-xl border bg-card">
+            {loadingTemplates ? (
+              <div className="p-3 sm:p-4">
+                <Skeleton className="h-[28px] w-[260px] rounded-lg" />
+                <Skeleton className="mt-4 h-[440px] w-full rounded-xl" />
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground sm:p-6">
+                No BOM templates found yet. Create one in Settings → Inventory → Configure → Templates.
+              </div>
+            ) : loadingTree ? (
+              <div className="p-3 sm:p-4">
+                <Skeleton className="h-[28px] w-[380px] rounded-lg" />
+                <Skeleton className="mt-4 h-[440px] w-full rounded-xl" />
+              </div>
+            ) : !treeReady || !tree ? (
+              <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground sm:p-6">
+                {selectedLabel ? "No parts found for this template." : "Select a template."}
+              </div>
+            ) : (
               <DendrogramSvg
                 width={Math.max(10, width)}
                 height={Math.max(10, height)}
@@ -626,35 +631,39 @@ export function ProductConfigurationCard() {
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
               />
+            )}
+          </div>
 
-              <div className="absolute bottom-3 right-3 flex flex-wrap items-center gap-1 rounded-lg border bg-background/80 p-1 backdrop-blur sm:flex-nowrap sm:gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-7 px-2 sm:h-8"
-                  onClick={() => zoomAt(view.scale * 1.15, { x: width / 2, y: height / 2 })}
-                >
-                  +
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-7 px-2 sm:h-8"
-                  onClick={() => zoomAt(view.scale / 1.15, { x: width / 2, y: height / 2 })}
-                >
-                  −
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-7 px-2 sm:h-8"
-                  onClick={() => setView({ x: 0, y: 0, scale: 1 })}
-                >
-                  Reset
-                </Button>
-              </div>
-            </>
-          )}
+          {treeReady ? (
+            <div className="mt-2 flex items-center justify-end gap-2 md:absolute md:bottom-3 md:right-3 md:mt-0 md:rounded-lg md:border md:bg-background/80 md:p-1 md:backdrop-blur">
+              <Button
+                type="button"
+                variant="outline"
+                aria-label="Zoom in"
+                className="h-7 px-2 max-md:min-w-11 sm:h-8"
+                onClick={() => zoomAt(view.scale * 1.15, { x: width / 2, y: height / 2 })}
+              >
+                +
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                aria-label="Zoom out"
+                className="h-7 px-2 max-md:min-w-11 sm:h-8"
+                onClick={() => zoomAt(view.scale / 1.15, { x: width / 2, y: height / 2 })}
+              >
+                −
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-7 px-2 sm:h-8"
+                onClick={() => setView({ x: 0, y: 0, scale: 1 })}
+              >
+                Reset
+              </Button>
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </Card>

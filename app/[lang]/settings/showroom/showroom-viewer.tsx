@@ -203,10 +203,13 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
           </Section>
 
           <Section title="Moving around">
+            {/* A touch screen has no keys, right button or scroll wheel: show it only the gestures. */}
             <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>Drag to orbit. Right-drag or two fingers to slide along the floor.</li>
-              <li>Scroll or pinch to zoom towards the pointer.</li>
-              <li>W A S D or arrow keys to walk, E and Q to rise and sink, Shift to hurry.</li>
+              <li className="pointer-coarse:hidden">Drag to orbit. Right-drag or two fingers to slide along the floor.</li>
+              <li className="hidden pointer-coarse:list-item">Drag to orbit. Two fingers to slide along the floor.</li>
+              <li className="pointer-coarse:hidden">Scroll or pinch to zoom towards the pointer.</li>
+              <li className="hidden pointer-coarse:list-item">Pinch to zoom.</li>
+              <li className="pointer-coarse:hidden">W A S D or arrow keys to walk, E and Q to rise and sink, Shift to hurry.</li>
             </ul>
           </Section>
 
@@ -246,7 +249,7 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div className="flex items-start justify-between gap-3 max-md:min-h-11 max-md:items-center">
       <label htmlFor={id} className="min-w-0 cursor-pointer text-sm">
         {label}
         {hint ? <span className="block text-xs text-muted-foreground">{hint}</span> : null}

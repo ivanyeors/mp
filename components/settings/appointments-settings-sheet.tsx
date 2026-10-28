@@ -90,7 +90,7 @@ function AvailabilityEditor({
             {/* Whole row head is the tap target for the day switch. */}
             <label
               htmlFor={`day-${dow}`}
-              className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-between gap-3 sm:w-24 sm:justify-start"
+              className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-between gap-3 rounded-md transition-colors active:bg-press sm:w-24 sm:justify-start"
             >
               <span className={open ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
                 {WEEKDAY_LABELS[dow]}
@@ -316,7 +316,7 @@ export function AppointmentsSettingsSheet({
         <Tabs
           value={tab}
           onValueChange={(v) => setTab(v as SheetTab)}
-          className="flex min-h-0 flex-1 flex-col gap-3"
+          className="flex min-h-0 flex-1 flex-col gap-3 max-md:px-3"
         >
           {/* Five sections: too wide for a phone, so TabsList collapses them into
               one menu button there and keeps the pill row on desktop. */}
@@ -370,7 +370,7 @@ export function AppointmentsSettingsSheet({
                         <label
                           htmlFor={`bookable-${loc.id}`}
                           className={cn(
-                            "flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2",
+                            "flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2 transition-colors active:bg-press",
                             busy && "opacity-70",
                           )}
                         >
@@ -587,7 +587,7 @@ export function AppointmentsSettingsSheet({
               {/* Whole row is the tap target: the switch alone is 20×36px. */}
               <label
                 htmlFor="show-cancelled"
-                className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-border px-3 py-2 transition-colors active:bg-press"
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-medium">Show cancelled appointments</span>

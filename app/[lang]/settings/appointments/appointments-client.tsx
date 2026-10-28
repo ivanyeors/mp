@@ -213,7 +213,7 @@ export default function AppointmentSettingsPage({
   }
 
   return (
-    <div className="flex flex-col p-2 sm:p-3 md:p-6">
+    <div className="flex flex-col sm:p-3 md:p-6">
       <style data-fullcalendar />
       {/* Title row keeps the gear in thumb reach. */}
       <div className="mb-3 flex shrink-0 items-start justify-between gap-3 md:mb-4">

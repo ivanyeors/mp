@@ -71,6 +71,9 @@ const titleCase = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.to
 
 const TABS = ["connection", "addresses", "boxes", "rules", "tracking", "webhook"];
 
+/** A one-line status needs no card on a phone: it reads as a plain line of text. */
+const statusLineOnPhone = "max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:py-0 max-md:shadow-none";
+
 export default function EasyshipSettingsPage({ initial, initialTab }: { initial?: EasyshipInitial; initialTab?: string }) {
   const [settings, setSettings] = useState<EasyshipSettings>(initial?.settings ?? DEFAULT_SETTINGS);
   const [seeded, setSeeded] = useState(!!initial?.settings);
@@ -148,14 +151,15 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
             <p className="text-sm text-muted-foreground">Account {sync.easyship_company_id}.</p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* Phones: the two secondary actions share a row and Save & sync gets the next one to itself. */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Button variant="outline" onClick={importLive} disabled={!!busy}>
-            {spin("import") ?? <Download className="h-4 w-4" />} Import from courier account
+            {spin("import") ?? <Download className="h-4 w-4" />} <span>Import<span className="max-sm:sr-only"> from courier account</span></span>
           </Button>
           <Button variant="outline" onClick={syncNow} disabled={!!busy || !seeded}>
             {spin("sync") ?? <RefreshCw className="h-4 w-4" />} Sync now
           </Button>
-          <Button onClick={save} disabled={!!busy}>
+          <Button className="col-span-2" onClick={save} disabled={!!busy}>
             {spin("save") ?? <Save className="h-4 w-4" />} Save &amp; sync
           </Button>
         </div>
@@ -172,8 +176,8 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
       )}
 
       {!seeded && !settingsError && (
-        <Card>
-          <CardContent className="py-4 text-sm text-muted-foreground">
+        <Card className={statusLineOnPhone}>
+          <CardContent className="py-4 text-sm text-muted-foreground max-md:p-0">
             Nothing saved yet. Import from courier account to start from the live account, or fill the tabs in and save.
           </CardContent>
         </Card>
@@ -239,8 +243,8 @@ const ACTION_VARIANT: Record<SyncAction, "default" | "secondary" | "destructive"
 function SyncReportCard({ sync }: { sync: SyncView }) {
   if (!sync.last_at || !sync.report) {
     return (
-      <Card>
-        <CardContent className="py-3 text-sm text-muted-foreground">Never synced.</CardContent>
+      <Card className={statusLineOnPhone}>
+        <CardContent className="py-3 text-sm text-muted-foreground max-md:p-0">Never synced.</CardContent>
       </Card>
     );
   }

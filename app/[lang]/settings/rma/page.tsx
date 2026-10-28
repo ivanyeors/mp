@@ -5,6 +5,7 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { parseStatusFilter, humanizeToken, RMA_STATUSES } from "@/lib/rma/admin-view";
 import { InfoTip } from "@/components/ui/info-tip";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 
 export const runtime = "nodejs";
 
@@ -69,7 +70,7 @@ export default async function RmaQueuePage({
       </div>
 
       {/* Status filter — a plain GET form, no client JS needed. */}
-      <form method="get" className="mt-6 flex flex-wrap items-center gap-2">
+      <form method="get" className="mt-4 flex flex-wrap items-center gap-2 md:mt-6">
         <label htmlFor="status" className="text-sm text-muted-foreground">
           Status
         </label>
@@ -88,18 +89,37 @@ export default async function RmaQueuePage({
         </select>
         <button
           type="submit"
-          className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+          className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm transition-colors hover:bg-accent active:bg-press"
         >
           Filter
         </button>
       </form>
 
       {rows.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
+        <div className="mt-6 rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground md:mt-8 md:px-0 md:py-16">
           No return requests{status ? ` with status “${humanizeToken(status)}”` : ""} yet.
         </div>
       ) : (
-        <div className="mt-6 min-w-0 overflow-x-auto rounded-lg border">
+        <>
+        <MobileList className="mt-4">
+          {rows.map((r) => (
+            <MobileListRow key={r.id} href={to(`/settings/rma/${r.id}`)}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-sm font-medium">
+                  {r.orders?.order_number != null ? `#${r.orders.order_number}` : "No order"}
+                </span>
+                <span className="shrink-0 text-xs font-medium">{humanizeToken(r.status)}</span>
+              </div>
+              <p className="truncate text-sm text-muted-foreground">{r.customers?.email ?? "—"}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                <span className="capitalize text-foreground">{r.resolution}</span>
+                {r.reason ? ` · ${r.reason}` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">{formatTimestamp(r.created_at)}</p>
+            </MobileListRow>
+          ))}
+        </MobileList>
+        <div className="mt-6 min-w-0 overflow-x-auto rounded-lg border max-md:hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
@@ -133,6 +153,7 @@ export default async function RmaQueuePage({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

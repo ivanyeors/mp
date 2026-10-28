@@ -57,6 +57,11 @@ assert.match(card, /py-\[var\(--card-py,1\.5rem\)\]/);
 assert.match(card, /gap-\[var\(--card-gap,1\.5rem\)\]/);
 assert.ok((card.match(/px-\[var\(--card-px,1\.5rem\)\]/g) ?? []).length >= 3, "card: header/content/footer px");
 assert.match(shell, /max-md:\[--card-gap:1rem\] max-md:\[--card-px:1rem\] max-md:\[--card-py:1rem\]/);
+// A title-only header has no empty second row (and its 8px gap) on a phone.
+assert.match(card, /grid-rows-\[auto_auto\] items-start gap-2 max-md:grid-rows-none/);
+
+// The shell drops iOS's grey tap flash: the pressed tints replace it.
+assert.match(shell, /\[-webkit-tap-highlight-color:transparent\]/);
 
 // Breadcrumb links are 44px tall inside the 56px header.
 assert.match(shell, /className="block truncate py-3 active:opacity-60"/);
@@ -64,5 +69,6 @@ assert.match(shell, /className="block truncate py-3 active:opacity-60"/);
 // Phone list rows: one ≥56px target with a pressed tint.
 assert.match(mobileList, /min-h-14/);
 assert.match(mobileList, /has-\[\[data-row-target\]:active\]:bg-press/);
+assert.match(mobileList, /flex shrink-0 items-center gap-2 pr-2/);
 
 console.log("pressed-state.check.ts ok");

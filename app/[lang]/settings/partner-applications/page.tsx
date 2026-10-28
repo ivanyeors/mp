@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { ReviewActions } from "./review-actions";
 import { InfoTip } from "@/components/ui/info-tip";
+import { EmptyState } from "@/components/settings/empty-state";
 
 interface PendingApplication {
   id: string;
@@ -72,23 +73,20 @@ export default async function PartnerApplicationsPage({
       </div>
 
       {applications.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-14 text-center">
-          <p className="text-sm font-medium text-muted-foreground">
-            No pending applications.
-          </p>
-        </div>
+        <EmptyState>No pending applications.</EmptyState>
       ) : (
         <div className="space-y-4">
           {applications.map((app) => {
             const q = app.questionnaire ?? {};
             return (
               <Card key={app.id}>
-                <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-                  <div className="min-w-0">
-                    <CardTitle className="truncate">
+                {/* Phones: the actions get their own full-width row, so the name and email aren't squeezed. */}
+                <CardHeader className="flex flex-col gap-3 space-y-0 md:flex-row md:items-start md:justify-between md:gap-4">
+                  <div className="min-w-0 max-md:w-full">
+                    <CardTitle className="break-words max-md:leading-snug md:truncate">
                       {q.companyName || app.email}
                     </CardTitle>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 break-words text-sm text-muted-foreground">
                       {app.email}, applied {formatDate(app.created_at)}
                     </p>
                   </div>

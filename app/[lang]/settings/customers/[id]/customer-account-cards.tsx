@@ -288,7 +288,7 @@ function FromShopifyFacts({
                         {importHistoryHref && batch ? (
                             <Link
                                 href={`${importHistoryHref}#batch-${batch.id}`}
-                                className="break-all text-primary hover:underline"
+                                className="break-all text-primary hover:underline active:opacity-60"
                             >
                                 {batchLabel}
                             </Link>

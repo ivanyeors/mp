@@ -734,7 +734,7 @@ export function AppointmentsCalendar({
             type="button"
             onClick={onOpenSettings}
             title="Choose which locations take bookings"
-            className="min-w-0 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-w-0 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 active:bg-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Locations
@@ -749,7 +749,7 @@ export function AppointmentsCalendar({
         <div className="border-t border-border px-3 py-2.5">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
             <span className="text-xs text-muted-foreground sm:text-sm">Bookable days</span>
-            <div className="flex w-full gap-1 sm:w-auto" role="group" aria-label="Bookable days">
+            <div className="flex w-full gap-2 sm:w-auto sm:gap-1" role="group" aria-label="Bookable days">
               {DAY_CHIPS.map((d) => {
                 const on = settings.bookableDays.includes(d.value);
                 return (
@@ -761,10 +761,10 @@ export function AppointmentsCalendar({
                     title={on ? `Close ${d.label}` : `Open ${d.label}`}
                     onClick={() => void toggleRef.current(d.value)}
                     className={cn(
-                      "min-h-10 flex-1 rounded-md px-1 text-xs font-medium transition-colors sm:min-h-7 sm:flex-none sm:px-2",
+                      "min-h-11 flex-1 rounded-md px-1 text-xs font-medium transition-colors sm:min-h-7 sm:flex-none sm:px-2",
                       on
-                        ? "bg-emerald-600/90 text-white"
-                        : "border border-border bg-background text-muted-foreground line-through",
+                        ? "bg-emerald-600/90 text-white active:bg-emerald-700"
+                        : "border border-border bg-background text-muted-foreground line-through active:bg-press",
                     )}
                   >
                     {d.label}
@@ -790,7 +790,7 @@ export function AppointmentsCalendar({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex min-h-10 w-full items-center justify-between border-t border-border px-3 text-xs text-muted-foreground"
+              className="flex min-h-11 w-full items-center justify-between border-t border-border px-3 text-xs text-muted-foreground transition-colors active:bg-press md:min-h-10"
             >
               <span>Legend &amp; tips</span>
               <ChevronDown
@@ -923,11 +923,11 @@ export function AppointmentsCalendar({
                 aria-selected={active}
                 onClick={() => changeView(v.id)}
                 className={cn(
-                  "min-h-10 px-3 text-sm font-medium transition-colors md:min-h-8 md:px-3",
+                  "min-h-11 px-3 text-sm font-medium transition-colors md:min-h-8 md:px-3",
                   i > 0 && "border-l border-border",
                   active
                     ? "bg-foreground text-background"
-                    : "bg-background text-foreground hover:bg-muted",
+                    : "bg-background text-foreground hover:bg-muted active:bg-press",
                 )}
               >
                 {v.label}

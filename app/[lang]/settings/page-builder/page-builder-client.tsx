@@ -4,12 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,7 +24,7 @@ import { SectionEditor } from "@/components/settings/page-builder/section-editor
 import { SectionTree, SECTION_TYPE_LABELS, sectionTitle } from "@/components/settings/page-builder/section-tree";
 import { PreviewFrame } from "@/components/settings/page-builder/preview-frame";
 import { PublishHistory } from "@/components/settings/page-builder/publish-history";
-import { ExternalLink, Eye, Loader2, Plus, Undo2, UploadCloud } from "lucide-react";
+import { ExternalLink, Eye, History, Loader2, MoreHorizontal, Plus, Undo2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -38,8 +45,10 @@ function slugify(text: string): string {
 
 function AddSectionDialog({
   onAdd,
+  triggerClassName,
 }: {
   onAdd: (type: string, slug: string) => void;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -56,7 +65,7 @@ function AddSectionDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" className={triggerClassName}>
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           Add section
         </Button>
@@ -78,7 +87,7 @@ function AddSectionDialog({
                   setSelectedType(tmpl.type);
                   if (!slug) setSlug(slugify(tmpl.label));
                 }}
-                className={`rounded-lg border p-3 text-left text-sm transition-colors hover:bg-accent ${
+                className={`rounded-lg border p-3 text-left text-sm transition-colors hover:bg-accent active:bg-press ${
                   selectedType === tmpl.type
                     ? "border-primary bg-primary/5"
                     : ""
@@ -111,6 +120,11 @@ function AddSectionDialog({
           >
             Create section
           </Button>
+          <DialogClose asChild>
+            <Button variant="outline" className="w-full">
+              Cancel
+            </Button>
+          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>
@@ -176,9 +190,9 @@ function PublishBar({
   ].filter(Boolean);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 max-md:w-full">
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium max-md:mr-auto ${
           dirty ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground"
         }`}
         data-page-builder-draft-state=""
@@ -265,6 +279,7 @@ export default function PageBuilderPage({
   const [previewLocale, setPreviewLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   /**
    * Whether the open inspector has unsaved edits. A ref, not state: it is only read at
    * the moment selection changes, and re-rendering the shell on every keystroke would
@@ -501,14 +516,47 @@ export default function PageBuilderPage({
           the very state that was just restored.
         */}
         <PublishBar pending={pending} onPublished={afterChange} onDiscarded={resetAndRefresh} />
-        <PublishHistory pending={pending} onRestored={resetAndRefresh} />
-        <Button variant="outline" size="sm" asChild>
+        {/*
+          Phones: one row of Preview, Add section and a ⋯ menu for History and Live site,
+          instead of two rows of buttons and a full-width Preview.
+        */}
+        <PublishHistory
+          pending={pending}
+          onRestored={resetAndRefresh}
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          triggerClassName="max-md:hidden"
+        />
+        <Button variant="outline" size="sm" className="max-md:hidden" asChild>
           <a href="/" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
             Live site
           </a>
         </Button>
-        <AddSectionDialog onAdd={handleAddSection} />
+        <Button variant="outline" size="sm" className="flex-1 md:hidden" onClick={() => setMobilePreviewOpen(true)}>
+          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          Preview
+        </Button>
+        <AddSectionDialog onAdd={handleAddSection} triggerClassName="max-md:flex-1" />
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="size-11 shrink-0 md:hidden" aria-label="More page actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuItem className="min-h-11" onSelect={() => setHistoryOpen(true)}>
+              <History />
+              Publish history
+            </DropdownMenuItem>
+            <DropdownMenuItem className="min-h-11" asChild>
+              <a href="/" target="_blank" rel="noopener noreferrer">
+                <ExternalLink />
+                Live site
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -518,7 +566,7 @@ export default function PageBuilderPage({
     return (
       <div className="space-y-4">
         {header}
-        <Button variant="outline" size="sm" className="w-full" onClick={() => setMobilePreviewOpen(true)}>
+        <Button variant="outline" size="sm" className="w-full max-md:hidden" onClick={() => setMobilePreviewOpen(true)}>
           <Eye className="mr-1.5 h-3.5 w-3.5" />
           Preview
         </Button>

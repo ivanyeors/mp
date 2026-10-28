@@ -266,7 +266,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <button
                                         type="button"
                                         onClick={() => copy(status.webhookUrl, "Webhook URL")}
-                                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                                        className="inline-flex items-center gap-1 text-primary hover:underline active:opacity-60"
                                     >
                                         {status.webhookUrl}
                                         <Copy className="h-3 w-3" />
@@ -287,7 +287,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <button
                                         type="button"
                                         onClick={onShowAddresses}
-                                        className="text-primary hover:underline"
+                                        className="text-primary hover:underline active:opacity-60"
                                     >
                                         Open Addresses
                                     </button>

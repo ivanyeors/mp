@@ -128,8 +128,9 @@ export default async function RmaDetailPage({
   const orderHref = rma.orders?.id && hasPermission(ctx, "orders") ? to(`/settings/orders/${rma.orders.id}`) : null;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="mx-auto w-full max-w-4xl space-y-4 md:space-y-6">
+      {/* Phones: the shell breadcrumb already leads back to the queue. */}
+      <div className="flex items-center gap-3 max-md:hidden">
         <Link
           href={to("/settings/rma")}
           className="inline-flex items-center text-sm text-muted-foreground hover:underline"
@@ -237,7 +238,7 @@ export default async function RmaDetailPage({
                   href={toWebUrl(url) ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center max-md:break-all"
                 >
                   {/* ponytail: raw links, not thumbnails — v1 photos are customer URLs (ADR 0011) */}
                   {url}

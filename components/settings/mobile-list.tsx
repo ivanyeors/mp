@@ -65,7 +65,7 @@ export function MobileListRow({ href, onClick, label, actions, className, childr
       ) : (
         <div className={rowTargetClassName}>{body}</div>
       )}
-      {actions ? <div className="flex shrink-0 items-center gap-1 pr-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 items-center gap-2 pr-2">{actions}</div> : null}
     </li>
   );
 }

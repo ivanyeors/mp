@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, UserPlus } from "lucide-react";
+import { ChevronRight, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -219,6 +219,21 @@ export function MembersTab({
     );
   };
 
+  // Phone card: the profile count is a full-width 44px row, not a 20px floating link.
+  const profilesRow = (m: MemberRow) => {
+    const n = profileCounts.get(m.id) ?? 0;
+    return (
+      <button
+        type="button"
+        onClick={() => onShowProfiles(m.id)}
+        className="-mx-2 flex min-h-11 items-center justify-between gap-2 rounded-md px-2 text-sm text-primary transition-colors active:bg-press"
+      >
+        {`${n} ${n === 1 ? "profile" : "profiles"}`}
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+    );
+  };
+
   const you = (m: MemberRow) =>
     m.id === actor.memberId ? <span className="text-xs font-normal text-muted-foreground">(you)</span> : null;
 
@@ -237,7 +252,7 @@ export function MembersTab({
           {/* Phone: one card per Member. */}
           <div className="space-y-3 sm:hidden">
             {rows.map(({ m, lock, toggle }) => (
-              <Card key={m.id} className={cn("min-w-0 space-y-3 p-4", !m.isActive && "opacity-60")}>
+              <Card key={m.id} className={cn("min-w-0 gap-2 p-4", !m.isActive && "opacity-60")}>
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="break-all font-medium">
                     {m.email} {you(m)}
@@ -246,11 +261,13 @@ export function MembersTab({
                     <StatusPill status={m.status} detail={m.status === "invited" ? sentLabel(m) : undefined} />
                     <span suppressHydrationWarning>Last sign-in {lastSignIn(m)}</span>
                   </div>
-                  {profilesLink(m)}
                 </div>
-                {roleSelect(m, lock)}
+                {profilesRow(m)}
+                <div className="flex min-w-0 items-center gap-2">
+                  {roleSelect(m, lock, "flex-1")}
+                  <div className="shrink-0">{toggleButton(m, toggle)}</div>
+                </div>
                 {lock ? <p className="text-xs text-muted-foreground">{lock}</p> : null}
-                <div className="flex justify-end">{toggleButton(m, toggle)}</div>
               </Card>
             ))}
           </div>

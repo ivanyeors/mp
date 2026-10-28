@@ -72,24 +72,24 @@ export async function MilestoneRungsEditor() {
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Tier</span>
           <input type="number" name="tier" min="1" step="1" defaultValue="1" required
-            className="h-9 rounded-md border bg-background px-2" />
+            className="h-9 rounded-md border bg-background px-2 text-base max-md:min-h-11 md:text-sm" />
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Sales needed</span>
           <input type="number" name="units_threshold" min="0" step="1" defaultValue="5" required
-            className="h-9 rounded-md border bg-background px-2" />
+            className="h-9 rounded-md border bg-background px-2 text-base max-md:min-h-11 md:text-sm" />
         </label>
 
         <label className="flex flex-col gap-1 text-sm sm:col-span-2">
           <span className="text-muted-foreground">Perk label</span>
           <input type="text" name="perk_label" defaultValue=""
-            className="h-9 rounded-md border bg-background px-2" />
+            className="h-9 rounded-md border bg-background px-2 text-base max-md:min-h-11 md:text-sm" />
         </label>
 
         <div className="sm:col-span-2">
           <button type="submit"
-            className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:bg-primary/80 max-md:min-h-11">
             Save rung
           </button>
         </div>

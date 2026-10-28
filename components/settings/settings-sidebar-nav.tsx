@@ -528,7 +528,8 @@ export function SettingsSidebarNav({
   // server render and made phones paint the desktop shell before swapping.
   return (
     <SettingsBreadcrumbProvider>
-      <div className="flex min-h-svh w-full min-w-0 overflow-x-clip md:overflow-x-visible">
+      {/* Every tappable surface here has its own pressed tint, so iOS's grey tap flash only doubles it. */}
+      <div className="flex min-h-svh w-full min-w-0 overflow-x-clip md:overflow-x-visible [-webkit-tap-highlight-color:transparent]">
         <SidebarProvider>
           {/* shadcn's Sidebar root is `hidden md:block`, so it already stays out of the
               mobile paint; keep it a direct sibling of SidebarInset for the peer styles. */}

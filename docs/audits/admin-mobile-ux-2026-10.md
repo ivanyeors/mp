@@ -56,6 +56,94 @@ the focus here, but most get fixed by the same changes.
 | Boxes nested inside another padded box | **88** | flattened |
 | First screen that is blank rows (median page) | **35%**; Orders 56%, Admin Panel home 64%, Shipping 54% | ≤ 25% |
 
+## After the fixes (28 October 2026)
+
+Re-measured on a fresh production build, on the same 48 screens with the
+same probe and seed data.
+
+| | Before | After |
+|---|---|---|
+| Tap targets with **any pressed state** | 362 of 1,387 (26%) | **1,099 of 1,234 (89%)** |
+| Tap targets **under 44px** | 545 (39%) | **102 (8%)** |
+| Neighbouring targets **closer than 8px** | 452 pairs | **248 pairs** (217 of them in Analytics charts) |
+| Targets with `hover:` feedback only | 649 | **26** |
+| Padding that holds nothing | 5,232px | **1,108px** |
+| Boxes nested inside another padded box | 88 | **23** |
+| Rows where only part is tappable | 87 | **26** |
+| Total height of the 48 screens | 134,209px | **121,315px** (−9.6%) |
+| First screen that is blank rows (median page) | 35% | 35% |
+
+Pressed states are counted with one probe fix. A target now also counts when
+its tint comes from a bracketed variant (`data-[state=inactive]:active:`) or
+from its row (`has-[[data-row-target]:active]:`). Both patterns arrived with
+these changes; nothing in the before run used them.
+
+**Biggest height savings:**
+- Customer detail: 8,417 → 6,724px
+- Calibration sheet: 6,138 → 4,489px
+- Customers: 3,880 → 2,609px
+- Partner commissions: 5,527 → 4,467px
+- Result detail: 3,021 → 2,199px
+- Discounts: 3,737 → 2,941px
+- Order detail: 5,113 → 4,379px
+- FAQ: 3,875 → 3,191px
+
+**Pages that grew** because their targets became 44px rows:
+- Docs: Points grew 384px, Meta testers 178px
+- Analytics: +352px
+- Product detail: +208px
+- RMA: +102px
+- Partner applications: +54px
+- Page Builder: +58px
+
+**What changed, in short:**
+- **Pressed states and hit areas in the primitives:** `Button` (`asChild` too),
+  `TabsTrigger`, `Checkbox`, `Switch`, the drag handle, `InfoTip` and clickable
+  `TableRow`. They use a `--press` token for both themes.
+- **No grey tap flash:** the Admin Panel shell sets
+  `-webkit-tap-highlight-color: transparent`.
+- **Phone versions of the desktop tables:** `MobileList` / `MobileListRow`
+  replaces them on Orders, Results, Customers, RMA, Audit log, API configs,
+  Blogs, Campaigns, Discounts, Configure sizes, Variants, Search visibility and
+  Payouts. Each row is one target of 56px or more, with a pressed tint.
+  - Costings shows one row per part, and the row opens a sheet with the three
+    price inputs.
+- **Tighter cards:**
+  - `Card` takes 16px padding on phones from CSS variables.
+  - A title-only `CardHeader` no longer keeps an empty second row.
+  - Empty states use the compact `EmptyState`, and KPI cards use `StatTile`.
+  - 65 nested boxes are flattened.
+- **Duplicate back links and breadcrumbs** inside pages are hidden on phones.
+- **Dialogs are slide-up drawers on phones.** A grab handle pinned to the top
+  closes the drawer: drag it down, flick it, or tap it. No close button floats
+  over the last control, which fixes S1 for every dialog.
+  - Sheets with a footer keep its actions clear of their pinned ×.
+  - The Admin Menu sheet's close moved into its header.
+
+**Appendix B status:**
+- **Fixed:**
+  - S1, the close ×.
+  - S2, `SelectTrigger`.
+  - S5 on every listed table.
+  - Analytics: cards and charts fit the screen; the zoom controls sit under
+    the tree on phones; the axis title has its own line.
+  - Partners and Partner applications.
+  - The shipping method sheet's padding.
+  - The email template's one-line fields, which are now auto-growing.
+- **Unchanged by design:** S3. The shell still clips, not scrolls, sideways
+  overflow; `mobile-overflow.check.ts` holds it.
+- **Open:** the campaign *Subject* and *Preview line* inputs still cut long
+  copy.
+
+**Left to do:**
+- **Analytics charts:** 52 chart marks and toggles have no pressed state,
+  there are 217 crowded pairs, and 36 targets are under 44px.
+- **Markdown toolbars** in the product and blog editors: 22 and 11 targets
+  under 44px.
+- **`SheetGrid`:** the desktop grid itself is unchanged on phones.
+- **A real-device pass** on iOS Safari and Android Chrome: `:active`
+  timing, the tap-highlight change and the drawer drag.
+
 ---
 
 ## 1. Spacing to cut

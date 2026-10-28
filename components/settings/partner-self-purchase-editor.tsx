@@ -137,7 +137,7 @@ export async function PartnerSelfPurchaseEditor() {
         <div className="sm:col-span-2">
           <button
             type="submit"
-            className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:bg-primary/80 max-md:min-h-11"
           >
             Save self-purchase rate
           </button>

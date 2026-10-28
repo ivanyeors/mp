@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft, Copy, Loader2, RotateCcw, Send } from "lucide-react";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CopyField, EmailCopy, EmailCopySpec } from "@/lib/email/copy";
@@ -20,6 +21,35 @@ import { previewEmailCopy, resetEmailCopy, saveEmailCopy, sendEmailCopyTest } fr
 
 /** A field gets a multi-line box when it is several paragraphs, or long. */
 const isLong = (f: CopyField) => f.multiline || f.default.length > 80;
+/** A one-line field that holds a sentence: a single-line input cuts it off on a phone. */
+const isSentence = (f: CopyField) => !isLong(f) && f.default.length > 40;
+
+/**
+ * One line of words that wraps instead of scrolling sideways, and grows to fit.
+ * `field-sizing: content` (in Textarea) does the growing; where a browser lacks it
+ * (iOS Safari), the height follows the text here. Enter is ignored: the field is
+ * saved as one line.
+ */
+function SentenceField(props: ComponentProps<typeof Textarea>) {
+    const ref = useRef<HTMLTextAreaElement>(null);
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (!el || CSS.supports("field-sizing", "content")) return;
+        el.style.height = "auto";
+        el.style.height = `${el.scrollHeight + 2}px`;
+    }, [props.value]);
+    return (
+        <Textarea
+            ref={ref}
+            rows={1}
+            className="min-h-9 resize-none max-md:min-h-11"
+            onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+            }}
+            {...props}
+        />
+    );
+}
 
 function Section({ title, note, children }: { title?: string; note?: string; children: ReactNode }) {
     return (
@@ -157,13 +187,19 @@ export function EmailCopyEditor({
                         {f.optional ? <span className="ml-1 font-normal text-muted-foreground">(optional)</span> : null}
                     </Label>
                     {changed ? (
-                        <button type="button" className="text-xs text-muted-foreground underline" onClick={() => set(k, f.default)}>
+                        <button
+                            type="button"
+                            className="shrink-0 text-xs text-muted-foreground underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                            onClick={() => set(k, f.default)}
+                        >
                             Use the original words
                         </button>
                     ) : null}
                 </div>
                 {isLong(f) ? (
                     <Textarea id={id} rows={f.multiline ? 6 : 3} value={values[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
+                ) : isSentence(f) ? (
+                    <SentenceField id={id} value={values[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
                 ) : (
                     <Input id={id} value={values[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
                 )}
@@ -178,18 +214,21 @@ export function EmailCopyEditor({
     };
 
     const placeholders = Object.entries(spec.placeholders);
+    // Phones: Save is pinned to the bottom while there is something to save, not 1,000px down the form.
+    const showSaveBar = dirty || busy === "save";
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${showSaveBar ? mobileStickyActionBarSpacerClassName : ""}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <Button variant="ghost" size="sm" className="self-start" asChild>
+                {/* The shell breadcrumb already links back on a phone. */}
+                <Button variant="ghost" size="sm" className="self-start max-md:hidden" asChild>
                     <Link href={withLocale("/settings/email-templates", locale)}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Email templates
                     </Link>
                 </Button>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h1 className="text-2xl font-semibold tracking-tight">{spec.name}</h1>
+                    <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight">{spec.name}</h1>
                     <Badge variant={savedEdited ? "default" : "outline"}>{savedEdited ? "Edited" : "Original words"}</Badge>
                 </div>
             </div>
@@ -229,7 +268,7 @@ export function EmailCopyEditor({
                                 </p>
                             ) : null}
                             <div className="flex flex-wrap items-center gap-3">
-                                <Button onClick={save} disabled={!dirty || busy !== null}>
+                                <Button onClick={save} disabled={!dirty || busy !== null} className={showSaveBar ? "max-md:hidden" : undefined}>
                                     {busy === "save" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                                     Save
                                 </Button>
@@ -253,11 +292,12 @@ export function EmailCopyEditor({
                             <CardContent>
                                 <ul className="space-y-2 text-sm">
                                     {placeholders.map(([name, about]) => (
-                                        <li key={name} className="flex items-start gap-2">
+                                        <li key={name} className="flex items-start gap-2 max-md:items-center max-md:gap-3">
                                             <button
                                                 type="button"
                                                 title="Copy"
-                                                className="inline-flex shrink-0 items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-xs"
+                                                aria-label={`Copy {${name}}`}
+                                                className="inline-flex shrink-0 items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-xs transition-colors active:bg-press max-md:min-h-11 max-md:gap-1.5 max-md:rounded-md max-md:px-3"
                                                 onClick={() => void navigator.clipboard?.writeText(`{${name}}`)}
                                             >
                                                 {`{${name}}`}
@@ -321,6 +361,15 @@ export function EmailCopyEditor({
                     </CardContent>
                 </Card>
             </div>
+
+            {showSaveBar ? (
+                <MobileStickyActionBar>
+                    <Button className="w-full" onClick={save} disabled={!dirty || busy !== null}>
+                        {busy === "save" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                        Save
+                    </Button>
+                </MobileStickyActionBar>
+            ) : null}
         </div>
     );
 }

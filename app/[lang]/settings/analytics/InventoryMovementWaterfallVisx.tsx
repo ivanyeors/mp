@@ -8,6 +8,7 @@ import { AxisBottom } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
+import { format } from "date-fns";
 
 export type MovementRow = {
   key: string;
@@ -325,6 +326,13 @@ function Chart({
   );
 }
 
+/** The two total rows arrive labelled `total[YYYY-MM-DD]`; show them as a date people read. */
+function readableLabel(row: MovementRow): string {
+  const m = /^total\[(\d{4})-(\d{2})-(\d{2})\]$/.exec(row.label);
+  if (!m) return row.label;
+  return `Total · ${format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), "d MMM yyyy")}`;
+}
+
 export function InventoryMovementWaterfallVisx({
   rows,
   height = 380,
@@ -336,16 +344,18 @@ export function InventoryMovementWaterfallVisx({
   onLabelClick?: (row: MovementRow) => void;
   isLabelClickable?: (row: MovementRow) => boolean;
 }) {
+  const readableRows = useMemo(() => rows.map((row) => ({ ...row, label: readableLabel(row) })), [rows]);
   return (
     <div className="w-full overflow-x-auto">
-      <div className="min-w-[440px]">
+      {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
+      <div className="md:min-w-[440px]">
         <ParentSize>
           {({ width }) =>
             width < 10 ? null : (
               <Chart
                 width={width}
                 height={height}
-                rows={rows}
+                rows={readableRows}
                 onLabelClick={onLabelClick}
                 isLabelClickable={isLabelClickable}
               />

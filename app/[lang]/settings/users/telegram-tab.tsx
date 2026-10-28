@@ -319,7 +319,7 @@ export function TelegramAccessTab({
                     doesn&apos;t have. Ask an Owner or Admin to change it.
                   </p>
                 ) : null}
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-5">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-5">
                   {TELEGRAM_ACTIONS.map((a) => {
                     const roleHas = grants.has(a);
                     const actorMay = actor.grantsAll || actor.permissions.has(a);
@@ -332,7 +332,10 @@ export function TelegramAccessTab({
                     return (
                       <label
                         key={a}
-                        className={cn("flex min-h-9 items-center gap-2 text-sm", why && "opacity-70")}
+                        className={cn(
+                          "-mx-2 flex min-h-11 items-center gap-2 rounded-md px-2 text-sm transition-colors active:bg-press sm:mx-0 sm:min-h-9 sm:px-0",
+                          why && "opacity-70",
+                        )}
                         title={why ?? undefined}
                       >
                         <Checkbox
@@ -366,7 +369,8 @@ export function TelegramAccessTab({
                   >
                     {link.is_active ? "Turn off" : "Turn on"}
                   </Button>
-                  <Button variant="ghost" size="sm" disabled={frozen} onClick={() => remove(link)}>
+                  {/* Destructive: kept apart from the other actions on a phone. */}
+                  <Button variant="ghost" size="sm" disabled={frozen} onClick={() => remove(link)} className="max-md:ml-auto">
                     Remove
                   </Button>
                   {busy ? <Loader2 className="h-4 w-4 animate-spin self-center text-muted-foreground" /> : null}

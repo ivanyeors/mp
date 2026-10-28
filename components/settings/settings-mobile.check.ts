@@ -38,7 +38,7 @@ assert.match(auditLog, /min-w-0 overflow-x-auto/);
 assert.doesNotMatch(auditLog, /mt-8 overflow-hidden rounded-lg border/);
 
 // costings: stacked full-width header actions + fluid filter
-assert.match(costings, /flex flex-col gap-2 sm:flex-row sm:flex-wrap/);
+assert.match(costings, /flex flex-col gap-2 sm:flex-row sm:items-center/);
 assert.match(costings, /w-full max-w-full sm:w-\[280px\]/);
 
 // Users & permissions → Members: status under email; fluid role select; phone cards, table from sm
@@ -74,18 +74,20 @@ assert.match(calendar, /overflow-x-auto border-t border-border px-3 py-2 text-xs
 const apptSheet = read("components/settings/appointments-settings-sheet.tsx");
 assert.match(apptSheet, /htmlFor=\{`bookable-\$\{loc\.id\}`\}/);
 assert.match(apptSheet, /flex min-h-11 cursor-pointer items-center gap-3/);
-// sectioned sheet: tab strip scrolls on a phone; day rows and window controls ≥44px
-assert.match(apptSheet, /h-auto w-full justify-start overflow-x-auto md:w-fit/);
+// sectioned sheet: the tab strip folds into one menu button on a phone; day rows
+// and window controls ≥44px
+assert.match(apptSheet, /<TabsList className="w-full justify-start md:w-fit">/);
 assert.match(apptSheet, /htmlFor=\{`day-\$\{dow\}`\}/);
 assert.match(apptSheet, /min-h-11 min-w-11 shrink-0 md:min-h-8 md:min-w-8/);
 
-// costings: pinned Part column (shared helper) + full-width money inputs; Save
-// pinned above the dock. The BOM configure editor reuses the same helper.
+// costings: pinned Part column (shared helper) on the desktop grid; on a phone each
+// part is one row that opens a sheet of price inputs; Save pinned above the dock.
+// The BOM configure editor reuses the same helper.
 const tableSticky = read("components/ui/table-sticky.ts");
 const configureCard = read("app/[lang]/settings/inventory/configure/[card]/page.tsx");
 assert.match(tableSticky, /sticky left-0 z-10 w-\[9\.5rem\] min-w-\[9\.5rem\]/);
 assert.match(costings, /stickyFirstColumnHeadClassName as STICKY_PART_HEAD/);
-assert.match(costings, /min-w-\[7\.5rem\]/);
+assert.match(costings, /<MobileListRow key=\{rowKey\} onClick=\{\(\) => setPartSheetItemId\(item\.id\)\}>/);
 assert.match(configureCard, /pinFirstColumn\b/);
 assert.match(costings, /MobileStickyActionBar/);
 assert.doesNotMatch(costings, /SelectContent align="start" className="w-\[280px\]"/);
@@ -97,12 +99,11 @@ assert.match(select, /cn\(className, "inset-x-0 w-full min-w-0 max-w-none px-0 p
 assert.match(settingsNav, /overflow-x-clip md:overflow-x-visible/);
 assert.match(settingsNav, /pb-\[calc\(0\.75rem\+var\(--app-dock-clearance\)\)\]/);
 
-// analytics date chips ≥44px; journey filters are deliberately compact
-// (they float over the pan/zoom graph) but width-bounded so the phone
-// toolbar row fits, and the toolbar clears the safe-top inset
+// analytics date chips ≥44px; journey filters are deliberately compact (they
+// sit in a panel over the pan/zoom graph) and fill their filter group, and the
+// toolbar clears the safe-top inset
 assert.match(analytics, /inline-flex min-h-11 items-center/);
-assert.match(journey, /h-8 w-\[140px\] min-h-8 text-xs sm:w-\[180px\]/);
-assert.match(journey, /h-8 w-\[110px\] min-h-8 text-xs sm:w-\[130px\]/);
+assert.ok((journey.match(/className="h-8 w-full min-h-8 text-xs"/g) ?? []).length >= 2, "journey: compact full-width filters");
 assert.match(journey, /top-\[calc\(0\.5rem\+var\(--safe-top\)\)\]/);
 
 // analytics card headers: the Card primitive stacks a CardAction under the
@@ -134,13 +135,14 @@ assert.match(customerDetail, /opacity-100/);
 assert.doesNotMatch(customerDetail, /group-hover:opacity-100/);
 assert.match(customers, /overflow-x-auto/);
 
-// Cross-partition: results delete always visible; orders date stacks; media mobile overlay
+// Cross-partition: results delete always visible; orders dates side by side under
+// the search on a phone; media mobile overlay
 const results = read("app/[lang]/settings/results/results-client.tsx");
 const orders = read("app/[lang]/settings/orders/orders-client.tsx");
 const media = read("app/[lang]/settings/media/media-client.tsx");
 assert.doesNotMatch(results, /opacity-0 group-hover:opacity-100/);
 assert.match(results, /min-h-11 min-w-11/);
-assert.match(orders, /flex w-full flex-col gap-2 sm:w-auto sm:flex-row/);
+assert.match(orders, /grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-row/);
 assert.match(orders, /w-full sm:w-40/);
 assert.match(media, /opacity-100 sm:opacity-0 sm:group-hover:opacity-100/);
 

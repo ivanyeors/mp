@@ -700,7 +700,7 @@ export default function AnalyticsClient() {
   );
 
   const timelineCard = (
-    <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+    <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <div className="flex items-center gap-1.5">
           <CardTitle>Product sales timeline</CardTitle>
@@ -759,7 +759,7 @@ export default function AnalyticsClient() {
   );
 
   const mpMetricsCard = (
-    <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+    <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <div className="flex items-center gap-1.5">
           <CardTitle>Results</CardTitle>
@@ -831,11 +831,12 @@ export default function AnalyticsClient() {
             Shows channel P&L from paid orders and the Shopify order mirror.
           </InfoTip>
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+        {/* Phones: channel tabs and a compact Refresh share one row (Refresh was a full-width primary bar). */}
+        <div className="flex items-center gap-2">
           <Tabs
             value={channel}
             onValueChange={(v) => setChannel(v as AnalyticsChannel)}
-            className="w-full sm:w-auto"
+            className="min-w-0 flex-1 sm:w-auto sm:flex-none"
           >
             <TabsList className="w-full sm:w-fit">
               <TabsTrigger value="all">All</TabsTrigger>
@@ -846,7 +847,12 @@ export default function AnalyticsClient() {
           <Button
             onClick={refreshRetrospective}
             disabled={refreshing || timelineRefreshing || mpMetricsRefreshing || realizedMarginLoading || inventoryLoading}
+            className="shrink-0"
           >
+            <RefreshCw
+              className={`md:hidden ${refreshing || timelineRefreshing ? "animate-spin" : ""}`}
+              aria-hidden
+            />
             {refreshing || timelineRefreshing ? "Refreshing…" : "Refresh"}
           </Button>
         </div>
@@ -931,8 +937,10 @@ export default function AnalyticsClient() {
         </div>
       </div>
 
-      <div className="grid gap-6">
-        <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      {/* grid-cols-1 is minmax(0, 1fr): a chart's minimum width scrolls inside its card
+          instead of widening the column, and every card in it, past the screen. */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
           <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
             <div className="flex items-center gap-1.5">
               <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
@@ -1035,8 +1043,8 @@ export default function AnalyticsClient() {
         {mpMetricsCard}
       </div>
 
-      <div className="grid gap-6">
-        <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
           <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
             <div className="flex items-center gap-1.5">
               <CardTitle>Inventory movement</CardTitle>
