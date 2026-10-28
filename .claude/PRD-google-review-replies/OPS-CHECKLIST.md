@@ -119,7 +119,8 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://custom.mpillow.com/api/cron
 ## 7. Database
 
 Apply `supabase/migrations/20261002060000_google_review_replies.sql`,
-`20261002070000_google_review_reopen.sql` and `20261028035135_google_reviews_places_source.sql`
+`20261002070000_google_review_reopen.sql`, `20261028040928_google_reviews_places_source.sql`
+and `20261028041004_google_places_polls_server_only.sql`
 (`pnpm db:push` applies them in order).
 
 ## 8. Telegram access

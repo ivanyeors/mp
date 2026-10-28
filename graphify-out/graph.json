@@ -89911,6 +89911,17 @@
       "source_location": "L8"
     },
     {
+      "id": "supabase_migrations_20261028041004_google_places_polls_server_only",
+      "label": "20261028041004_google_places_polls_server_only.sql",
+      "_origin": "ast",
+      "community": 1003,
+      "community_name": "20261028041004_google_places_polls_server_only.sql",
+      "file_type": "code",
+      "norm_label": "20261028041004_google_places_polls_server_only.sql",
+      "source_file": "supabase/migrations/20261028041004_google_places_polls_server_only.sql",
+      "source_location": null
+    },
+    {
       "id": "claude_prd_analytics_db_channel_facts_issues_05_chained_catchup_backfill",
       "label": "05-chained-catchup-backfill.md",
       "_origin": "ast",
@@ -165402,47 +165413,47 @@
       "source_location": "L33"
     },
     {
-      "id": "supabase_migrations_20261028035135_google_reviews_places_source",
-      "label": "20261028035135_google_reviews_places_source.sql",
+      "id": "supabase_migrations_20261028040928_google_reviews_places_source",
+      "label": "20261028040928_google_reviews_places_source.sql",
       "_origin": "ast",
       "community": 578,
       "community_name": "20261002060000_google_review_replies.sql",
       "file_type": "code",
-      "norm_label": "20261028035135_google_reviews_places_source.sql",
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
+      "norm_label": "20261028040928_google_reviews_places_source.sql",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "id": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "label": "google_places_polls",
       "_origin": "ast",
       "community": 578,
       "community_name": "20261002060000_google_review_replies.sql",
       "file_type": "code",
       "norm_label": "google_places_polls",
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
-      "source_location": "L29"
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
+      "source_location": "L30"
     },
     {
-      "id": "supabase_migrations_20261028035135_google_reviews_places_source_idx_google_reviews_source",
+      "id": "supabase_migrations_20261028040928_google_reviews_places_source_idx_google_reviews_source",
       "label": "idx_google_reviews_source",
       "_origin": "ast",
       "community": 578,
       "community_name": "20261002060000_google_review_replies.sql",
       "file_type": "code",
       "norm_label": "idx_google_reviews_source",
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
-      "source_location": "L27"
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
+      "source_location": "L28"
     },
     {
-      "id": "supabase_migrations_20261028035135_google_reviews_places_source_trg_google_places_polls_updated_at",
+      "id": "supabase_migrations_20261028040928_google_reviews_places_source_trg_google_places_polls_updated_at",
       "label": "trg_google_places_polls_updated_at",
       "_origin": "ast",
       "community": 578,
       "community_name": "20261002060000_google_review_replies.sql",
       "file_type": "code",
       "norm_label": "trg_google_places_polls_updated_at",
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
       "source_location": "L40"
     },
     {
@@ -200665,7 +200676,7 @@
       "node_kind": "heading",
       "norm_label": "8. telegram access",
       "source_file": ".claude/PRD-google-review-replies/OPS-CHECKLIST.md",
-      "source_location": "L125"
+      "source_location": "L126"
     },
     {
       "id": "claude_prd_google_review_replies_ops_checklist_9_preview_the_cards_in_telegram",
@@ -200677,7 +200688,7 @@
       "node_kind": "heading",
       "norm_label": "9. preview the cards in telegram",
       "source_file": ".claude/PRD-google-review-replies/OPS-CHECKLIST.md",
-      "source_location": "L141"
+      "source_location": "L142"
     },
     {
       "id": "claude_prd_google_review_replies_ops_checklist_ops_checklist_google_review_replies",
@@ -200701,7 +200712,7 @@
       "node_kind": "heading",
       "norm_label": "troubleshooting",
       "source_file": ".claude/PRD-google-review-replies/OPS-CHECKLIST.md",
-      "source_location": "L157"
+      "source_location": "L158"
     },
     {
       "id": "claude_skills_plan_to_3d_tools_plan_env",
@@ -505550,7 +505561,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-google-review-replies/OPS-CHECKLIST.md",
-      "source_location": "L125",
+      "source_location": "L126",
       "weight": 1.0
     },
     {
@@ -505561,7 +505572,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-google-review-replies/OPS-CHECKLIST.md",
-      "source_location": "L141",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -505572,7 +505583,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-google-review-replies/OPS-CHECKLIST.md",
-      "source_location": "L157",
+      "source_location": "L158",
       "weight": 1.0
     },
     {
@@ -632813,35 +632824,35 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028035135_google_reviews_places_source",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_idx_google_reviews_source",
+      "source": "supabase_migrations_20261028040928_google_reviews_places_source",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_idx_google_reviews_source",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
-      "source_location": "L27",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028035135_google_reviews_places_source",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "source": "supabase_migrations_20261028040928_google_reviews_places_source",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
-      "source_location": "L29",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
+      "source_location": "L30",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028035135_google_reviews_places_source",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_trg_google_places_polls_updated_at",
+      "source": "supabase_migrations_20261028040928_google_reviews_places_source",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_trg_google_places_polls_updated_at",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
       "source_location": "L40",
       "weight": 1.0
     },
@@ -639179,14 +639190,14 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028035135_google_reviews_places_source_idx_google_reviews_source",
+      "source": "supabase_migrations_20261028040928_google_reviews_places_source_idx_google_reviews_source",
       "target": "supabase_migrations_20261002060000_google_review_replies_google_reviews",
       "relation": "indexes",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
-      "source_location": "L27",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -651202,13 +651213,13 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028035135_google_reviews_places_source_trg_google_places_polls_updated_at",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "source": "supabase_migrations_20261028040928_google_reviews_places_source_trg_google_places_polls_updated_at",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "triggers",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028035135_google_reviews_places_source.sql",
+      "source_file": "supabase/migrations/20261028040928_google_reviews_places_source.sql",
       "source_location": "L40",
       "weight": 1.0
     },
@@ -695068,7 +695079,7 @@
     },
     {
       "source": "lib_reviews_places_poll_claimplacesread",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "writes_to",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -695080,7 +695091,7 @@
     },
     {
       "source": "lib_reviews_places_poll_getplacespollstatus",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -695092,7 +695103,7 @@
     },
     {
       "source": "lib_reviews_places_poll_lastratingcount",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -695104,7 +695115,7 @@
     },
     {
       "source": "lib_reviews_places_poll_lastsuccessfulread",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -695116,7 +695127,7 @@
     },
     {
       "source": "lib_reviews_places_poll_pollplacesreviews",
-      "target": "supabase_migrations_20261028035135_google_reviews_places_source_google_places_polls",
+      "target": "supabase_migrations_20261028040928_google_reviews_places_source_google_places_polls",
       "relation": "writes_to",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -698001,5 +698012,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "38ab842b9219c10fd4fe486f3e6b7e416f5b6c5e"
+  "built_at_commit": "6c4b88688948db36ddb818838932fa4153d98f22"
 }
