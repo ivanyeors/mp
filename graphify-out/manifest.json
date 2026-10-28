@@ -15666,9 +15666,9 @@
     "semantic_hash": ""
   },
   "lib/crm/lifecycle-stage.ts": {
-    "mtime": 1793168435.62339,
-    "seen": 1793168667.349195,
-    "ast_hash": "a00bf78cf061233cda2f1667c36a99f8",
+    "mtime": 1793176917.8723872,
+    "seen": 1793177071.6302886,
+    "ast_hash": "7d87a4e022037e4041346715361a1b2b",
     "semantic_hash": ""
   },
   "lib/crm/months.ts": {
@@ -15708,9 +15708,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md": {
-    "mtime": 1793165717.2296505,
-    "seen": 1793165832.9898322,
-    "ast_hash": "a1a9c275958390ed82b96e73c69a0e15",
+    "mtime": 1793176926.1395879,
+    "seen": 1793177071.6335058,
+    "ast_hash": "3bcab19eb64889966f5b55de0af376fa",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/04-stage-chips.md": {
@@ -15773,10 +15773,16 @@
     "ast_hash": "9c5c626fa678282316b10982a708e896",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261028090000_lifecycle_funnel.sql": {
-    "mtime": 1793167483.1691926,
-    "seen": 1793168667.3524933,
-    "ast_hash": "43cd8cadcd83b726f220bef215ed75c2",
+  "supabase/migrations/20261028084009_lifecycle_funnel.sql": {
+    "mtime": 1793176695.8593628,
+    "seen": 1793177071.6332352,
+    "ast_hash": "f3467f4a8fb6c62a1f5c2d0546f4abfb",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261028084152_drop_six_stage_lifecycle_functions.sql": {
+    "mtime": 1793176917.8711407,
+    "seen": 1793177071.6332386,
+    "ast_hash": "23f2f03a743f27689fbf18837119ee6a",
     "semantic_hash": ""
   }
 }

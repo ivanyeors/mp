@@ -54,8 +54,9 @@
 --
 --    The previous functions, customer_lifecycle_stage(int, timestamptz,
 --    timestamptz) and customer_lifecycle_delivery(int, timestamptz,
---    timestamptz, timestamptz), are dropped once the view no longer calls
---    them.
+--    timestamptz, timestamptz), are no longer called once the view is
+--    replaced below. The next migration, drop_six_stage_lifecycle_functions,
+--    drops them.
 --
 -- 2. admin_customer_overview: `lifecycle_delivery` is renamed
 --    `lifecycle_detail`, in its place, and `attended_bookings` is appended.
@@ -338,7 +339,3 @@ left join (
 -- the `customers` permission check.
 revoke all on public.admin_customer_overview from anon, authenticated;
 grant select on public.admin_customer_overview to service_role;
-
--- The six-stage functions, no longer called.
-drop function if exists public.customer_lifecycle_delivery(int, timestamptz, timestamptz, timestamptz);
-drop function if exists public.customer_lifecycle_stage(int, timestamptz, timestamptz);

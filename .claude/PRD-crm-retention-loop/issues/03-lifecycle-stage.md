@@ -4,7 +4,9 @@
 **Type:** AFK
 **Status:** first built 2026-10-27 as six stages (migration `20261028033330_lifecycle_stage.sql`,
 applied to production 2026-10-28); reworked on `claude/crm-loop-handoffs-dropoff` into the owner's
-five-stage funnel (owner decision 4, 2026-10-28) by migration `lifecycle_funnel`
+five-stage funnel (owner decision 4, 2026-10-28) by migration `20261028084009_lifecycle_funnel.sql`,
+applied to production 2026-10-28. `20261028084152_drop_six_stage_lifecycle_functions.sql`, which
+drops the six-stage functions, is not applied yet
 **Blocked by:** none. Thresholds settled 2026-10-27 (owner decision 1); the funnel 2026-10-28
 (owner decision 4). Slice 09 brings Shopify-era dates; this slice does not wait for it.
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:db`
@@ -93,14 +95,19 @@ The first build (2026-10-27) added `purchases`, `last_purchase_at`, `lifecycle_s
 `lib/crm/lifecycle-stage.ts`, the `stage=` filter, the *Stage* column and control, and the stage
 on the Customer detail. The rework changes them in place:
 
-- **Migration `lifecycle_funnel`.**
+- **Migration `20261028084009_lifecycle_funnel.sql`.**
   - `customer_lifecycle_stage(purchases, last_purchase_at, bookings, last_booking_at,
     unsubscribed_at, now)` returns `lead`, `new`, `loyal`, `at_risk` or `lost`.
   - `customer_lifecycle_detail(purchases, last_purchase_at, last_purchase_delivered_at, bookings,
     last_booking_at, unsubscribed_at, now)` returns the sub-status: `awaiting_delivery`,
     `delivered`, `settled`, `repeat_purchases`, `bookings`, `lapsed`, or null.
-  - Both server-only, as before: execute revoked from `public`, `anon` and `authenticated`. The
-    old three- and four-argument functions are dropped.
+  - Both server-only, as before: execute revoked from `public`, `anon` and `authenticated`.
+  - The old three- and four-argument functions are no longer called, and are dropped by a
+    migration of their own, `20261028084152_drop_six_stage_lifecycle_functions.sql`. The Supabase
+    connector asks for a confirmation before a drop, and that confirmation did not reach the
+    owner, so the funnel was applied without the drop. Until the drop is applied the old
+    functions stay in production, unused. Apply it with `supabase db push` or the SQL editor; if
+    it is applied through the connector, rename the file to the version production records.
   - On the overview, `lifecycle_delivery` is renamed `lifecycle_detail` and `attended_bookings`
     is appended. The latest one's date is the existing `last_readjusted_at`. Every other column keeps its place and expression.
 - **`lib/crm/lifecycle-stage.ts`**: the five stages, the six sub-statuses, the thresholds, and

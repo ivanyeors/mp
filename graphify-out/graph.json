@@ -91294,6 +91294,50 @@
       "source_location": "L447"
     },
     {
+      "id": "supabase_migrations_20261028084009_lifecycle_funnel",
+      "label": "20261028084009_lifecycle_funnel.sql",
+      "_origin": "ast",
+      "community": 1026,
+      "community_name": "20261028084009_lifecycle_funnel.sql",
+      "file_type": "code",
+      "norm_label": "20261028084009_lifecycle_funnel.sql",
+      "source_file": "supabase/migrations/20261028084009_lifecycle_funnel.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20261028084009_lifecycle_funnel_public_customer_lifecycle_detail",
+      "label": "public.customer_lifecycle_detail()",
+      "_origin": "ast",
+      "community": 1026,
+      "community_name": "20261028084009_lifecycle_funnel.sql",
+      "file_type": "code",
+      "norm_label": "public.customer_lifecycle_detail()",
+      "source_file": "supabase/migrations/20261028084009_lifecycle_funnel.sql",
+      "source_location": "L105"
+    },
+    {
+      "id": "supabase_migrations_20261028084009_lifecycle_funnel_public_customer_lifecycle_stage",
+      "label": "public.customer_lifecycle_stage()",
+      "_origin": "ast",
+      "community": 1026,
+      "community_name": "20261028084009_lifecycle_funnel.sql",
+      "file_type": "code",
+      "norm_label": "public.customer_lifecycle_stage()",
+      "source_file": "supabase/migrations/20261028084009_lifecycle_funnel.sql",
+      "source_location": "L81"
+    },
+    {
+      "id": "supabase_migrations_20261028084152_drop_six_stage_lifecycle_functions",
+      "label": "20261028084152_drop_six_stage_lifecycle_functions.sql",
+      "_origin": "ast",
+      "community": 1027,
+      "community_name": "20261028084152_drop_six_stage_lifecycle_functions.sql",
+      "file_type": "code",
+      "norm_label": "20261028084152_drop_six_stage_lifecycle_functions.sql",
+      "source_file": "supabase/migrations/20261028084152_drop_six_stage_lifecycle_functions.sql",
+      "source_location": null
+    },
+    {
       "id": "lib_reviews_cards",
       "label": "reviews/cards.ts",
       "_origin": "ast",
@@ -92767,39 +92811,6 @@
       "norm_label": "trg_faq_page_sets_updated_at",
       "source_file": "supabase/migrations/20260710150000_faq_page.sql",
       "source_location": "L29"
-    },
-    {
-      "id": "supabase_migrations_20261028090000_lifecycle_funnel",
-      "label": "20261028090000_lifecycle_funnel.sql",
-      "_origin": "ast",
-      "community": 1055,
-      "community_name": "20261028090000_lifecycle_funnel.sql",
-      "file_type": "code",
-      "norm_label": "20261028090000_lifecycle_funnel.sql",
-      "source_file": "supabase/migrations/20261028090000_lifecycle_funnel.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20261028090000_lifecycle_funnel_public_customer_lifecycle_detail",
-      "label": "public.customer_lifecycle_detail()",
-      "_origin": "ast",
-      "community": 1055,
-      "community_name": "20261028090000_lifecycle_funnel.sql",
-      "file_type": "code",
-      "norm_label": "public.customer_lifecycle_detail()",
-      "source_file": "supabase/migrations/20261028090000_lifecycle_funnel.sql",
-      "source_location": "L104"
-    },
-    {
-      "id": "supabase_migrations_20261028090000_lifecycle_funnel_public_customer_lifecycle_stage",
-      "label": "public.customer_lifecycle_stage()",
-      "_origin": "ast",
-      "community": 1055,
-      "community_name": "20261028090000_lifecycle_funnel.sql",
-      "file_type": "code",
-      "norm_label": "public.customer_lifecycle_stage()",
-      "source_file": "supabase/migrations/20261028090000_lifecycle_funnel.sql",
-      "source_location": "L80"
     },
     {
       "id": "lib_page_builder_preview_check",
@@ -164896,7 +164907,7 @@
       "node_kind": "heading",
       "norm_label": "what to build",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L89"
+      "source_location": "L91"
     },
     {
       "id": "supabase_tests_rbac_assert_08",
@@ -193131,7 +193142,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L135"
+      "source_location": "L142"
     },
     {
       "id": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_goal",
@@ -193143,7 +193154,7 @@
       "node_kind": "heading",
       "norm_label": "goal",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L12"
+      "source_location": "L14"
     },
     {
       "id": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_known_limits",
@@ -193155,7 +193166,7 @@
       "node_kind": "heading",
       "norm_label": "known limits",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L120"
+      "source_location": "L127"
     },
     {
       "id": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_the_funnel",
@@ -193167,7 +193178,7 @@
       "node_kind": "heading",
       "norm_label": "the funnel",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L18"
+      "source_location": "L20"
     },
     {
       "id": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_what_each_rule_reads",
@@ -193179,7 +193190,7 @@
       "node_kind": "heading",
       "norm_label": "what each rule reads",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L55"
+      "source_location": "L57"
     },
     {
       "id": "claude_prd_customer_crm_issues_04_crm_filters_and_overview_columns_overview_columns",
@@ -509562,24 +509573,24 @@
     },
     {
       "source": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_03_a_lifecycle_stage_on_every_customer_lead_new_loyal_at_risk_lost",
-      "target": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_goal",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_03_a_lifecycle_stage_on_every_customer_lead_new_loyal_at_risk_lost",
       "target": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_known_limits",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L120",
+      "source_location": "L127",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_03_a_lifecycle_stage_on_every_customer_lead_new_loyal_at_risk_lost",
+      "target": "claude_prd_crm_retention_loop_issues_03_lifecycle_stage_goal",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -509590,7 +509601,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L135",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -509601,7 +509612,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L18",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -509612,7 +509623,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L89",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -509623,7 +509634,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L55",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -641385,25 +641396,25 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028090000_lifecycle_funnel",
-      "target": "supabase_migrations_20261028090000_lifecycle_funnel_public_customer_lifecycle_detail",
+      "source": "supabase_migrations_20261028084009_lifecycle_funnel",
+      "target": "supabase_migrations_20261028084009_lifecycle_funnel_public_customer_lifecycle_detail",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028090000_lifecycle_funnel.sql",
-      "source_location": "L104",
+      "source_file": "supabase/migrations/20261028084009_lifecycle_funnel.sql",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261028090000_lifecycle_funnel",
-      "target": "supabase_migrations_20261028090000_lifecycle_funnel_public_customer_lifecycle_stage",
+      "source": "supabase_migrations_20261028084009_lifecycle_funnel",
+      "target": "supabase_migrations_20261028084009_lifecycle_funnel_public_customer_lifecycle_stage",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261028090000_lifecycle_funnel.sql",
-      "source_location": "L80",
+      "source_file": "supabase/migrations/20261028084009_lifecycle_funnel.sql",
+      "source_location": "L81",
       "weight": 1.0
     },
     {
@@ -664354,7 +664365,7 @@
       "confidence_score": 0.95,
       "context": "attended",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L61",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -672610,7 +672621,7 @@
       "confidence_score": 0.95,
       "context": "monthsBefore",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L70",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -673270,7 +673281,7 @@
       "confidence_score": 0.95,
       "context": "or",
       "source_file": ".claude/PRD-crm-retention-loop/issues/03-lifecycle-stage.md",
-      "source_location": "L98",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -707249,5 +707260,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c5db263f05a267ecdf9ff3d0398646005c11118f"
+  "built_at_commit": "90844102422d8e9589f06d4927e849ae935d9c84"
 }

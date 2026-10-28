@@ -1,17 +1,17 @@
 # Graph Report - mp  (2026-10-28)
 
 ## Corpus Check
-- 2434 files · ~6,602,445 words
+- 2435 files · ~6,602,616 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 25 file(s) not represented in the graph (top: .glb 12, (none) 5, .obj 3)
 
 ## Summary
-- 18420 nodes · 39661 edges · 1053 communities (836 shown, 217 thin omitted)
+- 18421 nodes · 39661 edges · 1054 communities (836 shown, 218 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1710 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c5db263f`
+- Built from commit: `90844102`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -961,7 +961,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (1053 total, 217 thin omitted)
+## Communities (1054 total, 218 thin omitted)
 
 ### Community 0 - "recordAdminAction"
 Cohesion: 0.03
@@ -4309,8 +4309,8 @@ Nodes (9): idx_customer_google_review_rejections_customer, idx_customer_google_r
 
 ## Knowledge Gaps
 - **6674 isolated node(s):** `npx`, `supabase`, `vercel`, `supabase`, `h` (+6669 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 8511 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **217 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 8512 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **218 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

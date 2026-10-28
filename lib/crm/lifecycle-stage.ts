@@ -19,7 +19,7 @@ import { monthsBefore } from "@/lib/crm/months";
  * `undated`, never *At risk*.
  *
  * The overview computes the stage in SQL, `customer_lifecycle_stage` and
- * `customer_lifecycle_detail` (migration 20261028090000), and these mirror
+ * `customer_lifecycle_detail` (migration 20261028084009), and these mirror
  * them, to the millisecond (`Date.parse` drops microseconds; nothing here
  * decides a stage the overview shows): lib/crm/__tests__/lifecycle-stage-sql.test.ts
  * holds the thresholds equal, and lib/crm/lifecycle-stage.check.ts the
