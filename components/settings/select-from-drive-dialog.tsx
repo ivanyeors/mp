@@ -339,7 +339,7 @@ export function SelectFromDriveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85dvh] flex flex-col gap-3">
+      <DialogContent hideMobileClose className="max-w-2xl max-h-[85dvh] flex flex-col gap-3">
         <DialogHeader>
           <DialogTitle>Select from Drive</DialogTitle>
           <DialogDescription>
@@ -358,7 +358,7 @@ export function SelectFromDriveDialog({
                 ) : (
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    className="relative text-muted-foreground underline-offset-2 after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline active:opacity-60"
                     onClick={() => goToCrumb(i)}
                     disabled={loading || importing}
                   >
@@ -384,7 +384,7 @@ export function SelectFromDriveDialog({
         </div>
 
         {!imageOnly && (
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by kind">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by kind">
             {(
               [
                 ["all", "All kinds"],
@@ -438,7 +438,7 @@ export function SelectFromDriveDialog({
                   <li key={d.id}>
                     <button
                       type="button"
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50"
+                      className="w-full flex min-h-12 items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 active:bg-press"
                       onClick={() => openDrive(d)}
                     >
                       <HardDrive className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -466,7 +466,7 @@ export function SelectFromDriveDialog({
                   <li key={item.id}>
                     <div
                       className={`flex items-center gap-3 px-3 py-2 ${
-                        item.isFolder ? "hover:bg-muted/50 cursor-pointer" : ""
+                        item.isFolder ? "hover:bg-muted/50 active:bg-press cursor-pointer" : ""
                       } ${!importable && !item.isFolder ? "opacity-60" : ""}`}
                       onClick={() => {
                         if (item.isFolder) openFolder(item);

@@ -36,6 +36,7 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-press: var(--press);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -64,6 +65,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
+  /* Pressed (tap) tint. A step darker than --muted, which barely shows on white. */
+  --press: oklch(0.93 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
@@ -113,6 +116,7 @@
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
+  --press: oklch(0.32 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);

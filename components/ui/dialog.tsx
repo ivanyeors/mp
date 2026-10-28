@@ -29,9 +29,16 @@ function DialogContent({
   className,
   children,
   hideClose = false,
+  hideMobileClose = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   hideClose?: boolean
+  /**
+   * Hide the floating close X below `md` (desktop keeps its top-right X). For a
+   * dialog with its own Cancel button: on a phone the X otherwise floats over
+   * the last control and repeats Cancel.
+   */
+  hideMobileClose?: boolean
 }) {
   return (
     <DialogPortal>
@@ -55,7 +62,7 @@ function DialogContent({
               keeps the X in view. Render it in flow after the content, stuck to
               the bottom of the scrollport; desktop keeps the top-right corner.
             */}
-            <OverlayDismissButton variant="sticky" />
+            <OverlayDismissButton variant="sticky" className={hideMobileClose ? "max-md:hidden" : undefined} />
           </DialogClose>
         )}
       </DialogPrimitive.Content>

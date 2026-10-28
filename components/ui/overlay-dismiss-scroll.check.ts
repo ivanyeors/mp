@@ -39,7 +39,10 @@ assert.doesNotMatch(sheet, /<OverlayDismissButton \/>/);
 // Dialog: centered by a transform (which would also capture `fixed`), so the
 // X rides in flow and sticks to the bottom of the mobile scrollport.
 assert.match(dialog, /-translate-x-1\/2 -translate-y-1\/2/);
-assert.match(dialog, /<OverlayDismissButton variant="sticky" \/>/);
+assert.match(dialog, /<OverlayDismissButton variant="sticky"(?: className=\{[^}]+\})? \/>/);
+// A dialog with its own Cancel can drop the phone X, which otherwise floats over
+// the last control; desktop keeps its top-right X.
+assert.match(dialog, /hideMobileClose \? "max-md:hidden" : undefined/);
 // A grid item's containing block is its own grid area, which gives sticky no
 // travel; the mobile scroll container must be a flex column.
 assert.match(dialog, /max-md:overflow-y-auto max-md:flex max-md:flex-col/);

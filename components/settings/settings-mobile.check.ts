@@ -22,13 +22,16 @@ const shipping = read("app/[lang]/settings/shipping/shipping-client.tsx");
 const customers = read("app/[lang]/settings/customers/customers-client.tsx");
 const customerDetail = read("app/[lang]/settings/customers/[id]/customer-detail-client.tsx");
 
-// Admin Menu sheet: scroll body clears safe-area + close control
-assert.match(settingsNav, /mobilePreset="quick"/);
+// Admin Menu sheet: the close sits in the header row (no X pinned over the last
+// tile), the scroll body clears the safe area, compact tiles tint while pressed
+assert.match(settingsNav, /mobilePreset="quick"\s+hideClose/);
+assert.match(settingsNav, /<SheetClose[\s\S]{0,120}size-11/);
 assert.match(
   settingsNav,
-  /overflow-y-auto[^"]*pb-\[calc\(4rem\+var\(--safe-bottom\)\)\]/,
+  /overflow-y-auto[^"]*pb-\[calc\(1rem\+var\(--safe-bottom\)\)\]/,
 );
-assert.match(settingsNav, /min-h-16/);
+assert.match(settingsNav, /grid grid-cols-3 gap-2/);
+assert.match(settingsNav, /min-h-16[^"]*active:bg-press/);
 
 // audit-log: horizontal scroll inside container (not overflow-hidden clip)
 assert.match(auditLog, /min-w-0 overflow-x-auto/);
