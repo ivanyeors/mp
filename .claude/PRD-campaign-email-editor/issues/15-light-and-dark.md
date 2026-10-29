@@ -2,7 +2,7 @@
 
 **Issue:** [#372](https://github.com/ivanyeors/mp/issues/372) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** 03 (the first blocks). Later block slices (05, 06, 07) meet its rules as they land.
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:email`
 

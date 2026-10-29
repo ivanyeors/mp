@@ -49,6 +49,7 @@ import {
   type DeliverySetup,
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
+import { forceDarkMode } from "@/lib/email/base";
 import { renderCampaignBlocksEmail, type CampaignBlocksPlaceholders } from "@/lib/email/campaign-blocks";
 import { renderComposedCampaignEmail, type ComposedCampaignPlaceholders } from "@/lib/email/campaigns";
 import {
@@ -215,15 +216,19 @@ export function renderCampaignFor(
  * unsubscribe link that unsubscribes nobody. An empty subject, message,
  * block field or button label shows its placeholder, dashed and muted
  * (PRD-campaign-email-editor decision 7), so an empty email's layout reads.
- * `forceDark` is the preview's Dark toggle (slice 04), which the shell's
- * dark rules take up in slice 15; no send has it.
+ *
+ * `forceDark` is the preview's *Dark* (slice 15): the same email with the
+ * shell's own dark rules applied whatever the viewer's setting. The campaign
+ * editor's Light / Dark toggle (slice 04) passes it through previewCampaign.
+ * Only the preview takes it; nothing a send calls can (sender.test.ts, at the
+ * type level).
  */
 export function renderCampaignPreview(
   campaign: CampaignEmailParts,
-  { origin, firstName }: { origin: string; firstName: string | null; forceDark?: boolean },
+  { origin, firstName, forceDark = false }: { origin: string; firstName: string | null; forceDark?: boolean },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
-  return renderCampaignFor(campaign, {
+  const rendered = renderCampaignFor(campaign, {
     firstName,
     origin: base,
     locale: DEFAULT_LOCALE,
@@ -231,6 +236,7 @@ export function renderCampaignPreview(
     unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
     placeholders: { ...CAMPAIGN_PLACEHOLDERS, ...CONTENT_PLACEHOLDERS },
   });
+  return forceDark ? { ...rendered, html: forceDarkMode(rendered.html) } : rendered;
 }
 
 /** The pause rule as a check: the latest wave of any campaign email. */

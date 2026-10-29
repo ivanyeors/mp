@@ -39,6 +39,7 @@ vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 const { previewCampaign } = await import("../actions");
 const { renderCampaignPreview, sendCampaignTest } = await import("@/lib/email-campaigns/sender");
 const { CampaignPreviewSchema } = await import("@/lib/email-campaigns/rules");
+const { FORCED_DARK_STYLE_ID } = await import("@/lib/email/base");
 
 const ORIGIN = "https://custom.mpillow.com";
 const CONTENT: CampaignContent = {
@@ -117,7 +118,10 @@ describe("previewCampaign", () => {
     const light = await previewCampaign(INPUT);
     expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: false, firstName: "Ivan" });
     expect(light).toMatchObject({ ok: true, subject: "Ivan, sleep cooler", from: "Mpillow <hello@hello.mpillow.com>" });
-    await previewCampaign(INPUT, { forceDark: true });
+    const dark = await previewCampaign(INPUT, { forceDark: true });
     expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: true });
+    // Dark is the shell's own dark rules applied (slice 15); Light is the email as sent.
+    expect(light.ok && light.html).not.toContain(`id="${FORCED_DARK_STYLE_ID}"`);
+    expect(dark.ok && dark.html).toContain(`id="${FORCED_DARK_STYLE_ID}"`);
   });
 });

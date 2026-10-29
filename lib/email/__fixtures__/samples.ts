@@ -9,7 +9,7 @@
 // escaping.test.ts proves no template interpolates raw user input.
 
 import type { CampaignBlocksEmailData } from "../campaign-blocks";
-import type { CampaignContent } from "@/lib/email-campaigns/content";
+import type { CampaignContent, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
 import type { ChatTranscript } from "../support-chat";
@@ -525,3 +525,68 @@ export function sampleCampaignBlocks(fixture: EmailFixture = "happy"): CampaignB
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }
+
+const blockEmail = (...blocks: EmailBlock[]): CampaignContent => ({ v: 1, blocks, fallbacks: { first_name: "there" } });
+const words = (id: string, text: string): EmailBlock => ({ id, type: "text", paragraphs: [{ kind: "p", runs: [{ text }] }] });
+
+/**
+ * One email per Email block type, showing every option the block has
+ * (PRD-campaign-email-editor slice 15): what the dark-mode coverage test and
+ * the per-block light and dark snapshots render. Keyed by every block type,
+ * so a new type does not compile until it has its email here.
+ */
+export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
+  heading: blockEmail(
+    { id: "title", type: "heading", level: 1, text: "Sleep cooler this December" },
+    words("intro", "Our FibreCool covers are back."),
+    { id: "part", type: "heading", level: 2, text: "Why FibreCool" },
+    words("why", "Cool to the touch, all night."),
+  ),
+  text: blockEmail({
+    id: "text",
+    type: "text",
+    paragraphs: [
+      {
+        kind: "p",
+        runs: [
+          { text: "Hi " },
+          { var: "first_name" },
+          { text: ", our " },
+          { text: "FibreCool", bold: true },
+          { text: " covers are " },
+          { text: "back", italic: true },
+          { text: ".\nRead " },
+          { text: "the ", href: `${ORIGIN}/en-US/faq` },
+          { text: "care guide", href: `${ORIGIN}/en-US/faq`, bold: true },
+          { text: " before you wash yours." },
+        ],
+      },
+      {
+        kind: "bullets",
+        items: [[{ text: "Cool to the touch" }], [{ text: "Machine washable: " }, { text: "how", href: `${ORIGIN}/en-US/faq` }]],
+      },
+    ],
+  }),
+  buttons: blockEmail(
+    { id: "primary", type: "buttons", buttons: [{ label: "Shop the covers", target: "shop", style: "primary" }] },
+    { id: "secondary", type: "buttons", buttons: [{ label: "Book a fitting", target: "book_fitting", style: "secondary" }] },
+    {
+      id: "pair",
+      type: "buttons",
+      buttons: [
+        { label: "Shop the covers", target: "shop", style: "primary" },
+        { label: "Read the care guide", target: "url", url: `${ORIGIN}/en-US/faq`, style: "secondary" },
+      ],
+    },
+  ),
+  divider: blockEmail(words("above", "Above the line."), { id: "line", type: "divider" }, words("below", "Below the line.")),
+  spacer: blockEmail(
+    words("a", "Before a small space."),
+    { id: "s", type: "spacer", size: "s" },
+    words("b", "Before a medium space."),
+    { id: "m", type: "spacer", size: "m" },
+    words("c", "Before a large space."),
+    { id: "l", type: "spacer", size: "l" },
+    words("d", "The end."),
+  ),
+};
