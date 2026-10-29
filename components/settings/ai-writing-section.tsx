@@ -103,8 +103,9 @@ export function AiWritingForm({
           inputMode="numeric"
           min={range.min}
           max={range.max}
-          value={value[field]}
-          onChange={(e) => setField(field, Number(e.target.value) || range.min)}
+          value={Number.isNaN(value[field]) ? "" : value[field]}
+          // An emptied box is no number, which Save refuses, so what is typed next is the limit.
+          onChange={(e) => setField(field, e.target.value === "" ? NaN : Number(e.target.value))}
         />
         <p className="text-xs text-muted-foreground">
           {range.min} to {range.max}.

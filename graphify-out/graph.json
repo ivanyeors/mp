@@ -708133,7 +708133,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/settings/ai-writing-section.tsx",
-      "source_location": "L245",
+      "source_location": "L246",
       "weight": 1.0,
       "context": "GET,PUT"
     },
