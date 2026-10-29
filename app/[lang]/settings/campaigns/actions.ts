@@ -1,5 +1,6 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
@@ -9,6 +10,7 @@ import {
   CampaignPreviewSchema,
   MAX_TEST_RECIPIENTS,
   type Campaign,
+  type CampaignDraft,
   type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import {
@@ -18,12 +20,16 @@ import {
   renderCampaignPreview,
   sendCampaignBatch,
   sendCampaignTest,
+  usesPointsBalance,
   type BatchResult,
   type CampaignReadiness,
   type WavePlanResult,
 } from "@/lib/email-campaigns/sender";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
+import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
+import { readPointsSettings } from "@/lib/points/server";
+import { pointsLive } from "@/lib/points/settings";
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -60,6 +66,9 @@ async function loadCampaign(id: string): Promise<Campaign | null> {
   return getCampaign(supabaseAdmin(), id);
 }
 
+/** Who a campaign written before blocks greets in a preview or a test: the Staff member working, by first name. */
+const staffFirstName = async (memberId: string) => (await getWorkingAs(memberId))?.name.split(/\s+/)[0] ?? null;
+
 /** The audit's snapshot: what was sent and to whom, never a customer. A block campaign's blocks by type. */
 const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button" | "content">) => ({
   name: c.name,
@@ -69,6 +78,22 @@ const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segm
   button: c.button?.target ?? null,
   blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
+
+/**
+ * *Points balance* goes into an email only while points are live
+ * (PRD-campaign-email-editor slice 13): the editor greys it, and Save refuses
+ * it typed in by hand. A campaign that already says it keeps it, and the
+ * points rule holds its waves until points are live again (`pointsCheck`).
+ */
+async function pointsBalanceRefusal(admin: SupabaseClient, draft: CampaignDraft, before: Campaign | null): Promise<Failure | null> {
+  if (!usesPointsBalance(draft) || (before && usesPointsBalance(before))) return null;
+  try {
+    if (pointsLive(await readPointsSettings(admin))) return null;
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+  return { ok: false, error: `${POINTS_NOT_LIVE}, so Points balance can't go in the email. Take it out to save.` };
+}
 
 /** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */
 export async function saveCampaign(
@@ -83,6 +108,8 @@ export async function saveCampaign(
 
   try {
     if (!id) {
+      const refused = await pointsBalanceRefusal(admin, parsed.draft, null);
+      if (refused) return refused;
       const workingAs = await getWorkingAs(ctx.memberId);
       const newId = await createCampaign(admin, parsed.draft, workingAs?.id ?? null);
       await recordAdminAction({ actor, action: "email_campaign.create", entityType: "email_campaign", entityId: newId, after: auditSnapshot(parsed.draft) });
@@ -90,6 +117,8 @@ export async function saveCampaign(
     }
     const before = await loadCampaign(id);
     if (!before || before.archivedAt) return NOT_FOUND;
+    const refused = await pointsBalanceRefusal(admin, parsed.draft, before);
+    if (refused) return refused;
     await updateCampaign(admin, id, parsed.draft, Boolean(before.lockedAt));
     await recordAdminAction({
       actor,
@@ -149,22 +178,25 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
  * field shows its placeholder rather than an error (PRD-campaign-email-editor
  * decision 7); Save still asks for every word. `forceDark` is the preview's
  * Dark toggle (slice 04), and `from` the sending setup's From, read-only in
- * the editor and named in its inbox row.
+ * the editor and named in its inbox row. `previewAs` is *Preview as* (slice
+ * 13): a block campaign's Variables as a sample customer's, or every fallback
+ * for a customer with no details. A campaign written before blocks greets the
+ * Staff member, as it did.
  */
 export async function previewCampaign(
   input: CampaignDraftInput,
-  { forceDark = false }: { forceDark?: boolean } = {},
+  { forceDark = false, previewAs = "customer" }: { forceDark?: boolean; previewAs?: PreviewAs } = {},
 ): Promise<{ ok: true; subject: string; html: string; text: string; from: string | null } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const parsed = parseDraft(input, CampaignPreviewSchema);
   if (!parsed.ok) return parsed;
-  const workingAs = await getWorkingAs(ctx.memberId);
   const setup = campaignSenderSetup();
-  const rendered = renderCampaignPreview(parsed.draft, {
-    origin: setup.origin,
-    firstName: workingAs?.name.split(/\s+/)[0] ?? null,
-    forceDark: forceDark === true,
-  });
+  const recipient = parsed.draft.content
+    ? previewAs === "no_details"
+      ? NO_DETAILS
+      : SAMPLE_RECIPIENT
+    : { firstName: await staffFirstName(ctx.memberId) };
+  const rendered = renderCampaignPreview(parsed.draft, { origin: setup.origin, ...recipient, forceDark: forceDark === true });
   return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
 }
 
@@ -186,12 +218,9 @@ export async function sendCampaignTestAction(
   if (!Array.isArray(to) || to.length > MAX_TEST_RECIPIENTS) {
     return { ok: false, error: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
   }
-  const workingAs = await getWorkingAs(ctx.memberId);
-  const result = await sendCampaignTest(
-    campaign,
-    { to: to.filter((t) => typeof t === "string"), firstName: workingAs?.name.split(/\s+/)[0] ?? null },
-    campaignSenderSetup(),
-  );
+  // A block campaign's test reads as the sample customer gets it (slice 13); one written before blocks greets the Staff member.
+  const recipient = campaign.content ? SAMPLE_RECIPIENT : { firstName: await staffFirstName(ctx.memberId) };
+  const result = await sendCampaignTest(campaign, { to: to.filter((t) => typeof t === "string"), ...recipient }, campaignSenderSetup());
   if ("refused" in result) return { ok: false, error: result.refused };
   await recordAdminAction({
     actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },

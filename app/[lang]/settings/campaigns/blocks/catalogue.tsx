@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Heading, Minus, MousePointerClick, Pilcrow, StretchVertical } from "lucide-react";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 import { RichText } from "@/components/block-editor/rich-text";
-import { richTextWords } from "@/components/block-editor/rich-text-doc";
+import { richTextFromWords, richTextWords } from "@/components/block-editor/rich-text-doc";
 import type { BlockCatalogue, BlockFormProps } from "@/components/block-editor/types";
 import { typingBurst } from "@/components/block-editor/use-editor-history";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ import {
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { cn } from "@/lib/utils";
 import { Field } from "../field";
-import { paragraphsOf, richTextOf, TEXT_VARIABLES } from "./runs";
+import { paragraphsOf, richTextOf } from "./runs";
+import { useCampaignVariables } from "./variables";
 
 /**
  * The campaign's half of the shared block editor (PRD-campaign-email-editor
@@ -50,21 +51,29 @@ const FieldError = ({ text }: { text?: string | null }) => (text ? <p className=
 const errorAt = (errors: Record<string, string>, path: string) =>
     errors[path] ?? Object.entries(errors).find(([k]) => k.startsWith(`${path}.`))?.[1];
 
+/**
+ * A heading's words as they read, in one line, with Variables as chips (slice
+ * 13). Stored as a string, each Variable written `{first_name}`, as the
+ * subject is.
+ */
 function HeadingForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"heading">>) {
     const id = `${idPrefix}-text`;
-    const error = errorAt(errors, "text");
+    const variables = useCampaignVariables();
+    const value = useMemo(() => richTextFromWords(b.text, variables), [b.text, variables]);
+    const error = errorAt(errors, "text") ?? unknownVariableMessage(b.text);
     return (
         <div>
-            <Input
+            <RichText
                 id={id}
+                singleLine
                 aria-label={b.level === 1 ? "Title" : "Heading"}
-                aria-invalid={error ? true : undefined}
-                value={b.text}
+                aria-invalid={Boolean(error)}
+                value={value}
+                variables={variables}
                 placeholder={CONTENT_PLACEHOLDERS.heading}
-                maxLength={CONTENT_LIMITS.heading}
-                disabled={readOnly}
-                onChange={(e) => onChange({ ...b, text: e.target.value }, typingBurst(e, id))}
-                className={cn("h-auto border-transparent px-2 py-1 font-semibold tracking-tight shadow-none hover:border-input", b.level === 1 ? "text-2xl md:text-2xl" : "text-lg md:text-lg")}
+                readOnly={readOnly}
+                onChange={(next, how) => onChange({ ...b, text: richTextWords(next) }, how.paste ? undefined : id)}
+                className={cn("border-transparent px-2 py-1 font-semibold tracking-tight shadow-none hover:border-input", b.level === 1 ? "text-2xl md:text-2xl" : "text-lg md:text-lg")}
             />
             <FieldError text={error} />
         </div>
@@ -88,6 +97,7 @@ function HeadingOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"hea
 
 function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
     const id = `${idPrefix}-text`;
+    const variables = useCampaignVariables();
     const value = useMemo(() => richTextOf(b.paragraphs), [b.paragraphs]);
     const error = errorAt(errors, "paragraphs") ?? unknownVariableMessage(richTextWords(value));
     return (
@@ -98,7 +108,7 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
                 aria-invalid={Boolean(error)}
                 value={value}
                 marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
-                variables={TEXT_VARIABLES}
+                variables={variables}
                 placeholder={CONTENT_PLACEHOLDERS.text}
                 readOnly={readOnly}
                 onSlash={onSlash}

@@ -17,6 +17,7 @@ import {
   newCampaignDraft,
   nextWaveLabel,
   planCampaignWave,
+  variablesInEmail,
   type CampaignAudience,
   type CampaignCandidate,
   type CampaignSendStatus,
@@ -338,24 +339,70 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
   });
 
   it("fills only known Variables in its subject and preview line", () => {
-    const r = CampaignDraftSchema.safeParse({ ...draft, subject: "{last_name}, hello", preheader: "{points}" });
+    const r = CampaignDraftSchema.safeParse({ ...draft, subject: "{nickname}, hello", preheader: "{points}" });
     expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
-      subject: "{last_name} is not a Variable: only {first_name} is.",
-      preheader: "{points} is not a Variable: only {first_name} is.",
+      subject: "{nickname} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      preheader: "{points} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
     });
     // A legacy campaign's subject is its words, braces and all.
-    expect(CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, subject: "{last_name}" }).success).toBe(true);
+    expect(CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, subject: "{nickname}" }).success).toBe(true);
   });
 
   it("refuses a {name} in the blocks' words that the sender never fills, under the field that holds it", () => {
     const blocks = [
-      { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" },
+      { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler {soon}" },
       { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi {frist_name}, our covers are back" }] }] },
+      { id: "b", type: "buttons", buttons: [{ label: "For {first_name}", target: "shop", style: "primary" }] },
     ];
     const r = CampaignDraftSchema.safeParse({ ...draft, content: { ...content, blocks } });
     expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
-      "content.blocks.0.text": "{first_name} can go in a text block, the subject or the preview line, not here.",
-      "content.blocks.1.paragraphs": "{frist_name} is not a Variable: only {first_name} is.",
+      "content.blocks.0.text": "{soon} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      "content.blocks.1.paragraphs": "{frist_name} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      "content.blocks.2.buttons.0.label": "{first_name} can go in a heading, a text block, the subject or the preview line, not here.",
+    });
+  });
+
+  describe("its Variables' fallback words (slice 13)", () => {
+    const text = (...runs: unknown[]) => ({ id: "t", type: "text", paragraphs: [{ kind: "p", runs }] });
+    const issues = (d: unknown) => Object.fromEntries((CampaignDraftSchema.safeParse(d).error?.issues ?? []).map((i) => [i.path.join("."), i.message]));
+
+    it("refuses to save a used Variable with no fallback words, wherever it is used", () => {
+      const withLast = { ...draft, content: { ...content, blocks: [text({ text: "Dear " }, { var: "last_name" })], fallbacks: {} } };
+      expect(issues(withLast)).toEqual({ "content.fallbacks.last_name": "Write what to say to a customer with no last name." });
+      expect(issues({ ...withLast, content: { ...withLast.content, fallbacks: { last_name: "   " } } })).toEqual({
+        "content.fallbacks.last_name": "Write what to say to a customer with no last name.",
+      });
+      expect(CampaignDraftSchema.safeParse({ ...withLast, content: { ...withLast.content, fallbacks: { last_name: "friend" } } }).success).toBe(true);
+      // In the subject, the preview line or a heading alike.
+      const plain = { ...content, blocks: [text({ text: "Hello" })], fallbacks: {} };
+      expect(issues({ ...draft, subject: "Points: {points_balance}", content: plain })).toEqual({
+        "content.fallbacks.points_balance": "Write what to say to a customer with no points balance.",
+      });
+      expect(Object.keys(issues({ ...draft, subject: "Hello", preheader: "For {last_name}", content: plain }))).toEqual(["content.fallbacks.last_name"]);
+      const heading = { ...plain, blocks: [{ id: "h", type: "heading", level: 1, text: "{last_name}" }] };
+      expect(Object.keys(issues({ ...draft, subject: "Hello", content: heading }))).toEqual(["content.fallbacks.last_name"]);
+    });
+
+    it("uses the catalogue's default for the first name until Staff empty it, and counts the greeting as a use", () => {
+      const greet = { ...draft, subject: "Hello", greeting: true, content: { ...content, blocks: [text({ text: "Hello" })], fallbacks: {} } };
+      expect(CampaignDraftSchema.safeParse(greet).success).toBe(true);
+      expect(issues({ ...greet, content: { ...greet.content, fallbacks: { first_name: "" } } })).toEqual({
+        "content.fallbacks.first_name": "Write what to say to a customer with no first name.",
+      });
+      // Without the greeting, and nowhere else, the first name is unused: an empty fallback is no matter.
+      expect(CampaignDraftSchema.safeParse({ ...greet, greeting: false, content: { ...greet.content, fallbacks: { first_name: "" } } }).success).toBe(true);
+      expect(variablesInEmail({ ...greet, preheader: "{points_balance}" } as never)).toEqual(["first_name", "points_balance"]);
+      expect(variablesInEmail({ ...FIRST_CAMPAIGN_DRAFT, subject: "{last_name}" })).toEqual([]);
+    });
+
+    it("previews a used Variable with no fallback words", () => {
+      expect(CampaignPreviewSchema.safeParse({ ...draft, content: { ...content, blocks: [text({ var: "last_name" })], fallbacks: {} } }).success).toBe(true);
+    });
+
+    it("counts Points balance as a mention of points", () => {
+      expect(mentionsPoints({ ...draft, subject: "Hello", content: { ...content, blocks: [text({ text: "You have " }, { var: "points_balance" })] } } as never)).toBe(true);
+      expect(mentionsPoints({ ...draft, subject: "{points_balance} waiting", content: { ...content, blocks: [] } } as never)).toBe(true);
+      expect(mentionsPoints({ ...draft, subject: "Hello", content: { ...content, blocks: [text({ var: "last_name" })] } } as never)).toBe(false);
     });
   });
 

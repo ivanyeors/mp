@@ -26,7 +26,9 @@ import {
 import { sortableMove } from "@/lib/dnd/sortable-move";
 import { cn } from "@/lib/utils";
 import { addedText, dropIndex, duplicateBlock, insertBlocks, moveBlock, movedText, noRoomText, removeBlock } from "./block-moves";
+import type { RichTextVariable } from "./rich-text-doc";
 import type { BlockCatalogue, BlockKind, EditorBlock, PaletteItem } from "./types";
+import { VariableTargets } from "./variable-targets";
 
 /**
  * The shared block editor (PRD-campaign-email-editor slice 04, decision 1):
@@ -40,11 +42,14 @@ import type { BlockCatalogue, BlockKind, EditorBlock, PaletteItem } from "./type
  *
  * `BlockEditorRoot` holds the blocks and the drag and drop for everything
  * inside it, so the page lays out `BlockPalette` and `BlockEditor` (the
- * column) where it wants them.
+ * column) where it wants them; and the page's Variables (slice 13), with the
+ * text input inside it that a Variables palette's chip lands in.
  */
 
 /** The column's end: a drop here lands after the last block. */
 const END = "block-editor:end";
+
+const NO_VARIABLES: readonly RichTextVariable[] = [];
 
 /** dnd-kit's events, as its handlers receive them. */
 type StartEvent = Parameters<DragStartEvent>[0];
@@ -85,6 +90,8 @@ interface Focus {
 interface BlockEditorContext {
   blocks: readonly EditorBlock[];
   catalogue: Record<string, BlockKind<EditorBlock>>;
+  /** The page's Variables, which its text inputs offer and the Variables palette lists. */
+  variables: readonly RichTextVariable[];
   readOnly: boolean;
   /** Why nothing more can be added, or null. */
   full: string | null;
@@ -125,6 +132,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
   readOnly = false,
   max = Infinity,
   newId,
+  variables = NO_VARIABLES,
   children,
 }: {
   blocks: readonly B[];
@@ -139,6 +147,12 @@ export function BlockEditorRoot<B extends EditorBlock>({
   max?: number;
   /** A new block id, for *Duplicate*. */
   newId: () => string;
+  /**
+   * The page's Variables (slice 13): its block forms read them from
+   * `useBlockEditor()`, and a `VariablePalette` inside lists them. Its chips
+   * land in the `RichText` inside that was last written in.
+   */
+  variables?: readonly RichTextVariable[];
   children: ReactNode;
 }) {
   const blocks = given as readonly EditorBlock[];
@@ -171,6 +185,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
   const ctx: BlockEditorContext = {
     blocks,
     catalogue: cat,
+    variables,
     readOnly,
     full,
     noRoom,
@@ -249,7 +264,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
           announce(movedText(label(blocks[from]), to, next.length));
         }}
       >
-        {children}
+        <VariableTargets>{children}</VariableTargets>
       </DragDropProvider>
       <div role="status" aria-live="polite" className="sr-only">
         <span key={announced.n}>{announced.text}</span>

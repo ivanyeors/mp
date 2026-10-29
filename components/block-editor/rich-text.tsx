@@ -28,7 +28,11 @@ export interface RichTextProps {
   onChange: (next: RichTextValue, how: { paste: boolean }) => void;
   /** Which marks are allowed. None is plain words. */
   marks?: RichTextMarks;
-  /** The Variables it offers, as chips. `{key}` typed or pasted becomes one. */
+  /**
+   * The Variables it offers, as chips. `{key}` typed or pasted becomes one,
+   * `{` opens the list of them, and inside `VariableTargets` the Variables
+   * palette puts one in at the cursor.
+   */
   variables?: readonly RichTextVariable[];
   placeholder?: string;
   /** One line: no paragraphs, line breaks or lists. */

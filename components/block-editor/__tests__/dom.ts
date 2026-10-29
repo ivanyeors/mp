@@ -73,6 +73,66 @@ export function typeInto(editor: Editor, text: string) {
   });
 }
 
+/** The TipTap editor of the `RichText` given `id`, once it has loaded. */
+export async function richTextById(id: string): Promise<Editor> {
+  return until(() => (document.getElementById(id) as (HTMLElement & { editor?: Editor }) | null)?.editor);
+}
+
+/** Replaces all of a `RichText`'s words (`id`), typed as the keyboard does: input rules and `{` run. */
+export async function retype(id: string, text: string) {
+  const editor = await richTextById(id);
+  // The words selected, as a text selection: typing then carries on after each letter.
+  act(() => void editor.commands.setTextSelection({ from: 1, to: editor.state.doc.content.size - 1 }));
+  if (text) typeInto(editor, text);
+  else act(() => void editor.commands.deleteSelection());
+}
+
+/** A `RichText`'s words as they read, by its id, loaded or not: a Variable as its label. */
+export const wordsOf = (id: string) => document.getElementById(id)?.textContent ?? "";
+
+/** A `RichText`'s placeholder, by its id, loaded or not. */
+export function placeholderOf(id: string): string | null {
+  const el = document.getElementById(id);
+  return el?.getAttribute("aria-placeholder") ?? el?.querySelector("[data-placeholder]")?.getAttribute("data-placeholder") ?? null;
+}
+
+/**
+ * Drops `dataTransfer` into an editor at `pos`, as a drag from outside it
+ * does: ProseMirror's own drop handling reads it. jsdom has no layout, so the
+ * spot under the pointer is `pos`.
+ */
+export function dropInto(editor: Editor, dataTransfer: Pick<DataTransfer, "getData" | "types">, pos: number) {
+  act(() => {
+    editor.view.posAtCoords = () => ({ pos, inside: -1 });
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    Object.assign(drop, { dataTransfer, clientX: 0, clientY: 0 });
+    editor.view.dom.dispatchEvent(drop);
+  });
+}
+
+/** A drag's data, as a `dragstart` handler fills it and a drop reads it. */
+export function dragData(): DataTransfer {
+  const data = new Map<string, string>();
+  return {
+    setData: (type: string, value: string) => void data.set(type, value),
+    getData: (type: string) => data.get(type) ?? "",
+    get types() {
+      return [...data.keys()];
+    },
+    effectAllowed: "all",
+    dropEffect: "none",
+  } as unknown as DataTransfer;
+}
+
+/** Starts a drag of `el`, filling `dataTransfer` as the browser hands it to `dragstart`. */
+export function dragStart(el: HTMLElement, dataTransfer: DataTransfer) {
+  act(() => {
+    const start = new Event("dragstart", { bubbles: true, cancelable: true });
+    Object.assign(start, { dataTransfer });
+    el.dispatchEvent(start);
+  });
+}
+
 /** Pastes HTML into the editor through ProseMirror's own clipboard parsing. */
 export function pasteInto(editor: Editor, html: string) {
   act(() => {

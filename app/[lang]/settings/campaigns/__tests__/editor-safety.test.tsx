@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { choose, click, press, settle, typeField } from "@/components/block-editor/__tests__/dom";
+import { choose, click, press, retype, settle, typeField, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -79,7 +79,11 @@ function mount(campaign: Campaign | null, draft: CampaignDraft) {
 const field = (id: string) => document.getElementById(id) as HTMLInputElement;
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label) ?? null;
-const headings = () => [...document.querySelectorAll<HTMLInputElement>("[data-block-id] [data-block-body] input")].map((i) => i.value);
+/** Each heading's words: one-line text inputs with Variables (slice 13). */
+const headings = () => [...document.querySelectorAll<HTMLElement>("[data-block-id] [data-block-body] [role='textbox']")].map((i) => i.textContent);
+const headingId = (i: number) => `block-${document.querySelectorAll<HTMLElement>("[data-block-id]")[i].dataset.blockId}-text`;
+/** The subject's words as they read. */
+const subject = () => wordsOf("c-subject");
 const undoToast = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast] [data-action]");
 const undo = () => press("z", { ctrl: true }, document.body);
 const redo = () => press("z", { ctrl: true, shift: true }, document.body);
@@ -99,9 +103,10 @@ describe("one history over the whole email", () => {
   it("undoes and redoes the subject, the blocks and the greeting, in the order they changed", async () => {
     mount(SAVED, DRAFT);
     expect(button("Undo")!.disabled).toBe(true);
-    typeField(field("c-subject"), "Sleep cooler, Mei Ling");
+    await retype("c-subject", "Sleep cooler, Mei Ling");
     await choose(button("Add block")!, "Heading");
-    typeField(document.querySelectorAll<HTMLInputElement>("[data-block-id] [data-block-body] input")[1], "Why FibreCool");
+    await retype(headingId(1), "Why FibreCool");
+    expect(headings()).toEqual(["Sleep cooler", "Why FibreCool"]);
     await click(document.getElementById("c-greeting")!);
 
     undo();
@@ -111,23 +116,23 @@ describe("one history over the whole email", () => {
     undo();
     expect(headings()).toEqual(["Sleep cooler"]);
     await click(button("Undo")!);
-    expect(field("c-subject").value).toBe("Sleep cooler this December");
+    expect(subject()).toBe("Sleep cooler this December");
     expect(button("Undo")!.disabled).toBe(true);
     expect(button("Save changes")!.disabled).toBe(true); // back where it was saved
 
     await click(button("Redo")!);
     redo();
-    expect(field("c-subject").value).toBe("Sleep cooler, Mei Ling");
+    expect(subject()).toBe("Sleep cooler, Mei Ling");
     expect(headings()).toEqual(["Sleep cooler", ""]);
   });
 
-  it("leaves the Send tab's own fields their own undo", () => {
+  it("leaves the Send tab's own fields their own undo", async () => {
     mount(SAVED, DRAFT);
-    typeField(field("c-subject"), "Sleep cooler, Mei Ling");
+    await retype("c-subject", "Sleep cooler, Mei Ling");
     press("z", { ctrl: true }, field("c-test"));
-    expect(field("c-subject").value).toBe("Sleep cooler, Mei Ling");
+    expect(subject()).toBe("Sleep cooler, Mei Ling");
     press("z", { ctrl: true }, field("c-name"));
-    expect(field("c-subject").value).toBe(DRAFT.subject);
+    expect(subject()).toBe(DRAFT.subject);
   });
 
   it("makes Clear all one step: ⌘Z brings the email back and ⇧⌘Z clears it again", async () => {
@@ -148,10 +153,10 @@ describe("one history over the whole email", () => {
     const audience = () => document.getElementById("c-audience")!.textContent;
     expect(audience()).toBe("Everyone subscribed to marketing email");
     await click(button("Use the sign-in invitation")!);
-    expect(field("c-subject").value).toBe(FIRST_CAMPAIGN_DRAFT.subject);
+    expect(subject()).toBe(FIRST_CAMPAIGN_DRAFT.subject);
     expect(audience()).toBe("Imported from Shopify, not signed in yet");
     undo();
-    expect(field("c-subject").value).toBe("");
+    expect(subject()).toBe("");
     expect(audience()).toBe("Everyone subscribed to marketing email");
     redo();
     expect(audience()).toBe("Imported from Shopify, not signed in yet");
@@ -160,13 +165,13 @@ describe("one history over the whole email", () => {
   it("puts the words back from the toast's Undo even after more typing, as a step of its own", async () => {
     mount(SAVED, DRAFT);
     await click(button("Clear all")!);
-    typeField(field("c-subject"), "Something else");
+    await retype("c-subject", "Something else");
     await settle();
     await click(undoToast()!);
-    expect(field("c-subject").value).toBe(DRAFT.subject);
+    expect(subject()).toBe(DRAFT.subject);
     expect(headings()).toEqual(["Sleep cooler"]);
     undo(); // the Undo itself is undone
-    expect(field("c-subject").value).toBe("Something else");
+    expect(subject()).toBe("Something else");
   });
 });
 
@@ -176,7 +181,7 @@ describe("saving and leaving", () => {
     press("s", { ctrl: true }, document.body);
     await settle();
     expect(actions.saveCampaign).not.toHaveBeenCalled();
-    typeField(field("c-subject"), "Sleep cooler, today");
+    await retype("c-subject", "Sleep cooler, today");
     press("s", { ctrl: true }, field("c-subject"));
     await settle();
     expect(actions.saveCampaign).toHaveBeenCalledTimes(1);
@@ -194,7 +199,7 @@ describe("saving and leaving", () => {
     expect(actions.saveCampaign.mock.calls.map(([id]) => id)).toEqual([null, "new"]);
   });
 
-  it("asks before the browser leaves with unsaved changes", () => {
+  it("asks before the browser leaves with unsaved changes", async () => {
     mount(SAVED, DRAFT);
     const leave = () => {
       const e = new Event("beforeunload", { cancelable: true });
@@ -202,13 +207,13 @@ describe("saving and leaving", () => {
       return e.defaultPrevented;
     };
     expect(leave()).toBe(false);
-    typeField(field("c-subject"), "Changed");
+    await retype("c-subject", "Changed");
     expect(leave()).toBe(true);
   });
 
   it("keeps unsaved changes in the browser and offers them back, as one change Undo takes back", async () => {
     mount(SAVED, DRAFT);
-    typeField(field("c-subject"), "Half written, then the tab crashed");
+    await retype("c-subject", "Half written, then the tab crashed");
     await settle(600);
     expect(window.localStorage.getItem(keptDraftKey(SAVED.id))).toContain("Half written");
     act(() => root!.unmount());
@@ -218,10 +223,10 @@ describe("saving and leaving", () => {
     await settle();
     expect(document.body.textContent).toMatch(/Restore your unsaved changes from \w{3}, \d+ \w{3}, \d+:\d{2} [ap]m\?/);
     await click(button("Restore")!);
-    expect(field("c-subject").value).toBe("Half written, then the tab crashed");
+    expect(subject()).toBe("Half written, then the tab crashed");
     expect(document.body.textContent).not.toContain("Restore your unsaved changes");
     undo();
-    expect(field("c-subject").value).toBe(DRAFT.subject);
+    expect(subject()).toBe(DRAFT.subject);
   });
 
   it("restores who it goes to with the words, and one Undo takes both back", async () => {
@@ -234,10 +239,10 @@ describe("saving and leaving", () => {
     await settle();
     const audience = () => document.getElementById("c-audience")!.textContent;
     await click(button("Restore")!);
-    expect(field("c-subject").value).toBe("Kept before the crash");
+    expect(subject()).toBe("Kept before the crash");
     expect(audience()).toBe("Imported from Shopify, not signed in yet");
     undo();
-    expect(field("c-subject").value).toBe(DRAFT.subject);
+    expect(subject()).toBe(DRAFT.subject);
     expect(audience()).toBe("Everyone subscribed to marketing email");
   });
 

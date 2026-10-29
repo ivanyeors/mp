@@ -11,6 +11,7 @@ import {
   EMAIL_BLOCK_TYPES,
   emptyBlock,
   EMPTY_CAMPAIGN_CONTENT,
+  fillVariables,
   newBlockId,
   SITE_BUTTON_PATHS,
   variablesUsed,
@@ -18,7 +19,17 @@ import {
   type EmailBlock,
 } from "../content";
 import { FIRST_CAMPAIGN_DRAFT } from "../rules";
-import { CAMPAIGN_VARIABLES, unknownVariablesIn, variableFallback, variableValue, variableValues } from "../variables";
+import {
+  CAMPAIGN_VARIABLES,
+  fallbackWords,
+  SAMPLE_RECIPIENT,
+  unknownVariablesIn,
+  VARIABLE_KEYS,
+  variableFallback,
+  variableValue,
+  variableValues,
+  withSampleValues,
+} from "../variables";
 
 /**
  * The content model (PRD-campaign-email-editor slice 03): one schema for the
@@ -85,8 +96,8 @@ describe("CampaignContentSchema", () => {
     expect(refused(withBlock({ id: "x", type: "divider", html: "<hr>" }))).toBe(true);
     expect(refused(withBlock({ id: "x", type: "heading", level: 1, text: "Hi", style: "color:red" }))).toBe(true);
     expect(refused(withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "x", color: "red" }] }] }))).toBe(true);
-    expect(refused(withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ var: "last_name" }] }] }))).toBe(true);
-    expect(refused({ ...CONTENT, fallbacks: { last_name: "friend" } })).toBe(true);
+    expect(refused(withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ var: "favourite_colour" }] }] }))).toBe(true);
+    expect(refused({ ...CONTENT, fallbacks: { favourite_colour: "blue" } })).toBe(true);
     expect(refused({ ...CONTENT, extra: true })).toBe(true);
     expect(refused({ ...CONTENT, v: 2 })).toBe(true);
   });
@@ -123,18 +134,20 @@ describe("CampaignContentSchema", () => {
     expect(CampaignContentPreviewSchema.parse(EMPTY_CAMPAIGN_CONTENT)).toEqual(EMPTY_CAMPAIGN_CONTENT);
   });
 
-  it("refuses on save a {name} that would reach the customer in braces: an unknown one in a text block, any in a heading or a button", () => {
+  it("refuses on save a {name} that would reach the customer in braces: an unknown one in a heading or a text block, any in a button", () => {
     const text = (t: string) => withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: t }] }] });
     const issues = (c: unknown) => CampaignContentSchema.safeParse(c).error?.issues.map((i) => [i.path.join("."), i.message]);
-    expect(issues(text(", our {frist_name} covers"))).toEqual([["blocks.0.paragraphs", "{frist_name} is not a Variable: only {first_name} is."]]);
-    expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" }))).toEqual([
-      ["blocks.0.text", "{first_name} can go in a text block, the subject or the preview line, not here."],
-    ]);
-    expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {firstname}" }))).toEqual([
-      ["blocks.0.text", "{firstname} is not a Variable: only {first_name} is."],
+    const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.`;
+    expect(issues(text(", our {frist_name} covers"))).toEqual([["blocks.0.paragraphs", unknown("frist_name")]]);
+    // A heading takes Variables (slice 13), written as the subject writes them.
+    expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" }))).toBeUndefined();
+    expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{points_balance} points, {last_name}" }))).toBeUndefined();
+    expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {firstname}" }))).toEqual([["blocks.0.text", unknown("firstname")]]);
+    expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {a} and {b}" }))).toEqual([
+      ["blocks.0.text", "{a} and {b} are not Variables: the Variables are {first_name}, {last_name} and {points_balance}."],
     ]);
     expect(issues(withBlock({ id: "b", type: "buttons", buttons: [{ label: "Shop, {first_name}", target: "shop", style: "primary" }] }))).toEqual([
-      ["blocks.0.buttons.0.label", "{first_name} can go in a text block, the subject or the preview line, not here."],
+      ["blocks.0.buttons.0.label", "{first_name} can go in a heading, a text block, the subject or the preview line, not here."],
     ]);
     // Braces around anything but a name are words.
     expect(CampaignContentSchema.safeParse(text(", {50% off} today")).success).toBe(true);
@@ -175,8 +188,11 @@ describe("reading the blocks", () => {
     expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT)).toEqual([]);
     // The subject and preview line fill theirs from the same fallbacks.
     expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{first_name}, sleep cooler this December", ""])).toEqual(["first_name"]);
-    expect(variablesUsed(CONTENT, ["{first_name}, {last_name}"])).toEqual(["first_name"]);
-    expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{last_name}"])).toEqual([]);
+    expect(variablesUsed(CONTENT, ["{first_name}, {last_name}"])).toEqual(["first_name", "last_name"]);
+    expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{last_name}", "{nickname}"])).toEqual(["last_name"]);
+    // In every block's words alike: a heading's, a text block's.
+    const heading = { ...EMPTY_CAMPAIGN_CONTENT, blocks: [{ id: "h", type: "heading" as const, level: 1 as const, text: "{points_balance} points" }] };
+    expect(variablesUsed(heading, ["{first_name}"])).toEqual(["first_name", "points_balance"]);
     expect(contentSignsIn(CONTENT)).toBe(false);
     const signIn = { ...CONTENT, blocks: [{ id: "b", type: "buttons", buttons: [{ label: "Sign in", target: "sign_in", style: "primary" }] } as EmailBlock] };
     expect(contentSignsIn(signIn)).toBe(true);
@@ -243,22 +259,84 @@ describe("contentFromLegacy (Convert to blocks)", () => {
 });
 
 describe("Variables", () => {
-  it("has the first name, with fallback words", () => {
-    expect(CAMPAIGN_VARIABLES.first_name).toMatchObject({ label: "First name", fallback: "there" });
+  it("has the first name, the last name and the points balance, each with a sample and default fallback words where there are any", () => {
+    expect(VARIABLE_KEYS).toEqual(["first_name", "last_name", "points_balance"]);
+    expect(CAMPAIGN_VARIABLES.first_name).toMatchObject({ label: "First name", sample: "Mei Ling", fallback: "there" });
+    expect(CAMPAIGN_VARIABLES.last_name).toMatchObject({ label: "Last name", sample: "Tan", fallback: null });
+    expect(CAMPAIGN_VARIABLES.points_balance).toMatchObject({ label: "Points balance", sample: "1,250", fallback: null, needsPoints: true });
+    // The sample customer reads as each Variable's sample.
+    expect(variableValues(SAMPLE_RECIPIENT, {})).toEqual({ first_name: "Mei Ling", last_name: "Tan", points_balance: "1,250" });
+    expect(withSampleValues("{first_name}, you have {points_balance} points")).toBe("Mei Ling, you have 1,250 points");
   });
 
   it("fills a recipient's value on one line, at most 60 characters, or the fallback", () => {
     expect(variableValue("  Mei \n Ling ")).toBe("Mei Ling");
     expect(variableValue("x".repeat(80))).toHaveLength(60);
     expect(variableValue("   ")).toBeNull();
-    expect(variableValues({ firstName: "Ann" }, { first_name: "friend" })).toEqual({ first_name: "Ann" });
-    expect(variableValues({ firstName: null }, { first_name: "friend" })).toEqual({ first_name: "friend" });
-    expect(variableValues({ firstName: " " }, {})).toEqual({ first_name: "there" });
+    const fallbacks = { first_name: "friend", last_name: "of ours", points_balance: "some" };
+    expect(variableValues({ firstName: "Ann", lastName: "Lee", pointsBalance: 12500 }, fallbacks)).toEqual({
+      first_name: "Ann",
+      last_name: "Lee",
+      points_balance: "12,500",
+    });
+    expect(variableValues({ firstName: null }, fallbacks)).toEqual({ first_name: "friend", last_name: "of ours", points_balance: "some" });
+    // A balance of 0 is none: the fallback words, not "0".
+    expect(variableValues({ firstName: "Ann", pointsBalance: 0 }, fallbacks).points_balance).toBe("some");
+    expect(variableValues({ firstName: " " }, {})).toEqual({ first_name: "there", last_name: "", points_balance: "" });
     expect(variableFallback("first_name", { first_name: "  " })).toBe("there");
   });
 
+  it("knows the fallback words a used Variable has: the campaign's, else the catalogue's, and none for an empty one", () => {
+    expect(fallbackWords("first_name", {})).toBe("there");
+    expect(fallbackWords("first_name", { first_name: "friend" })).toBe("friend");
+    expect(fallbackWords("first_name", { first_name: " " })).toBeNull();
+    expect(fallbackWords("last_name", {})).toBeNull();
+    expect(fallbackWords("points_balance", { points_balance: "some" })).toBe("some");
+  });
+
   it("names the {name}s of a subject that are not Variables", () => {
-    expect(unknownVariablesIn("{first_name}, {last_name} and {points_balance}")).toEqual(["last_name", "points_balance"]);
-    expect(unknownVariablesIn("Hello {first_name}")).toEqual([]);
+    expect(unknownVariablesIn("{first_name}, {last_name} and {points_balance}")).toEqual([]);
+    expect(unknownVariablesIn("Hello {first_name} {nickname}")).toEqual(["nickname"]);
+  });
+});
+
+describe("filling the blocks for one recipient", () => {
+  const values = { first_name: "Mei Ling", last_name: "Tan", points_balance: "1,250" };
+  it("fills every Variable run and every {name} in the blocks' words, and leaves links, labels and ids as written", () => {
+    const content: CampaignContent = {
+      v: 1,
+      blocks: [
+        { id: "h", type: "heading", level: 1, text: "{first_name}, {nickname}" },
+        {
+          id: "t",
+          type: "text",
+          paragraphs: [
+            { kind: "p", runs: [{ var: "last_name" }, { text: " has {points_balance}", bold: true }, { text: "link", href: "https://custom.mpillow.com/?n={first_name}" }] },
+            { kind: "bullets", items: [[{ var: "points_balance" }]] },
+          ],
+        },
+        { id: "b", type: "buttons", buttons: [{ label: "For {first_name}", target: "url", url: "https://custom.mpillow.com/{first_name}", style: "primary" }] },
+      ],
+      fallbacks: {},
+    };
+    expect(fillVariables(content, values).blocks).toEqual([
+      { id: "h", type: "heading", level: 1, text: "Mei Ling, {nickname}" },
+      {
+        id: "t",
+        type: "text",
+        paragraphs: [
+          { kind: "p", runs: [{ text: "Tan" }, { text: " has 1,250", bold: true }, { text: "link", href: "https://custom.mpillow.com/?n={first_name}" }] },
+          { kind: "bullets", items: [[{ text: "1,250" }]] },
+        ],
+      },
+      { id: "b", type: "buttons", buttons: [{ label: "For {first_name}", target: "url", url: "https://custom.mpillow.com/{first_name}", style: "primary" }] },
+    ]);
+    // Nothing is changed in place.
+    expect(content.blocks[0]).toMatchObject({ text: "{first_name}, {nickname}" });
+  });
+
+  it("fills a value once: a name that looks like a Variable stays words", () => {
+    const content: CampaignContent = { ...CONTENT, blocks: [{ id: "h", type: "heading", level: 2, text: "{first_name} {last_name}" }] };
+    expect(fillVariables(content, { ...values, first_name: "{last_name}" }).blocks[0]).toMatchObject({ text: "{last_name} Tan" });
   });
 });

@@ -1426,9 +1426,9 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
   - `claimCustomerEmail()` — lib/email/customer-emails.ts:47
 
 ### claim_marketing_campaign_send
-Defined in supabase/migrations/20261021100000_email_campaigns.sql:194
+Defined in supabase/migrations/20261030130000_campaign_claim_last_name.sql:17
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:246
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:251
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -2422,14 +2422,14 @@ app/[lang]/settings/campaigns/page.tsx
 ### /settings/campaigns/[id]
 app/[lang]/settings/campaigns/[id]/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
-- Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
+- Loads: `campaignPointsLive()`, `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
 - Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `marketing_campaign_candidates`, `site_settings`
 
 ### /settings/campaigns/new
 app/[lang]/settings/campaigns/new/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
-- Loads: `listSegments()`, `requireAdminPage()`
+- Loads: `campaignPointsLive()`, `listSegments()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
 - Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `marketing_campaign_candidates`, `site_settings`
 

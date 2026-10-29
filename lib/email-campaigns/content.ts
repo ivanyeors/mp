@@ -17,7 +17,7 @@
  */
 import { z } from "zod";
 import { bodyLineParts, linkLabel, parseCampaignBody } from "@/lib/email/campaign-body";
-import { placeholdersIn } from "@/lib/email/copy";
+import { fillCopy, placeholdersIn } from "@/lib/email/copy";
 import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type VariableKey } from "./variables";
 
 export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "divider", "spacer"] as const;
@@ -136,12 +136,13 @@ const BlockId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "A block id is 1 to 40
  * them empty, so a new block shows its placeholders.
  */
 function blockSchema({ required }: { required: boolean }) {
-  const words = (max: number, empty: string) => {
+  // Words that take Variables (a heading) name only the catalogue's; the rest
+  // (a button label) are sent as written: a `{name}` there would reach the customer in braces.
+  const words = (max: number, empty: string, { variables = false }: { variables?: boolean } = {}) => {
     const s = (required ? z.string().trim().min(1, empty) : z.string().trim()).max(max, most(max)).refine(noTags, NO_TAGS);
-    // A heading and a button label are sent as written: a `{name}` would reach the customer in braces.
     if (!required) return s;
     return s.superRefine((v, ctx) => {
-      const unfilled = sentAsWrittenMessage(v);
+      const unfilled = variables ? unknownVariableMessage(v) : sentAsWrittenMessage(v);
       if (unfilled) ctx.addIssue({ code: "custom", message: unfilled });
     });
   };
@@ -168,7 +169,7 @@ function blockSchema({ required }: { required: boolean }) {
       id: BlockId,
       type: z.literal("heading"),
       level: z.union([z.literal(1), z.literal(2)]),
-      text: words(CONTENT_LIMITS.heading, "Write the heading."),
+      text: words(CONTENT_LIMITS.heading, "Write the heading.", { variables: true }),
     }),
     z
       .strictObject({
@@ -298,12 +299,35 @@ export function contentWords(content: CampaignContent): string[] {
 
 /**
  * Pure — the Variables the email uses, once each, in order: in `lines` (the
- * subject and preview line, which take the same fallbacks), then in the blocks.
+ * subject and preview line, which take the same fallbacks), then in the
+ * blocks' words, whatever their type (`contentWords`).
  */
 export function variablesUsed(content: CampaignContent, lines: readonly string[] = []): VariableKey[] {
-  const written = lines.flatMap((l) => placeholdersIn(l).filter(isVariableKey));
-  const used = content.blocks.flatMap((b) => (b.type === "text" ? paragraphRuns(b.paragraphs) : []));
-  return [...new Set([...written, ...used.flatMap((r) => ("var" in r ? [r.var] : []))])];
+  return [...new Set([...lines, ...contentWords(content)].flatMap((l) => placeholdersIn(l).filter(isVariableKey)))];
+}
+
+/**
+ * The fields sent as written, never with a Variable filled in: a block's id
+ * and type, a link, a button's label and an image's alt text (decision 3).
+ */
+const SENT_AS_WRITTEN: ReadonlySet<string> = new Set(["id", "type", "label", "alt", "url", "href"]);
+
+/**
+ * Pure — the blocks as one recipient reads them (slice 13): each Variable run
+ * becomes its words, and each `{name}` written in a block's words is filled,
+ * in every block type alike, so a new type's headings and lines take
+ * Variables with no code of their own. Links, button labels and alt text stay
+ * as written. Each value is one line of words; the renderer escapes it.
+ */
+export function fillVariables(content: CampaignContent, values: Record<VariableKey, string>): CampaignContent {
+  const fill = (v: unknown, field: string | null): unknown => {
+    if (typeof v === "string") return field !== null && SENT_AS_WRITTEN.has(field) ? v : fillCopy(v, values);
+    if (Array.isArray(v)) return v.map((x) => fill(x, null));
+    if (!v || typeof v !== "object") return v;
+    if ("var" in v && typeof v.var === "string" && isVariableKey(v.var)) return { text: values[v.var] };
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x, k)]));
+  };
+  return { ...content, blocks: content.blocks.map((b) => fill(b, null) as EmailBlock) };
 }
 
 /** Pure — a button anywhere in the blocks goes to the recipient's sign-in, so the sender mints Claim links. */
@@ -311,18 +335,24 @@ export function contentSignsIn(content: CampaignContent): boolean {
   return content.blocks.some((b) => b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in"));
 }
 
-/** Pure — the subject, preview line or a text block names a `{name}` that is not a Variable: the message, or null. */
+/** `{a}, {b} and {c}`. */
+const listed = (names: readonly string[]) => {
+  const all = names.map((v) => `{${v}}`);
+  return all.length > 1 ? `${all.slice(0, -1).join(", ")} and ${all.at(-1)}` : (all[0] ?? "");
+};
+
+/** Pure — a heading, the subject, the preview line or a text block names a `{name}` that is not a Variable: the message, or null. */
 export function unknownVariableMessage(text: string): string | null {
   const unknown = unknownVariablesIn(text);
   if (!unknown.length) return null;
-  return `${unknown.map((v) => `{${v}}`).join(", ")} ${unknown.length === 1 ? "is not a Variable" : "are not Variables"}: only {first_name} is.`;
+  return `${listed(unknown)} ${unknown.length === 1 ? "is not a Variable" : "are not Variables"}: the Variables are ${listed(VARIABLE_KEYS)}.`;
 }
 
-/** Pure — words the sender never fills (a heading, a button label) name a `{name}`: the message, or null. */
+/** Pure — words the sender never fills (a button label) name a `{name}`: the message, or null. */
 function sentAsWrittenMessage(text: string): string | null {
   const named = placeholdersIn(text);
   if (!named.length) return null;
-  return unknownVariableMessage(text) ?? `${named.map((v) => `{${v}}`).join(", ")} can go in a text block, the subject or the preview line, not here.`;
+  return unknownVariableMessage(text) ?? `${listed(named)} can go in a heading, a text block, the subject or the preview line, not here.`;
 }
 
 // ---------------------------------------------------------------------------

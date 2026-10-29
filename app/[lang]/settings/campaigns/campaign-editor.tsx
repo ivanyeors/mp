@@ -22,8 +22,11 @@ import { AiButton } from "@/components/block-editor/ai-button";
 import { BlockEditor, BlockEditorRoot } from "@/components/block-editor/block-editor";
 import { BlockPalette, blockPaletteTab } from "@/components/block-editor/block-palette";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
+import { RichText } from "@/components/block-editor/rich-text";
+import { richTextFromWords, richTextWords, type RichTextVariable } from "@/components/block-editor/rich-text-doc";
 import { typingBurst, useEditorHistory, useHistoryKeys } from "@/components/block-editor/use-editor-history";
 import { useUnsavedGuard } from "@/components/block-editor/use-unsaved-guard";
+import type { PaletteTab } from "@/components/block-editor/types";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,11 +63,13 @@ import {
     FIRST_CAMPAIGN_DRAFT,
     MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
+    variablesInEmail,
     type Campaign,
     type CampaignAudience,
     type CampaignDraft,
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
+import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
 import { defaultWaveSize, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
@@ -86,6 +91,8 @@ import {
 } from "./actions";
 import { CAMPAIGN_BLOCKS } from "./blocks/catalogue";
 import { VariableFallbacks } from "./blocks/fallbacks";
+import { campaignVariables } from "./blocks/runs";
+import { CampaignVariablesTab } from "./blocks/variables";
 import { EmailPreview, type PreviewDevice, type PreviewScheme } from "./email-preview";
 import { Field } from "./field";
 import { draftOf, keptDraft, keptDraftKey, keptOf, type EditorDraft, type KeptDraft } from "./kept-draft";
@@ -99,8 +106,11 @@ export type SegmentOption = { id: string; name: string; customersHref?: string |
 /** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
 
-/** The palette's tabs: Blocks now; Starters (slice 08) and Variables (slice 13) join it. */
+/** The palette's tabs: Blocks now; Starters (slice 08) join it, and Variables (slice 13) follow them, built with the email. */
 const PALETTE = [blockPaletteTab(CAMPAIGN_BLOCKS)];
+
+/** A campaign written before blocks has no Variables: its subject and preview line are words alone. */
+const NO_VARIABLES: readonly RichTextVariable[] = [];
 
 /** How long typing pauses before the preview renders again. */
 const PREVIEW_AFTER_MS = 400;
@@ -174,6 +184,7 @@ export function CampaignEditor({
     waves = [],
     segments,
     staffEmail,
+    pointsLive = false,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -184,6 +195,8 @@ export function CampaignEditor({
     segments: SegmentOption[];
     /** The signed-in Staff email: the test's default address. */
     staffEmail: string;
+    /** Points are live (`pointsLive`): *Points balance* can be put in (slice 13). */
+    pointsLive?: boolean;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -244,6 +257,8 @@ export function CampaignEditor({
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    // The palette's open tab on a laptop: Blocks, or Variables (slice 13).
+    const [paletteTab, setPaletteTab] = useState("blocks");
 
     // The step Clear all (or Convert to blocks) made, and the words it took, until Undo puts them back or Save makes them gone.
     const undoRef = useRef<{ words: CampaignWords; step: number | null } | null>(null);
@@ -265,6 +280,8 @@ export function CampaignEditor({
             if (!res.ok) {
                 setSaveError(res.error);
                 setFieldErrors(res.fieldErrors ?? {});
+                // A fallback's error shows under the Variables palette's chips (slice 13): open it there.
+                if (Object.keys(res.fieldErrors ?? {}).some((k) => k.startsWith("content.fallbacks."))) setPaletteTab("variables");
                 return null;
             }
             setFieldErrors({});
@@ -290,15 +307,24 @@ export function CampaignEditor({
     // The header and Write: what ⌘Z and ⇧⌘Z reach. The Send tab's fields keep the browser's own undo.
     const editorArea = useRef<HTMLDivElement>(null);
 
+    // ── Variables (slice 13): what every text input offers, and the fallbacks the email needs ──
+    const variables = useMemo(() => campaignVariables({ pointsLive }), [pointsLive]);
+    const lineVariables = content ? variables : NO_VARIABLES;
+    const subjectValue = useMemo(() => richTextFromWords(subject, lineVariables), [subject, lineVariables]);
+    const preheaderValue = useMemo(() => richTextFromWords(preheader, lineVariables), [preheader, lineVariables]);
+    const usedVariables = useMemo(() => variablesInEmail({ subject, preheader, content, greeting }), [subject, preheader, content, greeting]);
+
     // ── The preview ────────────────────────────────────────────────────────
     const [device, setDevice] = useState<PreviewDevice>("desktop");
     const [scheme, setScheme] = useState<PreviewScheme>("light");
+    // A block campaign's Variables as a sample customer's, or every fallback (slice 13).
+    const [previewAs, setPreviewAs] = useState<PreviewAs>("customer");
     const [preview, setPreview] = useState<{ subject: string; html: string; from: string | null } | null>(null);
     const [previewError, setPreviewError] = useState<string | null>(null);
     useEffect(() => {
         let live = true;
         const timer = setTimeout(async () => {
-            const res = await previewCampaign(input, { forceDark: scheme === "dark" }).catch((e: unknown) => ({ ok: false as const, error: String(e) }));
+            const res = await previewCampaign(input, { forceDark: scheme === "dark", previewAs }).catch((e: unknown) => ({ ok: false as const, error: String(e) }));
             if (!live) return;
             if (res.ok) {
                 setPreview({ subject: res.subject, html: res.html, from: res.from ?? null });
@@ -311,7 +337,7 @@ export function CampaignEditor({
             live = false;
             clearTimeout(timer);
         };
-    }, [input, scheme]);
+    }, [input, scheme, previewAs]);
 
     // ── Readiness ──────────────────────────────────────────────────────────
     const campaignId = campaign?.id;
@@ -596,12 +622,33 @@ export function CampaignEditor({
         undoToast("Converted the message to blocks. Save to keep them.");
     };
 
-    const subjectWarn = subject.length > SUBJECT_PHONE ? "may be cut off on phones" : null;
+    // Counted as a customer reads them: each Variable as the sample customer's words.
+    const subjectRead = content ? withSampleValues(subject) : subject;
+    const preheaderRead = content ? withSampleValues(preheader) : preheader;
+    const subjectWarn = subjectRead.length > SUBJECT_PHONE ? "may be cut off on phones" : null;
     const preheaderWarn =
-        preheader && (preheader.length < PREVIEW_LINE_RANGE[0] || preheader.length > PREVIEW_LINE_RANGE[1])
+        preheaderRead && (preheaderRead.length < PREVIEW_LINE_RANGE[0] || preheaderRead.length > PREVIEW_LINE_RANGE[1])
             ? `${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best`
             : null;
     const palette = Boolean(content) && editable;
+    // The palette: Blocks, then Variables (slice 13), whose chips go in at the cursor of the words last written in.
+    const asideTabs: PaletteTab<EmailBlock>[] = [
+        ...PALETTE,
+        {
+            value: "variables",
+            label: "Variables",
+            content: (
+                <CampaignVariablesTab>
+                    {content ? <VariableFallbacks used={usedVariables} content={content} onChange={editContent} disabled={!editable} errors={fieldErrors} /> : null}
+                </CampaignVariablesTab>
+            ),
+        },
+    ];
+    // A phone's sheet: a tap puts a Variable in and closes it; the fallbacks are under the blocks.
+    const sheetTabs: PaletteTab<EmailBlock>[] = [
+        ...PALETTE,
+        { value: "variables", label: "Variables", content: <CampaignVariablesTab draggable={false} onInserted={() => setAddOpen(false)} /> },
+    ];
     const saveLabel = campaign ? "Save changes" : "Save draft";
     const sendBar = Boolean(campaign && (sending || (plan && planned > 0)) && (tab === "send" || sending));
     const writeBar = !sendBar && tab === "write" && !sending;
@@ -676,36 +723,42 @@ export function CampaignEditor({
                     </span>
                 </p>
 
+                {/* One line each, with Variables as chips in a block campaign (slice 13); saved as words with `{first_name}` in them. */}
                 <div className="space-y-1.5">
-                    <Label htmlFor="c-subject">Subject</Label>
-                    <Input
+                    <Label id="c-subject-label">Subject</Label>
+                    <RichText
                         id="c-subject"
-                        value={subject}
-                        placeholder={CAMPAIGN_PLACEHOLDERS.subject}
-                        disabled={locked}
-                        maxLength={CAMPAIGN_LIMITS.subject}
+                        singleLine
+                        aria-labelledby="c-subject-label"
                         aria-describedby="c-subject-count"
-                        aria-invalid={fieldErrors.subject ? true : undefined}
-                        onChange={(e) => edit({ subject: e.target.value }, typingBurst(e, "c-subject"))}
+                        aria-invalid={Boolean(fieldErrors.subject)}
+                        value={subjectValue}
+                        variables={lineVariables}
+                        placeholder={CAMPAIGN_PLACEHOLDERS.subject}
+                        readOnly={locked}
+                        onChange={(next, how) => edit({ subject: richTextWords(next) }, how.paste ? undefined : "c-subject")}
                     />
                     {fieldErrors.subject ? <p className="text-xs text-destructive">{fieldErrors.subject}</p> : null}
-                    <CharCount id="c-subject-count" value={subject} warn={subjectWarn} />
+                    <CharCount id="c-subject-count" value={subjectRead} warn={subjectWarn} />
                 </div>
                 <div className="space-y-1.5">
-                    <Label htmlFor="c-preheader">Preview line</Label>
-                    <Input
+                    <Label id="c-preheader-label">Preview line</Label>
+                    <RichText
                         id="c-preheader"
-                        value={preheader}
-                        placeholder={CAMPAIGN_PLACEHOLDERS.preheader}
-                        disabled={locked}
-                        maxLength={CAMPAIGN_LIMITS.preheader}
+                        singleLine
+                        aria-labelledby="c-preheader-label"
                         aria-describedby="c-preheader-count"
-                        onChange={(e) => edit({ preheader: e.target.value }, typingBurst(e, "c-preheader"))}
+                        aria-invalid={Boolean(fieldErrors.preheader)}
+                        value={preheaderValue}
+                        variables={lineVariables}
+                        placeholder={CAMPAIGN_PLACEHOLDERS.preheader}
+                        readOnly={locked}
+                        onChange={(next, how) => edit({ preheader: richTextWords(next) }, how.paste ? undefined : "c-preheader")}
                     />
                     {fieldErrors.preheader ? <p className="text-xs text-destructive">{fieldErrors.preheader}</p> : null}
                     <CharCount
                         id="c-preheader-count"
-                        value={preheader}
+                        value={preheaderRead}
                         warn={preheaderWarn}
                         ok={`Shown after the subject in most inboxes. Optional; ${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best.`}
                     />
@@ -733,7 +786,10 @@ export function CampaignEditor({
                             errors={fieldErrors}
                             errorPath="content.blocks"
                         />
-                        <VariableFallbacks content={content} lines={[subject, preheader]} onChange={editContent} disabled={!editable} errors={fieldErrors} />
+                        {/* On a laptop the fallbacks sit under the Variables palette's chips; on a phone, and while the palette is hidden, here. */}
+                        <div className={cn(palette && "lg:hidden")}>
+                            <VariableFallbacks used={usedVariables} content={content} onChange={editContent} disabled={!editable} errors={fieldErrors} idPrefix="c-email-fallback" />
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -960,6 +1016,7 @@ export function CampaignEditor({
                         readOnly={!editable}
                         max={CONTENT_LIMITS.blocks}
                         newId={newBlockId}
+                        variables={variables}
                     >
                         <div className="mb-3 lg:hidden">
                             <PresetPicker
@@ -976,7 +1033,7 @@ export function CampaignEditor({
                             {palette ? (
                                 <aside className="max-lg:hidden" aria-label="Palette">
                                     <div className="sticky top-4">
-                                        <BlockPalette tabs={PALETTE} />
+                                        <BlockPalette tabs={asideTabs} tab={paletteTab} onTab={setPaletteTab} />
                                     </div>
                                 </aside>
                             ) : null}
@@ -984,7 +1041,15 @@ export function CampaignEditor({
                                 {theEmail}
                             </section>
                             <section className={cn("min-w-0", pane === "write" && "max-lg:hidden")} aria-label="Preview">
-                                <div className="lg:sticky lg:top-4">
+                                <div className="space-y-3 lg:sticky lg:top-4">
+                                    {content ? (
+                                        <PresetPicker
+                                            label="Preview as"
+                                            value={previewAs}
+                                            options={(Object.keys(PREVIEW_AS_LABEL) as PreviewAs[]).map((v) => ({ value: v, label: PREVIEW_AS_LABEL[v] }))}
+                                            onChange={setPreviewAs}
+                                        />
+                                    ) : null}
                                     <EmailPreview
                                         html={preview?.html ?? null}
                                         subject={preview?.subject ?? subject}
@@ -1011,7 +1076,7 @@ export function CampaignEditor({
                                     <SheetTitle>Add a block</SheetTitle>
                                 </SheetHeader>
                                 <div className="px-4 pb-6">
-                                    <BlockPalette tabs={PALETTE} draggable={false} onAdded={() => setAddOpen(false)} />
+                                    <BlockPalette tabs={sheetTabs} draggable={false} onAdded={() => setAddOpen(false)} />
                                 </div>
                             </SheetContent>
                         </Sheet>

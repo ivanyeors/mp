@@ -21,13 +21,13 @@ const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
 const HINTS = { heading: "e.g. A heading", text: "Write a few lines.", buttonLabel: "e.g. Shop", empty: "Add a block." };
 
+const VALUES = { first_name: "Ann", last_name: "Tan", points_balance: "1,250" };
 const data = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> = {}): CampaignBlocksEmailData => ({
   subject: "News",
   preheader: null,
   content,
   greeting: false,
-  firstName: "Ann",
-  values: { first_name: "Ann" },
+  values: VALUES,
   buttonHref: (b) => (b.target === "url" ? b.url! : `${ORIGIN}/en-US/${b.target}`),
   unsubscribeUrl: UNSUB,
   ...over,
@@ -98,7 +98,7 @@ describe("renderCampaignBlocksEmail", () => {
       textBlock({ text: "<script>alert(1)</script>" }),
       textBlock({ text: "Click", href: "javascript:alert(1)" }),
       one({ id: "b", type: "buttons", buttons: [{ label: "Go", target: "url", url: "javascript:alert(1)", style: "primary" }] }),
-      textBlock({ var: "last_name" } as never),
+      textBlock({ var: "favourite_colour" } as never),
       { v: 1, blocks: [] },
     ];
     for (const c of crafted) expect(() => renderCampaignBlocksEmail(data(c as CampaignContent)), JSON.stringify(c)).toThrow();
@@ -109,7 +109,7 @@ describe("renderCampaignBlocksEmail", () => {
       data(textBlock({ text: "Hello " }, { var: "first_name" }, { text: "!" }), {
         subject: "{first_name}, sleep cooler",
         preheader: "For {first_name}",
-        values: { first_name: "there" },
+        values: { ...VALUES, first_name: "there" },
       }),
     );
     expect(r.subject).toBe("there, sleep cooler");
@@ -125,7 +125,10 @@ describe("renderCampaignBlocksEmail", () => {
       { id: "s", type: "heading", level: 2, text: "Part" },
     );
     expect(words(renderCampaignBlocksEmail(data(c, { greeting: true })).html)).toBe("Title Hi Ann, Body Part");
-    expect(words(renderCampaignBlocksEmail(data(one({ id: "d", type: "divider" }), { greeting: true, firstName: null })).html)).toBe("Hi,");
+    // The greeting is the First name Variable: a customer with none gets its fallback (slice 13).
+    expect(words(renderCampaignBlocksEmail(data(one({ id: "d", type: "divider" }), { greeting: true, values: { ...VALUES, first_name: "there" } })).html)).toBe(
+      "Hi there,",
+    );
     expect(renderCampaignBlocksEmail(data(c)).text).not.toContain("Hi Ann");
     // After the title, before a part's heading, as a legacy campaign's greeting sits.
     const parts = one(
@@ -188,6 +191,93 @@ describe("renderCampaignBlocksEmail", () => {
 
   it("is registered as campaign mail", () => {
     expect(getEmailCase("campaign.blocks")).toMatchObject({ group: "campaign", audience: "customer", campaign: true });
+  });
+});
+
+describe("Variables, filled for each recipient (PRD-campaign-email-editor slice 13)", () => {
+  // The owner's demo: First name in the subject and a heading, Points balance in a paragraph.
+  const CONTENT: CampaignContent = {
+    v: 1,
+    blocks: [
+      { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler this December" },
+      {
+        id: "t",
+        type: "text",
+        paragraphs: [
+          { kind: "p", runs: [{ text: "Dear " }, { var: "first_name" }, { text: " " }, { var: "last_name" }, { text: "," }] },
+          { kind: "p", runs: [{ text: "You have " }, { var: "points_balance" }, { text: " points", bold: true }, { text: " waiting." }] },
+          { kind: "bullets", items: [[{ text: "Yours, " }, { var: "first_name" }]] },
+        ],
+      },
+      { id: "b", type: "buttons", buttons: [{ label: "Shop the covers", target: "shop", style: "primary" }] },
+    ],
+    fallbacks: { first_name: "there", last_name: "friend", points_balance: "some" },
+  };
+  const draft: CampaignDraft = {
+    ...FIRST_CAMPAIGN_DRAFT,
+    name: "December cooling",
+    subject: "{first_name}, sleep cooler this December",
+    preheader: "{points_balance} points for {first_name} {last_name}",
+    body: "",
+    button: null,
+    content: CONTENT,
+  };
+  const send = (r: { firstName: string | null; lastName?: string | null; pointsBalance?: number | null }) =>
+    renderCampaignFor(draft, { ...r, origin: ORIGIN, locale: "en-US", claimUrl: null, unsubscribeUrl: UNSUB });
+  const inbox = (html: string) => /mso-hide:all">([^<]*?)&zwnj;/.exec(html)?.[1];
+
+  it("gives a customer their own details, in the subject, the preview line, a heading, the words and the plain text", () => {
+    const r = send({ firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 });
+    expect(r.subject).toBe("Mei Ling, sleep cooler this December");
+    expect(inbox(r.html)).toBe("1,250 points for Mei Ling Tan");
+    expect(r.html).toMatch(/<h1 class="mp-fg"[^>]*>Mei Ling, sleep cooler this December<\/h1>/);
+    expect(r.html).toContain(">Hi Mei Ling,</p>");
+    expect(r.html).toContain(">Dear Mei Ling Tan,</p>");
+    expect(r.html).toContain("You have 1,250<strong> points</strong> waiting.");
+    expect(r.html).toContain("Yours, Mei Ling");
+    expect(r.text).toContain("Mei Ling, sleep cooler this December\n\nHi Mei Ling,\n\nDear Mei Ling Tan,\n\nYou have 1,250 points waiting.\n\n- Yours, Mei Ling");
+    expect(r.html + r.text).not.toMatch(/\{(first_name|last_name|points_balance)\}/);
+  });
+
+  it("gives a customer without a detail the campaign's fallback words, and a balance of 0 counts as none", () => {
+    const r = send({ firstName: "  ", lastName: null, pointsBalance: 0 });
+    expect(r.subject).toBe("there, sleep cooler this December");
+    expect(inbox(r.html)).toBe("some points for there friend");
+    expect(r.html).toContain(">Hi there,</p>");
+    expect(r.html).toContain(">Dear there friend,</p>");
+    expect(r.html).toContain("You have some<strong> points</strong> waiting.");
+    expect(r.text).toContain("You have some points waiting.");
+    // The details left out altogether read the same.
+    expect(send({ firstName: null }).html).toBe(r.html);
+  });
+
+  it("writes a hostile name as text: no markup, one line, at most 60 characters", () => {
+    const r = send({ firstName: "<b>Mei</b> & \nLing", lastName: `${HOSTILE}${"x".repeat(80)}`, pointsBalance: 3 });
+    expect(r.html).not.toContain("<b>Mei");
+    expect(r.html).not.toContain("<img src=x");
+    expect(r.html).toContain(">Dear &lt;b&gt;Mei&lt;/b&gt; &amp; Ling &lt;img src=x onerror=alert(1)&gt;&quot;&#39;&amp;&lt;/script&gt;x");
+    expect(r.subject).toBe("<b>Mei</b> & Ling, sleep cooler this December");
+    expect(r.html).toContain("<title>&lt;b&gt;Mei&lt;/b&gt; &amp; Ling, sleep cooler this December</title>");
+    // The plain text keeps the words as words, on one line, the last name cut at 60 characters.
+    expect(`${HOSTILE}${"x".repeat(20)}`).toHaveLength(60);
+    expect(r.text).toContain(`Dear <b>Mei</b> & Ling ${HOSTILE}${"x".repeat(20)},\n`);
+  });
+
+  it("leaves a button's label and a link as they are written", () => {
+    const labelled: CampaignDraft = {
+      ...draft,
+      content: {
+        ...CONTENT,
+        blocks: [
+          { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Read", href: `${ORIGIN}/en-US/faq?for={first_name}` }] }] },
+          { id: "b", type: "buttons", buttons: [{ label: "Shop, {first_name}", target: "url", url: `${ORIGIN}/en-US/shop?for={first_name}`, style: "primary" }] },
+        ],
+      },
+    };
+    const r = renderCampaignFor(labelled, { firstName: "Mei Ling", origin: ORIGIN, locale: "en-US", claimUrl: null, unsubscribeUrl: UNSUB });
+    expect(r.html).toContain("Shop, {first_name}");
+    expect(r.html).toContain("faq?for={first_name}");
+    expect(r.html).not.toContain("for=Mei");
   });
 });
 

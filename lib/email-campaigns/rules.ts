@@ -14,6 +14,7 @@
  * holds the two equal.
  */
 import { z } from "zod";
+import { placeholdersIn } from "@/lib/email/copy";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 import {
   CampaignContentPreviewSchema,
@@ -22,7 +23,9 @@ import {
   EMPTY_CAMPAIGN_CONTENT,
   isHttpsUrl,
   unknownVariableMessage,
+  variablesUsed,
 } from "./content";
+import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
 
 export { isHttpsUrl };
 
@@ -134,6 +137,13 @@ function draftSchema({ required }: { required: boolean }) {
         const unknown = unknownVariableMessage(d[field] ?? "");
         if (unknown) ctx.addIssue({ code: "custom", path: [field], message: unknown });
       }
+      // Every Variable the email uses has words for a customer who has none (slice 13).
+      if (!required) return;
+      for (const key of variablesInEmail(d)) {
+        if (fallbackWords(key, d.content.fallbacks)) continue;
+        const missing = `Write what to say to a customer with no ${campaignVariable(key).label.toLowerCase()}.`;
+        ctx.addIssue({ code: "custom", path: ["content", "fallbacks", key], message: missing });
+      }
     })
     .transform((d) => ({
       ...d,
@@ -164,8 +174,21 @@ export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
  * sign-in would not grant (PRD-loyalty-points slice 05).
  */
 export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
-  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : [])];
-  return /\bpoints?\b/i.test(words.join("\n"));
+  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : [])].join("\n");
+  // *Points balance* (PRD-campaign-email-editor slice 13) is a mention too.
+  return /\bpoints?\b/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
+}
+
+/**
+ * Pure — the Variables a block campaign's email uses, once each, in order:
+ * the greeting's *First name* when it is on (slice 13: one fallback for a first
+ * name, wherever it appears), then the subject's, the preview line's and the
+ * blocks'. None for a campaign written before blocks.
+ */
+export function variablesInEmail(c: Pick<CampaignDraft, "subject" | "preheader" | "content" | "greeting">): VariableKey[] {
+  if (!c.content) return [];
+  const greeting: VariableKey[] = c.greeting ? ["first_name"] : [];
+  return [...new Set([...greeting, ...variablesUsed(c.content, [c.subject, c.preheader ?? ""])])];
 }
 
 /** A Campaign as stored. */

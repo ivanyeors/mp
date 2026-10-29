@@ -10,9 +10,10 @@ import type { BlockCatalogue, EditorBlock, PaletteItem, PaletteItemsTab, Palette
 
 /**
  * The palette beside the column (PRD-campaign-email-editor slice 04): tabs
- * the page supplies (Blocks here; Starters and Variables in later slices),
- * each item dragged into the column, or added after the selected block with
- * a click or Enter. Inside a `BlockEditorRoot`.
+ * the page supplies (Blocks here; Starters in slice 08; Variables, a
+ * `VariablePalette`, in slice 13), each item dragged into the column, or
+ * added after the selected block with a click or Enter. Inside a
+ * `BlockEditorRoot`.
  */
 
 /** Pure — the Blocks tab: one item per block type in the catalogue, in its order. */
@@ -79,6 +80,8 @@ export function BlockPalette<B extends EditorBlock>({
   tabs,
   draggable = true,
   onAdded,
+  tab,
+  onTab,
   className,
 }: {
   tabs: PaletteTab<B>[];
@@ -86,6 +89,9 @@ export function BlockPalette<B extends EditorBlock>({
   draggable?: boolean;
   /** After a click adds an item: the sheet closes. */
   onAdded?: () => void;
+  /** The tab open, when the page chooses it (a Save error under Variables opens that tab); else the first. */
+  tab?: string;
+  onTab?: (value: string) => void;
   className?: string;
 }) {
   const list = (tab: PaletteTab<B>) =>
@@ -110,8 +116,9 @@ export function BlockPalette<B extends EditorBlock>({
       </div>
     );
   }
+  const chosen = tab !== undefined ? { value: tab, onValueChange: onTab } : { defaultValue: tabs[0]?.value };
   return (
-    <Tabs defaultValue={tabs[0]?.value} className={className}>
+    <Tabs {...chosen} className={className}>
       <TabsList className="w-full">
         {tabs.map((t) => (
           <TabsTrigger key={t.value} value={t.value}>

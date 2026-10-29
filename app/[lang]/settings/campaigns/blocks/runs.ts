@@ -7,14 +7,22 @@
  */
 import type { RichTextRun, RichTextValue, RichTextVariable } from "@/components/block-editor/rich-text-doc";
 import { isHttpsUrl, type Paragraph, type Run } from "@/lib/email-campaigns/content";
-import { CAMPAIGN_VARIABLES, isVariableKey, VARIABLE_KEYS } from "@/lib/email-campaigns/variables";
+import { campaignVariable, isVariableKey, POINTS_NOT_LIVE, VARIABLE_KEYS } from "@/lib/email-campaigns/variables";
 
-/** The Variables a text block offers, as chips. */
-export const TEXT_VARIABLES: readonly RichTextVariable[] = VARIABLE_KEYS.map((key) => ({
-  key,
-  label: CAMPAIGN_VARIABLES[key].label,
-  description: CAMPAIGN_VARIABLES[key].description,
-}));
+/**
+ * Pure — the campaign's Variables as the editor offers them (slice 13): every
+ * one in the catalogue, *Points balance* greyed, with why, while points are
+ * not live. A greyed one still shows as its chip where the words hold it.
+ */
+export function campaignVariables({ pointsLive }: { pointsLive: boolean }): RichTextVariable[] {
+  return VARIABLE_KEYS.map((key) => {
+    const v = campaignVariable(key);
+    return { key, label: v.label, description: v.description, disabledReason: v.needsPoints && !pointsLive ? POINTS_NOT_LIVE : null };
+  });
+}
+
+/** The Variables a text block offers, as chips, with nothing greyed. */
+export const TEXT_VARIABLES: readonly RichTextVariable[] = campaignVariables({ pointsLive: true });
 
 function contentRuns(runs: readonly RichTextRun[]): Run[] {
   const out: Run[] = [];
