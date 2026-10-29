@@ -46,8 +46,8 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
  * matched by phone on the server (`contact`, lib/crm/contact-facts.ts) for the
  * number on file when the page was read.
  *
- * The aftercare switches stay in their own card beside this one: this card
- * only reads, and they change things under `customers-edit`.
+ * The aftercare switches stay in their own card: this card only reads, and
+ * they change things under `customers-edit`.
  */
 export function ContactCard({
     customer,

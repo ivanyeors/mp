@@ -39,7 +39,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
  * Without `customers-edit` the form and every action are left out; the routes
  * refuse regardless.
  *
- * Its own fetch, like the Aftercare card beside it, unless handed `initialData`.
+ * Its own fetch, like the other cards on the page, unless handed `initialData`.
  */
 export function CustomerFollowUpsCard({
     customerId,
