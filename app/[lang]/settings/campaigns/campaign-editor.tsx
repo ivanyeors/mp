@@ -71,7 +71,7 @@ import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter 
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
-import { defaultWaveSize, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import { defaultWaveSize, isEmailCheck, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -156,6 +156,7 @@ type WaveProgress = {
 
 const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
     checks: [{ key: "transport", ok: false, detail }],
+    advice: [],
     ready: false,
     allowance: null,
     sender: { from: null, replyTo: null },
@@ -274,6 +275,9 @@ export function CampaignEditor({
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    // Each save runs the email's checks again (slice 11), which show beside each block as saved.
+    const [saves, setSaves] = useState(0);
+    const [savedContent, setSavedContent] = useState<CampaignContent | null>(campaign?.content ?? null);
     // The palette's open tab on a laptop: Blocks, or Variables (slice 13).
     const [paletteTab, setPaletteTab] = useState("blocks");
 
@@ -303,6 +307,8 @@ export function CampaignEditor({
             }
             setFieldErrors({});
             setSavedKey(JSON.stringify(input));
+            setSavedContent(input.content ?? null);
+            setSaves((s) => s + 1);
             // After a Save, Clear all's Undo is gone.
             undoRef.current = null;
             toast.dismiss(CLEAR_ALL_TOAST);
@@ -323,6 +329,18 @@ export function CampaignEditor({
     const [addOpen, setAddOpen] = useState(false);
     // The header and Write: what ⌘Z and ⇧⌘Z reach. The Send tab's fields keep the browser's own undo.
     const editorArea = useRef<HTMLDivElement>(null);
+    /** From a check that names a block (slice 11): the Write tab, that block selected, in view and focused. */
+    const goToBlock = (id: string) => {
+        setTab("write");
+        setPane("write");
+        setSelected(id);
+        // Once the Write tab shows again.
+        requestAnimationFrame(() => {
+            const card = editorArea.current?.querySelector<HTMLElement>(`li[data-block-id="${id}"]`);
+            card?.scrollIntoView?.({ block: "center" });
+            card?.focus({ preventScroll: true });
+        });
+    };
 
     // ── Variables (slice 13): what every text input offers, and the fallbacks the email needs ──
     const variables = useMemo(() => campaignVariables({ pointsLive }), [pointsLive]);
@@ -363,14 +381,16 @@ export function CampaignEditor({
     const allowance = readiness?.allowance ?? null;
     const [checking, setChecking] = useState(false);
     const readChecks = useCallback(
-        () => checkCampaignReadiness(campaignId).catch((e: unknown) => UNREAD_READINESS(String(e))),
+        (fresh = false) => checkCampaignReadiness(campaignId, { fresh }).catch((e: unknown) => UNREAD_READINESS(String(e))),
         [campaignId],
     );
+    // *Check again* asks every link again, rather than reuse the last ten minutes' answers.
     const runChecks = async () => {
         setChecking(true);
-        setReadiness(await readChecks());
+        setReadiness(await readChecks(true));
         setChecking(false);
     };
+    // On opening, and after each save: the email's checks are of the email as saved.
     useEffect(() => {
         if (!campaignId) return;
         let live = true;
@@ -378,8 +398,22 @@ export function CampaignEditor({
         return () => {
             live = false;
         };
-    }, [campaignId, readChecks]);
+    }, [campaignId, readChecks, saves]);
     const pauseFailing = checks?.some((c) => c.key === "pause" && !c.ok) ?? false;
+
+    // What the email's checks say of each block, beside it: only while the block is as it was saved, and checked.
+    const blockWarnings = useMemo(() => {
+        const out: Record<string, string[]> = {};
+        if (!readiness || !content) return out;
+        const saved = new Map((savedContent?.blocks ?? []).map((b) => [b.id, JSON.stringify(b)]));
+        const now = new Map(content.blocks.map((b) => [b.id, JSON.stringify(b)]));
+        for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok), ...readiness.advice]) {
+            for (const i of c.issues) {
+                if (i.blockId && saved.has(i.blockId) && saved.get(i.blockId) === now.get(i.blockId)) (out[i.blockId] ??= []).push(i.what);
+            }
+        }
+        return out;
+    }, [readiness, content, savedContent]);
 
     // ── Test ───────────────────────────────────────────────────────────────
     const [testTo, setTestTo] = useState(staffEmail);
@@ -845,6 +879,7 @@ export function CampaignEditor({
                             empty={offerStart ? startPanel : "No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."}
                             errors={fieldErrors}
                             errorPath="content.blocks"
+                            warnings={blockWarnings}
                         />
                         {/* On a laptop the fallbacks sit under the Variables palette's chips; on a phone, and while the palette is hidden, here. */}
                         <div className={cn(palette && "lg:hidden")}>
@@ -1182,7 +1217,9 @@ export function CampaignEditor({
                                     </div>
                                     <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
                                 </CardHeader>
-                                <CardContent>{checks ? <CheckList checks={checks} /> : <Loader2 className="h-4 w-4 animate-spin" />}</CardContent>
+                                <CardContent>
+                                    {checks ? <CheckList checks={checks} advice={readiness?.advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
+                                </CardContent>
                             </Card>
                         </div>
                     ) : null}
@@ -1213,12 +1250,32 @@ export function CampaignEditor({
                             </CardHeader>
                             <CardContent className="space-y-5">
                                 <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
-                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, allowance, resume }).map((step) => (
-                                        <li key={step.key} className="flex items-start gap-2 text-sm">
+                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice: readiness?.advice, allowance, resume }).map((step) => (
+                                        <li key={step.key} className={cn("flex items-start gap-2 text-sm", step.items && "sm:col-span-2")}>
                                             <StatusIcon ok={step.done} advisory={step.advisory} />
                                             <span className="min-w-0">
                                                 <span className="block font-medium">{step.label}</span>
                                                 <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
+                                                {/* The email's failures, then its advice: each one in a block goes to it. */}
+                                                {step.items ? (
+                                                    <ul className="mt-1 space-y-0.5 text-xs">
+                                                        {step.items.map((item, i) => (
+                                                            <li key={`${i}:${item.text}`} className={cn("break-words", item.advisory ? "text-muted-foreground" : "text-destructive")}>
+                                                                {item.blockId ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-left underline underline-offset-2 hover:no-underline"
+                                                                        onClick={() => goToBlock(item.blockId!)}
+                                                                    >
+                                                                        {item.text}
+                                                                    </button>
+                                                                ) : (
+                                                                    item.text
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : null}
                                             </span>
                                         </li>
                                     ))}

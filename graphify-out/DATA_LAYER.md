@@ -801,7 +801,7 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campai
   - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:125
   - `listMediaAssets()` [select] — lib/media-assets/index.ts:92
   - `loadImage()` [select] — lib/ecommerce/item-image-sync.ts:27
-  - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:127
+  - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:126
 
 ### media_folders
 Defined in supabase/migrations/20260710080000_media_folders.sql:3
@@ -1370,8 +1370,8 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:31
   - `main()` [select] — scripts/costings-sync-prices.ts:58
   - `main()` [select] — scripts/stripe-sync-all.ts:73
-  - `readCampaignProductCards()` [select] — lib/email-campaigns/products.ts:93
-  - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:116
+  - `readCampaignProductCards()` [select] — lib/email-campaigns/products.ts:92
+  - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:115
   - `resolveSurfaceKey()` [select] — lib/page-faq/seed.ts:24
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:131
   - `setComposedProductImage()` [select] — app/[lang]/settings/inventory/actions.ts:452

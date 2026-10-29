@@ -174,8 +174,15 @@ export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
  * sign-in would not grant (PRD-loyalty-points slice 05).
  */
 export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
-  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : [])].join("\n");
-  // *Points balance* (PRD-campaign-email-editor slice 13) is a mention too.
+  return wordsMentionPoints([c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : [])].join("\n"));
+}
+
+/**
+ * Pure — some words promise points: they say "points", or hold *Points
+ * balance* (PRD-campaign-email-editor slice 13). What `mentionsPoints` asks
+ * of the whole email, and the checks before a wave of each block (slice 11).
+ */
+export function wordsMentionPoints(words: string): boolean {
   return /\bpoints?\b/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
 }
 

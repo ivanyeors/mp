@@ -328,11 +328,22 @@ export async function describeCampaignProducts(ids: string[]): Promise<{ ok: tru
   }
 }
 
-/** Every check a send must pass, for the page's status panel. Changes nothing. */
-export async function checkCampaignReadiness(id?: string): Promise<CampaignReadiness> {
+/**
+ * Every check a send must pass, for the page's status panel, the saved
+ * email's own among them (PRD-campaign-email-editor slice 11): the editor
+ * asks after each save, and shows what they find beside each block.
+ * `fresh` is *Check again*: every link is asked again, not read from the last
+ * ten minutes' answers. `aiDrafted` is the blocks the editor still marks
+ * *Drafted with AI* (slice 09), counted as advice. Changes nothing.
+ */
+export async function checkCampaignReadiness(
+  id?: string,
+  { fresh = false, aiDrafted }: { fresh?: boolean; aiDrafted?: string[] } = {},
+): Promise<CampaignReadiness> {
   await assertAdmin("campaigns");
   const campaign = id && UUID.test(id) ? await loadCampaign(id) : null;
-  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined });
+  const marked = Array.isArray(aiDrafted) ? aiDrafted.filter((b) => typeof b === "string").slice(0, 40) : undefined;
+  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined, freshLinks: fresh === true, aiDrafted: marked });
 }
 
 /** Sends the saved campaign to up to three addresses, with "[Test]" in the subject. Writes nothing to the ledger. */
@@ -371,6 +382,8 @@ export type WaveAnswer =
  * Who a wave of `size` would go to now, with every check. With `start`, and
  * when every check passes, it also fixes the campaign's content (the first
  * wave locks it) and returns the ids the browser then sends a batch at a time.
+ * The start asks every link again (slice 11), so one that died since the last
+ * check holds the wave.
  */
 export async function planCampaignWave(id: string, req: WaveRequest, start = false): Promise<WaveAnswer> {
   const ctx = await assertAdmin("campaigns");
@@ -381,7 +394,7 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
   try {
     result = await planWave(
       campaign,
-      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume) },
+      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume), freshLinks: start === true },
       setup,
       campaign.segmentId ? () => resolveSegment(campaign.segmentId!) : undefined,
     );

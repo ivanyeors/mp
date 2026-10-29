@@ -254,16 +254,19 @@ describe("a product that is no longer Listed", () => {
   it("fails the checks before a wave, by name, so the wave cannot start", async () => {
     const s = setup();
     const listed = await planWave(campaign(), { size: 10 }, s);
-    expect(listed.readiness.checks.find((c) => c.key === "products")).toEqual({ key: "products", ok: true, detail: "the 3 products in the email are in the shop" });
+    expect(listed.readiness.checks.find((c) => c.key === "products")).toMatchObject({ key: "products", ok: true, detail: "the 3 products in the email are in the shop" });
     expect(listed.readiness.checks.filter((c) => !c.ok)).toEqual([]);
     expect(listed.readiness.ready).toBe(true);
 
     unlist(NECK);
     const r = await planWave(campaign(), { size: 10 }, s);
-    expect(r.readiness.checks.find((c) => c.key === "products")).toEqual({
+    // Named by the block it is in (slice 11), so the Send tab can go to it.
+    const problem = "Cervical Neck Support is no longer in the shop: remove it or list it again";
+    expect(r.readiness.checks.find((c) => c.key === "products")).toMatchObject({
       key: "products",
       ok: false,
-      detail: "Cervical Neck Support is no longer in the shop: remove it or list it again",
+      detail: `Block 2, Products: ${problem}`,
+      issues: [{ blockId: "grid", text: `Block 2, Products: ${problem}`, what: problem }],
     });
     expect(r.readiness.ready).toBe(false);
     // The Send tab names it in words.

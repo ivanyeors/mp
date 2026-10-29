@@ -14,7 +14,10 @@
  * complaints over 0.1%), unless Staff resume after looking into it. A
  * Campaign that mentions points goes to customers only while points are live
  * (`claimBonusOffer`): on, launched, with a Claim bonus. A test send is not
- * held back by it.
+ * held back by it. The email itself is checked too (PRD-campaign-email-editor
+ * slice 11, `campaignEmailChecks`): its blocks written, its links answering,
+ * its images described and Outlook-safe, its size under Gmail's clip as
+ * sent, and its words, each failure naming the block it is in.
  *
  * **The send limit** (PRD-campaign-send-flow). Resend's free plan sends 100
  * a day and 3,000 a month, tests included (`campaignSendLimits` raises them on
@@ -87,12 +90,13 @@ import {
   type CampaignPlan,
 } from "./rules";
 import { contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
-import { placeholdersCheck } from "./content-checks";
-import { campaignImagesProblem, readCampaignImages } from "./images";
-import { campaignProductPhotos, campaignProductsProblem, productsCheck, readCampaignProducts } from "./products";
+import { addressesToAsk, campaignContentChecks, type ContentCheck } from "./content-checks";
+import { campaignImagesProblem, readCampaignImages, type CampaignImageFailure } from "./images";
+import { checkLinks, type LinkRequest } from "./link-check";
+import { campaignProductPhotos, campaignProductsProblem, readCampaignProducts, unlistedProductText, type UnlistedProduct } from "./products";
 import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
-import { campaignVariable, variableValues, type VariableRecipient } from "./variables";
+import { campaignVariable, SAMPLE_RECIPIENT, variableValues, type VariableRecipient } from "./variables";
 
 export { MAX_CONSECUTIVE_FAILURES };
 
@@ -107,6 +111,13 @@ export interface CampaignSenderSetup extends DeliverySetup {
   reportsConfigured?: boolean;
   sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
+  /**
+   * How the checks before a wave ask whether the email's links answer
+   * (PRD-campaign-email-editor slice 11): `publicLinkRequest` in production
+   * (`campaignSenderSetup`), a fake in tests. Without one nothing is fetched,
+   * and the checks say which links were not checked.
+   */
+  linkRequest?: LinkRequest;
 }
 
 /** `utm_source` on the site links a composed campaign carries. */
@@ -302,6 +313,10 @@ export interface CampaignRenderData {
   products: CampaignBlockProducts;
   /** What stops a send: a product not in the shop, by name, or an image with no email copy; null when none. */
   problem: string | null;
+  /** The reads behind `problem`, which the checks before a wave name block by block (slice 11). */
+  imageFailures: CampaignImageFailure[];
+  unlisted: UnlistedProduct[];
+  productsError: string | null;
 }
 
 /**
@@ -327,7 +342,30 @@ export async function readCampaignRenderData(admin: SupabaseClient, content: Cam
       : product
         ? `the photo of ${product.title} has no copy an inbox can show: ${ofProducts[0].reason}`
         : campaignImagesProblem(pictures));
-  return { images: pictures.images, products: shop.products, problem };
+  return { images: pictures.images, products: shop.products, problem, imageFailures: pictures.failed, unlisted: shop.unlisted, productsError: shop.error };
+}
+
+/**
+ * Pure — the Campaign as a wave sends it, for the checks before a wave
+ * (slice 11): rendered for a send, never as the preview (no placeholders, the
+ * light HTML), for the sample customer, with a signed unsubscribe link as
+ * long as every recipient's. What Gmail's clip is measured on. Throws, as a
+ * send does, on an image or a product the reads found nothing for.
+ */
+export function renderCampaignAsSent(
+  campaign: CampaignEmailParts,
+  { origin, unsubscribeSecret, images, products }: { origin: string; unsubscribeSecret?: string; images: CampaignBlockImages; products: CampaignBlockProducts },
+): RenderedEmail {
+  const base = origin.replace(/\/$/, "");
+  return renderCampaignFor(campaign, {
+    ...SAMPLE_RECIPIENT,
+    origin: base,
+    locale: DEFAULT_LOCALE,
+    claimUrl: null,
+    unsubscribeUrl: unsubscribeLinks(PROBE_CUSTOMER_ID, { origin: base, secret: unsubscribeSecret })?.pageUrl ?? `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
+    images,
+    products,
+  });
 }
 
 /** The pause rule as a check: the latest wave of any campaign email. */
@@ -462,7 +500,10 @@ export async function readSendingStatus(setup: CampaignSenderSetup): Promise<Sen
 // ---------------------------------------------------------------------------
 
 export interface CampaignReadiness {
-  checks: PreflightCheck[];
+  /** Every check that holds a wave; the email's own (slice 11) carry their issues, block by block. */
+  checks: (PreflightCheck | ContentCheck)[];
+  /** The email's advice (*Recommended:*), listed only when there is some: it never holds a wave. */
+  advice: ContentCheck[];
   /** Every check passed. */
   ready: boolean;
   /** The send limit's room now; null when it could not be counted (its check then fails). */
@@ -470,10 +511,70 @@ export interface CampaignReadiness {
   sender: CampaignSender;
 }
 
-/** Every check, for the page's status panel. Changes nothing. */
+/**
+ * The email's own checks before a wave (PRD-campaign-email-editor slice 11):
+ * every block written, links that answer, images with alt text that are email
+ * copies, under Gmail's clip as sent, fallback words, no health claim, the
+ * products in the shop and points only while live, then the advice. Reads
+ * what they need first (the images and products a send reads, today's points
+ * rule, and what each link answers, kept ten minutes unless `fresh`), then
+ * runs the pure `campaignContentChecks` on the English. A campaign written
+ * before blocks keeps today's points rule alone. `aiDrafted` is the blocks
+ * the editor still marks *Drafted with AI* (slice 09), which the content does
+ * not hold. Changes nothing.
+ */
+export async function campaignEmailChecks(
+  setup: CampaignSenderSetup,
+  campaign: CampaignEmailParts,
+  { fresh = false, aiDrafted }: { fresh?: boolean; aiDrafted?: readonly string[] } = {},
+): Promise<ContentCheck[]> {
+  const points = await pointsCheck(setup.admin, campaign);
+  const { content } = campaign;
+  if (!content) {
+    return points ? [{ ...points, advisory: false, issues: points.ok ? [] : [{ blockId: null, text: points.detail, what: points.detail }] }] : [];
+  }
+  const origin = originOf(setup);
+  const shown = await readCampaignRenderData(setup.admin, content);
+  const answers = setup.linkRequest ? await checkLinks(addressesToAsk(content, { origin, images: shown.images }), { request: setup.linkRequest, fresh }) : {};
+  let rendered: { html: string } | { error: string };
+  try {
+    rendered = { html: renderCampaignAsSent(campaign, { origin, unsubscribeSecret: setup.unsubscribeSecret, images: shown.images, products: shown.products }).html };
+  } catch (err) {
+    rendered = { error: shown.problem ?? (err instanceof Error ? err.message : String(err)) };
+  }
+  return campaignContentChecks(
+    { language: DEFAULT_LOCALE, subject: campaign.subject, preheader: campaign.preheader, greeting: campaign.greeting, content, rendered },
+    {
+      origin,
+      images: shown.images,
+      imageFailures: shown.imageFailures,
+      products: shown.products,
+      unlisted: shown.unlisted.map((u) => ({ productId: u.productId, problem: unlistedProductText(u) })),
+      productsError: shown.productsError,
+      points,
+      answers,
+      ...(aiDrafted ? { aiDrafted } : {}),
+    },
+  );
+}
+
+/**
+ * Every check, for the page's status panel. Changes nothing. With a
+ * campaign its email's checks join them (slice 11), again before each wave:
+ * a link can die, or a product be un-listed, between waves days apart. Those
+ * that hold a wave are in `checks`; the advice is in `advice`. `freshLinks`
+ * asks every link again rather than reuse an answer from the last ten
+ * minutes, as the wave's own check does; `aiDrafted` is the editor's
+ * *Drafted with AI* marks (`campaignEmailChecks`).
+ */
 export async function campaignReadiness(
   setup: CampaignSenderSetup,
-  { campaign, resume = false }: { campaign?: Pick<Campaign, "id"> & CampaignWordsRead; resume?: boolean } = {},
+  {
+    campaign,
+    resume = false,
+    freshLinks = false,
+    aiDrafted,
+  }: { campaign?: Pick<Campaign, "id"> & CampaignEmailParts; resume?: boolean; freshLinks?: boolean; aiDrafted?: readonly string[] } = {},
 ): Promise<CampaignReadiness> {
   const [checks, room] = await Promise.all([campaignDeliveryChecks(setup), tryAllowance(setup)]);
   try {
@@ -482,16 +583,9 @@ export async function campaignReadiness(
   } catch (err) {
     checks.push({ key: "pause", ok: false, detail: err instanceof Error ? err.message : String(err) });
   }
-  const points = campaign ? await pointsCheck(setup.admin, campaign) : null;
-  if (points) checks.push(points);
-  // Before each wave: a product can be un-listed between waves days apart (slice 07).
-  const products = campaign ? await productsCheck(setup.admin, campaign.content) : null;
-  if (products) checks.push(products);
-  // No field still on its placeholder, as Save asks (slice 08): an empty headline would send as nothing.
-  const unwritten = campaign ? placeholdersCheck(campaign.content) : null;
-  if (unwritten) checks.push(unwritten);
-  checks.push(allowanceCheck(room.allowance, room.error));
-  return { checks, ready: checks.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
+  const email = campaign ? await campaignEmailChecks(setup, campaign, { fresh: freshLinks, aiDrafted }) : [];
+  const held: (PreflightCheck | ContentCheck)[] = [...checks, ...email.filter((c) => !c.advisory), allowanceCheck(room.allowance, room.error)];
+  return { checks: held, advice: email.filter((c) => c.advisory), ready: held.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
 }
 
 export interface WavePlanResult {
@@ -515,7 +609,12 @@ export interface WavePlanResult {
  */
 export async function planWave(
   campaign: Campaign,
-  { size, retryFailed = false, resume = false }: { size: number; retryFailed?: boolean; resume?: boolean },
+  {
+    size,
+    retryFailed = false,
+    resume = false,
+    freshLinks = false,
+  }: { size: number; retryFailed?: boolean; resume?: boolean; freshLinks?: boolean },
   setup: CampaignSenderSetup,
   segmentIds?: () => AsyncIterable<string[]>,
 ): Promise<WavePlanResult> {
@@ -525,7 +624,7 @@ export async function planWave(
     throw new Error(`A wave is 1 to ${MAX_WAVE_SIZE} people.`);
   }
   const [readiness, waves, candidates] = await Promise.all([
-    campaignReadiness(setup, { campaign, resume }),
+    campaignReadiness(setup, { campaign, resume, freshLinks }),
     readWaveStats(setup.admin, campaign.id),
     readCampaignCandidates(setup.admin, campaign, segmentIds),
   ]);

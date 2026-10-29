@@ -14,7 +14,7 @@ import {
 import { Accessibility, defaultPreset, type DragEndEvent, type DragMoveEvent, type DragOverEvent, type DragStartEvent } from "@dnd-kit/dom";
 import { DragDropProvider, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { ArrowDown, ArrowUp, Copy, GripVertical, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Copy, GripVertical, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -381,7 +381,17 @@ function useFocusRequest(card: RefObject<HTMLElement | null>, request: Focus | n
   }, [card, request, done]);
 }
 
-function BlockCard({ block, index, errors }: { block: EditorBlock; index: number; errors: Record<string, string> }) {
+function BlockCard({
+  block,
+  index,
+  errors,
+  warnings,
+}: {
+  block: EditorBlock;
+  index: number;
+  errors: Record<string, string>;
+  warnings?: readonly string[];
+}) {
   const ctx = useBlockEditor();
   const kind = kindOf(ctx, block);
   const total = ctx.blocks.length;
@@ -535,6 +545,16 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
       <div data-block-body className="px-3 pb-3 pt-1">
         <Form {...props} />
       </div>
+      {warnings?.length ? (
+        <ul data-block-warnings className="space-y-1 px-3 pb-3 text-xs text-amber-700 dark:text-amber-400">
+          {warnings.map((w, i) => (
+            <li key={`${i}:${w}`} className="flex items-start gap-1.5">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 break-words">{w}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {selected && Options && !ctx.readOnly ? (
         <div className="border-t bg-muted/30 px-3 py-2.5" role="group" aria-label={`${kind.label} options`}>
           <Options {...props} />
@@ -579,13 +599,16 @@ function ColumnEnd({ addLabel }: { addLabel: string }) {
 /**
  * The column of blocks: each a card showing the block as it will read,
  * editable in place, with its handle, its menu and, when selected, its
- * options under it. `errors` are Save's, keyed `<path>.<index>.<field>`.
+ * options under it. `errors` are Save's, keyed `<path>.<index>.<field>`;
+ * `warnings` are the page's own checks of a block, by block id, shown
+ * beside it without stopping a save.
  */
 export function BlockEditor({
   label,
   empty,
   errors = {},
   errorPath = "blocks",
+  warnings = {},
   addLabel = "Add block",
 }: {
   /** The list's name, for a screen reader: "The email's blocks". */
@@ -594,6 +617,7 @@ export function BlockEditor({
   empty: ReactNode;
   errors?: Record<string, string>;
   errorPath?: string;
+  warnings?: Readonly<Record<string, readonly string[]>>;
   addLabel?: string;
 }) {
   const ctx = useBlockEditor();
@@ -610,7 +634,7 @@ export function BlockEditor({
       {ctx.blocks.length ? (
         <ol className="space-y-4" aria-label={label}>
           {ctx.blocks.map((b, i) => (
-            <BlockCard key={b.id} block={b} index={i} errors={byBlock[i]} />
+            <BlockCard key={b.id} block={b} index={i} errors={byBlock[i]} warnings={warnings[b.id]} />
           ))}
         </ol>
       ) : (
