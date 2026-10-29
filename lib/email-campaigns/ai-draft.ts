@@ -22,7 +22,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { MessageCreateParamsBase } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { SERVER_SIDE_FALLBACK_BETA, claudeCallError, isClaudeAbort } from "@/lib/ai/claude";
+import { SERVER_SIDE_FALLBACK_BETA, claudeCallError, isClaudeAbort, streamedOutput } from "@/lib/ai/claude";
 import { MPILLOW_ABOUT, MPILLOW_FACT_LINES } from "@/lib/ai/mpillow-facts";
 import { streamedJson, type JsonPiece } from "@/lib/ai/streamed-json";
 import { aiWritingRequest, type AiWritingSettings } from "@/lib/ai/writing-settings";
@@ -211,6 +211,7 @@ export async function runCampaignDraft(
     outcome.notes = [];
     const problems: string[] = [];
     const stream = client.beta.messages.stream(draftRequestParams(brief, settings, refused), { signal });
+    const written = streamedOutput(stream);
     const reader = streamedJson();
     const fail = (why: string) => {
       problems.push(why);
@@ -279,7 +280,8 @@ export async function runCampaignDraft(
       if (partial) {
         outcome.model = partial.model;
         outcome.inputTokens += partial.usage.input_tokens;
-        outcome.outputTokens += partial.usage.output_tokens;
+        // Its output tokens are counted only at its end, which a stopped stream never reaches.
+        outcome.outputTokens += written(partial.usage.output_tokens);
       }
       if (signal?.aborted) return { ...outcome, ok: true, stopped: true };
       if (!(isClaudeAbort(e) && problems.length)) return { ...outcome, ok: false, error: claudeCallError(e, "Drafting failed.") };

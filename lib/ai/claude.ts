@@ -33,6 +33,25 @@ export const SERVER_SIDE_FALLBACK_BETA = "server-side-fallback-2026-07-01";
 /** Pure — the call was stopped from our side (Staff pressed Stop, or the request went away), not failed. */
 export const isClaudeAbort = (e: unknown) => e instanceof Anthropic.APIUserAbortError || (e instanceof Error && e.name === "AbortError");
 
+const utf8 = new TextEncoder();
+
+/**
+ * Counts what a stream writes, for its audit entry when it stops before its
+ * end (a draft's block refused mid-answer, Staff's Stop): the API reports a
+ * message's output tokens only as it ends, so a stopped one still reads as
+ * its first token. The words it streamed, about four bytes to a token, are
+ * the floor of what it spent; its thinking streams no words, so that part is
+ * on the Anthropic Console's bill alone. Hook it up before the stream runs;
+ * it returns the larger of `reported` and the count.
+ */
+export function streamedOutput(stream: { on(event: "text", listener: (delta: string) => void): unknown }): (reported: number) => number {
+  let bytes = 0;
+  stream.on("text", (delta) => {
+    bytes += utf8.encode(delta).length;
+  });
+  return (reported) => Math.max(reported, Math.ceil(bytes / 4));
+}
+
 /** Pure — a failed call, in words for Staff. */
 export function claudeCallError(e: unknown, fallback = "Claude couldn't answer."): string {
   if (e instanceof Anthropic.RateLimitError) return "Claude is busy right now. Try again in a minute.";

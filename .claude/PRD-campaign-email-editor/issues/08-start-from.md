@@ -2,7 +2,7 @@
 
 **Issue:** [#362](https://github.com/ivanyeors/mp/issues/362) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** done
+**Status:** partial: built and tested; the Start panel and the Starters tab at 375px (the last criterion) still want a look in a browser
 **Blocked by:** 04 (the editor and its palette)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 
@@ -31,7 +31,10 @@ palette's **Starters** tab to the end of the email, and its blocks land there as
 - **Starters** (a glossary word, slice 02), in code, `lib/email-campaigns/starters.ts`, each a
   `CampaignContent` that passes `EmailBlockSchema`:
   - **Product launch** — hero, heading, text, products, button;
-  - **Care tips** — heading, text, image + text, bullets, button;
+  - **Care tips** — heading, text, image + text, a text block for the tips, button. *Amended
+    in the wave 4 review:* there is no bullets block (bullets are a text block's list), and an
+    empty list holds no words to keep (a run has at least one character), so the tips start as
+    an empty text block that Bullets, or a line started with "- ", turns into a list;
   - **Event or fitting day** — hero, text, button (*Book a fitting*);
   - **A short note** — heading, text, button (closest to today's plain email);
   - **New website: sign in for points** — today's `FIRST_CAMPAIGN_DRAFT`, as blocks, with its

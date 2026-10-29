@@ -60,6 +60,7 @@ import {
     CHINESE,
     CHINESE_EDITOR_TEXT,
     CHINESE_STATUS_TEXT,
+    chineseAiDrafted,
     chineseBlock,
     chineseBlockStatus,
     chineseFieldErrors,
@@ -478,8 +479,8 @@ export function CampaignEditor({
             new Map((c?.blocks ?? []).map((b) => [b.id, JSON.stringify(inChinese ? [b, chineseVersionOf(c)?.blocks[b.id] ?? null] : b)]));
         const saved = asSaved(savedContent);
         const now = asSaved(content);
-        // A block marked *Drafted with AI* when saved, and kept since, says so no more.
-        const marked = new Set(content.aiDrafted ?? []);
+        // A block marked *Drafted with AI* when saved, and kept since, says so no more. In 中文, its 中文 words' mark.
+        const marked = new Set(inChinese ? chineseAiDrafted(content) : (content.aiDrafted ?? []));
         for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...readiness.advice]) {
             for (const i of c.issues) {
                 if ((i.language ?? DEFAULT_LOCALE) !== language || (c.key === "ai_drafted" && !marked.has(i.blockId ?? ""))) continue;
@@ -741,9 +742,16 @@ export function CampaignEditor({
     // ── 中文 (slice 17): the English blocks with their 中文 words; where each stands; ✨ and *Keep* for one ──
     const chineseBlocks = useMemo(() => (content && inChinese ? content.blocks.map((b) => chineseBlock(b, version?.blocks[b.id])) : []), [content, inChinese, version]);
     const chineseStatus = useMemo(() => new Map((content?.blocks ?? []).map((b) => [b.id, chineseBlockStatus(b, version)] as const)), [content, version]);
+    // A 中文 block's mark says where its words stand, or, while current, that Claude wrote them and nobody has read them since (decision 9).
+    const chineseDrafted = useMemo(() => new Set(chineseAiDrafted(content)), [content]);
     const chineseBadges = useMemo(
-        () => Object.fromEntries([...chineseStatus].flatMap(([id, status]) => (status && status !== "current" ? [[id, CHINESE_STATUS_TEXT[status]]] : []))),
-        [chineseStatus],
+        () =>
+            Object.fromEntries(
+                [...chineseStatus].flatMap(([id, status]) =>
+                    status && status !== "current" ? [[id, CHINESE_STATUS_TEXT[status]]] : status && chineseDrafted.has(id) ? [[id, DRAFTED_WITH_AI]] : [],
+                ),
+            ),
+        [chineseStatus, chineseDrafted],
     );
     const linesStatus = chineseLinesStatus(version, subject, preheader);
     const translateWorking = translate.working ? CHINESE_EDITOR_TEXT.translating : null;
@@ -752,6 +760,7 @@ export function CampaignEditor({
         inChinese && content
             ? {
                   status: (id) => chineseStatus.get(id) ?? null,
+                  drafted: (id) => chineseDrafted.has(id),
                   links: (id) => {
                       const b = content.blocks.find((x) => x.id === id);
                       return b ? blockLinkList(b) : [];
@@ -1339,7 +1348,7 @@ export function CampaignEditor({
                                     open={generateOpen}
                                     onOpenChange={setGenerateOpen}
                                     title={draftTitle(subject, name)}
-                                    blocker={aiRunScope?.scope === "text" || refine.working ? AI_BUSY : titleBlocker}
+                                    blocker={aiRunScope?.scope === "text" || refine.working || translate.working ? AI_BUSY : titleBlocker}
                                     hasBlocks={content.blocks.length > 0}
                                     working={aiRunScope?.scope === "email" ? aiStage : null}
                                     onStop={aiDraft.stop}

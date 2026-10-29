@@ -77,6 +77,14 @@ export type BlockWords = ChineseBlockWords extends infer W ? (W extends ChineseB
 const says = (im: { decorative?: boolean }) => !im.decorative;
 
 /**
+ * A one-line field as Save keeps it, trimmed (content.ts `wordsSchemas`): the
+ * editor holds it as typed, the translate route and the send checks as
+ * saved, and all three must read the same words. A text block's runs are
+ * kept as typed, so they are read as they are.
+ */
+const saved = (s: string) => s.trim();
+
+/**
  * Pure — the words of an English block in the shape a 中文 block keeps them,
  * without their fingerprint: what ✨ Translate reads and what a 中文 block
  * must match. Null for a block with nothing to translate: a divider, a
@@ -85,32 +93,32 @@ const says = (im: { decorative?: boolean }) => !im.decorative;
 export function englishWords(block: EmailBlock): BlockWords | null {
   switch (block.type) {
     case "heading":
-      return { type: "heading", text: block.text };
+      return { type: "heading", text: saved(block.text) };
     case "text":
       return { type: "text", paragraphs: mapParagraphs(block.paragraphs, (rs) => asChineseRuns(rs, blockLinkList(block))) as ChineseParagraph[] };
     case "buttons":
-      return { type: "buttons", labels: block.buttons.map((x) => x.label) };
+      return { type: "buttons", labels: block.buttons.map((x) => saved(x.label)) };
     case "image":
-      return says(block.image) ? { type: "image", alt: block.image.alt } : null;
+      return says(block.image) ? { type: "image", alt: saved(block.image.alt) } : null;
     case "hero": {
       const words = {
-        ...(says(block.image) ? { alt: block.image.alt } : {}),
-        ...(block.heading !== undefined ? { heading: block.heading } : {}),
-        ...(block.line !== undefined ? { line: block.line } : {}),
-        ...(block.button ? { buttonLabel: block.button.label } : {}),
+        ...(says(block.image) ? { alt: saved(block.image.alt) } : {}),
+        ...(block.heading !== undefined ? { heading: saved(block.heading) } : {}),
+        ...(block.line !== undefined ? { line: saved(block.line) } : {}),
+        ...(block.button ? { buttonLabel: saved(block.button.label) } : {}),
       };
       return Object.keys(words).length ? { type: "hero", ...words } : null;
     }
     case "split":
       return {
         type: "split",
-        alt: block.image.alt,
-        heading: block.heading,
+        alt: saved(block.image.alt),
+        heading: saved(block.heading),
         paragraphs: mapParagraphs(block.paragraphs, (rs) => asChineseRuns(rs, blockLinkList(block))) as ChineseParagraph[],
-        ...(block.button ? { buttonLabel: block.button.label } : {}),
+        ...(block.button ? { buttonLabel: saved(block.button.label) } : {}),
       };
     case "products":
-      return { type: "products", buttonLabel: block.buttonLabel };
+      return { type: "products", buttonLabel: saved(block.buttonLabel) };
     default:
       return null;
   }
@@ -323,6 +331,28 @@ function withVersion(content: CampaignContent, version: ChineseVersion | null): 
 /** A 中文 version with nothing in it yet. */
 const EMPTY_VERSION: ChineseVersion = { subject: "", preheader: "", from: linesFingerprint("", null), fallbacks: {}, blocks: {} };
 
+/** The version with exactly `marked` marked *Drafted with AI*: no `aiDrafted` at all when none is. */
+function withMarks(version: ChineseVersion, marked: readonly string[]): ChineseVersion {
+  const rest = { ...version };
+  delete rest.aiDrafted;
+  return marked.length ? { ...rest, aiDrafted: [...new Set(marked)] } : rest;
+}
+
+/**
+ * Pure — the blocks whose 中文 words Claude wrote and no person has edited or
+ * kept since (PRD decision 9): shown *Drafted with AI* in 中文, and counted
+ * by the send checks as advice, as the English blocks' marks are.
+ */
+export const chineseAiDrafted = (content: CampaignContent | null | undefined): string[] => chineseVersionOf(content)?.aiDrafted ?? [];
+
+/** Pure — the 中文 words of `ids` (every block's, when none are named) kept as Claude wrote them: no longer marked. */
+export function keepChineseAiDrafted(content: CampaignContent, ids?: readonly string[]): CampaignContent {
+  const version = chineseVersionOf(content);
+  if (!version) return content;
+  const kept = ids ? new Set(ids) : null;
+  return withVersion(content, withMarks(version, (version.aiDrafted ?? []).filter((id) => kept && !kept.has(id))));
+}
+
 /**
  * Pure — the content after an edit to the 中文 blocks in the editor
  * (`edited` is the 中文 blocks, in the English order): each block whose words
@@ -333,15 +363,18 @@ const EMPTY_VERSION: ChineseVersion = { subject: "", preheader: "", from: linesF
 export function withChineseBlocks(content: CampaignContent, edited: readonly EmailBlock[]): CampaignContent {
   const version = chineseVersionOf(content) ?? EMPTY_VERSION;
   const blocks = { ...version.blocks };
+  const changed = new Set<string>();
   for (const english of content.blocks) {
     const now = edited.find((b) => b.id === english.id);
     const had = blocks[english.id];
     if (!now || JSON.stringify(now) === JSON.stringify(chineseBlock(english, had))) continue;
+    changed.add(english.id);
     const words = chineseWordsOf(english, now, had?.type === english.type ? had.from : wordsFingerprint(english));
     if (!words || wordless(now)) delete blocks[english.id];
     else blocks[english.id] = words;
   }
-  return withVersion(content, { ...version, blocks });
+  // A block a person changes in 中文 is no longer *Drafted with AI*.
+  return withVersion(content, withMarks({ ...version, blocks }, (version.aiDrafted ?? []).filter((id) => !changed.has(id))));
 }
 
 /**
@@ -362,7 +395,8 @@ export function withChineseLines(
 /**
  * Pure — *Keep*: the block's 中文 words as they are, made current against the
  * English now (its words in the English block's shape, a part the English has
- * gained empty for Staff to write).
+ * gained empty for Staff to write), and no longer *Drafted with AI*: a
+ * person has kept them.
  */
 export function keepChineseBlock(content: CampaignContent, blockId: string): CampaignContent {
   const version = chineseVersionOf(content);
@@ -370,7 +404,7 @@ export function keepChineseBlock(content: CampaignContent, blockId: string): Cam
   const had = version?.blocks[blockId];
   if (!version || !english || !had) return content;
   const words = chineseWordsOf(english, chineseBlock(english, had), wordsFingerprint(english));
-  return words ? withVersion(content, { ...version, blocks: { ...version.blocks, [blockId]: words } }) : content;
+  return words ? keepChineseAiDrafted(withVersion(content, { ...version, blocks: { ...version.blocks, [blockId]: words } }), [blockId]) : content;
 }
 
 /** Pure — *Keep* for the subject and preview line: current against the English ones now. */
@@ -389,35 +423,42 @@ export interface ChineseTranslation {
   blocks: Record<string, ChineseBlockWords>;
 }
 
-/** Pure — the content with a translation put in: the 中文 version made, or what it brings replacing what was there. */
+/**
+ * Pure — the content with a translation put in: the 中文 version made, or
+ * what it brings replacing what was there. Claude wrote its blocks' words,
+ * so each is marked *Drafted with AI* until a person edits or keeps it.
+ */
 export function withChineseTranslation(content: CampaignContent, t: ChineseTranslation): CampaignContent {
   const version = chineseVersionOf(content) ?? EMPTY_VERSION;
   const present = new Set(content.blocks.map((b) => b.id));
   const blocks = Object.fromEntries(Object.entries({ ...version.blocks, ...t.blocks }).filter(([id]) => present.has(id)));
-  return withVersion(content, {
+  const next: ChineseVersion = {
     ...version,
     ...(t.subject !== undefined ? { subject: t.subject } : {}),
     ...(t.preheader !== undefined ? { preheader: t.preheader } : {}),
     ...(t.from !== undefined ? { from: t.from } : {}),
     fallbacks: { ...version.fallbacks, ...t.fallbacks },
     blocks,
-  });
+  };
+  return withVersion(content, withMarks(next, [...(version.aiDrafted ?? []), ...Object.keys(t.blocks)].filter((id) => present.has(id))));
 }
 
 /** Pure — *Remove the 中文 version*: English to everyone again. */
 export const withoutChineseVersion = (content: CampaignContent): CampaignContent => withVersion(content, null);
 
 /**
- * Pure — the 中文 words of blocks no longer in the email dropped: after a
- * delete in English. Nothing changes (the same object) when none are gone.
+ * Pure — the 中文 words and marks of blocks no longer in the email dropped:
+ * after a delete in English. Nothing changes (the same object) when none are
+ * gone.
  */
 export function withoutGoneChinese(content: CampaignContent): CampaignContent {
   const version = chineseVersionOf(content);
   if (!version) return content;
   const types = new Map(content.blocks.map((b) => [b.id, b.type]));
   const kept = Object.entries(version.blocks).filter(([id, w]) => types.get(id) === w.type);
-  if (kept.length === Object.keys(version.blocks).length) return content;
-  return withVersion(content, { ...version, blocks: Object.fromEntries(kept) });
+  const marks = (version.aiDrafted ?? []).filter((id) => types.has(id));
+  if (kept.length === Object.keys(version.blocks).length && marks.length === (version.aiDrafted ?? []).length) return content;
+  return withVersion(content, withMarks({ ...version, blocks: Object.fromEntries(kept) }, marks));
 }
 
 // ---------------------------------------------------------------------------

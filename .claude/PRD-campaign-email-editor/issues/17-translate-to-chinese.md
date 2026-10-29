@@ -41,6 +41,10 @@ buttons. They change one line, send themselves a 中文 test, and the Send card 
 - A block added in English shows in 中文 as *Not translated yet*, with ✨ on that block; a block
   whose English changed shows *English changed since this was translated*, with **Translate
   again** and **Keep** (Keep marks it current).
+- The 中文 words Claude wrote are marked *Drafted with AI* until a person edits them or presses
+  **Keep** (PRD decision 9), kept with the 中文 version (`translations["zh-CN"].aiDrafted`); the
+  send checks count any left as advice on the 中文 block, as they do for English. *Added in the
+  wave 4 review.*
 - The 中文 fallbacks for Variables (*您* for a first name, say) sit with the English ones.
 - **Remove the 中文 version**, in the Language switch's menu, sends English to everyone again.
 

@@ -91,7 +91,7 @@ import {
   type Campaign,
   type CampaignPlan,
 } from "./rules";
-import { CHINESE, CHINESE_STATUS_TEXT, chineseContent, chineseGaps, chineseVersionOf, chineseVersionProblems } from "./chinese-version";
+import { CHINESE, CHINESE_STATUS_TEXT, chineseAiDrafted, chineseContent, chineseGaps, chineseVersionOf, chineseVersionProblems } from "./chinese-version";
 import { aiDraftedBlocks, contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
 import { addressesToAsk, campaignContentChecks, joinVersionChecks, type ContentCheck, type ContentIssue, type EmailFacts } from "./content-checks";
 import { campaignImagesProblem, readCampaignImages, type CampaignImageFailure } from "./images";
@@ -597,7 +597,8 @@ export interface CampaignReadiness {
  * A campaign written before blocks keeps today's points rule alone.
  * `aiDrafted` is the blocks still marked *Drafted with AI* (slice 09): the
  * saved content's marks (`content.aiDrafted`) unless the caller passes the
- * editor's. Changes nothing.
+ * editor's. The 中文 version's are its own (`chineseAiDrafted`). Changes
+ * nothing.
  */
 export async function campaignEmailChecks(
   setup: CampaignSenderSetup,
@@ -638,10 +639,11 @@ export async function campaignEmailChecks(
   const version = chineseVersionOf(content);
   const chinese = chineseCheck(campaign);
   if (!version || !chinese) return english;
-  // The 中文 version (slice 17): the English layout with its 中文 words, checked as a reader of Chinese gets it. The marks are the English blocks'.
+  // The 中文 version (slice 17): the English layout with its 中文 words, checked as a reader of Chinese gets it,
+  // with its own *Drafted with AI* marks: the 中文 words Claude wrote that nobody has read since.
   const zh = campaignContentChecks(
     { language: CHINESE, subject: version.subject, preheader: version.preheader, greeting: campaign.greeting, content: chineseContent(content), rendered: asSent(CHINESE) },
-    { ...facts, products: productsFor(shown, CHINESE) },
+    { ...facts, products: productsFor(shown, CHINESE), aiDrafted: chineseAiDrafted(content) },
   );
   const joined = joinVersionChecks(english, zh);
   // Its own row, every block translated and current, with the checks that hold the wave, before the advice.

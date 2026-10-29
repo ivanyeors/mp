@@ -9,7 +9,7 @@
 // escaping.test.ts proves no template interpolates raw user input.
 
 import type { CampaignBlockImages, CampaignBlockProducts, CampaignBlocksEmailData } from "../campaign-blocks";
-import { linesFingerprint, withChineseTranslation, wordsFingerprint, type BlockWords } from "@/lib/email-campaigns/chinese-version";
+import { keepChineseAiDrafted, linesFingerprint, withChineseTranslation, wordsFingerprint, type BlockWords } from "@/lib/email-campaigns/chinese-version";
 import type { CampaignContent, ChineseBlockWords, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
@@ -809,19 +809,21 @@ export const CHINESE_SAMPLE_WORDS: Record<string, BlockWords> = {
   pair: { type: "buttons", labels: ["定制您的 Mpillow", "阅读保养指南"] },
 };
 
-/** CHINESE_SAMPLE_ENGLISH with its 中文 version, every block current. */
-export const CHINESE_SAMPLE_CONTENT: CampaignContent = withChineseTranslation(CHINESE_SAMPLE_ENGLISH, {
-  subject: CHINESE_SAMPLE_LINES.chineseSubject,
-  preheader: CHINESE_SAMPLE_LINES.chinesePreheader,
-  from: linesFingerprint(CHINESE_SAMPLE_LINES.subject, CHINESE_SAMPLE_LINES.preheader),
-  fallbacks: { first_name: "您" },
-  blocks: Object.fromEntries(
-    CHINESE_SAMPLE_ENGLISH.blocks.flatMap((b) => {
-      const w = CHINESE_SAMPLE_WORDS[b.id];
-      return w ? [[b.id, { ...w, from: wordsFingerprint(b) } as ChineseBlockWords]] : [];
-    }),
-  ),
-});
+/** CHINESE_SAMPLE_ENGLISH with its 中文 version, every block current, read and kept by a person. */
+export const CHINESE_SAMPLE_CONTENT: CampaignContent = keepChineseAiDrafted(
+  withChineseTranslation(CHINESE_SAMPLE_ENGLISH, {
+    subject: CHINESE_SAMPLE_LINES.chineseSubject,
+    preheader: CHINESE_SAMPLE_LINES.chinesePreheader,
+    from: linesFingerprint(CHINESE_SAMPLE_LINES.subject, CHINESE_SAMPLE_LINES.preheader),
+    fallbacks: { first_name: "您" },
+    blocks: Object.fromEntries(
+      CHINESE_SAMPLE_ENGLISH.blocks.flatMap((b) => {
+        const w = CHINESE_SAMPLE_WORDS[b.id];
+        return w ? [[b.id, { ...w, from: wordsFingerprint(b) } as ChineseBlockWords]] : [];
+      }),
+    ),
+  }),
+);
 
 /** The cover as the 中文 shop names it: what a reader of Chinese sees in CHINESE_SAMPLE_CONTENT's products block. */
 export const CHINESE_SAMPLE_PRODUCTS: CampaignBlockProducts = {

@@ -41,6 +41,26 @@ describe("wordsProblems", () => {
     expect(wordsProblems(text, ctx)).not.toEqual([]);
   });
 
+  it.each([
+    ["a code in mixed case", "Use code Cool15 at checkout."],
+    ["a code in capitals alone", "Use code SLEEPWELL at checkout."],
+    ["a code to enter", "Enter COOLNIGHTS at checkout"],
+    ["a percentage in words", "Save fifteen percent this week."],
+    ["half price", "Enjoy half price on covers."],
+    ["two for one", "Two for one on covers."],
+    ["something free", "Get a free cover with every pillow"],
+    ["a gift with a purchase", "A gift with every cover"],
+    ["money off, its number the facts'", "Take 10 off your cover"],
+  ])("refuses %s nobody typed", (_, text) => {
+    expect(wordsProblems(text, ctx)).not.toEqual([]);
+  });
+
+  it("passes everyday words an offer's are made of, and a code Staff typed", () => {
+    expect(wordsProblems("Feel free to reply to this email.", ctx)).toEqual([]);
+    expect(wordsProblems("A hassle-free fitting, the perfect gift for anyone who sleeps hot.", ctx)).toEqual([]);
+    expect(wordsProblems("Use code SLEEPWELL at checkout for a free fitting.", typed("Give them code SLEEPWELL and a free fitting"))).toEqual([]);
+  });
+
   it("takes a price, a percentage or an offer Staff typed word for word", () => {
     const brief = typed("20% off every cover until Sunday, with code COOL20. Covers from S$59.");
     expect(wordsProblems("Take 20% off every cover until Sunday with code COOL20.", brief)).toEqual([]);
@@ -57,6 +77,10 @@ describe("wordsProblems", () => {
     ["clinical words", "Clinically designed, doctor-recommended comfort.", true],
     ["a review request", "Loved it? Leave us a Google review.", true],
     ["a rating request", "Rate us five stars.", true],
+    ["a review asked for as yours", "We'd love your review of the fitting.", true],
+    ["a rating of the fitting", "Rate your fitting with one tap.", true],
+    ["a quick review", "Tell us how we did in a quick review on Google.", true],
+    ["a review of their pillow", "Could you spare a minute to review your Mpillow?", true],
     ["Shopify", "We left Shopify for our own shop.", true],
     ["a link", "See mpillow.com/shop for more.", true],
     ["an email address", "Write to hello@mpillow.com.", true],
@@ -127,6 +151,15 @@ describe("rewriteProblems (slice 10)", () => {
     expect(rewriteProblems(original, words({ var: "first_name" }, { text: "Book", href: "https://evil.example" }), ctx)).toContain("adds a link, which is Staff's to add");
   });
 
+  it("keeps an address the original's words hold, and refuses one they don't", () => {
+    const plain = words({ text: "Questions? Write to hello@mpillow.com or visit mpillow.com." });
+    expect(rewriteProblems(plain, words({ text: "Write to hello@mpillow.com, or visit mpillow.com, with any question." }), ctx)).toEqual([]);
+    expect(rewriteProblems(plain, words({ text: "Visit mpillow.com/new or write to team@mpillow.com." }), ctx)).toEqual([
+      'has a web address ("mpillow.com/new"): links are Staff\'s to add',
+      'has an email address ("team@mpillow.com.")',
+    ]);
+  });
+
   it("holds the rewritten words to the guardrails, and a heading's Variables count as kept", () => {
     expect(rewriteProblems(original, words({ var: "first_name" }, { text: " relieves neck pain. " }, { text: "Book", href: URL }), ctx)).not.toEqual([]);
     const title: RewritableBlock = { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" };
@@ -149,6 +182,13 @@ describe("chineseWordsProblems (slice 17): a translation says what its English s
       expect(chineseWordsProblems(`枕头可以${w}`, "relieve")).toEqual([`makes a health claim ("${w}"): write about comfort, fit and sleep`]);
     }
     expect(chineseWordsProblems("减少颈部疼痛", english)).toEqual(['makes a health claim ("疼痛"): write about comfort, fit and sleep']);
+    // Pain or an ache is a health claim, as "pain" and "aches" are in English.
+    expect(chineseWordsProblems("告别颈椎酸痛，减轻颈痛", "Wake up refreshed.")).toEqual([
+      'makes a health claim ("酸痛"): write about comfort, fit and sleep',
+      'makes a health claim ("颈痛"): write about comfort, fit and sleep',
+    ]);
+    expect(chineseWordsProblems("早上脖子不再疼", "Wake up refreshed.")).toEqual(['makes a health claim ("疼"): write about comfort, fit and sleep']);
+    expect(chineseWordsProblems("痛快地睡一觉，送给您疼爱的家人", "Sleep well, a gift for the family you love.")).toEqual([]);
     expect(checkBannedClinicalZh("The heading", "临床证明")).toBe('The heading contains "临床", which we cannot claim.');
   });
 
@@ -157,6 +197,36 @@ describe("chineseWordsProblems (slice 17): a translation says what its English s
     expect(chineseWordsProblems("全场八折", "Sleep cooler")).toEqual(['offers "八折", which the English doesn\'t']);
     expect(chineseWordsProblems("包邮", "Free shipping on every cover")).toEqual([]);
     expect(chineseWordsProblems("限时抢购", "Sleep cooler")).toEqual(['rushes the reader ("限时"), which the English doesn\'t']);
+  });
+
+  it("allows an offer only where the English makes that offer: 100% cotton or a QR code makes none", () => {
+    expect(chineseWordsProblems("现享全场八折优惠，免运费", "Our covers are 100% cotton.")).toEqual([
+      'offers "免运费", which the English doesn\'t',
+      'offers "优惠", which the English doesn\'t',
+      'offers "八折", which the English doesn\'t',
+    ]);
+    expect(chineseWordsProblems("使用优惠码享受特价", "Bring your QR code to the fitting.")).toEqual([
+      'offers "优惠码", which the English doesn\'t',
+      'offers "优惠", which the English doesn\'t',
+      'offers "特价", which the English doesn\'t',
+    ]);
+    // Free shipping translates free shipping, not a code.
+    expect(chineseWordsProblems("包邮，并可使用优惠码", "Free shipping on every cover")).toEqual(['offers "优惠码", which the English doesn\'t']);
+    // An N折 is the English's own percentage off: 八折 is 20% off, 八五折 15%.
+    expect(chineseWordsProblems("使用优惠码 COOL20 享八折", "Use code COOL20 for 20% off")).toEqual([]);
+    expect(chineseWordsProblems("全场八五折", "15% off every cover")).toEqual([]);
+    expect(chineseWordsProblems("全场八五折", "20% off every cover")).toEqual(['offers "八五折", which the English doesn\'t']);
+  });
+
+  it("keeps an address the English has, as plain words or a link's, and refuses one it doesn't", () => {
+    const english = "Questions? Write to hello@mpillow.com or visit mpillow.com.";
+    expect(chineseWordsProblems("有疑问？请写信至 hello@mpillow.com，或访问 mpillow.com。", english)).toEqual([]);
+    // A link's words as a converted campaign writes them, with the English address in its href.
+    expect(chineseWordsProblems("请在\nmpillow.com/care\n阅读保养指南", "Read the care guide at https://mpillow.com/care.")).toEqual([]);
+    expect(chineseWordsProblems("请访问 mpillow.com/new 或写信至 team@mpillow.com", english)).toEqual([
+      'has a web address ("mpillow.com/new"): links are Staff\'s to add',
+      'has an email address ("team@mpillow.com")',
+    ]);
   });
 
   it("refuses a review request, Shopify, a move, and points the English doesn't mention", () => {

@@ -11,6 +11,8 @@ import type { ChineseStatus } from "@/lib/email-campaigns/chinese-version";
 export interface ChineseEditing {
   /** Where block `id`'s 中文 words stand; null for a block with no words. */
   status: (id: string) => ChineseStatus | null;
+  /** Block `id`'s 中文 words are Claude's, and nobody has edited or kept them since: *Drafted with AI*. */
+  drafted: (id: string) => boolean;
   /** Each English block's links, by block id: the only links a 中文 run can carry. */
   links: (id: string) => readonly string[];
   /** ✨ for one block, when AI writing is on; null when it is off. */
@@ -20,7 +22,7 @@ export interface ChineseEditing {
   /** The block being translated now, and what the button says meanwhile. */
   working: { id: string; stage: string } | null;
   stop: () => void;
-  /** *Keep*: the block's 中文 words current as they are. */
+  /** *Keep*: the block's 中文 words current as they are, and no longer *Drafted with AI*. */
   keep: (id: string) => void;
 }
 

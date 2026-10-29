@@ -22,7 +22,7 @@ demoable path through the layers it touches.
 | [05](05-images-and-hero.md) · [#359](https://github.com/ivanyeors/mp/issues/359) | Images and the hero: from the Media Library, safe in every inbox | AFK | done | 03 (04 for the UI) |
 | [06](06-image-and-text.md) · [#360](https://github.com/ivanyeors/mp/issues/360) | Image + text: two columns that stack on a phone, in every inbox | AFK | done | 05 |
 | [07](07-product-block.md) · [#361](https://github.com/ivanyeors/mp/issues/361) | Product block: up to three Listed products, priced from Costings at send | AFK | done | 05, 06 |
-| [08](08-start-from.md) · [#362](https://github.com/ivanyeors/mp/issues/362) | Starters: ready-made layouts built from the same blocks, to start from or drag in | AFK | done | 04 |
+| [08](08-start-from.md) · [#362](https://github.com/ivanyeors/mp/issues/362) | Starters: ready-made layouts built from the same blocks, to start from or drag in | AFK | partial | 04 |
 | [09](09-ai-generate-draft.md) · [#363](https://github.com/ivanyeors/mp/issues/363) | ✨ Generate: Claude writes the email from its subject, inside the editor | AFK | partial | 03, 04, 16 (07 for products) |
 | [10](10-ai-refine.md) · [#364](https://github.com/ivanyeors/mp/issues/364) | ✨ Refine: subject-line ideas, a preview line, and rewriting one block | AFK | partial | 09, 16 |
 | [11](11-content-checks.md) · [#366](https://github.com/ivanyeors/mp/issues/366) | Content checks before send: links, images, size, words | AFK | done | 03, 05 |

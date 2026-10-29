@@ -269,4 +269,20 @@ describe("the 中文 version is checked as the English is (slice 11)", () => {
       { blockId: "why", text: "Recommended: Block 3, Heading: still marked Drafted with AI: read it, then press Keep", what: "Recommended: still marked Drafted with AI: read it, then press Keep" },
     ]);
   });
+
+  it("advises on the 中文 words Claude translated that nobody has read, on the 中文 block, until it is kept", async () => {
+    const translated: CampaignContent = { ...CHINESE_SAMPLE_CONTENT, translations: { "zh-CN": { ...zh, aiDrafted: ["why"] } } };
+    const r = await planWave(campaign(translated), { size: 10 }, setup());
+    expect(r.readiness.ready).toBe(true);
+    expect(r.readiness.advice.find((c) => c.key === "ai_drafted")?.issues).toEqual([
+      {
+        blockId: "why",
+        text: "Recommended: 中文, Block 3, Heading: still marked Drafted with AI: read it, then press Keep",
+        what: "Recommended: still marked Drafted with AI: read it, then press Keep",
+        language: "zh-CN",
+      },
+    ]);
+    const kept = await planWave(campaign(keepChineseBlock(translated, "why")), { size: 10 }, setup());
+    expect(kept.readiness.advice.find((c) => c.key === "ai_drafted")).toBeUndefined();
+  });
 });

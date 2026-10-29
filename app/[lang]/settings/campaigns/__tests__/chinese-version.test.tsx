@@ -141,7 +141,9 @@ describe("✨ Translate to Chinese", () => {
     // Every word in Chinese, around the same blocks.
     expect(wordsOf("c-subject")).toBe("{first_name}，这个十二月睡得更清凉".replace("{first_name}", "First name"));
     expect(wordsOf("block-why-text")).toBe("为什么选择 FibreCool");
-    expect(badges()).toEqual([]);
+    // Claude's words, until a person reads them (PRD decision 9).
+    expect(new Set(badges())).toEqual(new Set(["Drafted with AI"]));
+    expect(badges()).toHaveLength(Object.keys(TRANSLATED.translation.blocks).length);
     await until(() => lastPreview()?.[1].language === "zh-CN");
     expect(isSaved()).toBe(false);
     expect(actions.saveCampaign).not.toHaveBeenCalled();
@@ -151,6 +153,32 @@ describe("✨ Translate to Chinese", () => {
     expect(isSaved()).toBe(true);
     // Still in 中文, now with nothing translated.
     expect(badges()).toContain("Not translated yet");
+  });
+
+  it("holds the header's ✨ Generate while it translates, as every other ✨ is held", async () => {
+    mount();
+    const generate = () => [...document.querySelectorAll<HTMLButtonElement>("button[aria-haspopup='dialog']")].find((b) => b.textContent?.includes("Generate"));
+    expect((await until(generate)).getAttribute("aria-disabled")).toBeNull();
+    // The translation is still on its way.
+    fetchMock.mockImplementationOnce(() => new Promise(() => undefined));
+    await click(await until(() => named("Translate to Chinese")));
+    const held = await until(() => (generate()?.getAttribute("aria-disabled") === "true" ? generate() : null));
+    expect(document.getElementById(held!.getAttribute("aria-describedby")!)?.textContent).toBe("Claude is writing. Wait for it, or press Stop.");
+  });
+
+  it("unmarks a translated block when a person keeps or edits it in 中文", async () => {
+    mount();
+    answers.push({ body: TRANSLATED });
+    await click(await until(() => named("Translate to Chinese")));
+    await until(() => language() === "中文");
+    const marked = () => [...document.querySelectorAll<HTMLElement>("li[data-block-id]")].filter((li) => li.querySelector("[data-block-badge]")).map((li) => li.dataset.blockId);
+    expect(marked()).toContain("why");
+    await click(document.querySelector<HTMLButtonElement>("li[data-block-id='why'] [aria-label^='Keep the Chinese as it is']")!);
+    expect(marked()).not.toContain("why");
+    await retype("block-hero-heading", "清凉十二月");
+    expect(marked()).not.toContain("hero");
+    const input = await savedInput();
+    expect(chineseVersionOf(input.content)!.aiDrafted).toEqual(marked());
   });
 
   it("refuses a translation that drops a link, naming the block, and changes nothing", async () => {

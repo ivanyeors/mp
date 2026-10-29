@@ -125,8 +125,9 @@ describe("the draft", () => {
     expect(events.map((e) => e.type)).toContain("restart");
     expect(draftBlocks(events)).toHaveLength(3);
     expect(outcome).toMatchObject({ ok: true, attempts: 2 });
-    // Both attempts are paid for.
+    // Both attempts are paid for: the first's output as far as it streamed, which the API never reports for a stopped stream.
     expect(outcome).toMatchObject({ inputTokens: 6000 });
+    expect(outcome.outputTokens).toBeGreaterThan(2000);
   });
 
   it("refuses a draft that fails the guardrails twice, and says why", async () => {
@@ -177,6 +178,8 @@ describe("the draft", () => {
     expect(outcome).toMatchObject({ ok: true, stopped: true, attempts: 1 });
     expect(draftBlocks(events)).toHaveLength(1);
     expect(fake.calls).toHaveLength(1);
+    // What it streamed before Stop, about four bytes a token.
+    expect(outcome.outputTokens).toBe(Math.ceil(new TextEncoder().encode(draftAnswer().slice(0, fake.delivered())).length / 4));
   });
 
   it("reports an API failure in words", async () => {

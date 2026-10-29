@@ -14,17 +14,19 @@ import { useChineseEditing } from "./chinese-context";
  * A block's card in the editor's 中文 (PRD-campaign-email-editor slice 17):
  * a block not translated yet offers ✨ *Translate*; one whose English changed
  * since offers ✨ *Translate again* and *Keep*, which makes its 中文 words
- * current as they are. In English, nothing (or a heading's and a text
- * block's ✨ Rewrite, `BlockTools`).
+ * current as they are. One whose 中文 words Claude wrote, and nobody has
+ * edited since, offers *Keep* too: a person has read them. In English,
+ * nothing (or a heading's and a text block's ✨ Rewrite, `BlockTools`).
  */
 export function ChineseTools<B extends EmailBlock>({ block, name }: BlockFormProps<B> & { name: string }) {
   const zh = useChineseEditing();
   const status = zh?.status(block.id);
-  if (!zh || !status || status === "current") return null;
+  const drafted = zh?.drafted(block.id) ?? false;
+  if (!zh || !status || (status === "current" && !drafted)) return null;
   const working = zh.working?.id === block.id ? zh.working.stage : null;
   return (
     <span className="flex items-center gap-1">
-      {zh.translate ? (
+      {zh.translate && status !== "current" ? (
         <AiButton
           variant="ghost"
           className="h-8 px-2"
@@ -37,7 +39,7 @@ export function ChineseTools<B extends EmailBlock>({ block, name }: BlockFormPro
           {status === "changed" ? CHINESE_EDITOR_TEXT.blockAgain : CHINESE_EDITOR_TEXT.block}
         </AiButton>
       ) : null}
-      {status === "changed" && !working ? (
+      {(status === "changed" || (status === "current" && drafted)) && !working ? (
         <Button type="button" variant="ghost" size="sm" className="h-8 px-2" aria-label={`Keep the Chinese as it is: ${name}`} onClick={() => zh.keep(block.id)}>
           <Check className="mr-1 h-4 w-4" aria-hidden />
           {CHINESE_EDITOR_TEXT.keep}

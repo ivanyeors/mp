@@ -489,6 +489,9 @@ function chineseVersionSchema({ required }: { required: boolean }) {
       from: Fingerprint,
       fallbacks: z.partialRecord(z.enum(VARIABLE_KEYS), z.string().trim().max(VARIABLE_MAX, most(VARIABLE_MAX)).refine(noTags, NO_TAGS)),
       blocks: z.record(BlockId, chineseWordsSchema({ required })),
+      // The blocks whose 中文 words Claude wrote that no person has edited or kept yet,
+      // shown *Drafted with AI* in 中文 (PRD decision 9), as `aiDrafted` is for the English.
+      aiDrafted: z.array(BlockId).max(CONTENT_LIMITS.blocks).optional(),
     })
     .superRefine((t, ctx) => {
       if (Object.keys(t.blocks).length > CONTENT_LIMITS.blocks) ctx.addIssue({ code: "custom", path: ["blocks"], message: `At most ${CONTENT_LIMITS.blocks} blocks.` });

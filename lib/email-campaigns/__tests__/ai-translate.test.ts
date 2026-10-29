@@ -189,7 +189,10 @@ describe("how a call ends", () => {
     const promise = run([{ text: translateAnswer(), chunk: 5 }], TRANSLATE, { signal: stop.signal });
     await new Promise((r) => setTimeout(r, 5));
     stop.abort();
-    const { outcome } = await promise;
+    const { outcome, delivered } = await promise;
     expect(outcome).toMatchObject({ ok: false, stopped: true, translation: null, inputTokens: 3000 });
+    // The API counts output tokens only at a message's end: what it streamed before Stop, about four bytes a token.
+    expect(delivered()).toBeGreaterThan(0);
+    expect(outcome.outputTokens).toBe(Math.ceil(new TextEncoder().encode(translateAnswer().slice(0, delivered())).length / 4));
   });
 });
