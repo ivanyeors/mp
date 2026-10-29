@@ -40,7 +40,7 @@ done. It runs the real app on made-up sample data, signs in as an Owner, and
 screenshots each page at desktop and phone width:
 
 ```bash
-.claude/skills/preview/preview shoot /settings/orders "/settings/analytics?tab=stock"
+.claude/skills/preview/preview shoot /settings/orders /settings/inventory
 ```
 
 Read every screenshot, fix what looks wrong, and send them to the user with
