@@ -24,6 +24,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `recordAdminAction()` [insert] — lib/auth/audit.ts:36
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:54
+  - `readAiUsageThisMonth()` [select] — lib/ai/usage.ts:177
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
   - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:267
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
@@ -2112,6 +2113,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `applyPublicMigration()` [upsert] — lib/media/migrate-public-apply.ts:170
   - `claimTelegramPeriod()` [insert,select,update] — lib/crm/telegram-updates-server.ts:74
   - `runReplaceEverywhere()` [select,upsert] — lib/media/replace.ts:369
+  - `saveAiWritingSettings()` [upsert] — lib/ai/settings.ts:47
   - `saveDiscoverySourceCatalog()` [upsert] — lib/discovery-source/index.ts:54
   - `savePointsSettings()` [delete,upsert] — lib/points/server.ts:57
   - `saveServices()` [upsert] — app/[lang]/settings/costings/save/route.ts:301
@@ -2129,6 +2131,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `loadReadjustmentPolicy()` [select] — lib/pricing/service-prices.ts:111
   - `loadReviewRequestSettings()` [select] — lib/aftercare/review-request-server.ts:102
   - `readAftercareSettings()` [select] — lib/aftercare/card-server.ts:26
+  - `readAiWritingSettings()` [select] — lib/ai/settings.ts:32
   - `readPointsSettings()` [select] — lib/points/server.ts:48
   - `readServiceNoticeEnabled()` [select] — lib/customer-migration/campaign-ledger.ts:121
   - `readTelegramUpdates()` [select] — lib/crm/telegram-updates-server.ts:40
@@ -2526,7 +2529,7 @@ app/[lang]/settings/forms/page.tsx
 
 ### /settings/general
 app/[lang]/settings/general/page.tsx
-- Endpoints: `/api/results/sla-settings [GET,PUT]`, `/api/settings/api-configs [DELETE,GET]`
+- Endpoints: `/api/results/sla-settings [GET,PUT]`, `/api/settings/ai-writing [GET,PUT]`, `/api/settings/api-configs [DELETE,GET]`
 - Loads: `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `api_configs`, `mp_staff`, `site_settings`
 - Reads, through the same: `admin_roles`, `admin_users`

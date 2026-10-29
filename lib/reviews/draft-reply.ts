@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { oidcFederationProvider } from "@anthropic-ai/sdk/lib/credentials/oidc-federation";
 import { getVercelOidcToken } from "@vercel/oidc";
+import { CLAUDE_NOT_CONFIGURED, claudeConfigured } from "@/lib/ai/claude";
+import type { AiModelId } from "@/lib/ai/models";
 import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
@@ -29,7 +31,8 @@ import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
  * both are set.
  */
 
-export const REVIEW_REPLY_MODEL = "claude-opus-5-5";
+/** Kept in code, not on General → AI writing (PRD-campaign-email-editor decision 10); typed by the model list. */
+export const REVIEW_REPLY_MODEL: AiModelId = "claude-opus-5-5";
 
 export const REVIEW_REPLY_SYSTEM_PROMPT = `You write public replies, as the Mpillow team, to Google Maps reviews of Mpillow, a Singapore company that makes custom-fit cervical pillows and bolsters. A staff member reads every reply before it is posted.
 
@@ -130,12 +133,9 @@ export type DraftResult = { ok: true; reply: string; model: string } | { ok: fal
 
 let cachedClient: Anthropic | null = null;
 
-/** True when Claude can be called: an API key, or a Vercel OIDC federation rule. */
-export function claudeConfigured(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY?.trim() || process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim());
-}
-
-export const CLAUDE_NOT_CONFIGURED = "Claude is not configured (ANTHROPIC_API_KEY or ANTHROPIC_FEDERATION_RULE_ID)";
+// Shared with AI writing since PRD-campaign-email-editor slice 16; re-exported
+// so every caller here keeps its import.
+export { CLAUDE_NOT_CONFIGURED, claudeConfigured };
 
 function defaultClient(): Anthropic | null {
   if (!claudeConfigured()) return null;

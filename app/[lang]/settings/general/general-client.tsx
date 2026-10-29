@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ReviewSlaSection } from "@/components/settings/review-sla-section";
+import { AiWritingSection } from "@/components/settings/ai-writing-section";
 import {
   Dialog,
   DialogContent,
@@ -297,6 +298,9 @@ export default function GeneralSettingsPage({
 
       {/* Review SLA (relocated from the Results page — slice 06) */}
       <ReviewSlaSection />
+
+      {/* AI writing: the campaign editor's model, effort and limits (PRD-campaign-email-editor slice 16) */}
+      <AiWritingSection />
 
       {/* Edit / Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
