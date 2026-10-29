@@ -84,8 +84,15 @@ export interface EmailShellOptions {
  * two were maintained by hand the `[data-ogsc]` copy was missing the logo swap,
  * so Outlook.com dark mode flipped the card to near-black while leaving the
  * dark-ink logo on top of it.
+ *
+ * It is every email's one list, Email blocks' included (PRD-campaign-email-
+ * editor decision 2, slice 15): every `mp-*` class a component draws has its
+ * rule here, unless it carries no colour. __tests__/dark-mode.test.ts renders
+ * every email and every block and fails on a class without a rule, an inline
+ * colour no rule reaches, or words that do not read in dark. A new block adds
+ * its rules here, never a style of its own.
  */
-function darkRules(): Array<[selector: string, declarations: string]> {
+export function darkRules(): Array<[selector: string, declarations: string]> {
   const rules: Array<[string, string]> = [
     [".mp-page", `background: ${DARK.page} !important;`],
     [".mp-card", `background: ${DARK.card} !important; border-color: ${DARK.border} !important;`],
@@ -120,21 +127,23 @@ function darkRules(): Array<[selector: string, declarations: string]> {
   return rules;
 }
 
-/** Dark-mode + responsive enhancement. Never load-bearing — inline styles win. */
-function styleBlock(): string {
-  const rules = darkRules();
-  const media = rules
-    .map(([sel, decl]) => `      ${sel} { ${decl} }`)
-    .join("\n");
-  const ogsc = rules
+/** The dark rules as CSS, one line each, with `prefix` before every selector. */
+function darkCss(indent: string, prefix = ""): string {
+  return darkRules()
     .map(
       ([sel, decl]) =>
-        `    ${sel
+        `${indent}${sel
           .split(", ")
-          .map((s) => `[data-ogsc] ${s}`)
+          .map((s) => `${prefix}${s}`)
           .join(", ")} { ${decl} }`,
     )
     .join("\n");
+}
+
+/** Dark-mode + responsive enhancement. Never load-bearing — inline styles win. */
+function styleBlock(): string {
+  const media = darkCss("      ");
+  const ogsc = darkCss("    ", "[data-ogsc] ");
 
   return `<style type="text/css">
     :root { color-scheme: light dark; supported-color-schemes: light dark; }
@@ -279,4 +288,27 @@ export function renderEmail(
 ): RenderedEmail {
   const { subject, text, ...shell } = opts;
   return { subject, text, html: renderEmailShell(shell) };
+}
+
+/** Marks the forced copy, so a test can tell a preview's document from a sent one. */
+export const FORCED_DARK_STYLE_ID = "mp-force-dark";
+
+/**
+ * A shell document as a reader in dark mode sees it, whatever the viewer's
+ * own setting: the editor preview's *Dark* and /dev/email-preview's
+ * (PRD-campaign-email-editor slice 15). It adds the same rule list once more,
+ * with no media query, after the shell's own <style>, and changes nothing
+ * else, so the preview shows exactly what the shell sends.
+ *
+ * Previews only. No renderer takes it as an option, so nothing a send calls
+ * can reach it (lib/email-campaigns/__tests__/sender.test.ts holds that at
+ * the type level).
+ */
+export function forceDarkMode(html: string): string {
+  // The shell's </head> is the document's only one: every word in the <title>
+  // and the body is escaped, so no `<` of theirs can make another.
+  const at = html.indexOf("</head>");
+  if (at === -1) throw new Error("forceDarkMode takes a document from renderEmailShell.");
+  const style = `<style type="text/css" id="${FORCED_DARK_STYLE_ID}">\n${darkCss("    ")}\n  </style>\n`;
+  return `${html.slice(0, at)}${style}${html.slice(at)}`;
 }

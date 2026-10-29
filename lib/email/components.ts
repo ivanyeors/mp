@@ -431,7 +431,7 @@ export function dataTable(opts: {
     .join("\n");
 
   return withGutter(`<table cellpadding="0" cellspacing="0" border="0" width="100%" style="${TABLE_RESET_STYLE};width:100%;">
-${opts.caption ? `<caption style="${typeStyle("small", { color: LIGHT.mutedFg, "text-align": "left", padding: "0 0 8px" })}">${escapeHtml(opts.caption)}</caption>` : ""}
+${opts.caption ? `<caption class="mp-muted" style="${typeStyle("small", { color: LIGHT.mutedFg, "text-align": "left", padding: "0 0 8px" })}">${escapeHtml(opts.caption)}</caption>` : ""}
 <thead><tr>${head}</tr></thead>
 <tbody>
 ${body}
@@ -589,6 +589,11 @@ export interface FooterLink {
 /**
  * Footer chrome. `links` hrefs may be site-relative — they are resolved against
  * `origin` here, because email has no page origin to resolve them against.
+ *
+ * Every link is underlined, as in the body: in the muted footer its colour is
+ * the separators', and a client that inverts colours by itself (Gmail on iOS,
+ * which no dark rule reaches) leaves the underline as the one sign of a link
+ * (PRD-campaign-email-editor slice 15).
  */
 export function footer(opts: {
   origin: string;
@@ -622,7 +627,7 @@ export function footer(opts: {
         if (!href) return "";
         return `<a class="mp-muted" href="${href}" style="${css({
           color: LIGHT.mutedFg,
-          "text-decoration": "none",
+          "text-decoration": "underline",
           "white-space": "nowrap",
         })}">${escapeHtml(l.label)}</a>`;
       })
@@ -644,7 +649,7 @@ export function footer(opts: {
         if (!href) return "";
         return `<a class="mp-muted" href="${href}" style="${css({
           color: LIGHT.mutedFg,
-          "text-decoration": "none",
+          "text-decoration": "underline",
         })}">${escapeHtml(s.label)}</a>`;
       })
       .filter(Boolean)

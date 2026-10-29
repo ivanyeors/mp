@@ -2,6 +2,7 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { forceDarkMode } from "../base";
 import { renderComposedCampaignEmail } from "../campaigns";
 import { sampleComposedCampaign } from "../__fixtures__/samples";
 import { renderCampaignFor, renderCampaignPreview } from "@/lib/email-campaigns/sender";
@@ -16,7 +17,8 @@ import type { RenderedEmail } from "../types";
  *
  * The `.txt` files are for good: a legacy campaign's words, order and links
  * never change. The `.html` files may change only where slice 15 improves the
- * shell's light and dark rules for every email.
+ * shell's light and dark rules for every email: it underlined the footer's
+ * links, and changed nothing else.
  */
 
 const ORIGIN = "https://custom.mpillow.com";
@@ -72,5 +74,14 @@ describe("a legacy campaign renders as it did before typed blocks", () => {
     const r = render();
     await expect(r.html).toMatchFileSnapshot(`./__snapshots__/legacy-campaigns/${name}.html`);
     await expect(`${r.subject}\n\n${r.text}`).toMatchFileSnapshot(`./__snapshots__/legacy-campaigns/${name}.txt`);
+  });
+
+  it("is the same email with the preview's Dark on, the shell's dark rules forced (slice 15)", () => {
+    for (const draft of [legacy(), legacy({ body: "", subject: "", button: { target: "sign_in", label: "", url: null } })]) {
+      const light = renderCampaignPreview(draft, { origin: ORIGIN, firstName: "Ivan" });
+      const dark = renderCampaignPreview(draft, { origin: ORIGIN, firstName: "Ivan", forceDark: true });
+      expect(dark.html).toBe(forceDarkMode(light.html));
+      expect({ subject: dark.subject, text: dark.text }).toEqual({ subject: light.subject, text: light.text });
+    }
   });
 });

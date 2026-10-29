@@ -2,7 +2,10 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { forceDarkMode, FORCED_DARK_STYLE_ID, type EmailShellOptions } from "@/lib/email/base";
+import type { CampaignBlocksEmailData } from "@/lib/email/campaign-blocks";
+import type { ComposedCampaignEmailData } from "@/lib/email/campaigns";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
 import { CAMPAIGN_PLACEHOLDERS, EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, campaignLedgerKey, type Campaign } from "../rules";
@@ -14,6 +17,7 @@ import {
   campaignSlug,
   planWave,
   readSendingStatus,
+  renderCampaignFor,
   renderCampaignPreview,
   sendCampaignBatch,
   sendCampaignTest,
@@ -435,6 +439,43 @@ describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
     expect(sent).toHaveLength(1);
     for (const hint of Object.values(CAMPAIGN_PLACEHOLDERS)) expect(sent[0].html).not.toContain(escaped(hint));
     expect(sent[0].html).not.toContain("dashed");
+  });
+});
+
+describe("the preview's Dark (PRD-campaign-email-editor slice 15)", () => {
+  it("forces the shell's own dark rules on the preview, and changes no word", () => {
+    const light = renderCampaignPreview(campaign(), { origin: ORIGIN, firstName: "Ivan" });
+    const dark = renderCampaignPreview(campaign(), { origin: ORIGIN, firstName: "Ivan", forceDark: true });
+    expect(dark.html).toBe(forceDarkMode(light.html));
+    expect(dark.html).toContain(`id="${FORCED_DARK_STYLE_ID}"`);
+    expect(light.html).not.toContain(FORCED_DARK_STYLE_ID);
+    expect({ subject: dark.subject, text: dark.text }).toEqual({ subject: light.subject, text: light.text });
+    expect(renderCampaignPreview(campaign(), { origin: ORIGIN, firstName: "Ivan", forceDark: false }).html).toBe(light.html);
+  });
+
+  it("can never reach a sent email: nothing a send calls takes forceDark", async () => {
+    // At the type level (`pnpm typecheck`): only the preview has the option,
+    // and each function a test send or a wave calls has none to pass.
+    expectTypeOf<Parameters<typeof renderCampaignPreview>[1]>().toHaveProperty("forceDark");
+    expectTypeOf<Parameters<typeof sendCampaignBatch>[0]>().not.toHaveProperty("forceDark");
+    expectTypeOf<Parameters<typeof sendCampaignBatch>[1]>().not.toHaveProperty("forceDark");
+    expectTypeOf<Parameters<typeof sendCampaignBatch>[2]>().not.toHaveProperty("forceDark");
+    expectTypeOf<Parameters<typeof sendCampaignTest>[1]>().not.toHaveProperty("forceDark");
+    expectTypeOf<Parameters<typeof sendCampaignTest>[2]>().not.toHaveProperty("forceDark");
+    expectTypeOf<Parameters<typeof renderCampaignFor>[1]>().not.toHaveProperty("forceDark");
+    expectTypeOf<CampaignBlocksEmailData>().not.toHaveProperty("forceDark");
+    expectTypeOf<ComposedCampaignEmailData>().not.toHaveProperty("forceDark");
+    expectTypeOf<EmailShellOptions>().not.toHaveProperty("forceDark");
+
+    // And at run time: a test send and a wave carry the shell's own rules, for the reader's setting, never forced ones.
+    const { s, sent } = setup();
+    await sendCampaignTest(campaign(), { to: ["me@mpillow.com"], firstName: "Ivan" }, s);
+    await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA] }, s);
+    expect(sent).toHaveLength(2);
+    for (const e of sent) {
+      expect(e.html).toContain("@media (prefers-color-scheme: dark)");
+      expect(e.html).not.toContain(FORCED_DARK_STYLE_ID);
+    }
   });
 });
 
