@@ -1,6 +1,7 @@
 "use server";
 
 import { loadSalesReport } from "@/lib/analytics/sales-report";
+import { partCategoryLabel } from "@/lib/analytics/sold-lines";
 import { sgDate, sgMonthRange } from "@/lib/analytics/sg-calendar";
 import { assertAdmin } from "@/lib/auth/admin";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
@@ -229,7 +230,7 @@ export async function getInventoryMovementWaterfall(input: {
     const name = it.name ? String(it.name) : null;
 
     if (input.group === "category") {
-      return { key: category, label: category };
+      return { key: category, label: partCategoryLabel(category) };
     }
 
     if (input.group === "size") {

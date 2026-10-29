@@ -640,7 +640,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/custo
   - `sellPart()` [insert] — app/[lang]/settings/inventory/actions.ts:145
 - Read by:
   - `deductOrderStock()` [select] — lib/ecommerce/order-stock.ts:36
-  - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:193
+  - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:194
   - `resultRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:84
 
 ### item_overlay_mappings
@@ -728,7 +728,7 @@ Changed from pages: `/settings/inventory`
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:139
   - `getAvailableFillings()` [select] — lib/shop/customization-llm.ts:45
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:100
-  - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:214
+  - `getInventoryMovementWaterfall()` [select] — app/[lang]/settings/analytics/actions.ts:215
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:423
   - `handleCallback()` [select] — app/api/telegram/webhook/route.ts:436
   - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:276
@@ -871,7 +871,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select] — app/api/results/[id]/reorder/route.ts:43
   - `companionLockReason()` [select] — lib/results/pair-ending.ts:94
   - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:214
-  - `getMpConfigMetricsBreakdown()` [select] — app/[lang]/settings/analytics/actions.ts:64
+  - `getMpConfigMetricsBreakdown()` [select] — app/[lang]/settings/analytics/actions.ts:65
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:70
   - `loadAdminOrderMpConfigLinks()` [select] — lib/ecommerce/admin/order-detail.ts:88
   - `loadEndingPlan()` [select] — lib/results/pair-ending.ts:46

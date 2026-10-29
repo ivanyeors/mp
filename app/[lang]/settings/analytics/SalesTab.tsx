@@ -150,7 +150,9 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
           note={
             s && s.uncostedRevenue > 0
               ? `${currency.format(s.uncostedRevenue)} of revenue on ${integer.format(s.uncostedLineCount)} lines has no cost. See below.`
-              : "Every sale in the period has a cost."
+              : s && s.orderCount > 0
+                ? "Every sale in the period has a cost."
+                : "Nothing sold in this period to cost."
           }
         />
       </div>
@@ -171,7 +173,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
+              <table className="w-full text-sm sm:min-w-[560px]">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="py-2 pr-3 font-medium">Sold as</th>
@@ -233,6 +235,9 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
                 breakdownView === "products"
                   ? "Click a product to see each size or length."
                   : "Click a category to see its Items."
+              }
+              drillTitle={(key) =>
+                key.startsWith("pillow:") ? "by size" : key === "bolster" ? "by length" : key === "unmapped" ? "by line" : "by item"
               }
             />
           )}

@@ -244,10 +244,13 @@ export function MarginBreakdownVisx({
   rows,
   emptyText,
   drillHint,
+  drillTitle = () => "by item",
 }: {
   rows: MarginBreakdownRow[];
   emptyText: string;
   drillHint: string;
+  /** What a drilled row's children are, e.g. "by size". */
+  drillTitle?: (parentKey: string) => string;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -265,7 +268,7 @@ export function MarginBreakdownVisx({
     <div className="w-full space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs text-muted-foreground">
-          {selectedRow ? `${selectedRow.label}: by item` : drillHint}
+          {selectedRow ? `${selectedRow.label}: ${drillTitle(selectedRow.key)}` : drillHint}
         </div>
         <div className="flex gap-2">
           {selectedRow && (

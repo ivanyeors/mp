@@ -331,7 +331,8 @@ function Chart({
                 y={y}
                 fill="var(--muted-foreground)"
                 fontSize={axisFontSize}
-                textAnchor="middle"
+                // The last month sits on the right edge; end-anchored, its total stays inside the chart.
+                textAnchor={idx === months.length - 1 && months.length > 1 ? "end" : "middle"}
                 style={{ pointerEvents: "none" }}
               >
                 {metric === "revenue" ? currencyFormatter.format(total) : compactNumber.format(total)}
@@ -420,7 +421,7 @@ export function ProductTimelineVisx({
       .filter((product) => product.data.length > 0);
     // Ranked by revenue over the range, whichever metric is shown, so switching
     // Units ⇄ Revenue never repaints a series. Past four, the rest fold into one
-    // line in the last colour, so a colour never stands for two series.
+    // grey line, so a colour never stands for two series and the rest reads as such.
     const total = (p: ProductTimeline) => p.data.reduce((sum, d) => sum + d.revenue, 0);
     const ranked = [...inRange].sort((a, b) => total(b) - total(a) || a.name.localeCompare(b.name));
     if (ranked.length <= palette.length) {
@@ -432,7 +433,7 @@ export function ProductTimelineVisx({
       id: "__rest__",
       name: `All others (${rest.length})`,
       category: "rest",
-      color: palette[NAMED_SERIES],
+      color: "var(--muted-foreground)",
       data: rest[0].data.map((pt, i) => ({
         date: pt.date,
         units: rest.reduce((sum, p) => sum + (p.data[i]?.units ?? 0), 0),
