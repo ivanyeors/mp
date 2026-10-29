@@ -238,6 +238,10 @@ _Avoid_: conflating soft “low stock” badges with Pre-order; calling the held
 A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013). A **Re-adjustment appointment** is linked to a **Customer**, a purchase and (when paid) an **Order** through its **Re-adjustment booking**; a **Customisation appointment** is still linked to nothing.
 _Avoid_: Order, Result, Customer journey (a Customisation appointment is not linked to an Order); the retired Google Appointment-Scheduling iframe (booking is now first-party)
 
+**Language preference** (appointments):
+The language a guest would like their **Appointment** in — `english`, `mandarin` or `none` (No preference) — picked on the booking form for both Customisation and Re-adjustment. Staff read it as a `Language preference: …` line in the calendar event description and try to assign someone comfortable with it; the form says "we'll try our best", never a guarantee. Lives only on the event: a **Customisation appointment** has no row, and a paid **Re-adjustment appointment** carries it to the webhook in its Checkout Session metadata. `none` writes no line.
+_Avoid_: "language" alone (the site **locale** is a separate, per-visit UI setting); promising a staff match
+
 **Appointment reminder**:
 A WhatsApp utility message for an **Appointment** — day-before Confirm/Reschedule, optional morning-of nudge, or cancel + rebook link.
 _Avoid_: Result SLA reminder (operator-facing held-Result reminders)

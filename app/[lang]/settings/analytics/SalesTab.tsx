@@ -36,7 +36,7 @@ function localMonth(iso: string): Date {
 
 function Kpi({ label, value, note, loading }: { label: string; value: string; note: string; loading: boolean }) {
   return (
-    <Card className="gap-2 py-4">
+    <Card className="min-w-0 gap-2 py-4">
       <CardHeader className="gap-1 px-4">
         <CardDescription>{label}</CardDescription>
         <CardTitle className="text-2xl tabular-nums">{loading ? <Skeleton className="h-8 w-24" /> : value}</CardTitle>
@@ -93,7 +93,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
   const shownGaps = showAllGaps ? gaps : gaps.slice(0, 8);
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           {channelLabel}: paid sales in the period, net of discounts and refunds, before shipping and tax.
@@ -124,7 +124,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
         </Card>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi
           label="Revenue"
           loading={loading}
@@ -160,7 +160,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
       </div>
 
       {!loading && gaps.length > 0 && (
-        <Card className="gap-4 py-4 sm:gap-5 sm:py-6">
+        <Card className="min-w-0 gap-4 py-4 sm:gap-5 sm:py-6">
           <CardHeader className="px-4 sm:px-6">
             <div className="flex items-center gap-1.5">
               <CardTitle>Sales with no cost</CardTitle>
@@ -210,7 +210,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
         </Card>
       )}
 
-      <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
         <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
           <div className="flex items-center gap-1.5">
             <CardTitle>Margin by {breakdownView === "products" ? "product" : "part"}</CardTitle>
@@ -248,7 +248,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
         </CardContent>
       </Card>
 
-      <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
         <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
           <div className="flex items-center gap-1.5">
             <CardTitle>Sales over time</CardTitle>

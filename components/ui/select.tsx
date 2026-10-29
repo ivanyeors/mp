@@ -111,13 +111,18 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
           role="combobox"
           aria-expanded={open}
           data-state={open ? "open" : "closed"}
+          // `shrink` beats Button's `shrink-0`, so a full-width trigger in a flex row
+          // gives way to its neighbours instead of pushing them off-screen.
           className={cn(
-            "flex min-w-[12rem] items-center justify-between gap-2 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+            "flex min-w-[12rem] max-w-full shrink items-center justify-between gap-2 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
             className,
           )}
           {...props}
         >
-          <span className="min-w-0 flex-1 text-left">{children}</span>
+          {/* On phones, `contain: inline-size` keeps a long value from setting the
+              trigger's minimum width (and so widening its card past the screen); it
+              truncates instead. Desktop keeps content-sized triggers. */}
+          <span className="min-w-0 flex-1 truncate text-left max-md:[contain:inline-size]">{children}</span>
           <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </Trigger>

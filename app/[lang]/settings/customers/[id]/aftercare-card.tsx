@@ -289,8 +289,14 @@ function SwitchRow({
 }) {
     return (
         <div className="space-y-1">
+            {/* The whole label row toggles the switch: a 44px target on a phone. */}
             <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={id} className="flex items-center gap-1.5 text-sm font-medium">
+                <Label
+                    htmlFor={id}
+                    className={`flex flex-1 items-center gap-1.5 text-sm font-medium max-md:-ml-2 max-md:min-h-11 max-md:rounded-md max-md:pl-2 ${
+                        canEdit ? "cursor-pointer transition-colors active:bg-press" : ""
+                    }`}
+                >
                     {icon}
                     {label}
                 </Label>

@@ -30,6 +30,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
+import { EmptyState } from "@/components/settings/empty-state";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
@@ -122,6 +124,9 @@ const PANEL_FILTERS: CustomerFilterKey[] = [
     "shop_review",
     "rating",
 ];
+
+/** The toolbar's selects. On a phone they move into the Filters panel, so they count on its button there. */
+const TOOLBAR_FILTERS: CustomerFilterKey[] = ["account", "source", "google", "mobile", "followups"];
 
 /**
  * The Review column (CRM slice 12): the strongest fact first (*★5 Google*,
@@ -285,6 +290,7 @@ export function CustomersClient({
 
     const filtersQuery = customerFilterParams(filters).toString();
     const panelCount = PANEL_FILTERS.filter((k) => isCustomerFilterActive(filters, k)).length;
+    const phonePanelCount = panelCount + TOOLBAR_FILTERS.filter((k) => isCustomerFilterActive(filters, k)).length;
     const filtered = CUSTOMER_FILTER_KEYS.some((k) => isCustomerFilterActive(filters, k));
 
     // Keep the address bar in step without a server round trip, so the list's
@@ -373,8 +379,85 @@ export function CustomersClient({
         return pages;
     };
 
+    // Rendered twice: in the toolbar from md, and at the top of the Filters
+    // panel below it, where a phone has room for them two to a row.
+    const toolbarSelects = (
+        <>
+            <Select value={filters.account} onValueChange={changeAccount}>
+                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-40" aria-label="Account">
+                    <SelectValue placeholder="Account" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All accounts</SelectItem>
+                    {/* An account is bound by the email they signed in with (CRM 11). */}
+                    <SelectItem value="signed-up">Signed up, email verified</SelectItem>
+                    <SelectItem value="no-account">No account, email not verified</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={filters.source} onValueChange={changeSource}>
+                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-40" aria-label="Source">
+                    <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All sources</SelectItem>
+                    <SelectItem value="shopify">From Shopify</SelectItem>
+                    <SelectItem value="platform">Platform</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={filters.google} onValueChange={changeGoogle}>
+                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-44" aria-label="Google">
+                    <SelectValue placeholder="Google" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Any sign-in</SelectItem>
+                    <SelectItem value="linked">Google linked</SelectItem>
+                    <SelectItem value="not-linked">Google not linked</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={filters.mobile} onValueChange={changeMobile}>
+                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-44" aria-label="Mobile">
+                    <SelectValue placeholder="Mobile" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Any mobile</SelectItem>
+                    <SelectItem value="on-file">Valid mobile on file</SelectItem>
+                    <SelectItem value="missing">Mobile missing</SelectItem>
+                    <SelectItem value="invalid">Mobile invalid</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={filters.followups} onValueChange={changeFollowups}>
+                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-52" aria-label="Follow-ups">
+                    <SelectValue placeholder="Follow-ups" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Any follow-ups</SelectItem>
+                    <SelectItem value="open">Has an open follow-up</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={filters.sort} onValueChange={changeSort}>
+                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-48" aria-label="Sort">
+                    <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                    <SelectItem value="name-asc">Name A to Z</SelectItem>
+                    <SelectItem value="name-desc">Name Z to A</SelectItem>
+                    <SelectItem value="signed-up">Recently signed up</SelectItem>
+                    <SelectItem value="last-order">Last order</SelectItem>
+                    <SelectItem value="spend">Most spent</SelectItem>
+                </SelectContent>
+            </Select>
+        </>
+    );
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* The page header and tabs are CustomersPageTabs'; this is the list tab. */}
             {migration && (
                 <MigrationCard
@@ -395,9 +478,9 @@ export function CustomersClient({
                 onSelect={setSegmentId}
             />
 
-            {/* Toolbar */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="relative flex-1 min-w-[200px] max-w-sm">
+            {/* Toolbar: on a phone, search and the Filters button share one row */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="relative min-w-0 flex-1 sm:min-w-[200px] max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
                         placeholder="Search by name or email…"
@@ -407,81 +490,12 @@ export function CustomersClient({
                     />
                 </div>
 
-                <Select value={filters.account} onValueChange={changeAccount}>
-                    <SelectTrigger className="w-full sm:w-40" aria-label="Account">
-                        <SelectValue placeholder="Account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All accounts</SelectItem>
-                        {/* An account is bound by the email they signed in with (CRM 11). */}
-                        <SelectItem value="signed-up">Signed up, email verified</SelectItem>
-                        <SelectItem value="no-account">No account, email not verified</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={filters.source} onValueChange={changeSource}>
-                    <SelectTrigger className="w-full sm:w-40" aria-label="Source">
-                        <SelectValue placeholder="Source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All sources</SelectItem>
-                        <SelectItem value="shopify">From Shopify</SelectItem>
-                        <SelectItem value="platform">Platform</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={filters.google} onValueChange={changeGoogle}>
-                    <SelectTrigger className="w-full sm:w-44" aria-label="Google">
-                        <SelectValue placeholder="Google" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any sign-in</SelectItem>
-                        <SelectItem value="linked">Google linked</SelectItem>
-                        <SelectItem value="not-linked">Google not linked</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={filters.mobile} onValueChange={changeMobile}>
-                    <SelectTrigger className="w-full sm:w-44" aria-label="Mobile">
-                        <SelectValue placeholder="Mobile" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any mobile</SelectItem>
-                        <SelectItem value="on-file">Valid mobile on file</SelectItem>
-                        <SelectItem value="missing">Mobile missing</SelectItem>
-                        <SelectItem value="invalid">Mobile invalid</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={filters.followups} onValueChange={changeFollowups}>
-                    <SelectTrigger className="w-full sm:w-52" aria-label="Follow-ups">
-                        <SelectValue placeholder="Follow-ups" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any follow-ups</SelectItem>
-                        <SelectItem value="open">Has an open follow-up</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={filters.sort} onValueChange={changeSort}>
-                    <SelectTrigger className="w-full sm:w-48" aria-label="Sort">
-                        <SelectValue placeholder="Sort" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="newest">Newest first</SelectItem>
-                        <SelectItem value="oldest">Oldest first</SelectItem>
-                        <SelectItem value="name-asc">Name A to Z</SelectItem>
-                        <SelectItem value="name-desc">Name Z to A</SelectItem>
-                        <SelectItem value="signed-up">Recently signed up</SelectItem>
-                        <SelectItem value="last-order">Last order</SelectItem>
-                        <SelectItem value="spend">Most spent</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="hidden md:contents">{toolbarSelects}</div>
 
                 <Button
                     type="button"
                     variant={panelOpen ? "secondary" : "outline"}
-                    className="w-full sm:w-auto"
+                    className="shrink-0"
                     aria-expanded={panelOpen}
                     aria-controls="customer-filters-panel"
                     onClick={() => setPanelOpen((o) => !o)}
@@ -489,14 +503,19 @@ export function CustomersClient({
                     <SlidersHorizontal className="mr-1.5 h-4 w-4" />
                     Filters
                     {panelCount > 0 && (
-                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">{panelCount}</Badge>
+                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs max-md:hidden">{panelCount}</Badge>
+                    )}
+                    {phonePanelCount > 0 && (
+                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs md:hidden">{phonePanelCount}</Badge>
                     )}
                 </Button>
             </div>
 
             {panelOpen && (
                 <div id="customer-filters-panel">
-                    <CustomerFiltersPanel filters={filters} onChange={changeFilters} />
+                    <CustomerFiltersPanel filters={filters} onChange={changeFilters}>
+                        <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 md:hidden">{toolbarSelects}</div>
+                    </CustomerFiltersPanel>
                 </div>
             )}
 
@@ -509,20 +528,47 @@ export function CustomersClient({
 
             {/* Content */}
             {loading ? (
-                <div className="flex items-center justify-center py-24">
+                <div className="flex items-center justify-center py-12 md:py-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
             ) : customers.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <User className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        {filtered
-                            ? "No customers match these filters."
-                            : "No customers yet."}
-                    </p>
-                </div>
+                <EmptyState icon={User}>
+                    {filtered ? "No customers match these filters." : "No customers yet."}
+                </EmptyState>
             ) : (
-                <div className="rounded-xl border overflow-hidden">
+                <>
+                <MobileList>
+                    {customers.map((customer) => {
+                        const note = lifecycleNote(customer);
+                        return (
+                            <MobileListRow key={customer.id} href={to(`/settings/customers/${customer.id}`)}>
+                                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="min-w-0 truncate font-medium">{getCustomerName(customer)}</span>
+                                    {customer.from_shopify && (
+                                        <Badge variant="outline" className="text-xs font-normal">
+                                            Shopify
+                                        </Badge>
+                                    )}
+                                    {customer.open_followups > 0 && (
+                                        <Badge variant="secondary" className="text-xs font-normal">
+                                            {customer.open_followups} to follow up
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="truncate text-xs text-muted-foreground">{customer.email}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                    <LifecycleStageBadge
+                                        stage={customer.lifecycle_stage}
+                                        undated={customer.lifecycle_undated}
+                                    />
+                                    {note ? <span className="text-xs text-muted-foreground">{note}</span> : null}
+                                    <AccountStatus customer={customer} compact />
+                                </div>
+                            </MobileListRow>
+                        );
+                    })}
+                </MobileList>
+                <div className="hidden overflow-hidden rounded-xl border md:block">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -646,6 +692,7 @@ export function CustomersClient({
                         </TableBody>
                     </Table>
                 </div>
+                </>
             )}
 
             {/* Pagination */}

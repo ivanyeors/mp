@@ -854,9 +854,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     /* ---------------------------------------------------------------- */
 
     return (
-        <div className="space-y-10 max-w-6xl">
+        // Flex, not space-y: on a phone the library (upload, folders, assets) comes first,
+        // above the nine landing-image tiles.
+        <div className="flex max-w-6xl flex-col gap-10">
             {/* ===== Landing Page Images Section ===== */}
-            <section className="space-y-4">
+            <section className="space-y-4 max-md:order-3">
                 <div>
                     <div className="flex items-center gap-1.5">
                       <h1 className="text-2xl font-bold tracking-tight">Landing page images</h1>
@@ -885,7 +887,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     {/* Thumbnail */}
                                     <button
                                         type="button"
-                                        className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                        className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden cursor-pointer transition-opacity active:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                         onClick={() => setPickerSlot(slot)}
                                         disabled={isSaving}
                                     >
@@ -913,7 +915,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-6 w-6 shrink-0"
+                                                className="h-6 w-6 shrink-0 max-md:size-11"
                                                 onClick={() => resetSlot(slot)}
                                                 disabled={isSaving}
                                                 title="Reset to default"
@@ -934,10 +936,10 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             </section>
 
             {/* Divider */}
-            <hr className="border-border" />
+            <hr className="border-border max-md:order-2" />
 
             {/* ===== Full Media Gallery ===== */}
-            <section className="space-y-6">
+            <section className="space-y-6 max-md:order-1">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <div className="flex items-center gap-1.5">
@@ -1067,7 +1069,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     className={`min-h-11 px-4 py-2 text-xs font-medium rounded-md transition-colors ${
                                         filterMode === opt.value
                                             ? "bg-primary text-primary-foreground"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted active:bg-press"
                                     }`}
                                 >
                                     {opt.label}
@@ -1089,7 +1091,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 className={`min-h-11 px-4 py-2 text-xs font-medium rounded-md transition-colors ${
                                     kindFilter === opt.value
                                         ? "bg-primary text-primary-foreground"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted active:bg-press"
                                 }`}
                             >
                                 {opt.label}
@@ -1100,7 +1102,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <select
                             value={folderFilter}
                             onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
-                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[180px]"
+                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary active:bg-press sm:min-w-[180px]"
                             aria-label="Filter by folder"
                         >
                             <option value="all">All folders</option>
@@ -1114,7 +1116,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <select
                             value={tagFilter}
                             onChange={(e) => setTagFilter(e.target.value)}
-                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[160px]"
+                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary active:bg-press sm:min-w-[160px]"
                             aria-label="Filter by tag"
                         >
                             <option value="all">All tags</option>
@@ -1190,7 +1192,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             return (
                                 <div
                                     key={file.id}
-                                    className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md transition-all cursor-pointer"
+                                    className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md transition-all cursor-pointer active:opacity-80"
                                     onClick={() => openDetail(file)}
                                 >
                                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
@@ -1424,7 +1426,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             onChange={(e) =>
                                                 setEditFolderId(e.target.value ? e.target.value : null)
                                             }
-                                            className="w-full max-md:min-h-11 text-base md:text-sm border rounded-md px-3 py-2 bg-background"
+                                            className="w-full max-md:min-h-11 text-base md:text-sm border rounded-md px-3 py-2 bg-background active:bg-press"
                                         >
                                             <option value="">Unfiled</option>
                                             {folders.map((f) => (

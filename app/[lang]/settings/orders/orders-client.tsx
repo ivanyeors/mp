@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
@@ -44,6 +43,10 @@ import { formatAdminDateTimeMY } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderMargin, OrderStatus } from "@/lib/types/ecommerce";
 import { InfoTip } from "@/components/ui/info-tip";
+import { StatTile } from "@/components/settings/stat-tile";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
+import { EmptyState } from "@/components/settings/empty-state";
+import { orderStatusLabel } from "@/lib/shop/order-display";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -172,38 +175,6 @@ function toDashboardStats(s: {
         total_gross_margin: s.total_gross_margin ?? null,
         avg_margin_pct: s.avg_margin_pct ?? null,
     };
-}
-
-function SummaryCard({
-    icon: Icon,
-    label,
-    value,
-    loading,
-}: {
-    icon: React.ElementType;
-    label: string;
-    value: string;
-    loading: boolean;
-}) {
-    return (
-        <Card>
-            <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">{label}</p>
-                        {loading ? (
-                            <div className="mt-1 h-5 w-20 animate-pulse rounded bg-muted" />
-                        ) : (
-                            <p className="text-lg font-semibold leading-tight">{value}</p>
-                        )}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -348,7 +319,7 @@ export default function SettingsOrdersPage({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-1.5">
@@ -359,35 +330,43 @@ export default function SettingsOrdersPage({
                 </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-                <SummaryCard
+            {/* Summary tiles */}
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 xl:grid-cols-5">
+                <StatTile
                     icon={ShoppingCart}
                     label="Total orders"
                     value={summaryStats ? String(summaryStats.total_orders) : "—"}
                     loading={summaryStatsLoading}
                 />
-                <SummaryCard
+                <StatTile
                     icon={DollarSign}
                     label="Revenue"
                     value={summaryStats ? formatSGD(summaryStats.revenue) : "—"}
                     loading={summaryStatsLoading}
                 />
-                <SummaryCard
+                <StatTile
                     icon={TrendingUp}
                     label="Avg order value"
                     value={summaryStats ? formatSGD(summaryStats.avg_order_value) : "—"}
                     loading={summaryStatsLoading}
                 />
                 {!summaryStatsLoading && summaryStats && (
-                    <SummaryCard
+                    <StatTile
                         icon={TrendingUp}
                         label="Gross margin"
-                        value={`${formatSGD(summaryStats.total_gross_margin ?? 0)}${summaryStats.avg_margin_pct != null ? ` (${formatMarginPct(summaryStats.avg_margin_pct)} avg)` : ""}`}
-                        loading={summaryStatsLoading}
+                        value={
+                            <>
+                                {formatSGD(summaryStats.total_gross_margin ?? 0)}
+                                {summaryStats.avg_margin_pct != null && (
+                                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                        ({formatMarginPct(summaryStats.avg_margin_pct)} avg)
+                                    </span>
+                                )}
+                            </>
+                        }
                     />
                 )}
-                <SummaryCard
+                <StatTile
                     icon={Clock}
                     label="Pending orders"
                     value={summaryStats ? String(summaryStats.pending_orders) : "—"}
@@ -395,10 +374,10 @@ export default function SettingsOrdersPage({
                 />
             </div>
 
-            <div className="space-y-6">
-            {/* Toolbar */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
-                <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="space-y-4 md:space-y-6">
+            {/* Toolbar: search on its own row on a phone, then status, then the two dates side by side */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
                         placeholder="Search by order # or email…"
@@ -415,14 +394,14 @@ export default function SettingsOrdersPage({
                     <SelectContent>
                         <SelectItem value="all">All statuses</SelectItem>
                         {ORDER_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s} className="capitalize">
-                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                            <SelectItem key={s} value={s}>
+                                {orderStatusLabel(s)}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
 
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-row sm:items-center">
                     <Input
                         type="date"
                         value={dateFrom}
@@ -456,20 +435,58 @@ export default function SettingsOrdersPage({
 
             {/* Content */}
             {loading ? (
-                <div className="flex items-center justify-center py-24">
+                <div className="flex items-center justify-center py-12 md:py-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
             ) : orders.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        {debouncedSearch || statusFilter !== "all" || dateFrom || dateTo
-                            ? "No orders match your filters."
-                            : "No orders yet."}
-                    </p>
-                </div>
+                <EmptyState icon={Package}>
+                    {debouncedSearch || statusFilter !== "all" || dateFrom || dateTo
+                        ? "No orders match your filters."
+                        : "No orders yet."}
+                </EmptyState>
             ) : (
-                <div className="rounded-xl border overflow-hidden">
+                <>
+                <MobileList>
+                    {orders.map((order) => {
+                        const customClass = orderStatusBadgeClass(order.status);
+                        const variant = orderStatusBadgeVariant(order.status);
+                        return (
+                            <MobileListRow
+                                key={order.id}
+                                href={to(`/settings/orders/${order.id}`)}
+                            >
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <span className="truncate text-sm font-semibold">
+                                        #{order.order_number}
+                                    </span>
+                                    <span className="shrink-0 text-sm font-medium tabular-nums">
+                                        {formatSGD(order.total)}
+                                    </span>
+                                </div>
+                                <p className="truncate text-sm text-muted-foreground">
+                                    {order.shipping_address?.recipient || order.email}
+                                </p>
+                                <div className="mt-1 flex min-w-0 items-center gap-2">
+                                    <Badge
+                                        variant={customClass ? "outline" : variant}
+                                        className={customClass}
+                                    >
+                                        {orderStatusLabel(order.status)}
+                                    </Badge>
+                                    {order.partner_id && (
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                            Partner
+                                        </Badge>
+                                    )}
+                                    <span className="truncate text-xs text-muted-foreground">
+                                        {formatDate(order.created_at)}
+                                    </span>
+                                </div>
+                            </MobileListRow>
+                        );
+                    })}
+                </MobileList>
+                <div className="hidden overflow-hidden rounded-xl border md:block">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -511,9 +528,9 @@ export default function SettingsOrdersPage({
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <Badge
                                                     variant={customClass ? "outline" : variant}
-                                                    className={`capitalize ${customClass}`}
+                                                    className={customClass}
                                                 >
-                                                    {order.status}
+                                                    {orderStatusLabel(order.status)}
                                                 </Badge>
                                                 {order.partner_id && (
                                                     <Badge
@@ -552,6 +569,7 @@ export default function SettingsOrdersPage({
                         </TableBody>
                     </Table>
                 </div>
+                </>
             )}
 
             {/* Pagination */}

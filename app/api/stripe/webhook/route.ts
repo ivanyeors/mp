@@ -548,7 +548,11 @@ export async function POST(req: Request) {
         const readjustmentBookingId = session.metadata?.readjustment_booking_id;
         if (session.metadata?.purpose === READJUSTMENT_PURPOSE && readjustmentBookingId) {
           try {
-            await finalizeReadjustmentBooking(admin, readjustmentBookingId);
+            await finalizeReadjustmentBooking(
+              admin,
+              readjustmentBookingId,
+              session.metadata?.language_preference,
+            );
           } catch (err) {
             throw new CriticalWebhookError(
               `Paid re-adjustment ${readjustmentBookingId} could not be booked: ${

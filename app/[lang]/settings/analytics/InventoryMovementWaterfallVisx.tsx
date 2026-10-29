@@ -8,6 +8,7 @@ import { AxisBottom } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
+import { format } from "date-fns";
 
 export type MovementRow = {
   key: string;
@@ -70,9 +71,16 @@ function Chart({
     bottom: width < 420 ? 36 : width < 640 ? 40 : 44,
     left: clamp(estimatedLabelWidth + 16, leftMin, leftMax),
   };
+  // At phone width each row is a tap target, so the chart grows until every
+  // row is 44px (the band scale's step is innerHeight / (rows + 0.25)).
+  const chartHeight =
+    width < 420
+      ? Math.max(height, Math.ceil(44 * (rows.length + 0.25)) + margin.top + margin.bottom)
+      : height;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
-  const innerHeight = Math.max(10, height - margin.top - margin.bottom);
+  const innerHeight = Math.max(10, chartHeight - margin.top - margin.bottom);
   const [hoveredLabelKey, setHoveredLabelKey] = useState<string | null>(null);
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
 
   const wfRows = useMemo<WaterfallRow[]>(() => {
     let cum = 0;
@@ -139,7 +147,7 @@ function Chart({
 
   return (
     <div className="relative">
-      <svg width={width} height={height} style={{ width: "100%", height: "100%" }} className="block">
+      <svg width={width} height={chartHeight} style={{ width: "100%", height: "100%" }} className="block">
         <Group left={margin.left} top={margin.top}>
           <GridColumns
             scale={xScale}
@@ -159,42 +167,42 @@ function Chart({
             strokeOpacity={0.9}
           />
 
-          {/* Labels (clickable) */}
+          {/* Labels; a clickable row's target is the hit strip drawn last. */}
           {wfRows.map((r) => {
             const y = yScale(r.key);
             if (y === undefined) return null;
             const clickable = isLabelClickable ? isLabelClickable(r) : false;
             const hovered = clickable && hoveredLabelKey === r.key;
+            const gap = yScale.step() - yScale.bandwidth();
             return (
-              <text
-                key={`label-${r.key}`}
-                x={-12}
-                y={y + yScale.bandwidth() / 2}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={labelFontSize}
-                fill={clickable ? "var(--foreground)" : "var(--muted-foreground)"}
-                style={{
-                  cursor: clickable ? "pointer" : "default",
-                  userSelect: "none",
-                  textDecoration: hovered ? "underline" : "none",
-                  textUnderlineOffset: hovered ? "4px" : undefined,
-                  textDecorationThickness: hovered ? "2px" : undefined,
-                }}
-                onMouseEnter={() => {
-                  if (!clickable) return;
-                  setHoveredLabelKey(r.key);
-                }}
-                onMouseLeave={() => {
-                  setHoveredLabelKey((prev) => (prev === r.key ? null : prev));
-                }}
-                onClick={() => {
-                  if (!clickable || !onLabelClick) return;
-                  onLabelClick(r);
-                }}
-              >
-                {r.label}
-              </text>
+              <React.Fragment key={`label-${r.key}`}>
+                {pressedKey === r.key ? (
+                  <rect
+                    x={-margin.left}
+                    y={y - gap / 2}
+                    width={margin.left + innerWidth}
+                    height={yScale.step()}
+                    rx={6}
+                    fill="var(--press)"
+                  />
+                ) : null}
+                <text
+                  x={-12}
+                  y={y + yScale.bandwidth() / 2}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  fontSize={labelFontSize}
+                  fill={clickable ? "var(--foreground)" : "var(--muted-foreground)"}
+                  style={{
+                    userSelect: "none",
+                    textDecoration: hovered ? "underline" : "none",
+                    textUnderlineOffset: hovered ? "4px" : undefined,
+                    textDecorationThickness: hovered ? "2px" : undefined,
+                  }}
+                >
+                  {r.label}
+                </text>
+              </React.Fragment>
             );
           })}
 
@@ -287,6 +295,45 @@ function Chart({
               showRowTooltip(evt, row);
             }}
           />
+
+          {/* A clickable row is one strip across label and bar, so the whole
+              row drills down rather than only its 13px label. */}
+          {wfRows.map((r) => {
+            const y = yScale(r.key);
+            if (y === undefined || !isLabelClickable?.(r) || !onLabelClick) return null;
+            const gap = yScale.step() - yScale.bandwidth();
+            const release = () => setPressedKey((prev) => (prev === r.key ? null : prev));
+            return (
+              <rect
+                key={`hit-${r.key}`}
+                x={-margin.left}
+                y={y - gap / 2}
+                width={margin.left + innerWidth}
+                height={yScale.step()}
+                fill="transparent"
+                role="button"
+                tabIndex={0}
+                aria-label={r.label}
+                style={{ cursor: "pointer", outline: "none" }}
+                onPointerDown={() => setPressedKey(r.key)}
+                onPointerUp={release}
+                onPointerCancel={release}
+                onMouseEnter={() => setHoveredLabelKey(r.key)}
+                onMouseMove={(evt) => showRowTooltip(evt, r)}
+                onPointerLeave={() => {
+                  release();
+                  setHoveredLabelKey((prev) => (prev === r.key ? null : prev));
+                  hideTooltip();
+                }}
+                onClick={() => onLabelClick(r)}
+                onKeyDown={(evt) => {
+                  if (evt.key !== "Enter" && evt.key !== " ") return;
+                  evt.preventDefault();
+                  onLabelClick(r);
+                }}
+              />
+            );
+          })}
         </Group>
       </svg>
 
@@ -325,6 +372,13 @@ function Chart({
   );
 }
 
+/** The two total rows arrive labelled `total[YYYY-MM-DD]`; show them as a date people read. */
+function readableLabel(row: MovementRow): string {
+  const m = /^total\[(\d{4})-(\d{2})-(\d{2})\]$/.exec(row.label);
+  if (!m) return row.label;
+  return `Total · ${format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), "d MMM yyyy")}`;
+}
+
 export function InventoryMovementWaterfallVisx({
   rows,
   height = 380,
@@ -336,16 +390,18 @@ export function InventoryMovementWaterfallVisx({
   onLabelClick?: (row: MovementRow) => void;
   isLabelClickable?: (row: MovementRow) => boolean;
 }) {
+  const readableRows = useMemo(() => rows.map((row) => ({ ...row, label: readableLabel(row) })), [rows]);
   return (
     <div className="w-full overflow-x-auto">
-      <div className="min-w-[440px]">
+      {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
+      <div className="md:min-w-[440px]">
         <ParentSize>
           {({ width }) =>
             width < 10 ? null : (
               <Chart
                 width={width}
                 height={height}
-                rows={rows}
+                rows={readableRows}
                 onLabelClick={onLabelClick}
                 isLabelClickable={isLabelClickable}
               />

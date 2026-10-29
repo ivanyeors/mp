@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  MoreHorizontal,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -21,12 +22,21 @@ import {
 } from "@/components/ui/collapsible";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SortableRow } from "@/components/ui/sortable-row";
@@ -41,6 +51,9 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { InfoTip } from "@/components/ui/info-tip";
 
 const LOCALES = ["en-US", "zh-CN"] as const;
+
+const iconButtonClassName =
+  "min-h-11 min-w-11 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-press disabled:opacity-30";
 
 function slugify(text: string): string {
   return text
@@ -256,10 +269,17 @@ export default function FormsSettingsPage({
                       </TabsContent>
                     ))}
                   </Tabs>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </DialogClose>
                   <Button type="button" onClick={addOption} disabled={saving}>
                     Add option
                   </Button>
-                </div>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
             <Button
@@ -297,12 +317,12 @@ export default function FormsSettingsPage({
                     >
                       {(grip) => (
                         <>
-                          <div className="flex items-center gap-1 px-2 py-2">
+                          <div className="flex items-center gap-1 px-2 py-2 max-md:py-1">
                             {grip}
-                            <div className="flex flex-col">
+                            <div className="flex flex-col max-md:hidden">
                               <button
                                 type="button"
-                                className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                className={iconButtonClassName}
                                 disabled={index === 0 || saving}
                                 onClick={() => move(index, -1)}
                                 aria-label="Move up"
@@ -311,7 +331,7 @@ export default function FormsSettingsPage({
                               </button>
                               <button
                                 type="button"
-                                className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                className={iconButtonClassName}
                                 disabled={index === editable.length - 1 || saving}
                                 onClick={() => move(index, 1)}
                                 aria-label="Move down"
@@ -321,7 +341,7 @@ export default function FormsSettingsPage({
                             </div>
                             <button
                               type="button"
-                              className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                              className={`${iconButtonClassName} max-md:hidden`}
                               onClick={() => archiveToggle(opt.id)}
                               aria-label={opt.active ? "Archive" : "Restore"}
                             >
@@ -331,13 +351,14 @@ export default function FormsSettingsPage({
                                 <ArchiveRestore className="h-4 w-4" />
                               )}
                             </button>
+                            {/* Phones: the whole name line opens the labels, at 44px. */}
                             <CollapsibleTrigger asChild>
                               <button
                                 type="button"
-                                className="min-w-0 flex-1 px-2 text-left text-sm font-medium"
+                                className="min-w-0 flex-1 px-2 text-left text-sm font-medium max-md:flex max-md:min-h-11 max-md:flex-col max-md:justify-center max-md:rounded-md max-md:transition-colors max-md:active:bg-press"
                               >
-                                {opt.labels["en-US"]}
-                                <span className="ml-2 font-normal text-muted-foreground">
+                                <span>{opt.labels["en-US"]}</span>
+                                <span className="ml-2 font-normal text-muted-foreground max-md:ml-0 max-md:text-xs">
                                   {opt.id}
                                   {!opt.active ? ", archived" : ""}
                                 </span>
@@ -347,12 +368,56 @@ export default function FormsSettingsPage({
                               type="button"
                               size="icon"
                               variant="ghost"
-                              className="min-h-11 min-w-11 text-muted-foreground"
+                              className="min-h-11 min-w-11 text-muted-foreground max-md:hidden"
                               onClick={() => removeOption(opt.id)}
                               aria-label="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-11 shrink-0 text-muted-foreground md:hidden"
+                                  aria-label={`Actions for ${opt.labels["en-US"] || opt.id}`}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="min-w-44">
+                                <DropdownMenuItem
+                                  className="min-h-11"
+                                  disabled={index === 0 || saving}
+                                  onSelect={() => move(index, -1)}
+                                >
+                                  <ChevronUp />
+                                  Move up
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="min-h-11"
+                                  disabled={index === editable.length - 1 || saving}
+                                  onSelect={() => move(index, 1)}
+                                >
+                                  <ChevronDown />
+                                  Move down
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="min-h-11" onSelect={() => archiveToggle(opt.id)}>
+                                  {opt.active ? <Archive /> : <ArchiveRestore />}
+                                  {opt.active ? "Archive" : "Restore"}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  className="min-h-11"
+                                  onSelect={() => removeOption(opt.id)}
+                                >
+                                  <Trash2 />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                           <CollapsibleContent className="border-t px-4 py-3">
                             <Tabs defaultValue="en-US">
@@ -392,17 +457,17 @@ export default function FormsSettingsPage({
                     onOpenChange={(open) => setExpanded(open ? other.id : null)}
                   >
                     <div className="rounded-lg border border-dashed bg-card">
-                      <div className="flex items-center gap-2 px-3 py-2.5">
+                      <div className="flex items-center gap-2 px-3 py-2.5 max-md:py-1">
                         <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                           System
                         </span>
                         <CollapsibleTrigger asChild>
                           <button
                             type="button"
-                            className="min-w-0 flex-1 text-left text-sm font-medium"
+                            className="min-w-0 flex-1 text-left text-sm font-medium max-md:flex max-md:min-h-11 max-md:flex-col max-md:justify-center max-md:rounded-md max-md:px-1 max-md:transition-colors max-md:active:bg-press"
                           >
-                            {other.labels["en-US"]}
-                            <span className="ml-2 font-normal text-muted-foreground">
+                            <span>{other.labels["en-US"]}</span>
+                            <span className="ml-2 font-normal text-muted-foreground max-md:ml-0 max-md:text-xs">
                               Always last, can&apos;t be archived
                             </span>
                           </button>

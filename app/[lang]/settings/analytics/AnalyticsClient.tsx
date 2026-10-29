@@ -86,7 +86,7 @@ function PeriodPicker({
     <button
       type="button"
       className={[
-        "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium transition-colors",
+        "inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors active:bg-press sm:flex-none",
         open && edge === which ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
       ].join(" ")}
       onClick={() => {
@@ -159,8 +159,8 @@ function StockTab({ period, costingsHref }: { period: Period; costingsHref: stri
         : `Parts / ${partCategoryLabel(category ?? "other")} / ${size ?? "Size"}`;
 
   return (
-    <div className="space-y-6">
-      <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+    <div className="grid grid-cols-1 gap-6">
+      <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
         <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
           <div className="flex items-center gap-1.5">
             <CardTitle>Inventory movement</CardTitle>
@@ -226,7 +226,7 @@ function StockTab({ period, costingsHref }: { period: Period; costingsHref: stri
         </CardContent>
       </Card>
 
-      <Card className="gap-2 py-4">
+      <Card className="min-w-0 gap-2 py-4">
         <CardHeader className="px-4 sm:px-6">
           <CardTitle className="text-base">Stock value today</CardTitle>
           <CardDescription>
@@ -269,8 +269,8 @@ function CustomersTab({ period }: { period: Period }) {
   }, [load]);
 
   return (
-    <div className="space-y-6">
-      <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+    <div className="grid grid-cols-1 gap-6">
+      <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
         <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
           <div className="flex items-center gap-1.5">
             <CardTitle>Results</CardTitle>
@@ -322,7 +322,7 @@ export default function AnalyticsClient({ initialTab = "sales" }: { initialTab?:
   };
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5">
           <h1>Analytics</h1>
@@ -354,7 +354,7 @@ export default function AnalyticsClient({ initialTab = "sales" }: { initialTab?:
         <TabsContent value="customers" className="pt-4">
           <CustomersTab period={period} />
         </TabsContent>
-        <TabsContent value="traffic" className="space-y-6 pt-4">
+        <TabsContent value="traffic" className="grid grid-cols-1 gap-6 pt-4">
           <SearchVisibilityCard />
           <ProspectJourneyCard from={period.from} to={period.to} />
         </TabsContent>

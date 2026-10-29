@@ -138,25 +138,28 @@ export function ReviewSlaSection() {
   }, [sla, reminders]);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border p-4">
-      <div className="flex items-center gap-1.5">
-        <CollapsibleTrigger className="text-left">
-          <h2 className="text-sm font-medium">Review SLA</h2>
-        </CollapsibleTrigger>
-        <InfoTip label="About Review SLA">
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border p-4 max-md:p-0">
+      {/* One header target: the chevron trigger stretches over the whole row (56px on
+          phones, with a pressed tint); the InfoTip sits above it. */}
+      <div className="relative flex items-center gap-1.5 rounded-lg transition-colors has-[[data-slot=collapsible-trigger]:active]:bg-press max-md:min-h-14 max-md:px-4">
+        <h2 className="text-sm font-medium">Review SLA</h2>
+        <InfoTip label="About Review SLA" className="z-10">
           Unassigned held results expire after the working-day SLA, always before the card
           hold lapses. Their reminders go to Telegram, the ops email or both. Customer
           payment reminders are set at the bottom.
         </InfoTip>
-        <CollapsibleTrigger aria-label="Toggle Review SLA" className="flex flex-1 justify-end self-stretch">
+        <CollapsibleTrigger
+          aria-label="Toggle Review SLA"
+          className="flex flex-1 justify-end self-stretch outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring max-md:items-center"
+        >
           <ChevronDown
-            className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform md:mt-1 ${
               open ? "rotate-180" : ""
             }`}
           />
         </CollapsibleTrigger>
       </div>
-      <CollapsibleContent className="pt-4">
+      <CollapsibleContent className="pt-4 max-md:px-4 max-md:pb-4 max-md:pt-0">
         {slaLoading ? (
           <p className="text-xs text-muted-foreground">Loading SLA settings…</p>
         ) : (

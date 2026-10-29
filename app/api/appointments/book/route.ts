@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
+import { LANGUAGE_PREFERENCES, languagePreferenceNotes } from "@/lib/appointments/language";
 import { normalizePhone } from "@/lib/appointments/phone";
 import { isOfferableSlot } from "@/lib/appointments/slots";
 import {
@@ -22,6 +23,7 @@ const BookSchema = z.object({
   phone: z.string().min(1),
   email: z.string().email(),
   appointment_type: z.enum(["customisation", "readjustment"]).default("customisation"),
+  language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
 });
 
 /** POST /api/appointments/book → create GCal event + pending reminder row. */
@@ -111,6 +113,7 @@ export async function POST(req: Request) {
       email: parsed.email,
       appointmentType: parsed.appointment_type,
       settings,
+      notes: languagePreferenceNotes(parsed.language_preference),
     });
 
     return NextResponse.json({ ok: true, eventId, contact });

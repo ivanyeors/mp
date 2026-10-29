@@ -39,7 +39,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
  * Without `customers-edit` the form and every action are left out; the routes
  * refuse regardless.
  *
- * Its own fetch, like the Aftercare card beside it, unless handed `initialData`.
+ * Its own fetch, like the other cards on the page, unless handed `initialData`.
  */
 export function CustomerFollowUpsCard({
     customerId,
@@ -209,7 +209,7 @@ export function CustomerFollowUpsCard({
                                 {[...open, ...done].map((f) => (
                                     <li
                                         key={f.id}
-                                        className={`rounded-lg border p-3 text-sm space-y-1.5 ${f.doneAt ? "opacity-70" : ""}`}
+                                        className={`rounded-lg border p-3 text-sm space-y-1.5 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-0 max-md:pb-3 max-md:last:border-b-0 max-md:last:pb-0 ${f.doneAt ? "opacity-70" : ""}`}
                                     >
                                         <p className={`break-words ${f.doneAt ? "line-through" : "font-medium"}`}>{f.title}</p>
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

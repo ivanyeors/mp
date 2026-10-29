@@ -463,6 +463,11 @@ export const enUS: Messages = {
         bookAnother: "Book another",
         errorSlotTaken: "That time was just taken. Please pick another.",
         errorGeneric: "Something went wrong. Please try again.",
+        languageLabel: "Language preference",
+        languageEnglish: "English",
+        languageMandarin: "Mandarin",
+        languageNone: "No preference",
+        languageHint: "We'll try our best to assign a staff member comfortable with your selected language.",
         measurementFeeNote:
           "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — get it customised, adjusted and bring home immediately.",
       },

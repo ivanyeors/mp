@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -16,8 +16,9 @@ import {
     DollarSign,
     Clock,
     Package,
-    Repeat,
     CalendarCheck,
+    Globe,
+    type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
+import { orderStatusLabel } from "@/lib/shop/order-display";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { toast } from "sonner";
 import { changedCustomerFields } from "@/lib/crm/customer-patch";
@@ -375,11 +377,15 @@ export function CustomerDetailClient({
         [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
         customer.email;
 
+    const note = lifecycle ? lifecycleNote(lifecycle) : null;
+
+    // Stats and columns follow the width the page has, not the window (a
+    // container query), so a collapsed sidebar counts.
     return (
-        <div className="space-y-6">
+        <div className="@container space-y-4 md:space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild className="max-md:hidden">
                     <Link href={to("/settings/customers")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Customers
@@ -391,6 +397,7 @@ export function CustomerDetailClient({
                         {lifecycle ? (
                             <LifecycleStageBadge stage={lifecycle.lifecycle_stage} undated={lifecycle.lifecycle_undated} />
                         ) : null}
+                        {note ? <span className="text-xs text-muted-foreground">{note}</span> : null}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">
                         Customer since {formatDate(customer.created_at)}
@@ -398,83 +405,208 @@ export function CustomerDetailClient({
                 </div>
             </div>
 
-            {/* Two-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* ── Left: Orders + Addresses ── */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Order History */}
+            {/* Stats: one strip across the page, so the columns below hold only cards */}
+            <Card className="py-4">
+                <CardContent>
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 @xl:grid-cols-3 @5xl:grid-cols-6">
+                        {lifecycle ? (
+                            <>
+                                <Stat
+                                    icon={Package}
+                                    label="Purchases"
+                                    title="Paid orders with a product on them, Shopify-era orders included. A re-adjustment fee is not one."
+                                >
+                                    {lifecycle.purchases}
+                                </Stat>
+                                <Stat
+                                    icon={CalendarCheck}
+                                    label="Bookings attended"
+                                    title="Re-adjustment bookings they came in for, including ones booked from the check-up reminder."
+                                >
+                                    {lifecycle.attended_bookings}
+                                </Stat>
+                                <Stat icon={Clock} label="Last purchase">
+                                    {lifecycle.last_purchase_at
+                                        ? formatDate(lifecycle.last_purchase_at)
+                                        : lifecycle.lifecycle_undated
+                                          ? "On Shopify"
+                                          : "None"}
+                                </Stat>
+                                <Stat icon={Clock} label="Last booking">
+                                    {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}
+                                </Stat>
+                            </>
+                        ) : null}
+                        <Stat icon={ShoppingCart} label="Total orders">
+                            {customer.total_orders}
+                        </Stat>
+                        <Stat icon={DollarSign} label="Total spent">
+                            {formatSGD(customer.total_spent)}
+                        </Stat>
+                    </dl>
+                </CardContent>
+            </Card>
+
+            {/*
+              The cards in three groups: who they are, what happened, and the
+              relationship since. One column; then what happened beside the
+              other two, stacked; then all three side by side. `auto 1fr` rows
+              keep the stacked pair together however long the timeline runs.
+            */}
+            <div className="grid grid-cols-1 items-start gap-4 md:gap-6 @3xl:grid-cols-5 @3xl:grid-rows-[auto_1fr] @5xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] @5xl:grid-rows-1">
+                {/* ── Who they are: details, contact, addresses, where the record came from ── */}
+                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-1">
+                    {/* Info Card: details and tags, saved together. Notes save on their own. */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
-                                <ShoppingCart className="h-4 w-4" />
-                                Order history
+                                <User className="h-4 w-4" />
+                                Customer info
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-0">
-                            {ordersLoading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                </div>
-                            ) : orders.length === 0 ? (
-                                <div className="px-4 py-8 text-center">
-                                    <p className="text-sm text-muted-foreground">
-                                        No orders yet.
-                                    </p>
+                        <CardContent className="space-y-3">
+                            {canEdit ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="first-name">First name</Label>
+                                        <Input
+                                            id="first-name"
+                                            value={firstName}
+                                            onChange={(e) => setFirstName(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="last-name">Last name</Label>
+                                        <Input
+                                            id="last-name"
+                                            value={lastName}
+                                            onChange={(e) => setLastName(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                            <TableHead className="px-4">Order #</TableHead>
-                                            <TableHead className="px-4 hidden sm:table-cell">
-                                                Date
-                                            </TableHead>
-                                            <TableHead className="px-4">Status</TableHead>
-                                            <TableHead className="px-4 text-right">Total</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {orders.map((order) => {
-                                            const customClass = orderStatusBadgeClass(order.status);
-                                            const variant = orderStatusBadgeVariant(order.status);
-                                            return (
-                                                <TableRow key={order.id}>
-                                                    <TableCell className="px-4 py-3">
-                                                        <Link
-                                                            href={to(`/settings/orders/${order.id}`)}
-                                                            className="font-bold text-sm text-primary hover:underline"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            #{order.order_number}
-                                                        </Link>
-                                                    </TableCell>
-                                                    <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground whitespace-nowrap">
-                                                        {formatDate(order.created_at)}
-                                                    </TableCell>
-                                                    <TableCell className="px-4">
-                                                        <Badge
-                                                            variant={
-                                                                customClass ? "outline" : variant
-                                                            }
-                                                            className={`capitalize ${customClass}`}
-                                                        >
-                                                            {order.status}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="px-4 text-right text-sm font-medium">
-                                                        {formatSGD(order.total)}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
+                                <p className="text-sm font-medium">
+                                    {[firstName, lastName].filter(Boolean).join(" ") || "—"}
+                                </p>
+                            )}
+                            <div className="space-y-1 text-sm">
+                                <div className="flex items-center gap-1.5 text-muted-foreground py-1">
+                                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{customer.email}</span>
+                                </div>
+                            </div>
+                            {canEdit ? (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="phone">
+                                        Phone{" "}
+                                        <span className="text-muted-foreground font-normal">
+                                            (optional)
+                                        </span>
+                                    </Label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                        <Input
+                                            id="phone"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            className="pl-9"
+                                            placeholder="+60…"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                                    <span>{phone || "No phone"}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Globe className="h-3.5 w-3.5" />
+                                <span>Locale: {customer.locale}</span>
+                            </div>
+                            <div className="space-y-2 border-t pt-3">
+                                <p className="text-sm font-medium">Tags</p>
+                            {!canEdit && tags.length === 0 && (
+                                <p className="text-sm text-muted-foreground">No tags.</p>
+                            )}
+                            {!canEdit && tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {tags.map((tag) => (
+                                        <Badge key={tag} variant="secondary">
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+                            {canEdit && tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 max-md:gap-2">
+                                    {tags.map((tag) => (
+                                        // The whole tag removes it: a 44px chip on a phone.
+                                        <Badge
+                                            key={tag}
+                                            variant="secondary"
+                                            className="cursor-pointer group pr-1.5 transition-colors active:bg-press max-md:min-h-11 max-md:px-3 max-md:text-sm"
+                                            onClick={() => removeTag(tag)}
+                                            title="Click to remove"
+                                        >
+                                            {tag}
+                                            <span className="ml-1 text-xs leading-none opacity-100">
+                                                ×
+                                            </span>
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+                            {canEdit && (
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Add a tag…"
+                                        value={tagInput}
+                                        onChange={(e) => setTagInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                addTag();
+                                            }
+                                        }}
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={addTag}
+                                        disabled={!tagInput.trim()}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                            </div>
+                            {canEdit && (
+                                <Button
+                                    className="w-full"
+                                    onClick={saveChanges}
+                                    disabled={saving}
+                                >
+                                    {saving ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Save className="mr-2 h-4 w-4" />
+                                    )}
+                                    Save changes
+                                </Button>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Timeline (CRM 03): everything that happened, newest first */}
-                    <CustomerTimelineCard customerId={customer.id} />
+                    {/* Contact status, for every Customer (CRM slice 11; migration slice 12's Account card) */}
+                    <ContactCard
+                        customer={customer}
+                        createdByImport={
+                            initialData?.migration?.ok ? initialData.migration.facts?.createdByImport : null
+                        }
+                        contact={initialData?.contact}
+                    />
 
                     {/* Addresses */}
                     <Card>
@@ -660,9 +792,10 @@ export function CustomerDetailClient({
                             ) : (
                                 <div className="space-y-3">
                                     {addresses.map((addr) => (
+                                        // Phones: rows split by a rule, not boxes inside the card.
                                         <div
                                             key={addr.id}
-                                            className="rounded-lg border p-3 text-sm space-y-1"
+                                            className="rounded-lg border p-3 text-sm space-y-1 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-0 max-md:pb-3 max-md:last:border-b-0 max-md:last:pb-0"
                                         >
                                             <div className="flex items-center gap-2">
                                                 {addr.label && (
@@ -693,281 +826,89 @@ export function CustomerDetailClient({
                             )}
                         </CardContent>
                     </Card>
-                </div>
-
-                {/* ── Right: Info + Stats + Tags, Save, then Notes ── */}
-                <div className="space-y-4">
-                    {/* Info Card */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                Customer info
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {canEdit ? (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="first-name">First name</Label>
-                                        <Input
-                                            id="first-name"
-                                            value={firstName}
-                                            onChange={(e) => setFirstName(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="last-name">Last name</Label>
-                                        <Input
-                                            id="last-name"
-                                            value={lastName}
-                                            onChange={(e) => setLastName(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-sm font-medium">
-                                    {[firstName, lastName].filter(Boolean).join(" ") || "—"}
-                                </p>
-                            )}
-                            <div className="space-y-1 text-sm">
-                                <div className="flex items-center gap-1.5 text-muted-foreground py-1">
-                                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                                    <span className="truncate">{customer.email}</span>
-                                </div>
-                            </div>
-                            {canEdit ? (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="phone">
-                                        Phone{" "}
-                                        <span className="text-muted-foreground font-normal">
-                                            (optional)
-                                        </span>
-                                    </Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                                        <Input
-                                            id="phone"
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            className="pl-9"
-                                            placeholder="+60…"
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                                    <span>{phone || "No phone"}</span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                <span>Locale: {customer.locale}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Clock className="h-3.5 w-3.5" />
-                                <span>Joined {formatDate(customer.created_at)}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Contact status, for every Customer (CRM slice 11; migration slice 12's Account card) */}
-                    <ContactCard
-                        customer={customer}
-                        createdByImport={
-                            initialData?.migration?.ok ? initialData.migration.facts?.createdByImport : null
-                        }
-                        contact={initialData?.contact}
-                    />
-
-                    {/* Aftercare switches (CRM slice 13), beside the Contact card: they change things */}
-                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
-
-                    {/* Marketing consent, read-only but for a support unsubscribe (migration slice 07) */}
-                    <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
-                    {/* Points (PRD-loyalty-points slice 02): balance, pending, history; Adjust needs customers-edit */}
-                    <PointsCard customerId={customer.id} canEdit={canEdit} />
-                    {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
-                    <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} />
-
-                    {/* Stats Card */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Stats</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {lifecycle ? (
-                                <>
-                                    <div className="flex items-start justify-between gap-3 text-sm">
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <Repeat className="h-4 w-4" />
-                                            <span>Stage</span>
-                                        </div>
-                                        <span className="flex flex-col items-end gap-0.5 text-right">
-                                            <LifecycleStageBadge
-                                                stage={lifecycle.lifecycle_stage}
-                                                undated={lifecycle.lifecycle_undated}
-                                            />
-                                            {lifecycleNote(lifecycle) ? (
-                                                <span className="text-xs text-muted-foreground">{lifecycleNote(lifecycle)}</span>
-                                            ) : null}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <Package className="h-4 w-4" />
-                                            <span title="Paid orders with a product on them, Shopify-era orders included. A re-adjustment fee is not one.">
-                                                Purchases
-                                            </span>
-                                        </div>
-                                        <span className="font-semibold">{lifecycle.purchases}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <CalendarCheck className="h-4 w-4" />
-                                            <span title="Re-adjustment bookings they came in for, including ones booked from the check-up reminder.">
-                                                Bookings attended
-                                            </span>
-                                        </div>
-                                        <span className="font-semibold">{lifecycle.attended_bookings}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <Clock className="h-4 w-4" />
-                                            <span>Last purchase</span>
-                                        </div>
-                                        <span className="font-semibold">
-                                            {lifecycle.last_purchase_at
-                                                ? formatDate(lifecycle.last_purchase_at)
-                                                : lifecycle.lifecycle_undated
-                                                  ? "On Shopify"
-                                                  : "None"}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <Clock className="h-4 w-4" />
-                                            <span>Last booking</span>
-                                        </div>
-                                        <span className="font-semibold">
-                                            {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}
-                                        </span>
-                                    </div>
-                                </>
-                            ) : null}
-                            <div className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <ShoppingCart className="h-4 w-4" />
-                                    <span>Total orders</span>
-                                </div>
-                                <span className="font-semibold">{customer.total_orders}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <DollarSign className="h-4 w-4" />
-                                    <span>Total spent</span>
-                                </div>
-                                <span className="font-semibold">
-                                    {formatSGD(customer.total_spent)}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span>Customer since</span>
-                                </div>
-                                <span className="font-semibold">
-                                    {formatDate(customer.created_at)}
-                                </span>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     {/* Shopify-era facts, only for a Migrated customer */}
                     <FromShopifyCard
                         migration={initialData?.migration}
                         importHistoryHref={canImport ? to("/settings/customers/import") : null}
                     />
+                </div>
 
-                    {/* Tags Card */}
+                {/* ── What happened: orders, the to-dos and notes about them, then the timeline ── */}
+                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-3 @3xl:col-start-1 @3xl:row-span-2 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-2 @5xl:row-span-1">
+                    {/* Order History */}
                     <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Tags</CardTitle>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <ShoppingCart className="h-4 w-4" />
+                                Order history
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                            {!canEdit && tags.length === 0 && (
-                                <p className="text-sm text-muted-foreground">No tags.</p>
-                            )}
-                            {!canEdit && tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary">
-                                            {tag}
-                                        </Badge>
-                                    ))}
+                        <CardContent className="p-0">
+                            {ordersLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                                 </div>
-                            )}
-                            {canEdit && tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {tags.map((tag) => (
-                                        <Badge
-                                            key={tag}
-                                            variant="secondary"
-                                            className="cursor-pointer group pr-1.5"
-                                            onClick={() => removeTag(tag)}
-                                            title="Click to remove"
-                                        >
-                                            {tag}
-                                            <span className="ml-1 text-xs leading-none opacity-100">
-                                                ×
-                                            </span>
-                                        </Badge>
-                                    ))}
+                            ) : orders.length === 0 ? (
+                                <div className="px-4 py-8 text-center">
+                                    <p className="text-sm text-muted-foreground">
+                                        No orders yet.
+                                    </p>
                                 </div>
-                            )}
-                            {canEdit && (
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Add a tag…"
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                addTag();
-                                            }
-                                        }}
-                                        className="flex-1"
-                                    />
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={addTag}
-                                        disabled={!tagInput.trim()}
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableHead className="px-4">Order #</TableHead>
+                                            <TableHead className="px-4 hidden sm:table-cell">
+                                                Date
+                                            </TableHead>
+                                            <TableHead className="px-4">Status</TableHead>
+                                            <TableHead className="px-4 text-right">Total</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {orders.map((order) => {
+                                            const customClass = orderStatusBadgeClass(order.status);
+                                            const variant = orderStatusBadgeVariant(order.status);
+                                            return (
+                                                <TableRow key={order.id}>
+                                                    <TableCell className="px-4 py-3">
+                                                        <Link
+                                                            href={to(`/settings/orders/${order.id}`)}
+                                                            className="font-bold text-sm text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            #{order.order_number}
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground whitespace-nowrap">
+                                                        {formatDate(order.created_at)}
+                                                    </TableCell>
+                                                    <TableCell className="px-4">
+                                                        <Badge
+                                                            variant={
+                                                                customClass ? "outline" : variant
+                                                            }
+                                                            className={customClass}
+                                                        >
+                                                            {orderStatusLabel(order.status)}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 text-right text-sm font-medium">
+                                                        {formatSGD(order.total)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Save button: the details and tags above. Notes save on their own. */}
-                    {canEdit && (
-                        <Button
-                            className="w-full"
-                            onClick={saveChanges}
-                            disabled={saving}
-                        >
-                            {saving ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Save className="mr-2 h-4 w-4" />
-                            )}
-                            Save changes
-                        </Button>
-                    )}
+                    {/* Follow-ups (CRM 06): dated to-dos, each assigned to a Staff profile */}
+                    <CustomerFollowUpsCard customerId={customer.id} canEdit={canEdit} />
 
                     {/* Notes Card */}
                     <CustomerNotesCard
@@ -976,10 +917,49 @@ export function CustomerDetailClient({
                         viewer={{ ...viewer, canEdit }}
                     />
 
-                    {/* Follow-ups (CRM 06): dated to-dos, each assigned to a Staff profile */}
-                    <CustomerFollowUpsCard customerId={customer.id} canEdit={canEdit} />
+                    {/* Timeline (CRM 03): everything that happened, newest first */}
+                    <CustomerTimelineCard customerId={customer.id} />
+                </div>
+
+                {/* ── The relationship: points, reviews, and what they agreed to receive ── */}
+                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-2 @5xl:col-span-1 @5xl:col-start-3 @5xl:row-start-1">
+                    {/* Points (PRD-loyalty-points slice 02): balance, pending, history; Adjust needs customers-edit */}
+                    <PointsCard customerId={customer.id} canEdit={canEdit} />
+                    {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
+                    <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} />
+
+                    {/* Aftercare switches (CRM slice 13): their own card, since the Contact card only reads */}
+                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
+
+                    {/* Marketing consent, read-only but for a support unsubscribe (migration slice 07) */}
+                    <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
                 </div>
             </div>
+        </div>
+    );
+}
+
+/** One number in the Stats strip; `title` explains a count on hover. */
+function Stat({
+    icon: Icon,
+    label,
+    title,
+    children,
+}: {
+    icon: LucideIcon;
+    label: string;
+    title?: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="min-w-0 space-y-1">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate" title={title}>
+                    {label}
+                </span>
+            </dt>
+            <dd className="text-lg font-semibold tabular-nums">{children}</dd>
         </div>
     );
 }

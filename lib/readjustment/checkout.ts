@@ -10,6 +10,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
+import {
+  languagePreferenceNotes,
+  parseLanguagePreference,
+  type LanguagePreference,
+} from "@/lib/appointments/language";
 import { upsertPendingReminder } from "@/lib/appointments/reminders-db";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import { toStripeAmountCents } from "@/lib/authorization-hold";
@@ -38,6 +43,8 @@ export async function createReadjustmentCheckoutSession(input: {
   bookingId: string;
   /** What is being re-adjusted, for the line description. */
   label: string;
+  /** Carried to the webhook, which writes it on the calendar event for Staff. */
+  languagePreference: LanguagePreference;
   successUrl: string;
   cancelUrl: string;
   /** Session expiry; at least 30 minutes out. */
@@ -49,6 +56,7 @@ export async function createReadjustmentCheckoutSession(input: {
     order_number: input.orderNumber,
     purpose: READJUSTMENT_PURPOSE,
     readjustment_booking_id: input.bookingId,
+    language_preference: input.languagePreference,
   };
   const session = await getStripe().checkout.sessions.create(
     {
@@ -157,6 +165,8 @@ export type FinalizeOutcome = "booked" | "needs_reschedule" | "already_done" | "
 export async function finalizeReadjustmentBooking(
   admin: SupabaseClient,
   bookingId: string,
+  /** The Checkout Session's `language_preference` metadata. */
+  languagePreference?: string,
 ): Promise<FinalizeOutcome> {
   const { data, error } = await admin
     .from("readjustment_bookings")
@@ -172,6 +182,7 @@ export async function finalizeReadjustmentBooking(
     ? await admin.from("orders").select("order_number").eq("id", booking.fee_order_id).maybeSingle()
     : { data: null };
   const feeOrderNumber = (feeOrder?.order_number as string | undefined) ?? null;
+  const languageNotes = languagePreferenceNotes(parseLanguagePreference(languagePreference));
 
   if (booking.calendar_event_id) {
     // An earlier attempt put the visit on the calendar (the invite went out) and
@@ -207,6 +218,7 @@ export async function finalizeReadjustmentBooking(
         `${booking.guest_name} · ${booking.phone} · ${booking.email}`,
         `${booking.product_label} — wanted ${when(booking.start_at)} at ${booking.location_name}`,
         `Paid SGD ${Number(booking.fee_amount).toFixed(2)}${feeOrderNumber ? ` (Order #${feeOrderNumber})` : ""}`,
+        ...languageNotes,
         "The slot was taken on the calendar while they paid. Call them to re-time it.",
       ].join("\n"),
     );
@@ -244,7 +256,7 @@ export async function finalizeReadjustmentBooking(
     email: booking.email,
     appointmentType: "readjustment",
     settings: await getAppointmentSettings(),
-    notes: paidNotes(booking, feeOrderNumber),
+    notes: [...paidNotes(booking, feeOrderNumber), ...languageNotes],
     readjustmentBookingId: booking.id,
     // Recorded before anything else can fail, so a webhook retry finishes this
     // booking rather than finding its own event in the way.

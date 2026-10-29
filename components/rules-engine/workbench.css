@@ -58,6 +58,19 @@
   border-right: none;
 }
 
+.rules-engine-flow .react-flow__controls-button:active {
+  background: var(--press);
+}
+
+/* Phones: zoom / fit / lock are 44px targets. */
+@media (max-width: 767px) {
+  .rules-engine-flow .react-flow__controls-button {
+    width: 44px;
+    height: 44px;
+    padding: 14px;
+  }
+}
+
 .rules-engine-flow .react-flow__controls-button:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: -2px;

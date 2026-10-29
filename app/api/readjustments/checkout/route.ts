@@ -232,6 +232,7 @@ export async function POST(req: Request) {
       orderNumber: order.order_number,
       bookingId: booking.id,
       label,
+      languagePreference: body.language_preference,
       successUrl: `${origin}${withLocale(`/appointments/confirmed?booking=${booking.id}`, locale)}`,
       cancelUrl: `${origin}${withLocale(cancelPath, locale)}`,
       expiresAt: sessionExpiresAt,

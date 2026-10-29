@@ -289,6 +289,12 @@ export type Messages = {
         bookAnother: string;
         errorSlotTaken: string;
         errorGeneric: string;
+        /** The language the guest would like their visit in; Staff read it on the calendar event. */
+        languageLabel: string;
+        languageEnglish: string;
+        languageMandarin: string;
+        languageNone: string;
+        languageHint: string;
         /** Customisation booking: the Measurement service fees, `{premium}` / `{basic}` (ADR 0024). */
         measurementFeeNote: string;
       };

@@ -46,6 +46,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { findCountry, summarizeCountries } from "@/lib/shipping/countries";
 import { CountryPicker } from "./country-picker";
 import { CoverageCheck } from "./coverage-check";
+import { EmptyState } from "@/components/settings/empty-state";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
@@ -433,9 +434,9 @@ export default function SettingsShippingPage({
             />
 
             {/* Couriers */}
-            <Link href={couriers.href} className="block">
-                <Card className="transition-colors hover:bg-accent/50">
-                    <CardContent className="flex items-center gap-3 py-4">
+            <Link href={couriers.href} className="group block">
+                <Card className="transition-colors hover:bg-accent/50 group-active:bg-press">
+                    <CardContent className="flex items-center gap-3 py-4 max-md:py-0">
                         <Truck className="h-5 w-5 shrink-0 text-muted-foreground" />
                         <div className="min-w-0 flex-1">
                             <p className="font-medium">Couriers</p>
@@ -464,16 +465,17 @@ export default function SettingsShippingPage({
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
             ) : methods.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <Truck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        No shipping methods yet.
-                    </p>
-                    <Button size="sm" className="mt-4" onClick={openCreate}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add method
-                    </Button>
-                </div>
+                <EmptyState
+                    icon={Truck}
+                    action={
+                        <Button size="sm" onClick={openCreate}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add method
+                        </Button>
+                    }
+                >
+                    No shipping methods yet.
+                </EmptyState>
             ) : (
                 <div className="space-y-3">
                     {/* Live methods are hidden when couriers can't quote, so only a flat method guarantees an option. */}
@@ -487,7 +489,8 @@ export default function SettingsShippingPage({
                     )}
                     {methods.map((method) => (
                         <Card key={method.id}>
-                            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+                            {/* Phones: the card's own 16px padding is enough, and Edit and Delete sit beside the details. */}
+                            <CardContent className="flex flex-row items-start justify-between gap-3 py-4 max-md:py-0">
                                 {/* Info */}
                                 <div className="min-w-0 flex-1 space-y-2">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -543,15 +546,17 @@ export default function SettingsShippingPage({
                                     <Button
                                         variant="outline"
                                         size="sm"
+                                        className="max-md:min-w-11"
                                         onClick={() => openEdit(method)}
                                     >
-                                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                                        Edit
+                                        <Pencil className="mr-1.5 h-3.5 w-3.5 max-md:mr-0" />
+                                        <span className="max-md:sr-only">Edit</span>
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        aria-label={`Delete ${getMethodName(method)}`}
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 max-md:min-w-11"
                                         onClick={() => setDeleteTarget(method)}
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
@@ -572,7 +577,8 @@ export default function SettingsShippingPage({
                         </SheetTitle>
                     </SheetHeader>
 
-                    <div className="mt-6 space-y-6">
+                    {/* The 16px inset the header has; without it the fields ran to the sheet's edges. */}
+                    <div className="mt-2 space-y-6 px-4 md:mt-6">
                         {error && (
                             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                                 {error}
@@ -869,19 +875,22 @@ export default function SettingsShippingPage({
                             />
                         </div>
 
-                        {/* Save button */}
-                        <Button
-                            className="w-full"
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            {saving ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Save className="mr-2 h-4 w-4" />
-                            )}
-                            {saving ? "Saving…" : "Save shipping method"}
-                        </Button>
+                        {/* Save button. Phones pin it to the bottom of the sheet and keep the
+                            bottom-right corner free for the sheet's pinned close button. */}
+                        <div className="max-md:sticky max-md:bottom-0 max-md:z-10 max-md:-mx-4 max-md:border-t max-md:bg-background/95 max-md:pt-3 max-md:pr-[4.25rem] max-md:pb-[calc(0.75rem+var(--safe-bottom))] max-md:pl-4 max-md:backdrop-blur">
+                            <Button
+                                className="w-full"
+                                onClick={handleSave}
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                )}
+                                {saving ? "Saving…" : "Save shipping method"}
+                            </Button>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

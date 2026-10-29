@@ -24,18 +24,26 @@ import {
   SheetContent,
   SheetDescription,
   SheetFooter,
+  SheetClose,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Check, ChevronDown, ChevronUp, RotateCw, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, RotateCw, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
+import {
+  InventoryItemLabel,
+  getInventoryCategoryTitle,
+  getInventoryItemDisplayLabel,
+  getInventoryItemLabelParts,
+} from "../inventory/item-label";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
+import { StatTile } from "@/components/settings/stat-tile";
 import {
   MobileStickyActionBar,
   mobileStickyActionBarSpacerClassName,
@@ -407,6 +415,8 @@ export default function CostingsPage() {
   const [saving, setSaving] = useState(false);
   const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
   const [productSheetOpen, setProductSheetOpen] = useState(false);
+  /** Phones edit one part's prices in a sheet; the spreadsheet grid is `md` and up. */
+  const [partSheetItemId, setPartSheetItemId] = useState<number | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [collapsedVisibleFilterCount, setCollapsedVisibleFilterCount] = useState<number | null>(null);
   const [filterMeasureVersion, setFilterMeasureVersion] = useState(0);
@@ -1082,7 +1092,7 @@ export default function CostingsPage() {
         key={card.key}
         role="button"
         tabIndex={0}
-        className="space-y-2 rounded-lg border p-3 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none sm:space-y-3 sm:p-4"
+        className="space-y-2 rounded-lg border p-3 hover:bg-muted/50 active:bg-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none max-md:-mx-3 max-md:rounded-none max-md:border-0 max-md:px-3 md:space-y-3 md:p-4"
         onClick={() => openProductSheet(card.key)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -1091,17 +1101,21 @@ export default function CostingsPage() {
           }
         }}
       >
-        <div>
-          <div className="text-xs text-muted-foreground">{secondaryLabel}</div>
-          <div className="text-xl font-semibold sm:text-2xl">{card.primaryLabel}</div>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-xs text-muted-foreground max-md:hidden">{secondaryLabel}</div>
+            <div className="text-lg font-semibold md:text-2xl">{card.primaryLabel}</div>
+          </div>
+          <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground md:hidden" aria-hidden />
         </div>
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <div>{templateCount === 1 ? "1 filling template" : `${templateCount} filling templates`}</div>
-          <div className="truncate">
+          {/* A phone row is full width, so the template name wraps rather than truncating. */}
+          <div className="break-words md:truncate">
             {build?.defaultTemplateName ? `Default is ${build.defaultTemplateName}` : "No default set"}
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <div className="text-xs text-muted-foreground">Build cost</div>
             <div className="font-medium tabular-nums">{formatCentsRange(range)}</div>
@@ -1124,7 +1138,7 @@ export default function CostingsPage() {
             )}
           </div>
         </div>
-        <div className="hidden sm:block">
+        <div className="hidden md:block">
           <Button size="sm" variant="secondary">
             View details
           </Button>
@@ -1137,6 +1151,9 @@ export default function CostingsPage() {
     if (!productSheetKey) return null;
     return productCards.find((card) => card.key === productSheetKey) ?? null;
   }, [productSheetKey, productCards]);
+
+  const partSheetItem = partSheetItemId === null ? null : itemMap.get(partSheetItemId) ?? null;
+  const partSheetLabel = partSheetItem ? getInventoryItemLabelParts(partSheetItem) : null;
 
   const activeBuild = activeCard ? cardBuilds.get(activeCard.key) ?? null : null;
   const activeFamily =
@@ -1502,7 +1519,13 @@ export default function CostingsPage() {
               Values today&apos;s warehouse stock at Costings prices, not over a sales date range.
             </InfoTip>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 md:hidden">
+            <StatTile label="Inventory at cost" value={currencyFormatter.format(onHandKpis.costValue)} />
+            <StatTile label="Potential revenue (MSRP)" value={currencyFormatter.format(onHandKpis.msrpValue)} />
+            <StatTile label="Unrealized gross margin" value={currencyFormatter.format(onHandKpis.marginValue)} />
+            <StatTile label="Weighted gross margin %" value={formatPercent(onHandKpis.weightedMarginPct)} />
+          </div>
+          <div className="hidden grid-cols-2 gap-4 md:grid lg:grid-cols-4">
             <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
               <CardHeader className="space-y-1 px-4 sm:px-6">
                 <CardDescription>Inventory at cost</CardDescription>
@@ -1699,25 +1722,94 @@ export default function CostingsPage() {
             ) : (
               filteredGroups.map((group) => (
                 <Section key={group.category} title={group.title} sticky>
-                  <SheetGrid
-                    label={`${group.title} prices`}
-                    leadHead="Part"
-                    columns={PART_COLUMNS}
-                    rows={group.items.map((item) => ({
-                      id: itemKey(item.id),
-                      label: getInventoryItemDisplayLabel(item),
-                      header: <InventoryItemLabel item={item} />,
-                    }))}
-                    value={(rowKey, colKey) => (draft[rowKey] ?? EMPTY_DRAFT_ROW)[colKey as keyof DraftRow]}
-                    isDirty={isPartCellDirty}
-                    onChange={handleGridChange}
-                  />
+                  {/* A spreadsheet doesn't fit a phone (36px cells, a keyboard hint, a fourth
+                      column cut off), so phones list the parts and edit one in a sheet. */}
+                  <div className="hidden md:block">
+                    <SheetGrid
+                      label={`${group.title} prices`}
+                      leadHead="Part"
+                      columns={PART_COLUMNS}
+                      rows={group.items.map((item) => ({
+                        id: itemKey(item.id),
+                        label: getInventoryItemDisplayLabel(item),
+                        header: <InventoryItemLabel item={item} />,
+                      }))}
+                      value={(rowKey, colKey) => (draft[rowKey] ?? EMPTY_DRAFT_ROW)[colKey as keyof DraftRow]}
+                      isDirty={isPartCellDirty}
+                      onChange={handleGridChange}
+                    />
+                  </div>
+                  <MobileList>
+                    {group.items.map((item) => {
+                      const rowKey = itemKey(item.id);
+                      const row = draft[rowKey] ?? EMPTY_DRAFT_ROW;
+                      return (
+                        <MobileListRow key={rowKey} onClick={() => setPartSheetItemId(item.id)}>
+                          <InventoryItemLabel item={item} groupedByCategory />
+                          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
+                            {PART_COLUMNS.map((col) => {
+                              const value = row[col.key as keyof DraftRow];
+                              return (
+                                <span
+                                  key={col.key}
+                                  className={cn(
+                                    isPartCellDirty(rowKey, col.key) && "font-semibold text-amber-600 dark:text-amber-400",
+                                  )}
+                                >
+                                  {col.label} {value === "" ? "–" : `${col.prefix ?? ""}${value}`}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </MobileListRow>
+                      );
+                    })}
+                  </MobileList>
                 </Section>
               ))
             )}
           </div>
         </section>
       </div>
+
+      <Sheet open={partSheetItem !== null} onOpenChange={(open) => { if (!open) setPartSheetItemId(null); }}>
+        <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>
+              {partSheetLabel
+                ? `${partSheetLabel.variant}${partSheetLabel.sizeLabel ? ` (${partSheetLabel.sizeLabel})` : ""}`
+                : "Part"}
+            </SheetTitle>
+            <SheetDescription>
+              {partSheetLabel ? `${partSheetLabel.categoryTitle}. ` : null}Enter dollars. Leave a field blank to clear it.
+            </SheetDescription>
+          </SheetHeader>
+          {partSheetItem ? (
+            <div className="grid gap-4 px-4">
+              {PART_COLUMNS.map((col) => {
+                const rowKey = itemKey(partSheetItem.id);
+                const field = col.key as keyof DraftRow;
+                return (
+                  <PriceInput
+                    key={col.key}
+                    label={col.label}
+                    value={(draft[rowKey] ?? EMPTY_DRAFT_ROW)[field]}
+                    placeholder={field === "compareAt" ? "(optional)" : "0.00"}
+                    onChange={(value) => handleInputChange(rowKey, field, value)}
+                    onBlur={() => handleBlur(rowKey, field)}
+                    ariaLabel={`${col.label} for ${getInventoryItemDisplayLabel(partSheetItem)}`}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
+          <SheetFooter>
+            <SheetClose asChild>
+              <Button>Done</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={productSheetOpen && Boolean(activeCard)} onOpenChange={handleSheetOpenChange}>
         <SheetContent side="right" className="flex w-full flex-col max-md:max-h-[92svh] sm:max-w-2xl">
@@ -1968,7 +2060,7 @@ function ProductGroupSection({
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
+            className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors active:bg-press sm:px-4"
             aria-expanded={isOpen}
           >
             <div className="min-w-0">
@@ -1989,7 +2081,7 @@ function ProductGroupSection({
               {group.emptyState ?? `No ${group.title} products configured yet.`}
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 max-md:divide-y md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4">
               {cards.map((card) => renderProductCard(card))}
             </div>
           )}
@@ -2096,7 +2188,7 @@ function BuildLines({
                 {group.rows.map((detail) => (
                   <TableRow key={detail.item.id}>
                     <TableCell className={STICKY_PART_CELL}>
-                      <InventoryItemLabel item={detail.item} />
+                      <InventoryItemLabel item={detail.item} groupedByCategory />
                     </TableCell>
                     <TableCell className="tabular-nums">{detail.quantity}</TableCell>
                     <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.costEach)}</TableCell>

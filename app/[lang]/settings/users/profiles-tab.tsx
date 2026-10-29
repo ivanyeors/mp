@@ -80,7 +80,7 @@ export function ProfilesTab({
           These are the people who work under each login. Results are tagged with who measured them; Telegram access is linked
           to a profile.
         </p>
-        <label className="flex shrink-0 items-center gap-2 text-sm">
+        <label className="flex shrink-0 items-center gap-2 text-sm max-md:min-h-11">
           <Switch checked={showArchived} onCheckedChange={setShowArchived} />
           Show archived ({archivedCount})
         </label>
@@ -145,7 +145,7 @@ export function ProfilesTab({
                     )}
                   </div>
                   {editing?.id !== p.id ? (
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 sm:flex-wrap">
                       {!p.archivedAt ? (
                         <>
                           <Button
@@ -166,7 +166,11 @@ export function ProfilesTab({
                               if ((await run(p.id, `/api/staff/${p.id}`, "PATCH", { memberId }, done)) && linked) onMoved?.();
                             }}
                           >
-                            <SelectTrigger className="h-8 w-36" disabled={busyId === p.id}>
+                            {/* On a phone the select takes what Rename and Archive leave, so all three fit one row. */}
+                            <SelectTrigger
+                              className="h-8 min-w-0 flex-1 sm:w-36 sm:min-w-[12rem] sm:flex-none"
+                              disabled={busyId === p.id}
+                            >
                               <SelectValue placeholder="Move to…" />
                             </SelectTrigger>
                             <SelectContent>

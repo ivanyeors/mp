@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
+import { Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
+import { EmptyState } from "@/components/settings/empty-state";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
@@ -425,16 +426,13 @@ export function ProductsClient({
 
         if (products.length === 0) {
             return (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        {debouncedSearch || statusFilter !== "all" || categoryFilter !== "all"
-                            ? "No products match your filters."
-                            : activeTab === "pillows"
-                            ? "No pillows or bolsters yet. Sync from inventory."
-                            : "No accessories are listed yet. Turn one on above."}
-                    </p>
-                </div>
+                <EmptyState icon={Package}>
+                    {debouncedSearch || statusFilter !== "all" || categoryFilter !== "all"
+                        ? "No products match your filters."
+                        : activeTab === "pillows"
+                        ? "No pillows or bolsters yet. Sync from inventory."
+                        : "No accessories are listed yet. Turn one on above."}
+                </EmptyState>
             );
         }
 
@@ -665,8 +663,11 @@ export function ProductsClient({
                 />
             </div>
 
+            {/* Phones: type and status share a row and category, whose names run long, gets the next;
+                from `sm` the wrapper drops out of the layout. */}
+            <div className="grid grid-cols-2 gap-2 sm:contents">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -679,7 +680,7 @@ export function ProductsClient({
             </Select>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -691,7 +692,7 @@ export function ProductsClient({
             </Select>
 
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-44">
+                <SelectTrigger className="w-full max-sm:col-span-2 max-sm:min-w-0 sm:w-44">
                     <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -703,6 +704,7 @@ export function ProductsClient({
                     ))}
                 </SelectContent>
             </Select>
+            </div>
         </div>
     );
 

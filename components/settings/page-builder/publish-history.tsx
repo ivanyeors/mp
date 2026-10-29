@@ -33,11 +33,20 @@ interface SnapshotRow {
 export function PublishHistory({
   pending,
   onRestored,
+  open: openProp,
+  onOpenChange,
+  triggerClassName,
 }: {
   pending: PendingSummary;
   onRestored: () => void;
+  /** Controlled open state, for opening the history from elsewhere (the phone ⋯ menu). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerClassName?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChange ?? setOpenState;
   const [rows, setRows] = useState<SnapshotRow[] | null>(null);
   const [confirming, setConfirming] = useState<SnapshotRow | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,7 +93,7 @@ export function PublishHistory({
     <>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className={triggerClassName}>
             <History className="mr-1.5 h-3.5 w-3.5" />
             History
           </Button>
@@ -97,7 +106,8 @@ export function PublishHistory({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-2 px-4 pb-6">
+          {/* Phones: room under the last version for the sheet's pinned close button. */}
+          <div className="space-y-2 px-4 pb-6 max-md:pb-20">
             {rows === null && (
               <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
             )}

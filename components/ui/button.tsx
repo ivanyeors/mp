@@ -13,16 +13,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 hover:cursor-pointer",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80 hover:cursor-pointer",
         destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 hover:cursor-pointer focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white shadow-xs hover:bg-destructive/90 active:bg-destructive/80 hover:cursor-pointer focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground hover:cursor-pointer dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-press hover:cursor-pointer dark:bg-input/30 dark:border-input dark:hover:bg-input/50 dark:active:bg-press",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 hover:cursor-pointer",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 active:bg-press hover:cursor-pointer",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground hover:cursor-pointer dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline hover:cursor-pointer",
+          "hover:bg-accent hover:text-accent-foreground active:bg-press hover:cursor-pointer dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline active:opacity-60 hover:cursor-pointer",
       },
       size: {
         default: "h-9 max-md:min-h-11 px-4 py-2 has-[>svg]:px-3",
@@ -122,7 +122,8 @@ function Button({
       <Comp
         {...props}
         onClick={handleClick}
-        className={cn(buttonVariants({ variant, size, className }))}
+        // Slot drops Motion's whileTap, so a link styled as a button presses in CSS.
+        className={cn(buttonVariants({ variant, size, className }), "active:scale-[0.97] motion-reduce:active:scale-100")}
       >
         {props.children}
       </Comp>
