@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Heading, Image as ImageIcon, Minus, MousePointerClick, PanelTop, Pilcrow, StretchVertical } from "lucide-react";
+import { Columns2, Heading, Image as ImageIcon, Minus, MousePointerClick, PanelTop, Pilcrow, StretchVertical } from "lucide-react";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 import { RichText } from "@/components/block-editor/rich-text";
 import { richTextWords } from "@/components/block-editor/rich-text-doc";
@@ -18,6 +18,8 @@ import {
     emptyBlock,
     IMAGE_LINK_TARGETS,
     isHttpsUrl,
+    paragraphRuns,
+    SPLIT_SIDES,
     unknownVariableMessage,
     type BlockButton,
     type BlockButtonTarget,
@@ -25,6 +27,7 @@ import {
     type ImageLinkTarget,
     type ImageWidth,
     type SpacerSize,
+    type SplitSide,
 } from "@/lib/email-campaigns/content";
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { cn } from "@/lib/utils";
@@ -288,6 +291,86 @@ function ImageOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"image
     );
 }
 
+/** A button's two looks, as its presets name them. */
+const BUTTON_STYLE_OPTIONS = [
+    { value: "primary", label: "Filled" },
+    { value: "secondary", label: "Outline" },
+] as const;
+
+/**
+ * One button's fields, its label typed on the button as it reads (a hero's,
+ * an image + text's): where it goes, and its link when it is a link. Errors
+ * are keyed from the block, `button.label` and `button.url`.
+ */
+function OneButtonFields({
+    button: x,
+    onChange,
+    readOnly,
+    errors,
+    idPrefix,
+    name,
+    align,
+}: {
+    button: BlockButton;
+    onChange: (next: BlockButton, burst?: string) => void;
+    readOnly: boolean;
+    errors: Record<string, string>;
+    idPrefix: string;
+    /** What the label box is called: "Hero button". */
+    name: string;
+    align: "center" | "left";
+}) {
+    const bid = `${idPrefix}-button`;
+    return (
+        <div className="space-y-3">
+            <div className={cn(align === "center" && "text-center")}>
+                <input
+                    id={`${bid}-label`}
+                    aria-label={`${name}: label`}
+                    aria-invalid={errors["button.label"] ? true : undefined}
+                    value={x.label}
+                    placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
+                    maxLength={CONTENT_LIMITS.buttonLabel}
+                    disabled={readOnly}
+                    onChange={(e) => onChange({ ...x, label: e.target.value }, typingBurst(e, `${bid}-label`))}
+                    className={cn(
+                        "h-10 w-full max-w-60 rounded-md border px-4 text-center text-sm font-semibold outline-none transition-[box-shadow] placeholder:font-normal focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-70 aria-invalid:border-destructive max-md:min-h-11",
+                        x.style === "primary"
+                            ? "border-primary bg-primary text-primary-foreground placeholder:text-primary-foreground/70"
+                            : "border-foreground/60 bg-transparent text-foreground placeholder:text-muted-foreground",
+                    )}
+                />
+                <FieldError text={errors["button.label"]} />
+            </div>
+            <Field label="Goes to" htmlFor={`${bid}-target`}>
+                <Select value={x.target} onValueChange={(v) => onChange(retarget(x, v as BlockButtonTarget))}>
+                    <SelectTrigger id={`${bid}-target`} className="w-full justify-between" disabled={readOnly}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {BLOCK_BUTTON_TARGETS.map((t) => (
+                            <SelectItem key={t} value={t}>
+                                {BLOCK_BUTTON_TARGET_LABEL[t]}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </Field>
+            {x.target === "url" ? (
+                <Field label="Link" htmlFor={`${bid}-url`} error={errors["button.url"]}>
+                    <Input
+                        id={`${bid}-url`}
+                        value={x.url ?? ""}
+                        placeholder="https://"
+                        disabled={readOnly}
+                        onChange={(e) => onChange({ ...x, url: e.target.value }, typingBurst(e, `${bid}-url`))}
+                    />
+                </Field>
+            ) : null}
+        </div>
+    );
+}
+
 type Hero = Of<"hero">;
 /** A hero's parts below its image, each of which may be left out. */
 type HeroPart = "heading" | "line" | "button";
@@ -307,7 +390,6 @@ const PART_NAME: Record<HeroPart, string> = { heading: "heading", line: "line", 
 function HeroForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Hero>) {
     const headingId = `${idPrefix}-heading`;
     const lineId = `${idPrefix}-line`;
-    const bid = `${idPrefix}-button`;
     const remove = (part: HeroPart) =>
         readOnly ? null : (
             <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => onChange(withoutPart(b, part))}>
@@ -356,50 +438,15 @@ function HeroForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormP
             ) : null}
             {x ? (
                 <div className="space-y-3">
-                    <div className="text-center">
-                        <input
-                            id={`${bid}-label`}
-                            aria-label="Hero button: label"
-                            aria-invalid={errors["button.label"] ? true : undefined}
-                            value={x.label}
-                            placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
-                            maxLength={CONTENT_LIMITS.buttonLabel}
-                            disabled={readOnly}
-                            onChange={(e) => onChange({ ...b, button: { ...x, label: e.target.value } }, typingBurst(e, `${bid}-label`))}
-                            className={cn(
-                                "h-10 w-full max-w-60 rounded-md border px-4 text-center text-sm font-semibold outline-none transition-[box-shadow] placeholder:font-normal focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-70 aria-invalid:border-destructive max-md:min-h-11",
-                                x.style === "primary"
-                                    ? "border-primary bg-primary text-primary-foreground placeholder:text-primary-foreground/70"
-                                    : "border-foreground/60 bg-transparent text-foreground placeholder:text-muted-foreground",
-                            )}
-                        />
-                        <FieldError text={errors["button.label"]} />
-                    </div>
-                    <Field label="Goes to" htmlFor={`${bid}-target`}>
-                        <Select value={x.target} onValueChange={(v) => onChange({ ...b, button: retarget(x, v as BlockButtonTarget) })}>
-                            <SelectTrigger id={`${bid}-target`} className="w-full justify-between" disabled={readOnly}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {BLOCK_BUTTON_TARGETS.map((t) => (
-                                    <SelectItem key={t} value={t}>
-                                        {BLOCK_BUTTON_TARGET_LABEL[t]}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
-                    {x.target === "url" ? (
-                        <Field label="Link" htmlFor={`${bid}-url`} error={errors["button.url"]}>
-                            <Input
-                                id={`${bid}-url`}
-                                value={x.url ?? ""}
-                                placeholder="https://"
-                                disabled={readOnly}
-                                onChange={(e) => onChange({ ...b, button: { ...x, url: e.target.value } }, typingBurst(e, `${bid}-url`))}
-                            />
-                        </Field>
-                    ) : null}
+                    <OneButtonFields
+                        button={x}
+                        onChange={(button, burst) => onChange({ ...b, button }, burst)}
+                        readOnly={readOnly}
+                        errors={errors}
+                        idPrefix={idPrefix}
+                        name="Hero button"
+                        align="center"
+                    />
                     {remove("button")}
                 </div>
             ) : null}
@@ -423,13 +470,136 @@ function HeroOptions({ block: b, onChange, readOnly }: BlockFormProps<Hero>) {
         <PresetPicker
             label="Button"
             value={x.style}
-            options={[
-                { value: "primary", label: "Filled" },
-                { value: "secondary", label: "Outline" },
-            ]}
+            options={BUTTON_STYLE_OPTIONS}
             disabled={readOnly}
             onChange={(style) => onChange({ ...b, button: { ...x, style } })}
         />
+    );
+}
+
+type Split = Of<"split">;
+
+const SIDE_LABEL: Record<SplitSide, string> = { left: "Left", right: "Right" };
+
+/** The words beside an image, in characters, as Save counts them: a Variable counts none. */
+const splitLength = (b: Split) => paragraphRuns(b.paragraphs).reduce((n, r) => n + ("text" in r ? r.text.length : 0), 0);
+
+/**
+ * An image + text (slice 06): the image on its side of the card when the card
+ * has room, as the email lays it out; stacked, the image first, as a phone
+ * shows it whichever side it is on. Its words are a heading, a text block's
+ * runs and an optional button; its image always says what it shows.
+ */
+function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Split>) {
+    const headingId = `${idPrefix}-heading`;
+    const textId = `${idPrefix}-text`;
+    const value = useMemo(() => richTextOf(b.paragraphs), [b.paragraphs]);
+    const textError =
+        errorAt(errors, "paragraphs") ??
+        unknownVariableMessage(richTextWords(value)) ??
+        (splitLength(b) > CONTENT_LIMITS.splitText ? `At most ${CONTENT_LIMITS.splitText} characters.` : null);
+    const x = b.button;
+    return (
+        <div className="@container">
+            <div className="grid gap-4 @md:grid-cols-2 @md:items-center">
+                <div className={cn(b.side === "right" && "@md:order-2")}>
+                    <ImageField
+                        image={b.image}
+                        onChange={(image, burst) => onChange({ ...b, image }, burst)}
+                        readOnly={readOnly}
+                        errors={errors}
+                        idPrefix={idPrefix}
+                        allowDecorative={false}
+                    />
+                </div>
+                <div className="space-y-3">
+                    <div>
+                        <Input
+                            id={headingId}
+                            aria-label="Heading beside the image"
+                            aria-invalid={errors.heading ? true : undefined}
+                            value={b.heading}
+                            placeholder={CONTENT_PLACEHOLDERS.heading}
+                            maxLength={CONTENT_LIMITS.heading}
+                            disabled={readOnly}
+                            onChange={(e) => onChange({ ...b, heading: e.target.value }, typingBurst(e, headingId))}
+                            className="h-auto border-transparent px-2 py-1 text-lg font-semibold tracking-tight shadow-none hover:border-input md:text-lg"
+                        />
+                        <FieldError text={errors.heading} />
+                    </div>
+                    <div>
+                        <RichText
+                            id={textId}
+                            aria-label="Text beside the image"
+                            aria-invalid={Boolean(textError)}
+                            value={value}
+                            marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
+                            variables={TEXT_VARIABLES}
+                            placeholder={CONTENT_PLACEHOLDERS.text}
+                            readOnly={readOnly}
+                            onChange={(next, how) => onChange({ ...b, paragraphs: paragraphsOf(next) }, how.paste ? undefined : textId)}
+                        />
+                        <FieldError text={textError} />
+                    </div>
+                    {x ? (
+                        <div className="space-y-3">
+                            <OneButtonFields
+                                button={x}
+                                onChange={(button, burst) => onChange({ ...b, button }, burst)}
+                                readOnly={readOnly}
+                                errors={errors}
+                                idPrefix={idPrefix}
+                                name="Button beside the image"
+                                align="left"
+                            />
+                            {readOnly ? null : (
+                                <Button
+                                    type="button"
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto px-0"
+                                    onClick={() => {
+                                        const next = { ...b };
+                                        delete next.button;
+                                        onChange(next);
+                                    }}
+                                >
+                                    Remove the button
+                                </Button>
+                            )}
+                        </div>
+                    ) : readOnly ? null : (
+                        <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => onChange({ ...b, button: NEW_PART.button })}>
+                            Add a button
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SplitOptions({ block: b, onChange, readOnly }: BlockFormProps<Split>) {
+    const x = b.button;
+    return (
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <PresetPicker
+                label="Image"
+                value={b.side}
+                options={SPLIT_SIDES.map((side) => ({ value: side, label: SIDE_LABEL[side] }))}
+                disabled={readOnly}
+                onChange={(side) => onChange({ ...b, side })}
+            />
+            {x ? (
+                <PresetPicker
+                    label="Button"
+                    value={x.style}
+                    options={BUTTON_STYLE_OPTIONS}
+                    disabled={readOnly}
+                    onChange={(style) => onChange({ ...b, button: { ...x, style } })}
+                />
+            ) : null}
+        </div>
     );
 }
 
@@ -502,6 +672,14 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("hero") as Hero,
         Form: HeroForm,
         Options: HeroOptions,
+    },
+    split: {
+        label: "Image + text",
+        description: "A photo beside a few lines",
+        icon: Columns2,
+        create: () => emptyBlock("split") as Split,
+        Form: SplitForm,
+        Options: SplitOptions,
     },
     divider: {
         label: "Divider",

@@ -20,7 +20,7 @@ import { bodyLineParts, linkLabel, parseCampaignBody } from "@/lib/email/campaig
 import { placeholdersIn } from "@/lib/email/copy";
 import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type VariableKey } from "./variables";
 
-export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "divider", "spacer"] as const;
+export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "split", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
 
 /**
@@ -66,6 +66,10 @@ export type ImageLinkTarget = (typeof IMAGE_LINK_TARGETS)[number];
 export const IMAGE_WIDTHS = ["full", "inset"] as const;
 export type ImageWidth = (typeof IMAGE_WIDTHS)[number];
 
+/** Which side an image + text's image sits on beside its words (slice 06). On a phone it comes first either way. */
+export const SPLIT_SIDES = ["left", "right"] as const;
+export type SplitSide = (typeof SPLIT_SIDES)[number];
+
 export const CONTENT_VERSION = 1;
 
 export const CONTENT_LIMITS = {
@@ -82,6 +86,9 @@ export const CONTENT_LIMITS = {
   alt: 150,
   /** A hero's one line under its heading. */
   line: 200,
+  /** An image + text's words beside the image: a few lines, so the row stays small (slice 06). */
+  splitText: 500,
+  splitParagraphs: 4,
   /** The stored JSON, in UTF-8 bytes; the table refuses 256,000. */
   bytes: 200_000,
 } as const;
@@ -183,19 +190,21 @@ function blockSchema({ required }: { required: boolean }) {
   // reader would miss (empty alt, role="presentation"). The email shows the
   // asset's email rendition, which the sender reads at render; the content
   // holds no URL of its own.
+  const asset = required
+    ? z.string().regex(ASSET_ID, "Choose an image.")
+    : z.string().refine((v) => v === "" || ASSET_ID.test(v), "An image is a Media Asset's id.");
   const image = z
-    .strictObject({
-      asset: required
-        ? z.string().regex(ASSET_ID, "Choose an image.")
-        : z.string().refine((v) => v === "" || ASSET_ID.test(v), "An image is a Media Asset's id."),
-      alt: optionalWords(CONTENT_LIMITS.alt),
-      decorative: z.boolean().optional(),
-    })
+    .strictObject({ asset, alt: optionalWords(CONTENT_LIMITS.alt), decorative: z.boolean().optional() })
     .superRefine((im, ctx) => {
       if (required && !im.decorative && !im.alt) {
         ctx.addIssue({ code: "custom", path: ["alt"], message: "Describe the image for anyone who can't see it, or mark it decorative." });
       }
     });
+  // Beside words (slice 06) an image is part of what they say: it always says
+  // what it shows, so it has no `decorative`.
+  const describedImage = z.strictObject({ asset, alt: optionalWords(CONTENT_LIMITS.alt) }).superRefine((im, ctx) => {
+    if (required && !im.alt) ctx.addIssue({ code: "custom", path: ["alt"], message: "Describe the image for anyone who can't see it." });
+  });
 
   const imageLink = z
     .strictObject({
@@ -227,6 +236,20 @@ function blockSchema({ required }: { required: boolean }) {
       }
     });
 
+  // A text block's words, wherever they sit: at most `max` characters, written
+  // on Save, and no `{name}` that is not a Variable, which the box kept as
+  // words and would be sent in braces.
+  const paragraphChecks = (max: number) => (b: { paragraphs: Paragraph[] }, ctx: z.RefinementCtx) => {
+    const all = paragraphRuns(b.paragraphs);
+    const length = all.reduce((n, r) => n + ("text" in r ? r.text.length : 0), 0);
+    if (length > max) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: most(max) });
+    if (required && !all.some((r) => "var" in r || r.text.trim())) {
+      ctx.addIssue({ code: "custom", path: ["paragraphs"], message: "Write the text." });
+    }
+    const unknown = required ? unknownVariableMessage(textWords(b.paragraphs)) : null;
+    if (unknown) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: unknown });
+  };
+
   return z.discriminatedUnion("type", [
     z.strictObject({
       id: BlockId,
@@ -240,17 +263,7 @@ function blockSchema({ required }: { required: boolean }) {
         type: z.literal("text"),
         paragraphs: z.array(ParagraphSchema).max(CONTENT_LIMITS.paragraphs),
       })
-      .superRefine((b, ctx) => {
-        const all = paragraphRuns(b.paragraphs);
-        const length = all.reduce((n, r) => n + ("text" in r ? r.text.length : 0), 0);
-        if (length > CONTENT_LIMITS.text) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: most(CONTENT_LIMITS.text) });
-        if (required && !all.some((r) => "var" in r || r.text.trim())) {
-          ctx.addIssue({ code: "custom", path: ["paragraphs"], message: "Write the text." });
-        }
-        // A `{name}` the box kept as words is sent in braces.
-        const unknown = required ? unknownVariableMessage(textWords(b.paragraphs)) : null;
-        if (unknown) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: unknown });
-      }),
+      .superRefine(paragraphChecks(CONTENT_LIMITS.text)),
     z.strictObject({
       id: BlockId,
       type: z.literal("buttons"),
@@ -280,6 +293,19 @@ function blockSchema({ required }: { required: boolean }) {
       line: words(CONTENT_LIMITS.line, "Write the line, or remove it.").optional(),
       button: button.optional(),
     }),
+    // An image beside a heading, a few lines and an optional button, in two
+    // columns that stack on a phone, the image first (slice 06).
+    z
+      .strictObject({
+        id: BlockId,
+        type: z.literal("split"),
+        image: describedImage,
+        side: z.enum(SPLIT_SIDES),
+        heading: words(CONTENT_LIMITS.heading, "Write the heading."),
+        paragraphs: z.array(ParagraphSchema).max(CONTENT_LIMITS.splitParagraphs, `At most ${CONTENT_LIMITS.splitParagraphs} paragraphs beside an image.`),
+        button: button.optional(),
+      })
+      .superRefine(paragraphChecks(CONTENT_LIMITS.splitText)),
     z.strictObject({ id: BlockId, type: z.literal("divider") }),
     z.strictObject({ id: BlockId, type: z.literal("spacer"), size: z.enum(SPACER_SIZES) }),
   ]);
@@ -330,6 +356,7 @@ export type BlockButton = Extract<EmailBlock, { type: "buttons" }>["buttons"][nu
 export type SpacerSize = (typeof SPACER_SIZES)[number];
 export type ImageBlock = Extract<EmailBlock, { type: "image" }>;
 export type HeroBlock = Extract<EmailBlock, { type: "hero" }>;
+export type SplitBlock = Extract<EmailBlock, { type: "split" }>;
 /** An image a block places: its Media Asset and alt text. */
 export type BlockImage = ImageBlock["image"];
 /** Where an image goes when tapped. */
@@ -358,7 +385,8 @@ export function newBlockId(): string {
  * A new block of `type`: its words empty, on their placeholders (decision 7),
  * never sample words. Its choices start on the plainest: a medium heading,
  * one primary button to the shop, a full-width image with no link, a hero
- * with every part, a medium spacer.
+ * with every part, an image + text with its image on the left and a button,
+ * a medium spacer.
  */
 export function emptyBlock(type: EmailBlockType, id: string = newBlockId()): EmailBlock {
   switch (type) {
@@ -372,6 +400,8 @@ export function emptyBlock(type: EmailBlockType, id: string = newBlockId()): Ema
       return { id, type, image: { asset: "", alt: "" }, width: "full" };
     case "hero":
       return { id, type, image: { asset: "", alt: "" }, heading: "", line: "", button: { label: "", target: "shop", style: "primary" } };
+    case "split":
+      return { id, type, image: { asset: "", alt: "" }, side: "left", heading: "", paragraphs: [], button: { label: "", target: "shop", style: "primary" } };
     case "divider":
       return { id, type };
     case "spacer":
@@ -396,6 +426,8 @@ export function contentWords(content: CampaignContent): string[] {
         return altWords(b.image);
       case "hero":
         return [...altWords(b.image), ...[b.heading, b.line, b.button?.label].filter((w): w is string => w !== undefined)];
+      case "split":
+        return [...altWords(b.image), b.heading, textWords(b.paragraphs), ...(b.button ? [b.button.label] : [])];
       default:
         return [];
     }
@@ -417,14 +449,16 @@ export function imageAssetsIn(content: CampaignContent): string[] {
  */
 export function variablesUsed(content: CampaignContent, lines: readonly string[] = []): VariableKey[] {
   const written = lines.flatMap((l) => placeholdersIn(l).filter(isVariableKey));
-  const used = content.blocks.flatMap((b) => (b.type === "text" ? paragraphRuns(b.paragraphs) : []));
+  const used = content.blocks.flatMap((b) => (b.type === "text" || b.type === "split" ? paragraphRuns(b.paragraphs) : []));
   return [...new Set([...written, ...used.flatMap((r) => ("var" in r ? [r.var] : []))])];
 }
 
 /** Pure — a button anywhere in the blocks goes to the recipient's sign-in, so the sender mints Claim links. */
 export function contentSignsIn(content: CampaignContent): boolean {
   return content.blocks.some(
-    (b) => (b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in")) || (b.type === "hero" && b.button?.target === "sign_in"),
+    (b) =>
+      (b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in")) ||
+      ((b.type === "hero" || b.type === "split") && b.button?.target === "sign_in"),
   );
 }
 

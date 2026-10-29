@@ -61,6 +61,14 @@ const CONTENT: CampaignContent = {
       line: "In every size.",
       button: { label: "Book a fitting", target: "book_fitting", style: "secondary" },
     },
+    {
+      id: "beside",
+      type: "split",
+      image: { asset: "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f", alt: "A cover, folded" },
+      side: "right",
+      heading: "Why FibreCool",
+      paragraphs: [{ kind: "p", runs: [{ text: "Cool all night." }] }],
+    },
     { id: "line", type: "divider" },
     { id: "room", type: "spacer", size: "l" },
   ],
@@ -191,6 +199,9 @@ describe("reading the blocks", () => {
       "Made to measure",
       "In every size.",
       "Book a fitting",
+      "A cover, folded",
+      "Why FibreCool",
+      "Cool all night.",
     ]);
   });
 

@@ -22,6 +22,9 @@ import { Field } from "../field";
  * Choosing an image makes its email rendition first (`placeCampaignImage`),
  * so a block only ever places an image an inbox can show; the card shows that
  * rendition, on the light plate when it has transparency, as the email does.
+ *
+ * An image beside words (slice 06's image + text) always says what it shows,
+ * so it offers no *Decorative*.
  */
 
 // The picker and its Drive dialog load with the first image block, not with the page.
@@ -67,6 +70,7 @@ export function ImageField({
     errors,
     idPrefix,
     inset = false,
+    allowDecorative = true,
 }: {
     image: BlockImage;
     onChange: (next: BlockImage, burst?: string) => void;
@@ -76,12 +80,15 @@ export function ImageField({
     idPrefix: string;
     /** Shown narrower, as the email's *Inset* width. */
     inset?: boolean;
+    /** Offer *Decorative*; when not, the image always has alt text. Default true. */
+    allowDecorative?: boolean;
 }) {
     const shown = usePlaced(image.asset);
     const [placing, setPlacing] = useState(false);
     const [pickError, setPickError] = useState<string | null>(null);
     const altId = `${idPrefix}-alt`;
     const decorativeId = `${idPrefix}-decorative`;
+    const decorative = allowDecorative && Boolean(image.decorative);
 
     const pick = async (selection: AssetSelection) => {
         setPlacing(true);
@@ -114,7 +121,7 @@ export function ImageField({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                         src={shown.image.url}
-                        alt={image.decorative ? "" : image.alt}
+                        alt={decorative ? "" : image.alt}
                         width={shown.image.width}
                         height={shown.image.height}
                         className={cn("block h-auto w-full rounded-md", shown.image.hasAlpha && "bg-white p-4")}
@@ -134,25 +141,28 @@ export function ImageField({
             <Field label="Alt text" htmlFor={altId} error={errors["image.alt"]} hint="What a screen reader says, and what shows when images are off.">
                 <Input
                     id={altId}
-                    value={image.decorative ? "" : image.alt}
-                    placeholder={image.decorative ? "None: it is decorative" : "e.g. A FibreCool cover on a made bed, in white"}
+                    value={decorative ? "" : image.alt}
+                    placeholder={decorative ? "None: it is decorative" : "e.g. A FibreCool cover on a made bed, in white"}
                     maxLength={CONTENT_LIMITS.alt}
-                    disabled={readOnly || image.decorative}
+                    disabled={readOnly || decorative}
                     aria-invalid={errors["image.alt"] ? true : undefined}
-                    onChange={(e) => onChange({ ...image, alt: e.target.value }, typingBurst(e, altId))}
+                    // Typed alt text is never decorative, even where a stored image says it was.
+                    onChange={(e) => onChange({ asset: image.asset, alt: e.target.value }, typingBurst(e, altId))}
                 />
             </Field>
-            <div className="flex items-center gap-2">
-                <Checkbox
-                    id={decorativeId}
-                    checked={Boolean(image.decorative)}
-                    disabled={readOnly}
-                    onCheckedChange={(v) => onChange(v === true ? { ...image, decorative: true } : { asset: image.asset, alt: image.alt })}
-                />
-                <Label htmlFor={decorativeId} className="font-normal">
-                    Decorative: it says nothing a reader would miss
-                </Label>
-            </div>
+            {allowDecorative ? (
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id={decorativeId}
+                        checked={decorative}
+                        disabled={readOnly}
+                        onCheckedChange={(v) => onChange(v === true ? { ...image, decorative: true } : { asset: image.asset, alt: image.alt })}
+                    />
+                    <Label htmlFor={decorativeId} className="font-normal">
+                        Decorative: it says nothing a reader would miss
+                    </Label>
+                </div>
+            ) : null}
         </div>
     );
 }

@@ -31,10 +31,10 @@ import {
   type PillTone,
 } from "./theme";
 
-/** Wrap content in a full-width layout table row. */
-function block(innerHtml: string, style?: string): string {
+/** Wrap content in a full-width layout table row; `cellAttrs` go on its cell. */
+function block(innerHtml: string, style?: string, cellAttrs?: string): string {
   return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
-  <tr><td${style ? ` style="${style}"` : ""}>${innerHtml}</td></tr>
+  <tr><td${cellAttrs ? ` ${cellAttrs}` : ""}${style ? ` style="${style}"` : ""}>${innerHtml}</td></tr>
 </table>`;
 }
 
@@ -241,33 +241,76 @@ export function button(opts: ButtonOptions): string {
 }
 
 /**
- * The widest one button of a pair takes, in px. Two fit the 600px card side by
- * side; on a screen too narrow for both, they stack.
+ * The narrowest row, in px, that keeps columns side by side: on anything
+ * narrower (a phone) they stack. Two buttons, an image beside its words and
+ * the products grid all break here, so every row of an email stacks at once.
  */
-const PAIR_COLUMN = 240;
+export const STACK_BELOW = 480;
+
+export interface ColumnsOptions {
+  /**
+   * The narrowest row, in px, that holds the columns side by side. Each is at
+   * most `stackBelow / n` wide, so on anything narrower they stack.
+   */
+  stackBelow: number;
+  /**
+   * Side by side, the columns read right to left; stacked, still in order,
+   * the first on top. The row is `dir="rtl"`, each column `dir="ltr"` again.
+   */
+  reverse?: boolean;
+  /** Where columns of different heights line up. Default top. */
+  valign?: "top" | "middle";
+  /** Room between columns side by side, in px: half each side of every column, so stacked ones still line up. */
+  gap?: number;
+  /** How each column's words align. Default the row's: centred. */
+  textAlign?: "left" | "center";
+}
 
 /**
- * Two buttons side by side that stack on a phone (PRD-campaign-email-editor
- * slice 03), built the hybrid way: each sits in an inline-block column at most
- * PAIR_COLUMN wide, so the pair falls to one column by width alone, with no
- * media query (Gmail's apps ignore them for many accounts), inside an MSO
- * ghost table that keeps two columns in classic Outlook. The wrapper's
- * `font-size:0` removes the gap the markup's whitespace would leave between
- * the columns. Slice 06 makes this the general column primitive.
+ * Columns side by side that stack on a phone (PRD-campaign-email-editor
+ * slice 06), built the hybrid way: each is an inline-block `div` at most
+ * `stackBelow / n` wide, so the row falls to one column by width alone, with
+ * no media query (Gmail's apps ignore them for many accounts), inside an MSO
+ * ghost table that keeps the columns side by side in classic Outlook, which
+ * ignores `max-width`. Stacked, they read in order: whatever has to come
+ * first on a phone goes first, and `reverse` moves it to the right.
+ *
+ * The wrapper's `font-size:0` removes the gap the markup's whitespace would
+ * leave between the columns; every component sets its own size. A column
+ * carries no class: it paints nothing, so it needs no dark rule (slice 15).
  */
-export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
-  const column = (b: ButtonOptions) =>
-    `<div style="${css({
+export function columns(cellsHtml: readonly string[], opts: ColumnsOptions): string {
+  const valign = opts.valign ?? "top";
+  const ltr = opts.reverse ? ' dir="ltr"' : "";
+  const inner = opts.gap || opts.textAlign;
+  const column = (cellHtml: string) =>
+    `<div${ltr} style="${css({
       display: "inline-block",
       width: "100%",
-      "max-width": `${PAIR_COLUMN}px`,
-      "vertical-align": "top",
-    })}">${button({ ...b, maxWidth: PAIR_COLUMN })}</div>`;
+      "max-width": `${Math.floor(opts.stackBelow / cellsHtml.length)}px`,
+      "vertical-align": valign,
+    })}">${
+      inner ? `<div style="${css({ padding: opts.gap ? `0 ${opts.gap / 2}px` : null, "text-align": opts.textAlign })}">${cellHtml}</div>` : cellHtml
+    }</div>`;
+  const cell = `<td width="${Math.floor(100 / cellsHtml.length)}%" valign="${valign}"${ltr}>`;
   return block(
-    `<!--[if mso]><table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;"><tr><td width="50%" valign="top"><![endif]-->${column(
-      buttons[0],
-    )}<!--[if mso]></td><td width="50%" valign="top"><![endif]-->${column(buttons[1])}<!--[if mso]></td></tr></table><![endif]-->`,
+    `<!--[if mso]><table ${TABLE_RESET}${opts.reverse ? ' dir="rtl"' : ""} width="100%" style="${TABLE_RESET_STYLE};width:100%;"><tr>${cell}<![endif]-->${cellsHtml
+      .map(column)
+      .join(`<!--[if mso]></td>${cell}<![endif]-->`)}<!--[if mso]></td></tr></table><![endif]-->`,
     css({ "text-align": "center", "font-size": 0 }),
+    opts.reverse ? 'dir="rtl"' : undefined,
+  );
+}
+
+/**
+ * Two buttons side by side that stack on a phone (slice 03), in two columns:
+ * each button at most a column wide, in Outlook's VML too.
+ */
+export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
+  const width = STACK_BELOW / 2;
+  return columns(
+    buttons.map((b) => button({ ...b, maxWidth: width })),
+    { stackBelow: STACK_BELOW },
   );
 }
 

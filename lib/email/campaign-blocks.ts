@@ -32,6 +32,7 @@ import {
   bulletListHtml,
   button,
   buttonPair,
+  columns,
   divider,
   emailImage,
   heading,
@@ -40,6 +41,7 @@ import {
   paragraphHtml,
   placeholderHint,
   spacer,
+  STACK_BELOW,
   type ButtonOptions,
 } from "./components";
 import { fillCopy } from "./copy";
@@ -54,6 +56,7 @@ import {
   type CampaignContent,
   type EmailBlock,
   type ImageWidth,
+  type Paragraph,
   type Run,
   type SpacerSize,
 } from "@/lib/email-campaigns/content";
@@ -121,6 +124,9 @@ const COLUMN_PX = LAYOUT.containerWidth - 2 * LAYOUT.cardPadding - 2;
 
 /** How wide an image is shown, at most: Full is the column's width; Inset leaves room either side. */
 const IMAGE_PX: Record<ImageWidth, number> = { full: COLUMN_PX, inset: 440 };
+
+/** An image + text's two columns side by side (slice 06): each half the row that stacks, less the room between them. */
+const SPLIT_CELL_PX = STACK_BELOW / 2 - LAYOUT.gutter;
 
 /** Blocks that can open an email above its greeting: a title, a hero, an image. */
 const opensEmail = (b: EmailBlock) => (b.type === "heading" && b.level === 1) || b.type === "hero" || b.type === "image";
@@ -224,15 +230,34 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
   // An email has one title: the first level-1 heading, or the hero that opens it.
   let titled = false;
 
-  /** One button on a line of its own: a hero's. */
-  const oneButton = (x: BlockButton) => {
+  /** One button on a line of its own (a hero's, or an image + text's): its HTML, and its line in the plain text. */
+  const oneButton = (x: BlockButton, opts: Pick<ButtonOptions, "align" | "maxWidth"> = {}): string | null => {
     const href = p.buttonHref(x);
     const label = x.label.trim();
-    if (!href) return;
-    if (label) {
-      html.push(button({ href, label, variant: x.style }));
-      text.push(`${label}: ${href}`, "");
-    } else if (hint) html.push(placeholderHint(hint.buttonLabel, "button"));
+    if (!href) return null;
+    if (!label) return hint ? placeholderHint(hint.buttonLabel, "button") : null;
+    text.push(`${label}: ${href}`, "");
+    return button({ href, label, variant: x.style, ...opts });
+  };
+
+  /** A text block's paragraphs and bullets, wherever they sit: their HTML, each line read into the plain text. */
+  const paragraphsHtml = (all: readonly Paragraph[]): string[] => {
+    const out: string[] = [];
+    const paragraphs = all.filter((x) => (x.kind === "p" ? hasWords(x.runs) : x.items.some(hasWords)));
+    if (!paragraphs.length && hint) out.push(placeholderHint(hint.text));
+    for (const para of paragraphs) {
+      if (para.kind === "p") {
+        const t = runsText(para.runs, values);
+        out.push(paragraphHtml(runsHtml(para.runs, values)));
+        text.push(t.text, ...t.links, "");
+      } else {
+        const items = para.items.filter(hasWords);
+        const read = items.map((item) => runsText(item, values));
+        out.push(bulletListHtml(items.map((item) => runsHtml(item, values))));
+        text.push(...read.map((t) => `- ${t.text}`), ...read.flatMap((t) => t.links), "");
+      }
+    }
+    return out;
   };
 
   const render = (b: EmailBlock, at: number) => {
@@ -246,23 +271,9 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
         } else if (hint) html.push(placeholderHint(hint.heading, b.level === 1 ? "h1" : "h2"));
         return;
       }
-      case "text": {
-        const paragraphs = b.paragraphs.filter((x) => (x.kind === "p" ? hasWords(x.runs) : x.items.some(hasWords)));
-        if (!paragraphs.length && hint) html.push(placeholderHint(hint.text));
-        for (const para of paragraphs) {
-          if (para.kind === "p") {
-            const t = runsText(para.runs, values);
-            html.push(paragraphHtml(runsHtml(para.runs, values)));
-            text.push(t.text, ...t.links, "");
-          } else {
-            const items = para.items.filter(hasWords);
-            const read = items.map((item) => runsText(item, values));
-            html.push(bulletListHtml(items.map((item) => runsHtml(item, values))));
-            text.push(...read.map((t) => `- ${t.text}`), ...read.flatMap((t) => t.links), "");
-          }
-        }
+      case "text":
+        html.push(...paragraphsHtml(b.paragraphs));
         return;
-      }
       case "buttons": {
         // A button with no words is no button, unless the preview shows its placeholder.
         const shown: (ButtonOptions | "hint")[] = [];
@@ -304,7 +315,33 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
           html.push(paragraph(b.line, { align: "center" }));
           text.push(b.line, "");
         } else if (b.line !== undefined && hint) html.push(placeholderHint(hint.line));
-        if (b.button) oneButton(b.button);
+        const cta = b.button && oneButton(b.button);
+        if (cta) html.push(cta);
+        return;
+      }
+      case "split": {
+        // The image beside its words, in two columns that stack on a phone
+        // with the image first, whichever side it sits on: it comes first in
+        // the row, and `reverse` lays the row out right to left only while
+        // the two sit side by side. The plain text is the words alone.
+        const words: string[] = [];
+        if (b.heading) {
+          words.push(heading(b.heading, 2));
+          text.push(b.heading, "");
+        } else if (hint) words.push(placeholderHint(hint.heading, "h2"));
+        words.push(...paragraphsHtml(b.paragraphs));
+        const cta = b.button && oneButton(b.button, { align: "left", maxWidth: SPLIT_CELL_PX });
+        if (cta) words.push(cta);
+        const picture = imageHtml(b.image, SPLIT_CELL_PX, null) ?? "";
+        html.push(
+          columns([picture, words.join("\n")], {
+            stackBelow: STACK_BELOW,
+            reverse: b.side === "right",
+            valign: "middle",
+            gap: LAYOUT.gutter,
+            textAlign: "left",
+          }),
+        );
         return;
       }
       case "divider":

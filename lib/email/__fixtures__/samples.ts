@@ -627,6 +627,34 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
     words("intro", "Cool to the touch, all night."),
     { id: "second", type: "hero", image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" }, heading: "Made to your measure" },
   ),
+  // The image on the left with a button, then on the right (a cut-out, on its plate) with none.
+  split: blockEmail(
+    {
+      id: "left",
+      type: "split",
+      image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+      side: "left",
+      heading: "Why FibreCool",
+      paragraphs: [
+        {
+          kind: "p",
+          runs: [{ text: "Cool to the touch, " }, { text: "all night", bold: true }, { text: ". Read the " }, { text: "care guide", href: `${ORIGIN}/en-US/faq` }, { text: "." }],
+        },
+      ],
+      button: { label: "Shop the covers", target: "shop", style: "primary" },
+    },
+    {
+      id: "right",
+      type: "split",
+      image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" },
+      side: "right",
+      heading: "Made to your measure",
+      paragraphs: [
+        { kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", your fitting sets its height." }] },
+        { kind: "bullets", items: [[{ text: "Three heights" }], [{ text: "Two firmnesses" }]] },
+      ],
+    },
+  ),
   divider: blockEmail(words("above", "Above the line."), { id: "line", type: "divider" }, words("below", "Below the line.")),
   spacer: blockEmail(
     words("a", "Before a small space."),
