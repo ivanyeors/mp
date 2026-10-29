@@ -15,9 +15,9 @@ demoable path through the layers it touches.
 
 | # | Title | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
-| [01](01-clear-all.md) · [#355](https://github.com/ivanyeors/mp/issues/355) | Placeholders, not prefilled words: New campaign opens empty, and Clear all gets back there | AFK | not started | none |
-| [02](02-glossary-and-adr.md) · [#356](https://github.com/ivanyeors/mp/issues/356) | The words and the decision: glossary entries and ADR 0036 | AFK (docs) | not started | none |
-| [03](03-typed-blocks.md) · [#357](https://github.com/ivanyeors/mp/issues/357) | Typed blocks end to end: saved, previewed, tested and sent | AFK | not started | 02 |
+| [01](01-clear-all.md) · [#355](https://github.com/ivanyeors/mp/issues/355) | Placeholders, not prefilled words: New campaign opens empty, and Clear all gets back there | AFK | done | none |
+| [02](02-glossary-and-adr.md) · [#356](https://github.com/ivanyeors/mp/issues/356) | The words and the decision: glossary entries and ADR 0036 | AFK (docs) | done | none |
+| [03](03-typed-blocks.md) · [#357](https://github.com/ivanyeors/mp/issues/357) | Typed blocks end to end: saved, previewed, tested and sent | AFK | done | 02 |
 | [04](04-editor.md) · [#358](https://github.com/ivanyeors/mp/issues/358) | The editor: drag blocks into the email, see the real email beside it, one shared component | AFK | not started | 03 |
 | [05](05-images-and-hero.md) · [#359](https://github.com/ivanyeors/mp/issues/359) | Images and the hero: from the Media Library, safe in every inbox | AFK | not started | 03 (04 for the UI) |
 | [06](06-image-and-text.md) · [#360](https://github.com/ivanyeors/mp/issues/360) | Image + text: two columns that stack on a phone, in every inbox | AFK | not started | 05 |
@@ -30,7 +30,7 @@ demoable path through the layers it touches.
 | [13](13-variables.md) · [#370](https://github.com/ivanyeors/mp/issues/370) | Variables: drag a customer's first name, last name or points into any text | AFK | not started | 04 |
 | [14](14-email-template-variables.md) · [#371](https://github.com/ivanyeors/mp/issues/371) | Variables in Email templates: the shared text input, `{order_number}` dragged in as a chip | AFK | not started | 13 |
 | [15](15-light-and-dark.md) · [#372](https://github.com/ivanyeors/mp/issues/372) | Light and dark, automatically: the shell, legacy campaigns and every block | AFK | not started | 03 |
-| [16](16-ai-writing-settings.md) · [#373](https://github.com/ivanyeors/mp/issues/373) | AI writing settings on General: on or off, the model, the effort and the limits | AFK | not started | none |
+| [16](16-ai-writing-settings.md) · [#373](https://github.com/ivanyeors/mp/issues/373) | AI writing settings on General: on or off, the model, the effort and the limits | AFK | done | none |
 | [17](17-translate-to-chinese.md) · [#374](https://github.com/ivanyeors/mp/issues/374) | ✨ Translate to Chinese: a 中文 version for customers who use the site in Chinese | AFK | not started | 09, 13, 16 |
 
 **Suggested order:** 01 now, and 16 any time (neither waits on anything). Then 02 → 03 → 04 as
