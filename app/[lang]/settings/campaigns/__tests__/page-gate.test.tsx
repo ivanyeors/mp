@@ -81,6 +81,8 @@ describe("every action checks campaigns before anything else", () => {
   const calls: [string, () => Promise<unknown>][] = [
     ["saveCampaign", () => actions.saveCampaign(null, {} as never)],
     ["duplicateCampaign", () => actions.duplicateCampaign(ID)],
+    ["listPastCampaignsAction", () => actions.listPastCampaignsAction()],
+    ["previewStarters", () => actions.previewStarters()],
     ["archiveCampaignAction", () => actions.archiveCampaignAction(ID)],
     ["previewCampaign", () => actions.previewCampaign({} as never)],
     ["checkCampaignReadiness", () => actions.checkCampaignReadiness(ID)],
@@ -105,7 +107,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("the editor", () => {
-  it("opens a new campaign empty, every field on its placeholder, with the invitation one press away (PRD-campaign-email-editor slice 01)", async () => {
+  it("opens a new campaign empty, every field on its placeholder, with the Start panel offering the invitation (PRD-campaign-email-editor slices 01, 08)", async () => {
     signInAs("owner");
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { FIRST_CAMPAIGN_DRAFT } = await import("@/lib/email-campaigns/rules");
@@ -115,7 +117,8 @@ describe("the editor", () => {
     expect(html).toContain('placeholder="e.g. Sleep cooler this December"');
     expect(html).toContain('placeholder="e.g. Our FibreCool covers are back, in every size"');
     expect(html).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
-    expect(html).toContain("Use the sign-in invitation");
+    // The Start panel (slice 08), or its place while it loads.
+    expect(html).toContain("Start the email");
     expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*>.*Clear all/);
     expect(html).toContain("Imported from Shopify, not signed in yet");
     // Nothing to test or send until it is saved.

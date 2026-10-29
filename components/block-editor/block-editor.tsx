@@ -99,10 +99,14 @@ interface BlockEditorContext {
   noRoom: (adds: number) => string | null;
   selected: string | null;
   select: (id: string | null) => void;
-  /** Adds blocks at `at`, focuses the first and says so; all of them, or none when they don't fit. */
-  insert: (at: number, added: EditorBlock[]) => void;
+  /**
+   * Adds blocks at `at`, focuses the first and says so; all of them, or none
+   * when they don't fit. `from` is the palette item they come from, which
+   * puts them in itself when it brings more (`PaletteItem.apply`).
+   */
+  insert: (at: number, added: EditorBlock[], from?: PaletteItem<EditorBlock>) => void;
   /** Adds blocks after the selected one, or at the end. */
-  add: (added: EditorBlock[]) => void;
+  add: (added: EditorBlock[], from?: PaletteItem<EditorBlock>) => void;
   move: (from: number, to: number) => void;
   duplicate: (i: number) => void;
   remove: (i: number) => void;
@@ -168,7 +172,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
   const change = (next: EditorBlock[], burst?: string) => onChange(next as B[], burst);
   const room = Math.max(0, max - blocks.length);
   const noRoom = (adds: number) => (adds > room ? (full ?? noRoomText(adds, room, max)) : null);
-  const insert = (at: number, added: EditorBlock[]) => {
+  const insert = (at: number, added: EditorBlock[], from?: PaletteItem<EditorBlock>) => {
     const next = insertBlocks(blocks, at, added, max);
     if (next === blocks) {
       const why = noRoom(added.length);
@@ -176,7 +180,8 @@ export function BlockEditorRoot<B extends EditorBlock>({
       return;
     }
     const first = added[0];
-    change(next);
+    if (from?.apply) from.apply(next);
+    else change(next);
     onSelect(first.id);
     setFocus({ id: first.id, into: true });
     const where = Math.min(at, blocks.length);
@@ -192,9 +197,9 @@ export function BlockEditorRoot<B extends EditorBlock>({
     selected,
     select: onSelect,
     insert,
-    add: (added) => {
+    add: (added, from) => {
       const i = blocks.findIndex((b) => b.id === selected);
-      insert(i === -1 ? blocks.length : i + 1, added);
+      insert(i === -1 ? blocks.length : i + 1, added, from);
     },
     move: (from, to) => {
       const next = moveBlock(blocks, from, to);
@@ -253,7 +258,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
           if (isPaletteDrag(source?.data)) {
             const at = landing(event) ?? drop;
             setDrop(null);
-            if (!event.canceled && at !== null && !readOnly) insert(at, source.data.palette.blocks());
+            if (!event.canceled && at !== null && !readOnly) insert(at, source.data.palette.blocks(), source.data.palette);
             return;
           }
           const from = blocks.findIndex((b) => b.id === source?.id);

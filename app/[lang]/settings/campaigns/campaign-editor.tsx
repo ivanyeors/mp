@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -26,7 +26,7 @@ import { RichText } from "@/components/block-editor/rich-text";
 import { richTextFromWords, richTextWords, type RichTextVariable } from "@/components/block-editor/rich-text-doc";
 import { typingBurst, useEditorHistory, useHistoryKeys } from "@/components/block-editor/use-editor-history";
 import { useUnsavedGuard } from "@/components/block-editor/use-unsaved-guard";
-import type { PaletteTab } from "@/components/block-editor/types";
+import type { PaletteItem, PaletteItemsTab, PaletteTab } from "@/components/block-editor/types";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +44,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-    campaignWordsEmpty,
     campaignWordsOf,
     clearAllBlocker,
     clearCampaignWords,
@@ -53,14 +52,13 @@ import {
     type CampaignButtonChoice,
     type CampaignWords,
 } from "@/lib/email-campaigns/clear-all";
-import { CONTENT_LIMITS, contentFromLegacy, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
+import { CONTENT_LIMITS, contentFromLegacy, EMPTY_CAMPAIGN_CONTENT, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
     CAMPAIGN_AUDIENCES,
     CAMPAIGN_BLOCKER_TEXT,
     CAMPAIGN_LIMITS,
     CAMPAIGN_PLACEHOLDERS,
-    FIRST_CAMPAIGN_DRAFT,
     MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
     variablesInEmail,
@@ -69,6 +67,7 @@ import {
     type CampaignDraft,
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
+import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter } from "@/lib/email-campaigns/starters";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
@@ -98,6 +97,7 @@ import { Field } from "./field";
 import { draftOf, keptDraft, keptDraftKey, keptOf, type EditorDraft, type KeptDraft } from "./kept-draft";
 import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
 import { CheckList, StatusIcon } from "./send-parts";
+import { StarterThumbnail } from "./starter-thumbnail";
 import { WaveTable } from "./wave-table";
 
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
@@ -106,8 +106,23 @@ export type SegmentOption = { id: string; name: string; customersHref?: string |
 /** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
 
-/** The palette's tabs: Blocks now; Starters (slice 08) join it, and Variables (slice 13) follow them, built with the email. */
+/** The palette's first tab, Blocks; Starters (slice 08) and Variables (slice 13) follow it, built with the email. */
 const PALETTE = [blockPaletteTab(CAMPAIGN_BLOCKS)];
+
+/** The Start panel of an empty email (slice 08), loaded with the first one, not with the page; the server renders it in place. */
+const StartPanel = lazy(() => import("./start-panel").then((m) => ({ default: m.StartPanel })));
+
+/** What shows in the Start panel's place while it loads: its heading, and its four cards to come. */
+const START_PANEL_LOADING = (
+    <div aria-busy="true" className="space-y-4 text-left">
+        <p className="text-sm font-medium text-foreground">Start the email</p>
+        <div className="grid grid-cols-2 gap-3">
+            {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="aspect-[3/4] animate-pulse rounded-md border bg-muted/50" />
+            ))}
+        </div>
+    </div>
+);
 
 /** A campaign written before blocks has no Variables: its subject and preview line are words alone. */
 const NO_VARIABLES: readonly RichTextVariable[] = [];
@@ -173,9 +188,11 @@ function CharCount({ value, warn, ok, id }: { value: string; warn: string | null
  * numbers against the pause lines.
  *
  * Placeholders, not prefilled words (slice 01): an empty field shows its
- * hint, never saved or sent. A campaign written before blocks (slice 03)
- * keeps its message box and button, and an unsent one offers *Convert to
- * blocks*.
+ * hint, never saved or sent. An email that says nothing yet offers the Start
+ * panel (slice 08): blank, Write with AI, a Starter or a past campaign; and
+ * the palette's Starters tab drags a Starter's blocks in anywhere. A
+ * campaign written before blocks (slice 03) keeps its message box and
+ * button, and an unsent one offers *Convert to blocks*.
  */
 export function CampaignEditor({
     campaign,
@@ -526,15 +543,17 @@ export function CampaignEditor({
         if (res.ok) router.push(to("/settings/campaigns"));
         else setSaveError(res.error);
     };
-    const duplicate = async () => {
+    /** A copy of campaign `id` as a new draft, opened: Duplicate, and the Start panel's *A past campaign* (slice 08). */
+    const copyOf = async (id: string) => {
         // The copy is of what is saved: changes not saved yet would be left behind.
-        if (!campaign || !guard.confirmLeave()) return;
+        if (!guard.confirmLeave()) return;
         setBusy(true);
-        const res = await duplicateCampaign(campaign.id);
+        const res = await duplicateCampaign(id);
         setBusy(false);
         if (res.ok) router.push(to(`/settings/campaigns/${res.id}`));
         else setSaveError(res.error);
     };
+    const duplicate = () => (campaign ? copyOf(campaign.id) : undefined);
 
     const sending = progress?.running ?? false;
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
@@ -555,6 +574,44 @@ export function CampaignEditor({
         const k = guard.restore();
         if (k) history.set(draftOf(k));
     };
+
+    // ── Starters (slice 08): the Start panel of an empty email, and the palette's Starters tab ──
+    // *Blank* puts the Start panel away until the next Clear all; words or a block in the email end it anyway.
+    const [startPutAway, setStartPutAway] = useState(false);
+    const offerStart = editable && !startPutAway && emailSaysNothing(words);
+    /** A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes. */
+    const sayAudience = (s: Starter) => {
+        const goesTo = starterAudience(s, segments);
+        const now = latest.current.value;
+        if (!goesTo.audience || (goesTo.audience === now.audience && (goesTo.segmentId === undefined || goesTo.segmentId === now.segmentId))) return;
+        toast(`Send to is now “${CAMPAIGN_AUDIENCE_LABEL[goesTo.audience]}”: ${s.label} is written for them.`);
+    };
+    /** Each Starter as the palette offers it: dropped in, its blocks land where it is dropped, with the audience it is written for. */
+    const starterItems = STARTERS.map(
+        (s): PaletteItem<EmailBlock> => ({
+            id: s.id,
+            label: s.label,
+            description: s.description,
+            blocks: () => s.blocks(),
+            // The top of the email: no taller than this on a phone's full-width sheet.
+            preview: <StarterThumbnail id={s.id} shape="landscape" className="max-h-36" />,
+            apply: (next) => {
+                sayAudience(s);
+                history.set((e) => ({ ...e, content: { ...(e.content ?? EMPTY_CAMPAIGN_CONTENT), blocks: next }, ...starterAudience(s, segments) }));
+            },
+        }),
+    );
+    /** Each Starter as the Start panel offers it: the email started from it, its words and audience with its blocks. */
+    const startItems = STARTERS.map(
+        (s, i): PaletteItem<EmailBlock> => ({
+            ...starterItems[i],
+            apply: (next) => {
+                sayAudience(s);
+                history.set((e) => startedFrom(e, s, next, segments));
+            },
+        }),
+    );
+    const startersTab: PaletteItemsTab<EmailBlock> = { value: "starters", label: "Starters", items: starterItems };
 
     // ── Clear all (slice 01), one step of the history ──────────────────────
     // Writes nothing: the email is saved, and audited, only by Save.
@@ -585,21 +642,9 @@ export function CampaignEditor({
         undoRef.current = { words: snapshot, step: null };
         history.set((e) => ({ ...e, ...cleared }));
         setSelected(null);
+        // Back to the start: the Start panel is offered again.
+        setStartPutAway(false);
         undoToast("Cleared the email.");
-    };
-    /**
-     * *Use the sign-in invitation*: its words and audience as real words, for
-     * whoever wants them; in a block campaign, as blocks. Slice 08 makes it a Starter.
-     */
-    const fillInvitation = () => {
-        const invitation = campaignWordsOf(FIRST_CAMPAIGN_DRAFT);
-        history.set((e) => ({
-            ...e,
-            ...(e.content
-                ? { ...invitation, body: "", button: { choice: "none", label: "", url: "" }, content: contentFromLegacy(FIRST_CAMPAIGN_DRAFT) }
-                : invitation),
-            audience: FIRST_CAMPAIGN_DRAFT.audience,
-        }));
     };
     /**
      * *Convert to blocks* (slice 03): the message and its button as blocks
@@ -631,9 +676,10 @@ export function CampaignEditor({
             ? `${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best`
             : null;
     const palette = Boolean(content) && editable;
-    // The palette: Blocks, then Variables (slice 13), whose chips go in at the cursor of the words last written in.
+    // The palette: Blocks, Starters (slice 08), then Variables (slice 13), whose chips go in at the cursor of the words last written in.
     const asideTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
+        startersTab,
         {
             value: "variables",
             label: "Variables",
@@ -647,9 +693,23 @@ export function CampaignEditor({
     // A phone's sheet: a tap puts a Variable in and closes it; the fallbacks are under the blocks.
     const sheetTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
+        startersTab,
         { value: "variables", label: "Variables", content: <CampaignVariablesTab draggable={false} onInserted={() => setAddOpen(false)} /> },
     ];
     const saveLabel = campaign ? "Save changes" : "Save draft";
+
+    // What an empty email offers: four ways to start (slice 08). ✨ Write with AI waits for Generate (slice 09).
+    const startPanel = (
+        <Suspense fallback={START_PANEL_LOADING}>
+            <StartPanel
+                starters={startItems}
+                onBlank={() => setStartPutAway(true)}
+                ai={{ disabledReason: GENERATE_NOT_YET, onClick: () => undefined }}
+                onPastCampaign={(id) => void copyOf(id)}
+                busy={busy}
+            />
+        </Suspense>
+    );
     const sendBar = Boolean(campaign && (sending || (plan && planned > 0)) && (tab === "send" || sending));
     const writeBar = !sendBar && tab === "write" && !sending;
 
@@ -782,7 +842,7 @@ export function CampaignEditor({
                         </div>
                         <BlockEditor
                             label="The email's blocks"
-                            empty="No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."
+                            empty={offerStart ? startPanel : "No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."}
                             errors={fieldErrors}
                             errorPath="content.blocks"
                         />
@@ -867,12 +927,8 @@ export function CampaignEditor({
                         ) : null}
                     </>
                 )}
-                {/* A start for an empty email; slice 08's Start panel replaces it. */}
-                {!locked && campaignWordsEmpty(words) ? (
-                    <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={fillInvitation} disabled={sending}>
-                        Use the sign-in invitation
-                    </Button>
-                ) : null}
+                {/* A message written before blocks, cleared: a Starter makes it a block campaign. */}
+                {offerStart && !content ? <div className="rounded-lg border border-dashed p-4">{startPanel}</div> : null}
 
                 {saveError ? (
                     <p role="alert" className="text-sm text-destructive">
@@ -1032,7 +1088,8 @@ export function CampaignEditor({
                         <div className={cn("grid gap-6", palette ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
                             {palette ? (
                                 <aside className="max-lg:hidden" aria-label="Palette">
-                                    <div className="sticky top-4">
+                                    {/* A tall tab (Starters, with their thumbnails) scrolls inside it. */}
+                                    <div className="sticky top-4 -m-1 max-h-[calc(100vh-2rem)] overflow-y-auto p-1">
                                         <BlockPalette tabs={asideTabs} tab={paletteTab} onTab={setPaletteTab} />
                                     </div>
                                 </aside>

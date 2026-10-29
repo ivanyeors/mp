@@ -33,6 +33,7 @@ export const CHECK_LABEL: Record<string, string> = {
   pause: "Bounces and spam reports are low",
   points: "Points are live",
   products: "Every product is still in the shop",
+  placeholders: "Every block is written",
   send_limit: "Room in the sending plan",
   reports: "Bounce and spam reports",
 };

@@ -23,6 +23,19 @@ import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type Va
 export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "split", "products", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
 
+/** Each block type's name, as the editor's palette and cards and the checks before a wave call it. */
+export const EMAIL_BLOCK_LABEL: Record<EmailBlockType, string> = {
+  heading: "Heading",
+  text: "Text",
+  buttons: "Buttons",
+  image: "Image",
+  hero: "Hero",
+  split: "Image + text",
+  products: "Products",
+  divider: "Divider",
+  spacer: "Spacer",
+};
+
 /**
  * Where a block's button goes. The sender resolves each to an absolute URL on
  * the live origin with the campaign's UTMs: Staff never type a site link.

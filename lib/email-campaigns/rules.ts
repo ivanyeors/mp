@@ -462,9 +462,9 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
  * website, with the Claim bonus (PRD-loyalty-points: 1,000 points, S$10 off a
  * shop order, for signing in within 3 months of this email). It names no old
  * platform (owner, 2026-10-21). No longer where a new campaign starts
- * (PRD-campaign-email-editor decision 7): *Use the sign-in invitation* fills
- * it in, and slice 08 makes it a Starter. Staff change any of it before
- * sending.
+ * (PRD-campaign-email-editor decision 7): it is the Starter *New website:
+ * sign in for points* (`INVITATION_STARTER`, slice 08), as blocks, the one
+ * with finished words. Staff change any of it before sending.
  */
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "New website: sign in for points",

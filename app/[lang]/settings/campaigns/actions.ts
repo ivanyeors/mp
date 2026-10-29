@@ -8,6 +8,7 @@ import { resolveSegment } from "@/lib/crm/segments";
 import {
   CampaignDraftSchema,
   CampaignPreviewSchema,
+  EMPTY_CAMPAIGN_DRAFT,
   MAX_TEST_RECIPIENTS,
   type Campaign,
   type CampaignDraft,
@@ -30,7 +31,8 @@ import { campaignImageFieldErrors, readCampaignImages } from "@/lib/email-campai
 import { readCampaignProductCards, shopProductCard, type CampaignProductCard, type ShopProductRow } from "@/lib/email-campaigns/products";
 import { getProducts } from "@/lib/ecommerce/products";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
-import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
+import { archiveCampaign, createCampaign, getCampaign, listPastCampaigns, lockCampaign, updateCampaign, type PastCampaign } from "@/lib/email-campaigns/store";
+import { BLANK_PREVIEW, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
 import { readPointsSettings } from "@/lib/points/server";
@@ -184,6 +186,38 @@ export async function duplicateCampaign(id: string): Promise<{ ok: true; id: str
     }
     return r;
   });
+}
+
+/**
+ * *A past campaign*, in the Start panel of an empty email
+ * (PRD-campaign-email-editor slice 08): every campaign, archived ones too,
+ * newest first, by name and subject. Picking one is Duplicate, which copies
+ * the email and who it goes to and nothing of its sends. Changes nothing.
+ */
+export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: PastCampaign[] } | Failure> {
+  await assertAdmin("campaigns");
+  try {
+    return { ok: true, campaigns: await listPastCampaigns(supabaseAdmin()) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/**
+ * The thumbnails of the Start panel and the palette's Starters tab (slice
+ * 08): each Starter, and a blank email (`BLANK_PREVIEW`), as the real
+ * renderer draws it on its placeholders for the sample customer, by id. The
+ * editor asks once, when the first thumbnail shows. Changes nothing.
+ */
+export async function previewStarters(): Promise<{ ok: true; previews: Record<string, string> } | Failure> {
+  await assertAdmin("campaigns");
+  const { origin } = campaignSenderSetup();
+  const drafts: [string, CampaignDraft][] = [[BLANK_PREVIEW, EMPTY_CAMPAIGN_DRAFT], ...STARTERS.map((s): [string, CampaignDraft] => [s.id, starterDraft(s)])];
+  try {
+    return { ok: true, previews: Object.fromEntries(drafts.map(([id, draft]) => [id, renderCampaignPreview(draft, { origin, ...SAMPLE_RECIPIENT }).html])) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
 }
 
 export async function archiveCampaignAction(id: string): Promise<{ ok: true } | Failure> {

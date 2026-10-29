@@ -543,7 +543,7 @@ One typed part of an **Email campaign**: heading, text, buttons, image, hero, im
 _Avoid_: "section" (a pillow filling's compartment, and the landing page's **Landing section**); "module", "row", "component"; an HTML block (there is none, on purpose)
 
 **Starter**:
-A ready-made layout: a list of **Email blocks** with **Placeholders** for its words (*Product launch*, *Care tips*…). A campaign can start from one, or have one dragged into it; either way it becomes ordinary blocks, each movable, changeable and deletable. Defined in code. The CRM's **Playbooks** (PRD-crm-retention-loop slice 07) are Starters that also choose an **Audience**.
+A ready-made layout: a list of **Email blocks** with **Placeholders** for its words (*Product launch*, *Care tips*…). A campaign can start from one, or have one dragged into it; either way it becomes ordinary blocks, each movable, changeable and deletable. Defined in code (`lib/email-campaigns/starters.ts`). The sign-in invitation is the one Starter with finished words, and with its **Audience**; the CRM's **Playbooks** (PRD-crm-retention-loop slice 07) are Starters that are written word for word and also choose an **Audience**.
 _Avoid_: "template" (an **Email template** is the words of a platform email; a Starter is the start of a campaign); "layout" on its own (the shell's layout is code, and nobody edits it)
 
 **Variable**:

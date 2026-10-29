@@ -61,6 +61,17 @@ export interface PaletteItem<B extends EditorBlock> {
   blocks: () => B[];
   /** Why it can't be added now; null or absent when it can. */
   disabledReason?: string | null;
+  /**
+   * A picture of what it adds, above its name (a Starter's thumbnail), which
+   * the page draws and loads when it likes. Decorative: the name says it.
+   */
+  preview?: ReactNode;
+  /**
+   * Puts it in, for an item that brings more than blocks (a Starter written
+   * for one audience): it is given the whole list with its blocks in, and
+   * makes that, and the rest, one change. Without it the list is the change.
+   */
+  apply?: (next: B[]) => void;
 }
 
 /** A palette tab of items that add blocks: Blocks, Starters. */

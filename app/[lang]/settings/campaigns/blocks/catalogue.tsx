@@ -15,6 +15,7 @@ import {
     BLOCK_BUTTON_TARGETS,
     CONTENT_LIMITS,
     CONTENT_PLACEHOLDERS,
+    EMAIL_BLOCK_LABEL,
     emptyBlock,
     IMAGE_LINK_TARGETS,
     isHttpsUrl,
@@ -769,7 +770,7 @@ function SpacerOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"spac
 /** Every Email block type the campaign editor offers, in the palette's order. */
 export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
     heading: {
-        label: "Heading",
+        label: EMAIL_BLOCK_LABEL.heading,
         description: "The email's title, or a part's",
         icon: Heading,
         create: () => emptyBlock("heading") as Of<"heading">,
@@ -777,14 +778,14 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         Options: HeadingOptions,
     },
     text: {
-        label: "Text",
+        label: EMAIL_BLOCK_LABEL.text,
         description: "Paragraphs and bullets, with bold and links",
         icon: Pilcrow,
         create: () => emptyBlock("text") as Of<"text">,
         Form: TextForm,
     },
     buttons: {
-        label: "Buttons",
+        label: EMAIL_BLOCK_LABEL.buttons,
         description: "One button, or two side by side",
         icon: MousePointerClick,
         create: () => emptyBlock("buttons") as Of<"buttons">,
@@ -792,7 +793,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         Options: ButtonsOptions,
     },
     image: {
-        label: "Image",
+        label: EMAIL_BLOCK_LABEL.image,
         description: "A photo from the Media Library, with its alt text",
         icon: ImageIcon,
         create: () => emptyBlock("image") as Of<"image">,
@@ -800,7 +801,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         Options: ImageOptions,
     },
     hero: {
-        label: "Hero",
+        label: EMAIL_BLOCK_LABEL.hero,
         description: "A big photo, then a heading, a line and a button below it",
         icon: PanelTop,
         create: () => emptyBlock("hero") as Hero,
@@ -808,7 +809,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         Options: HeroOptions,
     },
     split: {
-        label: "Image + text",
+        label: EMAIL_BLOCK_LABEL.split,
         description: "A photo beside a few lines",
         icon: Columns2,
         create: () => emptyBlock("split") as Split,
@@ -816,7 +817,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         Options: SplitOptions,
     },
     products: {
-        label: "Products",
+        label: EMAIL_BLOCK_LABEL.products,
         description: "Up to three from the shop, at its prices",
         icon: ShoppingBag,
         create: () => emptyBlock("products") as Products,
@@ -824,14 +825,14 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         Options: ProductsOptions,
     },
     divider: {
-        label: "Divider",
+        label: EMAIL_BLOCK_LABEL.divider,
         description: "A thin line between parts",
         icon: Minus,
         create: () => emptyBlock("divider") as Of<"divider">,
         Form: DividerForm,
     },
     spacer: {
-        label: "Spacer",
+        label: EMAIL_BLOCK_LABEL.spacer,
         description: "Some room between parts",
         icon: StretchVertical,
         create: () => emptyBlock("spacer") as Of<"spacer">,

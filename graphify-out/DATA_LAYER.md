@@ -1432,7 +1432,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
 ### claim_marketing_campaign_send
 Defined in supabase/migrations/20261030130000_campaign_claim_last_name.sql:17
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:251
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:292
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -1587,7 +1587,7 @@ Changed from pages: `/results/[id]`
 ### email_campaign_stats
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:297
 - Read by:
-  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:97
+  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:138
   - `listCampaigns()` [select] — lib/email-campaigns/store.ts:76
 
 ### email_campaigns
@@ -1595,14 +1595,15 @@ Defined in supabase/migrations/20261021100000_email_campaigns.sql:42
 References: `customer_segments`, `mp_staff`
 Changed from pages: `/settings/campaigns/[id]`, `/settings/campaigns/new`
 - Written by:
-  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:128
-  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:108
-  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:138
-  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:123
+  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:169
+  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:149
+  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:179
+  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:164
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1020
-  - `getCampaign()` [select] — lib/email-campaigns/store.ts:91
+  - `getCampaign()` [select] — lib/email-campaigns/store.ts:132
   - `listCampaigns()` [select] — lib/email-campaigns/store.ts:75
+  - `listPastCampaigns()` [select] — lib/email-campaigns/store.ts:108
 
 ### email_template_copy
 Defined in supabase/migrations/20261021110000_email_template_copy.sql:23
@@ -1676,7 +1677,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
 ### marketing_campaign_candidates
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:265
 - Read by:
-  - `readPaged()` [select] — lib/email-campaigns/store.ts:160
+  - `readPaged()` [select] — lib/email-campaigns/store.ts:201
 
 ### media_asset_renditions
 Defined in supabase/migrations/20261030050000_media_asset_renditions.sql:20
@@ -2432,7 +2433,7 @@ app/[lang]/settings/campaigns/page.tsx
 
 ### /settings/campaigns/[id]
 app/[lang]/settings/campaigns/[id]/page.tsx
-- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `listPastCampaignsAction()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `previewStarters()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `campaignPointsLive()`, `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
@@ -2440,7 +2441,7 @@ app/[lang]/settings/campaigns/[id]/page.tsx
 
 ### /settings/campaigns/new
 app/[lang]/settings/campaigns/new/page.tsx
-- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `listPastCampaignsAction()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `previewStarters()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `campaignPointsLive()`, `listSegments()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`

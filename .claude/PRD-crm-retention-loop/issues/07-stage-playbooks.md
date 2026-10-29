@@ -23,10 +23,14 @@ Segment.
 
 ## What to build
 
-- Each playbook as a draft beside `FIRST_CAMPAIGN_DRAFT` (`lib/email-campaigns/rules.ts`), passing
-  `CampaignDraftSchema`, with `pointsCheck` respected.
-- *New campaign* offers the playbooks as starting points; each opens its stage's Segment (slice
-  04's) as the Audience. *Welcome back* needs the *Lapsed* sub-status as a filter, which the
+- Each playbook as a **Starter** (PRD-campaign-email-editor slice 08), an entry in
+  `PLAYBOOK_STARTERS` (`lib/email-campaigns/starters.ts`): its blocks, its finished words
+  (`words`: name, subject, preview line) and its stage's Segment (`audience: { audience:
+  "segment", segment: "<the Segment's name>" }`), passing `CampaignDraftSchema` once started, with
+  `pointsCheck` respected. The sign-in invitation (`INVITATION_STARTER`) is the pattern.
+- *New campaign*'s Start panel and the editor's Starters tab already offer every Starter; each
+  Playbook opens its stage's Segment (slice 04's) as the Audience, or leaves the Segment to
+  choose when none has that name. *Welcome back* needs the *Lapsed* sub-status as a filter, which the
   Stage filter does not choose yet (slice 03 chooses main stages only): add it here.
 - Everything else is the existing send flow: test, readiness, waves within Resend's plan.
 

@@ -87,6 +87,7 @@ import {
   type CampaignPlan,
 } from "./rules";
 import { contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
+import { placeholdersCheck } from "./content-checks";
 import { campaignImagesProblem, readCampaignImages } from "./images";
 import { campaignProductPhotos, campaignProductsProblem, productsCheck, readCampaignProducts } from "./products";
 import { roomAgainText } from "./send-flow";
@@ -486,6 +487,9 @@ export async function campaignReadiness(
   // Before each wave: a product can be un-listed between waves days apart (slice 07).
   const products = campaign ? await productsCheck(setup.admin, campaign.content) : null;
   if (products) checks.push(products);
+  // No field still on its placeholder, as Save asks (slice 08): an empty headline would send as nothing.
+  const unwritten = campaign ? placeholdersCheck(campaign.content) : null;
+  if (unwritten) checks.push(unwritten);
   checks.push(allowanceCheck(room.allowance, room.error));
   return { checks, ready: checks.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
 }

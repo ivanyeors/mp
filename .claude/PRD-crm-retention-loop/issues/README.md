@@ -76,4 +76,8 @@ graph TD
    customers are placed by count until 09 lands.
 3. **09 once the owner confirms the ADR 0029 amendment.** It gives Shopify customers their dates.
 4. **04, 05 and 06 in parallel.**
-5. **07** once its words are approved; **08** closes the build.
+5. **07** once its words are approved; **08** closes the build. Each Playbook is a **Starter**
+   (PRD-campaign-email-editor slice 08): an entry in `PLAYBOOK_STARTERS`
+   (`lib/email-campaigns/starters.ts`) with its words (`words`) and its stage's Segment
+   (`audience`, the Segment found by name). The Start panel of *New campaign* and the palette's
+   Starters tab offer it; 07 adds the words, the place and the format are built.

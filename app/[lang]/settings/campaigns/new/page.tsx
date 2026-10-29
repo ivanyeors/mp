@@ -10,10 +10,11 @@ export const runtime = "nodejs";
 
 /**
  * A new campaign, empty, every field on its placeholder
- * (PRD-campaign-email-editor slice 01); the sign-in invitation is one press
- * away in the editor. From *Email this Segment* on Customers
- * (`?segment=<id>`), it is sent to that Segment and named after it
- * (PRD-crm-retention-loop slice 02).
+ * (PRD-campaign-email-editor slice 01), with the Start panel offering where
+ * to start: blank, Write with AI, a Starter (the sign-in invitation among
+ * them) or a past campaign (slice 08). From *Email this Segment* on
+ * Customers (`?segment=<id>`), it is sent to that Segment and named after it
+ * (PRD-crm-retention-loop slice 02), the Start panel offered all the same.
  */
 export default async function NewEmailCampaignPage({
     params,
