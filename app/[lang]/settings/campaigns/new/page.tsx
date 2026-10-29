@@ -8,9 +8,10 @@ import { segmentOptions } from "../segment-options";
 export const runtime = "nodejs";
 
 /**
- * A new campaign, starting from the Shopify customers' invitation
- * (PRD-email-marketing), or, from *Email this Segment* on Customers
- * (`?segment=<id>`), a blank one sent to that Segment
+ * A new campaign, empty, every field on its placeholder
+ * (PRD-campaign-email-editor slice 01); the sign-in invitation is one press
+ * away in the editor. From *Email this Segment* on Customers
+ * (`?segment=<id>`), it is sent to that Segment and named after it
  * (PRD-crm-retention-loop slice 02).
  */
 export default async function NewEmailCampaignPage({

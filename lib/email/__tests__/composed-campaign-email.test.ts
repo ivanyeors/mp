@@ -61,6 +61,31 @@ describe("renderComposedCampaignEmail", () => {
     expect(r.text).toContain(`Unsubscribe: ${UNSUB}`);
   });
 
+  it("draws an empty field's placeholder, dashed and muted, only when the preview passes them", () => {
+    const placeholders = { subject: "e.g. Sleep cooler", body: "Write your message.", buttonLabel: "e.g. Shop <the> covers" };
+    const empty = { ...base, subject: "", body: "", button: { label: "", href: "https://custom.mpillow.com/en-US/account" } };
+    const preview = renderComposedCampaignEmail({ ...empty, placeholders }).html;
+    for (const hint of ["e.g. Sleep cooler", "Write your message.", "e.g. Shop &lt;the&gt; covers"]) expect(preview).toContain(hint);
+    expect(preview.match(/border:1px dashed/g)).toHaveLength(3);
+    expect(preview).toMatch(/<h1 class="mp-muted"[^>]*>e\.g\. Sleep cooler<\/h1>/);
+    // A button without words has no link to press, even in the preview.
+    expect(preview).not.toContain('href="https://custom.mpillow.com/en-US/account"');
+
+    const sent = renderComposedCampaignEmail(empty);
+    expect(sent.html).not.toContain("dashed");
+    expect(sent.html).not.toMatch(/<h1/);
+    expect(sent.html).not.toContain("en-US/account");
+    expect(sent.text).not.toContain("en-US/account");
+  });
+
+  it("draws no placeholder over words: a typed field shows what was typed", () => {
+    const placeholders = { subject: "e.g. Sleep cooler", body: "Write your message.", buttonLabel: "e.g. Shop" };
+    const r = renderComposedCampaignEmail({ ...base, body: "Hello", button: { label: "Sign in", href: "https://custom.mpillow.com/en-US/account" }, placeholders });
+    expect(r.html).not.toContain("dashed");
+    for (const hint of Object.values(placeholders)) expect(r.html).not.toContain(hint);
+    expect(r.html).toContain(">News</h1>");
+  });
+
   it("is registered as campaign mail", () => {
     expect(getEmailCase("campaign.composed")).toMatchObject({ group: "campaign", audience: "customer", campaign: true });
   });

@@ -2,7 +2,7 @@
 
 **Issue:** [#355](https://github.com/ivanyeors/mp/issues/355) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** none (built on today's editor; slice 04 carries both into the block editor)
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:email`
 

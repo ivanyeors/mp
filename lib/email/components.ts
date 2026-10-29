@@ -508,6 +508,37 @@ ${rows}
 </table>`);
 }
 
+/**
+ * An empty field's placeholder, for an editor's preview only
+ * (PRD-campaign-email-editor decision 7): muted, in a dashed outline, at the
+ * place and type size its words would take, so an empty email's layout reads.
+ * Never in a sent email: only the preview passes placeholders to a renderer.
+ *
+ * The outline is the muted ink, not `LIGHT.border`, so it reads on the light
+ * card and the dark one alike; the text takes the `mp-muted` dark rule.
+ */
+export function placeholderHint(text: string, as: "h1" | "body" | "button" = "body"): string {
+  const outline = { border: `1px dashed ${LIGHT.mutedFg}`, "border-radius": `${as === "button" ? RADIUS.button : RADIUS.md}px` };
+  if (as === "button") {
+    return block(
+      `<span class="mp-muted" style="${typeStyle("button", {
+        ...outline,
+        color: LIGHT.mutedFg,
+        display: "inline-block",
+        padding: `0 ${SPACE["3xl"]}px`,
+      })}">${escapeHtml(text)}</span>`,
+      css({ "text-align": "center", padding: `${LAYOUT.gutter}px 0` }),
+    );
+  }
+  const tag = as === "h1" ? "h1" : "p";
+  return `<${tag} class="mp-muted" style="${typeStyle(as, {
+    ...outline,
+    color: LIGHT.mutedFg,
+    margin: `0 0 ${LAYOUT.gutter}px`,
+    padding: `${SPACE.md}px ${SPACE.xl}px`,
+  })}">${escapeHtml(text)}</${tag}>`;
+}
+
 export interface FooterLink {
   label: string;
   href: string;

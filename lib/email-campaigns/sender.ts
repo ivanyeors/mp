@@ -49,7 +49,7 @@ import {
   type DeliverySetup,
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
-import { renderComposedCampaignEmail } from "@/lib/email/campaigns";
+import { renderComposedCampaignEmail, type ComposedCampaignPlaceholders } from "@/lib/email/campaigns";
 import {
   checkCampaignFrom,
   emailAddressOf,
@@ -65,6 +65,7 @@ import { readPointsSettings } from "@/lib/points/server";
 import {
   campaignLedgerKey,
   CAMPAIGN_BLOCKER_TEXT,
+  CAMPAIGN_PLACEHOLDERS,
   mentionsPoints,
   MAX_TEST_RECIPIENTS,
   MAX_WAVE_SIZE,
@@ -137,10 +138,20 @@ export function campaignButton(
   return b.url ? { label: b.label, href: withEmailCampaignUtm(b.url, campaign.name, origin) } : null;
 }
 
-/** Pure — the Campaign as one recipient gets it. */
+/**
+ * Pure — the Campaign as one recipient gets it. `placeholders` is the
+ * editor's preview's alone (`renderCampaignPreview`): no send passes it.
+ */
 export function renderCampaignFor(
   campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
-  p: { firstName: string | null; origin: string; locale: Locale; claimUrl: string | null; unsubscribeUrl: string },
+  p: {
+    firstName: string | null;
+    origin: string;
+    locale: Locale;
+    claimUrl: string | null;
+    unsubscribeUrl: string;
+    placeholders?: ComposedCampaignPlaceholders;
+  },
 ): RenderedEmail {
   return renderComposedCampaignEmail({
     subject: campaign.subject,
@@ -150,12 +161,15 @@ export function renderCampaignFor(
     firstName: p.firstName,
     button: campaignButton(campaign, { origin: p.origin, locale: p.locale, claimUrl: p.claimUrl }),
     unsubscribeUrl: p.unsubscribeUrl,
+    ...(p.placeholders ? { placeholders: p.placeholders } : {}),
   });
 }
 
 /**
  * Pure — the editor's preview: the Campaign for a sample customer, with an
- * unsubscribe link that unsubscribes nobody.
+ * unsubscribe link that unsubscribes nobody. An empty subject, message or
+ * button label shows its placeholder, dashed and muted
+ * (PRD-campaign-email-editor decision 7), so an empty email's layout reads.
  */
 export function renderCampaignPreview(
   campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
@@ -168,6 +182,7 @@ export function renderCampaignPreview(
     locale: DEFAULT_LOCALE,
     claimUrl: null,
     unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
+    placeholders: CAMPAIGN_PLACEHOLDERS,
   });
 }
 

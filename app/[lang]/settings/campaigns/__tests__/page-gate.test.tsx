@@ -105,21 +105,35 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("the editor", () => {
-  it("opens a new campaign on the invitation to the new website, with the points for signing in and no word of Shopify", async () => {
+  it("opens a new campaign empty, every field on its placeholder, with the invitation one press away (PRD-campaign-email-editor slice 01)", async () => {
+    signInAs("owner");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { FIRST_CAMPAIGN_DRAFT } = await import("@/lib/email-campaigns/rules");
+    const html = renderToStaticMarkup(await NewPage({ params, searchParams: Promise.resolve({}) }));
+    expect(html).toContain("New campaign");
+    expect(html).toContain('placeholder="e.g. December cooling launch"');
+    expect(html).toContain('placeholder="e.g. Sleep cooler this December"');
+    expect(html).toContain('placeholder="e.g. Our FibreCool covers are back, in every size"');
+    expect(html).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
+    expect(html).toContain("Use the sign-in invitation");
+    expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*>.*Clear all/);
+    expect(html).toContain("Imported from Shopify, not signed in yet");
+    // Nothing to test or send until it is saved.
+    expect(html).not.toContain("Send a test");
+  });
+
+  it("fills in the invitation to the new website, with the points for signing in and no word of Shopify", async () => {
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { CampaignEditor } = await import("../campaign-editor");
     const { FIRST_CAMPAIGN_DRAFT } = await import("@/lib/email-campaigns/rules");
     const html = renderToStaticMarkup(
       <CampaignEditor campaign={null} draft={FIRST_CAMPAIGN_DRAFT} stats={null} segments={[]} staffEmail="owner@mpillow.com" />,
     );
-    expect(html).toContain("New campaign");
     expect(html).toContain("Our new website is here, with points waiting for you");
     expect(html).toContain("Sign in within 3 months of this email and we&#x27;ll add 1,000 points");
     expect(html).toContain("Imported from Shopify, not signed in yet");
     // The audience name is for Staff; the email itself never names the old platform.
     expect(html.replace("Imported from Shopify, not signed in yet", "")).not.toMatch(/shopify|moved|migrat/i);
     expect(html).not.toMatch(/voucher/i);
-    // Nothing to test or send until it is saved.
-    expect(html).not.toContain("Send a test");
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { segmentCampaignHref, segmentHref } from "@/lib/crm/segment-rules";
-import { FIRST_CAMPAIGN_DRAFT, CampaignDraftSchema, newCampaignDraft } from "@/lib/email-campaigns/rules";
+import { CampaignDraftSchema, EMPTY_CAMPAIGN_DRAFT, newCampaignDraft } from "@/lib/email-campaigns/rules";
 
 /**
  * PRD-crm-retention-loop slice 02: a Segment hands off to a new campaign, and
@@ -50,9 +50,9 @@ describe("newCampaignDraft", () => {
     expect(CampaignDraftSchema.safeParse({ ...draft, subject: "Hello", body: "Hi" }).success).toBe(true);
   });
 
-  it("starts the default draft for anything else", () => {
+  it("starts the empty draft for anything else (PRD-campaign-email-editor slice 01)", () => {
     for (const param of [undefined, "", "not-a-uuid", "5e000000-0000-4000-8000-000000000099", REVIEW.id]) {
-      expect(newCampaignDraft(param, [LIVE, REVIEW]), String(param)).toBe(FIRST_CAMPAIGN_DRAFT);
+      expect(newCampaignDraft(param, [LIVE, REVIEW]), String(param)).toBe(EMPTY_CAMPAIGN_DRAFT);
     }
   });
 

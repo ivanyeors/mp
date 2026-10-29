@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Archive, ChevronLeft, Copy, Loader2, Send } from "lucide-react";
+import { AlertTriangle, Archive, ChevronLeft, Copy, Eraser, Loader2, Send } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +17,24 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+    campaignWordsEmpty,
+    campaignWordsOf,
+    clearAllBlocker,
+    clearCampaignWords,
+    CLEAR_ALL_BLOCKER_TEXT,
+    CLEAR_ALL_UNDO_MS,
+    type CampaignButtonChoice,
+    type CampaignWords,
+} from "@/lib/email-campaigns/clear-all";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
     CAMPAIGN_AUDIENCES,
     CAMPAIGN_BLOCKER_TEXT,
     CAMPAIGN_LIMITS,
+    CAMPAIGN_PLACEHOLDERS,
+    FIRST_CAMPAIGN_DRAFT,
     MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
     type Campaign,
@@ -53,7 +67,8 @@ import { WaveTable } from "./wave-table";
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
 export type SegmentOption = { id: string; name: string; customersHref?: string | null };
 
-type ButtonChoice = "none" | "sign_in" | "url";
+/** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. */
+const CLEAR_ALL_TOAST = "campaign-clear-all";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -104,6 +119,11 @@ const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
  * wave no bigger than today's room in the sending plan, a confirmation
  * dialog that restates the send, a labelled progress bar, what to do next,
  * and each wave's numbers against the pause lines.
+ *
+ * Placeholders, not prefilled words (PRD-campaign-email-editor slice 01): an
+ * empty field shows its hint, never saved or sent. *Clear all* returns what
+ * the email says to those hints and offers Undo in a toast, not a dialog,
+ * because nothing is saved until Save.
  */
 export function CampaignEditor({
     campaign,
@@ -138,9 +158,26 @@ export function CampaignEditor({
     const [preheader, setPreheader] = useState(initial.preheader ?? "");
     const [greeting, setGreeting] = useState(initial.greeting);
     const [body, setBody] = useState(initial.body);
-    const [buttonChoice, setButtonChoice] = useState<ButtonChoice>(initial.button?.target ?? "none");
-    const [buttonLabel, setButtonLabel] = useState(initial.button?.label ?? "Sign in to your account");
+    const [buttonChoice, setButtonChoice] = useState<CampaignButtonChoice>(initial.button?.target ?? "none");
+    const [buttonLabel, setButtonLabel] = useState(initial.button?.label ?? "");
     const [buttonUrl, setButtonUrl] = useState(initial.button?.url ?? "");
+    // What the email says, as Clear all and Undo see it.
+    const words: CampaignWords = useMemo(
+        () => ({ name, subject, preheader, body, button: { choice: buttonChoice, label: buttonLabel, url: buttonUrl } }),
+        [name, subject, preheader, body, buttonChoice, buttonLabel, buttonUrl],
+    );
+    const setWords = (w: CampaignWords) => {
+        setName(w.name);
+        setSubject(w.subject);
+        setPreheader(w.preheader);
+        setBody(w.body);
+        setButtonChoice(w.button.choice);
+        setButtonLabel(w.button.label);
+        setButtonUrl(w.button.url);
+    };
+    // The words Clear all took, until Undo puts them back or Save makes them gone.
+    const undoRef = useRef<CampaignWords | null>(null);
+    useEffect(() => () => void toast.dismiss(CLEAR_ALL_TOAST), []);
 
     const input: CampaignDraftInput = useMemo(
         () => ({
@@ -177,6 +214,9 @@ export function CampaignEditor({
             }
             setFieldErrors({});
             setSavedKey(JSON.stringify(input));
+            // After a Save, Clear all's Undo is gone.
+            undoRef.current = null;
+            toast.dismiss(CLEAR_ALL_TOAST);
             if (!campaign) router.replace(withLocale(`/settings/campaigns/${res.id}`, locale));
             else router.refresh();
             return res.id;
@@ -405,6 +445,35 @@ export function CampaignEditor({
     const sending = progress?.running ?? false;
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
 
+    // ── Clear all (PRD-campaign-email-editor slice 01) ─────────────────────
+    // Writes nothing: the email is saved, and audited, only by Save.
+    const clearBlocker = clearAllBlocker({ locked, sending, words });
+    const clearWhy = clearBlocker ? CLEAR_ALL_BLOCKER_TEXT[clearBlocker] : null;
+    // Opens only while Clear all is off, to say why; the button stays focusable, so the tree never changes under it.
+    const [clearTipOpen, setClearTipOpen] = useState(false);
+    const clearAll = () => {
+        if (clearBlocker) return;
+        const { words: cleared, snapshot } = clearCampaignWords(words);
+        undoRef.current = snapshot;
+        setWords(cleared);
+        toast("Cleared the email.", {
+            id: CLEAR_ALL_TOAST,
+            duration: CLEAR_ALL_UNDO_MS,
+            action: {
+                label: "Undo",
+                onClick: () => {
+                    if (undoRef.current) setWords(undoRef.current);
+                    undoRef.current = null;
+                },
+            },
+        });
+    };
+    /** *Use the sign-in invitation*: its words and audience as real words, for whoever wants them. Slice 08 makes it a Starter. */
+    const fillInvitation = () => {
+        setWords(campaignWordsOf(FIRST_CAMPAIGN_DRAFT));
+        setAudience(FIRST_CAMPAIGN_DRAFT.audience);
+    };
+
     return (
         <div className={`space-y-6 ${campaign && (sending || plan) ? mobileStickyActionBarSpacerClassName : ""}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -418,18 +487,41 @@ export function CampaignEditor({
                     <h1 className="truncate text-2xl font-semibold tracking-tight">{campaign ? campaign.name : "New campaign"}</h1>
                     {campaign ? <Badge variant={locked ? "default" : "outline"}>{locked ? "Sending started" : "Draft"}</Badge> : null}
                 </div>
-                {campaign ? (
-                    <div className="flex gap-2 sm:ml-auto">
-                        <Button variant="outline" size="sm" onClick={duplicate} disabled={busy || sending}>
-                            <Copy className="mr-1 h-4 w-4" />
-                            Duplicate
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={archive} disabled={busy || sending}>
-                            <Archive className="mr-1 h-4 w-4" />
-                            Archive
-                        </Button>
-                    </div>
-                ) : null}
+                <div className="flex flex-wrap gap-2 sm:ml-auto">
+                    <Tooltip open={clearTipOpen && Boolean(clearWhy)} onOpenChange={setClearTipOpen}>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={clearAll}
+                                aria-disabled={clearWhy ? true : undefined}
+                                aria-describedby={clearWhy ? "c-clear-why" : undefined}
+                                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                            >
+                                <Eraser className="mr-1 h-4 w-4" />
+                                Clear all
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{clearWhy}</TooltipContent>
+                    </Tooltip>
+                    {clearWhy ? (
+                        <span id="c-clear-why" className="sr-only">
+                            {clearWhy}
+                        </span>
+                    ) : null}
+                    {campaign ? (
+                        <>
+                            <Button variant="outline" size="sm" onClick={duplicate} disabled={busy || sending}>
+                                <Copy className="mr-1 h-4 w-4" />
+                                Duplicate
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={archive} disabled={busy || sending}>
+                                <Archive className="mr-1 h-4 w-4" />
+                                Archive
+                            </Button>
+                        </>
+                    ) : null}
+                </div>
             </div>
 
             {locked ? (
@@ -448,7 +540,7 @@ export function CampaignEditor({
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Field label="Campaign name" htmlFor="c-name" hint="Customers never see this." error={fieldErrors.name}>
-                            <Input id="c-name" value={name} maxLength={CAMPAIGN_LIMITS.name} onChange={(e) => setName(e.target.value)} />
+                            <Input id="c-name" value={name} placeholder={CAMPAIGN_PLACEHOLDERS.name} maxLength={CAMPAIGN_LIMITS.name} onChange={(e) => setName(e.target.value)} />
                         </Field>
 
                         <Field label="Send to" htmlFor="c-audience" error={fieldErrors.segmentId}>
@@ -503,10 +595,24 @@ export function CampaignEditor({
                         ) : null}
 
                         <Field label="Subject" htmlFor="c-subject" error={fieldErrors.subject}>
-                            <Input id="c-subject" value={subject} disabled={locked} maxLength={CAMPAIGN_LIMITS.subject} onChange={(e) => setSubject(e.target.value)} />
+                            <Input
+                                id="c-subject"
+                                value={subject}
+                                placeholder={CAMPAIGN_PLACEHOLDERS.subject}
+                                disabled={locked}
+                                maxLength={CAMPAIGN_LIMITS.subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                            />
                         </Field>
                         <Field label="Preview line" htmlFor="c-preheader" hint="Shown after the subject in most inboxes. Optional." error={fieldErrors.preheader}>
-                            <Input id="c-preheader" value={preheader} disabled={locked} maxLength={CAMPAIGN_LIMITS.preheader} onChange={(e) => setPreheader(e.target.value)} />
+                            <Input
+                                id="c-preheader"
+                                value={preheader}
+                                placeholder={CAMPAIGN_PLACEHOLDERS.preheader}
+                                disabled={locked}
+                                maxLength={CAMPAIGN_LIMITS.preheader}
+                                onChange={(e) => setPreheader(e.target.value)}
+                            />
                         </Field>
 
                         <div className="flex items-center justify-between gap-3">
@@ -525,11 +631,25 @@ export function CampaignEditor({
                                 </>
                             }
                         >
-                            <Textarea id="c-body" rows={14} value={body} disabled={locked} maxLength={CAMPAIGN_LIMITS.body} onChange={(e) => setBody(e.target.value)} />
+                            <Textarea
+                                id="c-body"
+                                rows={14}
+                                value={body}
+                                placeholder={CAMPAIGN_PLACEHOLDERS.body}
+                                disabled={locked}
+                                maxLength={CAMPAIGN_LIMITS.body}
+                                onChange={(e) => setBody(e.target.value)}
+                            />
                         </Field>
+                        {/* A start for an empty email; slice 08's Start panel replaces it. */}
+                        {!locked && campaignWordsEmpty(words) ? (
+                            <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={fillInvitation} disabled={sending}>
+                                Use the sign-in invitation
+                            </Button>
+                        ) : null}
 
                         <Field label="Button" htmlFor="c-button">
-                            <Select value={buttonChoice} onValueChange={(v) => setButtonChoice(v as ButtonChoice)}>
+                            <Select value={buttonChoice} onValueChange={(v) => setButtonChoice(v as CampaignButtonChoice)}>
                                 <SelectTrigger id="c-button" className="w-full justify-between" disabled={locked}>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -543,7 +663,14 @@ export function CampaignEditor({
                         {buttonChoice !== "none" ? (
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <Field label="Button label" htmlFor="c-button-label" error={fieldErrors["button.label"]}>
-                                    <Input id="c-button-label" value={buttonLabel} disabled={locked} maxLength={CAMPAIGN_LIMITS.buttonLabel} onChange={(e) => setButtonLabel(e.target.value)} />
+                                    <Input
+                                        id="c-button-label"
+                                        value={buttonLabel}
+                                        placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
+                                        disabled={locked}
+                                        maxLength={CAMPAIGN_LIMITS.buttonLabel}
+                                        onChange={(e) => setButtonLabel(e.target.value)}
+                                    />
                                 </Field>
                                 {buttonChoice === "url" ? (
                                     <Field label="Link" htmlFor="c-button-url" error={fieldErrors["button.url"]}>
@@ -576,7 +703,11 @@ export function CampaignEditor({
                     <CardHeader>
                         <CardTitle className="text-base">Preview</CardTitle>
                         <CardDescription className="break-words">
-                            {preview ? <>Subject: {preview.subject}</> : "The email as a customer will see it."}
+                            {preview ? (
+                                <>Subject: {preview.subject || <span className="italic">{CAMPAIGN_PLACEHOLDERS.subject}</span>}</>
+                            ) : (
+                                "The email as a customer will see it."
+                            )}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

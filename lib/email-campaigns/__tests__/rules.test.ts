@@ -2,8 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CAMPAIGN_PLACEHOLDERS,
   CAMPAIGN_RULE_BLOCKERS,
   CampaignDraftSchema,
+  CampaignPreviewSchema,
+  EMPTY_CAMPAIGN_DRAFT,
   FIRST_CAMPAIGN_DRAFT,
   campaignFromRow,
   campaignLedgerKey,
@@ -11,6 +14,7 @@ import {
   candidateFromRow,
   composedCampaignBlocker,
   mentionsPoints,
+  newCampaignDraft,
   nextWaveLabel,
   planCampaignWave,
   type CampaignAudience,
@@ -121,6 +125,68 @@ describe("CampaignDraftSchema", () => {
     const row = { id: "c1", ...campaignRowFromDraft(FIRST_CAMPAIGN_DRAFT), created_at: "t", updated_at: "t", locked_at: null, archived_at: null, creator: { name: "Ivan" } };
     const back = campaignFromRow(row);
     expect(back).toMatchObject({ ...FIRST_CAMPAIGN_DRAFT, id: "c1", createdBy: "Ivan", lockedAt: null });
+  });
+});
+
+describe("placeholders, not prefilled words (PRD-campaign-email-editor slice 01)", () => {
+  const SEGMENTS = [
+    { id: SEGMENT, name: "Premium, lapsed", needsReview: false },
+    { id: "5e000000-0000-4000-8000-000000000002", name: "Old region", needsReview: true },
+  ];
+
+  it("opens every new campaign empty, with no button and the greeting on, in today's default audience", () => {
+    for (const param of [undefined, "", "not-a-uuid", "5e000000-0000-4000-8000-000000000099", SEGMENTS[1].id, [""]]) {
+      expect(newCampaignDraft(param, SEGMENTS), String(param)).toEqual({
+        name: "",
+        subject: "",
+        preheader: null,
+        body: "",
+        greeting: true,
+        button: null,
+        audience: "imported_not_signed_in",
+        segmentId: null,
+      });
+    }
+    expect(EMPTY_CAMPAIGN_DRAFT.audience).toBe(FIRST_CAMPAIGN_DRAFT.audience);
+  });
+
+  it("keeps the Segment start: empty, sent to the Segment, named after it", () => {
+    expect(newCampaignDraft(SEGMENT, SEGMENTS)).toEqual({ ...EMPTY_CAMPAIGN_DRAFT, name: "Premium, lapsed", audience: "segment", segmentId: SEGMENT });
+  });
+
+  it("never saves an empty field: each is today's field error, not its placeholder", () => {
+    const r = CampaignDraftSchema.safeParse(EMPTY_CAMPAIGN_DRAFT);
+    expect(r.success).toBe(false);
+    const errors = Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]));
+    expect(errors).toEqual({ name: "Give the campaign a name.", subject: "Write a subject.", body: "Write the email." });
+    const noLabel = CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, button: { target: "sign_in", label: "", url: null } });
+    expect(noLabel.error?.issues.map((i) => i.message)).toEqual(["Give the button a label."]);
+  });
+
+  it("saves only what was typed: an empty preview line is none, and no placeholder reaches the row", () => {
+    const typed = CampaignDraftSchema.parse({ ...EMPTY_CAMPAIGN_DRAFT, name: "December", subject: "Hello", preheader: "", body: "Hi" });
+    const row = JSON.stringify(campaignRowFromDraft(typed));
+    expect(campaignRowFromDraft(typed)).toMatchObject({ name: "December", subject: "Hello", preheader: null, body: "Hi", button_label: null });
+    for (const hint of Object.values(CAMPAIGN_PLACEHOLDERS)) expect(row).not.toContain(hint);
+  });
+
+  it("previews an empty email, with the same checks on everything else", () => {
+    expect(CampaignPreviewSchema.parse(EMPTY_CAMPAIGN_DRAFT)).toEqual(EMPTY_CAMPAIGN_DRAFT);
+    expect(CampaignPreviewSchema.parse({ ...EMPTY_CAMPAIGN_DRAFT, button: { target: "sign_in", label: "", url: null } }).button).toEqual({
+      target: "sign_in",
+      label: "",
+      url: null,
+    });
+    expect(CampaignPreviewSchema.safeParse({ ...EMPTY_CAMPAIGN_DRAFT, subject: "x".repeat(151) }).success).toBe(false);
+    expect(CampaignPreviewSchema.safeParse({ ...EMPTY_CAMPAIGN_DRAFT, button: { target: "url", label: "", url: "http://x.test" } }).success).toBe(false);
+    expect(CampaignPreviewSchema.safeParse({ ...EMPTY_CAMPAIGN_DRAFT, audience: "segment" }).success).toBe(false);
+  });
+
+  it("keeps a placeholder a hint: none could pass for finished words", () => {
+    expect(CAMPAIGN_PLACEHOLDERS.subject).toMatch(/^e\.g\. /);
+    expect(CAMPAIGN_PLACEHOLDERS.preheader).toMatch(/^e\.g\. /);
+    expect(CAMPAIGN_PLACEHOLDERS.name).toMatch(/^e\.g\. /);
+    expect(CAMPAIGN_PLACEHOLDERS.buttonLabel).toMatch(/^e\.g\. /);
   });
 });
 

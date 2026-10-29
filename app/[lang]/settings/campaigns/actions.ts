@@ -6,6 +6,7 @@ import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-le
 import { resolveSegment } from "@/lib/crm/segments";
 import {
   CampaignDraftSchema,
+  CampaignPreviewSchema,
   MAX_TEST_RECIPIENTS,
   type Campaign,
   type CampaignDraftInput,
@@ -43,8 +44,8 @@ type Failure = { ok: false; error: string; fieldErrors?: Record<string, string> 
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-function parseDraft(input: CampaignDraftInput) {
-  const parsed = CampaignDraftSchema.safeParse(input);
+function parseDraft(input: CampaignDraftInput, schema = CampaignDraftSchema) {
+  const parsed = schema.safeParse(input);
   if (parsed.success) return { ok: true as const, draft: parsed.data };
   const fieldErrors: Record<string, string> = {};
   for (const issue of parsed.error.issues) {
@@ -142,12 +143,16 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
   return { ok: true };
 }
 
-/** The editor's live preview of the draft as typed. Saves nothing. */
+/**
+ * The editor's live preview of the draft as typed. Saves nothing. An empty
+ * field shows its placeholder rather than an error (PRD-campaign-email-editor
+ * decision 7); Save still asks for every word.
+ */
 export async function previewCampaign(
   input: CampaignDraftInput,
 ): Promise<{ ok: true; subject: string; html: string; text: string } | Failure> {
   const ctx = await assertAdmin("campaigns");
-  const parsed = parseDraft(input);
+  const parsed = parseDraft(input, CampaignPreviewSchema);
   if (!parsed.ok) return parsed;
   const workingAs = await getWorkingAs(ctx.memberId);
   const rendered = renderCampaignPreview(parsed.draft, {

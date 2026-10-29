@@ -3792,9 +3792,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1793088378.7722306,
-    "seen": 1793103694.607074,
-    "ast_hash": "1f05fd38dec7af3116639958ced41a6f",
+    "mtime": 1793255811.1955135,
+    "seen": 1793257083.4598362,
+    "ast_hash": "ecfd19fd3bf1f7bf975ded83cfe787c3",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -7080,9 +7080,9 @@
     "semantic_hash": ""
   },
   "lib/email/components.ts": {
-    "mtime": 1793088377.9003582,
-    "seen": 1793103694.6052768,
-    "ast_hash": "c23a6ad77372ce000b76a7a14d25b23c",
+    "mtime": 1793255894.0746765,
+    "seen": 1793257083.4588938,
+    "ast_hash": "e8b0df2ca812a1ae3d41229bcc5b5b90",
     "semantic_hash": ""
   },
   "lib/email/contact-sheet.ts": {
@@ -14208,9 +14208,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/actions.ts": {
-    "mtime": 1793088377.6903358,
-    "seen": 1793103694.6027482,
-    "ast_hash": "700a6c888a3a564d1eee3cc19245f0bc",
+    "mtime": 1793255936.722199,
+    "seen": 1793257083.4574292,
+    "ast_hash": "b988355e17f7db8ab837f18c92dba91e",
     "semantic_hash": ""
   },
   "app/[lang]/settings/email-templates/actions.ts": {
@@ -14286,27 +14286,27 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/rules.test.ts": {
-    "mtime": 1793088377.8995843,
-    "seen": 1793103694.6051562,
-    "ast_hash": "c9c879bd2bddef887b82aebd1eaf6ec1",
+    "mtime": 1793256324.7979577,
+    "seen": 1793257083.4588172,
+    "ast_hash": "3a904737b6d27737dc12305113073b0a",
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/sender.test.ts": {
-    "mtime": 1793088377.8995843,
-    "seen": 1793103694.6051617,
-    "ast_hash": "49a29dacaf83f51a4eb2965afe42dcf4",
+    "mtime": 1793256388.4615853,
+    "seen": 1793257083.4588206,
+    "ast_hash": "3309a18db5911aa2053b94a29a41100c",
     "semantic_hash": ""
   },
   "lib/email-campaigns/rules.ts": {
-    "mtime": 1793199201.5348454,
-    "seen": 1793199820.673621,
-    "ast_hash": "be1b480e2b73f140521398009399b687",
+    "mtime": 1793255854.174675,
+    "seen": 1793257083.4588244,
+    "ast_hash": "e5ca6a4ef2f2345f06c849698c273bca",
     "semantic_hash": ""
   },
   "lib/email-campaigns/sender.ts": {
-    "mtime": 1793088377.8995843,
-    "seen": 1793103694.6051705,
-    "ast_hash": "d6d28e2ddca492c4ecf4d208ae46a670",
+    "mtime": 1793256400.0401564,
+    "seen": 1793257083.4588282,
+    "ast_hash": "e5abfd905e404500e2b9600c9107e85d",
     "semantic_hash": ""
   },
   "lib/email-campaigns/setup.ts": {
@@ -14322,9 +14322,9 @@
     "semantic_hash": ""
   },
   "lib/email/__tests__/composed-campaign-email.test.ts": {
-    "mtime": 1793088377.9003582,
-    "seen": 1793103694.6051936,
-    "ast_hash": "0065d486cc62d75fd07e01a904807464",
+    "mtime": 1793256363.605897,
+    "seen": 1793257083.4588404,
+    "ast_hash": "fbeea8884f5e960760c4d416d71feb44",
     "semantic_hash": ""
   },
   "lib/email/__tests__/copy.test.ts": {
@@ -14340,9 +14340,9 @@
     "semantic_hash": ""
   },
   "lib/email/campaigns.ts": {
-    "mtime": 1793088377.9003582,
-    "seen": 1793103694.6052744,
-    "ast_hash": "387d04fd56ea004dc423a9ee9e1b4b21",
+    "mtime": 1793255909.392523,
+    "seen": 1793257083.4588928,
+    "ast_hash": "a7f02bfc0581244a807db412319edbbc",
     "semantic_hash": ""
   },
   "lib/email/copy-admin.ts": {
@@ -15642,9 +15642,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segment-handoffs.test.ts": {
-    "mtime": 1793199201.5272772,
-    "seen": 1793199820.6731026,
-    "ast_hash": "a57f11a61bde13cbc98b389b733ba7f1",
+    "mtime": 1793256324.7982035,
+    "seen": 1793257083.4584846,
+    "ast_hash": "2fb54834062217204ace887b1fdf207e",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/sql-check.ts": {
@@ -15786,9 +15786,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/01-clear-all.md": {
-    "mtime": 1793239974.3501306,
-    "seen": 1793240626.3218675,
-    "ast_hash": "f48fae076e0fdc77e396267f4cbe0041",
+    "mtime": 1793256981.5209503,
+    "seen": 1793257083.4603193,
+    "ast_hash": "5e71ef7bc5ff15f9470036d89ffba9f1",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/07-product-block.md": {
@@ -15897,6 +15897,24 @@
     "mtime": 1793240420.1360676,
     "seen": 1793240626.3219028,
     "ast_hash": "fcc0fea2a0a9488c1629fa62ea954f6b",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/__tests__/placeholders.test.ts": {
+    "mtime": 1793256443.4026961,
+    "seen": 1793257083.4574227,
+    "ast_hash": "6b4445169f4c3c623e16c51d8adf6158",
+    "semantic_hash": ""
+  },
+  "lib/email-campaigns/__tests__/clear-all.test.ts": {
+    "mtime": 1793256342.7986925,
+    "seen": 1793257083.4588122,
+    "ast_hash": "ee50a80e8e5ce692635e69eccc198d7c",
+    "semantic_hash": ""
+  },
+  "lib/email-campaigns/clear-all.ts": {
+    "mtime": 1793255881.934676,
+    "seen": 1793257083.4588218,
+    "ast_hash": "32e584f84dbc67e2bfaa854241278e51",
     "semantic_hash": ""
   }
 }

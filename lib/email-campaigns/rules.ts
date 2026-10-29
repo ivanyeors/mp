@@ -48,53 +48,85 @@ export const CAMPAIGN_LIMITS = {
   buttonUrl: 500,
 } as const;
 
+/**
+ * What an empty field shows, in its own `placeholder` (PRD-campaign-email-editor
+ * decision 7). Hint text, never a value: it is not saved, tested or sent. The
+ * editor's preview draws the subject, message and button label placeholders
+ * dashed and muted where their words would go, so an empty email's layout
+ * still reads.
+ */
+export const CAMPAIGN_PLACEHOLDERS = {
+  name: "e.g. December cooling launch",
+  subject: "e.g. Sleep cooler this December",
+  preheader: "e.g. Our FibreCool covers are back, in every size",
+  body: "Write your message. Leave a blank line between paragraphs; start a line with - for a bullet.",
+  buttonLabel: "e.g. Shop the covers",
+} as const;
+
 const text = (max: number, empty: string) =>
   z.string().trim().min(1, empty).max(max, `At most ${max} characters.`);
+
+/**
+ * The draft's checks. Saving needs every word (`required`); the preview takes
+ * them empty, so an empty email still shows its layout with its placeholders.
+ */
+function draftSchema({ required }: { required: boolean }) {
+  const words = (max: number, empty: string) =>
+    required ? text(max, empty) : z.string().trim().max(max, `At most ${max} characters.`);
+  const body = z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`);
+  return z
+    .object({
+      name: words(CAMPAIGN_LIMITS.name, "Give the campaign a name."),
+      subject: words(CAMPAIGN_LIMITS.subject, "Write a subject."),
+      preheader: z
+        .string()
+        .trim()
+        .max(CAMPAIGN_LIMITS.preheader, `At most ${CAMPAIGN_LIMITS.preheader} characters.`)
+        .transform((v) => v || null)
+        .nullable()
+        .default(null),
+      body: required ? body.refine((v) => v.trim().length > 0, "Write the email.") : body,
+      greeting: z.boolean().default(true),
+      button: z
+        .object({
+          target: z.enum(CAMPAIGN_BUTTON_TARGETS),
+          label: words(CAMPAIGN_LIMITS.buttonLabel, "Give the button a label."),
+          url: z.string().trim().max(CAMPAIGN_LIMITS.buttonUrl).nullable().default(null),
+        })
+        .nullable()
+        .default(null)
+        .superRefine((b, ctx) => {
+          if (b?.target !== "url") return;
+          if (!b.url || !isHttpsUrl(b.url)) {
+            ctx.addIssue({ code: "custom", path: ["url"], message: "The button's link must be a full https:// address." });
+          }
+        }),
+      audience: z.enum(CAMPAIGN_AUDIENCES),
+      segmentId: z.string().uuid().nullable().default(null),
+    })
+    .superRefine((d, ctx) => {
+      if (d.audience === "segment" && !d.segmentId) {
+        ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
+      }
+    })
+    .transform((d) => ({
+      ...d,
+      segmentId: d.audience === "segment" ? d.segmentId : null,
+      button: d.button ? { ...d.button, url: d.button.target === "url" ? d.button.url : null } : null,
+    }));
+}
 
 /**
  * What the editor saves. `button` is null for none; `segmentId` only with the
  * Segment audience. Mirrors the table's checks, so a draft that parses saves.
  */
-export const CampaignDraftSchema = z
-  .object({
-    name: text(CAMPAIGN_LIMITS.name, "Give the campaign a name."),
-    subject: text(CAMPAIGN_LIMITS.subject, "Write a subject."),
-    preheader: z
-      .string()
-      .trim()
-      .max(CAMPAIGN_LIMITS.preheader, `At most ${CAMPAIGN_LIMITS.preheader} characters.`)
-      .transform((v) => v || null)
-      .nullable()
-      .default(null),
-    body: z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`).refine((v) => v.trim().length > 0, "Write the email."),
-    greeting: z.boolean().default(true),
-    button: z
-      .object({
-        target: z.enum(CAMPAIGN_BUTTON_TARGETS),
-        label: text(CAMPAIGN_LIMITS.buttonLabel, "Give the button a label."),
-        url: z.string().trim().max(CAMPAIGN_LIMITS.buttonUrl).nullable().default(null),
-      })
-      .nullable()
-      .default(null)
-      .superRefine((b, ctx) => {
-        if (b?.target !== "url") return;
-        if (!b.url || !isHttpsUrl(b.url)) {
-          ctx.addIssue({ code: "custom", path: ["url"], message: "The button's link must be a full https:// address." });
-        }
-      }),
-    audience: z.enum(CAMPAIGN_AUDIENCES),
-    segmentId: z.string().uuid().nullable().default(null),
-  })
-  .superRefine((d, ctx) => {
-    if (d.audience === "segment" && !d.segmentId) {
-      ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
-    }
-  })
-  .transform((d) => ({
-    ...d,
-    segmentId: d.audience === "segment" ? d.segmentId : null,
-    button: d.button ? { ...d.button, url: d.button.target === "url" ? d.button.url : null } : null,
-  }));
+export const CampaignDraftSchema = draftSchema({ required: true });
+
+/**
+ * What the editor previews: the same checks with the words allowed empty. It
+ * never saves or sends: a placeholder is never a value.
+ */
+export const CampaignPreviewSchema = draftSchema({ required: false });
 
 export type CampaignDraft = z.output<typeof CampaignDraftSchema>;
 export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
@@ -377,10 +409,12 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
 }
 
 /**
- * The draft a new campaign starts from: the imported customers' invitation to
- * the new website, with the Claim bonus (PRD-loyalty-points: 1,000 points,
- * S$10 off a shop order, for signing in within 3 months of this email). It
- * names no old platform (owner, 2026-10-21). Staff change any of it before
+ * The sign-in invitation: the imported customers' invitation to the new
+ * website, with the Claim bonus (PRD-loyalty-points: 1,000 points, S$10 off a
+ * shop order, for signing in within 3 months of this email). It names no old
+ * platform (owner, 2026-10-21). No longer where a new campaign starts
+ * (PRD-campaign-email-editor decision 7): *Use the sign-in invitation* fills
+ * it in, and slice 08 makes it a Starter. Staff change any of it before
  * sending.
  */
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
@@ -408,10 +442,26 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
 };
 
 /**
- * The draft a new campaign starts from (PRD-crm-retention-loop slice 02).
- * `?segment=<id>` from *Email this Segment* on Customers starts a blank one
- * sent to that Segment and named after it, when the id is a live Segment that
- * does not need review; anything else starts {@link FIRST_CAMPAIGN_DRAFT}.
+ * An empty email (PRD-campaign-email-editor decision 7): every word empty and
+ * on its placeholder, no button, the greeting on, and today's default
+ * audience. It does not save until Staff write the email.
+ */
+export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
+  name: "",
+  subject: "",
+  preheader: null,
+  body: "",
+  greeting: true,
+  button: null,
+  audience: "imported_not_signed_in",
+  segmentId: null,
+};
+
+/**
+ * The draft a new campaign starts from: {@link EMPTY_CAMPAIGN_DRAFT}, whatever
+ * the start. `?segment=<id>` from *Email this Segment* on Customers
+ * (PRD-crm-retention-loop slice 02) sends it to that Segment and names it
+ * after it, when the id is a live Segment that does not need review.
  */
 export function newCampaignDraft(
   segmentParam: string | string[] | undefined,
@@ -419,14 +469,10 @@ export function newCampaignDraft(
 ): CampaignDraft {
   const id = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
   const segment = id ? segments.find((s) => s.id === id && !s.needsReview) : undefined;
-  if (!segment) return FIRST_CAMPAIGN_DRAFT;
+  if (!segment) return EMPTY_CAMPAIGN_DRAFT;
   return {
+    ...EMPTY_CAMPAIGN_DRAFT,
     name: segment.name.slice(0, CAMPAIGN_LIMITS.name),
-    subject: "",
-    preheader: null,
-    body: "",
-    greeting: true,
-    button: null,
     audience: "segment",
     segmentId: segment.id,
   };

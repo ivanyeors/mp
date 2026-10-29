@@ -1,0 +1,271 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { Toaster } from "sonner";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
+
+/**
+ * Placeholders, not prefilled words, and Clear all with Undo
+ * (PRD-campaign-email-editor slice 01), in the editor as Staff use it: a new
+ * campaign, a saved draft and a locked campaign. The actions are fakes; none
+ * that writes is ever called by Clear all.
+ */
+
+const actions = vi.hoisted(() => ({
+  archiveCampaignAction: vi.fn(),
+  checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
+  duplicateCampaign: vi.fn(),
+  planCampaignWave: vi.fn(),
+  previewCampaign: vi.fn(async (input: CampaignDraftInput) => ({ ok: true as const, subject: input.subject, html: "<p>preview</p>", text: "" })),
+  saveCampaign: vi.fn<(id: string | null, input: CampaignDraftInput) => Promise<{ ok: true; id: string }>>(async (id) => ({ ok: true, id: id ?? "new" })),
+  sendCampaignBatchAction: vi.fn(),
+  sendCampaignTestAction: vi.fn(),
+}));
+vi.mock("../actions", () => actions);
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/en-US/settings/campaigns/new",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+const { CampaignEditor } = await import("../campaign-editor");
+const { CAMPAIGN_PLACEHOLDERS, FIRST_CAMPAIGN_DRAFT, newCampaignDraft } = await import("@/lib/email-campaigns/rules");
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+// What jsdom leaves out and the page's components read: a desktop-width screen, sizes never change.
+window.matchMedia ??= ((media: string) => ({
+  matches: false,
+  media,
+  onchange: null,
+  addEventListener: () => undefined,
+  removeEventListener: () => undefined,
+  addListener: () => undefined,
+  removeListener: () => undefined,
+  dispatchEvent: () => false,
+})) as typeof window.matchMedia;
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+const SEGMENT = { id: "5e000000-0000-4000-8000-000000000001", name: "Premium, lapsed", needsReview: false };
+const DRAFT: CampaignDraft = {
+  name: "December cooling launch",
+  subject: "Sleep cooler this December",
+  preheader: "Our FibreCool covers are back",
+  body: "Our covers are back.\n\n- Every size",
+  greeting: false,
+  button: { target: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
+  audience: "subscribed",
+  segmentId: null,
+};
+const saved = (over: Partial<Campaign> = {}): Campaign => ({
+  ...DRAFT,
+  id: "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a",
+  createdAt: "2026-10-21T00:00:00Z",
+  updatedAt: "2026-10-21T00:00:00Z",
+  lockedAt: null,
+  archivedAt: null,
+  createdBy: null,
+  ...over,
+});
+
+let root: Root | null = null;
+
+function mount(campaign: Campaign | null, draft: CampaignDraft, segments: { id: string; name: string }[] = []) {
+  const host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  act(() =>
+    root!.render(
+      <>
+        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={segments} staffEmail="owner@mpillow.com" />
+        <Toaster />
+      </>,
+    ),
+  );
+}
+
+const field = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement;
+const text = (id: string) => document.getElementById(id)?.textContent ?? "";
+const button = (label: string) =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label) ?? null;
+const clearAll = () => button("Clear all")!;
+const undo = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast] [data-action]");
+const toastText = () => document.querySelector("[data-sonner-toast]")?.textContent ?? "";
+
+/** The fields Clear all empties, as typed. */
+const words = () => ({
+  name: field("c-name").value,
+  subject: field("c-subject").value,
+  preheader: field("c-preheader").value,
+  body: field("c-body").value,
+  button: text("c-button"),
+  label: document.getElementById("c-button-label") ? field("c-button-label").value : null,
+  url: document.getElementById("c-button-url") ? field("c-button-url").value : null,
+});
+
+function type(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  act(() => {
+    Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+const press = async (el: HTMLElement) => {
+  await act(async () => el.click());
+};
+/** Past the preview's debounce, and the toast's own rendering. */
+const settle = (ms = 600) => act(() => new Promise((r) => setTimeout(r, ms)));
+const lastPreview = () => actions.previewCampaign.mock.calls.at(-1)?.[0];
+
+/** None of these writes was called: Clear all saves nothing and audits nothing. */
+const expectNothingWritten = () => {
+  for (const write of ["saveCampaign", "archiveCampaignAction", "duplicateCampaign", "planCampaignWave", "sendCampaignBatchAction", "sendCampaignTestAction"] as const) {
+    expect(actions[write], write).not.toHaveBeenCalled();
+  }
+};
+
+beforeEach(() => vi.clearAllMocks());
+afterEach(async () => {
+  act(() => root?.unmount());
+  root = null;
+  // The unmount dismisses the toast a frame later: let it, before the next test makes one.
+  await settle(50);
+  document.body.innerHTML = "";
+});
+
+describe("a new campaign", () => {
+  it("opens with every field empty, on its placeholder, and nothing of the invitation", () => {
+    mount(null, newCampaignDraft(undefined, []));
+    expect(words()).toEqual({ name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null });
+    expect(field("c-name").placeholder).toBe("e.g. December cooling launch");
+    expect(field("c-subject").placeholder).toBe("e.g. Sleep cooler this December");
+    expect(field("c-preheader").placeholder).toBe("e.g. Our FibreCool covers are back, in every size");
+    expect(field("c-body").placeholder).toBe(
+      "Write your message. Leave a blank line between paragraphs; start a line with - for a bullet.",
+    );
+    expect(document.body.textContent).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
+    expect(document.getElementById("c-greeting")?.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("has Clear all off, saying why, until there is something to clear", () => {
+    mount(null, newCampaignDraft(undefined, []));
+    expect(clearAll().getAttribute("aria-disabled")).toBe("true");
+    expect(clearAll().disabled).toBe(false); // still in the tab order, so the reason is reachable
+    expect(text(clearAll().getAttribute("aria-describedby")!)).toBe("Nothing to clear: every field is on its placeholder.");
+    type(field("c-subject"), "Hello");
+    expect(clearAll().getAttribute("aria-disabled")).toBeNull();
+    expect(clearAll().getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("fills in the invitation, as real words and its audience, only when asked", async () => {
+    mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
+    expect(button("Use the sign-in invitation")).toBeNull(); // named after the Segment: not empty
+    type(field("c-name"), "");
+    await press(button("Use the sign-in invitation")!);
+    expect(words()).toMatchObject({
+      name: FIRST_CAMPAIGN_DRAFT.name,
+      subject: FIRST_CAMPAIGN_DRAFT.subject,
+      preheader: FIRST_CAMPAIGN_DRAFT.preheader,
+      body: FIRST_CAMPAIGN_DRAFT.body,
+      label: FIRST_CAMPAIGN_DRAFT.button!.label,
+    });
+    expect(text("c-audience")).toBe("Imported from Shopify, not signed in yet");
+    expect(button("Use the sign-in invitation")).toBeNull();
+  });
+
+  it("clears the words back to their placeholders, keeps the audience and greeting, and Undo puts every word back", async () => {
+    mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
+    type(field("c-subject"), "Sleep cooler this December");
+    type(field("c-body"), "Our covers are back.");
+    await press(document.getElementById("c-greeting")!);
+    const typed = words();
+    expect(typed.name).toBe(SEGMENT.name);
+
+    await press(clearAll());
+    expect(words()).toEqual({ name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null });
+    expect(text("c-audience")).toBe("A saved Segment");
+    expect(text("c-segment")).toBe(SEGMENT.name);
+    expect(document.getElementById("c-greeting")?.getAttribute("aria-checked")).toBe("false");
+    await settle();
+    expect(toastText()).toContain("Cleared the email.");
+    expect(undo()?.textContent).toBe("Undo");
+    expect(lastPreview()).toMatchObject({ name: "", subject: "", body: "", button: null, audience: "segment", segmentId: SEGMENT.id });
+
+    await press(undo()!);
+    expect(words()).toEqual(typed);
+    await settle();
+    expect(lastPreview()).toMatchObject({ name: SEGMENT.name, subject: "Sleep cooler this December", body: "Our covers are back.", greeting: false });
+    expectNothingWritten();
+  });
+});
+
+describe("a saved draft", () => {
+  it("shows its words, and Clear all empties every one, the button back to No button, without saving", async () => {
+    mount(saved(), DRAFT);
+    const before = words();
+    expect(before).toEqual({
+      name: DRAFT.name,
+      subject: DRAFT.subject,
+      preheader: DRAFT.preheader,
+      body: DRAFT.body,
+      button: "A link",
+      label: "Shop the covers",
+      url: "https://mpillow.com/shop",
+    });
+    expect(field("c-button-label").placeholder).toBe(CAMPAIGN_PLACEHOLDERS.buttonLabel);
+    expect(button("Save changes")!.disabled).toBe(true); // saved
+
+    await press(clearAll());
+    expect(words()).toEqual({ name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null });
+    expect(text("c-audience")).toBe("Everyone subscribed to marketing email");
+    // Cleared but not saved: the draft is unsaved, and Save validates as today.
+    expect(button("Save changes")!.disabled).toBe(false);
+    expectNothingWritten();
+
+    await settle();
+    await press(undo()!);
+    expect(words()).toEqual(before);
+    expect(button("Save changes")!.disabled).toBe(true);
+    expectNothingWritten();
+  });
+
+  it("has no Undo after a Save", async () => {
+    mount(saved(), DRAFT);
+    await press(clearAll());
+    type(field("c-name"), "A new one");
+    type(field("c-subject"), "Hello");
+    type(field("c-body"), "Hi");
+    await settle();
+    const late = undo()!;
+    expect(late).not.toBeNull();
+    await press(button("Save changes")!);
+    expect(actions.saveCampaign).toHaveBeenCalledTimes(1);
+    // What Save sends is what was typed: an empty preview line is empty, not its placeholder.
+    expect(actions.saveCampaign.mock.calls[0][1]).toMatchObject({ name: "A new one", subject: "Hello", preheader: "", body: "Hi", button: null });
+    await settle(100);
+    // The toast is on its way out, and its Undo, pressed late, puts nothing back.
+    expect(document.querySelector("[data-sonner-toast]:not([data-removed='true'])")).toBeNull();
+    await press(late);
+    expect(words()).toMatchObject({ name: "A new one", subject: "Hello", preheader: "", body: "Hi" });
+  });
+});
+
+describe("a campaign that has started sending", () => {
+  it("has Clear all off, saying why, and pressing it changes nothing", async () => {
+    mount(saved({ lockedAt: "2026-10-21T01:00:00Z" }), DRAFT);
+    const before = words();
+    expect(clearAll().getAttribute("aria-disabled")).toBe("true");
+    expect(text(clearAll().getAttribute("aria-describedby")!)).toBe(
+      "Sending has started, so the email is fixed. Duplicate it to write a new one.",
+    );
+    await press(clearAll());
+    await settle(50);
+    expect(words()).toEqual(before);
+    expect(undo()).toBeNull();
+    expect(button("Use the sign-in invitation")).toBeNull();
+    expectNothingWritten();
+  });
+});

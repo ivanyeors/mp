@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
-import { FIRST_CAMPAIGN_DRAFT, campaignLedgerKey, type Campaign } from "../rules";
+import { CAMPAIGN_PLACEHOLDERS, EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, campaignLedgerKey, type Campaign } from "../rules";
 import { ResendTransport } from "@/lib/email/transport";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import {
@@ -382,6 +382,54 @@ describe("links", () => {
     const html = renderCampaignPreview(campaign(), { origin: ORIGIN, firstName: "Ivan" }).html;
     expect(html).toContain(`${ORIGIN}/en-US/unsubscribe"`);
     expect(html).toContain("Hi Ivan,");
+  });
+});
+
+describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
+  const escaped = (s: string) => s.replace(/'/g, "&#39;");
+  /**
+   * Only the subject typed; the message and button label empty. Save never
+   * stores this, but a send must not draw placeholders even if a row did.
+   */
+  const partly = campaign({
+    ...EMPTY_CAMPAIGN_DRAFT,
+    audience: "subscribed",
+    name: "December",
+    subject: "Sleep cooler",
+    button: { target: "sign_in", label: "", url: null },
+  });
+
+  it("are drawn in the editor's preview of an empty email, dashed and muted, so its layout reads", () => {
+    const empty = renderCampaignPreview({ ...EMPTY_CAMPAIGN_DRAFT, button: { target: "sign_in", label: "", url: null } }, { origin: ORIGIN, firstName: "Ivan" });
+    for (const hint of [CAMPAIGN_PLACEHOLDERS.subject, CAMPAIGN_PLACEHOLDERS.body, CAMPAIGN_PLACEHOLDERS.buttonLabel]) {
+      expect(empty.html).toContain(escaped(hint));
+    }
+    expect(empty.html).toContain("dashed");
+    expect(empty.subject).toBe("");
+    expect(empty.text).not.toContain(CAMPAIGN_PLACEHOLDERS.body);
+  });
+
+  it("are never in a test send, which carries only what was typed", async () => {
+    const { s, sent } = setup();
+    await sendCampaignTest(partly, { to: ["me@mpillow.com"], firstName: "Ivan" }, s);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].subject).toBe("[Test] Sleep cooler");
+    for (const hint of Object.values(CAMPAIGN_PLACEHOLDERS)) {
+      expect(sent[0].html).not.toContain(escaped(hint));
+      expect(sent[0].text).not.toContain(hint);
+    }
+    expect(sent[0].html).not.toContain("dashed");
+    expect(sent[0].html).toContain(">Sleep cooler</h1>");
+    // A button with no words is no button.
+    expect(sent[0].html).not.toContain("/en-US/account");
+  });
+
+  it("are never in a wave", async () => {
+    const { s, sent } = setup();
+    await sendCampaignBatch(partly, { wave: "w1", customerIds: [BEA] }, s);
+    expect(sent).toHaveLength(1);
+    for (const hint of Object.values(CAMPAIGN_PLACEHOLDERS)) expect(sent[0].html).not.toContain(escaped(hint));
+    expect(sent[0].html).not.toContain("dashed");
   });
 });
 

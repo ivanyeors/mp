@@ -16,9 +16,14 @@
 //   https://…            becomes a link, in a paragraph, shown without the https://
 //
 // The renderer is pure: the sender resolves the button's link per recipient.
+//
+// The editor's preview alone passes `placeholders` (PRD-campaign-email-editor
+// decision 7): an empty subject, message or button label then shows its
+// placeholder, dashed and muted, where the words would go. A send never
+// passes them, so a placeholder is never sent.
 
 import { renderEmailShell } from "./base";
-import { bulletList, heading, link, paragraphHtml } from "./components";
+import { bulletList, heading, link, paragraphHtml, placeholderHint } from "./components";
 import { escapeHtml } from "./html";
 import type { RenderedEmail } from "./types";
 
@@ -99,12 +104,21 @@ export interface ComposedCampaignContent {
   greeting: boolean;
 }
 
+/** What an empty field shows in the editor's preview. */
+export interface ComposedCampaignPlaceholders {
+  subject: string;
+  body: string;
+  buttonLabel: string;
+}
+
 export interface ComposedCampaignEmailData extends ComposedCampaignContent {
   firstName: string | null;
   /** The button, resolved for this recipient; null for none. */
   button: { label: string; href: string } | null;
   /** The Customer's unsubscribe confirm page. */
   unsubscribeUrl: string;
+  /** The editor's preview only: drawn in place of an empty field. Never set for a send. */
+  placeholders?: ComposedCampaignPlaceholders;
 }
 
 const greet = (firstName: string | null) => {
@@ -116,9 +130,14 @@ export function renderComposedCampaignEmail(p: ComposedCampaignEmailData): Rende
   const subject = p.subject.replace(/\s+/g, " ").trim();
   const blocks = parseCampaignBody(p.body);
   const greeting = p.greeting ? greet(p.firstName) : null;
+  const hint = p.placeholders;
+  // A button without words is no button, unless the preview shows its placeholder.
+  const button = p.button?.label.trim() ? p.button : null;
 
   const html: string[] = [];
   const text: string[] = [];
+  // In the shell's <h1> place: the shell draws the subject only when there is one.
+  if (!subject && hint) html.push(placeholderHint(hint.subject, "h1"));
   if (greeting) {
     html.push(paragraphHtml(escapeHtml(greeting)));
     text.push(greeting, "");
@@ -135,17 +154,20 @@ export function renderComposedCampaignEmail(p: ComposedCampaignEmailData): Rende
       text.push(...b.lines, "");
     }
   });
-  if (p.button) text.push(`${p.button.label}: ${p.button.href}`, "");
+  if (!blocks.length && hint) html.push(placeholderHint(hint.body));
+  // In the shell's button place, which follows the body.
+  if (p.button && !button && hint) html.push(placeholderHint(hint.buttonLabel, "button"));
+  if (button) text.push(`${button.label}: ${button.href}`, "");
   text.push(COMPOSED_CAMPAIGN_NOTE, `Unsubscribe: ${p.unsubscribeUrl}`);
 
   const preheader = p.preheader?.replace(/\s+/g, " ").trim();
   return {
     subject,
     html: renderEmailShell({
-      title: subject,
+      ...(subject ? { title: subject } : {}),
       ...(preheader ? { preheader } : {}),
       bodyHtml: html.join("\n"),
-      ...(p.button ? { cta: { href: p.button.href, label: p.button.label } } : {}),
+      ...(button ? { cta: { href: button.href, label: button.label } } : {}),
       footer: COMPOSED_CAMPAIGN_NOTE,
       unsubscribeUrl: p.unsubscribeUrl,
     }),
