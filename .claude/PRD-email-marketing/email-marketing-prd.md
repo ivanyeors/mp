@@ -193,7 +193,9 @@ The page runs on Vercel, so what the script read from a laptop must now be set t
 - **First-party sign-up**, such as a newsletter form with double opt-in. Consent is captured only
   by the Shopify import and the Profile toggle.
 - **Images, templates and a rich-text editor.** The body is plain text with paragraphs, bullets,
-  headings and links.
+  headings and links. Now planned in `PRD-campaign-email-editor`: a campaign's email becomes typed
+  **Email blocks** in one shared editor (ADR 0036, `docs/adr/0036-campaign-email-is-typed-blocks.md`).
+  Campaigns written as plain text keep this body and its renderer.
 - **The migration's three templates** (`migration_announcement`, `_reminder`,
   `_service_notice`) stay on the script (`scripts/customer-migration-send.ts`). Since points slice 05
   they offer the Claim bonus, not the voucher, but use a campaign instead.

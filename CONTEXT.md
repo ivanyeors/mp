@@ -532,18 +532,42 @@ _Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the 
 The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.
 _Avoid_: expiring points per batch, or describing expiry as fixed at earning time
 
-## Email marketing (PRD-email-marketing)
+## Email marketing (PRD-email-marketing, PRD-campaign-email-editor, ADR 0036)
 
 **Email campaign**:
-A marketing email **Staff** write in **Admin Panel** → Email campaigns (`email_campaigns`): a subject, an inbox preview line, a plain-text body and at most one button, sent to one **Audience** in **Waves**. Its sends are rows of the campaign ledger, `customer_campaign_sends`, under `campaign:<id>`, so no **Customer** gets the same campaign twice. Once its first Wave starts, its email and Audience are fixed; a changed email is a duplicate.
+A marketing email **Staff** write in **Admin Panel** → Email campaigns (`email_campaigns`): a subject, an inbox preview line and a list of **Email blocks** (`content`), written in English, with an optional **Chinese version**, sent to one **Audience** in **Waves**. A campaign written before the block editor keeps its plain-text `body` and at most one button, and its words, order and links are shown and sent as they always were (ADR 0036). Its sends are rows of the campaign ledger, `customer_campaign_sends`, under `campaign:<id>`, so no **Customer** gets the same campaign twice. Once its first Wave starts, its email and Audience are fixed; a changed email is a duplicate.
 _Avoid_: "newsletter" or "blast"; sending one through the transactional mailbox (never: campaign mail goes through its own Resend subdomain); putting a **Review request** or an **Aftercare message** in one
+
+**Email block**:
+One typed part of an **Email campaign**: heading, text, buttons, image, hero, image + text, products, divider or spacer. Its type is from a list in code; **Staff** fill in its words, image, link and a few preset options, never its HTML, fonts or colours, and it is right in light and dark by itself. A campaign's blocks are stored as versioned JSON, `{ v: 1, blocks: [...] }`, checked by one schema on every write and rendered only on the server (ADR 0036).
+_Avoid_: "section" (a pillow filling's compartment, and the landing page's **Landing section**); "module", "row", "component"; an HTML block (there is none, on purpose)
+
+**Starter**:
+A ready-made layout: a list of **Email blocks** with **Placeholders** for its words (*Product launch*, *Care tips*…). A campaign can start from one, or have one dragged into it; either way it becomes ordinary blocks, each movable, changeable and deletable. Defined in code. The CRM's **Playbooks** (PRD-crm-retention-loop slice 07) are Starters that also choose an **Audience**.
+_Avoid_: "template" (an **Email template** is the words of a platform email; a Starter is the start of a campaign); "layout" on its own (the shell's layout is code, and nobody edits it)
+
+**Variable**:
+A value the platform fills in when an email is sent, shown to **Staff** as a chip they drag or insert into the words and written `{first_name}`. In an **Email campaign** it is a recipient's detail (*First name*, *Last name*, *Points balance* while points are live) with **fallback words** for a customer who has none, set once per campaign. In an **Email template** it is that email's own data, such as `{order_number}`.
+_Avoid_: "merge field", "merge tag"; "placeholder" (that is the hint text, a **Placeholder**)
+
+**Placeholder**:
+The grey hint an empty field shows (*e.g. Sleep cooler this December*). It is never saved, tested or sent; a required field still on its placeholder is empty.
+_Avoid_: calling `{order_number}` a placeholder (it is a **Variable**); words typed into a field so that someone deletes them (there are none, on purpose: owner, 2026-10-29)
+
+**Chinese version**:
+A campaign's words in Simplified Chinese (the editor's 中文), for the **Customers** whose language is Chinese (`customers.locale = 'zh-CN'`). The same blocks, images, products, buttons and **Variables** as the English; only the words differ. Made with ✨ *Translate to Chinese* and edited by **Staff**. A campaign without one sends English to everyone.
+_Avoid_: "a second campaign" (it shares the campaign's **Audience**, sends and lock); "localisation"
+
+**AI draft**:
+Words Claude wrote for a campaign, from the subject and the brief **Staff** gave it, or a translation of its English. Written into the editor as one change Staff keep, change or undo; never saved or sent until Staff press Save and Send. Blocks from it are marked *Drafted with AI* until a person edits or keeps them.
+_Avoid_: "AI-generated email" (no email is generated without a person); calling the brief a prompt in the UI
 
 **Audience**:
 Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
 _Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
 
 **Email template**:
-The words of one email the platform sends (an order confirmation, a return update, a customisation notice…): its subject, inbox preview line, heading, messages and button labels, with placeholders such as `{order_number}`. Owner and Admin edit them on **Admin Panel** → Email templates (`email_template_copy`); the layout, the data (items, amounts, addresses, codes, links) and the footer stay in code. An unedited email sends its original words, and any failure to read an edit falls back to them.
+The words of one email the platform sends (an order confirmation, a return update, a customisation notice…): its subject, inbox preview line, heading, messages and button labels, with **Variables** such as `{order_number}`. Owner and Admin edit them on **Admin Panel** → Email templates (`email_template_copy`); the layout, the data (items, amounts, addresses, codes, links) and the footer stay in code. An unedited email sends its original words, and any failure to read an edit falls back to them.
 _Avoid_: "template" for the layout or design (that is fixed); calling an **Email campaign** a template (each campaign is written once, on its own page)
 
 **Wave**:
@@ -901,8 +925,9 @@ default. Built-in types are seeded and cannot be deleted or re-slugged (their co
 `slug`, and the slug is also the journey-analytics anchor); custom types can be added, renamed and
 removed. Edited in the **Admin Panel** under Landing Site → Page Builder.
 _Avoid_: bare **Section** (that is an Mpillow filling compartment — `left | center | right`); "block"
-(no block model exists — a section is the smallest unit); **Product section template** (the
-learn-more slide-in primitive, a different catalog)
+(the landing page has no block model — a section is its smallest unit; an **Email block** is part
+of an **Email campaign**); **Product section template** (the learn-more slide-in primitive, a
+different catalog)
 
 **Section draft**:
 A pending, unpublished edit to one **Landing section**, held in nullable draft columns on that same
@@ -1040,6 +1065,7 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Configure drawer → page — resolved: product cards open a full **Configure product page** with breadcrumbs instead of the slide-in drawer (glossary references to “drawer” describe the old UX).
 - `/mp-basic` scope — resolved: **yes**, all preview features (**Staff assist mode**, x-ray editor, overlays, add-on cards) apply to the basic flow too — one shared preview surface; tier only scopes which composed sellables and **Filling Templates** load.
 - "price" was used for both the editable Costings field and the storefront mirror — resolved: **MSRP** is the source; `product_variants.price` is the mirror.
+- "placeholder" was used for both the grey hint in an empty field and `{order_number}` in an **Email template** — resolved (owner, 2026-10-29): a **Placeholder** is the hint, never saved, tested or sent; a **Variable** is what the platform fills in when the email is sent. The code's `placeholders` field (`lib/email/copy.ts`) keeps its name; what Staff read says Variable (PRD-campaign-email-editor slice 14).
 - "kind" was used for basic/premium — resolved: human-facing language is **tier**. Existing DB columns may remain `kind` / `pillow_kind`; UI, emails, and new human-facing API field labels use `tier`.
 - **Filling Template** (filling-only Configure BOM template, operator-selected) vs **Composed sellable** (size×tier or length BOM owning packaging/protector defaults and sell **MSRP**) vs **Storefront product** (shop listing projection) — three different things; do not conflate.
 - Protector is owned on the **Composed sellable** BOM, not a **Customer preference**. Fillings come from **Filling Templates** only.

@@ -2,7 +2,7 @@
 
 **Issue:** [#356](https://github.com/ivanyeors/mp/issues/356) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK (docs; the owner approved the decisions on 2026-10-29)
-**Status:** not started
+**Status:** done
 **Blocked by:** none. Lands with or before slice 03.
 **Labels:** `documentation`, `needs-triage`, `P2`, `area:email`
 
