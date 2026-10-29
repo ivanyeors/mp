@@ -2,7 +2,7 @@
 
 **Issue:** [#362](https://github.com/ivanyeors/mp/issues/362) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** 04 (the editor and its palette)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 

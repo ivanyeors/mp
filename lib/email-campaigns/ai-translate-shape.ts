@@ -22,7 +22,7 @@ import {
   ChineseBlockWordsSchema,
   CONTENT_LIMITS,
   contentWords,
-  EMAIL_BLOCK_NAME,
+  EMAIL_BLOCK_LABEL,
   paragraphRuns,
   variablesUsed,
   type CampaignContent,
@@ -89,7 +89,7 @@ export function translateBlocker(request: Pick<TranslateRequest, "content" | "on
 export const TRANSLATE_NEEDS_WORDS = CHINESE_EDITOR_TEXT.needsWords;
 
 /** A block's place and name, as a reason names it: *Block 2, Text*. */
-export const blockLabel = (content: CampaignContent, block: EmailBlock) => `Block ${content.blocks.indexOf(block) + 1}, ${EMAIL_BLOCK_NAME[block.type]}`;
+export const blockLabel = (content: CampaignContent, block: EmailBlock) => `Block ${content.blocks.indexOf(block) + 1}, ${EMAIL_BLOCK_LABEL[block.type]}`;
 
 /** English runs as Claude reads them: a link by its key. */
 const sourceParagraphs = (paragraphs: readonly ChineseParagraph[]) =>

@@ -19,7 +19,7 @@
 import {
   CHINESE,
   contentWords,
-  EMAIL_BLOCK_NAME,
+  EMAIL_BLOCK_LABEL,
   paragraphLinks,
   type CampaignContent,
   type ChineseBlockWords,
@@ -442,7 +442,7 @@ export function chineseVersionProblems(
   const lines = chineseLinesStatus(version, subject, preheader);
   if (lines === "untranslated") out.push("the subject is not translated yet");
   if (lines === "changed") out.push("the subject or preview line changed in English since it was translated");
-  for (const gap of chineseGaps(content)) out.push(`Block ${gap.n}, ${EMAIL_BLOCK_NAME[gap.type]}: ${CHINESE_STATUS_TEXT[gap.status].toLowerCase()}`);
+  for (const gap of chineseGaps(content)) out.push(`Block ${gap.n}, ${EMAIL_BLOCK_LABEL[gap.type]}: ${CHINESE_STATUS_TEXT[gap.status].toLowerCase()}`);
   for (const key of used) {
     if (!fallbackWords(key, version.fallbacks, { chinese: true })) out.push(`no 中文 words for a customer with no ${campaignVariable(key).label.toLowerCase()}`);
   }

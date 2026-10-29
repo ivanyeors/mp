@@ -26,7 +26,7 @@ import { RichText } from "@/components/block-editor/rich-text";
 import { richTextFromWords, richTextWords, type RichTextVariable } from "@/components/block-editor/rich-text-doc";
 import { typingBurst, useEditorHistory, useHistoryKeys } from "@/components/block-editor/use-editor-history";
 import { useUnsavedGuard } from "@/components/block-editor/use-unsaved-guard";
-import type { PaletteTab } from "@/components/block-editor/types";
+import type { PaletteItem, PaletteItemsTab, PaletteTab } from "@/components/block-editor/types";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +47,6 @@ import { AI_WRITING_NO_CREDENTIALS, type AiWritingAvailability } from "@/lib/ai/
 import { DRAFT_STAGE_TEXT, draftBlocker, draftTitle, withEditedBlocks } from "@/lib/email-campaigns/ai-drafted";
 import { REFINE_BUTTON_LABEL, REFINE_STAGE_TEXT, ideasBlocker } from "@/lib/email-campaigns/ai-refine-brief";
 import {
-    campaignWordsEmpty,
     campaignWordsOf,
     clearAllBlocker,
     clearCampaignWords,
@@ -75,14 +74,13 @@ import {
     withoutChineseVersion,
     withoutGoneChinese,
 } from "@/lib/email-campaigns/chinese-version";
-import { CONTENT_LIMITS, contentFromLegacy, contentWords, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
+import { CONTENT_LIMITS, contentFromLegacy, contentWords, EMPTY_CAMPAIGN_CONTENT, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
     CAMPAIGN_AUDIENCES,
     CAMPAIGN_BLOCKER_TEXT,
     CAMPAIGN_LIMITS,
     CAMPAIGN_PLACEHOLDERS,
-    FIRST_CAMPAIGN_DRAFT,
     MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
     variablesInEmail,
@@ -91,10 +89,11 @@ import {
     type CampaignDraft,
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
+import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter } from "@/lib/email-campaigns/starters";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
-import { defaultWaveSize, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import { defaultWaveSize, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -127,6 +126,7 @@ import { Field } from "./field";
 import { draftOf, keptDraft, keptDraftKey, keptOf, type EditorDraft, type KeptDraft } from "./kept-draft";
 import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
 import { CheckList, StatusIcon } from "./send-parts";
+import { StarterThumbnail } from "./starter-thumbnail";
 import { WaveTable } from "./wave-table";
 
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
@@ -135,8 +135,23 @@ export type SegmentOption = { id: string; name: string; customersHref?: string |
 /** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
 
-/** The palette's tabs: Blocks now; Starters (slice 08) join it, and Variables (slice 13) follow them, built with the email. */
+/** The palette's first tab, Blocks; Starters (slice 08) and Variables (slice 13) follow it, built with the email. */
 const PALETTE = [blockPaletteTab(CAMPAIGN_BLOCKS)];
+
+/** The Start panel of an empty email (slice 08), loaded with the first one, not with the page; the server renders it in place. */
+const StartPanel = lazy(() => import("./start-panel").then((m) => ({ default: m.StartPanel })));
+
+/** What shows in the Start panel's place while it loads: its heading, and its four cards to come. */
+const START_PANEL_LOADING = (
+    <div aria-busy="true" className="space-y-4 text-left">
+        <p className="text-sm font-medium text-foreground">Start the email</p>
+        <div className="grid grid-cols-2 gap-3">
+            {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="aspect-[3/4] animate-pulse rounded-md border bg-muted/50" />
+            ))}
+        </div>
+    </div>
+);
 
 /** A campaign written before blocks has no Variables: its subject and preview line are words alone. */
 const NO_VARIABLES: readonly RichTextVariable[] = [];
@@ -184,6 +199,7 @@ type WaveProgress = {
 
 const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
     checks: [{ key: "transport", ok: false, detail }],
+    advice: [],
     ready: false,
     allowance: null,
     sender: { from: null, replyTo: null },
@@ -216,9 +232,11 @@ function CharCount({ value, warn, ok, id }: { value: string; warn: string | null
  * numbers against the pause lines.
  *
  * Placeholders, not prefilled words (slice 01): an empty field shows its
- * hint, never saved or sent. A campaign written before blocks (slice 03)
- * keeps its message box and button, and an unsent one offers *Convert to
- * blocks*.
+ * hint, never saved or sent. An email that says nothing yet offers the Start
+ * panel (slice 08): blank, Write with AI, a Starter or a past campaign; and
+ * the palette's Starters tab drags a Starter's blocks in anywhere. A
+ * campaign written before blocks (slice 03) keeps its message box and
+ * button, and an unsent one offers *Convert to blocks*.
  */
 export function CampaignEditor({
     campaign,
@@ -308,6 +326,9 @@ export function CampaignEditor({
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    // Each save runs the email's checks again (slice 11), which show beside each block as saved.
+    const [saves, setSaves] = useState(0);
+    const [savedContent, setSavedContent] = useState<CampaignContent | null>(campaign?.content ?? null);
     // The palette's open tab on a laptop: Blocks, or Variables (slice 13).
     const [paletteTab, setPaletteTab] = useState("blocks");
     // The email's Language (slice 17): English, or its 中文 version, whose words change and whose layout is English's.
@@ -343,6 +364,8 @@ export function CampaignEditor({
             }
             setFieldErrors({});
             setSavedKey(JSON.stringify(input));
+            setSavedContent(input.content ?? null);
+            setSaves((s) => s + 1);
             // After a Save, Clear all's Undo is gone.
             undoRef.current = null;
             toast.dismiss(CLEAR_ALL_TOAST);
@@ -363,6 +386,19 @@ export function CampaignEditor({
     const [addOpen, setAddOpen] = useState(false);
     // The header and Write: what ⌘Z and ⇧⌘Z reach. The Send tab's fields keep the browser's own undo.
     const editorArea = useRef<HTMLDivElement>(null);
+    /** From a check that names a block (slice 11): the Write tab, that block selected, in view and focused; in 中文 for the 中文 version's (slice 17). */
+    const goToBlock = (id: string, language: Locale = DEFAULT_LOCALE) => {
+        setTab("write");
+        setPane("write");
+        setEmailLanguage(language);
+        setSelected(id);
+        // Once the Write tab shows again.
+        requestAnimationFrame(() => {
+            const card = editorArea.current?.querySelector<HTMLElement>(`li[data-block-id="${id}"]`);
+            card?.scrollIntoView?.({ block: "center" });
+            card?.focus({ preventScroll: true });
+        });
+    };
 
     // ── Variables (slice 13): what every text input offers, and the fallbacks the email needs ──
     const variables = useMemo(() => campaignVariables({ pointsLive }), [pointsLive]);
@@ -412,14 +448,16 @@ export function CampaignEditor({
     const allowance = readiness?.allowance ?? null;
     const [checking, setChecking] = useState(false);
     const readChecks = useCallback(
-        () => checkCampaignReadiness(campaignId).catch((e: unknown) => UNREAD_READINESS(String(e))),
+        (fresh = false) => checkCampaignReadiness(campaignId, { fresh }).catch((e: unknown) => UNREAD_READINESS(String(e))),
         [campaignId],
     );
+    // *Check again* asks every link again, rather than reuse the last ten minutes' answers.
     const runChecks = async () => {
         setChecking(true);
-        setReadiness(await readChecks());
+        setReadiness(await readChecks(true));
         setChecking(false);
     };
+    // On opening, and after each save: the email's checks are of the email as saved.
     useEffect(() => {
         if (!campaignId) return;
         let live = true;
@@ -427,8 +465,29 @@ export function CampaignEditor({
         return () => {
             live = false;
         };
-    }, [campaignId, readChecks]);
+    }, [campaignId, readChecks, saves]);
     const pauseFailing = checks?.some((c) => c.key === "pause" && !c.ok) ?? false;
+
+    // What the email's checks say of each block, beside it: only while the block is as it was saved, and checked.
+    // In 中文 (slice 17), the 中文 version's, while its words are as saved; its badges already say what isn't translated.
+    const blockWarnings = useMemo(() => {
+        const out: Record<string, string[]> = {};
+        if (!readiness || !content) return out;
+        const language = inChinese ? CHINESE : DEFAULT_LOCALE;
+        const asSaved = (c: CampaignContent | null) =>
+            new Map((c?.blocks ?? []).map((b) => [b.id, JSON.stringify(inChinese ? [b, chineseVersionOf(c)?.blocks[b.id] ?? null] : b)]));
+        const saved = asSaved(savedContent);
+        const now = asSaved(content);
+        // A block marked *Drafted with AI* when saved, and kept since, says so no more.
+        const marked = new Set(content.aiDrafted ?? []);
+        for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...readiness.advice]) {
+            for (const i of c.issues) {
+                if ((i.language ?? DEFAULT_LOCALE) !== language || (c.key === "ai_drafted" && !marked.has(i.blockId ?? ""))) continue;
+                if (i.blockId && saved.has(i.blockId) && saved.get(i.blockId) === now.get(i.blockId)) (out[i.blockId] ??= []).push(i.what);
+            }
+        }
+        return out;
+    }, [readiness, content, savedContent, inChinese]);
 
     // ── Test ───────────────────────────────────────────────────────────────
     const [testTo, setTestTo] = useState(staffEmail);
@@ -604,15 +663,17 @@ export function CampaignEditor({
         if (res.ok) router.push(to("/settings/campaigns"));
         else setSaveError(res.error);
     };
-    const duplicate = async () => {
+    /** A copy of campaign `id` as a new draft, opened: Duplicate, and the Start panel's *A past campaign* (slice 08). */
+    const copyOf = async (id: string) => {
         // The copy is of what is saved: changes not saved yet would be left behind.
-        if (!campaign || !guard.confirmLeave()) return;
+        if (!guard.confirmLeave()) return;
         setBusy(true);
-        const res = await duplicateCampaign(campaign.id);
+        const res = await duplicateCampaign(id);
         setBusy(false);
         if (res.ok) router.push(to(`/settings/campaigns/${res.id}`));
         else setSaveError(res.error);
     };
+    const duplicate = () => (campaign ? copyOf(campaign.id) : undefined);
 
     const sending = progress?.running ?? false;
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
@@ -733,6 +794,44 @@ export function CampaignEditor({
         if (k) history.set(draftOf(k));
     };
 
+    // ── Starters (slice 08): the Start panel of an empty email, and the palette's Starters tab ──
+    // *Blank* puts the Start panel away until the next Clear all; words or a block in the email end it anyway.
+    const [startPutAway, setStartPutAway] = useState(false);
+    const offerStart = editable && !startPutAway && emailSaysNothing(words);
+    /** A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes. */
+    const sayAudience = (s: Starter) => {
+        const goesTo = starterAudience(s, segments);
+        const now = latest.current.value;
+        if (!goesTo.audience || (goesTo.audience === now.audience && (goesTo.segmentId === undefined || goesTo.segmentId === now.segmentId))) return;
+        toast(`Send to is now “${CAMPAIGN_AUDIENCE_LABEL[goesTo.audience]}”: ${s.label} is written for them.`);
+    };
+    /** Each Starter as the palette offers it: dropped in, its blocks land where it is dropped, with the audience it is written for. */
+    const starterItems = STARTERS.map(
+        (s): PaletteItem<EmailBlock> => ({
+            id: s.id,
+            label: s.label,
+            description: s.description,
+            blocks: () => s.blocks(),
+            // The top of the email: no taller than this on a phone's full-width sheet.
+            preview: <StarterThumbnail id={s.id} shape="landscape" className="max-h-36" />,
+            apply: (next) => {
+                sayAudience(s);
+                history.set((e) => ({ ...e, content: { ...(e.content ?? EMPTY_CAMPAIGN_CONTENT), blocks: next }, ...starterAudience(s, segments) }));
+            },
+        }),
+    );
+    /** Each Starter as the Start panel offers it: the email started from it, its words and audience with its blocks. */
+    const startItems = STARTERS.map(
+        (s, i): PaletteItem<EmailBlock> => ({
+            ...starterItems[i],
+            apply: (next) => {
+                sayAudience(s);
+                history.set((e) => startedFrom(e, s, next, segments));
+            },
+        }),
+    );
+    const startersTab: PaletteItemsTab<EmailBlock> = { value: "starters", label: "Starters", items: starterItems };
+
     // ── Clear all (slice 01), one step of the history ──────────────────────
     // Writes nothing: the email is saved, and audited, only by Save.
     const clearBlocker = clearAllBlocker({ locked, sending, words });
@@ -762,21 +861,9 @@ export function CampaignEditor({
         undoRef.current = { words: snapshot, step: null };
         history.set((e) => ({ ...e, ...cleared }));
         setSelected(null);
+        // Back to the start: the Start panel is offered again.
+        setStartPutAway(false);
         undoToast("Cleared the email.");
-    };
-    /**
-     * *Use the sign-in invitation*: its words and audience as real words, for
-     * whoever wants them; in a block campaign, as blocks. Slice 08 makes it a Starter.
-     */
-    const fillInvitation = () => {
-        const invitation = campaignWordsOf(FIRST_CAMPAIGN_DRAFT);
-        history.set((e) => ({
-            ...e,
-            ...(e.content
-                ? { ...invitation, body: "", button: { choice: "none", label: "", url: "" }, content: contentFromLegacy(FIRST_CAMPAIGN_DRAFT) }
-                : invitation),
-            audience: FIRST_CAMPAIGN_DRAFT.audience,
-        }));
     };
     /**
      * *Convert to blocks* (slice 03): the message and its button as blocks
@@ -809,9 +896,10 @@ export function CampaignEditor({
             : null;
     // In 中文 the layout is English's: no palette (slice 17).
     const palette = Boolean(content) && editable && !inChinese;
-    // The palette: Blocks, then Variables (slice 13), whose chips go in at the cursor of the words last written in.
+    // The palette: Blocks, Starters (slice 08), then Variables (slice 13), whose chips go in at the cursor of the words last written in.
     const asideTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
+        startersTab,
         {
             value: "variables",
             label: "Variables",
@@ -825,9 +913,27 @@ export function CampaignEditor({
     // A phone's sheet: a tap puts a Variable in and closes it; the fallbacks are under the blocks.
     const sheetTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
+        startersTab,
         { value: "variables", label: "Variables", content: <CampaignVariablesTab draggable={false} onInserted={() => setAddOpen(false)} /> },
     ];
     const saveLabel = campaign ? "Save changes" : "Save draft";
+
+    // What an empty email offers: four ways to start (slice 08). ✨ Write with AI opens Generate's brief (slice 09), and shows only while AI writing is on.
+    const startPanel = (
+        <Suspense fallback={START_PANEL_LOADING}>
+            <StartPanel
+                starters={startItems}
+                onBlank={() => setStartPutAway(true)}
+                ai={
+                    aiHere
+                        ? { disabledReason: !ai.configured ? AI_WRITING_NO_CREDENTIALS : aiBusy ? AI_BUSY : titleBlocker, onClick: () => setGenerateOpen(true) }
+                        : null
+                }
+                onPastCampaign={(id) => void copyOf(id)}
+                busy={busy}
+            />
+        </Suspense>
+    );
     const sendBar = Boolean(campaign && (sending || (plan && planned > 0)) && (tab === "send" || sending));
     const writeBar = !sendBar && tab === "write" && !sending;
 
@@ -1050,9 +1156,16 @@ export function CampaignEditor({
                         ) : null}
                         <BlockEditor
                             label={inChinese ? "The email's blocks, in 中文" : "The email's blocks"}
-                            empty={inChinese ? "No blocks yet. Write the email in English first." : "No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."}
+                            empty={
+                                inChinese
+                                    ? "No blocks yet. Write the email in English first."
+                                    : offerStart
+                                      ? startPanel
+                                      : "No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."
+                            }
                             errors={inChinese ? chineseErrors : fieldErrors}
                             errorPath="content.blocks"
+                            warnings={blockWarnings}
                         />
                         {/* On a laptop the fallbacks sit under the Variables palette's chips; on a phone, and while the palette is hidden, here. */}
                         <div className={cn(palette && "lg:hidden")}>
@@ -1143,12 +1256,8 @@ export function CampaignEditor({
                         ) : null}
                     </>
                 )}
-                {/* A start for an empty email; slice 08's Start panel replaces it. */}
-                {!locked && campaignWordsEmpty(words) ? (
-                    <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={fillInvitation} disabled={sending}>
-                        Use the sign-in invitation
-                    </Button>
-                ) : null}
+                {/* A message written before blocks, cleared: a Starter makes it a block campaign. */}
+                {offerStart && !content ? <div className="rounded-lg border border-dashed p-4">{startPanel}</div> : null}
 
                 {saveError ? (
                     <p role="alert" className="text-sm text-destructive">
@@ -1334,7 +1443,8 @@ export function CampaignEditor({
                             <div className={cn("grid gap-6", palette ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
                                 {palette ? (
                                     <aside className="max-lg:hidden" aria-label="Palette">
-                                        <div className="sticky top-4">
+                                        {/* A tall tab (Starters, with their thumbnails) scrolls inside it. */}
+                                        <div className="sticky top-4 -m-1 max-h-[calc(100vh-2rem)] overflow-y-auto p-1">
                                             <BlockPalette tabs={asideTabs} tab={paletteTab} onTab={setPaletteTab} />
                                         </div>
                                     </aside>
@@ -1462,7 +1572,9 @@ export function CampaignEditor({
                                     </div>
                                     <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
                                 </CardHeader>
-                                <CardContent>{checks ? <CheckList checks={checks} /> : <Loader2 className="h-4 w-4 animate-spin" />}</CardContent>
+                                <CardContent>
+                                    {checks ? <CheckList checks={checks} advice={readiness?.advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
+                                </CardContent>
                             </Card>
                         </div>
                     ) : null}
@@ -1493,12 +1605,32 @@ export function CampaignEditor({
                             </CardHeader>
                             <CardContent className="space-y-5">
                                 <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
-                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, allowance, resume }).map((step) => (
-                                        <li key={step.key} className="flex items-start gap-2 text-sm">
+                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice: readiness?.advice, allowance, resume }).map((step) => (
+                                        <li key={step.key} className={cn("flex items-start gap-2 text-sm", step.items && "sm:col-span-2")}>
                                             <StatusIcon ok={step.done} advisory={step.advisory} />
                                             <span className="min-w-0">
                                                 <span className="block font-medium">{step.label}</span>
                                                 <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
+                                                {/* The email's failures, then its advice: each one in a block goes to it. */}
+                                                {step.items ? (
+                                                    <ul className="mt-1 space-y-0.5 text-xs">
+                                                        {step.items.map((item, i) => (
+                                                            <li key={`${i}:${item.text}`} className={cn("break-words", item.advisory ? "text-muted-foreground" : "text-destructive")}>
+                                                                {item.blockId ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-left underline underline-offset-2 hover:no-underline"
+                                                                        onClick={() => goToBlock(item.blockId!, item.language)}
+                                                                    >
+                                                                        {item.text}
+                                                                    </button>
+                                                                ) : (
+                                                                    item.text
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : null}
                                             </span>
                                         </li>
                                     ))}

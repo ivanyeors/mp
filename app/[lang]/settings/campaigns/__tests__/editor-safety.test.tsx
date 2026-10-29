@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { choose, click, press, retype, settle, typeField, wordsOf } from "@/components/block-editor/__tests__/dom";
+import { choose, click, press, retype, settle, typeField, until, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -148,11 +148,15 @@ describe("one history over the whole email", () => {
     expect(headings()).toEqual([]);
   });
 
-  it("makes Use the sign-in invitation one step, who it goes to included", async () => {
+  it("makes starting from the sign-in invitation one step, who it goes to included", async () => {
     mount(null, { ...newCampaignDraft(undefined, []), audience: "subscribed" });
     const audience = () => document.getElementById("c-audience")!.textContent;
     expect(audience()).toBe("Everyone subscribed to marketing email");
-    await click(button("Use the sign-in invitation")!);
+    // The Start panel's Starter (slice 08).
+    const choice = (label: string) =>
+      [...document.querySelectorAll<HTMLButtonElement>("[aria-labelledby='c-start-title'] button")].find((b) => b.firstElementChild?.textContent === label);
+    await click(await until(() => choice("A Starter")));
+    await click(choice(FIRST_CAMPAIGN_DRAFT.name)!);
     expect(subject()).toBe(FIRST_CAMPAIGN_DRAFT.subject);
     expect(audience()).toBe("Imported from Shopify, not signed in yet");
     undo();

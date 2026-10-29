@@ -13,6 +13,7 @@ import { CHINESE_SAMPLE_CONTENT, CHINESE_SAMPLE_PRODUCTS, EMAIL_BLOCK_SAMPLE_IMA
 import { EMAIL_BLOCK_TYPES, emptyBlock, type CampaignContent } from "@/lib/email-campaigns/content";
 import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
+import { STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 
 /**
  * Light and dark, by themselves (PRD-campaign-email-editor decision 2, slice
@@ -61,6 +62,8 @@ const EMAILS: [name: string, html: string][] = [
     "blocks: the 中文 version",
     renderCampaignPreview(blocks(CHINESE_SAMPLE_CONTENT), { origin: ORIGIN, firstName: "美玲", images: EMAIL_BLOCK_SAMPLE_IMAGES, products: CHINESE_SAMPLE_PRODUCTS, locale: "zh-CN" }).html,
   ],
+  // Each Starter as it lands, on its placeholders (slice 08).
+  ...STARTERS.map((s): [string, string] => [`starter: ${s.label}`, preview(starterDraft(s))]),
   ["legacy: the sign-in invitation", preview(FIRST_CAMPAIGN_DRAFT)],
   ["legacy: every field on its placeholder", preview({ ...EMPTY_CAMPAIGN_DRAFT, content: null, button: { target: "sign_in", label: "", url: null } })],
   ...readdirSync(AUTH_DIR)

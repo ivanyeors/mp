@@ -14,7 +14,7 @@ import {
 import { Accessibility, defaultPreset, type DragEndEvent, type DragMoveEvent, type DragOverEvent, type DragStartEvent } from "@dnd-kit/dom";
 import { DragDropProvider, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { ArrowDown, ArrowUp, Copy, GripVertical, MoreHorizontal, Plus, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Copy, GripVertical, MoreHorizontal, Plus, Sparkles, Trash2 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -108,10 +108,14 @@ interface BlockEditorContext {
   noRoom: (adds: number) => string | null;
   selected: string | null;
   select: (id: string | null) => void;
-  /** Adds blocks at `at`, focuses the first and says so; all of them, or none when they don't fit. */
-  insert: (at: number, added: EditorBlock[]) => void;
+  /**
+   * Adds blocks at `at`, focuses the first and says so; all of them, or none
+   * when they don't fit. `from` is the palette item they come from, which
+   * puts them in itself when it brings more (`PaletteItem.apply`).
+   */
+  insert: (at: number, added: EditorBlock[], from?: PaletteItem<EditorBlock>) => void;
   /** Adds blocks after the selected one, or at the end. */
-  add: (added: EditorBlock[]) => void;
+  add: (added: EditorBlock[], from?: PaletteItem<EditorBlock>) => void;
   move: (from: number, to: number) => void;
   duplicate: (i: number) => void;
   remove: (i: number) => void;
@@ -194,7 +198,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
   const change = (next: EditorBlock[], burst?: string) => onChange(next as B[], burst);
   const room = Math.max(0, max - blocks.length);
   const noRoom = (adds: number) => (adds > room ? (full ?? noRoomText(adds, room, max)) : null);
-  const insert = (at: number, added: EditorBlock[]) => {
+  const insert = (at: number, added: EditorBlock[], from?: PaletteItem<EditorBlock>) => {
     if (fixed) return;
     const next = insertBlocks(blocks, at, added, max);
     if (next === blocks) {
@@ -203,7 +207,8 @@ export function BlockEditorRoot<B extends EditorBlock>({
       return;
     }
     const first = added[0];
-    change(next);
+    if (from?.apply) from.apply(next);
+    else change(next);
     onSelect(first.id);
     setFocus({ id: first.id, into: true });
     const where = Math.min(at, blocks.length);
@@ -221,9 +226,9 @@ export function BlockEditorRoot<B extends EditorBlock>({
     selected,
     select: onSelect,
     insert,
-    add: (added) => {
+    add: (added, from) => {
       const i = blocks.findIndex((b) => b.id === selected);
-      insert(i === -1 ? blocks.length : i + 1, added);
+      insert(i === -1 ? blocks.length : i + 1, added, from);
     },
     move: (from, to) => {
       if (fixed) return;
@@ -285,7 +290,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
           if (isPaletteDrag(source?.data)) {
             const at = landing(event) ?? drop;
             setDrop(null);
-            if (!event.canceled && at !== null && !fixed) insert(at, source.data.palette.blocks());
+            if (!event.canceled && at !== null && !fixed) insert(at, source.data.palette.blocks(), source.data.palette);
             return;
           }
           if (fixed) return;
@@ -409,7 +414,17 @@ function useFocusRequest(card: RefObject<HTMLElement | null>, request: Focus | n
   }, [card, request, done]);
 }
 
-function BlockCard({ block, index, errors }: { block: EditorBlock; index: number; errors: Record<string, string> }) {
+function BlockCard({
+  block,
+  index,
+  errors,
+  warnings,
+}: {
+  block: EditorBlock;
+  index: number;
+  errors: Record<string, string>;
+  warnings?: readonly string[];
+}) {
   const ctx = useBlockEditor();
   const kind = kindOf(ctx, block);
   const total = ctx.blocks.length;
@@ -580,6 +595,16 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
       <div data-block-body className="px-3 pb-3 pt-1">
         <Form {...props} />
       </div>
+      {warnings?.length ? (
+        <ul data-block-warnings className="space-y-1 px-3 pb-3 text-xs text-amber-700 dark:text-amber-400">
+          {warnings.map((w, i) => (
+            <li key={`${i}:${w}`} className="flex items-start gap-1.5">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 break-words">{w}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {selected && Options && !ctx.readOnly ? (
         <div className="border-t bg-muted/30 px-3 py-2.5" role="group" aria-label={`${kind.label} options`}>
           <Options {...props} readOnly={fixed} />
@@ -626,13 +651,16 @@ function ColumnEnd({ addLabel }: { addLabel: string }) {
 /**
  * The column of blocks: each a card showing the block as it will read,
  * editable in place, with its handle, its menu and, when selected, its
- * options under it. `errors` are Save's, keyed `<path>.<index>.<field>`.
+ * options under it. `errors` are Save's, keyed `<path>.<index>.<field>`;
+ * `warnings` are the page's own checks of a block, by block id, shown
+ * beside it without stopping a save.
  */
 export function BlockEditor({
   label,
   empty,
   errors = {},
   errorPath = "blocks",
+  warnings = {},
   addLabel = "Add block",
 }: {
   /** The list's name, for a screen reader: "The email's blocks". */
@@ -641,6 +669,7 @@ export function BlockEditor({
   empty: ReactNode;
   errors?: Record<string, string>;
   errorPath?: string;
+  warnings?: Readonly<Record<string, readonly string[]>>;
   addLabel?: string;
 }) {
   const ctx = useBlockEditor();
@@ -657,7 +686,7 @@ export function BlockEditor({
       {ctx.blocks.length ? (
         <ol className="space-y-4" aria-label={label}>
           {ctx.blocks.map((b, i) => (
-            <BlockCard key={b.id} block={b} index={i} errors={byBlock[i]} />
+            <BlockCard key={b.id} block={b} index={i} errors={byBlock[i]} warnings={warnings[b.id]} />
           ))}
         </ol>
       ) : (

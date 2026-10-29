@@ -16,20 +16,18 @@ export function StatusIcon({ ok, advisory = false }: { ok: boolean; advisory?: b
     return <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-label="Not yet" />;
 }
 
-export function CheckList({ checks }: { checks: PreflightCheck[] }) {
-    return (
-        <ul className="space-y-2">
-            {checks.map((c) => (
-                <li key={c.key} className="flex items-start gap-2 text-sm">
-                    <StatusIcon ok={c.ok} />
-                    <span className="min-w-0">
-                        <span className="font-medium">{CHECK_LABEL[c.key] ?? c.key}</span>
-                        <span className="block break-words text-xs text-muted-foreground">{c.detail}</span>
-                    </span>
-                </li>
-            ))}
-        </ul>
+/** Every check, then the email's advice (PRD-campaign-email-editor slice 11), which says *Recommended:* and holds nothing. */
+export function CheckList({ checks, advice = [] }: { checks: readonly PreflightCheck[]; advice?: readonly PreflightCheck[] }) {
+    const row = (c: PreflightCheck, advisory: boolean) => (
+        <li key={`${advisory ? "advice" : "check"}:${c.key}`} className="flex items-start gap-2 text-sm">
+            <StatusIcon ok={c.ok} advisory={advisory} />
+            <span className="min-w-0">
+                <span className="font-medium">{CHECK_LABEL[c.key] ?? c.key}</span>
+                <span className="block break-words text-xs text-muted-foreground">{c.detail}</span>
+            </span>
+        </li>
     );
+    return <ul className="space-y-2">{[...checks.map((c) => row(c, false)), ...advice.map((c) => row(c, true))]}</ul>;
 }
 
 /** Today and this month, as Resend counts them, with a line on what is left. */

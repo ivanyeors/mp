@@ -86,6 +86,47 @@ export async function listCampaigns(admin: SupabaseClient): Promise<CampaignList
   });
 }
 
+/** A campaign to start from, as the Start panel lists it (PRD-campaign-email-editor slice 08). */
+export interface PastCampaign {
+  id: string;
+  name: string;
+  subject: string;
+  createdAt: string;
+  /** Its first wave was planned. */
+  started: boolean;
+  archived: boolean;
+}
+
+/** The most the Start panel lists: the newest. */
+export const PAST_CAMPAIGNS_LISTED = 50;
+
+/**
+ * Every Campaign, archived ones included, newest first, to start a new one
+ * from: only what the list shows, never its content. Throws on a failed read.
+ */
+export async function listPastCampaigns(admin: SupabaseClient): Promise<PastCampaign[]> {
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .select("id, name, subject, created_at, locked_at, archived_at")
+    .order("created_at", { ascending: false })
+    .limit(PAST_CAMPAIGNS_LISTED);
+  if (error) throw new Error(`Could not read the campaigns: ${error.message}`);
+  return ((data ?? []) as Record<string, unknown>[]).flatMap((r) =>
+    typeof r.id === "string"
+      ? [
+          {
+            id: r.id,
+            name: typeof r.name === "string" ? r.name : "",
+            subject: typeof r.subject === "string" ? r.subject : "",
+            createdAt: typeof r.created_at === "string" ? r.created_at : "",
+            started: typeof r.locked_at === "string",
+            archived: typeof r.archived_at === "string",
+          },
+        ]
+      : [],
+  );
+}
+
 /** One Campaign, archived or not; null when there is none. */
 export async function getCampaign(admin: SupabaseClient, id: string): Promise<Campaign | null> {
   const { data, error } = await admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).eq("id", id).maybeSingle();

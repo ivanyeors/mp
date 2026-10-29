@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { placeholderOf, retype, richTextIn, wordsOf } from "@/components/block-editor/__tests__/dom";
+import { placeholderOf, retype, richTextIn, until, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -81,6 +81,10 @@ const text = (id: string) => document.getElementById(id)?.textContent ?? "";
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label) ?? null;
 const clearAll = () => button("Clear all")!;
+/** A card of the Start panel (slice 08), by the name it starts with. */
+const choice = (label: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>("[aria-labelledby='c-start-title'] button")].find((b) => b.firstElementChild?.textContent === label) ?? null;
+const startPanel = () => document.querySelector("[aria-labelledby='c-start-title']");
 const undo = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast] [data-action]");
 const toastText = () => document.querySelector("[data-sonner-toast]")?.textContent ?? "";
 
@@ -148,13 +152,14 @@ afterEach(async () => {
 });
 
 describe("a new campaign", () => {
-  it("opens with every field empty, on its placeholder, no blocks yet, and nothing of the invitation", () => {
+  it("opens with every field empty, on its placeholder, no blocks yet, and nothing of the invitation", async () => {
     mount(null, newCampaignDraft(undefined, []));
     expect(words()).toEqual(NO_WORDS);
     expect(field("c-name").placeholder).toBe("e.g. December cooling launch");
     expect(placeholderOf("c-subject")).toBe("e.g. Sleep cooler this December");
     expect(placeholderOf("c-preheader")).toBe("e.g. Our FibreCool covers are back, in every size");
-    expect(document.body.textContent).toContain("No blocks yet.");
+    // No blocks yet: the Start panel offers where to start (slice 08), once it has loaded.
+    expect((await until(startPanel)).textContent).toContain("Start the email");
     expect(button("Add block")).not.toBeNull();
     expect(document.body.textContent).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
     expect(document.getElementById("c-greeting")?.getAttribute("aria-checked")).toBe("true");
@@ -172,9 +177,10 @@ describe("a new campaign", () => {
 
   it("fills in the invitation, as real words in blocks and its audience, only when asked", async () => {
     mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
-    expect(button("Use the sign-in invitation")).toBeNull(); // named after the Segment: not empty
-    type(field("c-name"), "");
-    await press(button("Use the sign-in invitation")!);
+    // Named after the Segment, and still empty: the Start panel offers the invitation, a Starter (slice 08).
+    expect(field("c-name").value).toBe(SEGMENT.name);
+    await press(await until(() => choice("A Starter")));
+    await press(choice(FIRST_CAMPAIGN_DRAFT.name)!);
     const filled = words();
     expect(filled).toMatchObject({
       name: FIRST_CAMPAIGN_DRAFT.name,
@@ -186,7 +192,7 @@ describe("a new campaign", () => {
     expect(filled.blocks[1]).toContain("There's nothing to fill in and no password to set");
     expect(filled.blocks.at(-1)).toBe(FIRST_CAMPAIGN_DRAFT.button!.label);
     expect(text("c-audience")).toBe("Imported from Shopify, not signed in yet");
-    expect(button("Use the sign-in invitation")).toBeNull();
+    expect(startPanel()).toBeNull();
   });
 
   it("clears the words and blocks back to their placeholders, keeps the audience and greeting, and Undo puts every word back", async () => {
@@ -288,7 +294,7 @@ describe("a campaign that has started sending", () => {
     await settle(50);
     expect(words()).toEqual(before);
     expect(undo()).toBeNull();
-    expect(button("Use the sign-in invitation")).toBeNull();
+    expect(startPanel()).toBeNull();
     expectNothingWritten();
   });
 });

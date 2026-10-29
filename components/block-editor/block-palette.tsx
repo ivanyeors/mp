@@ -10,10 +10,10 @@ import type { BlockCatalogue, EditorBlock, PaletteItem, PaletteItemsTab, Palette
 
 /**
  * The palette beside the column (PRD-campaign-email-editor slice 04): tabs
- * the page supplies (Blocks here; Starters in slice 08; Variables, a
- * `VariablePalette`, in slice 13), each item dragged into the column, or
- * added after the selected block with a click or Enter. Inside a
- * `BlockEditorRoot`.
+ * the page supplies (Blocks here; Starters, each with its thumbnail, in slice
+ * 08; Variables, a `VariablePalette`, in slice 13), each item dragged into
+ * the column, or added after the selected block with a click or Enter.
+ * Inside a `BlockEditorRoot`.
  */
 
 /** Pure — the Blocks tab: one item per block type in the catalogue, in its order. */
@@ -48,6 +48,50 @@ function Item({ item, tab, draggable, onAdded }: { item: PaletteItem<EditorBlock
     disabled: !draggable || Boolean(why),
   });
   const Icon = item.icon;
+  const press = () => {
+    if (why) return;
+    ctx.add(item.blocks(), item);
+    onAdded?.();
+  };
+  const words = (
+    <>
+      {Icon ? <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> : null}
+      <span className="min-w-0">
+        <span className="block font-medium">{item.label}</span>
+        {item.description ? <span className="block text-xs text-muted-foreground">{item.description}</span> : null}
+      </span>
+    </>
+  );
+  // With a picture (a Starter's thumbnail): the card is the picture over its name, and the button covers both,
+  // so pressing the picture adds it too. The picture sits beside the button, not in it: a frame can't go in a button.
+  if (item.preview) {
+    return (
+      <li
+        className={cn(
+          "relative rounded-md border bg-background shadow-xs transition-colors hover:bg-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/50",
+          why && "opacity-50",
+          isDragging && "opacity-60",
+        )}
+      >
+        <div aria-hidden className="pointer-events-none p-1.5 pb-0">
+          {item.preview}
+        </div>
+        <button
+          ref={ref}
+          type="button"
+          aria-disabled={why ? true : undefined}
+          title={why ?? undefined}
+          onClick={press}
+          className={cn(
+            "flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-sm outline-none before:absolute before:inset-0 before:rounded-md aria-disabled:cursor-not-allowed max-md:min-h-11",
+            draggable && !why && "cursor-grab active:cursor-grabbing",
+          )}
+        >
+          {words}
+        </button>
+      </li>
+    );
+  }
   return (
     <li>
       <button
@@ -55,22 +99,14 @@ function Item({ item, tab, draggable, onAdded }: { item: PaletteItem<EditorBlock
         type="button"
         aria-disabled={why ? true : undefined}
         title={why ?? undefined}
-        onClick={() => {
-          if (why) return;
-          ctx.add(item.blocks());
-          onAdded?.();
-        }}
+        onClick={press}
         className={cn(
           "flex w-full items-start gap-2.5 rounded-md border bg-background px-2.5 py-2 text-left text-sm shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 max-md:min-h-11",
           draggable && !why && "cursor-grab active:cursor-grabbing",
           isDragging && "opacity-60",
         )}
       >
-        {Icon ? <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> : null}
-        <span className="min-w-0">
-          <span className="block font-medium">{item.label}</span>
-          {item.description ? <span className="block text-xs text-muted-foreground">{item.description}</span> : null}
-        </span>
+        {words}
       </button>
     </li>
   );

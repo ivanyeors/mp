@@ -18,6 +18,8 @@ import {
 } from "@/lib/customer-migration/campaign-ledger";
 import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
+import type { Locale } from "@/lib/i18n/locales";
+import type { ContentCheck } from "./content-checks";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 const plural = (count: number, one: string, many = `${one}s`) => `${n(count)} ${count === 1 ? one : many}`;
@@ -34,9 +36,26 @@ export const CHECK_LABEL: Record<string, string> = {
   points: "Points are live",
   products: "Every product is still in the shop",
   chinese: "The 中文 version is complete",
+  placeholders: "Every block is written",
+  // The email's own checks (PRD-campaign-email-editor slice 11), then its advice.
+  links: "Every link answers",
+  alt: "Every image has alt text",
+  images: "Every image shows in every inbox",
+  fallbacks: "Every Variable has fallback words",
+  clinical: "No health claims",
+  size: "Under Gmail's clip",
+  size_close: "Size",
+  subject_length: "Subject length",
+  preview_line: "Preview line",
+  image_words: "Words beside the images",
+  ai_drafted: "Drafted with AI",
+  links_unchecked: "Links not checked",
   send_limit: "Room in the sending plan",
   reports: "Bounce and spam reports",
 };
+
+/** Pure — one of the email's own checks (slice 11), which list their issues block by block. */
+export const isEmailCheck = (c: PreflightCheck | ContentCheck): c is ContentCheck => "issues" in c;
 
 // ─── The send limit ──────────────────────────────────────────────────────────
 
@@ -158,28 +177,54 @@ export function sendingRows(
 
 // ─── Before a wave ───────────────────────────────────────────────────────────
 
+/** One thing *The email* lists (slice 11): something to fix, or advice, with the block it is in. */
+export interface SendStepItem {
+  text: string;
+  /** The block it is in, to go to; null for the subject, the preview line or the email as a whole. */
+  blockId: string | null;
+  advisory: boolean;
+  /** The version it is in, when not the English (slice 17's `zh-CN`): the editor opens that language to show it. */
+  language?: Locale;
+}
+
 export interface SendStep {
-  key: "saved" | "test" | "checks" | "room";
+  key: "saved" | "test" | "email" | "checks" | "room";
   label: string;
   done: boolean;
   /** Advice only: a step that is not done does not stop the wave. */
   advisory: boolean;
   detail: string;
+  /** *The email*'s failures, each with its block, then its advice. */
+  items?: SendStepItem[];
 }
 
 /**
  * The checklist above a wave. The test is advice; the rest must be done, and
- * the server holds them again when the wave starts.
+ * the server holds them again when the wave starts. The email's own checks
+ * (PRD-campaign-email-editor slice 11) are one step, *The email*, which lists
+ * each failure with the block it is in, then the advice (*Recommended:*),
+ * which never holds the wave; the sending setup's are *Every check passes*.
  */
 export function sendSteps(p: {
   dirty: boolean;
   locked: boolean;
   lastTest: { sent: number; at: string } | null;
-  checks: readonly PreflightCheck[] | null;
+  checks: readonly (PreflightCheck | ContentCheck)[] | null;
+  /** The email's advice, `CampaignReadiness.advice`. */
+  advice?: readonly ContentCheck[] | null;
   allowance: SendAllowance | null;
   resume: boolean;
 }): SendStep[] {
-  const blocking = (p.checks ?? []).filter((c) => c.key !== "send_limit" && !c.ok && !(c.key === "pause" && p.resume));
+  const all = p.checks ?? [];
+  const email = all.filter(isEmailCheck);
+  const unfixed = email.filter((c) => !c.ok);
+  const blocking = all.filter((c) => !isEmailCheck(c) && c.key !== "send_limit" && !c.ok && !(c.key === "pause" && p.resume));
+  const listed = (c: ContentCheck, advisory: boolean): SendStepItem[] =>
+    c.issues.length
+      ? c.issues.map((i) => ({ text: i.text, blockId: i.blockId, advisory, ...(i.language ? { language: i.language } : {}) }))
+      : [{ text: c.detail, blockId: null, advisory }];
+  const fixes = unfixed.flatMap((c) => listed(c, false));
+  const items = [...fixes, ...(p.advice ?? []).flatMap((c) => listed(c, true))];
   return [
     {
       key: "saved",
@@ -196,6 +241,23 @@ export function sendSteps(p: {
       detail: p.lastTest
         ? `Sent to ${plural(p.lastTest.sent, "address", "addresses")} at ${formatAdminWeekdayTime(p.lastTest.at)}. Check the inbox and the spam folder.`
         : "Recommended: send yourself a test and read it on your phone first.",
+    },
+    {
+      key: "email",
+      label: "The email",
+      done: p.checks !== null && unfixed.length === 0,
+      advisory: false,
+      detail:
+        p.checks === null
+          ? "Checking…"
+          : fixes.length
+            ? `${plural(fixes.length, "thing")} to fix before it can go:`
+            : !email.length
+              ? "Nothing in the email to check."
+              : items.length
+                ? "Nothing in it holds the wave."
+                : "Its links, images, size and words are all fine.",
+      ...(p.checks !== null && items.length ? { items } : {}),
     },
     {
       key: "checks",

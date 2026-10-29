@@ -23,8 +23,8 @@ import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type Va
 export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "split", "products", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
 
-/** Each block type as Staff know it (the editor's palette names them the same): what a check names a block by, *Block 2, Heading*. */
-export const EMAIL_BLOCK_NAME: Record<EmailBlockType, string> = {
+/** Each block type's name, as the editor's palette and cards and the checks before a wave call it. */
+export const EMAIL_BLOCK_LABEL: Record<EmailBlockType, string> = {
   heading: "Heading",
   text: "Text",
   buttons: "Buttons",

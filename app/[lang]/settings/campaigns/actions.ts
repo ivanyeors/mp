@@ -8,6 +8,7 @@ import { resolveSegment } from "@/lib/crm/segments";
 import {
   CampaignDraftSchema,
   CampaignPreviewSchema,
+  EMPTY_CAMPAIGN_DRAFT,
   MAX_TEST_RECIPIENTS,
   type Campaign,
   type CampaignDraft,
@@ -32,7 +33,8 @@ import { campaignImageFieldErrors, readCampaignImages } from "@/lib/email-campai
 import { readCampaignProductCards, shopProductCard, type CampaignProductCard, type ShopProductRow } from "@/lib/email-campaigns/products";
 import { getProducts } from "@/lib/ecommerce/products";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
-import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
+import { archiveCampaign, createCampaign, getCampaign, listPastCampaigns, lockCampaign, updateCampaign, type PastCampaign } from "@/lib/email-campaigns/store";
+import { BLANK_PREVIEW, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -189,6 +191,38 @@ export async function duplicateCampaign(id: string): Promise<{ ok: true; id: str
   });
 }
 
+/**
+ * *A past campaign*, in the Start panel of an empty email
+ * (PRD-campaign-email-editor slice 08): every campaign, archived ones too,
+ * newest first, by name and subject. Picking one is Duplicate, which copies
+ * the email and who it goes to and nothing of its sends. Changes nothing.
+ */
+export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: PastCampaign[] } | Failure> {
+  await assertAdmin("campaigns");
+  try {
+    return { ok: true, campaigns: await listPastCampaigns(supabaseAdmin()) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/**
+ * The thumbnails of the Start panel and the palette's Starters tab (slice
+ * 08): each Starter, and a blank email (`BLANK_PREVIEW`), as the real
+ * renderer draws it on its placeholders for the sample customer, by id. The
+ * editor asks once, when the first thumbnail shows. Changes nothing.
+ */
+export async function previewStarters(): Promise<{ ok: true; previews: Record<string, string> } | Failure> {
+  await assertAdmin("campaigns");
+  const { origin } = campaignSenderSetup();
+  const drafts: [string, CampaignDraft][] = [[BLANK_PREVIEW, EMPTY_CAMPAIGN_DRAFT], ...STARTERS.map((s): [string, CampaignDraft] => [s.id, starterDraft(s)])];
+  try {
+    return { ok: true, previews: Object.fromEntries(drafts.map(([id, draft]) => [id, renderCampaignPreview(draft, { origin, ...SAMPLE_RECIPIENT }).html])) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
 export async function archiveCampaignAction(id: string): Promise<{ ok: true } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const campaign = await loadCampaign(id);
@@ -306,11 +340,23 @@ export async function describeCampaignProducts(ids: string[]): Promise<{ ok: tru
   }
 }
 
-/** Every check a send must pass, for the page's status panel. Changes nothing. */
-export async function checkCampaignReadiness(id?: string): Promise<CampaignReadiness> {
+/**
+ * Every check a send must pass, for the page's status panel, the saved
+ * email's own among them (PRD-campaign-email-editor slice 11): the editor
+ * asks after each save, and shows what they find beside each block.
+ * `fresh` is *Check again*: every link is asked again, not read from the last
+ * ten minutes' answers. The blocks still marked *Drafted with AI* (slice
+ * 09) are counted as advice: the saved content's marks, or `aiDrafted` when
+ * passed. Changes nothing.
+ */
+export async function checkCampaignReadiness(
+  id?: string,
+  { fresh = false, aiDrafted }: { fresh?: boolean; aiDrafted?: string[] } = {},
+): Promise<CampaignReadiness> {
   await assertAdmin("campaigns");
   const campaign = id && UUID.test(id) ? await loadCampaign(id) : null;
-  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined });
+  const marked = Array.isArray(aiDrafted) ? aiDrafted.filter((b) => typeof b === "string").slice(0, 40) : undefined;
+  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined, freshLinks: fresh === true, aiDrafted: marked });
 }
 
 /**
@@ -355,6 +401,8 @@ export type WaveAnswer =
  * Who a wave of `size` would go to now, with every check. With `start`, and
  * when every check passes, it also fixes the campaign's content (the first
  * wave locks it) and returns the ids the browser then sends a batch at a time.
+ * The start asks every link again (slice 11), so one that died since the last
+ * check holds the wave.
  */
 export async function planCampaignWave(id: string, req: WaveRequest, start = false): Promise<WaveAnswer> {
   const ctx = await assertAdmin("campaigns");
@@ -365,7 +413,7 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
   try {
     result = await planWave(
       campaign,
-      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume) },
+      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume), freshLinks: start === true },
       setup,
       campaign.segmentId ? () => resolveSegment(campaign.segmentId!) : undefined,
     );

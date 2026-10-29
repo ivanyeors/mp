@@ -182,8 +182,17 @@ export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
  * sign-in would not grant (PRD-loyalty-points slice 05).
  */
 export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
-  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : []), ...chineseWords(c.content)].join("\n");
-  // *Points balance* (PRD-campaign-email-editor slice 13) is a mention too, and so is 积分 in the 中文 version (slice 17).
+  // The 中文 version's words count too (slice 17).
+  return wordsMentionPoints([c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : []), ...chineseWords(c.content)].join("\n"));
+}
+
+/**
+ * Pure — some words promise points: they say "points" (积分 in the 中文
+ * version, slice 17), or hold *Points balance* (PRD-campaign-email-editor
+ * slice 13). What `mentionsPoints` asks of the whole email, and the checks
+ * before a wave of each block (slice 11).
+ */
+export function wordsMentionPoints(words: string): boolean {
   return /\bpoints?\b|积分/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
 }
 
@@ -482,9 +491,9 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
  * website, with the Claim bonus (PRD-loyalty-points: 1,000 points, S$10 off a
  * shop order, for signing in within 3 months of this email). It names no old
  * platform (owner, 2026-10-21). No longer where a new campaign starts
- * (PRD-campaign-email-editor decision 7): *Use the sign-in invitation* fills
- * it in, and slice 08 makes it a Starter. Staff change any of it before
- * sending.
+ * (PRD-campaign-email-editor decision 7): it is the Starter *New website:
+ * sign in for points* (`INVITATION_STARTER`, slice 08), as blocks, the one
+ * with finished words. Staff change any of it before sending.
  */
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "New website: sign in for points",

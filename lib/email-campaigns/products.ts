@@ -27,7 +27,6 @@ import {
   shopCardPrice,
 } from "@/lib/ecommerce/products";
 import { productPriceText, type CampaignBlockProduct, type CampaignBlockProducts } from "@/lib/email/campaign-blocks";
-import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import type { Product, ProductImage, ProductVariant } from "@/lib/types/ecommerce";
 import { productsIn, type CampaignContent } from "./content";
@@ -167,24 +166,13 @@ export function unlistedProductText({ title }: UnlistedProduct): string {
   return title ? `${title} is no longer in the shop: remove it or list it again` : "A product in the email is no longer in the shop: remove it";
 }
 
-/** Pure — what stops a send for want of a product, or null: every one not in the shop, by name. */
+/**
+ * Pure — what stops a send for want of a product, or null: every one not in
+ * the shop, by name. The check before each wave names the block each is in
+ * (`campaignContentChecks`, slice 11): its waves can span days, and a product
+ * can be un-listed between them.
+ */
 export function campaignProductsProblem({ unlisted, error }: CampaignProducts): string | null {
   if (error) return error;
   return unlisted.length ? unlisted.map(unlistedProductText).join("; ") : null;
-}
-
-/**
- * The products as a check before a wave (its waves can span days, and a
- * product can be un-listed between them); null for an email with none.
- */
-export async function productsCheck(admin: SupabaseClient, content: CampaignContent | null): Promise<PreflightCheck | null> {
-  const count = content ? productsIn(content).length : 0;
-  if (!count) return null;
-  const read = await readCampaignProducts(admin, content);
-  const problem = campaignProductsProblem(read);
-  return {
-    key: "products",
-    ok: !problem,
-    detail: problem ?? (count === 1 ? "the product in the email is in the shop" : `the ${count} products in the email are in the shop`),
-  };
 }

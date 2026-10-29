@@ -2,7 +2,7 @@
 
 **Issue:** [#366](https://github.com/ivanyeors/mp/issues/366) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** 03, 05. Extends `PRD-campaign-send-flow`'s checklist. Its Variable and 中文 rows
 join when slices 13 and 17 land.
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`

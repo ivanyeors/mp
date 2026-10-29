@@ -9,7 +9,8 @@ import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import type { EmailRendition } from "@/lib/media-assets/email-renditions";
 import { verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
 import { keepChineseBlock, withoutChineseVersion } from "../chinese-version";
-import type { CampaignContent, EmailBlock } from "../content";
+import type { ChineseBlockWords, CampaignContent, EmailBlock } from "../content";
+import type { ContentCheck } from "../content-checks";
 import { campaignLedgerKey, EMPTY_CAMPAIGN_DRAFT, type Campaign } from "../rules";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
 
@@ -116,7 +117,7 @@ describe("one wave, two languages", () => {
   it("sends a zh-CN Customer the 中文 email and everyone else the English one, one ledger row each", async () => {
     const s = setup();
     const plan = await planWave(campaign(), { size: 10 }, s);
-    expect(plan.readiness.checks.find((c) => c.key === "chinese")).toEqual({ key: "chinese", ok: true, detail: "every block, the subject and the preview line are in Chinese" });
+    expect(plan.readiness.checks.find((c) => c.key === "chinese")).toMatchObject({ key: "chinese", ok: true, detail: "every block, the subject and the preview line are in Chinese", issues: [] });
     expect(plan.readiness.ready).toBe(true);
     expect(plan.plan).toMatchObject({ eligible: 3, eligibleChinese: 2, selectedChinese: 2 });
 
@@ -233,5 +234,39 @@ describe("the Send card says who gets which language", () => {
       "214 of 1,830 customers read the site in Chinese and will get the 中文 version; everyone else gets English. In this wave, 12 of 100 get it.",
     );
     expect(languageSummary({ eligible: 10, eligibleChinese: 0, selected: 10, selectedChinese: 0, hasChinese: true })).toBeNull();
+  });
+});
+
+describe("the 中文 version is checked as the English is (slice 11)", () => {
+  const zh = CHINESE_SAMPLE_CONTENT.translations!["zh-CN"]!;
+  const withWhy = (text: string): CampaignContent => ({
+    ...CHINESE_SAMPLE_CONTENT,
+    translations: { "zh-CN": { ...zh, blocks: { ...zh.blocks, why: { ...zh.blocks.why, text } as ChineseBlockWords } } },
+  });
+
+  it("holds the wave on a health claim in the 中文 words alone, naming the 中文 block", async () => {
+    const r = await planWave(campaign(withWhy("治疗失眠的枕头")), { size: 10 }, setup());
+    expect(r.readiness.ready).toBe(false);
+    const clinical = r.readiness.checks.find((c) => c.key === "clinical") as ContentCheck;
+    expect(clinical.ok).toBe(false);
+    expect(clinical.issues).toEqual([expect.objectContaining({ blockId: "why", language: "zh-CN", text: expect.stringMatching(/^中文, Block 3, Heading contains "治疗"/) })]);
+    // The 中文 version is otherwise whole: its own row passes.
+    expect(r.readiness.checks.find((c) => c.key === "chinese")).toMatchObject({ ok: true });
+  });
+
+  it("names each 中文 block not current with its id, so the Send card can go to it", async () => {
+    const changed: CampaignContent = { ...CHINESE_SAMPLE_CONTENT, blocks: CHINESE_SAMPLE_CONTENT.blocks.map((b) => (b.id === "why" ? ({ ...b, text: "Why FibreCool keeps you cool" } as EmailBlock) : b)) };
+    const r = await planWave(campaign(changed), { size: 10 }, setup());
+    expect((r.readiness.checks.find((c) => c.key === "chinese") as ContentCheck).issues).toEqual([
+      { blockId: "why", text: "中文, Block 3, Heading: english changed since this was translated", what: "English changed since this was translated", language: "zh-CN" },
+    ]);
+  });
+
+  it("advises on the blocks the saved content still marks Drafted with AI, once, in English", async () => {
+    const r = await planWave(campaign({ ...CHINESE_SAMPLE_CONTENT, aiDrafted: ["why"] }), { size: 10 }, setup());
+    expect(r.readiness.ready).toBe(true);
+    expect(r.readiness.advice.find((c) => c.key === "ai_drafted")?.issues).toEqual([
+      { blockId: "why", text: "Recommended: Block 3, Heading: still marked Drafted with AI: read it, then press Keep", what: "Recommended: still marked Drafted with AI: read it, then press Keep" },
+    ]);
   });
 });
