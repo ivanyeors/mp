@@ -13,6 +13,7 @@ import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail } from "./account";
 import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
 import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
+import { renderCampaignBlocksEmail } from "./campaign-blocks";
 import { renderComposedCampaignEmail } from "./campaigns";
 import { renderChatCodeEmail, renderChatTranscriptEmail } from "./support-chat";
 import {
@@ -66,6 +67,7 @@ import {
   sampleBalanceDueFinish,
   sampleCheckup,
   sampleClaimBonus,
+  sampleCampaignBlocks,
   sampleComposedCampaign,
   sampleReadjustmentReschedule,
   sampleRestock,
@@ -499,6 +501,16 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     audience: "customer",
     campaign: true,
     render: (f) => renderComposedCampaignEmail(sampleComposedCampaign(f)),
+  },
+  {
+    // The same campaign mail, built from typed blocks (PRD-campaign-email-editor
+    // slice 03); campaigns written before them keep campaign.composed.
+    id: "campaign.blocks",
+    label: "Email campaign built from blocks",
+    group: "campaign",
+    audience: "customer",
+    campaign: true,
+    render: (f) => renderCampaignBlocksEmail(sampleCampaignBlocks(f)),
   },
 
   // --- Aftercare (PRD customer-crm slices 07, 08) ---

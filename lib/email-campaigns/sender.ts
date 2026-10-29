@@ -49,6 +49,7 @@ import {
   type DeliverySetup,
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
+import { renderCampaignBlocksEmail, type CampaignBlocksPlaceholders } from "@/lib/email/campaign-blocks";
 import { renderComposedCampaignEmail, type ComposedCampaignPlaceholders } from "@/lib/email/campaigns";
 import {
   checkCampaignFrom,
@@ -75,8 +76,10 @@ import {
   type Campaign,
   type CampaignPlan,
 } from "./rules";
+import { contentSignsIn, CONTENT_PLACEHOLDERS, SITE_BUTTON_PATHS, type BlockButton } from "./content";
 import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
+import { variableValues } from "./variables";
 
 export { MAX_CONSECUTIVE_FAILURES };
 
@@ -139,20 +142,62 @@ export function campaignButton(
 }
 
 /**
- * Pure — the Campaign as one recipient gets it. `placeholders` is the
- * editor's preview's alone (`renderCampaignPreview`): no send passes it.
+ * Pure — where a block's button goes for one recipient (PRD-campaign-email-editor
+ * slice 03): a page on the live site in their language, with the campaign's
+ * UTMs; for `sign_in` their own Claim link when they have one, as the single
+ * button; for `url` the link Staff typed.
+ */
+export function blockButtonHref(
+  b: BlockButton,
+  campaignName: string,
+  { origin, locale, claimUrl }: { origin: string; locale: Locale; claimUrl: string | null },
+): string | null {
+  if (b.target === "url") return b.url ? withEmailCampaignUtm(b.url, campaignName, origin) : null;
+  if (b.target === "sign_in" && claimUrl) return claimUrl;
+  const path = b.target === "sign_in" ? "/account" : SITE_BUTTON_PATHS[b.target];
+  return withEmailCampaignUtm(`${origin}${withLocale(path, locale)}`, campaignName, origin);
+}
+
+/** Pure — a button of the Campaign goes to the recipient's sign-in, so each send mints their Claim link. */
+export const campaignSignsIn = (campaign: Pick<Campaign, "button" | "content">) =>
+  campaign.content ? contentSignsIn(campaign.content) : campaign.button?.target === "sign_in";
+
+/** What an empty field shows in the editor's preview, legacy or blocks. */
+export type CampaignPreviewPlaceholders = ComposedCampaignPlaceholders & CampaignBlocksPlaceholders;
+
+/** The Campaign's parts an email is rendered from. */
+type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "body" | "content" | "greeting" | "button">;
+
+/**
+ * Pure — the Campaign as one recipient gets it: its blocks, or the plain-text
+ * body of a campaign written before them, which keeps its own renderer
+ * (PRD-campaign-email-editor decision 5). `placeholders` is the editor's
+ * preview's alone (`renderCampaignPreview`): no send passes it.
  */
 export function renderCampaignFor(
-  campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
+  campaign: CampaignEmailParts,
   p: {
     firstName: string | null;
     origin: string;
     locale: Locale;
     claimUrl: string | null;
     unsubscribeUrl: string;
-    placeholders?: ComposedCampaignPlaceholders;
+    placeholders?: CampaignPreviewPlaceholders;
   },
 ): RenderedEmail {
+  if (campaign.content) {
+    return renderCampaignBlocksEmail({
+      subject: campaign.subject,
+      preheader: campaign.preheader,
+      content: campaign.content,
+      greeting: campaign.greeting,
+      firstName: p.firstName,
+      values: variableValues({ firstName: p.firstName }, campaign.content.fallbacks),
+      buttonHref: (b) => blockButtonHref(b, campaign.name, p),
+      unsubscribeUrl: p.unsubscribeUrl,
+      ...(p.placeholders ? { placeholders: p.placeholders } : {}),
+    });
+  }
   return renderComposedCampaignEmail({
     subject: campaign.subject,
     preheader: campaign.preheader,
@@ -167,12 +212,12 @@ export function renderCampaignFor(
 
 /**
  * Pure — the editor's preview: the Campaign for a sample customer, with an
- * unsubscribe link that unsubscribes nobody. An empty subject, message or
- * button label shows its placeholder, dashed and muted
+ * unsubscribe link that unsubscribes nobody. An empty subject, message,
+ * block field or button label shows its placeholder, dashed and muted
  * (PRD-campaign-email-editor decision 7), so an empty email's layout reads.
  */
 export function renderCampaignPreview(
-  campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
+  campaign: CampaignEmailParts,
   { origin, firstName }: { origin: string; firstName: string | null },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
@@ -182,7 +227,7 @@ export function renderCampaignPreview(
     locale: DEFAULT_LOCALE,
     claimUrl: null,
     unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
-    placeholders: CAMPAIGN_PLACEHOLDERS,
+    placeholders: { ...CAMPAIGN_PLACEHOLDERS, ...CONTENT_PLACEHOLDERS },
   });
 }
 
@@ -200,13 +245,14 @@ export function pauseCheck(stats: readonly CampaignWaveStats[], resume: boolean)
 
 const originOf = (setup: DeliverySetup) => setup.origin.replace(/\/$/, "");
 
-type CampaignContent = Pick<Campaign, "subject" | "preheader" | "body" | "button">;
+/** What the points rule reads. */
+type CampaignWordsRead = Pick<Campaign, "subject" | "preheader" | "body" | "button" | "content">;
 
 /**
  * Points as a check, for a Campaign that mentions them; null for one that
  * does not. It fails until points are on, launched, and grant a Claim bonus.
  */
-export async function pointsCheck(admin: SupabaseClient, campaign: CampaignContent, now: Date = new Date()): Promise<PreflightCheck | null> {
+export async function pointsCheck(admin: SupabaseClient, campaign: CampaignWordsRead, now: Date = new Date()): Promise<PreflightCheck | null> {
   if (!mentionsPoints(campaign)) return null;
   try {
     const offer = claimBonusOffer(await readPointsSettings(admin), now);
@@ -328,7 +374,7 @@ export interface CampaignReadiness {
 /** Every check, for the page's status panel. Changes nothing. */
 export async function campaignReadiness(
   setup: CampaignSenderSetup,
-  { campaign, resume = false }: { campaign?: Pick<Campaign, "id"> & CampaignContent; resume?: boolean } = {},
+  { campaign, resume = false }: { campaign?: Pick<Campaign, "id"> & CampaignWordsRead; resume?: boolean } = {},
 ): Promise<CampaignReadiness> {
   const [checks, room] = await Promise.all([campaignDeliveryChecks(setup), tryAllowance(setup)]);
   try {
@@ -501,7 +547,7 @@ export async function sendCampaignBatch(
       const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret });
       if (!unsubscribe) throw new Error("no unsubscribe link could be signed");
       const claimUrl =
-        campaign.button?.target === "sign_in" && claim.unclaimedMigrated
+        campaignSignsIn(campaign) && claim.unclaimedMigrated
           ? (await mintClaimLink(setup.admin, { customerId, template: key, locale, origin })).url
           : null;
       const rendered = renderCampaignFor(campaign, {
@@ -551,7 +597,7 @@ const TEST_PREFIX = "[Test] ";
  * the account page.
  */
 export async function sendCampaignTest(
-  campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
+  campaign: CampaignEmailParts,
   { to, firstName }: { to: readonly string[]; firstName: string | null },
   setup: CampaignSenderSetup,
 ): Promise<{ sent: string[]; failed: { to: string; error: string }[] } | { refused: string }> {

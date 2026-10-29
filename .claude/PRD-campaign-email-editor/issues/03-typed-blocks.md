@@ -2,7 +2,7 @@
 
 **Issue:** [#357](https://github.com/ivanyeors/mp/issues/357) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** 02
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:email`
 

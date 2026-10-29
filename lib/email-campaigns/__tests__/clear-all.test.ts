@@ -16,12 +16,31 @@ import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT } from "../rules";
  * words back exactly.
  */
 
+/** A campaign written before blocks: its message and button. */
 const TYPED = campaignWordsOf({
   name: "December cooling launch",
   subject: "Sleep cooler this December",
   preheader: "Our FibreCool covers are back",
   body: "Our covers are back.\n\n- Every size",
   button: { target: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
+  content: null,
+});
+
+/** A campaign written in blocks (slice 03). */
+const BLOCKS = campaignWordsOf({
+  name: "December cooling launch",
+  subject: "Sleep cooler this December",
+  preheader: "",
+  body: "",
+  button: null,
+  content: {
+    v: 1,
+    blocks: [
+      { id: "h", type: "heading", level: 1, text: "Sleep cooler" },
+      { id: "b", type: "buttons", buttons: [{ label: "Shop", target: "shop", style: "primary" }] },
+    ],
+    fallbacks: { first_name: "friend" },
+  },
 });
 
 describe("campaignWordsOf", () => {
@@ -32,6 +51,7 @@ describe("campaignWordsOf", () => {
       preheader: "Our FibreCool covers are back",
       body: "Our covers are back.\n\n- Every size",
       button: { choice: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
+      content: null,
     });
     expect(campaignWordsOf(FIRST_CAMPAIGN_DRAFT).button).toEqual({ choice: "sign_in", label: "Sign in and collect your points", url: "" });
   });
@@ -50,6 +70,12 @@ describe("campaignWordsEmpty", () => {
     expect(campaignWordsEmpty({ ...EMPTY_CAMPAIGN_WORDS, button: { choice: "sign_in", label: "", url: "" } })).toBe(false);
   });
 
+  it("is false while any block is there, even one with its fields empty", () => {
+    const one = { v: 1 as const, blocks: [{ id: "d", type: "divider" as const }], fallbacks: {} };
+    expect(campaignWordsEmpty({ ...EMPTY_CAMPAIGN_WORDS, content: one })).toBe(false);
+    expect(campaignWordsEmpty({ ...EMPTY_CAMPAIGN_WORDS, content: null })).toBe(true);
+  });
+
   it("ignores a hidden label or link when there is no button", () => {
     expect(campaignWordsEmpty({ ...EMPTY_CAMPAIGN_WORDS, button: { choice: "none", label: "Shop", url: "https://x.test" } })).toBe(true);
   });
@@ -58,8 +84,19 @@ describe("campaignWordsEmpty", () => {
 describe("clearCampaignWords", () => {
   it("returns every field to its placeholder and the button to No button", () => {
     const { words } = clearCampaignWords(TYPED);
-    expect(words).toEqual({ name: "", subject: "", preheader: "", body: "", button: { choice: "none", label: "", url: "" } });
+    expect(words).toEqual({ name: "", subject: "", preheader: "", body: "", button: { choice: "none", label: "", url: "" }, content: null });
     expect(campaignWordsEmpty(words)).toBe(true);
+  });
+
+  it("empties a block campaign of its blocks, and it stays a block campaign", () => {
+    const { words, snapshot } = clearCampaignWords(BLOCKS);
+    expect(words).toEqual(EMPTY_CAMPAIGN_WORDS);
+    expect(words.content).toEqual({ v: 1, blocks: [], fallbacks: {} });
+    expect(campaignWordsEmpty(words)).toBe(true);
+    expect(snapshot).toEqual(BLOCKS);
+    // The snapshot is its own copy: a later edit to the blocks cannot reach it.
+    (BLOCKS.content!.blocks[0] as { text: string }).text = "changed";
+    expect((snapshot.content!.blocks[0] as { text: string }).text).toBe("Sleep cooler");
   });
 
   it("keeps a snapshot Undo puts back exactly, which later edits cannot reach", () => {

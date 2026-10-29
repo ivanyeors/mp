@@ -15,6 +15,16 @@
  */
 import { z } from "zod";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
+import {
+  CampaignContentPreviewSchema,
+  CampaignContentSchema,
+  contentWords,
+  EMPTY_CAMPAIGN_CONTENT,
+  isHttpsUrl,
+  unknownVariableMessage,
+} from "./content";
+
+export { isHttpsUrl };
 
 export const CAMPAIGN_AUDIENCES = ["imported_not_signed_in", "subscribed", "segment"] as const;
 export type CampaignAudience = (typeof CAMPAIGN_AUDIENCES)[number];
@@ -69,11 +79,14 @@ const text = (max: number, empty: string) =>
 /**
  * The draft's checks. Saving needs every word (`required`); the preview takes
  * them empty, so an empty email still shows its layout with its placeholders.
+ *
+ * An email is either its typed blocks (`content`, PRD-campaign-email-editor
+ * slice 03), which every new campaign is, or the plain-text `body` and one
+ * button of a campaign written before the editor: never both.
  */
 function draftSchema({ required }: { required: boolean }) {
   const words = (max: number, empty: string) =>
     required ? text(max, empty) : z.string().trim().max(max, `At most ${max} characters.`);
-  const body = z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`);
   return z
     .object({
       name: words(CAMPAIGN_LIMITS.name, "Give the campaign a name."),
@@ -85,7 +98,8 @@ function draftSchema({ required }: { required: boolean }) {
         .transform((v) => v || null)
         .nullable()
         .default(null),
-      body: required ? body.refine((v) => v.trim().length > 0, "Write the email.") : body,
+      body: z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`).default(""),
+      content: (required ? CampaignContentSchema : CampaignContentPreviewSchema).nullable().default(null),
       greeting: z.boolean().default(true),
       button: z
         .object({
@@ -107,6 +121,18 @@ function draftSchema({ required }: { required: boolean }) {
     .superRefine((d, ctx) => {
       if (d.audience === "segment" && !d.segmentId) {
         ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
+      }
+      if (!d.content) {
+        if (required && !d.body.trim()) ctx.addIssue({ code: "custom", path: ["body"], message: "Write the email." });
+        return;
+      }
+      if (d.body.trim() || d.button) {
+        ctx.addIssue({ code: "custom", path: ["content"], message: "An email is its blocks or its message, not both." });
+      }
+      // A block campaign fills its Variables in the subject and preview line too.
+      for (const field of ["subject", "preheader"] as const) {
+        const unknown = unknownVariableMessage(d[field] ?? "");
+        if (unknown) ctx.addIssue({ code: "custom", path: [field], message: unknown });
       }
     })
     .transform((d) => ({
@@ -131,23 +157,15 @@ export const CampaignPreviewSchema = draftSchema({ required: false });
 export type CampaignDraft = z.output<typeof CampaignDraftSchema>;
 export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
 
-export function isHttpsUrl(value: string): boolean {
-  try {
-    const u = new URL(value);
-    return u.protocol === "https:" && Boolean(u.hostname) && !/\s/.test(value);
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Pure — whether the Campaign promises points anywhere a customer reads it.
  * Such a Campaign goes to customers only while points are live
  * (`claimBonusOffer`, lib/points/offer.ts): an email never promises points a
  * sign-in would not grant (PRD-loyalty-points slice 05).
  */
-export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button">): boolean {
-  return /\bpoints?\b/i.test([c.subject, c.preheader ?? "", c.body, c.button?.label ?? ""].join("\n"));
+export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
+  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : [])];
+  return /\bpoints?\b/i.test(words.join("\n"));
 }
 
 /** A Campaign as stored. */
@@ -163,16 +181,22 @@ export interface Campaign extends CampaignDraft {
 
 /** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
-  "id, name, subject, preheader, body, greeting, button_label, button_target, button_url, audience, segment_id, " +
+  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, " +
   "created_at, updated_at, locked_at, archived_at, creator:mp_staff!created_by_profile_id(name)";
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
-/** Pure — one `email_campaigns` row, or null for a malformed one. */
+/**
+ * Pure — one `email_campaigns` row, or null for a malformed one. A block
+ * campaign's `content` is read with the preview's checks, the shape and the
+ * safety rules, so a row saved under an older limit still opens.
+ */
 export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
   const id = str(row.id);
   const audience = str(row.audience);
   if (!id || !audience || !(CAMPAIGN_AUDIENCES as readonly string[]).includes(audience)) return null;
+  const content = row.content == null ? null : CampaignContentPreviewSchema.safeParse(row.content);
+  if (content && !content.success) return null;
   const target = str(row.button_target);
   const creator = Array.isArray(row.creator) ? row.creator[0] : row.creator;
   return {
@@ -181,6 +205,7 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
     subject: str(row.subject) ?? "",
     preheader: str(row.preheader),
     body: str(row.body) ?? "",
+    content: content ? content.data : null,
     greeting: row.greeting !== false,
     button:
       target === "sign_in" || target === "url"
@@ -196,13 +221,14 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
   };
 }
 
-/** Pure — the table's columns for a draft. */
+/** Pure — the table's columns for a draft. A block campaign has no body and no button columns. */
 export function campaignRowFromDraft(d: CampaignDraft) {
   return {
     name: d.name,
     subject: d.subject,
     preheader: d.preheader,
-    body: d.body,
+    body: d.content ? null : d.body,
+    content: d.content,
     greeting: d.greeting,
     button_label: d.button?.label ?? null,
     button_target: d.button?.target ?? null,
@@ -435,6 +461,7 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
     "",
     "Questions? Just reply to this email.",
   ].join("\n"),
+  content: null,
   greeting: true,
   button: { target: "sign_in", label: "Sign in and collect your points", url: null },
   audience: "imported_not_signed_in",
@@ -443,14 +470,16 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
 
 /**
  * An empty email (PRD-campaign-email-editor decision 7): every word empty and
- * on its placeholder, no button, the greeting on, and today's default
- * audience. It does not save until Staff write the email.
+ * on its placeholder, no blocks yet, the greeting on, and today's default
+ * audience. A new campaign is written in blocks (slice 03). It does not save
+ * until Staff write the email.
  */
 export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "",
   subject: "",
   preheader: null,
   body: "",
+  content: EMPTY_CAMPAIGN_CONTENT,
   greeting: true,
   button: null,
   audience: "imported_not_signed_in",

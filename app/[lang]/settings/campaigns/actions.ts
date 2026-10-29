@@ -60,13 +60,14 @@ async function loadCampaign(id: string): Promise<Campaign | null> {
   return getCampaign(supabaseAdmin(), id);
 }
 
-/** The audit's snapshot: what was sent and to whom, never a customer. */
-const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button">) => ({
+/** The audit's snapshot: what was sent and to whom, never a customer. A block campaign's blocks by type. */
+const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button" | "content">) => ({
   name: c.name,
   subject: c.subject,
   audience: c.audience,
   segment_id: c.segmentId,
   button: c.button?.target ?? null,
+  blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
 
 /** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */

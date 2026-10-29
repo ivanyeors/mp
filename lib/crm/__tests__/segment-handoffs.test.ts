@@ -40,6 +40,8 @@ describe("newCampaignDraft", () => {
       subject: "",
       preheader: null,
       body: "",
+      // Written in blocks, none yet (PRD-campaign-email-editor slice 03).
+      content: { v: 1, blocks: [], fallbacks: {} },
       greeting: true,
       button: null,
       audience: "segment",
@@ -47,7 +49,8 @@ describe("newCampaignDraft", () => {
     });
     // Blank on purpose: it does not save until Staff write the email.
     expect(CampaignDraftSchema.safeParse(draft).success).toBe(false);
-    expect(CampaignDraftSchema.safeParse({ ...draft, subject: "Hello", body: "Hi" }).success).toBe(true);
+    const written = { ...draft, subject: "Hello", content: { ...draft.content!, blocks: [{ id: "h", type: "heading" as const, level: 1 as const, text: "Hi" }] } };
+    expect(CampaignDraftSchema.safeParse(written).success).toBe(true);
   });
 
   it("starts the empty draft for anything else (PRD-campaign-email-editor slice 01)", () => {

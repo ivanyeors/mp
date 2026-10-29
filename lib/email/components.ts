@@ -138,14 +138,18 @@ export function preformatted(text: string): string {
 
 /** Inline text link — achromatic and underlined, matching the site's link treatment. */
 export function link(opts: { href: string; label: string }): string {
+  return linkHtml({ href: opts.href, labelHtml: escapeHtml(opts.label) });
+}
+
+/** Inline link whose words are already HTML (bold or italic inside it). A rejected URL leaves the words. */
+export function linkHtml(opts: { href: string; labelHtml: string }): string {
   const href = safeUrl(opts.href);
-  const label = escapeHtml(opts.label);
-  if (!href) return label;
+  if (!href) return opts.labelHtml;
   return `<a class="mp-fg" href="${href}" style="${css({
     color: LIGHT.fg,
     "text-decoration": "underline",
     "text-underline-offset": "2px",
-  })}">${label}</a>`;
+  })}">${opts.labelHtml}</a>`;
 }
 
 export interface ButtonOptions {
@@ -153,6 +157,8 @@ export interface ButtonOptions {
   label: string;
   variant?: "primary" | "secondary";
   align?: "left" | "center";
+  /** The widest Outlook's VML button may draw, in px: a column's width. Default 360. */
+  maxWidth?: number;
 }
 
 /**
@@ -180,7 +186,7 @@ export function button(opts: ButtonOptions): string {
   // would make "Sign in" a 260px slab in Outlook and snug everywhere else.
   // Measure the RAW label — `label` is escaped, so "&" would count as 5 chars.
   const vmlWidth = Math.min(
-    360,
+    opts.maxWidth ?? 360,
     Math.max(160, Math.round(opts.label.length * 7.6) + 48),
   );
 
@@ -229,6 +235,37 @@ export function button(opts: ButtonOptions): string {
     "text-align": align,
     padding: `${LAYOUT.gutter}px 0`,
   }));
+}
+
+/**
+ * The widest one button of a pair takes, in px. Two fit the 600px card side by
+ * side; on a screen too narrow for both, they stack.
+ */
+const PAIR_COLUMN = 240;
+
+/**
+ * Two buttons side by side that stack on a phone (PRD-campaign-email-editor
+ * slice 03), built the hybrid way: each sits in an inline-block column at most
+ * PAIR_COLUMN wide, so the pair falls to one column by width alone, with no
+ * media query (Gmail's apps ignore them for many accounts), inside an MSO
+ * ghost table that keeps two columns in classic Outlook. The wrapper's
+ * `font-size:0` removes the gap the markup's whitespace would leave between
+ * the columns. Slice 06 makes this the general column primitive.
+ */
+export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
+  const column = (b: ButtonOptions) =>
+    `<div style="${css({
+      display: "inline-block",
+      width: "100%",
+      "max-width": `${PAIR_COLUMN}px`,
+      "vertical-align": "top",
+    })}">${button({ ...b, maxWidth: PAIR_COLUMN })}</div>`;
+  return block(
+    `<!--[if mso]><table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;"><tr><td width="50%" valign="top"><![endif]-->${column(
+      buttons[0],
+    )}<!--[if mso]></td><td width="50%" valign="top"><![endif]-->${column(buttons[1])}<!--[if mso]></td></tr></table><![endif]-->`,
+    css({ "text-align": "center", "font-size": 0 }),
+  );
 }
 
 /** The landing "surface": rounded, 1px border, subtle fill. */
@@ -493,14 +530,19 @@ export function addressBlock(title: string, lines: string[]): string {
 }
 
 export function bulletList(items: string[]): string {
-  if (items.length === 0) return "";
-  const rows = items
+  return bulletListHtml(items.map(escapeHtml));
+}
+
+/** Bullets whose items are already HTML (links, <strong>, …). */
+export function bulletListHtml(itemsHtml: string[]): string {
+  if (itemsHtml.length === 0) return "";
+  const rows = itemsHtml
     .map(
-      (item) =>
+      (itemHtml) =>
         `<tr><td class="mp-fg" style="${typeStyle("body", {
           color: LIGHT.fg,
           padding: "4px 0",
-        })}">&bull;&nbsp;&nbsp;${escapeHtml(item)}</td></tr>`,
+        })}">&bull;&nbsp;&nbsp;${itemHtml}</td></tr>`,
     )
     .join("\n");
   return withGutter(`<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
@@ -517,7 +559,7 @@ ${rows}
  * The outline is the muted ink, not `LIGHT.border`, so it reads on the light
  * card and the dark one alike; the text takes the `mp-muted` dark rule.
  */
-export function placeholderHint(text: string, as: "h1" | "body" | "button" = "body"): string {
+export function placeholderHint(text: string, as: "h1" | "h2" | "body" | "button" = "body"): string {
   const outline = { border: `1px dashed ${LIGHT.mutedFg}`, "border-radius": `${as === "button" ? RADIUS.button : RADIUS.md}px` };
   if (as === "button") {
     return block(
@@ -530,7 +572,7 @@ export function placeholderHint(text: string, as: "h1" | "body" | "button" = "bo
       css({ "text-align": "center", padding: `${LAYOUT.gutter}px 0` }),
     );
   }
-  const tag = as === "h1" ? "h1" : "p";
+  const tag = as === "body" ? "p" : as;
   return `<${tag} class="mp-muted" style="${typeStyle(as, {
     ...outline,
     color: LIGHT.mutedFg,

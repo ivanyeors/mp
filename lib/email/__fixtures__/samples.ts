@@ -8,6 +8,8 @@
 // "hostile" fills every free-text field with HOSTILE, which is how
 // escaping.test.ts proves no template interpolates raw user input.
 
+import type { CampaignBlocksEmailData } from "../campaign-blocks";
+import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
 import type { ChatTranscript } from "../support-chat";
@@ -452,6 +454,74 @@ export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
     ].join("\n"),
     greeting: true,
     button: { label: "Sign in and collect your points", href: sampleClaimUrl("campaign:3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f") },
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+/**
+ * Words with every character escaping must handle, and no tag: the content
+ * schema refuses a tag in a block's words, so HOSTILE itself cannot get there.
+ */
+export const WORDS_PROBE = `"Quotes" & <3 'apostrophes'`;
+
+/**
+ * A campaign built from blocks (PRD-campaign-email-editor slice 03): a title,
+ * a text block with bold, a link and the first name, bullets, two buttons side
+ * by side, a divider and a spacer. Each button's link is what the sender
+ * resolves for one Customer.
+ */
+export function sampleCampaignBlocksContent(fixture: EmailFixture = "happy"): CampaignContent {
+  return {
+    v: 1,
+    blocks: [
+      { id: "title", type: "heading", level: 1, text: "Sleep cooler this December" },
+      {
+        id: "intro",
+        type: "text",
+        paragraphs: [
+          {
+            kind: "p",
+            runs: [
+              { text: "Our " },
+              { text: "FibreCool", bold: true },
+              { text: " covers are back, " },
+              { var: "first_name" },
+              { text: ", in every size. Read " },
+              { text: "the care guide", href: `${ORIGIN}/en-US/faq` },
+              { text: fixture === "hostile" ? ` ${WORDS_PROBE}.` : " before you wash yours." },
+            ],
+          },
+          { kind: "bullets", items: [[{ text: "Cool to the touch" }], [{ text: "Machine ", italic: true }, { text: "washable" }]] },
+        ],
+      },
+      {
+        id: "buttons",
+        type: "buttons",
+        buttons: [
+          { label: "Shop the covers", target: "shop", style: "primary" },
+          { label: "Book a fitting", target: "book_fitting", style: "secondary" },
+        ],
+      },
+      { id: "line", type: "divider" },
+      { id: "room", type: "spacer", size: "s" },
+      { id: "closing", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Questions? Just reply to this email." }] }] },
+    ],
+    fallbacks: { first_name: "there" },
+  };
+}
+
+export function sampleCampaignBlocks(fixture: EmailFixture = "happy"): CampaignBlocksEmailData {
+  const firstName = pick(fixture, "Wei Ling");
+  const utm = "utm_source=email_campaign&utm_medium=email&utm_campaign=december-cooling-launch";
+  const pages: Record<string, string> = { shop: "/en-US/shop", book_fitting: "/en-US/appointments" };
+  return {
+    subject: pick(fixture, "{first_name}, sleep cooler this December"),
+    preheader: pick(fixture, "Our FibreCool covers are back, in every size."),
+    content: sampleCampaignBlocksContent(fixture),
+    greeting: true,
+    firstName,
+    values: { first_name: firstName },
+    buttonHref: (b) => `${ORIGIN}${pages[b.target] ?? "/en-US"}?${utm}`,
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }

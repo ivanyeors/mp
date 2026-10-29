@@ -20,6 +20,7 @@ import {
   withEmailCampaignUtm,
   type CampaignSenderSetup,
 } from "../sender";
+import { CONTENT_PLACEHOLDERS, emptyBlock, type CampaignContent } from "../content";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
 
 const ORIGIN = "https://custom.mpillow.com";
@@ -393,6 +394,7 @@ describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
    */
   const partly = campaign({
     ...EMPTY_CAMPAIGN_DRAFT,
+    content: null,
     audience: "subscribed",
     name: "December",
     subject: "Sleep cooler",
@@ -400,7 +402,10 @@ describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
   });
 
   it("are drawn in the editor's preview of an empty email, dashed and muted, so its layout reads", () => {
-    const empty = renderCampaignPreview({ ...EMPTY_CAMPAIGN_DRAFT, button: { target: "sign_in", label: "", url: null } }, { origin: ORIGIN, firstName: "Ivan" });
+    const empty = renderCampaignPreview(
+      { ...EMPTY_CAMPAIGN_DRAFT, content: null, button: { target: "sign_in", label: "", url: null } },
+      { origin: ORIGIN, firstName: "Ivan" },
+    );
     for (const hint of [CAMPAIGN_PLACEHOLDERS.subject, CAMPAIGN_PLACEHOLDERS.body, CAMPAIGN_PLACEHOLDERS.buttonLabel]) {
       expect(empty.html).toContain(escaped(hint));
     }
@@ -430,6 +435,154 @@ describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
     expect(sent).toHaveLength(1);
     for (const hint of Object.values(CAMPAIGN_PLACEHOLDERS)) expect(sent[0].html).not.toContain(escaped(hint));
     expect(sent[0].html).not.toContain("dashed");
+  });
+});
+
+describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
+  const escaped = (s: string) => s.replace(/'/g, "&#39;");
+  const CONTENT: CampaignContent = {
+    v: 1,
+    blocks: [
+      { id: "title", type: "heading", level: 1, text: "Sleep cooler this December" },
+      {
+        id: "intro",
+        type: "text",
+        paragraphs: [
+          {
+            kind: "p",
+            runs: [
+              { text: "Hello " },
+              { var: "first_name" },
+              { text: ", our " },
+              { text: "FibreCool", bold: true },
+              { text: " covers are back. Read " },
+              { text: "the care guide", href: `${ORIGIN}/en-US/faq` },
+              { text: "." },
+            ],
+          },
+        ],
+      },
+      {
+        id: "buttons",
+        type: "buttons",
+        buttons: [
+          { label: "Sign in", target: "sign_in", style: "primary" },
+          { label: "Customise yours", target: "customise_mpillow", style: "secondary" },
+        ],
+      },
+      { id: "line", type: "divider" },
+    ],
+    fallbacks: { first_name: "friend" },
+  };
+  const blocks = (over: Partial<Campaign> = {}) =>
+    campaign({
+      ...EMPTY_CAMPAIGN_DRAFT,
+      name: "December cooling",
+      subject: "{first_name}, sleep cooler",
+      preheader: "New covers for {first_name}",
+      audience: "subscribed",
+      content: CONTENT,
+      ...over,
+    });
+  const EVE = id(5);
+
+  it("sends a wave through the same claim, ledger and headers, each button resolved for the recipient", async () => {
+    const { s, sent } = setup();
+    const r = await sendCampaignBatch(blocks(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+    expect(r).toMatchObject({ sent: 2, failed: 0, stopped: null });
+    expect(world.sends.filter((x) => x.template === campaignLedgerKey(CAMPAIGN)).map((x) => [x.customer_id, x.status, x.wave])).toEqual([
+      [ANN, "sent", "w1"],
+      [BEA, "sent", "w1"],
+    ]);
+    const [ann, bea] = sent;
+    expect(ann.subject).toBe("Ann, sleep cooler");
+    expect(ann.html).toContain(">Sleep cooler this December</h1>");
+    expect(ann.html).toContain("Hi Ann,");
+    expect(ann.html).toContain("Hello Ann, our <strong>FibreCool</strong> covers are back.");
+    expect(ann.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq"[^>]*>the care guide<\/a>/);
+    expect(ann.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    // Ann was imported and has not signed in: the sign-in button is her own Claim link, in her language.
+    expect(world.claimLinks).toEqual([expect.objectContaining({ customer_id: ANN, template: `campaign:${CAMPAIGN}` })]);
+    expect(ann.html).toMatch(/\/zh-CN\/account\/welcome\?c=[A-Za-z0-9_-]{43}/);
+    expect(ann.html).toContain(`${ORIGIN}/zh-CN/mp-config?utm_source=email_campaign&amp;utm_medium=email&amp;utm_campaign=december-cooling`);
+    expect(ann.text).toMatch(/^Sign in: https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=/m);
+    expect(ann.text).toContain("the care guide: https://custom.mpillow.com/en-US/faq");
+    // Bea signed up here: her sign-in button is her account.
+    expect(bea.html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);
+    expect(bea.html).not.toContain("welcome?c=");
+    expect(bea.html).toContain("max-width:240px"); // the two buttons, side by side
+  });
+
+  it("fills the first name with the campaign's fallback words for a customer who has none", async () => {
+    world.customers.push({ id: EVE, email: "eve@x.test", first_name: "  ", marketing_email: "subscribed" });
+    const { s, sent } = setup();
+    await sendCampaignBatch(blocks(), { wave: "w1", customerIds: [EVE] }, s);
+    expect(sent[0].subject).toBe("friend, sleep cooler");
+    expect(sent[0].html).toContain("Hello friend, our");
+    expect(sent[0].text).toContain("Hello friend, our FibreCool covers are back.");
+  });
+
+  it("uses the catalogue's fallback words when the campaign sets none", async () => {
+    world.customers.push({ id: EVE, email: "eve@x.test", first_name: null, marketing_email: "subscribed" });
+    const { s, sent } = setup();
+    await sendCampaignBatch(blocks({ content: { ...CONTENT, fallbacks: {} } }), { wave: "w1", customerIds: [EVE] }, s);
+    expect(sent[0].subject).toBe("there, sleep cooler");
+    expect(sent[0].html).toContain("Hello there, our");
+    // The greeting is today's: no name, no fallback (slice 13 gives it the Variable's).
+    expect(sent[0].html).toContain("Hi,");
+  });
+
+  it("mints no Claim link when no button signs in", async () => {
+    const shop: CampaignContent = { ...CONTENT, blocks: [{ id: "b", type: "buttons", buttons: [{ label: "Shop", target: "shop", style: "primary" }] }] };
+    const { s, sent } = setup();
+    await sendCampaignBatch(blocks({ content: shop }), { wave: "w1", customerIds: [ANN] }, s);
+    expect(world.claimLinks).toEqual([]);
+    expect(sent[0].html).toContain(`${ORIGIN}/zh-CN/shop?utm_source=email_campaign`);
+  });
+
+  it("sends a test with [Test] before the subject, writing nothing to the ledger", async () => {
+    const { s, sent, admin } = setup();
+    expect(await sendCampaignTest(blocks(), { to: ["me@mpillow.com"], firstName: "Ivan" }, s)).toEqual({ sent: ["me@mpillow.com"], failed: [] });
+    expect(sent[0].subject).toBe("[Test] Ivan, sleep cooler");
+    expect(sent[0].html).toContain("Hello Ivan, our");
+    expect(sent[0].html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);
+    expect(admin.rpcCalls).toHaveLength(0);
+    expect(world.sends).toHaveLength(0);
+  });
+
+  it("previews an empty block on its placeholders, and never sends one", async () => {
+    const empty: CampaignContent = { v: 1, blocks: [emptyBlock("heading", "h"), emptyBlock("text", "t"), emptyBlock("buttons", "b")], fallbacks: {} };
+    const preview = renderCampaignPreview(blocks({ content: empty }), { origin: ORIGIN, firstName: "Ivan" });
+    for (const hint of [CONTENT_PLACEHOLDERS.heading, CONTENT_PLACEHOLDERS.text, CAMPAIGN_PLACEHOLDERS.buttonLabel]) {
+      expect(preview.html).toContain(escaped(hint));
+    }
+    expect(preview.html.match(/border:1px dashed/g)).toHaveLength(3);
+    expect(renderCampaignPreview(blocks({ content: { v: 1, blocks: [], fallbacks: {} } }), { origin: ORIGIN, firstName: null }).html).toContain(
+      CONTENT_PLACEHOLDERS.empty,
+    );
+
+    const { s, sent } = setup();
+    await sendCampaignTest(blocks({ content: empty }), { to: ["me@mpillow.com"], firstName: "Ivan" }, s);
+    await sendCampaignBatch(blocks({ content: empty }), { wave: "w1", customerIds: [BEA] }, s);
+    expect(sent).toHaveLength(2);
+    for (const e of sent) {
+      expect(e.html).not.toContain("dashed");
+      for (const hint of [...Object.values(CONTENT_PLACEHOLDERS), ...Object.values(CAMPAIGN_PLACEHOLDERS)]) {
+        expect(e.html).not.toContain(escaped(hint));
+        expect(e.text).not.toContain(hint);
+      }
+      // A button with no words is no button.
+      expect(e.html).not.toContain("/en-US/shop");
+    }
+  });
+
+  it("holds a block campaign that promises points until points are live", async () => {
+    world.settings.points_enabled = "false";
+    const points: CampaignContent = { ...CONTENT, blocks: [{ id: "h", type: "heading", level: 2, text: "1,000 points are waiting" }] };
+    const held = await planWave(blocks({ content: points }), { size: 10 }, setup().s);
+    expect(held.readiness.checks.find((c) => c.key === "points")).toMatchObject({ ok: false });
+    const plain = await planWave(blocks(), { size: 10 }, setup().s);
+    expect(plain.readiness.checks.map((c) => c.key)).not.toContain("points");
   });
 });
 

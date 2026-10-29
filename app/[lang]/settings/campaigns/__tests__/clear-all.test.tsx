@@ -10,6 +10,10 @@ import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-ca
  * (PRD-campaign-email-editor slice 01), in the editor as Staff use it: a new
  * campaign, a saved draft and a locked campaign. The actions are fakes; none
  * that writes is ever called by Clear all.
+ *
+ * A new campaign is written in blocks (slice 03), so Clear all empties its
+ * blocks; the saved draft here was written before them and keeps its message
+ * box.
  */
 
 const actions = vi.hoisted(() => ({
@@ -55,6 +59,7 @@ const DRAFT: CampaignDraft = {
   subject: "Sleep cooler this December",
   preheader: "Our FibreCool covers are back",
   body: "Our covers are back.\n\n- Every size",
+  content: null,
   greeting: false,
   button: { target: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
   audience: "subscribed",
@@ -95,16 +100,35 @@ const clearAll = () => button("Clear all")!;
 const undo = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast] [data-action]");
 const toastText = () => document.querySelector("[data-sonner-toast]")?.textContent ?? "";
 
-/** The fields Clear all empties, as typed. */
+const value = (id: string) => (document.getElementById(id) ? field(id).value : null);
+/** Each block's fields, as typed, joined with `|`. */
+const blocks = () =>
+  [...document.querySelectorAll("[data-block-id]")].map((li) =>
+    [...li.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")].map((f) => f.value).join("|"),
+  );
+
+/** The fields Clear all empties, as typed: the message box and button of a draft written before blocks, or the blocks. */
 const words = () => ({
   name: field("c-name").value,
   subject: field("c-subject").value,
   preheader: field("c-preheader").value,
-  body: field("c-body").value,
-  button: text("c-button"),
-  label: document.getElementById("c-button-label") ? field("c-button-label").value : null,
-  url: document.getElementById("c-button-url") ? field("c-button-url").value : null,
+  body: value("c-body"),
+  button: document.getElementById("c-button") ? text("c-button") : null,
+  label: value("c-button-label"),
+  url: value("c-button-url"),
+  blocks: blocks(),
 });
+const NO_WORDS = { name: "", subject: "", preheader: "", body: null, button: null, label: null, url: null, blocks: [] };
+const LEGACY_CLEARED = { name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null, blocks: [] };
+
+/** *Add block* → the type, as a keyboard user does it. */
+async function addBlock(label: string) {
+  await act(async () => {
+    button("Add block")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent?.startsWith(label));
+  await act(async () => item!.click());
+}
 
 function type(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -137,15 +161,14 @@ afterEach(async () => {
 });
 
 describe("a new campaign", () => {
-  it("opens with every field empty, on its placeholder, and nothing of the invitation", () => {
+  it("opens with every field empty, on its placeholder, no blocks yet, and nothing of the invitation", () => {
     mount(null, newCampaignDraft(undefined, []));
-    expect(words()).toEqual({ name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null });
+    expect(words()).toEqual(NO_WORDS);
     expect(field("c-name").placeholder).toBe("e.g. December cooling launch");
     expect(field("c-subject").placeholder).toBe("e.g. Sleep cooler this December");
     expect(field("c-preheader").placeholder).toBe("e.g. Our FibreCool covers are back, in every size");
-    expect(field("c-body").placeholder).toBe(
-      "Write your message. Leave a blank line between paragraphs; start a line with - for a bullet.",
-    );
+    expect(document.body.textContent).toContain("No blocks yet.");
+    expect(button("Add block")).not.toBeNull();
     expect(document.body.textContent).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
     expect(document.getElementById("c-greeting")?.getAttribute("aria-checked")).toBe("true");
   });
@@ -160,44 +183,55 @@ describe("a new campaign", () => {
     expect(clearAll().getAttribute("aria-describedby")).toBeNull();
   });
 
-  it("fills in the invitation, as real words and its audience, only when asked", async () => {
+  it("fills in the invitation, as real words in blocks and its audience, only when asked", async () => {
     mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
     expect(button("Use the sign-in invitation")).toBeNull(); // named after the Segment: not empty
     type(field("c-name"), "");
     await press(button("Use the sign-in invitation")!);
-    expect(words()).toMatchObject({
+    const filled = words();
+    expect(filled).toMatchObject({
       name: FIRST_CAMPAIGN_DRAFT.name,
       subject: FIRST_CAMPAIGN_DRAFT.subject,
       preheader: FIRST_CAMPAIGN_DRAFT.preheader,
-      body: FIRST_CAMPAIGN_DRAFT.body,
-      label: FIRST_CAMPAIGN_DRAFT.button!.label,
+      body: null,
     });
+    expect(filled.blocks[0]).toBe(FIRST_CAMPAIGN_DRAFT.subject);
+    expect(filled.blocks[1]).toContain("There's nothing to fill in and no password to set");
+    expect(filled.blocks.at(-1)).toBe(FIRST_CAMPAIGN_DRAFT.button!.label);
     expect(text("c-audience")).toBe("Imported from Shopify, not signed in yet");
     expect(button("Use the sign-in invitation")).toBeNull();
   });
 
-  it("clears the words back to their placeholders, keeps the audience and greeting, and Undo puts every word back", async () => {
+  it("clears the words and blocks back to their placeholders, keeps the audience and greeting, and Undo puts every word back", async () => {
     mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
     type(field("c-subject"), "Sleep cooler this December");
-    type(field("c-body"), "Our covers are back.");
+    await addBlock("Text");
+    type(document.querySelector("[data-block-id] textarea")!, "Our covers are back.");
     await press(document.getElementById("c-greeting")!);
     const typed = words();
     expect(typed.name).toBe(SEGMENT.name);
+    expect(typed.blocks).toEqual(["Our covers are back."]);
 
     await press(clearAll());
-    expect(words()).toEqual({ name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null });
+    expect(words()).toEqual(NO_WORDS);
     expect(text("c-audience")).toBe("A saved Segment");
     expect(text("c-segment")).toBe(SEGMENT.name);
     expect(document.getElementById("c-greeting")?.getAttribute("aria-checked")).toBe("false");
     await settle();
     expect(toastText()).toContain("Cleared the email.");
     expect(undo()?.textContent).toBe("Undo");
-    expect(lastPreview()).toMatchObject({ name: "", subject: "", body: "", button: null, audience: "segment", segmentId: SEGMENT.id });
+    expect(lastPreview()).toMatchObject({ name: "", subject: "", body: "", button: null, content: { blocks: [] }, audience: "segment", segmentId: SEGMENT.id });
 
     await press(undo()!);
     expect(words()).toEqual(typed);
     await settle();
-    expect(lastPreview()).toMatchObject({ name: SEGMENT.name, subject: "Sleep cooler this December", body: "Our covers are back.", greeting: false });
+    expect(lastPreview()).toMatchObject({
+      name: SEGMENT.name,
+      subject: "Sleep cooler this December",
+      body: "",
+      content: { blocks: [{ type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Our covers are back." }] }] }] },
+      greeting: false,
+    });
     expectNothingWritten();
   });
 });
@@ -214,12 +248,13 @@ describe("a saved draft", () => {
       button: "A link",
       label: "Shop the covers",
       url: "https://mpillow.com/shop",
+      blocks: [],
     });
     expect(field("c-button-label").placeholder).toBe(CAMPAIGN_PLACEHOLDERS.buttonLabel);
     expect(button("Save changes")!.disabled).toBe(true); // saved
 
     await press(clearAll());
-    expect(words()).toEqual({ name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null });
+    expect(words()).toEqual(LEGACY_CLEARED);
     expect(text("c-audience")).toBe("Everyone subscribed to marketing email");
     // Cleared but not saved: the draft is unsaved, and Save validates as today.
     expect(button("Save changes")!.disabled).toBe(false);

@@ -46,6 +46,11 @@ export type EmailAudience = "customer" | "partner" | "staff";
 export interface EmailShellOptions {
   /** Renders an <h1> when given; omit to let the body copy carry the heading. */
   title?: string;
+  /**
+   * The document's <title> when there is no `title`: for an email whose body
+   * carries its own headings (a campaign built from blocks). Draws nothing.
+   */
+  documentTitle?: string;
   /** Inserted verbatim — callers escape their own interpolated values. */
   bodyHtml: string;
   /** A short line above the footer chrome (e.g. "mpillow support"). */
@@ -216,7 +221,7 @@ export function renderEmailShell(opts: EmailShellOptions): string {
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="color-scheme" content="light dark" />
 <meta name="supported-color-schemes" content="light dark" />
-<title>${escapeHtml(title ?? BRAND.name)}</title>
+<title>${escapeHtml(title ?? opts.documentTitle ?? BRAND.name)}</title>
 <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
 ${styleBlock()}
 </head>

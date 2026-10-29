@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Archive, ChevronLeft, Copy, Eraser, Loader2, Send } from "lucide-react";
+import { AlertTriangle, Archive, Blocks, ChevronLeft, Copy, Eraser, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
     type CampaignButtonChoice,
     type CampaignWords,
 } from "@/lib/email-campaigns/clear-all";
+import { contentFromLegacy, type CampaignContent } from "@/lib/email-campaigns/content";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
     CAMPAIGN_AUDIENCES,
@@ -60,6 +61,8 @@ import {
     sendCampaignTestAction,
     type WaveAnswer,
 } from "./actions";
+import { BlockList } from "./blocks/block-list";
+import { Field } from "./field";
 import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
 import { CheckList, StatusIcon } from "./send-parts";
 import { WaveTable } from "./wave-table";
@@ -67,24 +70,10 @@ import { WaveTable } from "./wave-table";
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
 export type SegmentOption = { id: string; name: string; customersHref?: string | null };
 
-/** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. */
+/** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
 
 const n = (v: number) => v.toLocaleString("en-SG");
-
-function Field({ label, htmlFor, hint, error, children }: { label: string; htmlFor: string; hint?: ReactNode; error?: string; children: ReactNode }) {
-    return (
-        <div className="space-y-1.5">
-            <Label htmlFor={htmlFor}>{label}</Label>
-            {children}
-            {error ? (
-                <p className="text-xs text-destructive">{error}</p>
-            ) : hint ? (
-                <p className="text-xs text-muted-foreground">{hint}</p>
-            ) : null}
-        </div>
-    );
-}
 
 type WaveProgress = {
     wave: string;
@@ -124,6 +113,10 @@ const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
  * empty field shows its hint, never saved or sent. *Clear all* returns what
  * the email says to those hints and offers Undo in a toast, not a dialog,
  * because nothing is saved until Save.
+ *
+ * Typed blocks (slice 03): a new campaign is written as Email blocks. A
+ * campaign written before them keeps its message box and button, and an
+ * unsent one offers *Convert to blocks*.
  */
 export function CampaignEditor({
     campaign,
@@ -161,10 +154,12 @@ export function CampaignEditor({
     const [buttonChoice, setButtonChoice] = useState<CampaignButtonChoice>(initial.button?.target ?? "none");
     const [buttonLabel, setButtonLabel] = useState(initial.button?.label ?? "");
     const [buttonUrl, setButtonUrl] = useState(initial.button?.url ?? "");
+    // The blocks; null for a campaign written before them, which has the message and button above.
+    const [content, setContent] = useState<CampaignContent | null>(initial.content);
     // What the email says, as Clear all and Undo see it.
     const words: CampaignWords = useMemo(
-        () => ({ name, subject, preheader, body, button: { choice: buttonChoice, label: buttonLabel, url: buttonUrl } }),
-        [name, subject, preheader, body, buttonChoice, buttonLabel, buttonUrl],
+        () => ({ name, subject, preheader, body, button: { choice: buttonChoice, label: buttonLabel, url: buttonUrl }, content }),
+        [name, subject, preheader, body, buttonChoice, buttonLabel, buttonUrl, content],
     );
     const setWords = (w: CampaignWords) => {
         setName(w.name);
@@ -174,6 +169,7 @@ export function CampaignEditor({
         setButtonChoice(w.button.choice);
         setButtonLabel(w.button.label);
         setButtonUrl(w.button.url);
+        setContent(w.content);
     };
     // The words Clear all took, until Undo puts them back or Save makes them gone.
     const undoRef = useRef<CampaignWords | null>(null);
@@ -184,16 +180,18 @@ export function CampaignEditor({
             name,
             subject,
             preheader,
-            body,
+            // A block campaign is its blocks alone.
+            body: content ? "" : body,
+            content,
             greeting,
             audience,
             segmentId: audience === "segment" ? segmentId || null : null,
             button:
-                buttonChoice === "none"
+                content || buttonChoice === "none"
                     ? null
                     : { target: buttonChoice, label: buttonLabel, url: buttonChoice === "url" ? buttonUrl : null },
         }),
-        [name, subject, preheader, body, greeting, audience, segmentId, buttonChoice, buttonLabel, buttonUrl],
+        [name, subject, preheader, body, content, greeting, audience, segmentId, buttonChoice, buttonLabel, buttonUrl],
     );
     const [savedKey, setSavedKey] = useState(() => JSON.stringify(input));
     const dirty = JSON.stringify(input) !== savedKey || !campaign;
@@ -468,10 +466,48 @@ export function CampaignEditor({
             },
         });
     };
-    /** *Use the sign-in invitation*: its words and audience as real words, for whoever wants them. Slice 08 makes it a Starter. */
+    /**
+     * *Use the sign-in invitation*: its words and audience as real words, for
+     * whoever wants them; in a block campaign, as blocks. Slice 08 makes it a Starter.
+     */
     const fillInvitation = () => {
-        setWords(campaignWordsOf(FIRST_CAMPAIGN_DRAFT));
+        const invitation = campaignWordsOf(FIRST_CAMPAIGN_DRAFT);
+        setWords(
+            content
+                ? { ...invitation, body: "", button: { choice: "none", label: "", url: "" }, content: contentFromLegacy(FIRST_CAMPAIGN_DRAFT) }
+                : invitation,
+        );
         setAudience(FIRST_CAMPAIGN_DRAFT.audience);
+    };
+    /**
+     * *Convert to blocks* (slice 03): the message and its button as blocks
+     * that read the same, the subject as the opening heading. Nothing is saved
+     * until Save, so the toast offers Undo, as Clear all's does.
+     */
+    const convertToBlocks = () => {
+        if (locked || sending || content) return;
+        undoRef.current = words;
+        setWords({
+            ...words,
+            body: "",
+            button: { choice: "none", label: "", url: "" },
+            content: contentFromLegacy({
+                subject,
+                body,
+                button: buttonChoice === "none" ? null : { target: buttonChoice, label: buttonLabel, url: buttonChoice === "url" ? buttonUrl : null },
+            }),
+        });
+        toast("Converted the message to blocks. Save to keep them.", {
+            id: CLEAR_ALL_TOAST,
+            duration: CLEAR_ALL_UNDO_MS,
+            action: {
+                label: "Undo",
+                onClick: () => {
+                    if (undoRef.current) setWords(undoRef.current);
+                    undoRef.current = null;
+                },
+            },
+        });
     };
 
     return (
@@ -620,68 +656,86 @@ export function CampaignEditor({
                             <Switch id="c-greeting" checked={greeting} disabled={locked} onCheckedChange={setGreeting} />
                         </div>
 
-                        <Field
-                            label="Message"
-                            htmlFor="c-body"
-                            error={fieldErrors.body}
-                            hint={
-                                <>
-                                    A blank line starts a new paragraph. Start a line with &ldquo;- &rdquo; for a bullet, or &ldquo;## &rdquo; for a heading.
-                                    Links starting https:// become clickable.
-                                </>
-                            }
-                        >
-                            <Textarea
-                                id="c-body"
-                                rows={14}
-                                value={body}
-                                placeholder={CAMPAIGN_PLACEHOLDERS.body}
-                                disabled={locked}
-                                maxLength={CAMPAIGN_LIMITS.body}
-                                onChange={(e) => setBody(e.target.value)}
-                            />
-                        </Field>
+                        {content ? (
+                            <div className="space-y-1.5">
+                                <span className="text-sm font-medium leading-none">Blocks</span>
+                                <BlockList content={content} onChange={setContent} disabled={locked || sending} errors={fieldErrors} />
+                            </div>
+                        ) : (
+                            <>
+                                <Field
+                                    label="Message"
+                                    htmlFor="c-body"
+                                    error={fieldErrors.body}
+                                    hint={
+                                        <>
+                                            A blank line starts a new paragraph. Start a line with &ldquo;- &rdquo; for a bullet, or &ldquo;## &rdquo; for a heading.
+                                            Links starting https:// become clickable.
+                                        </>
+                                    }
+                                >
+                                    <Textarea
+                                        id="c-body"
+                                        rows={14}
+                                        value={body}
+                                        placeholder={CAMPAIGN_PLACEHOLDERS.body}
+                                        disabled={locked}
+                                        maxLength={CAMPAIGN_LIMITS.body}
+                                        onChange={(e) => setBody(e.target.value)}
+                                    />
+                                </Field>
+                                <Field label="Button" htmlFor="c-button">
+                                    <Select value={buttonChoice} onValueChange={(v) => setButtonChoice(v as CampaignButtonChoice)}>
+                                        <SelectTrigger id="c-button" className="w-full justify-between" disabled={locked}>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No button</SelectItem>
+                                            <SelectItem value="sign_in">Sign in to their account</SelectItem>
+                                            <SelectItem value="url">A link</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </Field>
+                                {buttonChoice !== "none" ? (
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <Field label="Button label" htmlFor="c-button-label" error={fieldErrors["button.label"]}>
+                                            <Input
+                                                id="c-button-label"
+                                                value={buttonLabel}
+                                                placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
+                                                disabled={locked}
+                                                maxLength={CAMPAIGN_LIMITS.buttonLabel}
+                                                onChange={(e) => setButtonLabel(e.target.value)}
+                                            />
+                                        </Field>
+                                        {buttonChoice === "url" ? (
+                                            <Field label="Link" htmlFor="c-button-url" error={fieldErrors["button.url"]}>
+                                                <Input id="c-button-url" value={buttonUrl} disabled={locked} placeholder="https://" onChange={(e) => setButtonUrl(e.target.value)} />
+                                            </Field>
+                                        ) : (
+                                            <p className="self-end text-xs text-muted-foreground">
+                                                Imported customers who haven&apos;t signed in get their own link, with their email already filled in.
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : null}
+                                {/* A message written before blocks: an unsent one can become blocks. */}
+                                {!locked ? (
+                                    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                                        <span className="min-w-0 flex-1">This email is written as plain text. Blocks add headings, bold, links and two buttons.</span>
+                                        <Button type="button" variant="outline" size="sm" onClick={convertToBlocks} disabled={sending}>
+                                            <Blocks className="mr-1 h-4 w-4" />
+                                            Convert to blocks
+                                        </Button>
+                                    </div>
+                                ) : null}
+                            </>
+                        )}
                         {/* A start for an empty email; slice 08's Start panel replaces it. */}
                         {!locked && campaignWordsEmpty(words) ? (
                             <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={fillInvitation} disabled={sending}>
                                 Use the sign-in invitation
                             </Button>
-                        ) : null}
-
-                        <Field label="Button" htmlFor="c-button">
-                            <Select value={buttonChoice} onValueChange={(v) => setButtonChoice(v as CampaignButtonChoice)}>
-                                <SelectTrigger id="c-button" className="w-full justify-between" disabled={locked}>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">No button</SelectItem>
-                                    <SelectItem value="sign_in">Sign in to their account</SelectItem>
-                                    <SelectItem value="url">A link</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </Field>
-                        {buttonChoice !== "none" ? (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <Field label="Button label" htmlFor="c-button-label" error={fieldErrors["button.label"]}>
-                                    <Input
-                                        id="c-button-label"
-                                        value={buttonLabel}
-                                        placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
-                                        disabled={locked}
-                                        maxLength={CAMPAIGN_LIMITS.buttonLabel}
-                                        onChange={(e) => setButtonLabel(e.target.value)}
-                                    />
-                                </Field>
-                                {buttonChoice === "url" ? (
-                                    <Field label="Link" htmlFor="c-button-url" error={fieldErrors["button.url"]}>
-                                        <Input id="c-button-url" value={buttonUrl} disabled={locked} placeholder="https://" onChange={(e) => setButtonUrl(e.target.value)} />
-                                    </Field>
-                                ) : (
-                                    <p className="self-end text-xs text-muted-foreground">
-                                        Imported customers who haven&apos;t signed in get their own link, with their email already filled in.
-                                    </p>
-                                )}
-                            </div>
                         ) : null}
 
                         {saveError ? (

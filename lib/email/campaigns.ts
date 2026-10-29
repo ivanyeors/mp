@@ -17,71 +17,26 @@
 //
 // The renderer is pure: the sender resolves the button's link per recipient.
 //
+// Campaigns written since the block editor (PRD-campaign-email-editor slice
+// 03) are typed blocks, rendered by ./campaign-blocks.ts. This renderer stays
+// for the campaigns written before it, byte for byte (that PRD's decision 5,
+// held by __tests__/legacy-campaign-html.test.ts).
+//
 // The editor's preview alone passes `placeholders` (PRD-campaign-email-editor
 // decision 7): an empty subject, message or button label then shows its
 // placeholder, dashed and muted, where the words would go. A send never
 // passes them, so a placeholder is never sent.
 
 import { renderEmailShell } from "./base";
+import { linkLabel, parseCampaignBody, URL_IN_TEXT } from "./campaign-body";
 import { bulletList, heading, link, paragraphHtml, placeholderHint } from "./components";
 import { escapeHtml } from "./html";
 import type { RenderedEmail } from "./types";
 
+export { linkLabel, parseCampaignBody, type CampaignBlock } from "./campaign-body";
+
 /** Why they get it: the footer's note on every composed campaign. */
 export const COMPOSED_CAMPAIGN_NOTE = "You're getting this because you agreed to receive emails from Mpillow.";
-
-export type CampaignBlock =
-  | { kind: "paragraph"; lines: string[] }
-  | { kind: "bullets"; items: string[] }
-  | { kind: "heading"; text: string };
-
-/** Pure — the body's blocks, in order. Empty lines and empty items are dropped. */
-export function parseCampaignBody(body: string): CampaignBlock[] {
-  const blocks: CampaignBlock[] = [];
-  let open: CampaignBlock | null = null;
-  const close = () => {
-    if (open) blocks.push(open);
-    open = null;
-  };
-
-  for (const raw of body.replace(/\r\n?/g, "\n").split("\n")) {
-    const line = raw.trim();
-    if (!line) {
-      close();
-      continue;
-    }
-    const bullet = /^[-*•](?:\s+(.*))?$/.exec(line);
-    const head = /^#{1,3}(?:\s+(.*))?$/.exec(line);
-    if (head) {
-      close();
-      const text = (head[1] ?? "").trim();
-      if (text) blocks.push({ kind: "heading", text });
-    } else if (bullet) {
-      if (open?.kind !== "bullets") {
-        close();
-        open = { kind: "bullets", items: [] };
-      }
-      const item = (bullet[1] ?? "").trim();
-      if (item) (open as Extract<CampaignBlock, { kind: "bullets" }>).items.push(item);
-    } else {
-      if (open?.kind !== "paragraph") {
-        close();
-        open = { kind: "paragraph", lines: [] };
-      }
-      (open as Extract<CampaignBlock, { kind: "paragraph" }>).lines.push(line);
-    }
-  }
-  close();
-  return blocks.filter((b) => b.kind !== "bullets" || b.items.length > 0);
-}
-
-// An https link, up to whitespace; trailing punctuation stays text.
-const URL_IN_TEXT = /https:\/\/[^\s<>"]+[^\s<>".,;:!?)\]'’”]/g;
-
-/** How a link reads in the email: `mpillow.com/faq`, never a raw `https://` (the email contract). */
-export function linkLabel(url: string): string {
-  return url.replace(/^https:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
-}
 
 /** One line of text, escaped, with its https links as links. */
 function lineHtml(text: string): string {
