@@ -1,18 +1,19 @@
 /**
- * DB-only Analytics channel facts (ADR 0006), loaded into sold lines.
+ * Analytics sales: this site's Orders, as Stripe took their money (ADR 0036).
  *
- * Orders = paid platform Orders (`paid_at`) with `order_margins` and their
- * `order_items` costs; Shopify = the order mirror; All = both. No Shopify Admin
- * API on this path. Months are Singapore months (`sg-calendar.ts`), and every
- * read pages, so a range past 1,000 rows reports on all of them.
+ * An Order is a sale once Stripe has charged it: it has a `charge` row in the
+ * money ledger (`order_payments`, written only from Stripe), and is dated by its
+ * latest charge's `occurred_at`, Stripe's own time for the payment. Revenue is
+ * `order_margins`' product revenue, which the ledger scales for refunds and
+ * disputes; COGS is what each `order_items` line froze at sale. Nothing sold
+ * elsewhere is read. Months are Singapore months (`sg-calendar.ts`), and every
+ * read pages.
  */
 
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
 import { sgMonthRange, type SgMonthRange } from "./sg-calendar";
-import { buildSalesReport, type SalesReport, type SoldLine, type SoldOrder } from "./sold-lines";
-
-export type AnalyticsChannel = "all" | "orders" | "shopify";
+import { buildSalesReport, latestChargeAt, type SalesReport, type SoldLine, type SoldOrder } from "./sold-lines";
 
 type AdminClient = ReturnType<typeof supabaseAdmin>;
 
@@ -47,8 +48,6 @@ async function loadItems(admin: AdminClient, ids: number[]): Promise<Map<number,
   return new Map((rows as ItemRow[]).map((r) => [Number(r.id), r]));
 }
 
-// ── Platform Orders ─────────────────────────────────────────────────────────
-
 type PlatformItemRow = {
   id: string;
   order_id: string;
@@ -77,16 +76,46 @@ type VariantRow = {
   products: { product_type: string | null } | { product_type: string | null }[] | null;
 };
 
-async function loadPlatformSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<SoldOrder[]> {
-  const orders = (await selectAll(() =>
-    admin
-      .from("orders")
-      .select("id,paid_at")
-      .not("paid_at", "is", null)
-      .gte("paid_at", range.from.toISOString())
-      .lt("paid_at", range.toExclusive.toISOString())
+type ChargeRow = { id: string; order_id: string; occurred_at: string };
+
+const stripeCharges = (admin: AdminClient) =>
+  admin
+    .from("order_payments")
+    .select("id,order_id,occurred_at")
+    .eq("type", "charge")
+    .not("stripe_object_id", "is", null);
+
+async function loadSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<SoldOrder[]> {
+  // Orders Stripe charged in the period, then every charge of theirs, so an
+  // Order paid in two parts (a Balance payment, then the hold's capture) is
+  // dated by the last: the moment Stripe held the whole price.
+  const inPeriod = (await selectAll(() =>
+    stripeCharges(admin)
+      .gte("occurred_at", range.from.toISOString())
+      .lt("occurred_at", range.toExclusive.toISOString())
       .order("id"),
-  )) as Array<{ id: string; paid_at: string }>;
+  )) as ChargeRow[];
+  if (!inPeriod.length) return [];
+  const charges = (await selectAllIn(
+    inPeriod.map((c) => String(c.order_id)),
+    (chunk) => stripeCharges(admin).in("order_id", chunk).order("id"),
+  )) as ChargeRow[];
+  const soldAtByOrder = latestChargeAt(charges.map((c) => ({ orderId: String(c.order_id), at: c.occurred_at })));
+  const from = range.from.getTime();
+  const to = range.toExclusive.getTime();
+  const candidates = [...soldAtByOrder.entries()]
+    .filter(([, at]) => {
+      const t = Date.parse(at);
+      return t >= from && t < to;
+    })
+    .map(([id]) => id);
+  if (!candidates.length) return [];
+
+  // Confirmed by the payment flow (paid_at set). A payment that landed on a
+  // closed Order is held for a human to refund or reinstate, not a sale yet.
+  const orders = (await selectAllIn(candidates, (chunk) =>
+    admin.from("orders").select("id").not("paid_at", "is", null).in("id", chunk).order("id"),
+  )) as Array<{ id: string }>;
   if (!orders.length) return [];
   const ids = orders.map((o) => String(o.id));
 
@@ -191,141 +220,21 @@ async function loadPlatformSoldOrders(admin: AdminClient, range: SgMonthRange): 
     // `order_margins`: product revenue after discount, scaled by refunds = margin + COGS.
     const productRevenue = m ? money(m.gross_margin) + money(m.cogs) : 0;
     return {
-      channel: "orders" as const,
-      paidAt: o.paid_at,
+      soldAt: soldAtByOrder.get(String(o.id))!,
       productRevenue,
       lines: linesByOrder.get(String(o.id)) ?? [],
     };
   });
 }
 
-// ── Shopify order mirror ────────────────────────────────────────────────────
-
-type MirrorLine = {
-  shopify_line_item_id: number;
-  shopify_order_id: number;
-  shopify_variant_id: number | null;
-  title: string | null;
-  quantity: number;
-  gross_revenue: unknown;
-  total_cost: unknown;
-  is_others: boolean;
-};
-
-async function loadShopifySoldOrders(admin: AdminClient, range: SgMonthRange): Promise<SoldOrder[]> {
-  const orders = (await selectAll(() =>
-    admin
-      .from("shopify_orders")
-      .select("shopify_order_id,paid_at,amount_refunded")
-      .not("paid_at", "is", null)
-      .gte("paid_at", range.from.toISOString())
-      .lt("paid_at", range.toExclusive.toISOString())
-      .order("shopify_order_id"),
-  )) as Array<{ shopify_order_id: number; paid_at: string; amount_refunded: unknown }>;
-  if (!orders.length) return [];
-
-  const lines = (await selectAllIn(
-    orders.map((o) => Number(o.shopify_order_id)),
-    (chunk) =>
-      admin
-        .from("shopify_order_lines")
-        .select("shopify_line_item_id,shopify_order_id,shopify_variant_id,title,quantity,gross_revenue,total_cost,is_others")
-        .in("shopify_order_id", chunk)
-        .order("shopify_line_item_id"),
-  )) as MirrorLine[];
-
-  // Which inventory product each Shopify variant was mapped to, read as stored:
-  // the mirror is a read-only input (CONTEXT.md), so Analytics costs nothing itself.
-  type MappingRow = {
-    shopify_variant_id: number;
-    kind: string;
-    pillow_size: string | null;
-    pillow_kind: string | null;
-    bolster_variant: string | null;
-    item_id: number | null;
-  };
-  const mappings = (await selectAllIn(
-    lines.map((l) => Number(l.shopify_variant_id)).filter((v) => Number.isFinite(v) && v > 0),
-    (chunk) =>
-      admin
-        .from("shopify_variant_mappings")
-        .select("shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id")
-        .in("shopify_variant_id", chunk)
-        .order("shopify_variant_id"),
-  )) as MappingRow[];
-  const mappingByVariant = new Map(mappings.map((m) => [Number(m.shopify_variant_id), m]));
-  const itemById = await loadItems(
-    admin,
-    mappings.filter((m) => m.kind === "part" && m.item_id != null).map((m) => Number(m.item_id)),
-  );
-
-  const linesByOrder = new Map<number, SoldLine[]>();
-  for (const li of lines) {
-    const title = li.title || "Untitled line";
-    const variantId = li.shopify_variant_id != null ? Number(li.shopify_variant_id) : null;
-    const mapping = variantId != null ? mappingByVariant.get(variantId) : undefined;
-    const totalCost = moneyOrNull(li.total_cost);
-    const cost = !li.is_others && totalCost != null ? totalCost : null;
-
-    let line: Omit<SoldLine, "units" | "gross" | "cost">;
-    if (mapping?.kind === "part" && mapping.item_id != null) {
-      const item = itemById.get(Number(mapping.item_id));
-      line = {
-        group: "part",
-        key: `item:${mapping.item_id}`,
-        label: itemLabel(item, title),
-        category: item?.category ?? "other",
-      };
-    } else if (mapping?.kind === "pillow" && mapping.pillow_size) {
-      const tier = mapping.pillow_kind === "premium" ? "premium" : "basic";
-      line = { group: "pillow", key: `pillow:${tier}:${mapping.pillow_size}`, label: `Size ${mapping.pillow_size}` };
-    } else if (mapping?.kind === "bolster" && mapping.bolster_variant && LENGTHS.has(mapping.bolster_variant)) {
-      line = { group: "bolster", key: `bolster:${mapping.bolster_variant}`, label: lengthLabel(mapping.bolster_variant) };
-    } else {
-      line = { group: "unmapped", key: `unmapped:${title}`, label: title };
-    }
-
-    const list = linesByOrder.get(Number(li.shopify_order_id)) ?? [];
-    list.push({
-      ...line,
-      units: Math.max(0, Math.floor(Number(li.quantity ?? 0))),
-      gross: money(li.gross_revenue),
-      cost,
-      uncostedReason: cost == null ? "No cost in the Shopify order mirror." : null,
-    });
-    linesByOrder.set(Number(li.shopify_order_id), list);
-  }
-
-  return orders.map((o) => {
-    const orderLines = linesByOrder.get(Number(o.shopify_order_id)) ?? [];
-    const listed = orderLines.reduce((sum, l) => sum + l.gross, 0);
-    // Mirror nets, as the mirror has always been read: line gross less refunds.
-    return {
-      channel: "shopify" as const,
-      paidAt: o.paid_at,
-      productRevenue: Math.max(0, listed - money(o.amount_refunded)),
-      lines: orderLines,
-    };
-  });
-}
-
 export async function loadSalesReport(input: {
-  channel: AnalyticsChannel;
   from: string;
   to: string;
 }): Promise<SalesReport & { fromMonth: string; toMonth: string }> {
   const range = sgMonthRange(input.from, input.to);
-  const admin = supabaseAdmin();
-  const includeOrders = input.channel === "all" || input.channel === "orders";
-  const includeShopify = input.channel === "all" || input.channel === "shopify";
-
-  const [platform, shopify] = await Promise.all([
-    includeOrders ? loadPlatformSoldOrders(admin, range) : Promise.resolve([]),
-    includeShopify ? loadShopifySoldOrders(admin, range) : Promise.resolve([]),
-  ]);
-
+  const orders = await loadSoldOrders(supabaseAdmin(), range);
   return {
-    ...buildSalesReport({ orders: [...platform, ...shopify], months: range.months }),
+    ...buildSalesReport({ orders, months: range.months }),
     fromMonth: range.fromMonth,
     toMonth: range.toMonth,
   };

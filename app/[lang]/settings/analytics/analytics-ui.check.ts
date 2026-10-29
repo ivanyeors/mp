@@ -33,11 +33,16 @@ assert.match(client, /function StockTab[\s\S]*?Inventory movement[\s\S]*?<Produc
 assert.match(client, /function CustomersTab[\s\S]*?Results[\s\S]*?<DropOffReasonsCard/);
 assert.match(client, /<TabsContent value="traffic"[\s\S]*?<SearchVisibilityCard[\s\S]*?<ProspectJourneyCard/);
 
-assert.match(sales, /TabsTrigger value="all">All</);
-assert.match(sales, /TabsTrigger value="orders">Orders</);
-assert.match(sales, /TabsTrigger value="shopify">Shopify</);
-assert.match(sales, /from "@\/lib\/analytics\/channel-sales"/);
 assert.match(sales, /Cost coverage/);
+
+// Sales are this site's Orders as Stripe took their money: no Shopify, no channels.
+const salesReport = readFileSync(join(dir, "../../../../lib/analytics/sales-report.ts"), "utf8");
+for (const src of [client, sales, actions, salesReport]) {
+  assert.doesNotMatch(src, /shopify/i);
+  assert.doesNotMatch(src, /AnalyticsChannel/);
+}
+assert.match(salesReport, /from\("order_payments"\)/);
+assert.match(salesReport, /occurred_at/);
 
 // On-hand stock value lives on Costings (ADR 0006), not here.
 for (const src of [client, sales]) {
@@ -64,13 +69,5 @@ for (const gone of [
 ]) {
   assert.equal(existsSync(join(dir, gone)), false, `${gone} should stay deleted`);
 }
-
-const inventoryActions = readFileSync(join(dir, "../inventory/actions.ts"), "utf8");
-assert.match(inventoryActions, /assertAdmin\('inventory'\)/);
-assert.match(inventoryActions, /scheduleMirrorReResolve/);
-
-const costingsSave = readFileSync(join(dir, "../costings/save/route.ts"), "utf8");
-assert.match(costingsSave, /requireAdmin\("costings"\)/);
-assert.match(costingsSave, /reResolveShopifyLineCosts/);
 
 console.log("analytics-ui.check.ts: ok");

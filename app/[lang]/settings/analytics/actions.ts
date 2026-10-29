@@ -1,6 +1,6 @@
 "use server";
 
-import { loadSalesReport, type AnalyticsChannel } from "@/lib/analytics/channel-sales";
+import { loadSalesReport } from "@/lib/analytics/sales-report";
 import { sgDate, sgMonthRange } from "@/lib/analytics/sg-calendar";
 import { assertAdmin } from "@/lib/auth/admin";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
@@ -10,23 +10,14 @@ export type SalesMetric = "units" | "revenue";
 export type TimelineViewMode = "parts" | "products";
 // ponytail: do not `export type { X }` from "use server" — SWC emits runtime refs (TimelinePoint is not defined)
 
-function parseChannel(raw: string | undefined): AnalyticsChannel {
-  if (raw === "orders" || raw === "shopify" || raw === "all") return raw;
-  return "all";
-}
-
 /**
- * Analytics → Sales: totals, cost coverage, breakdowns, timeline and cost gaps,
- * all summed from the same sold lines (paid Orders and the Shopify mirror), so
- * every figure on the tab reconciles with every other.
+ * Analytics → Sales: this site's Orders as Stripe took their money. Totals, cost
+ * coverage, breakdowns, timeline and cost gaps are all summed from the same
+ * sold lines, so every figure on the tab reconciles with every other.
  */
-export async function getSalesReport(input: { from: string; to: string; channel?: AnalyticsChannel }) {
+export async function getSalesReport(input: { from: string; to: string }) {
   await assertAdmin("analytics");
-  const report = await loadSalesReport({
-    channel: parseChannel(input.channel),
-    from: input.from,
-    to: input.to,
-  });
+  const report = await loadSalesReport({ from: input.from, to: input.to });
   return { ok: true as const, ...report };
 }
 

@@ -1,19 +1,21 @@
 # Analytics: how a sale becomes a margin figure
 
-Where every money figure on Admin Panel → Analytics comes from, how each sale
-gets its cost, and what happens when it has none. Terms follow `CONTEXT.md`;
-the decision is ADR 0036. Verified against production data on 2026-10-28.
+Where every money figure on Admin Panel → Analytics comes from, when a sale
+counts, how it gets its cost, and what happens when it has none. Terms follow
+`CONTEXT.md`; the decision is ADR 0036.
 
-## One set of facts
+Analytics tracks this site's sales only. Shopify is not read.
+
+## A sale is what Stripe took
 
 ```mermaid
 flowchart TD
-  o[(orders · paid_at)] --> pm[(order_margins)]
-  o --> oi[(order_items<br/>unit_cost · total_cost)]
-  so[(shopify_orders · paid_at)] --> sl[(shopify_order_lines<br/>total_cost · is_others)]
-  pm --> load["loadSalesReport()<br/>lib/analytics/channel-sales.ts"]
-  oi --> load
-  sl --> load
+  wh["POST /api/stripe/webhook<br/>checkout paid · refunds · disputes"] -->|"occurred_at = event time"| op[(order_payments)]
+  acc["POST /api/results/[id]/accept<br/>hold capture · Balance payment"] -->|"occurred_at = capture's<br/>balance transaction"| op
+  op --> load["loadSalesReport()<br/>lib/analytics/sales-report.ts"]
+  o[(orders · paid_at set)] --> load
+  pm[(order_margins)] --> load
+  oi[(order_items<br/>unit_cost · total_cost)] --> load
   load --> rep["buildSalesReport()<br/>lib/analytics/sold-lines.ts"]
   rep --> kpi["Revenue · Gross margin · Margin % · Cost coverage"]
   rep --> gaps["Sales with no cost"]
@@ -21,37 +23,54 @@ flowchart TD
   rep --> tl["Sales over time"]
 ```
 
-`getSalesReport` reads each paid Order and each mirrored Shopify order once, turns
-it into a sold order with the product revenue it earned and its lines, and
-`buildSalesReport` sums everything on the Sales & margin tab from those. The
-cards, the breakdown and the timeline therefore add up to the same totals.
+Every platform payment goes through Stripe: shop Checkout, a Result's
+Authorization hold and its capture, a Balance payment by link or at the
+counter reader, and a re-adjustment fee. The money ledger (`order_payments`) is
+written only from those: the Stripe webhook and Result Accept.
 
+- **When a Sale counts.** An Order is a Sale once its ledger holds a Stripe
+  `charge` and the payment flow has confirmed it (`paid_at` set). A payment
+  that lands on a cancelled Order is flagged for Staff to refund or reinstate,
+  and is not a Sale until then.
+- **When it is dated.** By its latest charge's `occurred_at`, Stripe's own time
+  for the money, never by when our code wrote the row:
+
+  | Ledger row | Written by | `occurred_at` |
+  |---|---|---|
+  | Shop / re-adjustment charge | `checkout.session.completed` / `async_payment_succeeded` | the event's `created` (for PayNow, when the money settled) |
+  | Result hold capture | Accept | the capture's balance transaction (`paymentIntentCapturedAt`) |
+  | Result Balance payment | Accept | the same, for the Balance payment's intent |
+  | Refund | `charge.refunded` | the refund's `created` |
+  | Dispute loss and fee, refund reversal | `charge.dispute.closed`, `refund.failed` | the event's `created` |
+
+  A Result paid in two parts (a Balance payment, then the hold's capture) is
+  sold when the second lands: the moment Stripe held the whole price. A
+  customer who paid a Balance payment and closed the tab is dated by that
+  payment, however late Accept ran. `orders.paid_at` carries the same Stripe
+  time.
 - **Revenue** is product revenue after discounts and refunds, before shipping
-  and tax.
-  - An Order's comes from `order_margins` (gross margin + COGS: the subtotal
-    less discount, scaled by refunds through the money ledger).
-  - A Shopify order's is read from the mirror as recorded: its lines' gross
-    less `amount_refunded`.
-  - An order's revenue is spread over its lines by list price.
-- **COGS** is the cost frozen on each line when it sold, less restocked returns.
-- **Gross margin** is costed revenue minus COGS, and **Margin %** is a share
-  of costed revenue.
-- **Cost coverage** is the share of revenue whose cost is known.
+  and tax: `order_margins`' gross margin + COGS, which the ledger scales down
+  for refunds and lost disputes. A refund comes off the Sale it belongs to.
+  An Order's revenue is spread over its lines by list price.
+- **COGS** is the cost frozen on each line when it sold, less restocked
+  returns. **Gross margin** is costed revenue minus COGS, and **Margin %** is a
+  share of costed revenue. **Cost coverage** is the share of revenue whose cost
+  is known.
+
+The cards, the breakdown and the timeline are all sums of the same sold lines,
+so they reconcile with each other.
 
 ## A sale with no cost is never $0 cost
 
 A line with no frozen cost is reported as uncosted revenue. It stays in
 Revenue, out of the margin, and appears under **Sales with no cost**. Before
 2026-10-28 such lines counted as costing $0, which showed their whole revenue
-as profit; that is how the page reported 86.6% for May–Oct 2026, when $37,216
-of $86,306 of sales had no cost.
+as profit; that is how the page reported 86.6% for May–Oct 2026.
 
-The Shopify order mirror is a read-only input (`CONTEXT.md`): Analytics reads
-its costs as stored and works out none of its own. A Service takes no stock;
-its line carries the cost set in Costings → Service fees, and none (counted as
-$0) when that is blank.
+A Service takes no stock: its line carries the cost set in Costings → Service
+fees, and none (counted as $0) when that is blank.
 
-## How a platform sale is costed
+## How a sale is costed
 
 | Channel | Written by | Cost of one unit |
 |---|---|---|
@@ -70,15 +89,14 @@ no fillings (ADR 0003), so the fillings were left out.
 - **Singapore months.** The client sends the instants `sgMonthRangeIso`
   returns, and every loader reads them back with `sgMonthRange`
   (`lib/analytics/sg-calendar.ts`). A server in UTC used to re-snap them to its
-  own midnight, which pulled the previous month in: 230 orders reported for a
-  May–Oct range that held 210.
+  own midnight, which pulled the previous month in.
 - **Every read pages** (`lib/supabase/select-all.ts`). Supabase returns at most
   1,000 rows without an error. The inventory waterfall read one page of a
   2,389-row ledger, stopped at 9 Jul 2026, and closed at 19,438 units against
   the 17,203 that `inventory_balances` held.
-- **Inventory movement** (Stock & builds tab) sums the whole ledger to each
-  boundary. Balances are signed, as Inventory shows them, so the closing total
-  for the current month matches the Inventory page.
+- **Inventory movement** (Stock & builds tab) sums the whole stock ledger to
+  each boundary. Balances are signed, as Inventory shows them, so the closing
+  total for the current month matches the Inventory page.
 - **Stock value today** (at cost and at MSRP) is an as-of-now figure on
   Costings, not Analytics (ADR 0006).
 
@@ -94,3 +112,11 @@ no fillings (ADR 0003), so the fillings were left out.
 `?tab=` keeps a tab linkable. A tab mounts only while open, so it loads only
 its own cards. The period applies to every tab except Search visibility, which
 keeps its own range.
+
+## Known gaps
+
+- **The Shopify order mirror is still written and read by nothing.** Its
+  webhook, the daily catch-up after the results-SLA cron and the re-resolve on
+  a Costings save still run.
+- **A $0 Order** (fully discounted) has no Stripe charge, so it is not a Sale
+  and its stock cost appears nowhere on Analytics.

@@ -96,6 +96,11 @@ export function ledgerReconciles(
 interface RecordOpts extends LedgerEntry {
   currency?: string;
   metadata?: Record<string, unknown>;
+  /**
+   * When Stripe moved the money, by Stripe's clock (`lib/stripe/money-time.ts`).
+   * Omitted, it is the time the row is written, which can be days late.
+   */
+  occurredAt?: string | null;
 }
 
 /**
@@ -115,6 +120,7 @@ export async function recordLedgerEntry(
     currency: (entry.currency ?? "SGD").toUpperCase(),
     stripe_object_id: entry.stripeObjectId ?? null,
     metadata: entry.metadata ?? {},
+    ...(entry.occurredAt ? { occurred_at: entry.occurredAt } : {}),
   };
 
   const { error } = await admin.from("order_payments").insert(row);

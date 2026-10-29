@@ -26,8 +26,9 @@ Design and build for this platform alone:
   it, reads from it live, falls back on it, or keeps compatibility with it.
   How Shopify or its apps do something is not a requirement here.
 - **The only Shopify work is leaving it:** the one-time customer import and the
-  cutover (ADR 0029). The **Shopify order mirror** stays the read-only Analytics
-  input it already is (`CONTEXT.md`) and gains no features.
+  cutover (ADR 0029). Analytics does not read the **Shopify order mirror**: it
+  tracks this site's sales only, dated by Stripe (2026-10-29, ADR 0036). The
+  mirror gains no features.
 - **Shopify-era facts become this platform's data.** Settle them once, during
   the migration. Do not build a feature around Shopify to carry them.
 

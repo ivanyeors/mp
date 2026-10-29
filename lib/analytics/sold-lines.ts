@@ -1,23 +1,21 @@
 /**
  * Sold lines: the one set of facts every Analytics money figure is summed from.
  *
- * A paid platform **Order** or **Shopify order mirror** order becomes one
- * `SoldOrder` with the product revenue it actually earned (after discounts and
- * refunds) and its lines, each with the COGS frozen on it at sale. The order's
- * revenue is spread over its lines by list price, so the breakdowns, the
- * timeline and the totals add up to the same numbers.
+ * A platform **Order** Stripe has charged becomes one `SoldOrder`, dated when
+ * Stripe took the money, with the product revenue it actually earned (after
+ * discounts and refunds) and its lines, each with the COGS frozen on it at sale.
+ * The order's revenue is spread over its lines by list price, so the
+ * breakdowns, the timeline and the totals add up to the same numbers.
  *
  * A line with no cost is never counted as costing $0. Its revenue is reported
  * as uncosted and kept out of the margin %, and the gaps list says why, so a
  * missing cost in Costings shows up as a gap instead of as profit.
  *
- * Pure: the loaders in `channel-sales.ts` read the database.
+ * Pure: the loader in `sales-report.ts` reads the database.
  */
 
 import type { MonthKey } from "./sg-calendar";
 import { sgMonthKey, sgMonthStart } from "./sg-calendar";
-
-export type SoldChannel = "orders" | "shopify";
 
 export type SoldLineGroup = "pillow" | "bolster" | "part" | "service" | "unmapped";
 
@@ -25,7 +23,7 @@ export type SoldLine = {
   group: SoldLineGroup;
   /**
    * Breakdown identity: `pillow:premium:M`, `bolster:medium`, `item:61`,
-   * `service:readjustment`, `unmapped:<title>`.
+   * `service:readjustment`, `unmapped:<title>` (a line with no inventory link).
    */
   key: string;
   label: string;
@@ -41,8 +39,8 @@ export type SoldLine = {
 };
 
 export type SoldOrder = {
-  channel: SoldChannel;
-  paidAt: string;
+  /** When Stripe took the money: the order's latest Stripe charge, by Stripe's clock. */
+  soldAt: string;
   /** Product revenue earned: after discounts and refunds, before shipping and tax. */
   productRevenue: number;
   lines: SoldLine[];
@@ -80,7 +78,6 @@ export type TimelinePoint = { date: string; units: number; revenue: number };
 export type TimelineSeries = { id: string; name: string; category: string; data: TimelinePoint[] };
 
 export type CostGap = {
-  channel: SoldChannel;
   key: string;
   label: string;
   reason: string;
@@ -91,17 +88,32 @@ export type CostGap = {
 
 export type SalesReport = {
   summary: SalesSummary;
-  byChannel: Record<SoldChannel, SalesSummary>;
   products: BreakdownRow[];
   parts: BreakdownRow[];
   timeline: { parts: TimelineSeries[]; products: TimelineSeries[]; currency: "SGD" };
   gaps: CostGap[];
 };
 
-type AllocatedLine = SoldLine & { revenue: number; month: MonthKey; channel: SoldChannel };
+type AllocatedLine = SoldLine & { revenue: number; month: MonthKey };
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * When each Order's sale was made: its latest Stripe charge, by Stripe's clock.
+ * An Order paid in parts (a Balance payment, then the hold's capture) is sold
+ * when Stripe holds the whole price, not at its first payment.
+ */
+export function latestChargeAt(charges: Array<{ orderId: string; at: string }>): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const c of charges) {
+    const t = Date.parse(c.at);
+    if (Number.isNaN(t)) continue;
+    const prev = out.get(c.orderId);
+    if (prev == null || t > Date.parse(prev)) out.set(c.orderId, new Date(t).toISOString());
+  }
+  return out;
 }
 
 /**
@@ -197,7 +209,7 @@ function productParent(l: SoldLine): { key: string; label: string } | null {
     return { key: `pillow:${tier}`, label: TIER_LABEL[tier] ?? "Mpillow" };
   }
   if (l.group === "bolster") return { key: "bolster", label: "Mbolster" };
-  if (l.group === "unmapped") return { key: "unmapped", label: "Not mapped" };
+  if (l.group === "unmapped") return { key: "unmapped", label: "Not linked to inventory" };
   return null;
 }
 
@@ -271,9 +283,8 @@ function gaps(lines: AllocatedLine[]): CostGap[] {
   for (const l of lines) {
     if (l.cost != null) continue;
     const reason = l.uncostedReason || "No cost was recorded when it sold.";
-    const id = `${l.channel}|${l.key}|${reason}`;
+    const id = `${l.key}|${reason}`;
     const g = byKey.get(id) ?? {
-      channel: l.channel,
       key: l.key,
       label: l.label,
       reason,
@@ -294,20 +305,13 @@ function gaps(lines: AllocatedLine[]): CostGap[] {
 /** Every money figure on Analytics → Sales, from one pass over the sold lines. */
 export function buildSalesReport(input: { orders: SoldOrder[]; months: MonthKey[] }): SalesReport {
   const lines: AllocatedLine[] = [];
-  const orderCount: Record<SoldChannel, number> = { orders: 0, shopify: 0 };
   for (const order of input.orders) {
-    orderCount[order.channel] += 1;
-    const month = sgMonthKey(order.paidAt);
-    for (const l of allocateOrderRevenue(order)) lines.push({ ...l, month, channel: order.channel });
+    const month = sgMonthKey(order.soldAt);
+    for (const l of allocateOrderRevenue(order)) lines.push({ ...l, month });
   }
-  const of = (channel: SoldChannel) => lines.filter((l) => l.channel === channel);
 
   return {
-    summary: summarise(lines, orderCount.orders + orderCount.shopify),
-    byChannel: {
-      orders: summarise(of("orders"), orderCount.orders),
-      shopify: summarise(of("shopify"), orderCount.shopify),
-    },
+    summary: summarise(lines, input.orders.length),
     products: breakdown(lines, productParent),
     parts: breakdown(lines, partParent),
     timeline: {

@@ -8,7 +8,6 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { InfoTip } from "@/components/ui/info-tip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { AnalyticsChannel } from "@/lib/analytics/channel-sales";
 import { sgMonthKey } from "@/lib/analytics/sg-calendar";
 import { getSalesReport } from "./actions";
 
@@ -53,7 +52,6 @@ function Kpi({ label, value, note, loading }: { label: string; value: string; no
  * such instead of as profit.
  */
 export function SalesTab({ from, to, dateRange }: { from: string; to: string; dateRange: { from: Date; to: Date } }) {
-  const [channel, setChannel] = useState<AnalyticsChannel>("all");
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,13 +64,13 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
     setLoading(true);
     setError(null);
     try {
-      setReport(await getSalesReport({ from, to, channel }));
+      setReport(await getSalesReport({ from, to }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load sales.");
     } finally {
       setLoading(false);
     }
-  }, [from, to, channel]);
+  }, [from, to]);
 
   useEffect(() => {
     void load();
@@ -88,28 +86,26 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
   }, [report, timelineView]);
 
   const s = report?.summary;
-  const channelLabel = channel === "all" ? "All channels" : channel === "orders" ? "Orders" : "Shopify";
   const gaps = report?.gaps ?? [];
   const shownGaps = showAllGaps ? gaps : gaps.slice(0, 8);
 
   return (
     <div className="grid grid-cols-1 gap-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {channelLabel}: paid sales in the period, net of discounts and refunds, before shipping and tax.
-        </p>
-        <div className="flex items-center gap-2">
-          <Tabs value={channel} onValueChange={(v) => setChannel(v as AnalyticsChannel)}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="orders">Orders</TabsTrigger>
-              <TabsTrigger value="shopify">Shopify</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Button variant="ghost" size="icon" onClick={() => void load()} disabled={loading} title="Refresh sales">
-            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-          </Button>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm text-muted-foreground">
+            Orders on this site, counted when Stripe took the payment. Net of discounts and refunds, before shipping
+            and tax.
+          </p>
+          <InfoTip label="About when a sale counts">
+            A sale is dated by Stripe&apos;s own time for the payment, read from the payment ledger: the moment the whole
+            price was in. An order paid in two parts counts when the second part lands. Refunds and lost disputes come
+            off the sale they belong to.
+          </InfoTip>
         </div>
+        <Button variant="ghost" size="icon" onClick={() => void load()} disabled={loading} title="Refresh sales">
+          <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+        </Button>
       </div>
 
       {error ? (
@@ -130,9 +126,9 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
           loading={loading}
           value={currency.format(s?.revenue ?? 0)}
           note={
-            channel === "all" && report
-              ? `${integer.format(s?.orderCount ?? 0)} paid orders · Orders ${currency.format(report.byChannel.orders.revenue)} · Shopify ${currency.format(report.byChannel.shopify.revenue)}`
-              : `${integer.format(s?.orderCount ?? 0)} paid orders.`
+            s && s.orderCount > 0
+              ? `${integer.format(s.orderCount)} orders paid through Stripe.`
+              : "No orders paid through Stripe in this period yet."
           }
         />
         <Kpi
@@ -165,8 +161,8 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
             <div className="flex items-center gap-1.5">
               <CardTitle>Sales with no cost</CardTitle>
               <InfoTip label="About sales with no cost">
-                A sale keeps the cost recorded when it sold. One with none stays out of the margin rather than counting
-                as free. Shopify sales are read from the order mirror as recorded.
+                A sale keeps the cost recorded on its order lines when it sold. A line with none stays out of the margin
+                rather than counting as free.
               </InfoTip>
             </div>
             <CardDescription>
@@ -186,13 +182,8 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
                 </thead>
                 <tbody>
                   {shownGaps.map((g) => (
-                    <tr key={`${g.channel}|${g.key}|${g.reason}`} className="border-b align-top last:border-0">
-                      <td className="py-1.5 pr-3">
-                        {g.label}
-                        <span className="block text-xs text-muted-foreground">
-                          {g.channel === "shopify" ? "Shopify" : "Order"}
-                        </span>
-                      </td>
+                    <tr key={`${g.key}|${g.reason}`} className="border-b align-top last:border-0">
+                      <td className="py-1.5 pr-3">{g.label}</td>
                       <td className="py-1.5 pr-3 text-muted-foreground">{g.reason}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">{integer.format(g.units)}</td>
                       <td className="py-1.5 text-right tabular-nums">{currency.format(g.revenue)}</td>

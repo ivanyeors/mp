@@ -7,6 +7,7 @@ import { deductInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
 import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
+import { stripeEventTime, stripeTime } from "@/lib/stripe/money-time";
 import { applyRmaTransition } from "@/lib/rma/transition";
 import {
   createHeldCommissionsForOrder,
@@ -185,7 +186,8 @@ export async function POST(req: Request) {
                 .from("mp_config_responses")
                 .update({
                   topup_payment_intent_id: paymentIntent,
-                  topup_paid_at: new Date().toISOString(),
+                  // Stripe's time for the payment, not when this delivery ran.
+                  topup_paid_at: stripeEventTime(event),
                 })
                 .eq("id", resultId)
                 // `accepted` too: accept holds that status while it settles, and a
@@ -320,6 +322,7 @@ export async function POST(req: Request) {
               currency: order.currency ?? "SGD",
               stripeObjectId: paymentIntent,
               metadata: { stripe_session_id: session.id, paid_while: order.status },
+              occurredAt: stripeEventTime(event),
             });
             await rollupOrderMoney(admin, orderId);
           }
@@ -351,7 +354,9 @@ export async function POST(req: Request) {
             .from("orders")
             .update({
               status: "confirmed",
-              paid_at: new Date().toISOString(),
+              // When Stripe took the payment (the event's own time), not when
+              // this delivery ran: Stripe retries a failed webhook for days.
+              paid_at: stripeEventTime(event),
               payment_method: "stripe",
               payment_reference: paymentIntent,
               tax_amount: recon.writeBack.tax_amount,
@@ -380,6 +385,7 @@ export async function POST(req: Request) {
             currency: order.currency ?? "SGD",
             stripeObjectId: paymentIntent,
             metadata: { stripe_session_id: session.id },
+            occurredAt: stripeEventTime(event),
           });
           await rollupOrderMoney(admin, orderId);
         }
@@ -691,6 +697,7 @@ export async function POST(req: Request) {
               payment_intent: paymentIntentId,
               reason: r.reason ?? null,
             },
+            occurredAt: stripeTime(r.created),
           });
           if (recorded) {
             newlyRecorded++;
@@ -930,6 +937,7 @@ export async function POST(req: Request) {
             currency: order.currency ?? "SGD",
             stripeObjectId: dispute.id,
             metadata: { reason: dispute.reason },
+            occurredAt: stripeEventTime(event),
           });
         }
 
@@ -940,6 +948,7 @@ export async function POST(req: Request) {
             currency: order.currency ?? "SGD",
             stripeObjectId: `${dispute.id}:fee`,
             metadata: { kind: "dispute_fee" },
+            occurredAt: stripeEventTime(event),
           });
         }
 
@@ -991,6 +1000,7 @@ export async function POST(req: Request) {
               currency: order.currency ?? "SGD",
               stripeObjectId: `${refund.id}:failed`,
               metadata: { kind: "refund_reversal" },
+              occurredAt: stripeEventTime(event),
             });
             await rollupOrderMoney(admin, order.id);
           }

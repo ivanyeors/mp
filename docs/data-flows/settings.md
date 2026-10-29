@@ -42,7 +42,7 @@ then write with the service-role client. Permissions are code; roles are data
 | **Order detail** `/settings/orders/[id]` | `/api/shop/orders/[id]` (status), `/api/shop/orders/[id]/{deduct-stock, refund, cancel, refund-request, restock, fulfill, easyship, …}` | A status change that makes the Order sold, `deduct-stock`, `fulfill` and `easyship` labels deduct its goods once (`inventory_transactions`, `orders.inventory_deducted_at`). `restock` writes `inventory_transactions` + `order_items.returned_quantity`. The "Inventory deducted" badge and the Stock row read `orders.inventory_deducted_at`. |
 | **Result detail** `/settings/results/[id]` | `/api/results/assign/prep`, `/api/results/[id]/assign`, `/api/results/[id]/cancel`, `/api/results/[id]/request-payment` | `mp_config_responses`, `result_filling_placements` / `result_bolster_filling_placements`. Stock is checked but not written. |
 | **Integrations → Shopify** `/settings/integrations/shopify` | `fullShopifySync`, mapping and override actions | `shopify_variant_mappings`, `shopify_variant_overrides`; pushes stock and prices to Shopify |
-| **Analytics** `/settings/analytics` | `getSalesReport`, `getInventoryMovementWaterfall` and other read actions | Reads paid Orders, the Shopify mirror and the ledger ([analytics.md](analytics.md)); writes only SEO annotations and target queries |
+| **Analytics** `/settings/analytics` | `getSalesReport`, `getInventoryMovementWaterfall` and other read actions | Reads Orders Stripe charged (money ledger) and the stock ledger ([analytics.md](analytics.md)); writes only SEO annotations and target queries |
 
 How a sale and a restock move stock is in
 [purchases-to-inventory.md](purchases-to-inventory.md) and
