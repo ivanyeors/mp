@@ -148,8 +148,9 @@ describe("the preview and the test send", () => {
 describe("previewCampaign", () => {
   it("hands the Dark toggle to the renderer, and names the sending setup's From", async () => {
     const light = await previewCampaign(INPUT);
-    expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: false, firstName: "Ivan" });
-    expect(light).toMatchObject({ ok: true, subject: "Ivan, sleep cooler", from: "Mpillow <hello@hello.mpillow.com>" });
+    // A block campaign previews as the sample customer (slice 13), as its test send reads.
+    expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: false, firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 });
+    expect(light).toMatchObject({ ok: true, subject: "Mei Ling, sleep cooler", from: "Mpillow <hello@hello.mpillow.com>" });
     const dark = await previewCampaign(INPUT, { forceDark: true });
     expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: true });
     // Dark is the shell's own dark rules applied (slice 15); Light is the email as sent.

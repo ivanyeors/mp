@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Columns2, Heading, Image as ImageIcon, Minus, MousePointerClick, PanelTop, Pilcrow, ShoppingBag, StretchVertical } from "lucide-react";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 import { RichText } from "@/components/block-editor/rich-text";
-import { richTextWords } from "@/components/block-editor/rich-text-doc";
+import { richTextFromWords, richTextWords } from "@/components/block-editor/rich-text-doc";
 import type { BlockCatalogue, BlockFormProps } from "@/components/block-editor/types";
 import { typingBurst } from "@/components/block-editor/use-editor-history";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,8 @@ import { cn } from "@/lib/utils";
 import { Field } from "../field";
 import { ImageField } from "./image-field";
 import { ProductField, ProductsField } from "./products-field";
-import { paragraphsOf, richTextOf, TEXT_VARIABLES } from "./runs";
+import { paragraphsOf, richTextOf } from "./runs";
+import { useCampaignVariables } from "./variables";
 
 /**
  * The campaign's half of the shared block editor (PRD-campaign-email-editor
@@ -60,21 +61,29 @@ const FieldError = ({ text }: { text?: string | null }) => (text ? <p className=
 const errorAt = (errors: Record<string, string>, path: string) =>
     errors[path] ?? Object.entries(errors).find(([k]) => k.startsWith(`${path}.`))?.[1];
 
+/**
+ * A heading's words as they read, in one line, with Variables as chips (slice
+ * 13). Stored as a string, each Variable written `{first_name}`, as the
+ * subject is.
+ */
 function HeadingForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"heading">>) {
     const id = `${idPrefix}-text`;
-    const error = errorAt(errors, "text");
+    const variables = useCampaignVariables();
+    const value = useMemo(() => richTextFromWords(b.text, variables), [b.text, variables]);
+    const error = errorAt(errors, "text") ?? unknownVariableMessage(b.text);
     return (
         <div>
-            <Input
+            <RichText
                 id={id}
+                singleLine
                 aria-label={b.level === 1 ? "Title" : "Heading"}
-                aria-invalid={error ? true : undefined}
-                value={b.text}
+                aria-invalid={Boolean(error)}
+                value={value}
+                variables={variables}
                 placeholder={CONTENT_PLACEHOLDERS.heading}
-                maxLength={CONTENT_LIMITS.heading}
-                disabled={readOnly}
-                onChange={(e) => onChange({ ...b, text: e.target.value }, typingBurst(e, id))}
-                className={cn("h-auto border-transparent px-2 py-1 font-semibold tracking-tight shadow-none hover:border-input", b.level === 1 ? "text-2xl md:text-2xl" : "text-lg md:text-lg")}
+                readOnly={readOnly}
+                onChange={(next, how) => onChange({ ...b, text: richTextWords(next) }, how.paste ? undefined : id)}
+                className={cn("border-transparent px-2 py-1 font-semibold tracking-tight shadow-none hover:border-input", b.level === 1 ? "text-2xl md:text-2xl" : "text-lg md:text-lg")}
             />
             <FieldError text={error} />
         </div>
@@ -98,6 +107,7 @@ function HeadingOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"hea
 
 function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
     const id = `${idPrefix}-text`;
+    const variables = useCampaignVariables();
     const value = useMemo(() => richTextOf(b.paragraphs), [b.paragraphs]);
     const error = errorAt(errors, "paragraphs") ?? unknownVariableMessage(richTextWords(value));
     return (
@@ -108,7 +118,7 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
                 aria-invalid={Boolean(error)}
                 value={value}
                 marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
-                variables={TEXT_VARIABLES}
+                variables={variables}
                 placeholder={CONTENT_PLACEHOLDERS.text}
                 readOnly={readOnly}
                 onSlash={onSlash}
@@ -389,6 +399,52 @@ function OneButtonFields({
     );
 }
 
+/**
+ * A one-line field of a block's words that takes Variables as chips, as a
+ * heading's does (slice 13): a hero's heading and line, an image + text's
+ * heading. Stored as a string, each Variable written `{first_name}`.
+ */
+function VariableLine({
+    id,
+    label,
+    text,
+    onChange,
+    readOnly,
+    error,
+    placeholder,
+    className,
+}: {
+    id: string;
+    label: string;
+    text: string;
+    onChange: (next: string, burst?: string) => void;
+    readOnly: boolean;
+    error?: string;
+    placeholder: string;
+    className: string;
+}) {
+    const variables = useCampaignVariables();
+    const value = useMemo(() => richTextFromWords(text, variables), [text, variables]);
+    const shown = error ?? unknownVariableMessage(text);
+    return (
+        <>
+            <RichText
+                id={id}
+                singleLine
+                aria-label={label}
+                aria-invalid={Boolean(shown)}
+                value={value}
+                variables={variables}
+                placeholder={placeholder}
+                readOnly={readOnly}
+                onChange={(next, how) => onChange(richTextWords(next), how.paste ? undefined : id)}
+                className={className}
+            />
+            <FieldError text={shown} />
+        </>
+    );
+}
+
 type Hero = Of<"hero">;
 /** A hero's parts below its image, each of which may be left out. */
 type HeroPart = "heading" | "line" | "button";
@@ -422,35 +478,31 @@ function HeroForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormP
             {/* Below the image, never on it: real words and a real button (decision 6). */}
             {b.heading !== undefined ? (
                 <div className="text-center">
-                    <Input
+                    <VariableLine
                         id={headingId}
-                        aria-label="Hero heading"
-                        aria-invalid={errors.heading ? true : undefined}
-                        value={b.heading}
+                        label="Hero heading"
+                        text={b.heading}
+                        onChange={(heading, burst) => onChange({ ...b, heading }, burst)}
+                        readOnly={readOnly}
+                        error={errors.heading}
                         placeholder={CONTENT_PLACEHOLDERS.heading}
-                        maxLength={CONTENT_LIMITS.heading}
-                        disabled={readOnly}
-                        onChange={(e) => onChange({ ...b, heading: e.target.value }, typingBurst(e, headingId))}
-                        className="h-auto border-transparent px-2 py-1 text-center text-xl font-semibold tracking-tight shadow-none hover:border-input md:text-xl"
+                        className="border-transparent px-2 py-1 text-center text-xl font-semibold tracking-tight shadow-none hover:border-input md:text-xl"
                     />
-                    <FieldError text={errors.heading} />
                     {remove("heading")}
                 </div>
             ) : null}
             {b.line !== undefined ? (
                 <div className="text-center">
-                    <Input
+                    <VariableLine
                         id={lineId}
-                        aria-label="Hero line"
-                        aria-invalid={errors.line ? true : undefined}
-                        value={b.line}
+                        label="Hero line"
+                        text={b.line}
+                        onChange={(line, burst) => onChange({ ...b, line }, burst)}
+                        readOnly={readOnly}
+                        error={errors.line}
                         placeholder={CONTENT_PLACEHOLDERS.line}
-                        maxLength={CONTENT_LIMITS.line}
-                        disabled={readOnly}
-                        onChange={(e) => onChange({ ...b, line: e.target.value }, typingBurst(e, lineId))}
-                        className="h-auto border-transparent px-2 py-1 text-center shadow-none hover:border-input"
+                        className="border-transparent px-2 py-1 text-center shadow-none hover:border-input"
                     />
-                    <FieldError text={errors.line} />
                     {remove("line")}
                 </div>
             ) : null}
@@ -511,6 +563,7 @@ const splitLength = (b: Split) => paragraphRuns(b.paragraphs).reduce((n, r) => n
 function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Split>) {
     const headingId = `${idPrefix}-heading`;
     const textId = `${idPrefix}-text`;
+    const variables = useCampaignVariables();
     const value = useMemo(() => richTextOf(b.paragraphs), [b.paragraphs]);
     const textError =
         errorAt(errors, "paragraphs") ??
@@ -532,18 +585,16 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                 </div>
                 <div className="space-y-3">
                     <div>
-                        <Input
+                        <VariableLine
                             id={headingId}
-                            aria-label="Heading beside the image"
-                            aria-invalid={errors.heading ? true : undefined}
-                            value={b.heading}
+                            label="Heading beside the image"
+                            text={b.heading}
+                            onChange={(heading, burst) => onChange({ ...b, heading }, burst)}
+                            readOnly={readOnly}
+                            error={errors.heading}
                             placeholder={CONTENT_PLACEHOLDERS.heading}
-                            maxLength={CONTENT_LIMITS.heading}
-                            disabled={readOnly}
-                            onChange={(e) => onChange({ ...b, heading: e.target.value }, typingBurst(e, headingId))}
-                            className="h-auto border-transparent px-2 py-1 text-lg font-semibold tracking-tight shadow-none hover:border-input md:text-lg"
+                            className="border-transparent px-2 py-1 text-lg font-semibold tracking-tight shadow-none hover:border-input md:text-lg"
                         />
-                        <FieldError text={errors.heading} />
                     </div>
                     <div>
                         <RichText
@@ -552,7 +603,7 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                             aria-invalid={Boolean(textError)}
                             value={value}
                             marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
-                            variables={TEXT_VARIABLES}
+                            variables={variables}
                             placeholder={CONTENT_PLACEHOLDERS.text}
                             readOnly={readOnly}
                             onChange={(next, how) => onChange({ ...b, paragraphs: paragraphsOf(next) }, how.paste ? undefined : textId)}

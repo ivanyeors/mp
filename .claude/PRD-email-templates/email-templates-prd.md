@@ -27,7 +27,10 @@ Each email shows whether its words were edited, when, and by whom. Opening one s
   each version's own fields. Examples are a customisation with or without a card hold, or a
   shipment with or without a tracking link.
 - **Placeholders**, such as `{customer_name}`, `{order_number}` and `{refund_amount}`. Each is
-  listed with what it becomes, and the email fills in its own value.
+  listed with what it becomes, and the email fills in its own value. Since
+  PRD-campaign-email-editor slice 14, Staff see them as **Variables**: chips they drag into a
+  field, press where the cursor is, or choose after typing `{`. A field is still stored as words
+  with `{order_number}` in them.
 - **A live preview** with sample data, in any version of the email.
 - **Save.** Every email of that kind sends with the new words within 30 seconds.
 - **Back to the original words**, with a confirmation.

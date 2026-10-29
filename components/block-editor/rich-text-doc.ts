@@ -30,6 +30,12 @@ export interface RichTextVariable {
   label: string;
   /** One line: what it becomes. Shown as the chip's title. */
   description?: string;
+  /**
+   * Why it can't be put in now (a page's rule, such as points not being live):
+   * the `{` menu and the Variables palette show it greyed, with this reason.
+   * Where the words already hold it, it still shows as its chip.
+   */
+  disabledReason?: string | null;
 }
 
 /** The node and mark names the input's schema uses. */
@@ -184,4 +190,33 @@ export function docFromValue(value: RichTextValue): DocNode {
 export function richTextWords(value: RichTextValue): string {
   const line = (runs: readonly RichTextRun[]) => runs.map((r) => ("var" in r ? `{${r.var}}` : r.text)).join("");
   return value.map((p) => (p.kind === "p" ? line(p.runs) : p.items.map(line).join("\n"))).join("\n\n");
+}
+
+/** A `{name}` in words, as Email templates and campaigns write one (lib/email/copy.ts's pattern). */
+const WRITTEN_VARIABLE = /\{([a-z][a-z0-9_]*)\}/g;
+
+/**
+ * Pure — words with their Variables written `{name}` (a subject, a heading,
+ * an Email template's field) as the input's value: each Variable the input
+ * offers a chip, any other `{name}` words, a blank line a new paragraph and a
+ * line end a line break. The inverse of {@link richTextWords} for words
+ * without bullets, so a page that stores strings loads and saves them as they
+ * were (PRD-campaign-email-editor slices 13 and 14).
+ */
+export function richTextFromWords(text: string, variables: readonly RichTextVariable[]): RichTextValue {
+  const offered = new Set(variables.map((v) => v.key));
+  const out: RichTextValue = [];
+  for (const para of text.split("\n\n")) {
+    const runs: RichTextRun[] = [];
+    let at = 0;
+    for (const m of para.matchAll(WRITTEN_VARIABLE)) {
+      if (!offered.has(m[1])) continue;
+      pushRun(runs, { text: para.slice(at, m.index) });
+      runs.push({ var: m[1] });
+      at = m.index + m[0].length;
+    }
+    pushRun(runs, { text: para.slice(at) });
+    if (hasWords(runs)) out.push({ kind: "p", runs });
+  }
+  return out;
 }

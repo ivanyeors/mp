@@ -519,8 +519,7 @@ export function sampleCampaignBlocks(fixture: EmailFixture = "happy"): CampaignB
     preheader: pick(fixture, "Our FibreCool covers are back, in every size."),
     content: sampleCampaignBlocksContent(fixture),
     greeting: true,
-    firstName,
-    values: { first_name: firstName },
+    values: { first_name: firstName, last_name: pick(fixture, "Tan"), points_balance: "1,250" },
     buttonHref: (b) => `${ORIGIN}${pages[b.target] ?? "/en-US"}?${utm}`,
     unsubscribeUrl: sampleUnsubscribeUrl,
   };

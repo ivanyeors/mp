@@ -41,8 +41,7 @@ const send = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> =
     preheader: null,
     content,
     greeting: false,
-    firstName: "Ann",
-    values: { first_name: "Ann" },
+    values: { first_name: "Ann", last_name: "Tan", points_balance: "1,250" },
     // What the sender passes: each button resolved for the recipient, a product to its shop page.
     buttonHref: (b) => blockButtonHref(b, "December cooling launch", { origin: ORIGIN, locale: "en-US", claimUrl: null, products }),
     unsubscribeUrl: UNSUB,

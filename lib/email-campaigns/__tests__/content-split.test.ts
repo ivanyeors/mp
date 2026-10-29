@@ -86,12 +86,13 @@ describe("an image + text block", () => {
     expect(issues(one(split({ paragraphs: many })))).toEqual([["blocks.0.paragraphs", `At most ${CONTENT_LIMITS.splitParagraphs} paragraphs beside an image.`]]);
   });
 
-  it("holds its words to words: no tags, no {name} but in the text, the heading's limit", () => {
+  it("holds its words to words: no tags, only Variables in braces, the heading's limit", () => {
+    const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.`;
     expect(issues(one(split({ heading: "x".repeat(121) })))).toEqual([["blocks.0.heading", "At most 120 characters."]]);
-    expect(issues(one(split({ heading: "For {first_name}" })))).toEqual([
-      ["blocks.0.heading", "{first_name} can go in a text block, the subject or the preview line, not here."],
-    ]);
-    expect(issues(one(split({ paragraphs: lines("Hi {frist_name}") })))).toEqual([["blocks.0.paragraphs", "{frist_name} is not a Variable: only {first_name} is."]]);
+    // Its heading takes Variables as a heading block's does (slice 13).
+    expect(issues(one(split({ heading: "For {first_name}" })))).toEqual([]);
+    expect(issues(one(split({ heading: "For {frist_name}" })))).toEqual([["blocks.0.heading", unknown("frist_name")]]);
+    expect(issues(one(split({ paragraphs: lines("Hi {frist_name}") })))).toEqual([["blocks.0.paragraphs", unknown("frist_name")]]);
     expect(CampaignContentSchema.safeParse(one(split({ heading: "<h2>Sale</h2>" }))).success).toBe(false);
     expect(CampaignContentSchema.safeParse(one(split({ paragraphs: lines("<img src=x>") }))).success).toBe(false);
   });

@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { docFromValue, richTextWords, valueFromDoc, type DocNode, type RichTextValue } from "../rich-text-doc";
-import { richTextExtensions, type RichTextMarks } from "../rich-text-schema";
+import { docFromValue, richTextFromWords, richTextWords, valueFromDoc, type DocNode, type RichTextValue } from "../rich-text-doc";
+import { matchVariables, richTextExtensions, type RichTextMarks } from "../rich-text-schema";
 
 /**
  * TipTap → runs (PRD-campaign-email-editor slice 04): the input's value maps
@@ -139,5 +139,38 @@ describe("pasting", () => {
     const e = editor([], {}, { singleLine: true });
     e.view.pasteText("Sleep cooler\nthis December, {first_name}");
     expect(read(e)).toEqual([{ kind: "p", runs: [{ text: "Sleep cooler this December, " }, { var: "first_name" }] }]);
+  });
+});
+
+describe("words with their Variables written {name} (PRD-campaign-email-editor slice 13)", () => {
+  it("load as the input's value, each offered Variable a chip, and save back as they were", () => {
+    expect(richTextFromWords("{first_name}, sleep cooler {soon}", VARIABLES)).toEqual([
+      { kind: "p", runs: [{ var: "first_name" }, { text: ", sleep cooler {soon}" }] },
+    ]);
+    expect(richTextFromWords("One\nline\n\nTwo {first_name}", VARIABLES)).toEqual([
+      { kind: "p", runs: [{ text: "One\nline" }] },
+      { kind: "p", runs: [{ text: "Two " }, { var: "first_name" }] },
+    ]);
+    expect(richTextFromWords("", VARIABLES)).toEqual([]);
+    for (const words of ["{first_name}{first_name}", "Hi {first_name}!", "No names", "One\nline\n\nTwo {first_name}"]) {
+      expect(richTextWords(richTextFromWords(words, VARIABLES))).toBe(words);
+      // Through TipTap's document and back, as the input holds it.
+      expect(richTextWords(read(editor(richTextFromWords(words, VARIABLES))))).toBe(words);
+    }
+  });
+
+  it("takes a dropped or pasted chip only for a Variable the input offers", () => {
+    const e = editor([], {}, { singleLine: true });
+    e.view.pasteHTML('<p>Hi <span data-variable="first_name"></span> <span data-variable="password"></span>!</p>');
+    expect(read(e)).toEqual([{ kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: " !" }] }]);
+  });
+
+  it("matches what is typed after { by key or by label", () => {
+    const all = [...VARIABLES, { key: "last_name", label: "Last name" }, { key: "points_balance", label: "Points balance" }];
+    expect(matchVariables(all, "").map((v) => v.key)).toEqual(["first_name", "last_name", "points_balance"]);
+    expect(matchVariables(all, "la").map((v) => v.key)).toEqual(["last_name"]);
+    expect(matchVariables(all, "name").map((v) => v.key)).toEqual(["first_name", "last_name"]);
+    expect(matchVariables(all, "points_b").map((v) => v.key)).toEqual(["points_balance"]);
+    expect(matchVariables(all, "zz")).toEqual([]);
   });
 });

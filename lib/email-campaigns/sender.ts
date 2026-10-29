@@ -28,8 +28,11 @@
  * moment), then rendered with the recipient's own unsubscribe link and
  * `List-Unsubscribe` (RFC 8058), Reply-To the support inbox. A Migrated
  * customer who has not Claimed gets their own Claim link as the sign-in
- * button. About two a second (Resend's default limit); a batch stops after
- * five failures in a row.
+ * button. A block campaign's Variables are filled for each recipient
+ * (PRD-campaign-email-editor slice 13): their names as the claim returns
+ * them, and their points balance, read only for an email that says it. About
+ * two a second (Resend's default limit); a batch stops after five failures in
+ * a row.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mintClaimLink } from "@/lib/customer-migration/claim-link";
@@ -68,7 +71,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { listUnsubscribeHeaders, PROBE_CUSTOMER_ID, unsubscribeLinks } from "@/lib/marketing-consent/unsubscribe";
 import { claimBonusOffer } from "@/lib/points/offer";
-import { readPointsSettings } from "@/lib/points/server";
+import { readPointsBalance, readPointsSettings } from "@/lib/points/server";
 import {
   campaignLedgerKey,
   CAMPAIGN_BLOCKER_TEXT,
@@ -78,6 +81,7 @@ import {
   MAX_WAVE_SIZE,
   nextWaveLabel,
   planCampaignWave,
+  variablesInEmail,
   WAVE_LABEL,
   type Campaign,
   type CampaignPlan,
@@ -87,7 +91,7 @@ import { campaignImagesProblem, readCampaignImages } from "./images";
 import { campaignProductPhotos, campaignProductsProblem, productsCheck, readCampaignProducts } from "./products";
 import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
-import { variableValues } from "./variables";
+import { campaignVariable, variableValues, type VariableRecipient } from "./variables";
 
 export { MAX_CONSECUTIVE_FAILURES };
 
@@ -176,6 +180,10 @@ export function blockButtonHref(
 export const campaignSignsIn = (campaign: Pick<Campaign, "button" | "content">) =>
   campaign.content ? contentSignsIn(campaign.content) : campaign.button?.target === "sign_in";
 
+/** Pure — the Campaign says each recipient's *Points balance* (slice 13), so each send reads it. */
+export const usesPointsBalance = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
+  variablesInEmail(campaign).some((key) => campaignVariable(key).needsPoints);
+
 /** What an empty field shows in the editor's preview, legacy or blocks. */
 export type CampaignPreviewPlaceholders = ComposedCampaignPlaceholders & CampaignBlocksPlaceholders;
 
@@ -196,6 +204,9 @@ export function renderCampaignFor(
   campaign: CampaignEmailParts,
   p: {
     firstName: string | null;
+    /** The recipient's other details, for the Variables a block campaign uses (slice 13). */
+    lastName?: string | null;
+    pointsBalance?: number | null;
     origin: string;
     locale: Locale;
     claimUrl: string | null;
@@ -211,8 +222,7 @@ export function renderCampaignFor(
       preheader: campaign.preheader,
       content: campaign.content,
       greeting: campaign.greeting,
-      firstName: p.firstName,
-      values: variableValues({ firstName: p.firstName }, campaign.content.fallbacks),
+      values: variableValues(p, campaign.content.fallbacks),
       buttonHref: (b) => blockButtonHref(b, campaign.name, p),
       unsubscribeUrl: p.unsubscribeUrl,
       ...(p.images ? { images: p.images } : {}),
@@ -245,20 +255,35 @@ export function renderCampaignFor(
  * type level). `images` and `products` are what the test send reads too
  * (`readCampaignRenderData`), so the preview shows the email it delivers; an
  * image or a product missing from them is drawn as a hint.
+ *
+ * The sample customer is the caller's: *Preview as* (slice 13) passes
+ * `SAMPLE_RECIPIENT` for *A customer*, or `NO_DETAILS` to show every fallback.
  */
 export function renderCampaignPreview(
   campaign: CampaignEmailParts,
   {
     origin,
     firstName,
+    lastName = null,
+    pointsBalance = null,
     forceDark = false,
     images,
     products,
-  }: { origin: string; firstName: string | null; forceDark?: boolean; images?: CampaignBlockImages; products?: CampaignBlockProducts },
+  }: {
+    origin: string;
+    firstName: string | null;
+    lastName?: string | null;
+    pointsBalance?: number | null;
+    forceDark?: boolean;
+    images?: CampaignBlockImages;
+    products?: CampaignBlockProducts;
+  },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
   const rendered = renderCampaignFor(campaign, {
     firstName,
+    lastName,
+    pointsBalance,
     origin: base,
     locale: DEFAULT_LOCALE,
     claimUrl: null,
@@ -606,6 +631,8 @@ export async function sendCampaignBatch(
   const replyTo = emailAddressOf(setup.replyTo)!;
   const origin = originOf(setup);
   const key = campaignLedgerKey(campaign.id);
+  // Each balance is a read of its own: only for an email that says it.
+  const readsPoints = usesPointsBalance(campaign);
 
   for (const customerId of ids) {
     if (result.failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
@@ -636,6 +663,8 @@ export async function sendCampaignBatch(
           : null;
       const rendered = renderCampaignFor(campaign, {
         firstName: claim.firstName,
+        lastName: claim.lastName,
+        pointsBalance: readsPoints ? (await readPointsBalance(setup.admin, customerId)).available : null,
         origin,
         locale,
         claimUrl,
@@ -680,11 +709,13 @@ const TEST_PREFIX = "[Test] ";
  * addresses, through the same transport and headers as a real send, with
  * "[Test]" before the subject. It writes nothing to the ledger, its
  * unsubscribe link belongs to no Customer, and its sign-in button goes to
- * the account page.
+ * the account page. Its Variables are filled from `recipient`: the action
+ * passes the sample customer for a block campaign (slice 13), so the test
+ * reads like the real thing.
  */
 export async function sendCampaignTest(
   campaign: CampaignEmailParts,
-  { to, firstName }: { to: readonly string[]; firstName: string | null },
+  { to, ...recipient }: { to: readonly string[] } & VariableRecipient,
   setup: CampaignSenderSetup,
 ): Promise<{ sent: string[]; failed: { to: string; error: string }[] } | { refused: string }> {
   const addresses = [...new Set(to.map((t) => emailAddressOf(t)).filter((t): t is string => Boolean(t)))];
@@ -711,7 +742,7 @@ export async function sendCampaignTest(
   const shown = await readCampaignRenderData(setup.admin, campaign.content);
   if (shown.problem) return { refused: shown.problem };
   const rendered = renderCampaignFor(campaign, {
-    firstName,
+    ...recipient,
     origin,
     locale: DEFAULT_LOCALE,
     claimUrl: null,

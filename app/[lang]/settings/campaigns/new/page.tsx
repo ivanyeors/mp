@@ -3,6 +3,7 @@ import { listSegments } from "@/lib/crm/segments";
 import { newCampaignDraft } from "@/lib/email-campaigns/rules";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { CampaignEditor } from "../campaign-editor";
+import { campaignPointsLive } from "../points-live";
 import { segmentOptions } from "../segment-options";
 
 export const runtime = "nodejs";
@@ -25,7 +26,7 @@ export default async function NewEmailCampaignPage({
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
     const ctx = await requireAdminPage("campaigns", locale);
 
-    const segments = await listSegments().catch(() => []);
+    const [segments, points] = await Promise.all([listSegments().catch(() => []), campaignPointsLive()]);
     return (
         <CampaignEditor
             campaign={null}
@@ -33,6 +34,7 @@ export default async function NewEmailCampaignPage({
             stats={null}
             segments={segmentOptions(segments, ctx, locale)}
             staffEmail={ctx.email}
+            pointsLive={points}
         />
     );
 }

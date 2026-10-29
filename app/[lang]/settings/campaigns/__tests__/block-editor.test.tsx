@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { choose, click, pasteInto, pointAt, press, richTextIn, settle, typeField, typeInto, until } from "@/components/block-editor/__tests__/dom";
+import { choose, click, pasteInto, pointAt, press, retype, richTextIn, settle, typeField, typeInto, until, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -38,7 +38,9 @@ const actions = vi.hoisted(() => ({
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
   duplicateCampaign: vi.fn(),
   planCampaignWave: vi.fn(),
-  previewCampaign: vi.fn<(input: CampaignDraftInput, opts?: { forceDark?: boolean }) => Promise<{ ok: true; subject: string; html: string; text: string; from: string }>>(
+  previewCampaign: vi.fn<
+    (input: CampaignDraftInput, opts?: { forceDark?: boolean; previewAs?: string }) => Promise<{ ok: true; subject: string; html: string; text: string; from: string }>
+  >(
     async (input) => ({ ok: true, subject: input.subject, html: "<p>preview</p>", text: "", from: "Mpillow <hello@hello.mpillow.com>" }),
   ),
   saveCampaign: vi.fn<(id: string | null, input: CampaignDraftInput) => Promise<SaveResult>>(async (id) => ({ ok: true, id: id ?? "new" })),
@@ -88,14 +90,14 @@ const saved = (draft: CampaignDraft, over: Partial<Campaign> = {}): Campaign => 
 const withBlocks = (content: CampaignContent = CONTENT): CampaignDraft => ({ ...LEGACY, body: "", button: null, content });
 
 let root: Root | null = null;
-function mount(campaign: Campaign | null, draft: CampaignDraft) {
+function mount(campaign: Campaign | null, draft: CampaignDraft, { pointsLive = true }: { pointsLive?: boolean } = {}) {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   act(() =>
     root!.render(
       <>
-        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={[]} staffEmail="owner@mpillow.com" />
+        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={[]} staffEmail="owner@mpillow.com" pointsLive={pointsLive} />
         <Toaster />
       </>,
     ),
@@ -129,6 +131,12 @@ const paletteItem = (label: string) => [...document.querySelectorAll<HTMLButtonE
 
 /** *Add block* → the type, as a keyboard user does it. */
 const addBlock = (label: string) => choose(button("Add block")!, label);
+
+/** The palette's Variables tab (slice 13), opened as a pointer opens it: its chips, and the fallback words under them. */
+const openVariables = async () => {
+  const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Variables")!;
+  await act(async () => void tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })));
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -184,15 +192,16 @@ describe("a new campaign's blocks", () => {
   it("are added empty, on their placeholders, written in, moved, deleted, and saved as blocks", async () => {
     mount(null, newCampaignDraft(undefined, []));
     typeField(field("c-name"), "December");
-    typeField(field("c-subject"), "Sleep cooler");
+    await retype("c-subject", "Sleep cooler");
 
     await addBlock("Heading");
+    const heading = await richTextIn(cards()[0]);
     await settle();
-    const heading = cards()[0].querySelector("input")!;
-    expect(heading.value).toBe("");
-    expect(heading.placeholder).toBe(CONTENT_PLACEHOLDERS.heading);
-    expect(document.activeElement).toBe(heading); // focus goes into the new block
-    typeField(heading, "Sleep cooler this December");
+    expect(heading.getText()).toBe("");
+    expect(heading.view.dom.getAttribute("aria-placeholder")).toBe(CONTENT_PLACEHOLDERS.heading);
+    expect(heading.view.dom.getAttribute("aria-multiline")).toBe("false"); // one line, with Variables (slice 13)
+    expect(document.activeElement).toBe(heading.view.dom); // focus goes into the new block
+    typeInto(heading, "Sleep cooler this December");
 
     await addBlock("Text");
     const text = await richTextIn(cards()[1]);
@@ -291,31 +300,40 @@ describe("a new campaign's blocks", () => {
 
   it("turn {first_name} typed in a text block into the Variable, and ask for its fallback words", async () => {
     mount(null, newCampaignDraft(undefined, []));
+    await openVariables();
+    // The greeting is the First name Variable (slice 13): off, and nothing else uses it, there is nothing to ask.
+    expect(field("c-fallback-first_name").value).toBe("there");
+    await click(document.getElementById("c-greeting")!);
     await addBlock("Text");
     expect(document.getElementById("c-fallback-first_name")).toBeNull();
     const text = await richTextIn(cards()[0]);
     typeInto(text, "Hi {first_name}, our covers are back.");
     expect(cards()[0].querySelector('[data-variable="first_name"]')?.textContent).toBe("First name");
-    expect(field("c-fallback-first_name").placeholder).toBe("e.g. there");
+    // Prefilled with the catalogue's default, which Staff may change.
+    expect(field("c-fallback-first_name").value).toBe("there");
     typeField(field("c-fallback-first_name"), "friend");
     await settle(500);
     expect(lastPreview()?.[0].content).toMatchObject({
       blocks: [{ type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", our covers are back." }] }] }],
       fallbacks: { first_name: "friend" },
     });
-    typeInto(text, " {last_name}");
-    expect(cards()[0].textContent).toContain("{last_name} is not a Variable: only {first_name} is.");
+    typeInto(text, " {nickname}");
+    expect(cards()[0].textContent).toContain("{nickname} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.");
   });
 
-  it("ask for the first name's fallback words when only the subject or the preview line uses it", async () => {
+  it("ask for a Variable's fallback words when only the subject or the preview line uses it", async () => {
     mount(null, newCampaignDraft(undefined, []));
+    await openVariables();
     await addBlock("Heading");
-    typeField(field("c-subject"), "{first_name}, sleep cooler this December");
-    expect(field("c-fallback-first_name").placeholder).toBe("e.g. there");
-    typeField(field("c-subject"), "Sleep cooler this December");
-    expect(document.getElementById("c-fallback-first_name")).toBeNull();
-    typeField(field("c-preheader"), "For you, {first_name}");
-    expect(document.getElementById("c-fallback-first_name")).not.toBeNull();
+    await retype("c-subject", "{last_name}, sleep cooler this December");
+    expect(wordsOf("c-subject")).toBe("Last name, sleep cooler this December");
+    expect(field("c-fallback-last_name").value).toBe(""); // no default: Staff write one
+    await retype("c-subject", "Sleep cooler this December");
+    expect(document.getElementById("c-fallback-last_name")).toBeNull();
+    await retype("c-preheader", "For you, {last_name}");
+    expect(document.getElementById("c-fallback-last_name")).not.toBeNull();
+    await settle(500);
+    expect(lastPreview()?.[0]).toMatchObject({ subject: "Sleep cooler this December", preheader: "For you, {last_name}" });
   });
 });
 
@@ -368,12 +386,16 @@ describe("the preview", () => {
   it("renders on the server for Light and Dark, shows the inbox row, and switches to Mobile", async () => {
     mount(saved(withBlocks()), withBlocks());
     await settle(500);
-    expect(lastPreview()?.[1]).toEqual({ forceDark: false });
+    expect(lastPreview()?.[1]).toEqual({ forceDark: false, previewAs: "customer" });
     expect(document.body.textContent).toContain("Mpillow <hello@hello.mpillow.com>"); // From, read-only
     const radio = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="radio"]')].find((r) => r.textContent === label)!;
     await click(radio("Dark"));
     await settle(500);
-    expect(lastPreview()?.[1]).toEqual({ forceDark: true });
+    expect(lastPreview()?.[1]).toEqual({ forceDark: true, previewAs: "customer" });
+    // Preview as (slice 13): the sample customer, or a customer with no details, whose Variables are their fallbacks.
+    await click(radio("No details"));
+    await settle(500);
+    expect(lastPreview()?.[1]).toEqual({ forceDark: true, previewAs: "no_details" });
     const frame = await until(() => document.querySelector<HTMLIFrameElement>('iframe[title="Email preview"]'));
     expect(frame.style.colorScheme).toBe("dark");
     expect(frame.getAttribute("sandbox")).toBe("allow-same-origin"); // no script runs in it

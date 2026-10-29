@@ -111,11 +111,13 @@ describe("a hero", () => {
     ]);
   });
 
-  it("holds its words to words: no tags, no {name}, the limits", () => {
+  it("holds its words to words: no tags, only Variables in braces, the limits", () => {
     expect(issues(one(hero({ heading: "x".repeat(121) })))).toEqual([["blocks.0.heading", "At most 120 characters."]]);
     expect(issues(one(hero({ line: "x".repeat(201) })))).toEqual([["blocks.0.line", "At most 200 characters."]]);
-    expect(issues(one(hero({ line: "For {first_name}" })))).toEqual([
-      ["blocks.0.line", "{first_name} can go in a text block, the subject or the preview line, not here."],
+    // Its heading and line take Variables as a heading block's does (slice 13).
+    expect(issues(one(hero({ heading: "{first_name}, sleep cooler", line: "For {first_name} {last_name}" })))).toEqual([]);
+    expect(issues(one(hero({ line: "For {frist_name}" })))).toEqual([
+      ["blocks.0.line", "{frist_name} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}."],
     ]);
     expect(CampaignContentSchema.safeParse(one(hero({ heading: "<h1>Sale</h1>" }))).success).toBe(false);
     expect(CampaignContentSchema.safeParse(one(hero({ text: "on the image" }))).success).toBe(false);

@@ -1430,9 +1430,9 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
   - `claimCustomerEmail()` — lib/email/customer-emails.ts:47
 
 ### claim_marketing_campaign_send
-Defined in supabase/migrations/20261021100000_email_campaigns.sql:194
+Defined in supabase/migrations/20261030130000_campaign_claim_last_name.sql:17
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:246
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:251
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -2436,7 +2436,7 @@ app/[lang]/settings/campaigns/page.tsx
 app/[lang]/settings/campaigns/[id]/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
-- Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
+- Loads: `campaignPointsLive()`, `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
 - Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
@@ -2444,7 +2444,7 @@ app/[lang]/settings/campaigns/[id]/page.tsx
 app/[lang]/settings/campaigns/new/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
-- Loads: `listSegments()`, `requireAdminPage()`
+- Loads: `campaignPointsLive()`, `listSegments()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
 - Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 

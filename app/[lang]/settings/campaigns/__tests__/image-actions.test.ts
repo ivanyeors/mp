@@ -58,6 +58,7 @@ vi.mock("@/lib/media-assets", () => ({ touchLastUsed: vi.fn(async (refs: unknown
 const { placeCampaignImage, previewCampaign, saveCampaign } = await import("../actions");
 const { CampaignPreviewSchema } = await import("@/lib/email-campaigns/rules");
 const { renderCampaignPreview, sendCampaignTest } = await import("@/lib/email-campaigns/sender");
+const { SAMPLE_RECIPIENT } = await import("@/lib/email-campaigns/variables");
 
 const content = (alt: string, asset = PHOTO): CampaignContent => ({
   v: 1,
@@ -144,7 +145,8 @@ describe("the preview", () => {
         return { id: "re_1" };
       },
     };
-    await sendCampaignTest(draft, { to: ["me@mpillow.com"], firstName: "Ivan" }, {
+    // A block campaign's preview and test read as the sample customer (slice 13).
+    await sendCampaignTest(draft, { to: ["me@mpillow.com"], ...SAMPLE_RECIPIENT }, {
       admin: fakeCampaignsClient(emptyWorld()) as unknown as SupabaseClient,
       transport,
       campaignFrom: "Mpillow <hello@hello.mpillow.com>",
@@ -156,7 +158,7 @@ describe("the preview", () => {
       sleep: async () => undefined,
     });
     const unsigned = (s: string) => s.replace(/\/en-US\/unsubscribe\?[^"\s]*/g, "/en-US/unsubscribe");
-    const local = renderCampaignPreview(draft, { origin: "https://custom.mpillow.com", firstName: "Ivan", images: { [PHOTO]: { ...RENDITION } } });
+    const local = renderCampaignPreview(draft, { origin: "https://custom.mpillow.com", ...SAMPLE_RECIPIENT, images: { [PHOTO]: { ...RENDITION } } });
     expect(unsigned(sent[0].html)).toBe(local.html);
     expect(preview.ok && preview.html).toBe(local.html);
     for (const id of ["hero", "intro", "photo"]) expect(sent[0].html).toContain(`<div data-block-id="${id}">`);

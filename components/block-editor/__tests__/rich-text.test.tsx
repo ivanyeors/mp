@@ -3,7 +3,7 @@ import { press, richTextIn, settle, typeField, typeInto, until } from "./dom";
 import { act, useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RichText, type RichTextValue } from "../rich-text";
 import { useEditorHistory, useHistoryKeys } from "../use-editor-history";
 
@@ -89,5 +89,27 @@ describe("RichText", () => {
     mount(<RichText aria-label="Subject" singleLine value={value} onChange={() => undefined} />);
     const editor = await richTextIn(document.body);
     expect(editor.view.dom.getAttribute("aria-multiline")).toBe("false");
+  });
+
+  it("keeps the { list inside a phone's screen when the caret is near its right edge", async () => {
+    const width = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
+    // The caret's spot, as the browser measures it: 340px in on a 375px screen.
+    const at = vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(340, 80, 8, 20));
+    // With a caret that has a place, ProseMirror scrolls it into view, which jsdom cannot do.
+    const scroll = vi.spyOn(window, "scrollBy").mockImplementation(() => undefined);
+    try {
+      mount(<RichText aria-label="Subject" singleLine value={[]} variables={[{ key: "order_number", label: "Order number" }]} onChange={() => undefined} />);
+      const editor = await richTextIn(document.body);
+      act(() => void editor.commands.focus());
+      typeInto(editor, "Order {");
+      const list = await until(() => document.querySelector<HTMLElement>('[role="listbox"]'));
+      expect(list.style.left).toBe(`${375 - 256 - 8}px`);
+      expect(list.style.top).toBe("104px");
+    } finally {
+      at.mockRestore();
+      scroll.mockRestore();
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+    }
   });
 });

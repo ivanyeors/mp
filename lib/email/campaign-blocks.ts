@@ -14,13 +14,15 @@
 // components and every link goes through safeUrl. A run's link shows its own
 // words, never the URL.
 //
-// Pure: the sender fills each Variable for the recipient, resolves each
-// button's and image link's target to its link, reads each image's email
-// rendition (slice 05), which it passes in `images`, and reads each product
-// from the shop as it is sold now (slice 07), which it passes in `products`:
-// a product's name, photo and price are never the campaign's. As with the legacy
-// renderer, only the editor's preview passes `placeholders`, drawn dashed and
-// muted where an empty field's words would go; a send never does.
+// Pure: the sender gives each Variable's words for the recipient (`values`),
+// which fill the subject, the preview line and every block's words alike
+// (`fillVariables`, slice 13), resolves each button's and image link's target
+// to its link, reads each image's email rendition (slice 05), which it passes
+// in `images`, and reads each product from the shop as it is sold now (slice
+// 07), which it passes in `products`: a product's name, photo and price are
+// never the campaign's. As with the legacy renderer, only the editor's preview
+// passes `placeholders`, drawn dashed and muted where an empty field's words
+// would go; a send never does.
 //
 // Every block's outer element carries `data-block-id`, in the preview and in
 // every send alike, so the preview stays the email a test delivers and a click
@@ -53,6 +55,7 @@ import { css, LAYOUT, LIGHT, SPACE } from "./theme";
 import type { RenderedEmail } from "./types";
 import {
   CampaignContentPreviewSchema,
+  fillVariables,
   type BlockButton,
   type BlockImage,
   type BlockLink,
@@ -147,9 +150,8 @@ export interface CampaignBlocksEmailData {
   /** The inbox preview line, which may write Variables too; null uses the start of the email. */
   preheader: string | null;
   content: CampaignContent;
-  /** Open with "Hi <first name>," (or "Hi,"), after the title the email opens with. */
+  /** Open with "Hi <first name>," after the title the email opens with: the *First name* Variable, with its fallback. */
   greeting: boolean;
-  firstName: string | null;
   /** Each Variable's words for this recipient: their own detail, else the campaign's fallback. */
   values: Record<VariableKey, string>;
   /**
@@ -244,17 +246,19 @@ const hasWords = (runs: readonly Run[]) => runs.some((r) => "var" in r || r.text
 const OUTLOOK_ONLY = /<!--\[if mso\]>[\s\S]*?<!\[endif\]-->/g;
 
 export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedEmail {
-  // The schema again, whoever called: what does not parse never renders.
-  const content = CampaignContentPreviewSchema.parse(p.content);
   const hint = p.placeholders;
   const values = p.values;
   const images = p.images ?? {};
   const products = p.products ?? {};
+  // The schema again, whoever called: what does not parse never renders. Then
+  // every Variable in every block's words, as this recipient reads them (slice 13).
+  const content = fillVariables(CampaignContentPreviewSchema.parse(p.content), values);
   const subject = fillCopy(p.subject, values).replace(/\s+/g, " ").trim();
 
   const html: string[] = [];
   const text: string[] = [];
-  const greeting = p.greeting ? greet(p.firstName) : null;
+  // One fallback for a first name, wherever it appears: the greeting's is the Variable's.
+  const greeting = p.greeting ? greet(values.first_name) : null;
   // The greeting opens the words: after the title (or hero, or image) the email
   // opens with, before any part's heading, where a legacy campaign's greeting sits.
   const greetAt = content.blocks.findIndex((b) => !opensEmail(b));

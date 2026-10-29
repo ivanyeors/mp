@@ -212,11 +212,15 @@ export type MarketingClaim =
       sendId: string;
       email: string;
       firstName: string | null;
+      /** For the *Last name* Variable (PRD-campaign-email-editor slice 13). */
+      lastName: string | null;
       locale: string;
       /** A Migrated customer who has not Claimed: their sign-in button is their own Claim link. */
       unclaimedMigrated: boolean;
     }
   | { claimed: false; blocker: CampaignClaimBlocker };
+
+const name = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
 /** Pure — `claim_marketing_campaign_send`'s one row. */
 export function marketingClaimFromRow(data: unknown): MarketingClaim {
@@ -226,7 +230,8 @@ export function marketingClaimFromRow(data: unknown): MarketingClaim {
       claimed: true,
       sendId: row.send_id,
       email: row.email,
-      firstName: typeof row.first_name === "string" && row.first_name.trim() ? row.first_name.trim() : null,
+      firstName: name(row.first_name),
+      lastName: name(row.last_name),
       locale: typeof row.locale === "string" ? row.locale : "en-US",
       unclaimedMigrated: row.unclaimed_migrated === true,
     };

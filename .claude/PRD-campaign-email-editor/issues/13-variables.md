@@ -2,7 +2,7 @@
 
 **Issue:** [#370](https://github.com/ivanyeors/mp/issues/370) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** 04 (the editor, its palette and `RichText`)
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:email`
 

@@ -16,6 +16,8 @@ import { Paragraph } from "@tiptap/extension-paragraph";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extensions";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
+import { exitSuggestion, Suggestion, type SuggestionProps } from "@tiptap/suggestion";
 import { RICH_TEXT_NODES, type RichTextVariable } from "./rich-text-doc";
 import { VARIABLE_CHIP } from "./rich-text-style";
 
@@ -34,6 +36,8 @@ export interface RichTextSchemaOptions {
   placeholder?: string;
   /** One line: no paragraphs, no line breaks, no lists. */
   singleLine?: boolean;
+  /** The `{` menu's handlers: with them, `{` opens the Variables on offer. */
+  variableMenu?: VariableMenuHandlers;
 }
 
 /** A Variable in the words: an atom showing its label, written `{key}` as text. */
@@ -59,8 +63,11 @@ const VariableNode = Node.create<{ variables: readonly RichTextVariable[] }>({
     };
   },
 
+  // A chip pasted or dropped in (from the Variables palette, or another input)
+  // is one only for a Variable this input offers; any other leaves nothing.
   parseHTML() {
-    return [{ tag: "span[data-variable]" }];
+    const offered = new Set(this.options.variables.map((v) => v.key));
+    return [{ tag: "span[data-variable]", getAttrs: (el) => (offered.has(el.getAttribute("data-variable") ?? "") ? null : false) }];
   },
 
   renderHTML({ node, HTMLAttributes }) {
@@ -91,6 +98,78 @@ const VariableNode = Node.create<{ variables: readonly RichTextVariable[] }>({
   },
 });
 
+/** The `{` menu as the input shows it: what matches the words typed after the `{`. */
+export interface VariableMenuState {
+  items: readonly RichTextVariable[];
+  /** Puts the chip in place of the `{` and what was typed after it. */
+  choose: (v: RichTextVariable) => void;
+  /** Where the caret is, to place the menu under it. */
+  rect: () => DOMRect | null;
+}
+
+/** What the input does with its `{` menu (rich-text-editor.tsx). */
+export interface VariableMenuHandlers {
+  /** The menu opened, changed, or closed (null). */
+  onChange: (menu: VariableMenuState | null) => void;
+  /** A key while the menu is open: true when the menu took it. Escape closes the menu by itself. */
+  onKeyDown: (event: KeyboardEvent) => boolean;
+}
+
+/** The `{` menu's plugin, for closing it from outside (the words losing focus). */
+export const VARIABLE_MENU_KEY = new PluginKey("variableMenu");
+
+/** Closes the `{` menu, leaving the words as typed. */
+export const closeVariableMenu = (view: EditorView) => exitSuggestion(view, VARIABLE_MENU_KEY);
+
+/** Pure — the Variables whose key, label or a word of its label starts with what was typed after `{`. */
+export function matchVariables(variables: readonly RichTextVariable[], query: string): RichTextVariable[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [...variables];
+  const words = q.replace(/_/g, " ");
+  return variables.filter((v) => {
+    const label = v.label.toLowerCase();
+    return v.key.startsWith(q) || label.startsWith(words) || label.split(/\s+/).some((w) => w.startsWith(words));
+  });
+}
+
+/**
+ * `{` typed anywhere in the words opens the Variables on offer, as a list
+ * under the caret: the keyboard's way to put one in (PRD-campaign-email-editor
+ * slice 13). The `{` stays typed, so `{first_name}` written out by hand still
+ * becomes its chip; choosing from the list replaces what was typed.
+ */
+const VariableMenu = Extension.create<{ variables: readonly RichTextVariable[]; menu: VariableMenuHandlers | null }>({
+  name: "variableMenu",
+  // Ahead of the other keys: while the list is open, Enter chooses from it rather than ending the line.
+  priority: 1000,
+
+  addOptions() {
+    return { variables: [], menu: null };
+  },
+
+  addProseMirrorPlugins() {
+    const { variables, menu } = this.options;
+    if (!menu || !variables.length) return [];
+    return [
+      Suggestion<RichTextVariable, RichTextVariable>({
+        editor: this.editor,
+        pluginKey: VARIABLE_MENU_KEY,
+        char: "{",
+        allowedPrefixes: null,
+        items: ({ query }) => matchVariables(variables, query),
+        command: ({ editor, range, props }) => {
+          editor.chain().focus().insertContentAt(range, { type: RICH_TEXT_NODES.variable, attrs: { key: props.key } }).run();
+        },
+        render: () => {
+          const show = (p: SuggestionProps<RichTextVariable, RichTextVariable>) =>
+            menu.onChange({ items: p.items, choose: (v) => p.command(v), rect: () => p.clientRect?.() ?? null });
+          return { onStart: show, onUpdate: show, onExit: () => menu.onChange(null), onKeyDown: ({ event }) => menu.onKeyDown(event) };
+        },
+      }),
+    ];
+  },
+});
+
 /** One line: Enter adds nothing (the page's form may submit), and pasted lines join with a space. */
 const OneLine = Extension.create({
   name: "oneLine",
@@ -108,7 +187,7 @@ const OneLine = Extension.create({
 });
 
 /** Pure — the extensions for one input: only what its page allows. */
-export function richTextExtensions({ marks, variables, placeholder, singleLine }: RichTextSchemaOptions): Extensions {
+export function richTextExtensions({ marks, variables, placeholder, singleLine, variableMenu }: RichTextSchemaOptions): Extensions {
   const lists = marks.bullets && !singleLine;
   const out: Extensions = [
     singleLine ? Document.extend({ content: "paragraph" }) : Document,
@@ -116,6 +195,7 @@ export function richTextExtensions({ marks, variables, placeholder, singleLine }
     Text,
     VariableNode.configure({ variables }),
   ];
+  if (variableMenu && variables.length) out.push(VariableMenu.configure({ variables, menu: variableMenu }));
   if (!singleLine) out.push(HardBreak.configure({ keepMarks: true }));
   if (marks.bold) out.push(Bold);
   if (marks.italic) out.push(Italic);

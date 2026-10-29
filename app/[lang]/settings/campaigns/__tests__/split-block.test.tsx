@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { choose, click, settle, typeField, until } from "@/components/block-editor/__tests__/dom";
+import { choose, click, placeholderOf, retype, richTextById, settle, typeField, until, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -118,7 +118,8 @@ describe("an image + text block", () => {
     await choose(button("Add block")!, "Image + text");
     const split = card(1);
     expect(split.textContent).toContain("Choose an image from the Media Library.");
-    expect(split.querySelector<HTMLInputElement>('input[aria-label="Heading beside the image"]')?.placeholder).toBe("e.g. Sleep cooler this December");
+    const heading = split.querySelector<HTMLElement>('[aria-label="Heading beside the image"]')!.id;
+    expect(placeholderOf(heading)).toBe("e.g. Sleep cooler this December");
     expect(split.querySelector('[aria-label="Text beside the image"]')).not.toBeNull();
     expect(split.querySelector('input[aria-label="Button beside the image: label"]')).not.toBeNull();
     // Beside words, the image always says what it shows.
@@ -130,7 +131,9 @@ describe("an image + text block", () => {
     expect((await until(() => split.querySelector<HTMLImageElement>("img"))).getAttribute("src")).toBe(RENDITION.url);
     expect(split.querySelector<HTMLInputElement>('input[id$="-alt"]')!.value).toBe("A FibreCool cover on a bed");
 
-    typeField(split.querySelector<HTMLInputElement>('input[aria-label="Heading beside the image"]')!, "Why FibreCool");
+    // The heading takes Variables as a heading block's does (slice 13).
+    await retype(heading, "Why FibreCool, {first_name}");
+    expect(wordsOf(heading)).toBe("Why FibreCool, First name");
     typeField(split.querySelector<HTMLInputElement>('input[aria-label="Button beside the image: label"]')!, "Shop the covers");
     // The selected block's options: the image's side, then its button's look.
     expect(radio(split, "Image", "Left").getAttribute("aria-checked")).toBe("true");
@@ -144,7 +147,7 @@ describe("an image + text block", () => {
       type: "split",
       image: { asset: PHOTO, alt: "A FibreCool cover on a bed" },
       side: "right",
-      heading: "Why FibreCool",
+      heading: "Why FibreCool, {first_name}",
       paragraphs: [],
       button: { label: "Shop the covers", target: "shop", style: "secondary" },
     });
@@ -178,6 +181,8 @@ describe("an image + text block", () => {
     const split = card(1);
     expect(split.textContent).toContain("Write the heading.");
     expect(split.textContent).toContain("Describe the image for anyone who can't see it.");
-    expect(split.querySelector('input[aria-label="Heading beside the image"]')!.getAttribute("aria-invalid")).toBe("true");
+    const heading = split.querySelector<HTMLElement>('[aria-label="Heading beside the image"]')!.id;
+    await richTextById(heading);
+    expect(document.getElementById(heading)!.getAttribute("aria-invalid")).toBe("true");
   });
 });

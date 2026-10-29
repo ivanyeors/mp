@@ -21,6 +21,7 @@ import {
   renderCampaignPreview,
   sendCampaignBatch,
   sendCampaignTest,
+  usesPointsBalance,
   withEmailCampaignUtm,
   type CampaignSenderSetup,
 } from "../sender";
@@ -569,8 +570,73 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     await sendCampaignBatch(blocks({ content: { ...CONTENT, fallbacks: {} } }), { wave: "w1", customerIds: [EVE] }, s);
     expect(sent[0].subject).toBe("there, sleep cooler");
     expect(sent[0].html).toContain("Hello there, our");
-    // The greeting is today's: no name, no fallback (slice 13 gives it the Variable's).
-    expect(sent[0].html).toContain("Hi,");
+    // The greeting is the First name Variable, with its fallback (slice 13): one fallback for a first name.
+    expect(sent[0].html).toContain(">Hi there,</p>");
+  });
+
+  describe("its Variables (slice 13)", () => {
+    const VARS: CampaignContent = {
+      v: 1,
+      blocks: [
+        { id: "h", type: "heading", level: 1, text: "{first_name} {last_name}, sleep cooler" },
+        { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "You have " }, { var: "points_balance" }, { text: " points waiting." }] }] },
+      ],
+      fallbacks: { last_name: "friend", points_balance: "some" },
+    };
+    const named = (over: Partial<Campaign> = {}) => blocks({ subject: "For {first_name} {last_name}", preheader: null, content: VARS, ...over });
+
+    it("fills each recipient's last name from the claim and their points balance, read for them", async () => {
+      world.customers.find((c) => c.id === ANN)!.last_name = " Tan ";
+      world.customers.find((c) => c.id === ANN)!.points = 1250;
+      world.customers.find((c) => c.id === BEA)!.points = 0;
+      const { s, sent, admin } = setup();
+      await sendCampaignBatch(named(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+      const [ann, bea] = sent;
+      expect(ann.subject).toBe("For Ann Tan");
+      expect(ann.html).toMatch(/<h1 class="mp-fg"[^>]*>Ann Tan, sleep cooler<\/h1>/);
+      expect(ann.html).toContain("You have 1,250 points waiting.");
+      expect(ann.text).toContain("Ann Tan, sleep cooler\n\nHi Ann,\n\nYou have 1,250 points waiting.");
+      // Bea has no last name and nothing to spend: the campaign's fallback words.
+      expect(bea.subject).toBe("For Bea friend");
+      expect(bea.html).toContain("You have some points waiting.");
+      expect(admin.rpcCalls.filter((c) => c.name === "points_balance").map((c) => c.args.p_customer_id)).toEqual([ANN, BEA]);
+    });
+
+    it("reads no points balance for an email that does not say it", async () => {
+      const { s, sent, admin } = setup();
+      await sendCampaignBatch(blocks(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+      await sendCampaignBatch(campaign(), { wave: "w2", customerIds: [DAN] }, s); // a legacy campaign
+      expect(sent).toHaveLength(3);
+      expect(admin.rpcCalls.map((c) => c.name)).not.toContain("points_balance");
+      expect(usesPointsBalance(blocks())).toBe(false);
+      expect(usesPointsBalance(named())).toBe(true);
+      expect(usesPointsBalance(blocks({ subject: "{points_balance} points" }))).toBe(true);
+      expect(usesPointsBalance(campaign({ subject: "{points_balance}" }))).toBe(false);
+    });
+
+    it("fails one send, not the batch, when a balance can't be read", async () => {
+      const { s, sent } = setup();
+      const admin = s.admin as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<unknown> };
+      const rpc = admin.rpc.bind(admin);
+      admin.rpc = async (name, args) => (name === "points_balance" && args.p_customer_id === ANN ? { data: null, error: { message: "timeout" } } : rpc(name, args));
+      const r = await sendCampaignBatch(named(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+      expect(r).toMatchObject({ sent: 1, failed: 1 });
+      expect(r.errors[0]).toContain("Could not read the points balance");
+      expect(sent.map((e) => e.to)).toEqual(["bea@x.test"]);
+      expect(world.sends.find((x) => x.customer_id === ANN)?.status).toBe("failed");
+    });
+
+    it("holds a wave that says the points balance until points are live, and sends a test anyway", async () => {
+      world.settings.points_enabled = "false";
+      const held = await planWave(named(), { size: 10 }, setup().s);
+      expect(held.readiness.checks.find((c) => c.key === "points")).toMatchObject({ ok: false });
+      const { s, sent } = setup();
+      expect(await sendCampaignBatch(named(), { wave: "w1", customerIds: [ANN] }, s)).toMatchObject({ sent: 0, stopped: expect.stringContaining("points") });
+      // A test is filled from what it is given: the action gives the sample customer.
+      await sendCampaignTest(named(), { to: ["me@mpillow.com"], firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 }, s);
+      expect(sent[0].subject).toBe("[Test] For Mei Ling Tan");
+      expect(sent[0].html).toContain("You have 1,250 points waiting.");
+    });
   });
 
   it("mints no Claim link when no button signs in", async () => {

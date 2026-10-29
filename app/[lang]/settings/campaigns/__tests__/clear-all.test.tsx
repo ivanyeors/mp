@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { richTextIn } from "@/components/block-editor/__tests__/dom";
+import { placeholderOf, retype, richTextIn, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -96,8 +96,9 @@ const blocks = () =>
 /** The fields Clear all empties, as typed: the message box and button of a draft written before blocks, or the blocks. */
 const words = () => ({
   name: field("c-name").value,
-  subject: field("c-subject").value,
-  preheader: field("c-preheader").value,
+  // One-line text inputs with Variables (slice 13): their words as they read.
+  subject: wordsOf("c-subject"),
+  preheader: wordsOf("c-preheader"),
   body: value("c-body"),
   button: document.getElementById("c-button") ? text("c-button") : null,
   label: value("c-button-label"),
@@ -151,20 +152,20 @@ describe("a new campaign", () => {
     mount(null, newCampaignDraft(undefined, []));
     expect(words()).toEqual(NO_WORDS);
     expect(field("c-name").placeholder).toBe("e.g. December cooling launch");
-    expect(field("c-subject").placeholder).toBe("e.g. Sleep cooler this December");
-    expect(field("c-preheader").placeholder).toBe("e.g. Our FibreCool covers are back, in every size");
+    expect(placeholderOf("c-subject")).toBe("e.g. Sleep cooler this December");
+    expect(placeholderOf("c-preheader")).toBe("e.g. Our FibreCool covers are back, in every size");
     expect(document.body.textContent).toContain("No blocks yet.");
     expect(button("Add block")).not.toBeNull();
     expect(document.body.textContent).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
     expect(document.getElementById("c-greeting")?.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("has Clear all off, saying why, until there is something to clear", () => {
+  it("has Clear all off, saying why, until there is something to clear", async () => {
     mount(null, newCampaignDraft(undefined, []));
     expect(clearAll().getAttribute("aria-disabled")).toBe("true");
     expect(clearAll().disabled).toBe(false); // still in the tab order, so the reason is reachable
     expect(text(clearAll().getAttribute("aria-describedby")!)).toBe("Nothing to clear: every field is on its placeholder.");
-    type(field("c-subject"), "Hello");
+    await retype("c-subject", "Hello");
     expect(clearAll().getAttribute("aria-disabled")).toBeNull();
     expect(clearAll().getAttribute("aria-describedby")).toBeNull();
   });
@@ -190,7 +191,7 @@ describe("a new campaign", () => {
 
   it("clears the words and blocks back to their placeholders, keeps the audience and greeting, and Undo puts every word back", async () => {
     mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
-    type(field("c-subject"), "Sleep cooler this December");
+    await retype("c-subject", "Sleep cooler this December");
     await addBlock("Text");
     const input = await richTextIn(document.querySelector("[data-block-id]")!);
     act(() => void input.commands.insertContent("Our covers are back."));
@@ -258,7 +259,7 @@ describe("a saved draft", () => {
     mount(saved(), DRAFT);
     await press(clearAll());
     type(field("c-name"), "A new one");
-    type(field("c-subject"), "Hello");
+    await retype("c-subject", "Hello");
     type(field("c-body"), "Hi");
     await settle();
     const late = undo()!;

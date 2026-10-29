@@ -9,8 +9,9 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *  - for the send limit, `customer_campaign_sends` (`in`, `gte`, `order`,
  *    `limit`, a `count: "exact", head: true` select) and `admin_audit_log`'s
  *    test sends;
- *  - the RPCs `claim_marketing_campaign_send`, `finish_campaign_send` and
- *    `mint_claim_link`;
+ *  - the RPCs `claim_marketing_campaign_send` (with `last_name`, as
+ *    20261030130000 returns it), `finish_campaign_send`, `mint_claim_link`
+ *    and `points_balance`;
  *  - for a campaign's products (slice 07), `products` (`select`, `in`) with
  *    each row's Variants and images nested as the shop's select returns them,
  *    and `media_assets` (`in` on `hosted_url`).
@@ -27,6 +28,9 @@ export interface FakeCustomer {
   id: string;
   email: string;
   first_name?: string | null;
+  last_name?: string | null;
+  /** What `points_balance` answers as available. */
+  points?: number;
   locale?: string;
   marketing_email?: string;
   total_orders?: number;
@@ -167,7 +171,10 @@ export function fakeCampaignsClient(world: FakeWorld) {
     const retry = args.p_retry_failed === true;
     if (!WAVE.test(wave)) return { data: null, error: { message: "A wave is 1 to 32 letters" } };
     world.onClaim?.(customerId);
-    const none = (blocker: string) => ({ data: [{ send_id: null, blocker, email: null, first_name: null, locale: null, unclaimed_migrated: null }], error: null });
+    const none = (blocker: string) => ({
+      data: [{ send_id: null, blocker, email: null, first_name: null, last_name: null, locale: null, unclaimed_migrated: null }],
+      error: null,
+    });
 
     const campaign = world.campaigns.find((c) => c.id === campaignId);
     if (!campaign) return none("unknown_campaign");
@@ -220,6 +227,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
           blocker: null,
           email: c.email,
           first_name: c.first_name ?? null,
+          last_name: c.last_name ?? null,
           locale: c.locale ?? "en-US",
           unclaimed_migrated: Boolean(row.migrated) && !row.claimed_at,
         },
@@ -256,6 +264,10 @@ export function fakeCampaignsClient(world: FakeWorld) {
       if (name === "mint_claim_link") {
         world.claimLinks.push({ customer_id: String(args.p_customer_id), token_hash: String(args.p_token_hash), template: String(args.p_template) });
         return { data: null, error: null };
+      }
+      if (name === "points_balance") {
+        const c = world.customers.find((x) => x.id === args.p_customer_id);
+        return { data: [{ available: c?.points ?? 0, pending: 0, last_purchase_at: null, expires_on: null }], error: null };
       }
       throw new Error(`fake: no rpc ${name}`);
     },

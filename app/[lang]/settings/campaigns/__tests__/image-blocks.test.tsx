@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { choose, click, settle, typeField, until } from "@/components/block-editor/__tests__/dom";
+import { choose, click, retype, settle, typeField, until, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -172,19 +172,35 @@ describe("a hero", () => {
     mount(draftWith(CONTENT));
     await addBlock("Hero");
     const hero = card(1);
-    expect(hero.querySelector('input[aria-label="Hero heading"]')).not.toBeNull();
-    expect(hero.querySelector('input[aria-label="Hero line"]')).not.toBeNull();
+    // The heading and the line are one-line words that take Variables (slice 13).
+    expect(hero.querySelector('[aria-label="Hero heading"]')).not.toBeNull();
+    expect(hero.querySelector('[aria-label="Hero line"]')).not.toBeNull();
     expect(hero.querySelector('input[aria-label="Hero button: label"]')).not.toBeNull();
 
     await click(button("Remove the line")!);
-    expect(hero.querySelector('input[aria-label="Hero line"]')).toBeNull();
+    expect(hero.querySelector('[aria-label="Hero line"]')).toBeNull();
     await click(button("Add a line")!);
-    expect(hero.querySelector<HTMLInputElement>('input[aria-label="Hero line"]')?.value).toBe("");
+    expect(hero.querySelector('[aria-label="Hero line"]')?.textContent).toBe("");
 
     await click(button("Remove the button")!);
     await act(async () => button("Save changes")!.click());
     await settle();
     expect(savedContent().blocks[1]).toEqual({ id: expect.any(String), type: "hero", image: { asset: "", alt: "" }, heading: "", line: "" });
+  });
+
+  it("takes Variables in its heading and line, as chips, saved as the subject writes them", async () => {
+    mount(draftWith(CONTENT));
+    await addBlock("Hero");
+    const hero = card(1);
+    const heading = hero.querySelector<HTMLElement>('[aria-label="Hero heading"]')!.id;
+    const line = hero.querySelector<HTMLElement>('[aria-label="Hero line"]')!.id;
+    await retype(heading, "{first_name}, sleep cooler");
+    await retype(line, "Our covers, {last_name} family");
+    expect(wordsOf(heading)).toBe("First name, sleep cooler");
+    expect(wordsOf(line)).toBe("Our covers, Last name family");
+    await act(async () => button("Save changes")!.click());
+    await settle();
+    expect(savedContent().blocks[1]).toMatchObject({ type: "hero", heading: "{first_name}, sleep cooler", line: "Our covers, {last_name} family" });
   });
 });
 

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { Bold, Italic, Link2, List, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { docFromValue, valueFromDoc, type DocNode } from "./rich-text-doc";
-import { richTextExtensions } from "./rich-text-schema";
+import { docFromValue, RICH_TEXT_NODES, valueFromDoc, type DocNode, type RichTextVariable } from "./rich-text-doc";
+import { closeVariableMenu, richTextExtensions, type VariableMenuHandlers, type VariableMenuState } from "./rich-text-schema";
 import type { RichTextProps } from "./rich-text";
 import { RICH_TEXT_BOX } from "./rich-text-style";
 import { RichTextView } from "./rich-text-view";
+import { useVariableTargets, type VariableTarget } from "./variable-targets";
 
 /**
  * `RichText`'s TipTap editor (PRD-campaign-email-editor slice 04). Loaded on
@@ -120,6 +121,102 @@ function Toolbar({ editor, marks }: { editor: Editor; marks: NonNullable<RichTex
   );
 }
 
+/**
+ * The `{` menu (PRD-campaign-email-editor slice 13): the Variables on offer
+ * under the caret, chosen with the arrow keys and Enter (or Tab, or a click),
+ * closed with Escape. Focus stays in the words, as it does for any list that
+ * completes what is typed; the input points at the option in view
+ * (`aria-activedescendant`), and a live line names it.
+ */
+function useVariableMenu() {
+  const [menu, setMenu] = useState<VariableMenuState | null>(null);
+  const [active, setActive] = useState(0);
+  const [said, setSaid] = useState({ text: "", n: 0 });
+  const now = useRef({ menu, active });
+  const say = (text: string) => setSaid((s) => ({ text, n: s.n + 1 }));
+
+  const [handlers] = useState<VariableMenuHandlers & { choose: (v: RichTextVariable) => void; point: (i: number) => void }>(() => {
+    const point = (i: number) => {
+      const m = now.current.menu;
+      if (!m?.items.length) return;
+      const at = (i + m.items.length) % m.items.length;
+      now.current.active = at;
+      setActive(at);
+      const v = m.items[at];
+      say(`${v.label}${v.disabledReason ? `, ${v.disabledReason}` : ""}, ${at + 1} of ${m.items.length}`);
+    };
+    const choose = (v: RichTextVariable) => {
+      if (v.disabledReason) return say(`${v.label}: ${v.disabledReason}.`);
+      now.current.menu?.choose(v);
+      say(`${v.label} added.`);
+    };
+    return {
+      point,
+      choose,
+      onChange: (m) => {
+        now.current = { menu: m, active: 0 };
+        setMenu(m);
+        setActive(0);
+      },
+      onKeyDown: (e) => {
+        const m = now.current.menu;
+        if (!m?.items.length) return false;
+        if (e.key === "ArrowDown") point(now.current.active + 1);
+        else if (e.key === "ArrowUp") point(now.current.active - 1);
+        else if (e.key === "Enter" || e.key === "Tab") choose(m.items[now.current.active]);
+        else return false;
+        return true;
+      },
+    };
+  });
+  return { menu, active, said, handlers };
+}
+
+/** The `{` menu's width, `w-64`. */
+const MENU_WIDTH = 256;
+
+function VariableMenuList({
+  id,
+  menu,
+  active,
+  onChoose,
+}: {
+  id: string;
+  menu: VariableMenuState;
+  active: number;
+  onChoose: (v: RichTextVariable) => void;
+}) {
+  const rect = menu.rect();
+  const placed = rect && (rect.width || rect.height || rect.left || rect.top);
+  return (
+    <div
+      id={id}
+      role="listbox"
+      aria-label="Variables"
+      // A press here must not take focus from the words.
+      onMouseDown={(e) => e.preventDefault()}
+      className={cn("z-50 w-64 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-1 text-popover-foreground shadow-md", placed ? "fixed" : "mt-1")}
+      // Under the caret, kept inside the screen: on a phone the caret is often near its right edge.
+      style={placed ? { left: Math.max(8, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8)), top: rect.bottom + 4 } : undefined}
+    >
+      {menu.items.map((v, i) => (
+        <div
+          key={v.key}
+          id={`${id}-${i}`}
+          role="option"
+          aria-selected={i === active}
+          aria-disabled={v.disabledReason ? true : undefined}
+          onClick={() => onChoose(v)}
+          className="flex cursor-default flex-col rounded-md px-2 py-1.5 text-sm aria-disabled:opacity-60 aria-selected:bg-accent aria-selected:text-accent-foreground max-md:min-h-11"
+        >
+          <span className="font-medium">{v.label}</span>
+          {v.disabledReason || v.description ? <span className="text-xs text-muted-foreground">{v.disabledReason ?? v.description}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function RichTextEditor(props: RichTextProps) {
   const { value, marks = {}, variables = [], placeholder, singleLine, readOnly, id, className } = props;
   // The latest props, for TipTap's callbacks, which it keeps from when it was made.
@@ -129,9 +226,12 @@ export default function RichTextEditor(props: RichTextProps) {
   });
   // What this input last emitted or was given: a value equal to it is already on screen.
   const shown = useRef(JSON.stringify(value));
+  const menuId = useId();
+  const variableMenu = useVariableMenu();
 
   // The schema is the page's, fixed for the input's life.
-  const [extensions] = useState(() => richTextExtensions({ marks, variables, placeholder, singleLine }));
+  const [extensions] = useState(() => richTextExtensions({ marks, variables, placeholder, singleLine, variableMenu: variableMenu.handlers }));
+  const menuOpen = Boolean(variableMenu.menu?.items.length);
 
   const editor = useEditor({
     extensions,
@@ -149,6 +249,8 @@ export default function RichTextEditor(props: RichTextProps) {
         ...(props["aria-describedby"] ? { "aria-describedby": props["aria-describedby"] } : {}),
         ...(props["aria-invalid"] ? { "aria-invalid": "true" } : {}),
         ...(placeholder ? { "aria-placeholder": placeholder } : {}),
+        ...(variables.length ? { "aria-autocomplete": "list" } : {}),
+        ...(menuOpen ? { "aria-controls": menuId, "aria-activedescendant": `${menuId}-${variableMenu.active}` } : {}),
         class: cn(RICH_TEXT_BOX, singleLine && "min-h-9", "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50", className),
       },
       // `/` typed in an empty line opens the page's block menu instead of typing a slash.
@@ -184,6 +286,41 @@ export default function RichTextEditor(props: RichTextProps) {
     }
   }, [editor, value]);
 
+  // A chip pressed in the Variables palette goes in here, at the cursor, once these words were last written in.
+  const targets = useVariableTargets();
+  useEffect(() => {
+    if (!editor || !targets || !variables.length) return;
+    const target: VariableTarget = {
+      get name() {
+        const p = latest.current;
+        const labelledBy = p["aria-labelledby"] ? document.getElementById(p["aria-labelledby"])?.textContent?.trim() : null;
+        return p["aria-label"] ?? labelledBy ?? "the words";
+      },
+      insert: (v) => {
+        if (editor.isDestroyed || !(latest.current.variables ?? []).some((x) => x.key === v.key)) return false;
+        return editor.chain().focus().insertContent({ type: RICH_TEXT_NODES.variable, attrs: { key: v.key } }).run();
+      },
+    };
+    const focused = () => targets.focused(target);
+    editor.on("focus", focused);
+    return () => {
+      editor.off("focus", focused);
+      targets.gone(target);
+    };
+  }, [editor, targets, variables.length]);
+
+  // The `{` menu belongs to the words being written: it closes when they lose focus.
+  useEffect(() => {
+    if (!editor || !variables.length) return;
+    const blurred = () => {
+      if (!editor.isDestroyed) closeVariableMenu(editor.view);
+    };
+    editor.on("blur", blurred);
+    return () => {
+      editor.off("blur", blurred);
+    };
+  }, [editor, variables.length]);
+
   const hasTools = Boolean(marks.bold || marks.italic || marks.link || (marks.bullets && !singleLine));
   // The editor is made after the first paint: until then, the words as they read.
   if (!editor) {
@@ -204,6 +341,14 @@ export default function RichTextEditor(props: RichTextProps) {
   return (
     <>
       <EditorContent editor={editor} />
+      {menuOpen && variableMenu.menu ? (
+        <VariableMenuList id={menuId} menu={variableMenu.menu} active={variableMenu.active} onChoose={variableMenu.handlers.choose} />
+      ) : null}
+      {variables.length ? (
+        <span role="status" aria-live="polite" className="sr-only">
+          <span key={variableMenu.said.n}>{variableMenu.said.text}</span>
+        </span>
+      ) : null}
       {hasTools ? (
         <BubbleMenu
           editor={editor}
