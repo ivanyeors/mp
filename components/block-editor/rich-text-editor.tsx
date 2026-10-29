@@ -172,6 +172,9 @@ function useVariableMenu() {
   return { menu, active, said, handlers };
 }
 
+/** The `{` menu's width, `w-64`. */
+const MENU_WIDTH = 256;
+
 function VariableMenuList({
   id,
   menu,
@@ -192,8 +195,9 @@ function VariableMenuList({
       aria-label="Variables"
       // A press here must not take focus from the words.
       onMouseDown={(e) => e.preventDefault()}
-      className={cn("z-50 w-64 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md", placed ? "fixed" : "mt-1")}
-      style={placed ? { left: rect.left, top: rect.bottom + 4 } : undefined}
+      className={cn("z-50 w-64 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-1 text-popover-foreground shadow-md", placed ? "fixed" : "mt-1")}
+      // Under the caret, kept inside the screen: on a phone the caret is often near its right edge.
+      style={placed ? { left: Math.max(8, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8)), top: rect.bottom + 4 } : undefined}
     >
       {menu.items.map((v, i) => (
         <div

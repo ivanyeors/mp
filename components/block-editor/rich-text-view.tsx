@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { RichTextRun, RichTextValue, RichTextVariable } from "./rich-text-doc";
 import { RICH_TEXT_BOX, RICH_TEXT_EMPTY, VARIABLE_CHIP } from "./rich-text-style";
@@ -34,6 +34,24 @@ const Runs = ({ runs, variables }: { runs: readonly RichTextRun[]; variables: re
     ))}
   </>
 );
+
+/**
+ * The words inline, each Variable its chip, paragraphs and items a space
+ * apart: a line of the page that quotes them (an Email template's original
+ * words, slice 14), not an input.
+ */
+export function RichTextInline({ value, variables = [] }: { value: RichTextValue; variables?: readonly RichTextVariable[] }) {
+  return (
+    <>
+      {value.map((p, i) => (
+        <Fragment key={i}>
+          {i ? " " : null}
+          <Runs runs={p.kind === "p" ? p.runs : p.items.flatMap((item, j) => (j ? [{ text: " " }, ...item] : item))} variables={variables} />
+        </Fragment>
+      ))}
+    </>
+  );
+}
 
 export function RichTextView({
   value,

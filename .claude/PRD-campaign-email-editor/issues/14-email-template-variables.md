@@ -2,7 +2,7 @@
 
 **Issue:** [#371](https://github.com/ivanyeors/mp/issues/371) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done (the page at 375px still wants a look in a browser with the real app)
 **Blocked by:** 13 (`RichText` with Variables, the Variables palette)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 

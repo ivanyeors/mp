@@ -117,9 +117,9 @@ describe("saving and resetting", () => {
     ]);
   });
 
-  it("refuses a placeholder the email does not have, or an empty required field, and saves nothing", async () => {
+  it("refuses a Variable the email does not have, or an empty required field, and saves nothing", async () => {
     const res = await actions.saveEmailCopy(ID, words({ intro: "Hi {first_name}", subject: " " }));
-    expect(res).toMatchObject({ ok: false, fieldErrors: { intro: expect.stringMatching(/\{first_name\}/), subject: expect.stringMatching(/empty/) } });
+    expect(res).toMatchObject({ ok: false, fieldErrors: { intro: "{first_name} is not a variable this email has.", subject: expect.stringMatching(/empty/) } });
     expect(h.rows.size).toBe(0);
   });
 
@@ -147,6 +147,14 @@ describe("preview and test", () => {
       button_order: "See order {order_number}",
     });
     expect(res.ok && res.html).toContain("See order MP-10428");
+  });
+
+  it("fills a Variable put in the subject from the email's own sample order, in the preview and the test send", async () => {
+    const subject = "{order_number}: thanks, {customer_name}";
+    const preview = await actions.previewEmailCopy(ID, null, words({ subject }));
+    expect(preview.ok && preview.subject).toBe("MP-10428: thanks, Tan Wei Ling");
+    expect(await actions.sendEmailCopyTest(ID, null, words({ subject }), ["me@mpillow.com"])).toEqual({ ok: true, sent: 1 });
+    expect(h.sent[0].subject).toBe("[Test] MP-10428: thanks, Tan Wei Ling");
   });
 
   it("sends the words on screen as a test, through the order mailbox, to at most three addresses", async () => {
@@ -181,7 +189,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("the editor", () => {
-  it("shows every field with its words, shared fields first, and the placeholders", async () => {
+  it("shows every field with its words, shared fields first, and the Variables", async () => {
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { EmailCopyEditor } = await import("../email-copy-editor");
     const spec = ORDER_EMAIL_COPY.shipping;
@@ -193,15 +201,24 @@ describe("the editor", () => {
           { id: "order.shipping", label: "Order shipped" },
           { id: "order.shipping_no_tracking", label: "Order shipped — no tracking link" },
         ]}
-        saved={{ copy: { ...defaultEmailCopy(spec), heading: "On its way!" }, edited: ["heading"], updatedAt: "2026-10-21T05:00:00Z", updatedBy: "Ivan Yeo" }}
+        saved={{
+          copy: { ...defaultEmailCopy(spec), subject: "Shipped", heading: "On its way!" },
+          edited: ["subject", "heading"],
+          updatedAt: "2026-10-21T05:00:00Z",
+          updatedBy: "Ivan Yeo",
+        }}
         readError={null}
         staffEmail="owner@mpillow.com"
       />,
     );
     expect(html).toContain("Order shipped");
-    expect(html).toContain('value="On its way!"');
+    // Each field is the shared text input, its words as they read until it loads; each Variable is its chip.
+    expect(html).toContain('id="copy-heading" role="textbox"');
+    expect(html).toContain("<p>On its way!</p>");
     expect(html).toContain("Original: Your order is on its way");
-    expect(html).toContain("{order_number}");
+    expect(html).toContain('title="The order number, e.g. MP-10428">Order number</span>');
+    expect(html).toMatch(/Original: Order <span [^>]*title="The order number, e\.g\. MP-10428">Order number<\/span> has shipped<\/p>/);
+    expect(html).not.toContain("Placeholders");
     expect(html).toContain("Edited");
     expect(html).toContain("by Ivan Yeo");
   });
