@@ -15851,16 +15851,10 @@
     "ast_hash": "59f57157f929a740780781ab3387a2a8",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261029010000_order_payments_occurred_at.sql": {
-    "mtime": 1793255326.9185693,
-    "seen": 1793255952.4402688,
-    "ast_hash": "4cd965a4160be7932d6a34431b0a8c6d",
-    "semantic_hash": ""
-  },
   "docs/adr/0036-analytics-margin-over-costed-sales.md": {
-    "mtime": 1793255624.5905871,
-    "seen": 1793255952.4418898,
-    "ast_hash": "20f486bc03657cb0dfe0e7c2caa5fd79",
+    "mtime": 1793267361.4645593,
+    "seen": 1793267420.33133,
+    "ast_hash": "8ce2ca35fe71b4c4c8371b85182886a3",
     "semantic_hash": ""
   },
   "docs/data-flows/analytics.md": {
@@ -15921,6 +15915,12 @@
     "mtime": 1793266871.53653,
     "seen": 1793267125.2815022,
     "ast_hash": "f87da9ab036abc76e0853fd36a6c959b",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261029094659_order_payments_occurred_at.sql": {
+    "mtime": 1793255326.9185693,
+    "seen": 1793267420.329687,
+    "ast_hash": "4cd965a4160be7932d6a34431b0a8c6d",
     "semantic_hash": ""
   }
 }

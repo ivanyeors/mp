@@ -54,7 +54,7 @@ customer paid.
 
 - Analytics shows nothing before this site's first Stripe sale; Shopify-era sales are not on it.
 - `order_payments.occurred_at` must exist before the code that writes it is deployed (migration
-  `20261029010000`).
+  `20261029094659`, applied to production 2026-10-29).
 - The Shopify mirror's ingest still runs and feeds nothing (`docs/data-flows/analytics.md`).
 - Cost coverage says how much of the margin is known. Fixing a cost raises coverage without anyone
   touching Analytics.
