@@ -50,7 +50,12 @@ import {
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
 import { forceDarkMode } from "@/lib/email/base";
-import { renderCampaignBlocksEmail, type CampaignBlockImages, type CampaignBlocksPlaceholders } from "@/lib/email/campaign-blocks";
+import {
+  renderCampaignBlocksEmail,
+  type CampaignBlockImages,
+  type CampaignBlockProducts,
+  type CampaignBlocksPlaceholders,
+} from "@/lib/email/campaign-blocks";
 import { renderComposedCampaignEmail, type ComposedCampaignPlaceholders } from "@/lib/email/campaigns";
 import {
   checkCampaignFrom,
@@ -77,8 +82,9 @@ import {
   type Campaign,
   type CampaignPlan,
 } from "./rules";
-import { contentSignsIn, CONTENT_PLACEHOLDERS, SITE_BUTTON_PATHS, type BlockButton } from "./content";
+import { contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
 import { campaignImagesProblem, readCampaignImages } from "./images";
+import { campaignProductPhotos, campaignProductsProblem, productsCheck, readCampaignProducts } from "./products";
 import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
 import { variableValues } from "./variables";
@@ -147,15 +153,21 @@ export function campaignButton(
  * Pure — where a block's button goes for one recipient (PRD-campaign-email-editor
  * slice 03): a page on the live site in their language, with the campaign's
  * UTMs; for `sign_in` their own Claim link when they have one, as the single
- * button; for `url` the link Staff typed.
+ * button; for `url` the link Staff typed; for `product` its shop page (slice
+ * 07), when it is in `products`, the Listed products the sender read.
  */
 export function blockButtonHref(
-  b: Pick<BlockButton, "target" | "url">,
+  b: Pick<BlockButton, "target" | "url" | "product">,
   campaignName: string,
-  { origin, locale, claimUrl }: { origin: string; locale: Locale; claimUrl: string | null },
+  { origin, locale, claimUrl, products }: { origin: string; locale: Locale; claimUrl: string | null; products?: CampaignBlockProducts },
 ): string | null {
   if (b.target === "url") return b.url ? withEmailCampaignUtm(b.url, campaignName, origin) : null;
   if (b.target === "sign_in" && claimUrl) return claimUrl;
+  if (b.target === "product") {
+    const product = b.product ? products?.[b.product] : undefined;
+    if (!product) return null;
+    return withEmailCampaignUtm(`${origin}${withLocale(`/shop/${encodeURIComponent(product.slug)}`, locale)}`, campaignName, origin);
+  }
   const path = b.target === "sign_in" ? "/account" : SITE_BUTTON_PATHS[b.target];
   return withEmailCampaignUtm(`${origin}${withLocale(path, locale)}`, campaignName, origin);
 }
@@ -175,8 +187,10 @@ type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "bod
  * body of a campaign written before them, which keeps its own renderer
  * (PRD-campaign-email-editor decision 5). `placeholders` is the editor's
  * preview's alone (`renderCampaignPreview`): no send passes it. `images` is
- * each placed image's email rendition (slice 05), read by `readCampaignImages`
- * before the first recipient: the renderer throws on an image without one.
+ * each placed image's email rendition (slice 05) and `products` each Listed
+ * product as the shop sells it now (slice 07), both read by
+ * `readCampaignRenderData` before the first recipient: the renderer throws on
+ * an image or a product without one.
  */
 export function renderCampaignFor(
   campaign: CampaignEmailParts,
@@ -187,6 +201,7 @@ export function renderCampaignFor(
     claimUrl: string | null;
     unsubscribeUrl: string;
     images?: CampaignBlockImages;
+    products?: CampaignBlockProducts;
     placeholders?: CampaignPreviewPlaceholders;
   },
 ): RenderedEmail {
@@ -201,6 +216,7 @@ export function renderCampaignFor(
       buttonHref: (b) => blockButtonHref(b, campaign.name, p),
       unsubscribeUrl: p.unsubscribeUrl,
       ...(p.images ? { images: p.images } : {}),
+      ...(p.products ? { products: p.products } : {}),
       ...(p.placeholders ? { placeholders: p.placeholders } : {}),
     });
   }
@@ -226,9 +242,9 @@ export function renderCampaignFor(
  * shell's own dark rules applied whatever the viewer's setting. The campaign
  * editor's Light / Dark toggle (slice 04) passes it through previewCampaign.
  * Only the preview takes it; nothing a send calls can (sender.test.ts, at the
- * type level). `images` is what the test send reads too (`readCampaignImages`),
- * so the preview shows the email it delivers; an image missing from it is
- * drawn as a hint.
+ * type level). `images` and `products` are what the test send reads too
+ * (`readCampaignRenderData`), so the preview shows the email it delivers; an
+ * image or a product missing from them is drawn as a hint.
  */
 export function renderCampaignPreview(
   campaign: CampaignEmailParts,
@@ -237,7 +253,8 @@ export function renderCampaignPreview(
     firstName,
     forceDark = false,
     images,
-  }: { origin: string; firstName: string | null; forceDark?: boolean; images?: CampaignBlockImages },
+    products,
+  }: { origin: string; firstName: string | null; forceDark?: boolean; images?: CampaignBlockImages; products?: CampaignBlockProducts },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
   const rendered = renderCampaignFor(campaign, {
@@ -247,9 +264,44 @@ export function renderCampaignPreview(
     claimUrl: null,
     unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
     ...(images ? { images } : {}),
+    ...(products ? { products } : {}),
     placeholders: { ...CAMPAIGN_PLACEHOLDERS, ...CONTENT_PLACEHOLDERS },
   });
   return forceDark ? { ...rendered, html: forceDarkMode(rendered.html) } : rendered;
+}
+
+/** What an email shows from the platform at render, beyond its own words. */
+export interface CampaignRenderData {
+  images: CampaignBlockImages;
+  products: CampaignBlockProducts;
+  /** What stops a send: a product not in the shop, by name, or an image with no email copy; null when none. */
+  problem: string | null;
+}
+
+/**
+ * Everything the email shows from the platform, read once for a preview, a
+ * test or a batch: each product as the shop sells it now (slice 07), then
+ * each image's email rendition, the products' photos included (slice 05).
+ * Never throws; a preview draws a hint for what is missing, a send stops on
+ * `problem`.
+ */
+export async function readCampaignRenderData(admin: SupabaseClient, content: Campaign["content"]): Promise<CampaignRenderData> {
+  const shop = await readCampaignProducts(admin, content);
+  const photos = campaignProductPhotos(shop);
+  const pictures = await readCampaignImages(admin, content, photos);
+  // A product's photo is the shop's, not a block's: name the product it shows.
+  const placed = new Set(content ? imageAssetsIn(content) : []);
+  const ofBlocks = pictures.failed.filter((f) => placed.has(f.assetId));
+  const ofProducts = pictures.failed.filter((f) => !placed.has(f.assetId));
+  const product = ofProducts.length ? Object.values(shop.products).find((p) => p.image?.asset === ofProducts[0].assetId) : undefined;
+  const problem =
+    campaignProductsProblem(shop) ??
+    (ofBlocks.length
+      ? campaignImagesProblem({ ...pictures, failed: ofBlocks })
+      : product
+        ? `the photo of ${product.title} has no copy an inbox can show: ${ofProducts[0].reason}`
+        : campaignImagesProblem(pictures));
+  return { images: pictures.images, products: shop.products, problem };
 }
 
 /** The pause rule as a check: the latest wave of any campaign email. */
@@ -406,6 +458,9 @@ export async function campaignReadiness(
   }
   const points = campaign ? await pointsCheck(setup.admin, campaign) : null;
   if (points) checks.push(points);
+  // Before each wave: a product can be un-listed between waves days apart (slice 07).
+  const products = campaign ? await productsCheck(setup.admin, campaign.content) : null;
+  if (products) checks.push(products);
   checks.push(allowanceCheck(room.allowance, room.error));
   return { checks, ready: checks.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
 }
@@ -536,11 +591,12 @@ export async function sendCampaignBatch(
     return result;
   }
   const ids = customerIds.slice(0, room.allowance.remaining);
-  // Every image's email rendition, once for the batch (slice 05): made once per asset and reused.
-  const pictures = await readCampaignImages(setup.admin, campaign.content);
-  const unpictured = campaignImagesProblem(pictures);
-  if (unpictured) {
-    result.stopped = unpictured;
+  // Once for the batch: each product as the shop sells it now, so a price
+  // changed in Costings reaches the next batch, and a product un-listed
+  // mid-wave stops it (slice 07); each image's email rendition (slice 05).
+  const shown = await readCampaignRenderData(setup.admin, campaign.content);
+  if (shown.problem) {
+    result.stopped = shown.problem;
     return result;
   }
 
@@ -584,7 +640,8 @@ export async function sendCampaignBatch(
         locale,
         claimUrl,
         unsubscribeUrl: unsubscribe.pageUrl,
-        images: pictures.images,
+        images: shown.images,
+        products: shown.products,
       });
       const sent = await transport.send({
         ...rendered,
@@ -651,16 +708,16 @@ export async function sendCampaignTest(
   const replyTo = emailAddressOf(setup.replyTo)!;
   const unsubscribe = unsubscribeLinks(PROBE_CUSTOMER_ID, { origin, secret: setup.unsubscribeSecret });
   if (!unsubscribe) return { refused: "UNSUBSCRIBE_SECRET is not set, so no unsubscribe link can be signed." };
-  const pictures = await readCampaignImages(setup.admin, campaign.content);
-  const unpictured = campaignImagesProblem(pictures);
-  if (unpictured) return { refused: unpictured };
+  const shown = await readCampaignRenderData(setup.admin, campaign.content);
+  if (shown.problem) return { refused: shown.problem };
   const rendered = renderCampaignFor(campaign, {
     firstName,
     origin,
     locale: DEFAULT_LOCALE,
     claimUrl: null,
     unsubscribeUrl: unsubscribe.pageUrl,
-    images: pictures.images,
+    images: shown.images,
+    products: shown.products,
   });
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));

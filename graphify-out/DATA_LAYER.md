@@ -340,7 +340,7 @@ Changed from pages: `/settings/discounts/[id]`, `/settings/media`, `/settings/pr
 Defined in supabase/migrations/0028_ecommerce.sql:194
 References: `collections`, `products`
 - Read by:
-  - `getProducts()` [select] — lib/ecommerce/products.ts:126
+  - `getProducts()` [select] — lib/ecommerce/products.ts:139
 
 ### commissions
 Defined in supabase/migrations/20260728020000_commissions.sql:25
@@ -801,6 +801,7 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campai
   - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:126
   - `listMediaAssets()` [select] — lib/media-assets/index.ts:93
   - `loadImage()` [select] — lib/ecommerce/item-image-sync.ts:27
+  - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:127
 
 ### media_folders
 Defined in supabase/migrations/20260710080000_media_folders.sql:3
@@ -1358,9 +1359,9 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `POST()` [select] — app/api/shop/products/[id]/variants/route.ts:60
   - `getAdminProduct()` [select] — lib/ecommerce/admin/products.ts:92
   - `getComposedProductImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:466
-  - `getFeaturedProducts()` [select] — lib/ecommerce/products.ts:175
-  - `getProductBySlug()` [select] — lib/ecommerce/products.ts:150
-  - `getProducts()` [select] — lib/ecommerce/products.ts:80
+  - `getFeaturedProducts()` [select] — lib/ecommerce/products.ts:188
+  - `getProductBySlug()` [select] — lib/ecommerce/products.ts:163
+  - `getProducts()` [select] — lib/ecommerce/products.ts:93
   - `handleApplyBolster()` [select] — app/api/shop/customize/route.ts:684
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:130
   - `listAdminProducts()` [select] — lib/ecommerce/admin/products.ts:45
@@ -1369,6 +1370,8 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:31
   - `main()` [select] — scripts/costings-sync-prices.ts:58
   - `main()` [select] — scripts/stripe-sync-all.ts:73
+  - `readCampaignProductCards()` [select] — lib/email-campaigns/products.ts:93
+  - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:116
   - `resolveSurfaceKey()` [select] — lib/page-faq/seed.ts:24
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:131
   - `setComposedProductImage()` [select] — app/[lang]/settings/inventory/actions.ts:452
@@ -2427,23 +2430,23 @@ app/[lang]/settings/campaigns/page.tsx
 - Server actions: `checkCampaignReadiness()`
 - Loads: `listCampaigns()`, `readSendingStatus()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
-- Reads, through the same: `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `email_campaign_stats`, `email_campaigns`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `email_campaign_stats`, `email_campaigns`, `media_assets`, `products`, `site_settings`
 
 ### /settings/campaigns/[id]
 app/[lang]/settings/campaigns/[id]/page.tsx
-- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
 ### /settings/campaigns/new
 app/[lang]/settings/campaigns/new/page.tsx
-- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `listSegments()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx

@@ -29,12 +29,17 @@ export interface CampaignImages {
 const NONE: CampaignImages = { images: {}, failed: [] };
 
 /**
- * Each image the blocks place, as its email rendition, made now if it has
- * none yet. Never throws: an image that cannot be read or made is in
- * `failed`, and the caller says so. Content with no image reads nothing.
+ * Each image the blocks place, and each of `also` (the products' photos,
+ * slice 07), as its email rendition, made now if it has none yet. Never
+ * throws: an image that cannot be read or made is in `failed`, and the
+ * caller says so. Content with no image reads nothing.
  */
-export async function readCampaignImages(admin: SupabaseClient, content: CampaignContent | null): Promise<CampaignImages> {
-  const assets = content ? imageAssetsIn(content) : [];
+export async function readCampaignImages(
+  admin: SupabaseClient,
+  content: CampaignContent | null,
+  also: readonly string[] = [],
+): Promise<CampaignImages> {
+  const assets = [...new Set([...(content ? imageAssetsIn(content) : []), ...also])];
   if (!assets.length) return NONE;
   // Only an email with images loads sharp.
   const { ensureEmailRenditions } = await import("@/lib/media-assets/email-renditions");

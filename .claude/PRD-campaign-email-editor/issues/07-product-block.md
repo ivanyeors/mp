@@ -2,7 +2,7 @@
 
 **Issue:** [#361](https://github.com/ivanyeors/mp/issues/361) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** 05 (email image renditions), 06 (the column primitive for *side by side*)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 

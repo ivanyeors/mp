@@ -16,6 +16,7 @@ import {
   BATCH_SIZE,
   campaignReadiness,
   planWave,
+  readCampaignRenderData,
   renderCampaignPreview,
   sendCampaignBatch,
   sendCampaignTest,
@@ -24,6 +25,8 @@ import {
   type WavePlanResult,
 } from "@/lib/email-campaigns/sender";
 import { campaignImageFieldErrors, readCampaignImages } from "@/lib/email-campaigns/images";
+import { readCampaignProductCards, shopProductCard, type CampaignProductCard, type ShopProductRow } from "@/lib/email-campaigns/products";
+import { getProducts } from "@/lib/ecommerce/products";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
@@ -179,7 +182,8 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
  * field shows its placeholder rather than an error (PRD-campaign-email-editor
  * decision 7); Save still asks for every word. `forceDark` is the preview's
  * Dark toggle (slice 04), and `from` the sending setup's From, read-only in
- * the editor and named in its inbox row.
+ * the editor and named in its inbox row. Its products are the shop's now
+ * (slice 07), as a send reads them.
  */
 export async function previewCampaign(
   input: CampaignDraftInput,
@@ -190,13 +194,14 @@ export async function previewCampaign(
   if (!parsed.ok) return parsed;
   const workingAs = await getWorkingAs(ctx.memberId);
   const setup = campaignSenderSetup();
-  // The images the test send shows: an image without its email copy is drawn as a hint.
-  const { images } = await readCampaignImages(supabaseAdmin(), parsed.draft.content);
+  // The images and products the test send shows: one missing is drawn as a hint.
+  const { images, products } = await readCampaignRenderData(supabaseAdmin(), parsed.draft.content);
   const rendered = renderCampaignPreview(parsed.draft, {
     origin: setup.origin,
     firstName: workingAs?.name.split(/\s+/)[0] ?? null,
     forceDark: forceDark === true,
     images,
+    products,
   });
   return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
 }
@@ -219,6 +224,42 @@ export async function placeCampaignImage(assetId: string): Promise<{ ok: true; i
     const r = renditions.get(assetId);
     if (!r) return { ok: false, error: failed.get(assetId) ?? "That image couldn't be made ready for email." };
     return { ok: true, image: { assetId, url: r.url, width: r.width, height: r.height, hasAlpha: r.hasAlpha } };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/** The most products the picker lists for one search. */
+const PRODUCT_RESULTS = 24;
+
+/**
+ * The products block's picker (PRD-campaign-email-editor slice 07): Listed
+ * shop products matching `search`, through the shop's own query
+ * (`getProducts`' catalog, so nothing bought through the configurator), each
+ * as the email will show it. Changes nothing.
+ */
+export async function findCampaignProducts(search: string): Promise<{ ok: true; products: CampaignProductCard[] } | Failure> {
+  await assertAdmin("campaigns");
+  try {
+    const { products } = await getProducts({
+      status: "active",
+      search: typeof search === "string" && search.trim() ? search.trim().slice(0, 80) : undefined,
+      limit: PRODUCT_RESULTS,
+    });
+    return { ok: true, products: (products as ShopProductRow[]).map((p) => shopProductCard(p)).filter((p) => p.listed) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/** The products a campaign names, as its cards show them: still Listed or not, by name. Changes nothing. */
+export async function describeCampaignProducts(ids: string[]): Promise<{ ok: true; products: CampaignProductCard[] } | Failure> {
+  await assertAdmin("campaigns");
+  if (!Array.isArray(ids) || ids.length > 40 || !ids.every((id) => typeof id === "string" && UUID.test(id))) {
+    return { ok: false, error: "Those are not products from the shop." };
+  }
+  try {
+    return { ok: true, products: await readCampaignProductCards(supabaseAdmin(), ids) };
   } catch (err) {
     return { ok: false, error: message(err) };
   }

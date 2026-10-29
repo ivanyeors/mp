@@ -55,6 +55,19 @@ export function isShopCatalogProduct(product: { product_type: string }): boolean
   return !(CUSTOM_COMPOSED_PRODUCT_TYPES as readonly string[]).includes(product.product_type);
 }
 
+/**
+ * Pure — the product is **Listed** in the shop catalog (CONTEXT.md): active,
+ * with at least one active Variant, and bought from the shop rather than
+ * through the configurator.
+ */
+export function isListedShopProduct(product: {
+  status: string;
+  product_type: string;
+  product_variants?: { is_active: boolean }[] | null;
+}): boolean {
+  return product.status === "active" && isShopCatalogProduct(product) && (product.product_variants ?? []).some((v) => v.is_active);
+}
+
 export interface GetProductsOpts {
   status?: string;
   category_id?: string;
@@ -198,6 +211,29 @@ export async function getFeaturedProducts(limit = 8) {
 export function resolveProductContent(product: Product, locale: Locale = DEFAULT_LOCALE) {
   const content = product.content[locale] ?? product.content[DEFAULT_LOCALE] ?? Object.values(product.content)[0];
   return content ?? { title: product.slug, description: "", body: "" };
+}
+
+/**
+ * Pure — the price a shop card shows for a product (components/shop/product-card.tsx):
+ * its cheapest active Variant's price, and that Variant's compare-at price
+ * when it is above it, which the card strikes through. `varies` is whether
+ * its active Variants differ in price. Every one is a Costings mirror (ADR
+ * 0001). Null when no Variant is active.
+ */
+export function shopCardPrice(
+  variants: Pick<ProductVariant, "price" | "compare_at_price" | "currency" | "is_active">[],
+): { price: number; compareAt: number | null; varies: boolean; currency: string } | null {
+  const active = variants.filter((v) => v.is_active).map((v) => ({ ...v, price: Number(v.price) }));
+  if (!active.length) return null;
+  // Stable, so a tie keeps the order the card's own sort keeps.
+  const cheapest = [...active].sort((a, b) => a.price - b.price)[0];
+  const compareAt = cheapest.compare_at_price == null ? null : Number(cheapest.compare_at_price);
+  return {
+    price: cheapest.price,
+    compareAt: compareAt !== null && compareAt > cheapest.price ? compareAt : null,
+    varies: active.some((v) => v.price !== cheapest.price),
+    currency: cheapest.currency,
+  };
 }
 
 /** Get the lowest price from all active variants */

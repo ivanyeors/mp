@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Columns2, Heading, Image as ImageIcon, Minus, MousePointerClick, PanelTop, Pilcrow, StretchVertical } from "lucide-react";
+import { Columns2, Heading, Image as ImageIcon, Minus, MousePointerClick, PanelTop, Pilcrow, ShoppingBag, StretchVertical } from "lucide-react";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 import { RichText } from "@/components/block-editor/rich-text";
 import { richTextWords } from "@/components/block-editor/rich-text-doc";
@@ -19,6 +19,7 @@ import {
     IMAGE_LINK_TARGETS,
     isHttpsUrl,
     paragraphRuns,
+    PRODUCT_BUTTON_LABEL,
     SPLIT_SIDES,
     unknownVariableMessage,
     type BlockButton,
@@ -26,6 +27,7 @@ import {
     type EmailBlock,
     type ImageLinkTarget,
     type ImageWidth,
+    type ProductLayout,
     type SpacerSize,
     type SplitSide,
 } from "@/lib/email-campaigns/content";
@@ -33,6 +35,7 @@ import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { cn } from "@/lib/utils";
 import { Field } from "../field";
 import { ImageField } from "./image-field";
+import { ProductField, ProductsField } from "./products-field";
 import { paragraphsOf, richTextOf, TEXT_VARIABLES } from "./runs";
 
 /**
@@ -116,9 +119,13 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
     );
 }
 
-/** A button sent somewhere else: only a link button keeps a link of its own. */
+/** A button sent somewhere else: only a link button keeps a link of its own, and only a product button a product. */
 const retarget = (x: BlockButton, target: BlockButtonTarget): BlockButton =>
-    target === "url" ? { label: x.label, target, url: x.url ?? "", style: x.style } : { label: x.label, target, style: x.style };
+    target === "url"
+        ? { label: x.label, target, url: x.url ?? "", style: x.style }
+        : target === "product"
+          ? { label: x.label, target, product: x.product ?? "", style: x.style }
+          : { label: x.label, target, style: x.style };
 
 function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"buttons">>) {
     const set = (j: number, x: BlockButton, burst?: string) => onChange({ ...b, buttons: b.buttons.map((y, k) => (k === j ? x : y)) }, burst);
@@ -174,6 +181,14 @@ function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFo
                                         onChange={(e) => set(j, { ...x, url: e.target.value }, typingBurst(e, `${bid}-url`))}
                                     />
                                 </Field>
+                            ) : null}
+                            {x.target === "product" ? (
+                                <ProductField
+                                    product={x.product ?? ""}
+                                    onChange={(product) => set(j, { ...x, product })}
+                                    readOnly={readOnly}
+                                    error={errors[`buttons.${j}.product`]}
+                                />
                             ) : null}
                             {x.target === "sign_in" ? (
                                 <p className="text-xs text-muted-foreground">
@@ -366,6 +381,9 @@ function OneButtonFields({
                         onChange={(e) => onChange({ ...x, url: e.target.value }, typingBurst(e, `${bid}-url`))}
                     />
                 </Field>
+            ) : null}
+            {x.target === "product" ? (
+                <ProductField product={x.product ?? ""} onChange={(product) => onChange({ ...x, product })} readOnly={readOnly} error={errors["button.product"]} />
             ) : null}
         </div>
     );
@@ -603,6 +621,51 @@ function SplitOptions({ block: b, onChange, readOnly }: BlockFormProps<Split>) {
     );
 }
 
+type Products = Of<"products">;
+
+const PRODUCT_LAYOUT_LABEL: Record<ProductLayout, string> = { rows: "One per row", side_by_side: "Side by side" };
+
+/**
+ * Products (slice 07): up to three of the shop's Listed products, each shown
+ * as the email shows it, with the shop's photo, name and price, never typed;
+ * then the label every product's button carries.
+ */
+function ProductsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Products>) {
+    const labelId = `${idPrefix}-button-label`;
+    return (
+        <div className="space-y-4">
+            <ProductsField products={b.products} layout={b.layout} onChange={(products) => onChange({ ...b, products })} readOnly={readOnly} errors={errors} />
+            <div className="text-center">
+                {/* Each product's button, its label typed on it. */}
+                <input
+                    id={labelId}
+                    aria-label="Each product's button: label"
+                    aria-invalid={errors.buttonLabel ? true : undefined}
+                    value={b.buttonLabel}
+                    placeholder={PRODUCT_BUTTON_LABEL}
+                    maxLength={CONTENT_LIMITS.buttonLabel}
+                    disabled={readOnly}
+                    onChange={(e) => onChange({ ...b, buttonLabel: e.target.value }, typingBurst(e, labelId))}
+                    className="h-10 w-full max-w-60 rounded-md border border-primary bg-primary px-4 text-center text-sm font-semibold text-primary-foreground outline-none transition-[box-shadow] placeholder:font-normal placeholder:text-primary-foreground/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-70 aria-invalid:border-destructive max-md:min-h-11"
+                />
+                <FieldError text={errors.buttonLabel} />
+            </div>
+        </div>
+    );
+}
+
+function ProductsOptions({ block: b, onChange, readOnly }: BlockFormProps<Products>) {
+    return (
+        <PresetPicker
+            label="Layout"
+            value={b.layout}
+            options={(Object.keys(PRODUCT_LAYOUT_LABEL) as ProductLayout[]).map((layout) => ({ value: layout, label: PRODUCT_LAYOUT_LABEL[layout] }))}
+            disabled={readOnly}
+            onChange={(layout) => onChange({ ...b, layout })}
+        />
+    );
+}
+
 function DividerForm() {
     return (
         <div className="py-2">
@@ -680,6 +743,14 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("split") as Split,
         Form: SplitForm,
         Options: SplitOptions,
+    },
+    products: {
+        label: "Products",
+        description: "Up to three from the shop, at its prices",
+        icon: ShoppingBag,
+        create: () => emptyBlock("products") as Products,
+        Form: ProductsForm,
+        Options: ProductsOptions,
     },
     divider: {
         label: "Divider",

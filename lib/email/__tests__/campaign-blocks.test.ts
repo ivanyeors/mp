@@ -27,6 +27,8 @@ const HINTS = {
   image: "Choose an image.",
   imageUnavailable: "Not ready.",
   line: "e.g. A line",
+  products: "Choose products.",
+  productUnavailable: "Not in the shop.",
 };
 
 const data = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> = {}): CampaignBlocksEmailData => ({

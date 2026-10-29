@@ -539,7 +539,7 @@ A marketing email **Staff** write in **Admin Panel** → Email campaigns (`email
 _Avoid_: "newsletter" or "blast"; sending one through the transactional mailbox (never: campaign mail goes through its own Resend subdomain); putting a **Review request** or an **Aftercare message** in one
 
 **Email block**:
-One typed part of an **Email campaign**: heading, text, buttons, image, hero, image + text, products, divider or spacer. Its type is from a list in code; **Staff** fill in its words, image, link and a few preset options, never its HTML, fonts or colours, and it is right in light and dark by itself. A campaign's blocks are stored as versioned JSON, `{ v: 1, blocks: [...] }`, checked by one schema on every write and rendered only on the server (ADR 0036).
+One typed part of an **Email campaign**: heading, text, buttons, image, hero, image + text, products, divider or spacer. Its type is from a list in code; **Staff** fill in its words, image, link and a few preset options, never its HTML, fonts or colours, and it is right in light and dark by itself. A campaign's blocks are stored as versioned JSON, `{ v: 1, blocks: [...] }`, checked by one schema on every write and rendered only on the server (ADR 0036). A products block holds only **Storefront product** ids: each product's name, photo and price are the shop's, read when the email is rendered (the **MSRP** Costings sets), and a product no longer **Listed** stops the send by name.
 _Avoid_: "section" (a pillow filling's compartment, and the landing page's **Landing section**); "module", "row", "component"; an HTML block (there is none, on purpose)
 
 **Starter**:

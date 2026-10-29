@@ -32,6 +32,7 @@ export const CHECK_LABEL: Record<string, string> = {
   unsubscribe_secret: "Unsubscribe links are signed correctly",
   pause: "Bounces and spam reports are low",
   points: "Points are live",
+  products: "Every product is still in the shop",
   send_limit: "Room in the sending plan",
   reports: "Bounce and spam reports",
 };

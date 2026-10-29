@@ -37,7 +37,7 @@ vi.mock("@/lib/email-campaigns/setup", () => ({
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
 const { previewCampaign } = await import("../actions");
-const { renderCampaignPreview, sendCampaignTest } = await import("@/lib/email-campaigns/sender");
+const { readCampaignRenderData, renderCampaignPreview, sendCampaignTest } = await import("@/lib/email-campaigns/sender");
 const { CampaignPreviewSchema } = await import("@/lib/email-campaigns/rules");
 const { FORCED_DARK_STYLE_ID } = await import("@/lib/email/base");
 
@@ -77,39 +77,71 @@ beforeEach(() => {
   h.calls = [];
 });
 
+/** The test send of `draft`, through the same transport and headers as a wave. */
+async function testSend(draft: ReturnType<typeof CampaignPreviewSchema.parse>, admin: SupabaseClient = fakeCampaignsClient(emptyWorld()) as unknown as SupabaseClient) {
+  const sent: OutgoingEmail[] = [];
+  const transport: EmailTransport = {
+    name: "resend",
+    async send(email) {
+      sent.push(email);
+      return { id: "re_1" };
+    },
+  };
+  const r = await sendCampaignTest(draft, { to: ["me@mpillow.com"], firstName: "Ivan" }, {
+    admin,
+    transport,
+    campaignFrom: "Mpillow <hello@hello.mpillow.com>",
+    campaignDomain: "hello.mpillow.com",
+    orderFrom: "orders@mpillow.com",
+    replyTo: "Mpillow Support <support@mpillow.com>",
+    origin: ORIGIN,
+    unsubscribeSecret: "campaign-test-secret",
+    sleep: async () => undefined,
+  });
+  expect(r).toEqual({ sent: ["me@mpillow.com"], failed: [] });
+  return sent;
+}
+
+// The test's own unsubscribe link (signed for nobody) against the preview's, which has none.
+const unsigned = (s: string) => s.replace(/\/en-US\/unsubscribe\?[^"\s]*/g, "/en-US/unsubscribe");
+
 describe("the preview and the test send", () => {
   it("are the same HTML and words, but for the unsubscribe link", async () => {
     const draft = CampaignPreviewSchema.parse(INPUT);
     const preview = renderCampaignPreview(draft, { origin: ORIGIN, firstName: "Ivan" });
+    const sent = await testSend(draft);
 
-    const sent: OutgoingEmail[] = [];
-    const transport: EmailTransport = {
-      name: "resend",
-      async send(email) {
-        sent.push(email);
-        return { id: "re_1" };
-      },
-    };
-    const r = await sendCampaignTest(draft, { to: ["me@mpillow.com"], firstName: "Ivan" }, {
-      admin: fakeCampaignsClient(emptyWorld()) as unknown as SupabaseClient,
-      transport,
-      campaignFrom: "Mpillow <hello@hello.mpillow.com>",
-      campaignDomain: "hello.mpillow.com",
-      orderFrom: "orders@mpillow.com",
-      replyTo: "Mpillow Support <support@mpillow.com>",
-      origin: ORIGIN,
-      unsubscribeSecret: "campaign-test-secret",
-      sleep: async () => undefined,
-    });
-    expect(r).toEqual({ sent: ["me@mpillow.com"], failed: [] });
-
-    // The test's own unsubscribe link (signed for nobody) against the preview's, which has none.
-    const unsigned = (s: string) => s.replace(/\/en-US\/unsubscribe\?[^"\s]*/g, "/en-US/unsubscribe");
     expect(sent[0].subject).toBe(`[Test] ${preview.subject}`);
     expect(unsigned(sent[0].html)).toBe(preview.html);
     expect(unsigned(sent[0].text)).toBe(preview.text);
     expect(preview.html).toContain("Hello Ivan, our <strong>FibreCool</strong> covers are back.");
     expect(preview.html).not.toContain("dashed"); // every word written: no placeholder drawn
+  });
+
+  it("show the same products, each as the shop sells it at that moment (slice 07)", async () => {
+    const world = emptyWorld();
+    const id = "9e4b6d8a-2f1c-4e3a-8b7d-1c2e3f4a5b6d";
+    world.products = [
+      {
+        id,
+        slug: "camel-bolster-case",
+        product_type: "accessory",
+        status: "active",
+        content: { "en-US": { title: "Camel Bolster Case", description: "", body: "" } },
+        product_variants: [{ id: "v1", price: 29.5, compare_at_price: 35, currency: "SGD", is_active: true, position: 0 }],
+        product_images: [],
+      },
+    ];
+    const admin = fakeCampaignsClient(world) as unknown as SupabaseClient;
+    const draft = CampaignPreviewSchema.parse({
+      ...INPUT,
+      content: { ...CONTENT, blocks: [...CONTENT.blocks, { id: "shop", type: "products", products: [id], layout: "rows", buttonLabel: "Shop now" }] },
+    });
+    const preview = renderCampaignPreview(draft, { origin: ORIGIN, firstName: "Ivan", ...(await readCampaignRenderData(admin, draft.content)) });
+    const sent = await testSend(draft, admin);
+    expect(unsigned(sent[0].html)).toBe(preview.html);
+    expect(unsigned(sent[0].text)).toBe(preview.text);
+    expect(preview.text).toMatch(/Camel Bolster Case\nSGD.29\.50 \(was SGD.35\.00\)/);
   });
 });
 

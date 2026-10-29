@@ -20,20 +20,21 @@ import { bodyLineParts, linkLabel, parseCampaignBody } from "@/lib/email/campaig
 import { placeholdersIn } from "@/lib/email/copy";
 import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type VariableKey } from "./variables";
 
-export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "split", "divider", "spacer"] as const;
+export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "split", "products", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
 
 /**
  * Where a block's button goes. The sender resolves each to an absolute URL on
  * the live origin with the campaign's UTMs: Staff never type a site link.
  * `sign_in` is the recipient's own Claim link when they have one, else their
- * account, as the single button does today; `url` is a link Staff type, https
- * only. Slice 07 adds a product.
+ * account, as the single button does today; `product` is one Storefront
+ * product's shop page (slice 07), which the button names by id; `url` is a
+ * link Staff type, https only.
  */
-export const BLOCK_BUTTON_TARGETS = ["sign_in", "shop", "book_fitting", "customise_mpillow", "customise_mbolster", "url"] as const;
+export const BLOCK_BUTTON_TARGETS = ["sign_in", "shop", "book_fitting", "customise_mpillow", "customise_mbolster", "product", "url"] as const;
 export type BlockButtonTarget = (typeof BLOCK_BUTTON_TARGETS)[number];
 
-export type SiteButtonTarget = Exclude<BlockButtonTarget, "sign_in" | "url">;
+export type SiteButtonTarget = Exclude<BlockButtonTarget, "sign_in" | "product" | "url">;
 
 /** Each site target's page, before the locale. */
 export const SITE_BUTTON_PATHS: Record<SiteButtonTarget, string> = {
@@ -49,6 +50,7 @@ export const BLOCK_BUTTON_TARGET_LABEL: Record<BlockButtonTarget, string> = {
   book_fitting: "Book a fitting",
   customise_mpillow: "Customise an Mpillow",
   customise_mbolster: "Customise an Mbolster",
+  product: "A product",
   url: "A link",
 };
 
@@ -70,6 +72,16 @@ export type ImageWidth = (typeof IMAGE_WIDTHS)[number];
 export const SPLIT_SIDES = ["left", "right"] as const;
 export type SplitSide = (typeof SPLIT_SIDES)[number];
 
+/**
+ * How a products block lays out its products (slice 07): one per row, the
+ * photo beside its name, or side by side as a grid. Both stack on a phone.
+ */
+export const PRODUCT_LAYOUTS = ["rows", "side_by_side"] as const;
+export type ProductLayout = (typeof PRODUCT_LAYOUTS)[number];
+
+/** What a product's button says unless Staff say otherwise (slice 07). */
+export const PRODUCT_BUTTON_LABEL = "Shop now";
+
 export const CONTENT_VERSION = 1;
 
 export const CONTENT_LIMITS = {
@@ -89,6 +101,8 @@ export const CONTENT_LIMITS = {
   /** An image + text's words beside the image: a few lines, so the row stays small (slice 06). */
   splitText: 500,
   splitParagraphs: 4,
+  /** The products one block shows (slice 07): a row of three is as narrow as a phone's columns go. */
+  products: 3,
   /** The stored JSON, in UTF-8 bytes; the table refuses 256,000. */
   bytes: 200_000,
 } as const;
@@ -105,6 +119,9 @@ export const CONTENT_PLACEHOLDERS = {
   /** An image chosen whose email copy could not be read or made. */
   imageUnavailable: "This image can't be shown in an email. Choose it again, or another.",
   line: "e.g. Our coolest covers, back in every size.",
+  products: "Choose up to three products from the shop.",
+  /** A product chosen that is no longer Listed, or no longer exists. */
+  productUnavailable: "This product is no longer in the shop: remove it or list it again.",
 } as const;
 
 /** Pure — whether `value` is an absolute https link with no spaces. */
@@ -159,6 +176,9 @@ const BlockId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "A block id is 1 to 40
 
 /** A Media Asset's id (`media_assets.id`), as Postgres writes a uuid: lower case. */
 const ASSET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** A Storefront product's id (`products.id`): the same lower-case uuid. */
+const PRODUCT_ID = ASSET_ID;
 
 /**
  * The block types. Saving needs every word (`required`); the preview takes
@@ -219,11 +239,18 @@ function blockSchema({ required }: { required: boolean }) {
       }
     });
 
+  // A product a button goes to (slice 07), empty until one is chosen: the
+  // button names it by id, and the sender reads its shop page at render.
+  const product = required
+    ? z.string().regex(PRODUCT_ID, "Choose a product.")
+    : z.string().refine((v) => v === "" || PRODUCT_ID.test(v), "A product is a Storefront product's id.");
+
   const button = z
     .strictObject({
       label: words(CONTENT_LIMITS.buttonLabel, "Give the button a label."),
       target: z.enum(BLOCK_BUTTON_TARGETS),
       url: z.string().trim().max(CONTENT_LIMITS.url, most(CONTENT_LIMITS.url)).optional(),
+      product: product.optional(),
       style: z.enum(BUTTON_STYLES),
     })
     .superRefine((b, ctx) => {
@@ -233,6 +260,11 @@ function blockSchema({ required }: { required: boolean }) {
         }
       } else if (b.url !== undefined) {
         ctx.addIssue({ code: "custom", path: ["url"], message: "Only a link button has a link of its own." });
+      }
+      if (b.target === "product") {
+        if (b.product === undefined) ctx.addIssue({ code: "custom", path: ["product"], message: "Choose a product." });
+      } else if (b.product !== undefined) {
+        ctx.addIssue({ code: "custom", path: ["product"], message: "Only a product button has a product of its own." });
       }
     });
 
@@ -306,6 +338,25 @@ function blockSchema({ required }: { required: boolean }) {
         button: button.optional(),
       })
       .superRefine(paragraphChecks(CONTENT_LIMITS.splitText)),
+    // Up to three Storefront products, by id only (slice 07, decision 3): the
+    // name, photo and price are the shop's, read when the email is rendered,
+    // so a price is never typed, copied or kept here.
+    z
+      .strictObject({
+        id: BlockId,
+        type: z.literal("products"),
+        products: (required ? z.array(z.string().regex(PRODUCT_ID, "Choose a product.")).min(1, "Choose a product.") : z.array(product)).max(
+          CONTENT_LIMITS.products,
+          `At most ${CONTENT_LIMITS.products} products in one block.`,
+        ),
+        layout: z.enum(PRODUCT_LAYOUTS),
+        buttonLabel: words(CONTENT_LIMITS.buttonLabel, "Give the button a label."),
+      })
+      .superRefine((b, ctx) => {
+        b.products.forEach((p, i) => {
+          if (p && b.products.indexOf(p) !== i) ctx.addIssue({ code: "custom", path: ["products", i], message: "That product is in this block already." });
+        });
+      }),
     z.strictObject({ id: BlockId, type: z.literal("divider") }),
     z.strictObject({ id: BlockId, type: z.literal("spacer"), size: z.enum(SPACER_SIZES) }),
   ]);
@@ -357,6 +408,7 @@ export type SpacerSize = (typeof SPACER_SIZES)[number];
 export type ImageBlock = Extract<EmailBlock, { type: "image" }>;
 export type HeroBlock = Extract<EmailBlock, { type: "hero" }>;
 export type SplitBlock = Extract<EmailBlock, { type: "split" }>;
+export type ProductsBlock = Extract<EmailBlock, { type: "products" }>;
 /** An image a block places: its Media Asset and alt text. */
 export type BlockImage = ImageBlock["image"];
 /** Where an image goes when tapped. */
@@ -386,7 +438,7 @@ export function newBlockId(): string {
  * never sample words. Its choices start on the plainest: a medium heading,
  * one primary button to the shop, a full-width image with no link, a hero
  * with every part, an image + text with its image on the left and a button,
- * a medium spacer.
+ * products side by side with the shop's own *Shop now*, a medium spacer.
  */
 export function emptyBlock(type: EmailBlockType, id: string = newBlockId()): EmailBlock {
   switch (type) {
@@ -402,6 +454,8 @@ export function emptyBlock(type: EmailBlockType, id: string = newBlockId()): Ema
       return { id, type, image: { asset: "", alt: "" }, heading: "", line: "", button: { label: "", target: "shop", style: "primary" } };
     case "split":
       return { id, type, image: { asset: "", alt: "" }, side: "left", heading: "", paragraphs: [], button: { label: "", target: "shop", style: "primary" } };
+    case "products":
+      return { id, type, products: [], layout: "side_by_side", buttonLabel: PRODUCT_BUTTON_LABEL };
     case "divider":
       return { id, type };
     case "spacer":
@@ -428,6 +482,9 @@ export function contentWords(content: CampaignContent): string[] {
         return [...altWords(b.image), ...[b.heading, b.line, b.button?.label].filter((w): w is string => w !== undefined)];
       case "split":
         return [...altWords(b.image), b.heading, textWords(b.paragraphs), ...(b.button ? [b.button.label] : [])];
+      // A product's name and price are the shop's, not the campaign's words.
+      case "products":
+        return [b.buttonLabel];
       default:
         return [];
     }
@@ -453,13 +510,30 @@ export function variablesUsed(content: CampaignContent, lines: readonly string[]
   return [...new Set([...written, ...used.flatMap((r) => ("var" in r ? [r.var] : []))])];
 }
 
+/** A block's buttons: a buttons block's one or two, a hero's or an image + text's own. */
+function buttonsOf(b: EmailBlock): BlockButton[] {
+  if (b.type === "buttons") return b.buttons;
+  if ((b.type === "hero" || b.type === "split") && b.button) return [b.button];
+  return [];
+}
+
 /** Pure — a button anywhere in the blocks goes to the recipient's sign-in, so the sender mints Claim links. */
 export function contentSignsIn(content: CampaignContent): boolean {
-  return content.blocks.some(
-    (b) =>
-      (b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in")) ||
-      ((b.type === "hero" || b.type === "split") && b.button?.target === "sign_in"),
-  );
+  return content.blocks.some((b) => buttonsOf(b).some((x) => x.target === "sign_in"));
+}
+
+/**
+ * Pure — every Storefront product the email shows or links to, once each, in
+ * order (slice 07): a products block's, and a product button's. What the
+ * sender reads from the shop at render, and what must still be Listed before
+ * a wave.
+ */
+export function productsIn(content: CampaignContent): string[] {
+  const ids = content.blocks.flatMap((b) => [
+    ...(b.type === "products" ? b.products : []),
+    ...buttonsOf(b).flatMap((x) => (x.target === "product" && x.product ? [x.product] : [])),
+  ]);
+  return [...new Set(ids.filter(Boolean))];
 }
 
 /** Pure — the subject, preview line or a text block names a `{name}` that is not a Variable: the message, or null. */

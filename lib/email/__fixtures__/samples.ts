@@ -8,7 +8,7 @@
 // "hostile" fills every free-text field with HOSTILE, which is how
 // escaping.test.ts proves no template interpolates raw user input.
 
-import type { CampaignBlockImages, CampaignBlocksEmailData } from "../campaign-blocks";
+import type { CampaignBlockImages, CampaignBlockProducts, CampaignBlocksEmailData } from "../campaign-blocks";
 import type { CampaignContent, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
@@ -550,6 +550,48 @@ export const EMAIL_BLOCK_SAMPLE_IMAGES: CampaignBlockImages = {
     hasAlpha: true,
   },
 };
+
+/** The Storefront products EMAIL_BLOCK_SAMPLES shows (slice 07). */
+export const SAMPLE_COVER_PRODUCT = "3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f";
+export const SAMPLE_NECK_PRODUCT = "7c2a4e6b-1d3f-4b8a-9e2c-6f4d5a3b2c1e";
+export const SAMPLE_CASE_PRODUCT = "9e4b6d8a-2f1c-4e3a-8b7d-1c2e3f4a5b6d";
+
+/**
+ * Those products as the sender reads them from the shop at render: a cover
+ * whose sizes differ in price (a *from* price, a photo), a neck support on
+ * sale (its compare-at struck through, a cut-out on the light plate), and a
+ * bolster case with one Variant and no photo.
+ */
+export const EMAIL_BLOCK_SAMPLE_PRODUCTS: CampaignBlockProducts = {
+  [SAMPLE_COVER_PRODUCT]: {
+    title: "FibreCool Cover",
+    slug: "fibrecool-cover",
+    image: { asset: SAMPLE_PHOTO_ASSET },
+    price: 39,
+    compareAt: null,
+    from: true,
+    currency: "SGD",
+  },
+  [SAMPLE_NECK_PRODUCT]: {
+    title: "Cervical Neck Support",
+    slug: "cervical-neck-support",
+    image: { asset: SAMPLE_CUTOUT_ASSET },
+    price: 45,
+    compareAt: 59,
+    from: false,
+    currency: "SGD",
+  },
+  [SAMPLE_CASE_PRODUCT]: {
+    title: "Camel Bolster Case",
+    slug: "camel-bolster-case",
+    image: null,
+    price: 29.5,
+    compareAt: null,
+    from: false,
+    currency: "SGD",
+  },
+};
+
 const words = (id: string, text: string): EmailBlock => ({ id, type: "text", paragraphs: [{ kind: "p", runs: [{ text }] }] });
 
 /**
@@ -653,6 +695,22 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
         { kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", your fitting sets its height." }] },
         { kind: "bullets", items: [[{ text: "Three heights" }], [{ text: "Two firmnesses" }]] },
       ],
+    },
+  ),
+  // Three side by side, two one per row with their own label, and a button to one product's page.
+  products: blockEmail(
+    {
+      id: "grid",
+      type: "products",
+      products: [SAMPLE_COVER_PRODUCT, SAMPLE_NECK_PRODUCT, SAMPLE_CASE_PRODUCT],
+      layout: "side_by_side",
+      buttonLabel: "Shop now",
+    },
+    { id: "rows", type: "products", products: [SAMPLE_COVER_PRODUCT, SAMPLE_NECK_PRODUCT], layout: "rows", buttonLabel: "See it in the shop" },
+    {
+      id: "one",
+      type: "buttons",
+      buttons: [{ label: "Shop the FibreCool cover", target: "product", product: SAMPLE_COVER_PRODUCT, style: "secondary" }],
     },
   ),
   divider: blockEmail(words("above", "Above the line."), { id: "line", type: "divider" }, words("below", "Below the line.")),

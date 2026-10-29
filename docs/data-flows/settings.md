@@ -87,6 +87,13 @@ flowchart TD
   or `item_id`. It writes `price`, `compare_at_price` and BOM `cost_price`,
   then syncs the product to Stripe. The response returns any Variants it could
   not resolve.
+- **Campaign emails** read the Variant mirror at render, never a price of
+  their own. A products block (or a button to a product) stores Storefront
+  product ids only; the preview, the test send and every batch of a wave read
+  each product's cheapest active Variant through the shop's columns
+  (`readCampaignProducts`, lib/email-campaigns/products.ts), so a Costings save
+  reaches the next email and changes no `email_campaigns` row. A product that
+  is no longer Listed fails the checks before a wave, by name.
 - **Shopify prices** are not pushed from Costings. Only a full Shopify sync
   pushes them: `fullShopifySync` (Integrations → Shopify) or
   `POST /api/shopify/sync?prices=1`.

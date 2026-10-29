@@ -15,8 +15,10 @@
 // words, never the URL.
 //
 // Pure: the sender fills each Variable for the recipient, resolves each
-// button's and image link's target to its link, and reads each image's email
-// rendition (slice 05), which it passes in `images`. As with the legacy
+// button's and image link's target to its link, reads each image's email
+// rendition (slice 05), which it passes in `images`, and reads each product
+// from the shop as it is sold now (slice 07), which it passes in `products`:
+// a product's name, photo and price are never the campaign's. As with the legacy
 // renderer, only the editor's preview passes `placeholders`, drawn dashed and
 // muted where an empty field's words would go; a send never does.
 //
@@ -45,8 +47,9 @@ import {
   type ButtonOptions,
 } from "./components";
 import { fillCopy } from "./copy";
+import { money } from "./format";
 import { escapeAttr, escapeHtml, stripTags } from "./html";
-import { LAYOUT, SPACE } from "./theme";
+import { css, LAYOUT, LIGHT, SPACE } from "./theme";
 import type { RenderedEmail } from "./types";
 import {
   CampaignContentPreviewSchema,
@@ -57,6 +60,7 @@ import {
   type EmailBlock,
   type ImageWidth,
   type Paragraph,
+  type ProductsBlock,
   type Run,
   type SpacerSize,
 } from "@/lib/email-campaigns/content";
@@ -75,6 +79,10 @@ export interface CampaignBlocksPlaceholders {
   imageUnavailable: string;
   /** A hero's empty line. */
   line: string;
+  /** A products block with no product chosen yet. */
+  products: string;
+  /** A product chosen that is not in `products`: no longer Listed, or gone. */
+  productUnavailable: string;
 }
 
 /**
@@ -93,6 +101,46 @@ export interface CampaignBlockImage {
 /** Each placed Media Asset's email rendition, by asset id. */
 export type CampaignBlockImages = Readonly<Record<string, CampaignBlockImage>>;
 
+/**
+ * A Storefront product as the shop sells it when the email is rendered
+ * (slice 07): read by the sender through the shop's own query, Listed, and
+ * priced from its Variants, which Costings sets (ADR 0001). A products block
+ * holds only the id.
+ */
+export interface CampaignBlockProduct {
+  /** Its name, as the shop shows it. */
+  title: string;
+  /** Its shop page is `/shop/<slug>`. */
+  slug: string;
+  /** Its first photo, whose email rendition is in `images`; null when it has none. */
+  image: { asset: string } | null;
+  /** The lowest price of its active Variants. */
+  price: number;
+  /** That Variant's compare-at price, struck through, when the shop shows one; else null. */
+  compareAt: number | null;
+  /** Its active Variants differ in price, so the price is a *from*. */
+  from: boolean;
+  currency: string;
+}
+
+/** Each Listed product the email shows or links to, by id. */
+export type CampaignBlockProducts = Readonly<Record<string, CampaignBlockProduct>>;
+
+/** Pure — a product's price in words, as the email shows it: `from SGD 39.00 (was SGD 49.00)`. */
+export function productPriceText(p: Pick<CampaignBlockProduct, "price" | "compareAt" | "from" | "currency">): string {
+  const now = `${p.from ? "from " : ""}${money(p.price, p.currency)}`;
+  return p.compareAt === null ? now : `${now} (was ${money(p.compareAt, p.currency)})`;
+}
+
+/** A product's price line as the shop card draws it: *from*, the compare-at struck through and muted, then the price. */
+function productPriceHtml(p: CampaignBlockProduct): string {
+  const was =
+    p.compareAt === null
+      ? ""
+      : `<span class="mp-muted" style="${css({ color: LIGHT.mutedFg, "text-decoration": "line-through" })}">${escapeHtml(money(p.compareAt, p.currency))}</span>&nbsp; `;
+  return `${p.from ? "from " : ""}${was}<strong>${escapeHtml(money(p.price, p.currency))}</strong>`;
+}
+
 export interface CampaignBlocksEmailData {
   /** May write Variables as `{first_name}`. */
   subject: string;
@@ -104,13 +152,22 @@ export interface CampaignBlocksEmailData {
   firstName: string | null;
   /** Each Variable's words for this recipient: their own detail, else the campaign's fallback. */
   values: Record<VariableKey, string>;
-  /** A button's or an image link's link for this recipient; null leaves the button, or the link, out. */
+  /**
+   * A button's or an image link's link for this recipient; null leaves the
+   * button, or the link, out. A product's is its shop page, from `products`.
+   */
   buttonHref: (b: BlockButton | BlockLink) => string | null;
   /**
    * Each placed image's email rendition (slice 05). A send must have every
    * one: an image without its rendition throws. The preview draws a hint.
    */
   images?: CampaignBlockImages;
+  /**
+   * Each Listed product the email shows (slice 07), as the shop sells it now.
+   * A send must have every one: a product not in it throws. The preview
+   * draws a hint.
+   */
+  products?: CampaignBlockProducts;
   /** The Customer's unsubscribe confirm page. */
   unsubscribeUrl: string;
   /** The editor's preview only: drawn in place of an empty field. Never set for a send. */
@@ -127,6 +184,9 @@ const IMAGE_PX: Record<ImageWidth, number> = { full: COLUMN_PX, inset: 440 };
 
 /** An image + text's two columns side by side (slice 06): each half the row that stacks, less the room between them. */
 const SPLIT_CELL_PX = STACK_BELOW / 2 - LAYOUT.gutter;
+
+/** One of `n` products side by side (slice 07): its share of the row that stacks, less the room between them. */
+const productCellPx = (n: number) => Math.floor(STACK_BELOW / n) - LAYOUT.gutter;
 
 /** Blocks that can open an email above its greeting: a title, a hero, an image. */
 const opensEmail = (b: EmailBlock) => (b.type === "heading" && b.level === 1) || b.type === "hero" || b.type === "image";
@@ -189,6 +249,7 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
   const hint = p.placeholders;
   const values = p.values;
   const images = p.images ?? {};
+  const products = p.products ?? {};
   const subject = fillCopy(p.subject, values).replace(/\s+/g, " ").trim();
 
   const html: string[] = [];
@@ -238,6 +299,33 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
     if (!label) return hint ? placeholderHint(hint.buttonLabel, "button") : null;
     text.push(`${label}: ${href}`, "");
     return button({ href, label, variant: x.style, ...opts });
+  };
+
+  /**
+   * One product of a products block (slice 07), as the shop sells it now:
+   * its photo, name and price, then its button, each linked to its shop
+   * page; `width` is its column's. The plain text is its name, price and link.
+   * A product the sender did not read is not in the shop: a send throws
+   * rather than send a dead link; the preview draws a hint.
+   */
+  const productHtml = (b: ProductsBlock, id: string, width: number, align: "left" | "center") => {
+    const product = products[id];
+    if (!product) {
+      if (hint) return { picture: "", words: placeholderHint(hint.productUnavailable) };
+      throw new Error(`Product ${id} is not in the shop: read the campaign's products before rendering it.`);
+    }
+    const href = p.buttonHref({ label: b.buttonLabel, target: "product", product: id, style: "primary" });
+    // A linked photo's alt is what the link says: the product's name.
+    const picture = product.image ? (imageHtml({ asset: product.image.asset, alt: product.title }, width, href) ?? "") : "";
+    const words = [heading(product.title, 3, { align, bottom: SPACE.xs }), paragraphHtml(productPriceHtml(product), { align, bottom: 0 })];
+    text.push(product.title, productPriceText(product));
+    const label = b.buttonLabel.trim();
+    if (href && label) {
+      text.push(`${label}: ${href}`);
+      words.push(button({ href, label, variant: "primary", align, maxWidth: width }));
+    } else if (href && hint) words.push(placeholderHint(hint.buttonLabel, "button"));
+    text.push("");
+    return { picture, words: words.join("\n") };
   };
 
   /** A text block's paragraphs and bullets, wherever they sit: their HTML, each line read into the plain text. */
@@ -342,6 +430,35 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
             textAlign: "left",
           }),
         );
+        return;
+      }
+      case "products": {
+        // One per row, each photo beside its words as an image + text lays
+        // them out; or side by side, one column each. Either stacks on a
+        // phone, the photo first, by width alone (the column primitive).
+        const ids = b.products.filter(Boolean);
+        if (!ids.length) {
+          if (hint) html.push(placeholderHint(hint.products));
+          return;
+        }
+        if (b.layout === "rows") {
+          for (const id of ids) {
+            const card = productHtml(b, id, SPLIT_CELL_PX, "left");
+            // A product with no photo is its words alone, across the row.
+            html.push(
+              card.picture
+                ? columns([card.picture, card.words], { stackBelow: STACK_BELOW, valign: "middle", gap: LAYOUT.gutter, textAlign: "left" })
+                : card.words,
+            );
+          }
+          return;
+        }
+        const width = productCellPx(ids.length);
+        const cards = ids.map((id) => {
+          const card = productHtml(b, id, width, "center");
+          return `${card.picture}\n${card.words}`;
+        });
+        html.push(columns(cards, { stackBelow: STACK_BELOW, valign: "top", gap: LAYOUT.gutter }));
         return;
       }
       case "divider":

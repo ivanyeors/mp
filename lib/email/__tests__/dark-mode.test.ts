@@ -9,7 +9,7 @@ import { darkRules, forceDarkMode, FORCED_DARK_STYLE_ID, renderEmailShell } from
 import { AUTH_TEMPLATE_LABELS } from "../contact-sheet";
 import { EMAIL_REGISTRY } from "../registry";
 import { DARK, LIGHT } from "../theme";
-import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
+import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLE_PRODUCTS, EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
 import { EMAIL_BLOCK_TYPES, emptyBlock, type CampaignContent } from "@/lib/email-campaigns/content";
 import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
@@ -46,7 +46,8 @@ const NO_DARK_CHANGE: Record<string, string> = {
 };
 
 const ORIGIN = "https://custom.mpillow.com";
-const preview = (c: CampaignDraft) => renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan", images: EMAIL_BLOCK_SAMPLE_IMAGES }).html;
+const preview = (c: CampaignDraft) =>
+  renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan", images: EMAIL_BLOCK_SAMPLE_IMAGES, products: EMAIL_BLOCK_SAMPLE_PRODUCTS }).html;
 const blocks = (content: CampaignContent): CampaignDraft => ({ ...EMPTY_CAMPAIGN_DRAFT, name: "Blocks", subject: "Sleep cooler", content });
 const AUTH_DIR = join(process.cwd(), "supabase", "templates");
 

@@ -69,6 +69,7 @@ const CONTENT: CampaignContent = {
       heading: "Why FibreCool",
       paragraphs: [{ kind: "p", runs: [{ text: "Cool all night." }] }],
     },
+    { id: "shop", type: "products", products: ["3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f"], layout: "rows", buttonLabel: "Shop now" },
     { id: "line", type: "divider" },
     { id: "room", type: "spacer", size: "l" },
   ],
@@ -202,6 +203,8 @@ describe("reading the blocks", () => {
       "A cover, folded",
       "Why FibreCool",
       "Cool all night.",
+      // A product's name and price are the shop's: only the block's own label is the campaign's.
+      "Shop now",
     ]);
   });
 
@@ -218,7 +221,7 @@ describe("reading the blocks", () => {
   });
 
   it("sends every site target to a page that exists, and only `url` takes a link", () => {
-    expect(Object.keys(SITE_BUTTON_PATHS).sort()).toEqual(BLOCK_BUTTON_TARGETS.filter((t) => t !== "sign_in" && t !== "url").sort());
+    expect(Object.keys(SITE_BUTTON_PATHS).sort()).toEqual(BLOCK_BUTTON_TARGETS.filter((t) => t !== "sign_in" && t !== "product" && t !== "url").sort());
     expect(SITE_BUTTON_PATHS).toEqual({ shop: "/shop", book_fitting: "/appointments", customise_mpillow: "/mp-config", customise_mbolster: "/mbolster-config" });
   });
 });

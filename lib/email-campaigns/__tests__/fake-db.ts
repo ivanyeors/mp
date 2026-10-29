@@ -10,7 +10,10 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *    `limit`, a `count: "exact", head: true` select) and `admin_audit_log`'s
  *    test sends;
  *  - the RPCs `claim_marketing_campaign_send`, `finish_campaign_send` and
- *    `mint_claim_link`.
+ *    `mint_claim_link`;
+ *  - for a campaign's products (slice 07), `products` (`select`, `in`) with
+ *    each row's Variants and images nested as the shop's select returns them,
+ *    and `media_assets` (`in` on `hosted_url`).
  *
  * The claim mirrors the SQL (20261021100000): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
@@ -64,6 +67,12 @@ export interface FakeWorld {
   auditLog?: { action: string; created_at: string; after: Row | null }[];
   /** Called inside each claim, before the rule runs: a test's chance to change the world. */
   onClaim?: (customerId: string) => void;
+  /** `products` rows, `product_variants` and `product_images` nested in each, as the shop's select returns them. */
+  products?: Row[];
+  /** `media_assets` rows: their id and hosted URL. */
+  mediaAssets?: { id: string; hosted_url: string }[];
+  /** Every table read, in order: what a test checks nothing else was touched with. */
+  reads?: string[];
 }
 
 export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
@@ -230,6 +239,9 @@ export function fakeCampaignsClient(world: FakeWorld) {
   return {
     rpcCalls,
     from(table: string) {
+      world.reads?.push(table);
+      if (table === "products") return query(() => world.products ?? []);
+      if (table === "media_assets") return query(() => (world.mediaAssets ?? []) as unknown as Row[]);
       if (table === "marketing_campaign_candidates") return query(() => candidates(world));
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
       if (table === "customer_campaign_sends") return query(() => world.sends as unknown as Row[]);
