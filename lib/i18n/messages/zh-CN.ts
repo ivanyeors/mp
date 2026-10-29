@@ -428,6 +428,11 @@ export const zhCN: Messages = {
         bookAnother: "再次预约",
         errorSlotTaken: "该时间刚刚被预订，请选择其他时间。",
         errorGeneric: "出错了，请重试。",
+        languageLabel: "语言偏好",
+        languageEnglish: "英语",
+        languageMandarin: "华语",
+        languageNone: "无偏好",
+        languageHint: "我们会尽量安排能以您所选语言沟通的工作人员为您服务。",
         measurementFeeNote:
           "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——现场为你定制、调整，当天即可带回家。",
       },

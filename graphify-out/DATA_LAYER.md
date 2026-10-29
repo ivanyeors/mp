@@ -965,7 +965,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
 - Written by:
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:120
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:979
+  - `POST()` [select] — app/api/stripe/webhook/route.ts:983
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:144
 
@@ -1045,7 +1045,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `fetchConvertedRows()` [select] — lib/analytics/journey/aggregates.ts:436
   - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:164
   - `fetchPendingOrderCouponUseCount()` [select] — lib/ecommerce/discounts.ts:187
-  - `finalizeReadjustmentBooking()` [select] — lib/readjustment/checkout.ts:172
+  - `finalizeReadjustmentBooking()` [select] — lib/readjustment/checkout.ts:182
   - `getChannelMix()` [select] — app/[lang]/settings/analytics/seo-actions.ts:134
   - `getCustomerOrderByNumber()` [select] — lib/shop/customer-orders.ts:65
   - `getCustomerOrders()` [select] — lib/shop/customer-orders.ts:48
@@ -1859,12 +1859,12 @@ Defined in supabase/migrations/20261013120000_readjustment_bookings.sql:10
 References: `customers`, `order_items`, `orders`, `partners`
 Changed from pages: `/appointments`, `/settings/appointments`
 - Written by:
-  - `POST()` [insert,update] — app/api/readjustments/book/route.ts:71
+  - `POST()` [insert,update] — app/api/readjustments/book/route.ts:72
   - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:82
   - `POST()` [select,update] — app/api/settings/readjustments/[id]/route.ts:115
-  - `expireReadjustmentBooking()` [update] — lib/readjustment/checkout.ts:276
-  - `finalizeReadjustmentBooking()` [select,update] — lib/readjustment/checkout.ts:161
-  - `markBooked()` [update] — lib/readjustment/checkout.ts:264
+  - `expireReadjustmentBooking()` [update] — lib/readjustment/checkout.ts:288
+  - `finalizeReadjustmentBooking()` [select,update] — lib/readjustment/checkout.ts:171
+  - `markBooked()` [update] — lib/readjustment/checkout.ts:276
   - `markReadjustmentCancelledByEvent()` [update] — lib/readjustment/lifecycle.ts:20
   - `moveReadjustmentByEvent()` [update] — lib/readjustment/lifecycle.ts:37
 - Read by:
@@ -2118,7 +2118,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
 - Read by:
   - `GET()` [select] — app/api/appointments/slots/route.ts:63
   - `GET()` [select] — app/api/settings/appointments/events/route.ts:38
-  - `POST()` [select] — app/api/appointments/book/route.ts:82
+  - `POST()` [select] — app/api/appointments/book/route.ts:84
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:927
   - `getSiteSettings()` [select] — lib/site-settings.ts:13
   - `loadCheckupSettings()` [select] — lib/aftercare/checkup-server.ts:126

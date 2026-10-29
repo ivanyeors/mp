@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { type ApptType } from "@/lib/appointments/appt-type";
+import { LANGUAGE_PREFERENCES, type LanguagePreference } from "@/lib/appointments/language";
 import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import { formatSgd } from "@/lib/readjustment/format";
 import {
@@ -109,6 +110,11 @@ export function BookingFlow({
   const t = m.slides.bookAppointment.flow;
   const rt = m.slides.bookAppointment.readjust;
   const typeLabel = type === "customisation" ? t.customisation : t.readjustment;
+  const languageLabel: Record<LanguagePreference, string> = {
+    english: t.languageEnglish,
+    mandarin: t.languageMandarin,
+    none: t.languageNone,
+  };
 
   // Re-adjustment: which purchase, and — when not listed — where it came from.
   const [selection, setSelection] = React.useState<PurchaseSelection>(() => {
@@ -143,6 +149,7 @@ export function BookingFlow({
   const [name, setName] = React.useState(readjustment?.prefill.name ?? "");
   const [phone, setPhone] = React.useState(readjustment?.prefill.phone ?? "");
   const [email, setEmail] = React.useState(readjustment?.prefill.email ?? "");
+  const [language, setLanguage] = React.useState<LanguagePreference>("none");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [confirmed, setConfirmed] = React.useState<Location | null>(null);
@@ -218,6 +225,7 @@ export function BookingFlow({
         end_iso: slot.endIso,
         guest_name: name.trim(),
         phone: phone.trim(),
+        language_preference: language,
         locale,
       }),
     });
@@ -280,6 +288,7 @@ export function BookingFlow({
           phone: phone.trim(),
           email: email.trim(),
           appointment_type: type,
+          language_preference: language,
         }),
       });
       if (res.ok) {
@@ -350,6 +359,7 @@ export function BookingFlow({
             setName(readjustment?.prefill.name ?? "");
             setPhone(readjustment?.prefill.phone ?? "");
             setEmail(readjustment?.prefill.email ?? "");
+            setLanguage("none");
             setError(null);
           }}
         >
@@ -518,6 +528,34 @@ export function BookingFlow({
             {rt.emailLocked}
           </p>
         ) : null}
+      </div>
+
+      {/* Language preference: Staff read it on the event and try to match it. */}
+      <div className="flex flex-col gap-2">
+        <Label id="booking-language-label">{t.languageLabel}</Label>
+        <div
+          role="radiogroup"
+          aria-labelledby="booking-language-label"
+          aria-describedby="booking-language-hint"
+          className="grid grid-cols-3 gap-2"
+        >
+          {LANGUAGE_PREFERENCES.map((pref) => (
+            <Button
+              key={pref}
+              type="button"
+              role="radio"
+              aria-checked={language === pref}
+              variant={language === pref ? "default" : "outline"}
+              className={cn("h-auto min-h-9 whitespace-normal px-2 py-2", language === pref && "ring-2 ring-ring")}
+              onClick={() => setLanguage(pref)}
+            >
+              {languageLabel[pref]}
+            </Button>
+          ))}
+        </div>
+        <p id="booking-language-hint" className="text-xs text-muted-foreground">
+          {t.languageHint}
+        </p>
       </div>
 
       {readjustment ? (
