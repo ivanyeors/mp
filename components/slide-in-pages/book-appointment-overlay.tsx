@@ -45,7 +45,7 @@ export function BookAppointmentOverlay() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent hideClose className="max-w-2xl border-0 bg-transparent shadow-none">
+      <DialogContent hideClose mobileDrawer={false} className="max-w-2xl border-0 bg-transparent shadow-none">
         <DialogHeader className="items-center text-center sm:text-center">
           <DialogTitle>{t.title}</DialogTitle>
           <DialogDescription>{t.flow.typeLabel}</DialogDescription>

@@ -44,7 +44,7 @@ export function ReviewActions({ id, companyName }: { id: string; companyName: st
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto">
       <Button size="sm" disabled={pending} onClick={() => setOpen(true)}>
         Approve
       </Button>

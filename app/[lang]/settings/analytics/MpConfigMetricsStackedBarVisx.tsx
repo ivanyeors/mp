@@ -37,7 +37,8 @@ const tooltipStyles = {
   zIndex: 1000,
 } as const;
 
-const defaultMargin = { top: 16, right: 20, bottom: 34, left: 180 };
+// Bottom: axis line (12) + ticks and their labels (~20) + the axis title on its own line below them.
+const defaultMargin = { top: 16, right: 20, bottom: 54, left: 180 };
 
 const BAR_HEIGHT = 16;
 const BAR_RADIUS = 2;
@@ -275,7 +276,7 @@ function Chart({
               stroke="var(--border)"
               tickStroke="var(--border)"
             />
-            <text x={0} y={32} className={mutedSmallClassName}>
+            <text x={0} y={50} className={mutedSmallClassName}>
               Qty (final responses)
             </text>
           </Group>
@@ -326,7 +327,8 @@ export function MpConfigMetricsStackedBarVisx({ metrics }: { metrics: MpConfigMe
   const fixedHeight = Math.max(200, estimatedChartHeight(metrics));
   return (
     <div className="w-full overflow-x-auto">
-      <div className="min-w-[420px]" style={{ height: fixedHeight }}>
+      {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
+      <div className="md:min-w-[420px]" style={{ height: fixedHeight }}>
         <ParentSize>
           {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}
         </ParentSize>

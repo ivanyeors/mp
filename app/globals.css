@@ -36,6 +36,7 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-press: var(--press);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -64,6 +65,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
+  /* Pressed (tap) tint. A step darker than --muted, which barely shows on white. */
+  --press: oklch(0.93 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
@@ -113,6 +116,7 @@
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
+  --press: oklch(0.32 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
@@ -435,6 +439,33 @@ body.dock-hidden .app-dock {
 .w-md-editor-toolbar {
   border-bottom-color: var(--border) !important;
   background-color: var(--muted) !important;
+}
+
+/* Pressed: the app's tint, not the library's red text. Phones get 44px
+   buttons; the short phone command set is in components/settings/markdown-toolbar.ts.
+   `.w-md-editor` in front outranks the library's own rules whatever the load order. */
+.w-md-editor .w-md-editor-toolbar li > button:active {
+  background-color: var(--press);
+  color: var(--foreground);
+}
+@media (max-width: 767px) {
+  .w-md-editor .w-md-editor-toolbar {
+    padding: 0 2px;
+  }
+  .w-md-editor .w-md-editor-toolbar li > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border-radius: 6px;
+  }
+  .w-md-editor .w-md-editor-toolbar li > button svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .wmde-markdown {

@@ -33,6 +33,10 @@ import {
 } from "@/components/ui/select";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import {
+    MobileStickyActionBar,
+    mobileStickyActionBarSpacerClassName,
+} from "@/components/ui/mobile-sticky-action-bar";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
 
@@ -142,6 +146,15 @@ function toISOWithOffset(local: string): string | null {
     if (!local) return null;
     return new Date(local).toISOString();
 }
+
+/**
+ * A scope list (products or categories). Phones drop its box inside the card, keeping
+ * only rules above and below the bounded scroll, and each row is a 44px label row.
+ */
+const scopeListClassName =
+    "max-h-48 overflow-y-auto rounded-md border p-3 max-md:max-h-72 max-md:rounded-none max-md:border-x-0 max-md:px-0 max-md:py-0";
+const scopeRowClassName =
+    "flex cursor-pointer items-start gap-2 text-sm max-md:min-h-11 max-md:items-center max-md:gap-3 max-md:py-2 max-md:transition-colors max-md:active:bg-press";
 
 function buildSummary(form: CouponForm): string {
     const value = parseFloat(form.discount_value) || 0;
@@ -483,7 +496,7 @@ export function DiscountEditorClient({
     }
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${mobileStickyActionBarSpacerClassName}`}>
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -693,7 +706,7 @@ export function DiscountEditorClient({
                                     onChange={(e) => setProductSearch(e.target.value)}
                                     placeholder="Search products…"
                                 />
-                                <div className="max-h-48 overflow-y-auto rounded-md border p-3">
+                                <div className={scopeListClassName}>
                                     {catalogLoading ? (
                                         <div className="flex items-center justify-center py-6">
                                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -703,20 +716,20 @@ export function DiscountEditorClient({
                                             No products found.
                                         </p>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 max-md:space-y-0 max-md:divide-y">
                                             {filteredProducts.map((product) => {
                                                 const checked = appliesTo.product_ids.includes(product.id);
                                                 return (
                                                     <label
                                                         key={product.id}
-                                                        className="flex cursor-pointer items-start gap-2 text-sm"
+                                                        className={scopeRowClassName}
                                                     >
                                                         <Checkbox
                                                             checked={checked}
                                                             onCheckedChange={() =>
                                                                 toggleAppliesToId("product_ids", product.id)
                                                             }
-                                                            className="mt-0.5"
+                                                            className="mt-0.5 max-md:mt-0"
                                                         />
                                                         <span>
                                                             {getProductTitle(product)}
@@ -740,7 +753,7 @@ export function DiscountEditorClient({
                                     onChange={(e) => setCategorySearch(e.target.value)}
                                     placeholder="Search categories…"
                                 />
-                                <div className="max-h-48 overflow-y-auto rounded-md border p-3">
+                                <div className={scopeListClassName}>
                                     {catalogLoading ? (
                                         <div className="flex items-center justify-center py-6">
                                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -750,13 +763,13 @@ export function DiscountEditorClient({
                                             No categories found.
                                         </p>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 max-md:space-y-0 max-md:divide-y">
                                             {filteredCategories.map(({ cat, depth }) => {
                                                 const checked = appliesTo.category_ids.includes(cat.id);
                                                 return (
                                                     <label
                                                         key={cat.id}
-                                                        className="flex cursor-pointer items-start gap-2 text-sm"
+                                                        className={scopeRowClassName}
                                                         style={{ paddingLeft: depth * 12 }}
                                                     >
                                                         <Checkbox
@@ -764,7 +777,7 @@ export function DiscountEditorClient({
                                                             onCheckedChange={() =>
                                                                 toggleAppliesToId("category_ids", cat.id)
                                                             }
-                                                            className="mt-0.5"
+                                                            className="mt-0.5 max-md:mt-0"
                                                         />
                                                         <span>
                                                             {getCategoryName(cat)}
@@ -872,7 +885,7 @@ export function DiscountEditorClient({
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
                                     <div className="flex items-center gap-1.5">
-                                        <Label htmlFor="is_active" className="font-medium">
+                                        <Label htmlFor="is_active" className="cursor-pointer font-medium max-md:-my-[15px] max-md:py-[15px] max-md:active:opacity-60">
                                             Active
                                         </Label>
                                         <InfoTip label="About the active switch">Customers can use this code while it&apos;s on.</InfoTip>
@@ -899,8 +912,9 @@ export function DiscountEditorClient({
                                 </div>
                             )}
 
+                            {/* Phones save from the bar at the bottom, under the summary. */}
                             <Button
-                                className="w-full"
+                                className="w-full max-md:hidden"
                                 onClick={handleSave}
                                 disabled={saving}
                             >
@@ -914,8 +928,8 @@ export function DiscountEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Summary card */}
-                    <Card>
+                    {/* Summary card: on phones the save bar carries the summary. */}
+                    <Card className="max-md:hidden">
                         <CardHeader>
                             <CardTitle className="text-base">Summary</CardTitle>
                         </CardHeader>
@@ -937,6 +951,25 @@ export function DiscountEditorClient({
                     </Card>
                 </div>
             </div>
+
+            <MobileStickyActionBar>
+                <div className="space-y-2">
+                    {/* The error banner is at the top of the page, out of view from here. */}
+                    {error ? <p className="line-clamp-2 text-xs text-destructive">{error}</p> : null}
+                    <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                        {form.code ? <span className="font-medium tracking-widest text-foreground">{form.code}: </span> : null}
+                        {buildSummary(form)}
+                    </p>
+                    <Button size="lg" className="w-full" onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                        )}
+                        {saving ? "Saving…" : "Save discount"}
+                    </Button>
+                </div>
+            </MobileStickyActionBar>
         </div>
     );
 }

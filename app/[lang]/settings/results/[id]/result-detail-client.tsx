@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/page-actions";
 import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import type { DockAction } from "@/components/ui/app-dock-actions";
-import { Ban, Save, SlidersHorizontal } from "lucide-react";
+import { Ban, RefreshCw, Save, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -930,18 +930,32 @@ export default function ResultDetailPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1>Result details</h1>
-          <p className="text-sm text-muted-foreground break-all">{row.id}</p>
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h1>Result details</h1>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="md:hidden"
+              onClick={load}
+              disabled={saving || deleting}
+              aria-label="Refresh"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground break-all max-md:hidden">{row.id}</p>
           {headerMeta ? (
             <p className="text-xs text-muted-foreground mt-1">
               Created {headerMeta.createdAt}, updated {headerMeta.updatedAt}
             </p>
           ) : null}
         </div>
-        <PageActions>
+        {/* Phones: Edit configuration, Cancel and Save are in the dock, Refresh
+            sits beside the title, and the shell breadcrumb is the way back. */}
+        <PageActions className="max-md:hidden">
           <Button
             variant="secondary"
             className={pageActionClassName}
@@ -1059,31 +1073,31 @@ export default function ResultDetailPage({
 
           {row.status === "assigned" ? (
             <>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 text-sm">
                 {productType === "bolster" ? (
-                  <div className="rounded-md border bg-muted/30 p-3">
+                  <div className={valueTileClassName}>
                     <div className="text-xs text-muted-foreground">Length</div>
                     <div className="font-medium">{row.assigned_length ?? "—"}</div>
                   </div>
                 ) : (
                   <>
-                    <div className="rounded-md border bg-muted/30 p-3">
+                    <div className={valueTileClassName}>
                       <div className="text-xs text-muted-foreground">Size</div>
                       <div className="font-medium">{row.assigned_size ?? "—"}</div>
                     </div>
-                    <div className="rounded-md border bg-muted/30 p-3">
+                    <div className={valueTileClassName}>
                       <div className="text-xs text-muted-foreground">Tier</div>
                       <div className="font-medium capitalize">{row.assigned_tier ?? "—"}</div>
                     </div>
                   </>
                 )}
-                <div className="rounded-md border bg-muted/30 p-3">
+                <div className={valueTileClassName}>
                   <div className="text-xs text-muted-foreground">Filling template</div>
                   <div className="font-medium">
                     {row.filling_template_id != null ? `#${row.filling_template_id}` : "Custom mix"}
                   </div>
                 </div>
-                <div className="rounded-md border bg-muted/30 p-3">
+                <div className={valueTileClassName}>
                   <div className="text-xs text-muted-foreground">Final amount</div>
                   <div className="font-medium tabular-nums">
                     {row.final_amount != null
@@ -1138,7 +1152,7 @@ export default function ResultDetailPage({
             </>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
                 {productType === "bolster" ? (
                   <Field label="Length">
                     <Select
@@ -1164,7 +1178,7 @@ export default function ResultDetailPage({
                         value={assignSize}
                         onValueChange={(v) => setAssignSize(v as PillowSize)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="max-md:w-full max-md:min-w-0">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1181,7 +1195,7 @@ export default function ResultDetailPage({
                         value={assignTier}
                         onValueChange={(v) => setAssignTier(v as PillowTier)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="max-md:w-full max-md:min-w-0">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1195,7 +1209,7 @@ export default function ResultDetailPage({
               </div>
 
               <Collapsible defaultOpen className="rounded-lg border">
-                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium hover:bg-muted/50">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/50 active:bg-press">
                   Product
                   <span className="text-xs font-normal text-muted-foreground">
                     {prepLoading ? "Loading…" : `${assignPrep?.productLines.length ?? 0} parts`}
@@ -1230,7 +1244,7 @@ export default function ResultDetailPage({
               </Collapsible>
 
               <Collapsible defaultOpen className="rounded-lg border">
-                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium hover:bg-muted/50">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/50 active:bg-press">
                   Filling mix
                   <span className="text-xs font-normal text-muted-foreground">
                     {fillingTemplateId ? "Selected" : "Needs confirming"}
@@ -1248,7 +1262,7 @@ export default function ResultDetailPage({
                       </p>
                     </div>
                   ) : null}
-                  <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                  <div className={cn(valueTileClassName, "text-sm")}>
                     <div className="text-xs text-muted-foreground mb-1">
                       {assignPrep?.hintSource === "engine"
                         ? "Engine recommendation"
@@ -1376,7 +1390,7 @@ export default function ResultDetailPage({
                           <BolsterCrossSection fit={bolsterFit} itemSubtypes={pickerItemSubtypes} colorOverrides={colorOverrides} />
                         </>
                       )}
-                      <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                      <div className={cn(valueTileClassName, "text-sm")}>
                         <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
                         {productType === "pillow" ? (
                           <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={fillingItems} />
@@ -1385,13 +1399,13 @@ export default function ResultDetailPage({
                         )}
                       </div>
                       {productType === "pillow" && (
-                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                        <div className={cn(valueTileClassName, "text-sm")}>
                           <div className="text-xs text-muted-foreground mb-1">Insert order</div>
                           <InsertOrderList placements={placements} onPlacementsChange={setPlacements} items={fillingItems} />
                         </div>
                       )}
                       {templateNotes && (
-                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                        <div className={cn(valueTileClassName, "text-sm")}>
                           <div className="text-xs text-muted-foreground mb-1">Assembly notes</div>
                           <p className="whitespace-pre-wrap">{templateNotes}</p>
                         </div>
@@ -1425,7 +1439,7 @@ export default function ResultDetailPage({
                 <>
                   {" "}
                   <a
-                    className="font-medium underline underline-offset-2"
+                    className="font-medium underline underline-offset-2 active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                     href={to(`/settings/results/${row.paired_result_id}`)}
                   >
                     Open the {row.paired_build_id === row.id ? "Mbolster" : "Mpillow"}
@@ -1464,7 +1478,7 @@ export default function ResultDetailPage({
                       {row.customer_email ? " · " : ": "}
                       <Link
                         href={to(`/settings/customers/${customerId}`)}
-                        className="font-medium underline-offset-4 hover:underline"
+                        className="font-medium underline-offset-4 hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                       >
                         Open customer
                       </Link>
@@ -1475,7 +1489,10 @@ export default function ResultDetailPage({
               {row.customer_phone && (
                 <div>
                   <span className="text-muted-foreground">Phone: </span>
-                  <a href={`tel:${row.customer_phone}`} className="font-medium hover:underline">
+                  <a
+                    href={`tel:${row.customer_phone}`}
+                    className="font-medium hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                  >
                     {row.customer_phone}
                   </a>
                 </div>
@@ -1513,7 +1530,7 @@ export default function ResultDetailPage({
             <h2 className="text-sm font-semibold">Order</h2>
             <a
               href={to(`/settings/orders/${row.order_id}`)}
-              className="text-sm font-semibold text-primary hover:underline"
+              className="text-sm font-semibold text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
             >
               #{orderNumber ?? "view"}
             </a>
@@ -1566,7 +1583,7 @@ export default function ResultDetailPage({
                       href={linkedOrder.tracking_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-primary hover:underline"
+                      className="text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                     >
                       {linkedOrder.tracking_number}
                     </a>
@@ -1601,20 +1618,20 @@ export default function ResultDetailPage({
       {row.source === "online_customization" && (
         <Card className="p-4">
           <div className="text-sm font-medium mb-3">Online customisation preferences</div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-md border bg-muted/30 p-2.5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className={cn(valueTileClassName, "md:p-2.5")}>
               <div className="text-xs text-muted-foreground">Sleep position</div>
               <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.sleep_position) || "—"}</div>
             </div>
-            <div className="rounded-md border bg-muted/30 p-2.5">
+            <div className={cn(valueTileClassName, "md:p-2.5")}>
               <div className="text-xs text-muted-foreground">Body type</div>
               <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.body_type) || "—"}</div>
             </div>
-            <div className="rounded-md border bg-muted/30 p-2.5">
+            <div className={cn(valueTileClassName, "md:p-2.5")}>
               <div className="text-xs text-muted-foreground">Firmness</div>
               <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.firmness) || "—"}</div>
             </div>
-            <div className="rounded-md border bg-muted/30 p-2.5">
+            <div className={cn(valueTileClassName, "md:p-2.5")}>
               <div className="text-xs text-muted-foreground">Recommended</div>
               <div className="text-sm font-medium">
                 {safeString((row.data as Record<string, unknown>)?.online_recommended_kind) || "—"}, {safeString((row.data as Record<string, unknown>)?.online_recommended_size) || "—"}
@@ -1622,7 +1639,7 @@ export default function ResultDetailPage({
             </div>
           </div>
           {safeString((row.data as Record<string, unknown>)?.notes) && (
-            <div className="mt-3 rounded-md border bg-muted/30 p-2.5">
+            <div className={cn(valueTileClassName, "mt-3 md:p-2.5")}>
               <div className="text-xs text-muted-foreground">Customer notes</div>
               <div className="text-sm">{safeString((row.data as Record<string, unknown>)?.notes)}</div>
             </div>
@@ -1632,10 +1649,15 @@ export default function ResultDetailPage({
 
       <Card className="p-4">
         <div className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Two columns from the phone up: eleven short fields stacked one per row
+              ran past two screens. Bottom-aligned on a phone, so a label that wraps to
+              two lines doesn't push its input out of line with its neighbour's. */}
+          <div className="grid grid-cols-2 gap-3 max-md:items-end sm:gap-4 lg:grid-cols-3">
+            <div className="col-span-2 sm:col-span-1">
             <Field label="Name">
               <Input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} />
             </Field>
+            </div>
             <Field label="Gender">
               <Input value={draft.gender} onChange={(e) => setDraft((p) => ({ ...p, gender: e.target.value }))} />
             </Field>
@@ -1671,7 +1693,7 @@ export default function ResultDetailPage({
 
             <Field label="Ear discomfort (side sleep)">
               <Select value={draft.earDiscomfortSideSleep} onValueChange={(v) => setDraft((p) => ({ ...p, earDiscomfortSideSleep: v as YesNoEmpty }))}>
-                <SelectTrigger>
+                <SelectTrigger className="max-md:w-full max-md:min-w-0">
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1683,7 +1705,7 @@ export default function ResultDetailPage({
             </Field>
             <Field label="Acid reflux">
               <Select value={draft.acidReflux} onValueChange={(v) => setDraft((p) => ({ ...p, acidReflux: v as YesNoEmpty }))}>
-                <SelectTrigger>
+                <SelectTrigger className="max-md:w-full max-md:min-w-0">
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1703,15 +1725,16 @@ export default function ResultDetailPage({
           <PageActions>
             <Button
               variant="secondary"
-              className={pageActionClassName}
+              className={pageActionWideClassName}
               onClick={refreshSuggestion}
               disabled={suggestionLoading || deleting}
             >
               {suggestionLoading ? "Refreshing suggestion…" : "Refresh suggestion"}
             </Button>
+            {/* Phones: Delete moves to the end of the page, away from this button. */}
             <Button
               variant="destructive"
-              className={pageActionClassName}
+              className={cn(pageActionClassName, "max-md:hidden")}
               onClick={deleteRow}
               disabled={deleting || saving}
             >
@@ -1736,19 +1759,19 @@ export default function ResultDetailPage({
         {!suggestion ? (
           <div className="text-sm text-muted-foreground">No suggestion available.</div>
         ) : (
-          <Card className="p-4 space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-md border bg-muted/30 p-3">
+          <Card className="p-4 space-y-4 max-md:space-y-0">
+            <div className="grid grid-cols-2 gap-3">
+              <div className={valueTileClassName}>
                 <div className="text-xs text-muted-foreground">Recommended tier</div>
                 <div className="text-lg font-semibold capitalize">{suggestion.recommended.tier}</div>
               </div>
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className={valueTileClassName}>
                 <div className="text-xs text-muted-foreground">Recommended size</div>
                 <div className="text-lg font-semibold">{suggestion.recommended.size}</div>
               </div>
             </div>
 
-            <div className="rounded-md border bg-muted/30 p-3">
+            <div className={valueTileClassName}>
               <div className="text-xs text-muted-foreground">Matched active product</div>
               <div className="text-sm">
                 {suggestion.product
@@ -1757,7 +1780,7 @@ export default function ResultDetailPage({
               </div>
             </div>
 
-            <div className="rounded-md border bg-muted/30 p-3">
+            <div className={valueTileClassName}>
               <div className="text-xs text-muted-foreground mb-2">BOM</div>
               {suggestion.bom?.length ? (
                 <Table>
@@ -1788,7 +1811,7 @@ export default function ResultDetailPage({
             </div>
 
             {suggestion.reasons?.length ? (
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className={valueTileClassName}>
                 <div className="text-xs text-muted-foreground mb-2">Reasons</div>
                 <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
                   {suggestion.reasons.map((r, idx) => (
@@ -1800,9 +1823,25 @@ export default function ResultDetailPage({
           </Card>
         )}
       </div>
+
+      <Button
+        variant="outline"
+        className="w-full border-destructive/40 text-destructive md:hidden"
+        onClick={deleteRow}
+        disabled={deleting || saving}
+      >
+        {deleting ? "Deleting…" : "Delete result"}
+      </Button>
     </div>
   );
 }
+
+/**
+ * A labelled value tile. On a phone it drops its frame: it already sits inside a
+ * card, and a box in a box costs width and height for nothing.
+ */
+const valueTileClassName =
+  "rounded-md border bg-muted/30 p-3 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

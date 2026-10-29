@@ -96,7 +96,7 @@ export async function PartnerTermsEditor() {
                       className="h-9 w-32 rounded-md border bg-background px-2 text-base max-md:min-h-11 md:text-sm"
                     />
                   </label>
-                  <label className="flex min-h-9 items-center gap-2 text-sm max-md:min-h-11">
+                  <label className="flex min-h-9 items-center gap-2 rounded-md text-sm max-md:-mx-2 max-md:min-h-11 max-md:px-2 max-md:active:bg-press">
                     <input
                       type="checkbox"
                       name="customer_discount"
@@ -110,7 +110,7 @@ export async function PartnerTermsEditor() {
               <div>
                 <button
                   type="submit"
-                  className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 max-md:min-h-11"
+                  className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:bg-primary/80 max-md:min-h-11"
                 >
                   Save
                 </button>

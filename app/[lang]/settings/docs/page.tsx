@@ -20,7 +20,7 @@ export default async function DocumentationPage({ params }: { params: Promise<{ 
     await requireAdminPage("docs", locale);
 
     return (
-        <div className="w-full max-w-3xl space-y-6">
+        <div className="w-full max-w-3xl space-y-4 md:space-y-6">
             <div className="flex items-center gap-1.5">
                 <h1 className="text-2xl font-semibold tracking-tight">Documentation</h1>
                 <InfoTip label="About Documentation">
@@ -28,11 +28,11 @@ export default async function DocumentationPage({ params }: { params: Promise<{ 
                 </InfoTip>
             </div>
 
-            <ul className="grid gap-4">
+            <ul className="grid gap-3 md:gap-4">
                 {ADMIN_GUIDES.map((g) => (
                     <li key={g.slug}>
                         <Link href={withLocale(`/settings/docs/${g.slug}`, locale)} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                            <Card className="transition hover:border-foreground/30">
+                            <Card className="transition hover:border-foreground/30 active:bg-press">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-base">
                                         <BookOpen className="h-4 w-4" aria-hidden="true" />

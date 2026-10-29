@@ -75,6 +75,9 @@ export function SheetGrid({
   // Mirrors `editing` so the blur that follows a commit / cancel sees it already closed.
   const editRef = useRef<Editing | null>(null);
   const drag = useRef<Drag>(null);
+  // A touch screen has no typing-to-edit and no reliable double-tap, so a tap on
+  // a cell opens its editor (and with it the number keyboard).
+  const lastPointer = useRef<string>("mouse");
 
   const setEditing = (e: Editing | null) => {
     editRef.current = e;
@@ -331,7 +334,7 @@ export function SheetGrid({
                       aria-selected={inSel(r, c)}
                       aria-label={`${row.label} ${col.label}`}
                       className={cn(
-                        "relative h-9 min-w-16 border-l px-2 text-right tabular-nums cursor-cell",
+                        "relative h-9 min-w-16 border-l px-2 text-right tabular-nums cursor-cell pointer-coarse:h-11",
                         inSel(r, c) && "bg-primary/10",
                         active && "outline outline-2 -outline-offset-2 outline-primary",
                         isDirty?.(row.id, col.key) && "text-amber-600 dark:text-amber-400 font-semibold",
@@ -345,6 +348,12 @@ export function SheetGrid({
                         if (drag.current === "cells" && sel) select(sel.anchor, { r, c });
                       }}
                       onDoubleClick={() => startEdit(v, true)}
+                      onPointerDown={(e) => {
+                        lastPointer.current = e.pointerType;
+                      }}
+                      onClick={() => {
+                        if (lastPointer.current === "touch" && !(active && editing)) startEdit(v, true);
+                      }}
                     >
                       {active && editing ? (
                         <input
@@ -375,11 +384,12 @@ export function SheetGrid({
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[11px] text-muted-foreground pointer-coarse:hidden">
         {cellCount > 1
           ? `${cellCount} cells selected — type a value and press Enter to fill them all, or paste.`
           : "Click a header to select a whole column · drag or Shift-click for a range · arrows / Tab / Enter to move · type to edit · ⌘C / ⌘V with Sheets or Excel · ⌘D fills down."}
       </p>
+      <p className="hidden text-[11px] text-muted-foreground pointer-coarse:block">Tap a cell to change it.</p>
     </div>
   );
 }

@@ -443,14 +443,47 @@ function DimensionSheet({
         label={title}
         leadHead={leadHead}
         columns={columns}
-        rows={entries}
+        // Phones scroll the grid sideways, so a row's status and reset ride in
+        // its pinned first column instead of two columns past the edge.
+        rows={entries.map((entry) => ({
+          ...entry,
+          header: (
+            <>
+              {entry.header}
+              <div className="mt-1 flex items-center gap-1 md:hidden">
+                <SourceBadge source={entry.source} />
+                {entry.source === "configured" && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="-my-2 size-11"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={async () => {
+                      if (await onReset(entry.id)) drop([entry.id]);
+                    }}
+                    aria-label={`Reset ${entry.label} to the code default`}
+                  >
+                    <RotateCcw className="size-4" />
+                  </Button>
+                )}
+              </div>
+              {(() => {
+                const result = results.get(entry.id);
+                return result && "error" in result ? (
+                  <div className="mt-1 text-[10px] font-normal text-destructive md:hidden">{result.error}</div>
+                ) : null;
+              })()}
+            </>
+          ),
+        }))}
         value={value}
         isDirty={isDirty}
         onChange={onChange}
         trailingHeads={
           <>
-            <th className="border-b border-l px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
-            <th className="border-b px-3 py-2 text-right font-medium text-muted-foreground">Actions</th>
+            <th className="border-b border-l px-3 py-2 text-left font-medium text-muted-foreground max-md:hidden">Status</th>
+            <th className="border-b px-3 py-2 text-right font-medium text-muted-foreground max-md:hidden">Actions</th>
           </>
         }
         renderTrailing={(id) => {
@@ -458,12 +491,12 @@ function DimensionSheet({
           const result = results.get(id);
           return (
             <>
-              <td className="border-l px-3 py-1.5 whitespace-nowrap">
+              <td className="border-l px-3 py-1.5 whitespace-nowrap max-md:hidden">
                 <SourceBadge source={entry.source} />
                 {entry.measuredOn && <div className="text-[10px] text-muted-foreground mt-1">{entry.measuredOn}</div>}
                 {result && "error" in result && <div className="text-[10px] text-destructive mt-1">{result.error}</div>}
               </td>
-              <td className="px-3 py-1.5 text-right">
+              <td className="px-3 py-1.5 text-right max-md:hidden">
                 {entry.source === "configured" && (
                   <Button
                     type="button"

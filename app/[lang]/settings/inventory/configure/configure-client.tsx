@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -131,15 +132,27 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
         <TabsContent value="products" className="mt-6 space-y-6">
           {(["basic", "premium"] as const).map((kind) => (
             <div key={kind} className="space-y-4">
-              <div className="text-2xl font-semibold">
+              <div className="text-lg font-semibold md:text-2xl">
                 {kind === "basic" ? "Basic Mpillow" : "Premium Mpillow"}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {/* Phones: one row per size, the whole row a link. */}
+              <MobileList>
+                {SIZES.map((size) => (
+                  <MobileListRow key={`${kind}-${size}`} href={cardPath(`${kind}-${size}`)}>
+                    <span className="font-medium">{size}</span>
+                    <span className="text-muted-foreground">
+                      {" · "}
+                      {partsCount[kind][size] === 1 ? "1 part" : `${partsCount[kind][size]} parts`}
+                    </span>
+                  </MobileListRow>
+                ))}
+              </MobileList>
+              <div className="hidden grid-cols-2 gap-3 md:grid md:grid-cols-5">
                 {SIZES.map((size) => (
                   <Link
                     key={`${kind}-${size}`}
                     href={cardPath(`${kind}-${size}`)}
-                    className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+                    className="rounded-lg border p-4 hover:bg-muted/50 active:bg-press cursor-pointer select-none"
                   >
                     <div className="text-xs text-muted-foreground">Size</div>
                     <div className="text-2xl font-semibold">{size}</div>
@@ -158,13 +171,21 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
             </div>
           ))}
           <div className="space-y-2">
-            <div className="text-2xl font-semibold">Mbolster</div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="text-lg font-semibold md:text-2xl">Mbolster</div>
+            <MobileList>
+              {BOLSTER_CARDS.map((v) => (
+                <MobileListRow key={v.card} href={cardPath(v.card)}>
+                  <span className="font-medium">{v.label}</span>
+                  <span className="block text-xs text-muted-foreground">Case, protector, 6D (L)</span>
+                </MobileListRow>
+              ))}
+            </MobileList>
+            <div className="hidden grid-cols-2 gap-3 md:grid md:grid-cols-5">
               {BOLSTER_CARDS.map((v) => (
                 <Link
                   key={v.card}
                   href={cardPath(v.card)}
-                  className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+                  className="rounded-lg border p-4 hover:bg-muted/50 active:bg-press cursor-pointer select-none"
                 >
                   <div className="text-xs text-muted-foreground">Bolster</div>
                   <div className="text-2xl font-semibold">{v.label}</div>

@@ -18,6 +18,7 @@ import {
     Clock,
     Loader2,
     ChevronLeft,
+    ChevronDown,
     ClipboardList,
     Link2,
     Unlink,
@@ -72,6 +73,8 @@ import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 import { orderEarnLine, pointsUsedRow, type OrderEarn } from "@/lib/points/order-lines";
 import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { isSoldOrderStatus } from "@/lib/ecommerce/sold-status";
+import { orderStatusLabel } from "@/lib/shop/order-display";
+import { cn } from "@/lib/utils";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -86,6 +89,9 @@ const ORDER_STATUSES: OrderStatus[] = [
     "partially_refunded",
     "refunded",
 ];
+
+/** How many timeline events a phone shows before *Show all*; newest first. */
+const PHONE_TIMELINE_LIMIT = 5;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -227,6 +233,8 @@ export default function OrderDetailPage({
 
     // Timeline note
     const [timelineNote, setTimelineNote] = useState("");
+    const [showAllTimeline, setShowAllTimeline] = useState(false);
+    const [showPlacements, setShowPlacements] = useState(false);
     const [addingNote, setAddingNote] = useState(false);
 
     // Fulfill dialog
@@ -657,10 +665,10 @@ export default function OrderDetailPage({
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild className="max-md:hidden">
                     <Link href={to("/settings/orders")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Orders
@@ -676,10 +684,12 @@ export default function OrderDetailPage({
                 </div>
             </div>
 
-            {/* Two-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Two-column layout. On a phone both columns dissolve into one stack
+                (max-md:contents) so Status and Fulfillment can be ordered first,
+                above the long items / snapshot / timeline column. */}
+            <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
                 {/* ── Left: Items + Timeline ── */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-6 max-md:contents max-md:space-y-0">
                     {/* Order Items */}
                     <Card>
                         <CardHeader>
@@ -935,7 +945,7 @@ export default function OrderDetailPage({
                                                 : [];
 
                                             return (
-                                                <div key={item.id} className="rounded-lg border p-4 space-y-3">
+                                                <div key={item.id} className="rounded-lg border p-4 space-y-3 max-md:rounded-none max-md:border-0 max-md:p-0">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <div className="font-medium text-sm">
                                                             {item.product_title}
@@ -962,10 +972,25 @@ export default function OrderDetailPage({
                                                     </div>
                                                     {placements.length > 0 && (
                                                         <div>
-                                                            <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowPlacements((v) => !v)}
+                                                                aria-expanded={showPlacements}
+                                                                className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-2 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors active:bg-press md:hidden"
+                                                            >
+                                                                Placement breakdown
+                                                                <ChevronDown
+                                                                    className={cn(
+                                                                        "size-4 transition-transform",
+                                                                        showPlacements && "rotate-180",
+                                                                    )}
+                                                                    aria-hidden
+                                                                />
+                                                            </button>
+                                                            <div className="text-xs font-medium text-muted-foreground mb-1 max-md:hidden">
                                                                 Placement breakdown
                                                             </div>
-                                                            <div className="space-y-1">
+                                                            <div className={cn("space-y-1", !showPlacements && "max-md:hidden")}>
                                                                 {CELLS.map(({ section, subSection }) => {
                                                                     const pieces = placements
                                                                         .filter(
@@ -1038,7 +1063,7 @@ export default function OrderDetailPage({
                                                     <div className="flex flex-wrap items-center gap-3 pt-1 border-t text-xs">
                                                         <Link
                                                             href={to(`/settings/results/${resultSnap.result_id}`)}
-                                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                                            className="text-primary hover:underline inline-flex items-center gap-1 active:opacity-60 max-md:min-h-11"
                                                         >
                                                             Open result
                                                             <ExternalLink className="h-3 w-3" />
@@ -1049,7 +1074,7 @@ export default function OrderDetailPage({
                                         }
 
                                         return (
-                                            <div key={item.id} className="rounded-lg border p-4 space-y-3">
+                                            <div key={item.id} className="rounded-lg border p-4 space-y-3 max-md:rounded-none max-md:border-0 max-md:p-0">
                                                 <div className="flex items-center justify-between">
                                                     <div className="font-medium text-sm">
                                                         {item.product_title} ({item.variant_title})
@@ -1120,8 +1145,14 @@ export default function OrderDetailPage({
                                 <p className="text-sm text-muted-foreground">No events yet.</p>
                             ) : (
                                 <ol className="relative border-l border-border ml-3 space-y-4">
-                                    {timeline.map((event) => (
-                                        <li key={event.id} className="pl-4">
+                                    {timeline.map((event, index) => (
+                                        <li
+                                            key={event.id}
+                                            className={cn(
+                                                "pl-4",
+                                                !showAllTimeline && index >= PHONE_TIMELINE_LIMIT && "max-md:hidden",
+                                            )}
+                                        >
                                             <div className="absolute -left-1.5 mt-1 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground/60" />
                                             <p className="text-xs text-muted-foreground">
                                                 {formatDate(event.created_at)}
@@ -1137,6 +1168,17 @@ export default function OrderDetailPage({
                                         </li>
                                     ))}
                                 </ol>
+                            )}
+                            {!timelineLoading && timeline.length > PHONE_TIMELINE_LIMIT && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full md:hidden"
+                                    onClick={() => setShowAllTimeline((v) => !v)}
+                                    aria-expanded={showAllTimeline}
+                                >
+                                    {showAllTimeline ? "Show fewer" : `Show all ${timeline.length} events`}
+                                </Button>
                             )}
 
                             {/* Add note */}
@@ -1170,18 +1212,18 @@ export default function OrderDetailPage({
                 </div>
 
                 {/* ── Right: Meta cards ── */}
-                <div className="space-y-4">
+                <div className="space-y-4 max-md:contents max-md:space-y-0">
                     {/* Status */}
-                    <Card>
+                    <Card className="max-md:-order-2">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base">Status</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <Badge
                                 variant={customClass ? "outline" : badgeVariant}
-                                className={`capitalize ${customClass}`}
+                                className={customClass}
                             >
-                                {order.status}
+                                {orderStatusLabel(order.status)}
                             </Badge>
                             <div className="flex gap-2">
                                 <Select
@@ -1193,8 +1235,8 @@ export default function OrderDetailPage({
                                     </SelectTrigger>
                                     <SelectContent>
                                         {ORDER_STATUSES.map((s) => (
-                                            <SelectItem key={s} value={s} className="capitalize">
-                                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                                            <SelectItem key={s} value={s}>
+                                                {orderStatusLabel(s)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1247,7 +1289,7 @@ export default function OrderDetailPage({
                             {order.customer_id && (
                                 <Link
                                     href={to(`/settings/customers/${order.customer_id}`)}
-                                    className="text-xs text-primary hover:underline mt-1 inline-block"
+                                    className="text-xs text-primary hover:underline mt-1 inline-block active:opacity-60 max-md:mt-0 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                                 >
                                     View customer profile →
                                 </Link>
@@ -1442,7 +1484,7 @@ export default function OrderDetailPage({
                                             href={order.tracking_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-xs text-primary hover:underline"
+                                            className="text-xs text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                                         >
                                             {order.tracking_number}
                                         </a>
@@ -1457,7 +1499,7 @@ export default function OrderDetailPage({
                     </Card>
 
                     {/* Fulfillment */}
-                    <Card>
+                    <Card className="max-md:-order-1">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Truck className="h-4 w-4" />
@@ -1604,7 +1646,7 @@ export default function OrderDetailPage({
                                     )}
                                     {pendingRefundRequest && (
                                         <>
-                                            <label className="flex items-start gap-2 text-xs cursor-pointer">
+                                            <label className="flex items-start gap-2 text-xs cursor-pointer max-md:min-h-11 max-md:items-center max-md:gap-3">
                                                 <input
                                                     type="checkbox"
                                                     className="mt-0.5"

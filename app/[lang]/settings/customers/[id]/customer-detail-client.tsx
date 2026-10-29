@@ -45,6 +45,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
+import { orderStatusLabel } from "@/lib/shop/order-display";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { toast } from "sonner";
 import { changedCustomerFields } from "@/lib/crm/customer-patch";
@@ -381,10 +382,10 @@ export function CustomerDetailClient({
     // Stats and columns follow the width the page has, not the window (a
     // container query), so a collapsed sidebar counts.
     return (
-        <div className="@container space-y-6">
+        <div className="@container space-y-4 md:space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild className="max-md:hidden">
                     <Link href={to("/settings/customers")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Customers
@@ -452,9 +453,9 @@ export function CustomerDetailClient({
               other two, stacked; then all three side by side. `auto 1fr` rows
               keep the stacked pair together however long the timeline runs.
             */}
-            <div className="grid grid-cols-1 items-start gap-6 @3xl:grid-cols-5 @3xl:grid-rows-[auto_1fr] @5xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] @5xl:grid-rows-1">
+            <div className="grid grid-cols-1 items-start gap-4 md:gap-6 @3xl:grid-cols-5 @3xl:grid-rows-[auto_1fr] @5xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] @5xl:grid-rows-1">
                 {/* ── Who they are: details, contact, addresses, where the record came from ── */}
-                <div className="min-w-0 space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-1">
+                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-1">
                     {/* Info Card: details and tags, saved together. Notes save on their own. */}
                     <Card>
                         <CardHeader className="pb-3">
@@ -538,12 +539,13 @@ export function CustomerDetailClient({
                                 </div>
                             )}
                             {canEdit && tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
+                                <div className="flex flex-wrap gap-1.5 max-md:gap-2">
                                     {tags.map((tag) => (
+                                        // The whole tag removes it: a 44px chip on a phone.
                                         <Badge
                                             key={tag}
                                             variant="secondary"
-                                            className="cursor-pointer group pr-1.5"
+                                            className="cursor-pointer group pr-1.5 transition-colors active:bg-press max-md:min-h-11 max-md:px-3 max-md:text-sm"
                                             onClick={() => removeTag(tag)}
                                             title="Click to remove"
                                         >
@@ -790,9 +792,10 @@ export function CustomerDetailClient({
                             ) : (
                                 <div className="space-y-3">
                                     {addresses.map((addr) => (
+                                        // Phones: rows split by a rule, not boxes inside the card.
                                         <div
                                             key={addr.id}
-                                            className="rounded-lg border p-3 text-sm space-y-1"
+                                            className="rounded-lg border p-3 text-sm space-y-1 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-0 max-md:pb-3 max-md:last:border-b-0 max-md:last:pb-0"
                                         >
                                             <div className="flex items-center gap-2">
                                                 {addr.label && (
@@ -832,7 +835,7 @@ export function CustomerDetailClient({
                 </div>
 
                 {/* ── What happened: orders, the to-dos and notes about them, then the timeline ── */}
-                <div className="min-w-0 space-y-6 @3xl:col-span-3 @3xl:col-start-1 @3xl:row-span-2 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-2 @5xl:row-span-1">
+                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-3 @3xl:col-start-1 @3xl:row-span-2 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-2 @5xl:row-span-1">
                     {/* Order History */}
                     <Card>
                         <CardHeader>
@@ -873,7 +876,7 @@ export function CustomerDetailClient({
                                                     <TableCell className="px-4 py-3">
                                                         <Link
                                                             href={to(`/settings/orders/${order.id}`)}
-                                                            className="font-bold text-sm text-primary hover:underline"
+                                                            className="font-bold text-sm text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
                                                             #{order.order_number}
@@ -887,9 +890,9 @@ export function CustomerDetailClient({
                                                             variant={
                                                                 customClass ? "outline" : variant
                                                             }
-                                                            className={`capitalize ${customClass}`}
+                                                            className={customClass}
                                                         >
-                                                            {order.status}
+                                                            {orderStatusLabel(order.status)}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="px-4 text-right text-sm font-medium">
@@ -919,7 +922,7 @@ export function CustomerDetailClient({
                 </div>
 
                 {/* ── The relationship: points, reviews, and what they agreed to receive ── */}
-                <div className="min-w-0 space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-2 @5xl:col-span-1 @5xl:col-start-3 @5xl:row-start-1">
+                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-2 @5xl:col-span-1 @5xl:col-start-3 @5xl:row-start-1">
                     {/* Points (PRD-loyalty-points slice 02): balance, pending, history; Adjust needs customers-edit */}
                     <PointsCard customerId={customer.id} canEdit={canEdit} />
                     {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}

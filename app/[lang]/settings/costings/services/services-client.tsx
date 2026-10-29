@@ -43,6 +43,9 @@ type Draft = {
   freeWindowDays: string;
 };
 
+/** Phones show each card as a plain section: its fields get the full width, and no box sits around them. */
+const flatOnPhone = "max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:py-0 max-md:shadow-none";
+
 const money = (n: number | null) => (n == null ? "" : n.toFixed(2));
 
 function toDraft(initial: Initial): Draft {
@@ -189,8 +192,8 @@ export default function ServiceFeesClient({
         </Card>
       ) : (
         <>
-          <Card>
-            <CardHeader>
+          <Card className={flatOnPhone}>
+            <CardHeader className="max-md:px-0">
               <div className="flex items-center gap-1.5">
                 <CardTitle className="text-base">Services</CardTitle>
                 <InfoTip label="About Services">
@@ -199,7 +202,7 @@ export default function ServiceFeesClient({
                 </InfoTip>
               </div>
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-5 max-md:px-0">
               {SERVICE_KEYS.map((key) => (
                 <div
                   key={key}
@@ -245,8 +248,8 @@ export default function ServiceFeesClient({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
+          <Card className={cn(flatOnPhone, "max-md:border-t max-md:pt-6")}>
+            <CardHeader className="max-md:px-0">
               <div className="flex items-center gap-1.5">
                 <CardTitle className="text-base">Complimentary re-adjustment</CardTitle>
                 <InfoTip label="About Complimentary re-adjustment">
@@ -255,7 +258,7 @@ export default function ServiceFeesClient({
                 </InfoTip>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-md:px-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
                 <Input
                   id="free-visits"
