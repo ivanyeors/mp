@@ -5,12 +5,14 @@
  */
 import type { EditorBlock } from "./types";
 
-/** Pure — `added` put in at `at` (0 is the top; past the end is the end), keeping at most `max` blocks. */
+/**
+ * Pure — `added` put in at `at` (0 is the top; past the end is the end), all
+ * of it or, past `max` blocks, none: a Starter is never half put in.
+ */
 export function insertBlocks<B extends EditorBlock>(blocks: readonly B[], at: number, added: readonly B[], max = Infinity): B[] {
-  const room = Math.max(0, max - blocks.length);
-  if (!room || !added.length) return blocks as B[];
+  if (!added.length || added.length > max - blocks.length) return blocks as B[];
   const i = Math.max(0, Math.min(at, blocks.length));
-  return [...blocks.slice(0, i), ...added.slice(0, room), ...blocks.slice(i)];
+  return [...blocks.slice(0, i), ...added, ...blocks.slice(i)];
 }
 
 /** Pure — the block at `from` moved to `to` (both positions in the list as it is). */
@@ -42,3 +44,6 @@ export function dropIndex(over: number, rect: { top: number; height: number }, y
 /** What a move or an insert says: "Image + text moved to position 2 of 6". */
 export const movedText = (label: string, to: number, of: number) => `${label} moved to position ${to + 1} of ${of}.`;
 export const addedText = (label: string, at: number, of: number) => `${label} added at position ${at + 1} of ${of}.`;
+/** Why several blocks can't go in: the page's most, and the room left. */
+export const noRoomText = (adds: number, room: number, max: number) =>
+  `This adds ${adds} blocks, and there is room for ${room} more: at most ${max}.`;

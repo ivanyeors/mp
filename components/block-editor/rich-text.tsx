@@ -57,6 +57,7 @@ export function RichText(props: RichTextProps) {
       value={props.value}
       variables={props.variables}
       placeholder={props.placeholder}
+      singleLine={props.singleLine}
       className={props.className}
       id={props.id}
       readOnly={props.readOnly}

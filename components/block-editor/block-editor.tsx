@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { sortableMove } from "@/lib/dnd/sortable-move";
 import { cn } from "@/lib/utils";
-import { addedText, dropIndex, duplicateBlock, insertBlocks, moveBlock, movedText, removeBlock } from "./block-moves";
+import { addedText, dropIndex, duplicateBlock, insertBlocks, moveBlock, movedText, noRoomText, removeBlock } from "./block-moves";
 import type { BlockCatalogue, BlockKind, EditorBlock, PaletteItem } from "./types";
 
 /**
@@ -88,9 +88,11 @@ interface BlockEditorContext {
   readOnly: boolean;
   /** Why nothing more can be added, or null. */
   full: string | null;
+  /** Why these many blocks can't be added (a Starter's), or null when they fit. */
+  noRoom: (adds: number) => string | null;
   selected: string | null;
   select: (id: string | null) => void;
-  /** Adds blocks at `at`, focuses the first and says so. */
+  /** Adds blocks at `at`, focuses the first and says so; all of them, or none when they don't fit. */
   insert: (at: number, added: EditorBlock[]) => void;
   /** Adds blocks after the selected one, or at the end. */
   add: (added: EditorBlock[]) => void;
@@ -150,9 +152,15 @@ export function BlockEditorRoot<B extends EditorBlock>({
   const label = (b: EditorBlock | undefined) => (b ? (cat[b.type]?.label ?? b.type) : "Block");
 
   const change = (next: EditorBlock[], burst?: string) => onChange(next as B[], burst);
+  const room = Math.max(0, max - blocks.length);
+  const noRoom = (adds: number) => (adds > room ? (full ?? noRoomText(adds, room, max)) : null);
   const insert = (at: number, added: EditorBlock[]) => {
     const next = insertBlocks(blocks, at, added, max);
-    if (next === blocks) return;
+    if (next === blocks) {
+      const why = noRoom(added.length);
+      if (why) announce(why);
+      return;
+    }
     const first = added[0];
     change(next);
     onSelect(first.id);
@@ -165,6 +173,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
     catalogue: cat,
     readOnly,
     full,
+    noRoom,
     selected,
     select: onSelect,
     insert,

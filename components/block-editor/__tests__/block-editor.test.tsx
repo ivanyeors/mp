@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 import { byLabel, choose, click, pointAt, press, richTextIn, settle, typeField, typeInto } from "./dom";
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Minus, Pilcrow, StickyNote } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BlockEditor, BlockEditorRoot } from "../block-editor";
+import { useDragDropManager } from "@dnd-kit/react";
+import { BlockEditor, BlockEditorRoot, useBlockEditor } from "../block-editor";
 import { BlockPalette, blockPaletteTab } from "../block-palette";
 import { RichText } from "../rich-text";
-import type { BlockCatalogue, BlockFormProps } from "../types";
+import type { BlockCatalogue, BlockFormProps, PaletteItemsTab } from "../types";
 import { typingBurst, useEditorHistory, useHistoryKeys } from "../use-editor-history";
 
 /**
@@ -84,7 +85,7 @@ let seen: B[] = [];
 const report = (blocks: B[]) => {
   seen = blocks;
 };
-function Harness({ initial, readOnly = false }: { initial: B[]; readOnly?: boolean }) {
+function Harness({ initial, readOnly = false, extra }: { initial: B[]; readOnly?: boolean; extra?: ReactNode }) {
   const history = useEditorHistory<B[]>(initial);
   const [selected, setSelected] = useState<string | null>(null);
   const area = useRef<HTMLDivElement>(null);
@@ -104,17 +105,35 @@ function Harness({ initial, readOnly = false }: { initial: B[]; readOnly?: boole
       >
         {readOnly ? null : <BlockPalette tabs={PALETTE} />}
         <BlockEditor label="The blocks" empty="Nothing yet." />
+        {extra}
       </BlockEditorRoot>
     </div>
   );
 }
 
+/** What a test reaches inside the editor: its context, and dnd-kit's manager. */
+const probed: { editor: ReturnType<typeof useBlockEditor> | null; manager: ReturnType<typeof useDragDropManager> } = { editor: null, manager: null };
+function EditorProbe() {
+  const editor = useBlockEditor();
+  useEffect(() => {
+    probed.editor = editor;
+  });
+  return null;
+}
+function ManagerProbe() {
+  const manager = useDragDropManager();
+  useEffect(() => {
+    probed.manager = manager;
+  });
+  return null;
+}
+
 let root: Root | null = null;
-function mount(initial: B[], readOnly = false) {
+function mount(initial: B[], readOnly = false, extra?: ReactNode) {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<Harness initial={initial} readOnly={readOnly} />));
+  act(() => root!.render(<Harness initial={initial} readOnly={readOnly} extra={extra} />));
 }
 afterEach(async () => {
   act(() => root?.unmount());
@@ -210,6 +229,45 @@ describe("adding blocks", () => {
     await click(paletteItem("Line"));
     expect(seen).toHaveLength(6);
     expect(document.body.textContent).toContain("At most 6 blocks: delete one to add another.");
+  });
+
+  it("puts a Starter's several blocks in whole or not at all, and says how many went in", async () => {
+    const STARTERS: PaletteItemsTab<B> = {
+      value: "starters",
+      label: "Starters",
+      items: [{ id: "trio", label: "Trio", blocks: () => [CATALOGUE.note.create(), CATALOGUE.line.create(), CATALOGUE.note.create()] }],
+    };
+    const lines = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `l${i}`, type: "line" as const }));
+    const trio = () => document.querySelector<HTMLButtonElement>("ul[aria-label='Starters'] button")!;
+    const tooBig = "This adds 3 blocks, and there is room for 2 more: at most 6.";
+
+    mount(lines(4), false, [<BlockPalette key="s" tabs={[STARTERS]} />, <EditorProbe key="p" />]);
+    expect(trio().getAttribute("aria-disabled")).toBe("true");
+    expect(trio().title).toBe(tooBig);
+    await click(trio());
+    expect(seen).toHaveLength(4);
+    // Put in another way (the editor's own insert), it is refused the same, and the reason said.
+    act(() => probed.editor!.insert(4, STARTERS.items[0].blocks()));
+    expect(seen).toHaveLength(4);
+    expect(announced()).toBe(tooBig);
+    act(() => root!.unmount());
+
+    mount(lines(3), false, <BlockPalette tabs={[STARTERS]} />);
+    await click(trio());
+    expect(order()).toEqual(["line", "line", "line", "note:", "line", "note:"]);
+    expect(announced()).toBe("3 blocks added at position 4 of 6.");
+  });
+
+  it("keeps the palette draggable after the phone's Add sheet, a second palette, opens and closes", async () => {
+    const draggableOf = (el: Element) => [...probed.manager!.registry.draggables].find((d) => d.element === el);
+    mount(START, false, <ManagerProbe />);
+    await settle();
+    expect(draggableOf(paletteItem("Note"))).toBeDefined();
+    act(() => root!.render(<Harness initial={START} extra={[<ManagerProbe key="p" />, <BlockPalette key="sheet" tabs={PALETTE} draggable={false} />]} />));
+    await settle();
+    act(() => root!.render(<Harness initial={START} extra={<ManagerProbe />} />));
+    await settle();
+    expect(draggableOf(paletteItem("Note"))).toBeDefined();
   });
 });
 

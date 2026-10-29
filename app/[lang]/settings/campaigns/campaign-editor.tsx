@@ -88,7 +88,7 @@ import { CAMPAIGN_BLOCKS } from "./blocks/catalogue";
 import { VariableFallbacks } from "./blocks/fallbacks";
 import { EmailPreview, type PreviewDevice, type PreviewScheme } from "./email-preview";
 import { Field } from "./field";
-import { keptDraft, keptDraftKey, type EditorEmail, type KeptDraft } from "./kept-draft";
+import { draftOf, keptDraft, keptDraftKey, keptOf, type EditorDraft, type KeptDraft } from "./kept-draft";
 import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
 import { CheckList, StatusIcon } from "./send-parts";
 import { WaveTable } from "./wave-table";
@@ -191,26 +191,31 @@ export function CampaignEditor({
     const locked = Boolean(campaign?.lockedAt);
 
     // ── The draft ──────────────────────────────────────────────────────────
-    // The email is the history's: its words, its blocks and the greeting.
-    const history = useEditorHistory<EditorEmail>(() => ({ ...campaignWordsOf(initial), greeting: initial.greeting }));
-    const email = history.value;
-    const { name, subject, preheader, body, content, greeting } = email;
-    const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = email.button;
-    const edit = (patch: Partial<EditorEmail>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
+    // The draft is the history's: the email's words, its blocks and the greeting, and who it goes to.
+    const history = useEditorHistory<EditorDraft>(() => ({
+        ...campaignWordsOf(initial),
+        greeting: initial.greeting,
+        audience: initial.audience,
+        segmentId: initial.segmentId ?? "",
+    }));
+    const draft = history.value;
+    const { name, subject, preheader, body, content, greeting, audience, segmentId } = draft;
+    const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = draft.button;
+    const edit = (patch: Partial<EditorDraft>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
         history.set((e) => ({ ...e, button: { ...e.button, ...patch } }), { burst });
     const editContent = (next: CampaignContent, burst?: string) => history.set((e) => ({ ...e, content: next }), { burst });
     const setBlocks = (blocks: EmailBlock[], burst?: string) =>
         history.set((e) => (e.content ? { ...e, content: { ...e.content, blocks } } : e), { burst });
 
-    const [audience, setAudience] = useState<CampaignAudience>(initial.audience);
-    const [segmentId, setSegmentId] = useState(initial.segmentId ?? "");
+    const setAudience = (v: CampaignAudience) => edit({ audience: v });
+    const setSegmentId = (v: string) => edit({ segmentId: v });
     // The chosen Segment's Customers list (PRD-crm-retention-loop slice 02).
     const chosenSegmentHref = segments.find((s) => s.id === segmentId)?.customersHref ?? null;
     // What the email says, as Clear all and Undo see it.
     const words: CampaignWords = useMemo(
-        () => ({ name, subject, preheader, body, button: email.button, content }),
-        [name, subject, preheader, body, email.button, content],
+        () => ({ name, subject, preheader, body, button: draft.button, content }),
+        [name, subject, preheader, body, draft.button, content],
     );
 
     const input: CampaignDraftInput = useMemo(
@@ -250,11 +255,13 @@ export function CampaignEditor({
     });
     useEffect(() => () => void toast.dismiss(CLEAR_ALL_TOAST), []);
 
+    // A new campaign's id once its first Save made it: until the page for it opens, a second Save changes it rather than making another.
+    const createdId = useRef<string | null>(null);
     const save = useCallback(async (): Promise<string | null> => {
         setSaving(true);
         setSaveError(null);
         try {
-            const res = await saveCampaign(campaign?.id ?? null, input);
+            const res = await saveCampaign(campaign?.id ?? createdId.current, input);
             if (!res.ok) {
                 setSaveError(res.error);
                 setFieldErrors(res.fieldErrors ?? {});
@@ -265,8 +272,10 @@ export function CampaignEditor({
             // After a Save, Clear all's Undo is gone.
             undoRef.current = null;
             toast.dismiss(CLEAR_ALL_TOAST);
-            if (!campaign) router.replace(withLocale(`/settings/campaigns/${res.id}`, locale));
-            else router.refresh();
+            if (!campaign) {
+                createdId.current = res.id;
+                router.replace(withLocale(`/settings/campaigns/${res.id}`, locale));
+            } else router.refresh();
             return res.id;
         } finally {
             setSaving(false);
@@ -508,7 +517,7 @@ export function CampaignEditor({
     // ── Editing safety (slice 04): one history, ⌘S, the leave guard, the browser's copy ──
     useHistoryKeys(history, { enabled: editable, within: editorArea });
     const saveDisabled = saving || sending || (!dirty && Boolean(campaign));
-    const kept: KeptDraft = useMemo(() => ({ email, audience, segmentId }), [email, audience, segmentId]);
+    const kept: KeptDraft = useMemo(() => keptOf(draft), [draft]);
     const guard = useUnsavedGuard<KeptDraft>({
         dirty: changed,
         onSave: () => {
@@ -518,10 +527,7 @@ export function CampaignEditor({
     });
     const restoreKept = () => {
         const k = guard.restore();
-        if (!k) return;
-        history.set(k.email);
-        setAudience(k.audience);
-        setSegmentId(k.segmentId);
+        if (k) history.set(draftOf(k));
     };
 
     // ── Clear all (slice 01), one step of the history ──────────────────────
@@ -566,8 +572,8 @@ export function CampaignEditor({
             ...(e.content
                 ? { ...invitation, body: "", button: { choice: "none", label: "", url: "" }, content: contentFromLegacy(FIRST_CAMPAIGN_DRAFT) }
                 : invitation),
+            audience: FIRST_CAMPAIGN_DRAFT.audience,
         }));
-        setAudience(FIRST_CAMPAIGN_DRAFT.audience);
     };
     /**
      * *Convert to blocks* (slice 03): the message and its button as blocks

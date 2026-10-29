@@ -39,6 +39,22 @@ describe("historyReducer", () => {
     expect(s.past.map((p) => p.value)).toEqual(["", "Sle", "Sle ", "Sle x"]);
   });
 
+  it("keeps a held burst as one step however slowly it arrives, as an AI result streams in", () => {
+    let s = initialHistory("");
+    const stream = (next: string, now: number) => historyReducer(s, { type: "set", next, burst: "ai", hold: true, now, burstMs: 1000 });
+    s = stream("Heading", 0);
+    s = stream("Heading, text", 1600);
+    s = stream("Heading, text, button", 9000);
+    expect(s.past.map((p) => p.value)).toEqual([""]);
+    s = historyReducer(s, { type: "undo" });
+    expect(s.present.value).toBe("");
+    // Anything else in between ends it: what streams in after is a step of its own.
+    s = stream("Heading", 10000);
+    s = set(s, "Heading!", 10100, "subject");
+    s = stream("Heading!, text", 10200);
+    expect(s.past.map((p) => p.value)).toEqual(["", "Heading", "Heading!"]);
+  });
+
   it("keeps the last hundred steps", () => {
     let s = initialHistory(0 as number);
     for (let i = 1; i <= 150; i++) s = historyReducer(s, { type: "set", next: i, now: i * 2000, burstMs: 1000 });

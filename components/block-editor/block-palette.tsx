@@ -1,5 +1,6 @@
 "use client";
 
+import { useId, useMemo } from "react";
 import { PointerSensor } from "@dnd-kit/dom";
 import { useDraggable } from "@dnd-kit/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,9 +33,13 @@ export function blockPaletteTab<B extends EditorBlock>(catalogue: BlockCatalogue
 
 function Item({ item, tab, draggable, onAdded }: { item: PaletteItem<EditorBlock>; tab: string; draggable: boolean; onAdded?: () => void }) {
   const ctx = useBlockEditor();
-  const why = item.disabledReason ?? ctx.full;
+  // How many it adds: a Starter that doesn't fit is turned off, not put in half.
+  const adds = useMemo(() => item.blocks().length, [item]);
+  const why = item.disabledReason ?? ctx.noRoom(adds);
+  // Unique to this palette: the phone's Add sheet holds a second one beside the laptop's, and dnd-kit keeps one draggable per id.
+  const uid = useId();
   const { ref, isDragging } = useDraggable({
-    id: `palette:${tab}:${item.id}`,
+    id: `palette:${uid}:${tab}:${item.id}`,
     data: { palette: item } satisfies PaletteDrag,
     // Enter and Space add the item, so only a pointer drags it.
     sensors: [PointerSensor],

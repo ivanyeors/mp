@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, type RefObject } f
  * whole email, a block list, a form. Every change is a step, at least
  * {@link HISTORY_LIMIT} of them are kept, and a burst of typing in one field
  * is one step, so ⌘Z takes back a sentence, not a letter. A drag, a paste, a
- * Clear all or an AI result is one step of its own.
+ * Clear all or an AI result is one step of its own, an AI result streamed in
+ * over many changes included (`hold`).
  */
 
 /** How many steps Undo can go back. */
@@ -33,7 +34,7 @@ export interface HistoryState<T> {
 }
 
 export type HistoryAction<T> =
-  | { type: "set"; next: T | ((prev: T) => T); burst?: string; now: number; burstMs: number }
+  | { type: "set"; next: T | ((prev: T) => T); burst?: string; hold?: boolean; now: number; burstMs: number }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "reset"; value: T };
@@ -48,8 +49,8 @@ export function historyReducer<T>(s: HistoryState<T>, a: HistoryAction<T>): Hist
     case "set": {
       const value = typeof a.next === "function" ? (a.next as (prev: T) => T)(s.present.value) : a.next;
       if (Object.is(value, s.present.value)) return s;
-      // The same field, still being typed in: the same step, with nothing to redo.
-      if (a.burst && a.burst === s.burst && a.now - s.at < a.burstMs) {
+      // The same field, still being typed in (or a held burst, however long it takes): the same step, with nothing to redo.
+      if (a.burst && a.burst === s.burst && (a.hold || a.now - s.at < a.burstMs)) {
         return { ...s, present: { ...s.present, value }, future: [], at: a.now };
       }
       return {
@@ -79,8 +80,13 @@ export function historyReducer<T>(s: HistoryState<T>, a: HistoryAction<T>): Hist
 
 export interface EditorHistory<T> {
   value: T;
-  /** One change: its own step, or with `burst`, the same step as the change before it in that burst. */
-  set: (next: T | ((prev: T) => T), opts?: { burst?: string }) => void;
+  /**
+   * One change: its own step, or with `burst`, the same step as the change
+   * before it in that burst. With `hold` too, the burst has no time limit: an
+   * AI result streaming in block by block stays one step until any other
+   * change (an Undo, or typing elsewhere) starts a new one.
+   */
+  set: (next: T | ((prev: T) => T), opts?: { burst?: string; hold?: boolean }) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -99,7 +105,7 @@ export function useEditorHistory<T>(
     initialHistory(typeof initial === "function" ? (initial as () => T)() : initial, limit),
   );
   const set = useCallback<EditorHistory<T>["set"]>(
-    (next, opts) => dispatch({ type: "set", next, burst: opts?.burst, now: Date.now(), burstMs }),
+    (next, opts) => dispatch({ type: "set", next, burst: opts?.burst, hold: opts?.hold, now: Date.now(), burstMs }),
     [burstMs],
   );
   const undo = useCallback(() => dispatch({ type: "undo" }), []);

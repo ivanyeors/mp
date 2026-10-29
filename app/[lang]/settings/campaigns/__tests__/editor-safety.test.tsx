@@ -32,7 +32,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CampaignEditor } = await import("../campaign-editor");
-const { newCampaignDraft } = await import("@/lib/email-campaigns/rules");
+const { FIRST_CAMPAIGN_DRAFT, newCampaignDraft } = await import("@/lib/email-campaigns/rules");
 const { keptDraftKey } = await import("../kept-draft");
 
 const CONTENT: CampaignContent = {
@@ -143,6 +143,20 @@ describe("one history over the whole email", () => {
     expect(headings()).toEqual([]);
   });
 
+  it("makes Use the sign-in invitation one step, who it goes to included", async () => {
+    mount(null, { ...newCampaignDraft(undefined, []), audience: "subscribed" });
+    const audience = () => document.getElementById("c-audience")!.textContent;
+    expect(audience()).toBe("Everyone subscribed to marketing email");
+    await click(button("Use the sign-in invitation")!);
+    expect(field("c-subject").value).toBe(FIRST_CAMPAIGN_DRAFT.subject);
+    expect(audience()).toBe("Imported from Shopify, not signed in yet");
+    undo();
+    expect(field("c-subject").value).toBe("");
+    expect(audience()).toBe("Everyone subscribed to marketing email");
+    redo();
+    expect(audience()).toBe("Imported from Shopify, not signed in yet");
+  });
+
   it("puts the words back from the toast's Undo even after more typing, as a step of its own", async () => {
     mount(SAVED, DRAFT);
     await click(button("Clear all")!);
@@ -167,6 +181,17 @@ describe("saving and leaving", () => {
     await settle();
     expect(actions.saveCampaign).toHaveBeenCalledTimes(1);
     expect(actions.saveCampaign.mock.calls[0][1]).toMatchObject({ subject: "Sleep cooler, today" });
+  });
+
+  it("makes one campaign from New campaign however often Save is pressed before its page opens", async () => {
+    mount(null, newCampaignDraft(undefined, []));
+    typeField(field("c-name"), "December cooling launch");
+    press("s", { ctrl: true }, document.body);
+    await settle();
+    // The page for it has not opened yet (the router's replace is still on its way).
+    press("s", { ctrl: true }, document.body);
+    await settle();
+    expect(actions.saveCampaign.mock.calls.map(([id]) => id)).toEqual([null, "new"]);
   });
 
   it("asks before the browser leaves with unsaved changes", () => {
@@ -197,6 +222,23 @@ describe("saving and leaving", () => {
     expect(document.body.textContent).not.toContain("Restore your unsaved changes");
     undo();
     expect(field("c-subject").value).toBe(DRAFT.subject);
+  });
+
+  it("restores who it goes to with the words, and one Undo takes both back", async () => {
+    const email = { ...DRAFT, subject: "Kept before the crash", preheader: "", body: "", button: { choice: "none", label: "", url: "" } };
+    window.localStorage.setItem(
+      keptDraftKey(SAVED.id),
+      JSON.stringify({ v: 1, at: "2026-10-29T08:12:00.000Z", base: SAVED.updatedAt, value: { email, audience: "imported_not_signed_in", segmentId: "" } }),
+    );
+    mount(SAVED, DRAFT);
+    await settle();
+    const audience = () => document.getElementById("c-audience")!.textContent;
+    await click(button("Restore")!);
+    expect(field("c-subject").value).toBe("Kept before the crash");
+    expect(audience()).toBe("Imported from Shopify, not signed in yet");
+    undo();
+    expect(field("c-subject").value).toBe(DRAFT.subject);
+    expect(audience()).toBe("Everyone subscribed to marketing email");
   });
 
   it("offers nothing for a campaign that has started sending", async () => {

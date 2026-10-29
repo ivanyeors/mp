@@ -126,6 +126,31 @@ describe("useUnsavedGuard", () => {
     expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 
+  it("keeps this visit's edits while an older copy is still on offer", async () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ v: 1, at: "2026-10-29T08:12:00.000Z", base: "v1", value: { words: "before the crash" } }));
+    mount({ base: "v1" });
+    await settle();
+    expect(guard.recovered?.value).toEqual({ words: "before the crash" });
+    // Staff leave the offer and go on writing: a second crash must not lose that.
+    act(() => setWords("written since"));
+    await settle(600);
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toMatchObject({ base: "v1", value: { words: "written since" } });
+    // The older copy can still be taken back on this visit.
+    expect(guard.recovered?.value).toEqual({ words: "before the crash" });
+  });
+
+  it("stops offering a copy once a Save moves the version on, and keeps nothing stale", async () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ v: 1, at: "2026-10-29T08:12:00.000Z", base: "v1", value: { words: "before the crash" } }));
+    mount({ base: "v1" });
+    await settle();
+    act(() => setWords("written since"));
+    // Save: the words are now the saved ones, on a new version.
+    act(() => root!.render(<Page base="v2" saved="written since" />));
+    await settle(600);
+    expect(guard.recovered).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
   it("works without the browser's storage", async () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("blocked");

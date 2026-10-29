@@ -3,6 +3,7 @@ import { click, settle } from "./dom";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AiButton } from "../ai-button";
 
 /** The ✨ button's states (PRD-campaign-email-editor slice 04): idle, working with words, and off with its reason. */
@@ -47,6 +48,22 @@ describe("AiButton", () => {
     expect(onClick).not.toHaveBeenCalled();
     await click(stop);
     expect(onStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens a popover under it as its trigger, and says so", async () => {
+    mount(
+      <Popover>
+        <PopoverTrigger asChild>
+          <AiButton>Generate</AiButton>
+        </PopoverTrigger>
+        <PopoverContent>What&apos;s it about?</PopoverContent>
+      </Popover>,
+    );
+    const b = buttons()[0];
+    expect(b.getAttribute("aria-expanded")).toBe("false");
+    await click(b);
+    expect(b.getAttribute("aria-expanded")).toBe("true");
+    expect(document.body.textContent).toContain("What's it about?");
   });
 
   it("stays in the tab order while off, with its reason, and does nothing when pressed", async () => {

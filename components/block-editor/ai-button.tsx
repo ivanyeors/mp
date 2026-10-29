@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { Loader2, Sparkles, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
  * email…*), or turned off with the reason. It calls nothing itself: slices
  * 09, 10 and 17 hand it what to do. Off, it stays in the tab order with its
  * reason, as Clear all does, so a keyboard user can reach why.
+ *
+ * Its ref and any other button props reach the button, so it can be a
+ * popover's trigger (`<PopoverTrigger asChild>`), as slice 09's is.
  */
 export function AiButton({
   children,
@@ -22,10 +25,11 @@ export function AiButton({
   variant = "outline",
   size = "sm",
   className,
-}: {
+  ...button
+}: Omit<ComponentProps<"button">, "children" | "onClick"> & {
   /** What it does: *Generate*, *Rewrite*, *Translate to Chinese*. */
   children: ReactNode;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   /** While it works, what it is doing now; null when idle. */
   working?: string | null;
   /** Why it can't be pressed now; null when it can. */
@@ -43,7 +47,7 @@ export function AiButton({
   if (working) {
     return (
       <span className={cn("inline-flex items-center gap-1", className)}>
-        <Button type="button" variant={variant} size={size} aria-disabled aria-busy className="cursor-progress">
+        <Button {...button} type="button" variant={variant} size={size} aria-disabled aria-busy className="cursor-progress">
           <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden />
           <span role="status" aria-live="polite">
             {working}
@@ -64,14 +68,15 @@ export function AiButton({
       <Tooltip open={tipOpen && off} onOpenChange={setTipOpen}>
         <TooltipTrigger asChild>
           <Button
+            {...button}
             type="button"
             variant={variant}
             size={size}
-            onClick={() => {
-              if (!off) onClick?.();
+            onClick={(e) => {
+              if (!off) onClick?.(e);
             }}
             aria-disabled={off || undefined}
-            aria-describedby={off ? whyId : undefined}
+            aria-describedby={off ? whyId : button["aria-describedby"]}
             className={cn("aria-disabled:cursor-not-allowed aria-disabled:opacity-50", className)}
           >
             <Sparkles className="mr-1 h-4 w-4" aria-hidden />

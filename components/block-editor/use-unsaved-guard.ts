@@ -80,7 +80,7 @@ export interface UnsavedGuardOptions<T> {
 }
 
 export interface UnsavedGuard<T> {
-  /** Unsaved changes this browser kept from an earlier visit, until restored or discarded. */
+  /** Unsaved changes this browser kept from an earlier visit, until restored, discarded or a Save moves the version on. */
   recovered: { value: T; at: string } | null;
   /** Hands the recovered value over and stops offering it. */
   restore: () => T | null;
@@ -131,26 +131,32 @@ export function useUnsavedGuard<T>({ dirty, onSave, keep, message = LEAVE_UNSAVE
   const key = keep?.key ?? null;
   const base = keep?.base ?? null;
   const parse = keep?.parse;
-  const [recovered, setRecovered] = useState<{ value: T; at: string; key: string } | null>(null);
+  const [recovered, setRecovered] = useState<{ value: T; at: string; key: string; base: string } | null>(null);
+  // An offer stands only on the version it was kept from: once a Save moves that on, it is gone.
+  const offer = recovered && recovered.key === key && recovered.base === base ? recovered : null;
   const read = useRef<string | null>(null);
-  // The kept copy stays where it is while it is offered, so a second crash still finds it.
-  const holding = useRef(false);
+  // The copy on offer stays where it is until something changes, so a second crash still finds it.
+  const holding = useRef<{ key: string; base: string } | null>(null);
   useEffect(() => {
     if (!key || base === null || !parse || read.current === key) return;
     read.current = key;
     const kept = readKept(key);
     const value = kept && kept.base === base ? parse(kept.value) : null;
     if (value === null) return;
-    holding.current = true;
+    holding.current = { key, base };
     // Read in the browser only, once the server's markup has hydrated.
-    const offer = { value, at: kept!.at, key };
-    queueMicrotask(() => setRecovered(offer));
+    const offered = { value, at: kept!.at, key, base };
+    queueMicrotask(() => setRecovered(offered));
   }, [key, base, parse]);
 
   // While there are unsaved changes, keep them; once saved, nothing to keep.
   const value = keep?.value;
   useEffect(() => {
-    if (!key || base === null || holding.current) return;
+    if (!key || base === null) return;
+    const held = holding.current;
+    // The first change after the offer, or a Save: from here on, this visit's edits are what is kept.
+    if (held && (dirty || held.key !== key || held.base !== base)) holding.current = null;
+    else if (held) return;
     if (!dirty) {
       writeKept(key, null);
       return;
@@ -160,17 +166,16 @@ export function useUnsavedGuard<T>({ dirty, onSave, keep, message = LEAVE_UNSAVE
   }, [key, base, dirty, value, recovered]);
 
   const restore = useCallback(() => {
-    const r = recovered;
-    holding.current = false;
+    holding.current = null;
     setRecovered(null);
-    return r?.value ?? null;
-  }, [recovered]);
+    return offer?.value ?? null;
+  }, [offer]);
   const discard = useCallback(() => {
-    if (recovered) writeKept(recovered.key, null);
-    holding.current = false;
+    if (offer && holding.current) writeKept(offer.key, null);
+    holding.current = null;
     setRecovered(null);
-  }, [recovered]);
+  }, [offer]);
   const confirmLeave = useCallback(() => !latest.current.dirty || window.confirm(latest.current.message), []);
 
-  return { recovered: recovered ? { value: recovered.value, at: recovered.at } : null, restore, discard, confirmLeave };
+  return { recovered: offer ? { value: offer.value, at: offer.at } : null, restore, discard, confirmLeave };
 }

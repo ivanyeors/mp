@@ -39,6 +39,7 @@ export function RichTextView({
   value,
   variables = [],
   placeholder,
+  singleLine = false,
   className,
   id,
   readOnly = false,
@@ -49,6 +50,8 @@ export function RichTextView({
   readOnly?: boolean;
   variables?: readonly RichTextVariable[];
   placeholder?: string;
+  /** One line, as the editor's `singleLine`: the same height, and said so. */
+  singleLine?: boolean;
   className?: string;
   id?: string;
   "aria-label"?: string;
@@ -56,7 +59,14 @@ export function RichTextView({
   "aria-describedby"?: string;
 }) {
   return (
-    <div id={id} role="textbox" aria-readonly="true" aria-multiline="true" {...aria} className={cn(RICH_TEXT_BOX, readOnly && "bg-muted/30", className)}>
+    <div
+      id={id}
+      role="textbox"
+      aria-readonly="true"
+      aria-multiline={singleLine ? "false" : "true"}
+      {...aria}
+      className={cn(RICH_TEXT_BOX, singleLine && "min-h-9", readOnly && "bg-muted/30", className)}
+    >
       {value.length ? (
         value.map((p, i) =>
           p.kind === "p" ? (

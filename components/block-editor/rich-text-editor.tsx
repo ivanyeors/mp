@@ -45,8 +45,9 @@ function Toolbar({ editor, marks }: { editor: Editor; marks: NonNullable<RichTex
       editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
       setLinking(false);
     };
+    // The address is not part of the page's history: ⌘Z here takes back what was typed in it, as in any field.
     return (
-      <div className="flex items-center gap-1 p-1">
+      <div className="flex items-center gap-1 p-1" data-own-undo>
         <input
           aria-label="Link address"
           autoFocus
@@ -191,6 +192,7 @@ export default function RichTextEditor(props: RichTextProps) {
         value={value}
         variables={variables}
         placeholder={placeholder}
+        singleLine={singleLine}
         className={className}
         id={id}
         aria-label={props["aria-label"]}
