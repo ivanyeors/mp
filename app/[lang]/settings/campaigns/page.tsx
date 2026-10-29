@@ -3,6 +3,7 @@ import { Mail, Plus } from "lucide-react";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { EmailsNav } from "@/components/settings/emails-nav";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                 campaignsHref={to("/settings/campaigns")}
                 templatesHref={hasPermission(ctx, "email-templates") ? to("/settings/email-templates") : null}
             />
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">Email campaigns</h1>
                     <InfoTip label="About email campaigns">
@@ -97,59 +98,80 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                     </CardContent>
                 </Card>
             ) : (
-                <Card>
-                    <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Campaign</TableHead>
-                                    <TableHead className="hidden md:table-cell">Audience</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="hidden text-right sm:table-cell">Bounced</TableHead>
-                                    <TableHead className="hidden text-right sm:table-cell">Spam</TableHead>
-                                    <TableHead className="hidden text-right lg:table-cell">Sign-in clicks</TableHead>
-                                    <TableHead className="hidden lg:table-cell">Last sent</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {items.map((item) => {
-                                    const status = statusOf(item);
-                                    return (
-                                        <TableRow key={item.campaign.id}>
-                                            <TableCell>
-                                                <Link
-                                                    href={to(`/settings/campaigns/${item.campaign.id}`)}
-                                                    className="font-medium hover:underline"
-                                                >
-                                                    {item.campaign.name}
-                                                </Link>
-                                                <p className="text-xs text-muted-foreground">{item.campaign.subject}</p>
-                                            </TableCell>
-                                            <TableCell className="hidden text-sm md:table-cell">
-                                                {CAMPAIGN_AUDIENCE_LABEL[item.campaign.audience]}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={status.variant}>{status.label}</Badge>
-                                            </TableCell>
-                                            <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                                                {item.stats.bounced}
-                                            </TableCell>
-                                            <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                                                {item.stats.complained}
-                                            </TableCell>
-                                            <TableCell className="hidden text-right tabular-nums lg:table-cell">
-                                                {item.stats.linkClicks}
-                                            </TableCell>
-                                            <TableCell className="hidden text-sm lg:table-cell">
-                                                {item.stats.lastSentAt ? formatAdminDateTime(item.stats.lastSentAt) : "—"}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                <>
+                    <MobileList>
+                        {items.map((item) => {
+                            const status = statusOf(item);
+                            return (
+                                <MobileListRow key={item.campaign.id} href={to(`/settings/campaigns/${item.campaign.id}`)}>
+                                    <span className="block break-words font-medium">{item.campaign.name}</span>
+                                    <span className="block break-words text-xs text-muted-foreground">{item.campaign.subject}</span>
+                                    <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                        <Badge variant={status.variant}>{status.label}</Badge>
+                                        {item.campaign.lockedAt ? (
+                                            <span className="tabular-nums">
+                                                Bounced {item.stats.bounced} · spam {item.stats.complained}
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </MobileListRow>
+                            );
+                        })}
+                    </MobileList>
+                    <Card className="max-md:hidden">
+                        <CardContent className="p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Campaign</TableHead>
+                                        <TableHead className="hidden md:table-cell">Audience</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">Bounced</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">Spam</TableHead>
+                                        <TableHead className="hidden text-right lg:table-cell">Sign-in clicks</TableHead>
+                                        <TableHead className="hidden lg:table-cell">Last sent</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {items.map((item) => {
+                                        const status = statusOf(item);
+                                        return (
+                                            <TableRow key={item.campaign.id}>
+                                                <TableCell>
+                                                    <Link
+                                                        href={to(`/settings/campaigns/${item.campaign.id}`)}
+                                                        className="font-medium hover:underline"
+                                                    >
+                                                        {item.campaign.name}
+                                                    </Link>
+                                                    <p className="text-xs text-muted-foreground">{item.campaign.subject}</p>
+                                                </TableCell>
+                                                <TableCell className="hidden text-sm md:table-cell">
+                                                    {CAMPAIGN_AUDIENCE_LABEL[item.campaign.audience]}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={status.variant}>{status.label}</Badge>
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.bounced}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.complained}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                                                    {item.stats.linkClicks}
+                                                </TableCell>
+                                                <TableCell className="hidden text-sm lg:table-cell">
+                                                    {item.stats.lastSentAt ? formatAdminDateTime(item.stats.lastSentAt) : "—"}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </>
             )}
         </div>
     );

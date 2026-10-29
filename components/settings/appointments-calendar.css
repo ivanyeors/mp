@@ -87,6 +87,14 @@
     padding: 4px 0;
   }
 
+  /* A day header opens or closes its day: a full 44px tap target. */
+  .appointments-calendar .fc-col-header-cell-cushion {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+  }
+
   .appointments-calendar .fc-timegrid-slot {
     height: 1.9em;
   }
@@ -128,6 +136,14 @@
 
 .appointments-calendar .fc-col-header-cell {
   cursor: pointer;
+}
+
+/* Pressed tint (phones never show hover); after the open/closed header fills so it wins. */
+.appointments-calendar .fc-col-header-cell {
+  transition: background-color 120ms;
+}
+.appointments-calendar .fc-col-header-cell:active {
+  background: var(--press);
 }
 
 .appointments-calendar .fc-timegrid-col.fc-day-today .fc-timegrid-col-frame,

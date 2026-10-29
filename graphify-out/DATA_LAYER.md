@@ -23,7 +23,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
 - Written by:
   - `recordAdminAction()` [insert] — lib/auth/audit.ts:36
 - Read by:
-  - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:54
+  - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:57
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
   - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:267
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
@@ -169,9 +169,9 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/save/route.ts:56
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:87
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:522
-  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:483
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:532
+  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:487
   - `POST()` [select] — app/api/shop/checkout/route.ts:495
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:154
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
@@ -198,8 +198,8 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:170
   - `setDefaultFillingTemplateId()` [update] — lib/results/composed-sellable.ts:401
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:524
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:392
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:534
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:396
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:155
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:344
 
@@ -228,10 +228,10 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:70
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:477
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:521
-  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
-  - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:83
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:391
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:531
+  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
+  - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:84
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:395
   - `POST()` [select] — app/api/shop/checkout/route.ts:469
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:162
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:234
@@ -352,7 +352,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/partner`, `/results/[id]`, `/se
   - `voidCommissionsForOrder()` [update] — lib/commissions/ledger.ts:139
   - `voidCommissionsForRma()` [update] — lib/commissions/ledger.ts:99
 - Read by:
-  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:53
+  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:54
   - `countNonVoidCommissions()` [select] — lib/milestones/ledger.ts:57
   - `loadAdminReferralRows()` [select] — lib/commissions/referral-rows.ts:220
   - `loadMilestoneDashboard()` [select] — lib/milestones/ledger.ts:170
@@ -617,8 +617,8 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:526
-  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:180
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:536
+  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:181
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:300
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:267
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:160
@@ -708,10 +708,10 @@ Changed from pages: `/settings/inventory`
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:400
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/AnalyticsClient.tsx:286
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:508
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:518
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
-  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:176
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:389
+  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:177
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:393
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
   - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:557
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
@@ -897,7 +897,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `revokeInvite()` [delete,select,update] — lib/auth/members.ts:395
   - `updateStaffProfile()` [update] — lib/staff/admin.ts:209
 - Read by:
-  - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:64
+  - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:67
   - `POST()` [select] — app/api/mp-config/responses/route.ts:463
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
@@ -1095,7 +1095,7 @@ Changed from pages: `/partner/settings`
   - `POST()` [upsert] — app/api/partner/payment-details/route.ts:40
 - Read by:
   - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:35
-  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:58
+  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:59
 
 ### partner_payouts
 Defined in supabase/migrations/20260728040000_payouts.sql:36
@@ -1105,7 +1105,7 @@ Changed from pages: `/settings/partner-commissions`
   - `recordPayout()` [insert] — lib/commissions/ledger.ts:246
 - Read by:
   - `/partner` (page) [select] — components/partner/payout-summary.tsx:34
-  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:61
+  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:62
 
 ### partner_users
 Defined in supabase/migrations/20260728000000_partner_users.sql:10
@@ -1121,7 +1121,7 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `submitApplication()` [insert,select] — app/[lang]/partner/apply/actions.ts:47
 - Read by:
   - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:30
-  - `/settings/partner-applications` (page) [select] — app/[lang]/settings/partner-applications/page.tsx:55
+  - `/settings/partner-applications` (page) [select] — app/[lang]/settings/partner-applications/page.tsx:56
   - `/settings/partner-commissions` (page) [select] — components/settings/partner-terms-editor.tsx:33
   - `isSelfReferral()` [select] — lib/referrals/index.ts:62
   - `notifyPartnerWhatsApp()` [select] — lib/whatsapp/partner-notify.ts:89
@@ -1155,7 +1155,7 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `upsertSelfPurchaseRate()` [update] — app/[lang]/settings/partner-commissions/self-purchase-actions.ts:37
 - Read by:
   - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:25
-  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:48
+  - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:49
   - `buildPartnerContext()` [select] — lib/auth/partner.ts:90
   - `createHeldCommissionsForOrder()` [select] — lib/commissions/ledger.ts:50
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:944
@@ -1191,10 +1191,10 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `setDefaultFillingTemplateId()` [select,update] — lib/results/composed-sellable.ts:379
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:476
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:516
-  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:181
-  - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:79
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:390
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:526
+  - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
+  - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:80
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:394
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:32
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:33
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118
@@ -1266,7 +1266,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`
   - `POST()` [delete,upsert] — app/[lang]/settings/costings/save/route.ts:405
 - Read by:
   - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/MarginByProductVisx.tsx:478
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:523
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:533
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:669
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:164
   - `getBolsterFromPriceLabel()` [select] — lib/landing-page-data.ts:96
@@ -1931,7 +1931,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/settings/rma/[id]`
   - `createRmaRequest()` [insert] — lib/rma/create.ts:123
   - `saveAdminNote()` [select,update] — app/[lang]/settings/rma/actions.ts:22
 - Read by:
-  - `/settings/rma` (page) [select] — app/[lang]/settings/rma/page.tsx:49
+  - `/settings/rma` (page) [select] — app/[lang]/settings/rma/page.tsx:50
   - `/settings/rma/[id]` (page) [select] — app/[lang]/settings/rma/[id]/page.tsx:95
   - `completeReturn()` [select] — app/[lang]/settings/rma/actions.ts:101
   - `issueRmaRefund()` [select] — app/[lang]/settings/rma/actions.ts:129

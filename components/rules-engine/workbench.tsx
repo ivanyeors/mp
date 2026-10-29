@@ -87,7 +87,7 @@ import { cmToInches, inchesToCm, roundCm } from "@/lib/rules-engine/units";
 import { validateForPublish } from "@/lib/rules-engine/validate";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { getApiErrorMessage } from "@/lib/utils";
+import { cn, getApiErrorMessage } from "@/lib/utils";
 import { TemplateNamesContext, makeNodeTypes } from "./rule-nodes";
 
 const PALETTE_GROUPS: {
@@ -120,6 +120,8 @@ const PALETTE_GROUPS: {
     ],
   },
 ];
+
+const MENU_TRIGGER_PHONE = "transition-colors active:bg-press max-md:min-h-11 max-md:px-3";
 
 const PANEL_TITLES = { add: "Add node", node: "Node", simulate: "Simulate" } as const;
 
@@ -611,9 +613,10 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     <div className="rules-engine-workbench -mx-2 -my-4 flex h-[calc(100svh-3.5rem)] flex-col sm:-mx-3 md:-mx-6 md:-my-8 lg:-mx-8 lg:-my-10">
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-2 py-3 sm:px-3 md:px-6 lg:px-8">
         {/* ponytail: mp-care Menubar pattern for product / palette / version */}
-        <Menubar className="border-none shadow-none">
+        {/* Phones: each menu is a 44px target with a pressed tint (the primitive's triggers are 28px). */}
+        <Menubar className="border-none shadow-none max-md:h-11 max-md:p-0">
           <MenubarMenu>
-            <MenubarTrigger aria-label="Product flow">
+            <MenubarTrigger aria-label="Product flow" className={MENU_TRIGGER_PHONE}>
               {FLOW_LABELS[flow]}
             </MenubarTrigger>
             <MenubarContent>
@@ -632,7 +635,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </MenubarMenu>
 
           <MenubarMenu>
-            <MenubarTrigger>Palette</MenubarTrigger>
+            <MenubarTrigger className={MENU_TRIGGER_PHONE}>Palette</MenubarTrigger>
             <MenubarContent className="min-w-56">
               {PALETTE_GROUPS.map((group, gi) => (
                 <div key={group.label}>
@@ -658,7 +661,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </MenubarMenu>
 
           <MenubarMenu>
-            <MenubarTrigger>
+            <MenubarTrigger className={MENU_TRIGGER_PHONE}>
               {viewingVersion ? `v${viewingVersion.version}` : "Draft"}
             </MenubarTrigger>
             <MenubarContent className="min-w-48">
@@ -690,7 +693,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </MenubarMenu>
 
           <MenubarMenu>
-            <MenubarTrigger>Graph</MenubarTrigger>
+            <MenubarTrigger className={MENU_TRIGGER_PHONE}>Graph</MenubarTrigger>
             <MenubarContent>
               <MenubarItem
                 disabled={!!viewingVersion}
@@ -726,8 +729,13 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </MenubarMenu>
         </Menubar>
 
+        {/* At rest the label only repeats the version menu's "Draft"; phones drop the repeat. */}
         <span
-          className={`text-xs ${saveState === "error" ? "text-destructive" : "text-muted-foreground"}`}
+          className={cn(
+            "text-xs",
+            saveState === "error" ? "text-destructive" : "text-muted-foreground",
+            saveLabel === "Draft" && "max-md:hidden",
+          )}
           title={saveTitle}
         >
           {saveLabel}

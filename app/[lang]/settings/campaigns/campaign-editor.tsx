@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SentenceField } from "@/components/settings/sentence-field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -406,16 +407,18 @@ export function CampaignEditor({
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
 
     return (
-        <div className={`space-y-6 ${campaign && (sending || plan) ? mobileStickyActionBarSpacerClassName : ""}`}>
+        // Flex, not space-y: on a phone a started campaign moves its send results above the fixed email.
+        <div className={`flex flex-col gap-6 ${campaign && (sending || plan) ? mobileStickyActionBarSpacerClassName : ""}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <Button variant="ghost" size="sm" className="self-start" asChild>
+                {/* The shell breadcrumb already links back on a phone. */}
+                <Button variant="ghost" size="sm" className="self-start max-md:hidden" asChild>
                     <Link href={to("/settings/campaigns")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Email campaigns
                     </Link>
                 </Button>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h1 className="truncate text-2xl font-semibold tracking-tight">{campaign ? campaign.name : "New campaign"}</h1>
+                    <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight md:truncate">{campaign ? campaign.name : "New campaign"}</h1>
                     {campaign ? <Badge variant={locked ? "default" : "outline"}>{locked ? "Sending started" : "Draft"}</Badge> : null}
                 </div>
                 {campaign ? (
@@ -440,7 +443,7 @@ export function CampaignEditor({
                 </p>
             ) : null}
 
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className={`grid gap-6 lg:grid-cols-2 ${locked ? "max-md:order-3" : ""}`}>
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base">The email</CardTitle>
@@ -476,7 +479,10 @@ export function CampaignEditor({
                                             {chosenSegmentHref ? (
                                                 <>
                                                     {" "}
-                                                    <Link href={chosenSegmentHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                                                    <Link
+                                                        href={chosenSegmentHref}
+                                                        className="relative font-medium text-foreground underline-offset-4 hover:underline active:opacity-60 max-md:after:absolute max-md:after:-inset-y-2 max-md:after:inset-x-0 max-md:after:content-['']"
+                                                    >
                                                         See who is in it
                                                     </Link>
                                                 </>
@@ -503,14 +509,14 @@ export function CampaignEditor({
                         ) : null}
 
                         <Field label="Subject" htmlFor="c-subject" error={fieldErrors.subject}>
-                            <Input id="c-subject" value={subject} disabled={locked} maxLength={CAMPAIGN_LIMITS.subject} onChange={(e) => setSubject(e.target.value)} />
+                            <SentenceField id="c-subject" value={subject} disabled={locked} maxLength={CAMPAIGN_LIMITS.subject} onChange={(e) => setSubject(e.target.value)} />
                         </Field>
                         <Field label="Preview line" htmlFor="c-preheader" hint="Shown after the subject in most inboxes. Optional." error={fieldErrors.preheader}>
-                            <Input id="c-preheader" value={preheader} disabled={locked} maxLength={CAMPAIGN_LIMITS.preheader} onChange={(e) => setPreheader(e.target.value)} />
+                            <SentenceField id="c-preheader" value={preheader} disabled={locked} maxLength={CAMPAIGN_LIMITS.preheader} onChange={(e) => setPreheader(e.target.value)} />
                         </Field>
 
                         <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="c-greeting">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
+                            <Label htmlFor="c-greeting" className="cursor-pointer max-md:min-h-11 max-md:flex-1 max-md:active:opacity-60">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
                             <Switch id="c-greeting" checked={greeting} disabled={locked} onCheckedChange={setGreeting} />
                         </div>
 
@@ -598,7 +604,7 @@ export function CampaignEditor({
             </div>
 
             {campaign ? (
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className={`grid gap-6 lg:grid-cols-2 ${locked ? "max-md:order-2" : ""}`}>
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Send a test</CardTitle>
@@ -639,7 +645,7 @@ export function CampaignEditor({
             ) : null}
 
             {campaign ? (
-                <Card>
+                <Card className={locked ? "max-md:order-1" : undefined}>
                     <CardHeader>
                         <div className="flex items-center gap-1.5">
                             <CardTitle className="text-base">Send</CardTitle>
@@ -662,7 +668,7 @@ export function CampaignEditor({
                             </CardDescription>
                         ) : null}
                     </CardHeader>
-                    <CardContent className="space-y-5">
+                    <CardContent className="flex flex-col gap-5">
                         <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
                             {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, allowance, resume }).map((step) => (
                                 <li key={step.key} className="flex items-start gap-2 text-sm">
@@ -704,7 +710,7 @@ export function CampaignEditor({
                                 />
                             </Field>
                             {stats && stats.failed > 0 ? (
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                                     <Checkbox checked={retryFailed} onCheckedChange={(v) => {
                                             setRetryFailed(v === true);
                                             setPlan(null);
@@ -713,7 +719,7 @@ export function CampaignEditor({
                                 </label>
                             ) : null}
                             {pauseFailing ? (
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                                     <Checkbox checked={resume} onCheckedChange={(v) => {
                                             setResume(v === true);
                                             setPlan(null);
@@ -816,7 +822,7 @@ export function CampaignEditor({
                             </div>
                         ) : null}
 
-                        <WaveTable waves={waves} />
+                        <WaveTable waves={waves} className={locked ? "max-md:order-first" : undefined} />
                     </CardContent>
                 </Card>
             ) : null}

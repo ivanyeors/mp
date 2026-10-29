@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrSvg } from "@/components/ui/qr-svg";
@@ -54,14 +55,19 @@ export function AssistLinkCard() {
   };
 
   if (!code) {
+    const about =
+      "One link, reusable with every customer. What they submit lands here badged Assisted, and they never enter card details.";
+    // Phones: one row (title, ⓘ, button), so the Results queue starts near the top.
     return (
-      <div className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Label className="text-base font-semibold">Your assist link</Label>
-          <p className="text-sm text-muted-foreground">
-            One link, reusable with every customer. What they submit lands here badged
-            Assisted, and they never enter card details.
-          </p>
+      <div className="flex items-center justify-between gap-2 rounded-lg border p-3 md:p-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <Label className="text-base font-semibold">Your assist link</Label>
+            <InfoTip label="About your assist link" className="md:hidden">
+              <p>{about}</p>
+            </InfoTip>
+          </div>
+          <p className="text-sm text-muted-foreground max-md:hidden">{about}</p>
           {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
         </div>
         <Button type="button" variant="secondary" onClick={() => void reveal()} disabled={busy}>

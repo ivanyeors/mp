@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SentenceField } from "@/components/settings/sentence-field";
 import { Textarea } from "@/components/ui/textarea";
 import type { CopyField, EmailCopy, EmailCopySpec } from "@/lib/email/copy";
 import type { SavedCopy } from "@/lib/email/copy-admin";
@@ -20,6 +22,8 @@ import { previewEmailCopy, resetEmailCopy, saveEmailCopy, sendEmailCopyTest } fr
 
 /** A field gets a multi-line box when it is several paragraphs, or long. */
 const isLong = (f: CopyField) => f.multiline || f.default.length > 80;
+/** A one-line field that holds a sentence: a single-line input cuts it off on a phone. */
+const isSentence = (f: CopyField) => !isLong(f) && f.default.length > 40;
 
 function Section({ title, note, children }: { title?: string; note?: string; children: ReactNode }) {
     return (
@@ -157,13 +161,19 @@ export function EmailCopyEditor({
                         {f.optional ? <span className="ml-1 font-normal text-muted-foreground">(optional)</span> : null}
                     </Label>
                     {changed ? (
-                        <button type="button" className="text-xs text-muted-foreground underline" onClick={() => set(k, f.default)}>
+                        <button
+                            type="button"
+                            className="shrink-0 text-xs text-muted-foreground underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                            onClick={() => set(k, f.default)}
+                        >
                             Use the original words
                         </button>
                     ) : null}
                 </div>
                 {isLong(f) ? (
                     <Textarea id={id} rows={f.multiline ? 6 : 3} value={values[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
+                ) : isSentence(f) ? (
+                    <SentenceField id={id} value={values[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
                 ) : (
                     <Input id={id} value={values[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
                 )}
@@ -178,18 +188,21 @@ export function EmailCopyEditor({
     };
 
     const placeholders = Object.entries(spec.placeholders);
+    // Phones: Save is pinned to the bottom while there is something to save, not 1,000px down the form.
+    const showSaveBar = dirty || busy === "save";
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${showSaveBar ? mobileStickyActionBarSpacerClassName : ""}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <Button variant="ghost" size="sm" className="self-start" asChild>
+                {/* The shell breadcrumb already links back on a phone. */}
+                <Button variant="ghost" size="sm" className="self-start max-md:hidden" asChild>
                     <Link href={withLocale("/settings/email-templates", locale)}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Email templates
                     </Link>
                 </Button>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h1 className="text-2xl font-semibold tracking-tight">{spec.name}</h1>
+                    <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight">{spec.name}</h1>
                     <Badge variant={savedEdited ? "default" : "outline"}>{savedEdited ? "Edited" : "Original words"}</Badge>
                 </div>
             </div>
@@ -229,7 +242,7 @@ export function EmailCopyEditor({
                                 </p>
                             ) : null}
                             <div className="flex flex-wrap items-center gap-3">
-                                <Button onClick={save} disabled={!dirty || busy !== null}>
+                                <Button onClick={save} disabled={!dirty || busy !== null} className={showSaveBar ? "max-md:hidden" : undefined}>
                                     {busy === "save" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                                     Save
                                 </Button>
@@ -253,11 +266,12 @@ export function EmailCopyEditor({
                             <CardContent>
                                 <ul className="space-y-2 text-sm">
                                     {placeholders.map(([name, about]) => (
-                                        <li key={name} className="flex items-start gap-2">
+                                        <li key={name} className="flex items-start gap-2 max-md:items-center max-md:gap-3">
                                             <button
                                                 type="button"
                                                 title="Copy"
-                                                className="inline-flex shrink-0 items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-xs"
+                                                aria-label={`Copy {${name}}`}
+                                                className="inline-flex shrink-0 items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-xs transition-colors active:bg-press max-md:min-h-11 max-md:gap-1.5 max-md:rounded-md max-md:px-3"
                                                 onClick={() => void navigator.clipboard?.writeText(`{${name}}`)}
                                             >
                                                 {`{${name}}`}
@@ -321,6 +335,15 @@ export function EmailCopyEditor({
                     </CardContent>
                 </Card>
             </div>
+
+            {showSaveBar ? (
+                <MobileStickyActionBar>
+                    <Button className="w-full" onClick={save} disabled={!dirty || busy !== null}>
+                        {busy === "save" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                        Save
+                    </Button>
+                </MobileStickyActionBar>
+            ) : null}
         </div>
     );
 }

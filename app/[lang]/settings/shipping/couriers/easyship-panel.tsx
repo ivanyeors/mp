@@ -266,7 +266,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <button
                                         type="button"
                                         onClick={() => copy(status.webhookUrl, "Webhook URL")}
-                                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                                        className="inline-flex items-center gap-1 text-primary hover:underline active:opacity-60"
                                     >
                                         {status.webhookUrl}
                                         <Copy className="h-3 w-3" />
@@ -287,7 +287,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                                     <button
                                         type="button"
                                         onClick={onShowAddresses}
-                                        className="text-primary hover:underline"
+                                        className="text-primary hover:underline active:opacity-60"
                                     >
                                         Open Addresses
                                     </button>
@@ -320,7 +320,7 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                         </Select>
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3 sm:mt-6">
-                        <Label htmlFor="insure_shipments" className="font-medium">
+                        <Label htmlFor="insure_shipments" className="cursor-pointer font-medium max-md:-my-3 max-md:min-h-11 max-md:flex-1 max-md:active:opacity-60">
                             Insure shipments
                         </Label>
                         <Switch

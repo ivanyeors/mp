@@ -3,7 +3,15 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, MoreHorizontal, Trash2 } from "lucide-react";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
 import type { SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import type { LandingSection } from "@/lib/types/landing-sections";
@@ -73,10 +81,14 @@ function SectionRow({
         section.visible ? "" : "opacity-60"
       }`}
     >
-      <div className="flex items-center gap-1 px-2 py-1.5">
+      {/*
+        Phones: drag, show/hide, the name (opens the section) and one menu, each 44px
+        and 8px apart; the ▲▼ and remove buttons move into the menu.
+      */}
+      <div className="flex items-center gap-1 px-2 py-1.5 max-md:gap-2 max-md:px-1 max-md:py-1">
         <button
           ref={handleRef}
-          className="inline-flex min-h-8 min-w-6 cursor-grab touch-none items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
+          className="inline-flex min-h-8 min-w-6 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:cursor-grabbing active:bg-press max-md:size-11"
           aria-label={`Drag ${title} to reorder`}
         >
           <GripVertical className="h-4 w-4" />
@@ -86,7 +98,7 @@ function SectionRow({
           Keyboard path for reordering. The drag handle is pointer-only, so without these
           the tree cannot be reordered without a mouse.
         */}
-        <span className="flex flex-col">
+        <span className="flex flex-col max-md:hidden">
           <button
             onClick={(e) => { e.stopPropagation(); onMove(section, -1); }}
             disabled={index === 0}
@@ -109,7 +121,7 @@ function SectionRow({
           onClick={(e) => { e.stopPropagation(); onToggleVisibility(section); }}
           aria-pressed={section.visible}
           aria-label={section.visible ? `Hide ${title}` : `Show ${title}`}
-          className="inline-flex min-h-8 min-w-8 items-center justify-center text-muted-foreground hover:text-foreground"
+          className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-press max-md:size-11"
         >
           {section.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </button>
@@ -117,12 +129,13 @@ function SectionRow({
         <button
           onClick={() => onSelect(section.slug)}
           aria-current={selected ? "true" : undefined}
-          className="min-w-0 flex-1 truncate px-1 text-left text-sm font-medium"
+          className="min-w-0 flex-1 truncate px-1 text-left text-sm font-medium max-md:min-h-11 max-md:rounded-md max-md:py-1 max-md:transition-colors max-md:active:bg-press"
         >
-          {title}
+          <span className="max-md:block max-md:truncate">{title}</span>
+          <span className="block truncate text-xs font-normal text-muted-foreground md:hidden">{label}</span>
         </button>
 
-        <Badge variant="outline" className="shrink-0 text-[10px]">
+        <Badge variant="outline" className="shrink-0 text-[10px] max-md:hidden">
           {label}
         </Badge>
 
@@ -130,11 +143,43 @@ function SectionRow({
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(section); }}
             aria-label={`Remove ${title}`}
-            className="inline-flex min-h-8 min-w-8 items-center justify-center text-muted-foreground hover:text-destructive"
+            className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive active:bg-press max-md:hidden"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
+
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0 text-muted-foreground md:hidden"
+              aria-label={`More actions for ${title}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuItem className="min-h-11" disabled={index === 0} onSelect={() => onMove(section, -1)}>
+              <ChevronUp />
+              Move up
+            </DropdownMenuItem>
+            <DropdownMenuItem className="min-h-11" disabled={index === total - 1} onSelect={() => onMove(section, 1)}>
+              <ChevronDown />
+              Move down
+            </DropdownMenuItem>
+            {isCustom ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" className="min-h-11" onSelect={() => onDelete(section)}>
+                  <Trash2 />
+                  Remove
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -170,7 +215,7 @@ export function SectionTree({
 
   return (
     <DragDropProvider onDragEnd={onDragEnd}>
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 max-md:space-y-2">
         {sections.map((section, index) => (
           <SectionRow
             key={section.id}

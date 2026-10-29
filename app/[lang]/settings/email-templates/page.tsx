@@ -63,8 +63,8 @@ export default async function EmailTemplatesPage({ params }: { params: Promise<{
             ) : null}
 
             {groups.map((group) => (
-                <Card key={group}>
-                    <CardHeader>
+                <Card key={group} className="max-md:gap-1">
+                    <CardHeader className="max-md:gap-0">
                         <CardTitle className="text-base">{groupLabel(group)}</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y p-0">
@@ -77,7 +77,7 @@ export default async function EmailTemplatesPage({ params }: { params: Promise<{
                                     <Link
                                         key={e.spec.id}
                                         href={to(`/settings/email-templates/${e.spec.id}`)}
-                                        className="flex flex-col gap-1 px-6 py-3 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+                                        className="flex flex-col gap-1 px-6 py-3 transition-colors hover:bg-muted/40 active:bg-press sm:flex-row sm:items-center sm:justify-between max-md:min-h-14 max-md:px-4"
                                     >
                                         <span className="min-w-0">
                                             <span className="font-medium">{e.spec.name}</span>

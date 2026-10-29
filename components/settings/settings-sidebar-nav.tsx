@@ -8,7 +8,7 @@ import {
   Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Mail, MailCheck, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
-  GitBranch, ClipboardCheck, Percent, Box, BookOpen,
+  GitBranch, ClipboardCheck, Percent, Box, BookOpen, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -443,7 +444,7 @@ export function SettingsSidebarNav({
   }
 
   const header = (
-    <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
+    <header className="flex h-14 min-w-0 items-center gap-2 border-b px-3 md:px-6 lg:px-8">
       {/* Trigger is desktop chrome; hide with CSS so the server render matches every viewport. */}
       <div className="hidden md:contents">
         <SidebarTrigger />
@@ -455,24 +456,33 @@ export function SettingsSidebarNav({
     </header>
   );
 
-  // Mobile nav is a bottom sheet of tiles, opened from the dock menu.
+  // Mobile nav is a bottom sheet of tiles, opened from the dock menu. Its close
+  // button sits in the header row rather than pinned over the last tile; tapping
+  // the backdrop also closes it.
   const mobileMenu = (
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
       <SheetContent
         side="bottom"
         mobilePreset="quick"
+        hideClose
         className="max-h-[85svh] gap-0 px-0"
       >
-        <SheetHeader className="px-4 pb-2 pt-1">
+        <SheetHeader className="flex-row items-center justify-between px-4 pb-1 pt-0">
           <SheetTitle>Menu</SheetTitle>
+          <SheetClose
+            className="-mr-2 inline-flex size-11 items-center justify-center rounded-full text-muted-foreground active:bg-press"
+            aria-label="Close menu"
+          >
+            <X className="size-5" aria-hidden />
+          </SheetClose>
         </SheetHeader>
-        <div className="overflow-y-auto px-3 pb-[calc(4rem+var(--safe-bottom))]">
+        <div className="overflow-y-auto px-3 pb-[calc(1rem+var(--safe-bottom))]">
           {groups.map((group) => (
-            <div key={group.label} className="mb-4">
-              <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <div key={group.label} className="mb-3">
+              <p className="mb-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {group.label}
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {flattenNavItems(group.items).map(({ href, label, tooltip, Icon }) => {
                   const isActive = activeHref === href;
                   const badge = badges.get(href);
@@ -483,18 +493,18 @@ export function SettingsSidebarNav({
                       title={badge ? `${tooltip}. ${badge.title}` : tooltip}
                       onClick={() => setMenuOpen(false)}
                       className={cn(
-                        "relative flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-sm font-medium transition-colors",
+                        "relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center text-xs font-medium transition-colors active:bg-press",
                         isActive
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-background text-foreground hover:bg-accent"
                       )}
                     >
-                      <Icon className="size-6 shrink-0" />
+                      <Icon className="size-5 shrink-0" />
                       <span className="line-clamp-2 leading-tight">{label}</span>
                       {badge ? (
                         <span
                           className={cn(
-                            "absolute right-2 top-2 min-w-5 rounded-md px-1 text-xs font-medium tabular-nums",
+                            "absolute right-1 top-1 min-w-5 rounded-md px-1 text-xs font-medium tabular-nums",
                             badge.urgent ? BADGE_URGENT : "bg-muted text-foreground",
                           )}
                         >
@@ -518,7 +528,8 @@ export function SettingsSidebarNav({
   // server render and made phones paint the desktop shell before swapping.
   return (
     <SettingsBreadcrumbProvider>
-      <div className="flex min-h-svh w-full min-w-0 overflow-x-clip md:overflow-x-visible">
+      {/* Every tappable surface here has its own pressed tint, so iOS's grey tap flash only doubles it. */}
+      <div className="flex min-h-svh w-full min-w-0 overflow-x-clip md:overflow-x-visible [-webkit-tap-highlight-color:transparent]">
         <SidebarProvider>
           {/* shadcn's Sidebar root is `hidden md:block`, so it already stays out of the
               mobile paint; keep it a direct sibling of SidebarInset for the peer styles. */}
@@ -578,7 +589,7 @@ export function SettingsSidebarNav({
           </Sidebar>
           <SidebarInset className="min-w-0">
             {header}
-            <div className="min-w-0 max-w-full px-2 pt-3 pb-[calc(0.75rem+var(--app-dock-clearance))] sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+            <div className="min-w-0 max-w-full px-3 pt-3 pb-[calc(0.75rem+var(--app-dock-clearance))] max-md:[--card-gap:1rem] max-md:[--card-px:1rem] max-md:[--card-py:1rem] md:px-6 md:py-8 lg:px-8 lg:py-10">
               {children}
             </div>
           </SidebarInset>
@@ -617,7 +628,7 @@ function SettingsBreadcrumbTrail({
                   </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
-                    <Link href={to(crumb.href)} className="truncate" title={crumb.label}>
+                    <Link href={to(crumb.href)} className="block truncate py-3 active:opacity-60" title={crumb.label}>
                       {crumb.label}
                     </Link>
                   </BreadcrumbLink>

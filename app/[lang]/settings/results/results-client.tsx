@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MoreVertical, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react";
+import { MoreVertical, RefreshCw, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import { AssistLinkCard } from "@/components/admin/assist-link-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,10 +38,12 @@ import {
   resultStage,
   type ResultStage,
 } from "@/lib/results/result-stage";
-import { formatAdminDateTime } from "@/lib/format/admin-date";
+import { formatAdminDateMY, formatAdminDateTime } from "@/lib/format/admin-date";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { InfoTip } from "@/components/ui/info-tip";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
+import { EmptyState } from "@/components/settings/empty-state";
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -166,6 +168,16 @@ function noOrderReason(stage: ResultStage): string {
     default:
       return "—";
   }
+}
+
+function sourceLabel(source: string | null | undefined): string {
+  return source === "online_purchase"
+    ? "Purchase"
+    : source === "online_customization"
+      ? "Online"
+      : source === "staff_assisted"
+        ? "Assisted"
+        : "In-store";
 }
 
 function formatMoney(amount: number | null, currency: string | null): string {
@@ -712,8 +724,80 @@ export default function ResultsPage({
     URL.revokeObjectURL(url);
   }, [selectedRows, stageById]);
 
+  /**
+   * One kebab per row instead of a column per action. The table already
+   * scrolls sideways on a phone, and the actions staff want here — chase the
+   * customer, open the build — were otherwise only reachable from inside the
+   * detail page. The phone list shows the same menu in each row.
+   */
+  const rowMenu = (row: MpConfigResponseRow, isDeleting: boolean) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="min-h-11 min-w-11"
+          aria-label="Result actions"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem
+          onSelect={() => router.push(to(`/settings/results/${row.id}`))}
+        >
+          <SquareArrowOutUpRight className="h-4 w-4" />
+          Open result
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={
+            Boolean(requestingPayment[row.id]) ||
+            row.status !== "assigned" ||
+            !row.customer_email
+          }
+          // Let the menu close: the toast is the feedback,
+          // and an open menu would sit on top of it on the
+          // phone screen where staff actually do this.
+          onSelect={() => void requestPayment(row)}
+        >
+          <Send className="h-4 w-4" />
+          Request payment
+        </DropdownMenuItem>
+        {/* Why the item above is greyed out, rather than
+            leaving staff to guess. */}
+        {row.status !== "assigned" ? (
+          <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+            Only an assigned build can be paid for
+          </DropdownMenuLabel>
+        ) : !row.customer_email ? (
+          <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+            No customer email on file
+          </DropdownMenuLabel>
+        ) : (row.payment_reminder_count ?? 0) > 0 ? (
+          <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+            {row.payment_reminder_count} auto reminder
+            {row.payment_reminder_count === 1 ? "" : "s"} sent
+          </DropdownMenuLabel>
+        ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={isDeleting}
+          onSelect={() => {
+            setDeleteTarget(row);
+            setDeleteDialogOpen(true);
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete result
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Dialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -755,7 +839,7 @@ export default function ResultsPage({
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5">
             <h1>Results</h1>
@@ -765,8 +849,15 @@ export default function ResultsPage({
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => load({ mode: "replace" })} disabled={loading}>
-            {loading ? "Refreshing…" : "Refresh"}
+          <Button
+            variant="secondary"
+            onClick={() => load({ mode: "replace" })}
+            disabled={loading}
+            aria-label="Refresh"
+            className="max-md:size-11 max-md:px-0"
+          >
+            <RefreshCw className={`h-4 w-4 md:hidden ${loading ? "animate-spin" : ""}`} aria-hidden />
+            <span className="max-md:hidden">{loading ? "Refreshing…" : "Refresh"}</span>
           </Button>
         </div>
       </div>
@@ -776,7 +867,7 @@ export default function ResultsPage({
           the same permission the mint route demands. */}
       <AssistLinkCard />
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2 md:gap-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as ResultsTab)}>
           <TabsList>
             {STAGE_BUCKETS.map((bucket) => (
@@ -799,15 +890,15 @@ export default function ResultsPage({
         </Tabs>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex w-full flex-col gap-2 sm:max-w-2xl sm:flex-row">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:max-w-2xl sm:flex-row">
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email, order # or id…"
-              className="sm:max-w-xs"
+              className="col-span-2 sm:max-w-xs"
             />
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="sm:w-40">
+              <SelectTrigger className="min-w-0 sm:w-40 sm:min-w-[12rem]">
                 <SelectValue placeholder="Source" />
               </SelectTrigger>
               <SelectContent>
@@ -822,7 +913,7 @@ export default function ResultsPage({
               value={orderFilter}
               onValueChange={(v) => setOrderFilter(v as OrderFilter)}
             >
-              <SelectTrigger className="sm:w-44">
+              <SelectTrigger className="min-w-0 sm:w-44 sm:min-w-[12rem]">
                 <SelectValue placeholder="Order" />
               </SelectTrigger>
               <SelectContent>
@@ -833,7 +924,7 @@ export default function ResultsPage({
               </SelectContent>
             </Select>
           </div>
-          <div className="text-xs text-muted-foreground text-right">
+          <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground sm:block sm:text-right">
             <div>Showing {filtered.length} result(s)</div>
             <div>
               Loaded {rows.length}
@@ -849,7 +940,14 @@ export default function ResultsPage({
         <div className="space-y-3">
           {selectedRows.length > 0 && (
             <div className="flex flex-col items-stretch gap-2 rounded-md border bg-muted/40 p-2 md:flex-row md:flex-wrap md:items-center">
-              <span className="text-sm font-medium">{selectedRows.length} selected</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{selectedRows.length} selected</span>
+                {/* The table's select-all box is not on the phone list. */}
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm transition-colors active:bg-press md:hidden">
+                  <Checkbox checked={allSelected} onCheckedChange={(v) => toggleAll(v === true)} />
+                  Select all
+                </label>
+              </div>
               <Select value={bulkLocation} onValueChange={setBulkLocation}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Set location…" />
@@ -906,6 +1004,70 @@ export default function ResultsPage({
               </PageActions>
             </div>
           )}
+          {filtered.length === 0 ? (
+            <EmptyState className="md:hidden">
+              {tab === "stuck"
+                ? "Nothing is stuck. Every result is moving."
+                : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
+            </EmptyState>
+          ) : (
+            <MobileList>
+              {filtered.map((row) => {
+                const name = safeString(row.data?.name) || "—";
+                const size = row.assigned_size ?? row.suggested_size;
+                const stage = stageById.get(row.id)?.stage ?? "measurement_only";
+                const stuckReason = stageById.get(row.id)?.stuckReason ?? null;
+                return (
+                  <MobileListRow
+                    key={row.id}
+                    href={to(`/settings/results/${row.id}`)}
+                    actions={
+                      <>
+                        <Checkbox
+                          checked={selected.has(row.id)}
+                          onCheckedChange={(v) => toggleOne(row.id, v === true)}
+                          aria-label={`Select ${row.customer_email || name}`}
+                          // The 44px hit area spills 14px past the box: keep it
+                          // clear of the link and 8px from the menu button.
+                          className="ml-3.5 mr-[18px]"
+                        />
+                        {rowMenu(row, Boolean(deleting[row.id]))}
+                      </>
+                    }
+                  >
+                    <p className="truncate text-sm font-medium">{row.customer_email || name}</p>
+                    {size && (
+                      <p className="truncate text-xs text-muted-foreground capitalize">
+                        {size} · {(row.assigned_tier ?? row.suggested_tier) ?? "—"} tier
+                      </p>
+                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className={STAGE_BADGE_CLASS[stage]}>
+                        {STAGE_LABELS[stage]}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={
+                          row.source === "staff_assisted"
+                            ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+                            : undefined
+                        }
+                      >
+                        {sourceLabel(row.source)}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatAdminDateMY(row.updated_at)}
+                      </span>
+                    </div>
+                    {stuckReason && (
+                      <p className="mt-0.5 text-xs text-red-700">{STUCK_REASON_LABELS[stuckReason]}</p>
+                    )}
+                  </MobileListRow>
+                );
+              })}
+            </MobileList>
+          )}
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1009,13 +1171,7 @@ export default function ResultsPage({
                               : ""
                           }`}
                         >
-                          {row.source === "online_purchase"
-                            ? "Purchase"
-                            : row.source === "online_customization"
-                              ? "Online"
-                              : row.source === "staff_assisted"
-                                ? "Assisted"
-                                : "In-store"}
+                          {sourceLabel(row.source)}
                         </Badge>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -1142,76 +1298,7 @@ export default function ResultsPage({
                           e.stopPropagation();
                         }}
                       >
-                        {/*
-                          One kebab per row instead of a column per action. The
-                          table already scrolls sideways on a phone, and the
-                          actions staff want here — chase the customer, open the
-                          build — were otherwise only reachable from inside the
-                          detail page.
-                        */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="min-h-11 min-w-11"
-                              aria-label="Result actions"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuItem
-                              onSelect={() => router.push(to(`/settings/results/${row.id}`))}
-                            >
-                              <SquareArrowOutUpRight className="h-4 w-4" />
-                              Open result
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={
-                                Boolean(requestingPayment[row.id]) ||
-                                row.status !== "assigned" ||
-                                !row.customer_email
-                              }
-                              // Let the menu close: the toast is the feedback,
-                              // and an open menu would sit on top of it on the
-                              // phone screen where staff actually do this.
-                              onSelect={() => void requestPayment(row)}
-                            >
-                              <Send className="h-4 w-4" />
-                              Request payment
-                            </DropdownMenuItem>
-                            {/* Why the item above is greyed out, rather than
-                                leaving staff to guess. */}
-                            {row.status !== "assigned" ? (
-                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
-                                Only an assigned build can be paid for
-                              </DropdownMenuLabel>
-                            ) : !row.customer_email ? (
-                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
-                                No customer email on file
-                              </DropdownMenuLabel>
-                            ) : (row.payment_reminder_count ?? 0) > 0 ? (
-                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
-                                {row.payment_reminder_count} auto reminder
-                                {row.payment_reminder_count === 1 ? "" : "s"} sent
-                              </DropdownMenuLabel>
-                            ) : null}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              disabled={isDeleting}
-                              onSelect={() => {
-                                setDeleteTarget(row);
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete result
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {rowMenu(row, isDeleting)}
                       </TableCell>
                     </TableRow>
                   );
@@ -1219,6 +1306,7 @@ export default function ResultsPage({
               )}
             </TableBody>
           </Table>
+          </div>
 
           {typeof totalCount === "number" && rows.length < totalCount ? (
             <div className="flex items-center justify-center">

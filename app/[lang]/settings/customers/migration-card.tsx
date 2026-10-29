@@ -1,11 +1,13 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import { percentOf, signedUpPercent, type MigrationSummary } from "@/lib/customer-migration/overview";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatPoints } from "@/lib/points/value";
+import { cn } from "@/lib/utils";
 
 /**
  * One figure on the card: slice 06 adds *Clicked*; slice 08 adds *Emailed*,
@@ -73,12 +75,15 @@ export function MigrationCard({
     /** Applies that filter in place (the list keeps its filters in state and the URL). */
     onShowNotSignedUp: () => void;
 }) {
+    // Phones open on a one-line summary; the seven figures are a tap away.
+    const [figuresOpen, setFiguresOpen] = useState(false);
     if (summary.batchesApplied < 1) return null;
     const notSignedUp = summary.imported - summary.signedUp;
+    const cells = migrationCells(summary);
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
+        <Card className="max-md:gap-1">
+            <CardHeader className="pb-3 max-md:pb-0">
                 <CardTitle className="text-base flex items-center gap-1.5">
                     Shopify migration
                     <InfoTip label="About the Shopify migration">
@@ -105,12 +110,33 @@ export function MigrationCard({
                     </InfoTip>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {migrationCells(summary).map((cell) => (
-                        <div key={cell.label} className="rounded-lg border p-3">
+            <CardContent className="space-y-3 max-md:space-y-0">
+                <button
+                    type="button"
+                    onClick={() => setFiguresOpen((o) => !o)}
+                    aria-expanded={figuresOpen}
+                    className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-2 rounded-md px-2 text-left text-sm transition-colors active:bg-press md:hidden"
+                >
+                    <span className="min-w-0">
+                        <span className="font-semibold tabular-nums">{summary.imported.toLocaleString("en-SG")}</span>{" "}
+                        imported,{" "}
+                        <span className="font-semibold tabular-nums">{cells[1]!.value}</span> signed up
+                    </span>
+                    <ChevronDown
+                        className={cn("size-4 shrink-0 text-muted-foreground transition-transform", figuresOpen && "rotate-180")}
+                        aria-hidden
+                    />
+                </button>
+                <dl
+                    className={cn(
+                        "grid grid-cols-2 gap-x-3 gap-y-4 max-md:py-2 md:gap-3 xl:grid-cols-3",
+                        !figuresOpen && "max-md:hidden",
+                    )}
+                >
+                    {cells.map((cell) => (
+                        <div key={cell.label} className="min-w-0 rounded-lg border p-3 max-md:rounded-none max-md:border-0 max-md:p-0">
                             <dt className="text-xs text-muted-foreground">{cell.label}</dt>
-                            <dd className="text-xl font-semibold tabular-nums">{cell.value}</dd>
+                            <dd className="text-lg font-semibold tabular-nums break-words md:text-xl">{cell.value}</dd>
                             <dd className="text-xs text-muted-foreground">{cell.detail}</dd>
                         </div>
                     ))}
@@ -122,7 +148,7 @@ export function MigrationCard({
                             e.preventDefault();
                             onShowNotSignedUp();
                         }}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline active:opacity-60 max-md:min-h-11"
                     >
                         {notSignedUp.toLocaleString("en-SG")} from Shopify not signed up yet
                         <ArrowRight className="h-3.5 w-3.5" />

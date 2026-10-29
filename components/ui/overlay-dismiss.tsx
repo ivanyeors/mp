@@ -17,8 +17,8 @@ const overlayDismissCornerClassName =
   "bottom-[calc(0.75rem+var(--safe-bottom))] right-4 md:bottom-auto md:top-4 md:min-h-0 md:min-w-0 md:rounded-xs"
 
 /**
- * When the X floats over content that scrolls underneath it (pinned / sticky
- * variants) give it a translucent backdrop on mobile so it stays legible.
+ * When the X floats over content that scrolls underneath it (pinned variant)
+ * give it a translucent backdrop on mobile so it stays legible.
  */
 const overlayDismissFloatingClassName =
   "max-md:bg-background/80 max-md:backdrop-blur-sm max-md:supports-[backdrop-filter]:bg-background/60"
@@ -32,12 +32,9 @@ type OverlayDismissButtonProps = React.ComponentProps<"button"> & {
    * - "pinned": same corners but `fixed`, so the X stays put while the overlay
    *   scrolls its own content. For edge-anchored overlays (right / bottom
    *   sheets) whose corner coincides with the viewport corner.
-   * - "sticky": in document flow at the END of the overlay's content, right
-   *   aligned, `sticky` to the bottom of the scrollport on mobile; `absolute`
-   *   top-right on md+. For centered dialogs that scroll on mobile.
    * - "inline": hug icon, no positioning.
    */
-  variant?: "corner" | "pinned" | "sticky" | "inline"
+  variant?: "corner" | "pinned" | "inline"
 }
 
 export const OverlayDismissButton = React.forwardRef<
@@ -59,14 +56,6 @@ export const OverlayDismissButton = React.forwardRef<
           "fixed",
           overlayDismissCornerClassName,
           overlayDismissFloatingClassName,
-        ],
-        variant === "sticky" && [
-          // Mobile: last item in flow, hugging the right edge, stuck to the
-          // bottom of the scrollport while the dialog body scrolls.
-          "max-md:sticky max-md:bottom-6 max-md:self-end max-md:justify-self-end",
-          overlayDismissFloatingClassName,
-          // md+: classic top-right corner (desktop dialogs do not scroll).
-          "md:absolute md:top-4 md:right-4 md:min-h-0 md:min-w-0 md:rounded-xs",
         ],
         variant === "inline" && "md:min-h-0 md:min-w-0",
         className

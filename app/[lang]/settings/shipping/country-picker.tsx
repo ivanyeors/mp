@@ -23,10 +23,10 @@ function Chip({ code, label, selected, onClick }: { code: string; label: string;
             aria-pressed={selected}
             title={code}
             className={cn(
-                "rounded border px-2 py-0.5 text-xs transition-colors",
+                "rounded border px-2 py-0.5 text-xs transition-colors max-md:min-h-11 max-md:px-3 max-md:text-sm",
                 selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background hover:bg-muted",
+                    ? "border-primary bg-primary text-primary-foreground active:bg-primary/80"
+                    : "border-border bg-background hover:bg-muted active:bg-press",
             )}
         >
             {label}
@@ -106,7 +106,7 @@ export function CountryPicker({ value, onChange }: { value: string[]; onChange: 
             </div>
 
             {q ? (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 max-md:gap-2">
                     {matches.length === 0 ? (
                         <p className="text-xs text-muted-foreground">No country matches “{query.trim()}”.</p>
                     ) : (
@@ -124,12 +124,12 @@ export function CountryPicker({ value, onChange }: { value: string[]; onChange: 
                         const isOpen = open.has(key);
                         return (
                             <div key={key}>
-                                <div className="flex items-center gap-2 px-3 py-2">
+                                <div className="flex items-center gap-2 px-3 py-2 max-md:py-0">
                                     <button
                                         type="button"
                                         onClick={() => toggleOpen(key)}
                                         aria-expanded={isOpen}
-                                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-medium"
+                                        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md text-left text-sm font-medium transition-colors max-md:min-h-11 active:bg-press"
                                     >
                                         <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform", isOpen && "rotate-90")} />
                                         <span className="truncate">{label}</span>
@@ -137,12 +137,12 @@ export function CountryPicker({ value, onChange }: { value: string[]; onChange: 
                                             {count}/{codes.length}
                                         </span>
                                     </button>
-                                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setMany(codes, !all)}>
+                                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs max-md:min-w-11" onClick={() => setMany(codes, !all)}>
                                         {all ? "None" : "All"}
                                     </Button>
                                 </div>
                                 {isOpen && (
-                                    <div className="flex flex-wrap gap-1 px-3 pb-3">
+                                    <div className="flex flex-wrap gap-1 px-3 pb-3 max-md:gap-2">
                                         {codes.map((code) => (
                                             <Chip
                                                 key={code}
@@ -161,14 +161,14 @@ export function CountryPicker({ value, onChange }: { value: string[]; onChange: 
             )}
 
             {others.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1 max-md:gap-2">
                     <span className="text-xs text-muted-foreground">Not in the country list:</span>
                     {others.map((code) => (
                         <button
                             key={code}
                             type="button"
                             onClick={() => toggle(code)}
-                            className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs hover:bg-muted"
+                            className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs hover:bg-muted active:bg-press max-md:min-h-11 max-md:px-3"
                             aria-label={`Remove ${code}`}
                         >
                             {code}

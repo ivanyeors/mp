@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,9 +74,12 @@ function onEnter(e: KeyboardEvent<HTMLInputElement>) {
 export function CustomerFiltersPanel({
     filters,
     onChange,
+    children,
 }: {
     filters: CustomerListFilters;
     onChange: (patch: Partial<CustomerListFilters>) => void;
+    /** Extra controls at the top of the panel: the toolbar's selects, on a phone. */
+    children?: ReactNode;
 }) {
     const id = useId();
     const lastOrderOptions =
@@ -96,6 +99,7 @@ export function CustomerFiltersPanel({
 
     return (
         <div className="grid min-w-0 gap-5 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
+            {children}
             <fieldset className="min-w-0 sm:col-span-2 lg:col-span-4">
                 <legend className="mb-2.5 text-sm font-medium">Stage</legend>
                 <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-5">
@@ -376,7 +380,7 @@ export function CustomerFilterSummary({
                         type="button"
                         aria-label="Dismiss"
                         onClick={() => setNoteOpen(false)}
-                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full hover:bg-muted"
+                        className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors after:absolute after:-inset-2.5 after:content-[''] hover:bg-muted active:bg-press"
                     >
                         <X className="h-3.5 w-3.5" />
                     </button>
@@ -391,7 +395,7 @@ export function CustomerFilterSummary({
                                 type="button"
                                 aria-label={`Remove filter: ${label}`}
                                 onClick={() => onClear(key)}
-                                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-muted-foreground/20"
+                                className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors after:absolute after:-inset-3 after:content-[''] hover:bg-muted-foreground/20 active:bg-press"
                             >
                                 <X className="h-3 w-3" />
                             </button>

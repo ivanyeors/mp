@@ -14,10 +14,14 @@ export function DocArticle({ sections, to }: { sections: DocSection[]; to: (href
                 <h2 id="doc-contents" className="text-sm font-medium">
                     Contents
                 </h2>
-                <ol className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+                <ol className="mt-1 grid text-sm sm:grid-cols-2 md:mt-2 md:gap-1">
                     {sections.map((s, i) => (
                         <li key={s.id}>
-                            <a href={`#${s.id}`} className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                            {/* Phone: each entry is a 44px row with a pressed tint, not a 17px line of text. */}
+                            <a
+                                href={`#${s.id}`}
+                                className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline max-md:-mx-2 max-md:flex max-md:min-h-11 max-md:items-center max-md:rounded-md max-md:px-2 max-md:active:bg-press md:active:opacity-60"
+                            >
                                 {i + 1}. {s.heading}
                             </a>
                         </li>
@@ -93,9 +97,13 @@ function Block({ block, to }: { block: DocBlock; to: (href: string) => string })
             );
         case "links":
             return (
-                <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm max-md:gap-y-0">
                     {block.items.map((l) => (
-                        <Link key={l.href + l.label} href={to(l.href)} className="underline underline-offset-4">
+                        <Link
+                            key={l.href + l.label}
+                            href={to(l.href)}
+                            className="underline underline-offset-4 active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                        >
                             {l.label}
                         </Link>
                     ))}

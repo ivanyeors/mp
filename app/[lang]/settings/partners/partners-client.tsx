@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  MoreHorizontal,
   Pencil,
   Plus,
   Save,
@@ -31,6 +32,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { SortableRow } from "@/components/ui/sortable-row";
 import { Switch } from "@/components/ui/switch";
@@ -47,11 +55,18 @@ import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { usePathname } from "next/navigation";
 import { InfoTip } from "@/components/ui/info-tip";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  MOBILE_MD_COMMANDS,
+  MOBILE_MD_EXTRA_COMMANDS,
+} from "@/components/settings/markdown-toolbar";
 
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor").then((mod) => mod.default),
   { ssr: false },
 );
+
+const menuItemClassName = "max-md:min-h-11";
 
 function emptyWorkWithUs(): WorkWithUsContent {
   return {
@@ -129,6 +144,7 @@ export default function PartnersSettingsPage({
   const locale = getLocaleFromPathname(pathname) ?? "en-US";
   const to = (href: string) => withLocale(href, locale as Locale);
   const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const initialPageRow = initialData?.page.row ?? null;
 
@@ -427,7 +443,7 @@ export default function PartnersSettingsPage({
                 className={`min-h-11 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   activeLocale === loc
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-press"
                 }`}
               >
                 {loc === "en-US" ? "English" : "中文"}
@@ -510,6 +526,8 @@ export default function PartnersSettingsPage({
                 onChange={(v) => updateActiveContent({ body: v ?? "" })}
                 height={280}
                 preview="edit"
+                commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+                extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
               />
             </div>
 
@@ -591,12 +609,12 @@ export default function PartnersSettingsPage({
                   id={partner.id}
                   index={index}
                   label={partner.name}
-                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3 max-md:flex-nowrap max-md:gap-1 max-md:px-1 max-md:py-1.5"
                 >
                   {(grip) => (
                     <>
                       {grip}
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 max-md:hidden">
                         <Button
                           type="button"
                           variant="ghost"
@@ -619,7 +637,7 @@ export default function PartnersSettingsPage({
                         </Button>
                       </div>
 
-                      <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted">
+                      <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted max-md:hidden">
                         {partner.logo_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -632,21 +650,26 @@ export default function PartnersSettingsPage({
                         )}
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{partner.name}</span>
-                          <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                      <div className="min-w-0 flex-1 max-md:py-1">
+                        <div className="flex items-center gap-2 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1">
+                          <span className="font-medium max-md:break-words">{partner.name}</span>
+                          <span className="shrink-0 whitespace-nowrap rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
                             {partner.type === "own" ? "Own studio" : "Partner"}
                           </span>
+                          {partner.type !== "own" && !partner.visible ? (
+                            <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground md:hidden">
+                              Hidden
+                            </span>
+                          ) : null}
                         </div>
                         {partner.address || partner.description ? (
-                          <div className="truncate text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground md:truncate max-md:mt-0.5 max-md:break-words">
                             {partner.address ?? partner.description}
                           </div>
                         ) : null}
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 max-md:hidden">
                         {partner.type === "own" ? null : (
                           <Button
                             type="button"
@@ -679,6 +702,61 @@ export default function PartnersSettingsPage({
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
+
+                      {/* Phones: one menu instead of five icons on two rows. Non-modal, so Edit can open the dialog. */}
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-11 shrink-0 md:hidden"
+                            aria-label={`Actions for ${partner.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-48">
+                          <DropdownMenuItem className={menuItemClassName} onSelect={() => openPartnerDialog(partner)}>
+                            <Pencil />
+                            Edit
+                          </DropdownMenuItem>
+                          {partner.type === "own" ? null : (
+                            <DropdownMenuItem
+                              className={menuItemClassName}
+                              onSelect={() => handleToggleVisibility(partner)}
+                            >
+                              {partner.visible ? <EyeOff /> : <Eye />}
+                              {partner.visible ? "Hide from public page" : "Show on public page"}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className={menuItemClassName}
+                            disabled={index === 0}
+                            onSelect={() => movePartner(index, -1)}
+                          >
+                            <ChevronUp />
+                            Move up
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className={menuItemClassName}
+                            disabled={index === partners.length - 1}
+                            onSelect={() => movePartner(index, 1)}
+                          >
+                            <ChevronDown />
+                            Move down
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            className={menuItemClassName}
+                            onSelect={() => handleDeletePartner(partner.id)}
+                          >
+                            <Trash2 />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </>
                   )}
                 </SortableRow>
@@ -699,12 +777,17 @@ export default function PartnersSettingsPage({
             className="space-y-1.5"
             data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}
           >
-            <Label>Agreement in Markdown (live preview)</Label>
+            <Label>
+              Agreement in Markdown<span className="max-md:hidden"> (live preview)</span>
+            </Label>
             <MDEditor
               value={agreementMd}
               onChange={(v) => setAgreementMd(v ?? "")}
               height={460}
-              preview="live"
+              // Side-by-side halves are ~170px wide on a phone; the toolbar still toggles the preview.
+              preview={isMobile ? "edit" : "live"}
+              commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+              extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
             />
           </div>
           <Button onClick={handleSaveAgreement} disabled={savingAgreement}>
@@ -735,7 +818,7 @@ export default function PartnersSettingsPage({
                     className={`min-h-11 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                       partnerForm.type === t
                         ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-press"
                     }`}
                   >
                     {t === "own" ? "Own studio" : "Partner"}
@@ -811,9 +894,10 @@ export default function PartnersSettingsPage({
                     rows={2}
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label>Visible on public page</Label>
+                <div className="flex items-center justify-between max-md:min-h-11">
+                  <Label htmlFor="partner-visible">Visible on public page</Label>
                   <Switch
+                    id="partner-visible"
                     checked={partnerForm.visible}
                     onCheckedChange={(checked) => setPartnerForm((f) => ({ ...f, visible: checked }))}
                   />

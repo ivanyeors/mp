@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { collectLowStockCategories } from "@/lib/inventory/part-category-low-stock";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ImageIcon, Plus, RotateCw, ShoppingCart, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ImageIcon, Plus, RotateCw, ShoppingCart, Trash2 } from "lucide-react";
 import {
   sellPart,
   receiveStock,
@@ -34,6 +34,7 @@ import {
 } from "./actions";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -767,7 +768,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1>Inventory</h1>
         <PageActions docked>
@@ -799,36 +800,21 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           imageUrls={composedImageUrls}
           setImageUrls={setComposedImageUrls}
         />
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {['XS','S','M','L','XL'].map(sz => {
-            const available = Number(buildable[sz] ?? 0);
-            const disabled = available <= 0;
-            return (
-              <div
-                key={sz}
-                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
-                role="button"
-                aria-disabled={disabled}
-                tabIndex={0}
-                onClick={() => { if (!disabled) incrementPillowSelection(sz); }}
-                onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) incrementPillowSelection(sz); }}
-              >
-                <div className="text-xs text-muted-foreground">{sz}</div>
-                <div className="text-2xl font-semibold">{available}</div>
-              </div>
-            );
-          })}
-          {/* Custom Pillow - opens drawer */}
-          <div
-            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
-            role="button"
-            tabIndex={0}
-            onClick={() => setCustomPillowDrawerOpen(true)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCustomPillowDrawerOpen(true); }}
-          >
-            <div className="text-xs text-muted-foreground">Custom</div>
-            <div className="text-2xl font-semibold mt-1 truncate">Configure…</div>
-          </div>
+        <div className="grid grid-cols-5 gap-2 md:grid-cols-6 md:gap-3">
+          {['XS','S','M','L','XL'].map(sz => (
+            <BuildableTile
+              key={sz}
+              label={sz}
+              available={Number(buildable[sz] ?? 0)}
+              onSelect={() => incrementPillowSelection(sz)}
+            />
+          ))}
+          <CustomBuildTile
+            label="Custom"
+            phoneLabel="Custom pillow"
+            className="col-span-5"
+            onOpen={() => setCustomPillowDrawerOpen(true)}
+          />
         </div>
       </section>
 
@@ -839,29 +825,15 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           imageUrls={composedImageUrls}
           setImageUrls={setComposedImageUrls}
         />
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {['XS','S','M','L','XL'].map(sz => {
-            const available = Number(premiumBuildable[sz] ?? 0);
-            const disabled = available <= 0;
-            return (
-              <div
-                key={`premium-${sz}`}
-                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
-                role="button"
-                aria-disabled={disabled}
-                tabIndex={0}
-                onClick={() => { if (!disabled) openSellDrawerForPillow(sz, "premium", "linen"); }}
-                onKeyDown={(e) => {
-                  if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-                    openSellDrawerForPillow(sz, "premium", "linen");
-                  }
-                }}
-              >
-                <div className="text-xs text-muted-foreground">{sz}</div>
-                <div className="text-2xl font-semibold">{available}</div>
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-5 gap-2 md:grid-cols-6 md:gap-3">
+          {['XS','S','M','L','XL'].map(sz => (
+            <BuildableTile
+              key={`premium-${sz}`}
+              label={sz}
+              available={Number(premiumBuildable[sz] ?? 0)}
+              onSelect={() => openSellDrawerForPillow(sz, "premium", "linen")}
+            />
+          ))}
         </div>
       </section>
 
@@ -873,81 +845,35 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           imageUrls={composedImageUrls}
           setImageUrls={setComposedImageUrls}
         />
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {(() => {
-            const available = Number(buildableBolsterShort ?? 0);
-            const disabled = available <= 0;
-            return (
-              <div
-                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
-                role="button"
-                aria-disabled={disabled}
-                tabIndex={0}
-                onClick={() => { if (!disabled) incrementPillowSelection('Bolster Short (0.8m)'); }}
-                onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) incrementPillowSelection('Bolster Short (0.8m)'); }}
-              >
-                <div className="text-xs text-muted-foreground">Bolster</div>
-                <div className="text-2xl font-semibold">{available}</div>
-                <div className="mt-1 text-xs text-muted-foreground">Short (0.8m)</div>
-              </div>
-            );
-          })()}
-          {(() => {
-            const available = Number(buildableBolsterMedium ?? 0);
-            const disabled = available <= 0;
-            return (
-              <div
-                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
-                role="button"
-                aria-disabled={disabled}
-                tabIndex={0}
-                onClick={() => { if (!disabled) incrementPillowSelection('Bolster Medium (1m)'); }}
-                onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) incrementPillowSelection('Bolster Medium (1m)'); }}
-              >
-                <div className="text-xs text-muted-foreground">Bolster</div>
-                <div className="text-2xl font-semibold">{available}</div>
-                <div className="mt-1 text-xs text-muted-foreground">Medium (1m)</div>
-              </div>
-            );
-          })()}
-          {(() => {
-            const available = Number(buildableBolsterLong ?? 0);
-            const disabled = available <= 0;
-            return (
-              <div
-                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
-                role="button"
-                aria-disabled={disabled}
-                tabIndex={0}
-                onClick={() => { if (!disabled) incrementPillowSelection('Bolster Long (1.2m)'); }}
-                onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) incrementPillowSelection('Bolster Long (1.2m)'); }}
-              >
-                <div className="text-xs text-muted-foreground">Bolster</div>
-                <div className="text-2xl font-semibold">{available}</div>
-                <div className="mt-1 text-xs text-muted-foreground">Long (1.2m)</div>
-              </div>
-            );
-          })()}
-          {/* Custom Bolster - opens drawer */}
-          <div
-            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
-            role="button"
-            tabIndex={0}
-            onClick={() => setCustomBolsterDrawerOpen(true)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCustomBolsterDrawerOpen(true); }}
-          >
-            <div className="text-xs text-muted-foreground">Custom bolster</div>
-            <div className="text-2xl font-semibold mt-1 truncate">Configure…</div>
-          </div>
+        <div className="grid grid-cols-3 gap-2 md:grid-cols-6 md:gap-3">
+          {([
+            { variant: 'Bolster Short (0.8m)', length: 'Short (0.8m)', available: buildableBolsterShort },
+            { variant: 'Bolster Medium (1m)', length: 'Medium (1m)', available: buildableBolsterMedium },
+            { variant: 'Bolster Long (1.2m)', length: 'Long (1.2m)', available: buildableBolsterLong },
+          ] as const).map(({ variant, length, available }) => (
+            <BuildableTile
+              key={variant}
+              label="Bolster"
+              detail={length}
+              available={Number(available ?? 0)}
+              onSelect={() => incrementPillowSelection(variant)}
+            />
+          ))}
+          <CustomBuildTile
+            label="Custom bolster"
+            phoneLabel="Custom bolster"
+            className="col-span-3"
+            onOpen={() => setCustomBolsterDrawerOpen(true)}
+          />
         </div>
       </section>
 
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select parts</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
           {/* Custom parts card */}
           <div
-            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
+            className="rounded border p-3 hover:bg-muted/40 active:bg-press transition cursor-pointer flex flex-col gap-3"
             onClick={() => { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); }}
             role="button"
             tabIndex={0}
@@ -966,7 +892,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             return (
               <div
                 key={group.key}
-                className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
+                className="rounded border p-3 hover:bg-muted/40 active:bg-press transition cursor-pointer flex flex-col gap-3"
                 onClick={() => { setPartDrawerGroup(group); setPartDrawerOpen(true); }}
                 role="button"
                 tabIndex={0}
@@ -983,13 +909,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             );
           })}
         </div>
-      </section>
-
-      <Separator />
-
-      <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Inventory management</div>
-        {/* Use the Select sections above to open the drawer for stock-in per variant */}
       </section>
 
       {/* Cart Drawer */}
@@ -2318,18 +2237,18 @@ function BaseImageControl({ name, current, title, save }: {
       );
 
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex shrink-0 items-center gap-1 max-md:gap-2">
       <ImagePicker onSelect={(sel) => void apply(sel.assetId, sel.url)}>
         <Button
           size="sm"
           variant="outline"
           aria-label={`${current ? "Change" : "Set"} image for ${name}`}
           title={title}
-          className={current ? "overflow-hidden p-0" : undefined}
+          className={cn("max-md:min-w-11", current && "overflow-hidden p-0")}
         >
           {current ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={current} alt="" className="h-full w-9 object-cover" />
+            <img src={current} alt="" className="h-full w-9 object-cover max-md:w-11" />
           ) : (
             <ImageIcon className="h-4 w-4" />
           )}
@@ -2369,6 +2288,68 @@ function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
         )
       }
     />
+  );
+}
+
+/**
+ * One buildable count. On a phone the five sizes share a row of small tiles;
+ * the roomier stat tile comes back from `md`.
+ */
+function BuildableTile({ label, detail, available, onSelect }: {
+  label: string;
+  /** A second line, e.g. a bolster's length; on a phone it replaces `label`. */
+  detail?: string;
+  available: number;
+  onSelect: () => void;
+}) {
+  const disabled = available <= 0;
+  return (
+    <div
+      className={cn(
+        "flex flex-col rounded border px-1 py-2 text-center transition md:block md:p-3 md:text-left",
+        disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-muted/40 active:bg-press cursor-pointer",
+      )}
+      role="button"
+      aria-disabled={disabled}
+      tabIndex={0}
+      onClick={() => { if (!disabled) onSelect(); }}
+      onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) onSelect(); }}
+    >
+      <div className={cn("text-xs text-muted-foreground", detail && "max-md:hidden")}>{label}</div>
+      <div className="text-lg font-semibold tabular-nums md:text-2xl">{available}</div>
+      {detail ? <div className="text-xs text-muted-foreground max-md:order-first md:mt-1">{detail}</div> : null}
+    </div>
+  );
+}
+
+/** Opens a custom-build drawer: a stat-sized tile from `md`, a plain full-width row on a phone. */
+function CustomBuildTile({ label, phoneLabel, className, onOpen }: {
+  label: string;
+  phoneLabel: string;
+  /** The phone column span, so the row fills its grid. */
+  className: string;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-11 items-center justify-between gap-2 rounded border px-3 py-2 hover:bg-muted/40 active:bg-press transition cursor-pointer md:col-span-1 md:block md:p-3",
+        className,
+      )}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
+    >
+      <div className="text-sm font-medium md:text-xs md:font-normal md:text-muted-foreground">
+        <span className="md:hidden">{phoneLabel}</span>
+        <span className="max-md:hidden">{label}</span>
+      </div>
+      <div className="flex items-center gap-1 text-sm text-muted-foreground md:mt-1 md:block md:truncate md:text-2xl md:font-semibold md:text-foreground">
+        Configure…
+        <ChevronRight className="size-4 md:hidden" aria-hidden />
+      </div>
+    </div>
   );
 }
 

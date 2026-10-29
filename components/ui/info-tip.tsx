@@ -21,7 +21,7 @@ function InfoTip({
       <PopoverTrigger
         aria-label={label}
         className={cn(
-          "text-muted-foreground hover:text-foreground focus-visible:ring-ring relative inline-flex after:absolute after:-inset-2.5 after:content-[''] size-6 shrink-0 items-center justify-center rounded-full align-middle outline-none focus-visible:ring-2",
+          "text-muted-foreground hover:text-foreground active:bg-press focus-visible:ring-ring relative inline-flex after:absolute after:-inset-2.5 after:content-[''] size-6 shrink-0 items-center justify-center rounded-full align-middle outline-none focus-visible:ring-2",
           className
         )}
       >

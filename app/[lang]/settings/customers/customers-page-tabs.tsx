@@ -75,8 +75,8 @@ export function CustomersPageTabs({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
           <InfoTip label="About Customers">
@@ -88,7 +88,7 @@ export function CustomersPageTabs({
           </InfoTip>
         </div>
         {importHref && (
-          <Button size="sm" variant="outline" className="self-start sm:self-auto" asChild>
+          <Button size="sm" variant="outline" asChild>
             <Link href={importHref}>
               <Upload className="mr-1.5 h-4 w-4" />
               Import from Shopify
