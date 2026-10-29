@@ -137,9 +137,11 @@ export default function shop({ scenario, now }) {
 
 ## The reminder at the end of a turn
 
-A Stop hook (`hooks/stop-check`, wired in `.claude/settings.json`) checks
-whether files that render pages (`app/**/*.tsx`, `app/[lang]/**/*.ts`,
-`components/`, `hooks/`, `lib/**/*.tsx`, styles, `public/`) changed since the
-last screenshots this session. If they did, it sends you back once to take
-them. When a change has nothing to look at (a type rename, a refactor with no
-visible effect), run `preview skip "<why>"` and say so in one line.
+A Stop hook (`hooks/stop-check`, wired in `.claude/settings.json`) checks the
+files that render pages (`app/**/*.tsx`, `app/[lang]/**/*.ts`, `components/`,
+`hooks/`, `lib/**/*.tsx`, styles, `public/`) by content. Any file whose
+content was neither there when the session started nor at a screenshot since
+sends you back, once, to take them. Switching back to a branch you already
+looked at does not count. When a change has nothing to look at (a type
+rename, a refactor with no visible effect), run `preview skip "<why>"` and
+say so in one line.

@@ -116,6 +116,12 @@ start_app() {
   exit 1
 }
 
+# What the Stop hook compares against: page files as they were when last looked at.
+mark_seen() {
+  "$here/hooks/ui-snapshot" >>"$state/seen"
+  sort -u -o "$state/seen" "$state/seen"
+}
+
 reset_db() {
   curl -sf -X POST "$db_url/__preview/reset?scenario=$1" >/dev/null
 }
@@ -147,8 +153,10 @@ case "$cmd" in
     start_app
     [ "$keep" = 1 ] || reset_db "$scenario"
     status=0
+    touch "$state/shoot-started"
     PREVIEW_APP_URL="$app_url" PREVIEW_SUPABASE_URL="$db_url" PREVIEW_NEXT_LOG="$state/next.log" PREVIEW_STATE_DIR="$state" \
       node "$here/lib/shoot.mjs" ${pass[@]+"${pass[@]}"} || status=$?
+    [ "$state/last-shot" -nt "$state/shoot-started" ] && mark_seen
     [ "$scenario" = "default" ] || reset_db default
     drop_agents_md
     exit "$status"
@@ -177,6 +185,7 @@ case "$cmd" in
     # The Stop hook asks for screenshots after a change to a page; this records why none were needed.
     [ -n "${1:-}" ] || { echo 'Say why: preview skip "<why nothing visible changed>"' >&2; exit 2; }
     printf '%s\nskipped: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >"$state/last-shot"
+    mark_seen
     echo "Noted: no screenshots needed ($*)."
     ;;
   selftest)
