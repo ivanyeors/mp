@@ -2,7 +2,7 @@
 
 **Issue:** [#373](https://github.com/ivanyeors/mp/issues/373) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done
 **Blocked by:** none. Slices 09, 10 and 17 read it.
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
