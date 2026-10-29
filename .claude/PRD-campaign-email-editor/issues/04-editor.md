@@ -2,7 +2,7 @@
 
 **Issue:** [#358](https://github.com/ivanyeors/mp/issues/358) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** partial: clicking a block in the preview selects its card only once the renderer marks each block in the preview (a preview-only `data-block-id`, lib/email, slice 15's lane); the Dark toggle reaches `renderCampaignPreview` and waits on slice 15's `forceDark` in the shell; the 375px and 1280px screenshots need a session with the real app
 **Blocked by:** 03
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:email`
 

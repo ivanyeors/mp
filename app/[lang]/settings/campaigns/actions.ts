@@ -147,20 +147,25 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
 /**
  * The editor's live preview of the draft as typed. Saves nothing. An empty
  * field shows its placeholder rather than an error (PRD-campaign-email-editor
- * decision 7); Save still asks for every word.
+ * decision 7); Save still asks for every word. `forceDark` is the preview's
+ * Dark toggle (slice 04), and `from` the sending setup's From, read-only in
+ * the editor and named in its inbox row.
  */
 export async function previewCampaign(
   input: CampaignDraftInput,
-): Promise<{ ok: true; subject: string; html: string; text: string } | Failure> {
+  { forceDark = false }: { forceDark?: boolean } = {},
+): Promise<{ ok: true; subject: string; html: string; text: string; from: string | null } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const parsed = parseDraft(input, CampaignPreviewSchema);
   if (!parsed.ok) return parsed;
   const workingAs = await getWorkingAs(ctx.memberId);
+  const setup = campaignSenderSetup();
   const rendered = renderCampaignPreview(parsed.draft, {
-    origin: campaignSenderSetup().origin,
+    origin: setup.origin,
     firstName: workingAs?.name.split(/\s+/)[0] ?? null,
+    forceDark: forceDark === true,
   });
-  return { ok: true, ...rendered };
+  return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
 }
 
 /** Every check a send must pass, for the page's status panel. Changes nothing. */

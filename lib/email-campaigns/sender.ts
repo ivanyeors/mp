@@ -215,10 +215,12 @@ export function renderCampaignFor(
  * unsubscribe link that unsubscribes nobody. An empty subject, message,
  * block field or button label shows its placeholder, dashed and muted
  * (PRD-campaign-email-editor decision 7), so an empty email's layout reads.
+ * `forceDark` is the preview's Dark toggle (slice 04), which the shell's
+ * dark rules take up in slice 15; no send has it.
  */
 export function renderCampaignPreview(
   campaign: CampaignEmailParts,
-  { origin, firstName }: { origin: string; firstName: string | null },
+  { origin, firstName }: { origin: string; firstName: string | null; forceDark?: boolean },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
   return renderCampaignFor(campaign, {

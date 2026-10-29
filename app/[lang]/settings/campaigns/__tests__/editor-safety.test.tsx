@@ -1,0 +1,225 @@
+// @vitest-environment jsdom
+import { choose, click, press, settle, typeField } from "@/components/block-editor/__tests__/dom";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { Toaster } from "sonner";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CampaignContent } from "@/lib/email-campaigns/content";
+import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
+
+/**
+ * Editing safety on the campaign editor (PRD-campaign-email-editor slice 04,
+ * decision 4): one history over the whole email, so ⌘Z and ⇧⌘Z (and the
+ * header's Undo and Redo) take back any change, Clear all included; ⌘S
+ * saves; leaving asks first; a crashed tab's unsaved changes are offered
+ * back. And the page's two tabs: Write, and Send as it was.
+ */
+
+const actions = vi.hoisted(() => ({
+  archiveCampaignAction: vi.fn(),
+  checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
+  duplicateCampaign: vi.fn(),
+  planCampaignWave: vi.fn(),
+  previewCampaign: vi.fn(async (input: CampaignDraftInput) => ({ ok: true as const, subject: input.subject, html: "<p>preview</p>", text: "", from: null })),
+  saveCampaign: vi.fn<(id: string | null, input: CampaignDraftInput) => Promise<{ ok: true; id: string }>>(async (id) => ({ ok: true, id: id ?? "new" })),
+  sendCampaignBatchAction: vi.fn(),
+  sendCampaignTestAction: vi.fn(),
+}));
+vi.mock("../actions", () => actions);
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/en-US/settings/campaigns/x",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+const { CampaignEditor } = await import("../campaign-editor");
+const { newCampaignDraft } = await import("@/lib/email-campaigns/rules");
+const { keptDraftKey } = await import("../kept-draft");
+
+const CONTENT: CampaignContent = {
+  v: 1,
+  blocks: [{ id: "title", type: "heading", level: 1, text: "Sleep cooler" }],
+  fallbacks: {},
+};
+const DRAFT: CampaignDraft = {
+  name: "December cooling launch",
+  subject: "Sleep cooler this December",
+  preheader: "",
+  body: "",
+  content: CONTENT,
+  greeting: true,
+  button: null,
+  audience: "subscribed",
+  segmentId: null,
+};
+const SAVED: Campaign = {
+  ...DRAFT,
+  id: "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a",
+  createdAt: "2026-10-21T00:00:00Z",
+  updatedAt: "2026-10-21T00:00:00Z",
+  lockedAt: null,
+  archivedAt: null,
+  createdBy: null,
+};
+
+let root: Root | null = null;
+function mount(campaign: Campaign | null, draft: CampaignDraft) {
+  const host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  act(() =>
+    root!.render(
+      <>
+        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={[]} staffEmail="owner@mpillow.com" />
+        <Toaster />
+      </>,
+    ),
+  );
+}
+
+const field = (id: string) => document.getElementById(id) as HTMLInputElement;
+const button = (label: string) =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label) ?? null;
+const headings = () => [...document.querySelectorAll<HTMLInputElement>("[data-block-id] [data-block-body] input")].map((i) => i.value);
+const undoToast = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast] [data-action]");
+const undo = () => press("z", { ctrl: true }, document.body);
+const redo = () => press("z", { ctrl: true, shift: true }, document.body);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  window.localStorage.clear();
+});
+afterEach(async () => {
+  act(() => root?.unmount());
+  root = null;
+  await settle(50);
+  document.body.innerHTML = "";
+});
+
+describe("one history over the whole email", () => {
+  it("undoes and redoes the subject, the blocks and the greeting, in the order they changed", async () => {
+    mount(SAVED, DRAFT);
+    expect(button("Undo")!.disabled).toBe(true);
+    typeField(field("c-subject"), "Sleep cooler, Mei Ling");
+    await choose(button("Add block")!, "Heading");
+    typeField(document.querySelectorAll<HTMLInputElement>("[data-block-id] [data-block-body] input")[1], "Why FibreCool");
+    await click(document.getElementById("c-greeting")!);
+
+    undo();
+    expect(document.getElementById("c-greeting")!.getAttribute("aria-checked")).toBe("true");
+    undo();
+    expect(headings()).toEqual(["Sleep cooler", ""]);
+    undo();
+    expect(headings()).toEqual(["Sleep cooler"]);
+    await click(button("Undo")!);
+    expect(field("c-subject").value).toBe("Sleep cooler this December");
+    expect(button("Undo")!.disabled).toBe(true);
+    expect(button("Save changes")!.disabled).toBe(true); // back where it was saved
+
+    await click(button("Redo")!);
+    redo();
+    expect(field("c-subject").value).toBe("Sleep cooler, Mei Ling");
+    expect(headings()).toEqual(["Sleep cooler", ""]);
+  });
+
+  it("leaves the Send tab's own fields their own undo", () => {
+    mount(SAVED, DRAFT);
+    typeField(field("c-subject"), "Sleep cooler, Mei Ling");
+    press("z", { ctrl: true }, field("c-test"));
+    expect(field("c-subject").value).toBe("Sleep cooler, Mei Ling");
+    press("z", { ctrl: true }, field("c-name"));
+    expect(field("c-subject").value).toBe(DRAFT.subject);
+  });
+
+  it("makes Clear all one step: ⌘Z brings the email back and ⇧⌘Z clears it again", async () => {
+    mount(SAVED, DRAFT);
+    await click(button("Clear all")!);
+    expect(field("c-name").value).toBe("");
+    expect(headings()).toEqual([]);
+    undo();
+    expect(field("c-name").value).toBe(DRAFT.name);
+    expect(headings()).toEqual(["Sleep cooler"]);
+    redo();
+    expect(field("c-name").value).toBe("");
+    expect(headings()).toEqual([]);
+  });
+
+  it("puts the words back from the toast's Undo even after more typing, as a step of its own", async () => {
+    mount(SAVED, DRAFT);
+    await click(button("Clear all")!);
+    typeField(field("c-subject"), "Something else");
+    await settle();
+    await click(undoToast()!);
+    expect(field("c-subject").value).toBe(DRAFT.subject);
+    expect(headings()).toEqual(["Sleep cooler"]);
+    undo(); // the Undo itself is undone
+    expect(field("c-subject").value).toBe("Something else");
+  });
+});
+
+describe("saving and leaving", () => {
+  it("saves on Ctrl+S (⌘S on a Mac), only when something changed", async () => {
+    mount(SAVED, DRAFT);
+    press("s", { ctrl: true }, document.body);
+    await settle();
+    expect(actions.saveCampaign).not.toHaveBeenCalled();
+    typeField(field("c-subject"), "Sleep cooler, today");
+    press("s", { ctrl: true }, field("c-subject"));
+    await settle();
+    expect(actions.saveCampaign).toHaveBeenCalledTimes(1);
+    expect(actions.saveCampaign.mock.calls[0][1]).toMatchObject({ subject: "Sleep cooler, today" });
+  });
+
+  it("asks before the browser leaves with unsaved changes", () => {
+    mount(SAVED, DRAFT);
+    const leave = () => {
+      const e = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    expect(leave()).toBe(false);
+    typeField(field("c-subject"), "Changed");
+    expect(leave()).toBe(true);
+  });
+
+  it("keeps unsaved changes in the browser and offers them back, as one change Undo takes back", async () => {
+    mount(SAVED, DRAFT);
+    typeField(field("c-subject"), "Half written, then the tab crashed");
+    await settle(600);
+    expect(window.localStorage.getItem(keptDraftKey(SAVED.id))).toContain("Half written");
+    act(() => root!.unmount());
+    document.body.innerHTML = "";
+
+    mount(SAVED, DRAFT);
+    await settle();
+    expect(document.body.textContent).toMatch(/Restore your unsaved changes from \w{3}, \d+ \w{3}, \d+:\d{2} [ap]m\?/);
+    await click(button("Restore")!);
+    expect(field("c-subject").value).toBe("Half written, then the tab crashed");
+    expect(document.body.textContent).not.toContain("Restore your unsaved changes");
+    undo();
+    expect(field("c-subject").value).toBe(DRAFT.subject);
+  });
+
+  it("offers nothing for a campaign that has started sending", async () => {
+    window.localStorage.setItem(
+      keptDraftKey(SAVED.id),
+      JSON.stringify({ v: 1, at: "2026-10-29T08:12:00.000Z", base: SAVED.updatedAt, value: { email: { ...DRAFT, preheader: "", body: "", button: { choice: "none", label: "", url: "" } }, audience: "subscribed", segmentId: "" } }),
+    );
+    mount({ ...SAVED, lockedAt: "2026-10-21T01:00:00Z" }, DRAFT);
+    await settle();
+    expect(document.body.textContent).not.toContain("Restore your unsaved changes");
+  });
+});
+
+describe("the tabs", () => {
+  it("writes on Write and sends on Send, with nothing to send until the draft is saved", async () => {
+    mount(null, newCampaignDraft(undefined, []));
+    const tab = (name: string) => [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === name)!;
+    expect(tab("Write").getAttribute("aria-selected")).toBe("true");
+    await act(async () => {
+      tab("Send").dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      tab("Send").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" }));
+    });
+    expect(tab("Send").getAttribute("aria-selected")).toBe("true");
+    expect(document.body.textContent).toContain("Save the draft first. Then you can test it, check what sending needs, and send it.");
+  });
+});

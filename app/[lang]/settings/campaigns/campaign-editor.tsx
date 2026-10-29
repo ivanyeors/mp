@@ -3,19 +3,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Archive, Blocks, ChevronLeft, Copy, Eraser, Loader2, Send } from "lucide-react";
+import {
+    AlertTriangle,
+    Archive,
+    Blocks,
+    ChevronLeft,
+    Copy,
+    Eraser,
+    Loader2,
+    MoreHorizontal,
+    Plus,
+    Redo2,
+    Send,
+    Undo2,
+} from "lucide-react";
 import { toast } from "sonner";
+import { AiButton } from "@/components/block-editor/ai-button";
+import { BlockEditor, BlockEditorRoot } from "@/components/block-editor/block-editor";
+import { BlockPalette, blockPaletteTab } from "@/components/block-editor/block-palette";
+import { PresetPicker } from "@/components/block-editor/preset-picker";
+import { typingBurst, useEditorHistory, useHistoryKeys } from "@/components/block-editor/use-editor-history";
+import { useUnsavedGuard } from "@/components/block-editor/use-unsaved-guard";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -28,7 +50,7 @@ import {
     type CampaignButtonChoice,
     type CampaignWords,
 } from "@/lib/email-campaigns/clear-all";
-import { contentFromLegacy, type CampaignContent } from "@/lib/email-campaigns/content";
+import { CONTENT_LIMITS, contentFromLegacy, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
     CAMPAIGN_AUDIENCES,
@@ -50,6 +72,7 @@ import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { cn } from "@/lib/utils";
 import {
     archiveCampaignAction,
     checkCampaignReadiness,
@@ -61,8 +84,11 @@ import {
     sendCampaignTestAction,
     type WaveAnswer,
 } from "./actions";
-import { BlockList } from "./blocks/block-list";
+import { CAMPAIGN_BLOCKS } from "./blocks/catalogue";
+import { VariableFallbacks } from "./blocks/fallbacks";
+import { EmailPreview, type PreviewDevice, type PreviewScheme } from "./email-preview";
 import { Field } from "./field";
+import { keptDraft, keptDraftKey, type EditorEmail, type KeptDraft } from "./kept-draft";
 import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
 import { CheckList, StatusIcon } from "./send-parts";
 import { WaveTable } from "./wave-table";
@@ -72,6 +98,19 @@ export type SegmentOption = { id: string; name: string; customersHref?: string |
 
 /** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
+
+/** The palette's tabs: Blocks now; Starters (slice 08) and Variables (slice 13) join it. */
+const PALETTE = [blockPaletteTab(CAMPAIGN_BLOCKS)];
+
+/** How long typing pauses before the preview renders again. */
+const PREVIEW_AFTER_MS = 400;
+
+/** Past this, a subject may be cut off on a phone; a preview line reads best in this range (PRD *Research*). */
+const SUBJECT_PHONE = 60;
+const PREVIEW_LINE_RANGE = [40, 90] as const;
+
+/** Until ✨ Generate is built (slice 09). */
+const GENERATE_NOT_YET = "Coming soon: Claude will draft the email from its subject.";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -97,6 +136,15 @@ const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
     sender: { from: null, replyTo: null },
 });
 
+/** A field's live count, amber with why once it runs long. */
+function CharCount({ value, warn, ok, id }: { value: string; warn: string | null; ok?: string; id: string }) {
+    return (
+        <p id={id} className={cn("text-xs", warn ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")} aria-live="polite">
+            {n(value.length)} characters{warn ? `: ${warn}` : ok ? `. ${ok}` : ""}
+        </p>
+    );
+}
+
 /**
  * Admin Panel → Email campaigns → one campaign (PRD-email-marketing): write it
  * with a live preview, send a test, check what sending needs, then send in
@@ -104,19 +152,20 @@ const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
  * while it sends; closing it stops the wave, and the next one picks up the
  * people still to send to.
  *
- * The Send card (PRD-campaign-send-flow slices 03 and 04): a checklist, a
- * wave no bigger than today's room in the sending plan, a confirmation
- * dialog that restates the send, a labelled progress bar, what to do next,
- * and each wave's numbers against the pause lines.
+ * Two tabs (PRD-campaign-email-editor slice 04). **Write** is the shared
+ * block editor (components/block-editor/): the palette, the email with its
+ * blocks, and the server-rendered preview with its inbox row. Every change,
+ * Clear all and Convert to blocks included, is one step of the editor's
+ * history (⌘Z, ⇧⌘Z); ⌘S saves; leaving with unsaved changes asks first,
+ * and a crashed tab offers them back. **Send** is the send flow as it was
+ * (PRD-campaign-send-flow): a test, the checklist, a wave no bigger than
+ * today's room, a confirmation that restates the send, and each wave's
+ * numbers against the pause lines.
  *
- * Placeholders, not prefilled words (PRD-campaign-email-editor slice 01): an
- * empty field shows its hint, never saved or sent. *Clear all* returns what
- * the email says to those hints and offers Undo in a toast, not a dialog,
- * because nothing is saved until Save.
- *
- * Typed blocks (slice 03): a new campaign is written as Email blocks. A
- * campaign written before them keeps its message box and button, and an
- * unsent one offers *Convert to blocks*.
+ * Placeholders, not prefilled words (slice 01): an empty field shows its
+ * hint, never saved or sent. A campaign written before blocks (slice 03)
+ * keeps its message box and button, and an unsent one offers *Convert to
+ * blocks*.
  */
 export function CampaignEditor({
     campaign,
@@ -142,38 +191,27 @@ export function CampaignEditor({
     const locked = Boolean(campaign?.lockedAt);
 
     // ── The draft ──────────────────────────────────────────────────────────
-    const [name, setName] = useState(initial.name);
+    // The email is the history's: its words, its blocks and the greeting.
+    const history = useEditorHistory<EditorEmail>(() => ({ ...campaignWordsOf(initial), greeting: initial.greeting }));
+    const email = history.value;
+    const { name, subject, preheader, body, content, greeting } = email;
+    const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = email.button;
+    const edit = (patch: Partial<EditorEmail>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
+    const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
+        history.set((e) => ({ ...e, button: { ...e.button, ...patch } }), { burst });
+    const editContent = (next: CampaignContent, burst?: string) => history.set((e) => ({ ...e, content: next }), { burst });
+    const setBlocks = (blocks: EmailBlock[], burst?: string) =>
+        history.set((e) => (e.content ? { ...e, content: { ...e.content, blocks } } : e), { burst });
+
     const [audience, setAudience] = useState<CampaignAudience>(initial.audience);
     const [segmentId, setSegmentId] = useState(initial.segmentId ?? "");
     // The chosen Segment's Customers list (PRD-crm-retention-loop slice 02).
     const chosenSegmentHref = segments.find((s) => s.id === segmentId)?.customersHref ?? null;
-    const [subject, setSubject] = useState(initial.subject);
-    const [preheader, setPreheader] = useState(initial.preheader ?? "");
-    const [greeting, setGreeting] = useState(initial.greeting);
-    const [body, setBody] = useState(initial.body);
-    const [buttonChoice, setButtonChoice] = useState<CampaignButtonChoice>(initial.button?.target ?? "none");
-    const [buttonLabel, setButtonLabel] = useState(initial.button?.label ?? "");
-    const [buttonUrl, setButtonUrl] = useState(initial.button?.url ?? "");
-    // The blocks; null for a campaign written before them, which has the message and button above.
-    const [content, setContent] = useState<CampaignContent | null>(initial.content);
     // What the email says, as Clear all and Undo see it.
     const words: CampaignWords = useMemo(
-        () => ({ name, subject, preheader, body, button: { choice: buttonChoice, label: buttonLabel, url: buttonUrl }, content }),
-        [name, subject, preheader, body, buttonChoice, buttonLabel, buttonUrl, content],
+        () => ({ name, subject, preheader, body, button: email.button, content }),
+        [name, subject, preheader, body, email.button, content],
     );
-    const setWords = (w: CampaignWords) => {
-        setName(w.name);
-        setSubject(w.subject);
-        setPreheader(w.preheader);
-        setBody(w.body);
-        setButtonChoice(w.button.choice);
-        setButtonLabel(w.button.label);
-        setButtonUrl(w.button.url);
-        setContent(w.content);
-    };
-    // The words Clear all took, until Undo puts them back or Save makes them gone.
-    const undoRef = useRef<CampaignWords | null>(null);
-    useEffect(() => () => void toast.dismiss(CLEAR_ALL_TOAST), []);
 
     const input: CampaignDraftInput = useMemo(
         () => ({
@@ -193,12 +231,24 @@ export function CampaignEditor({
         }),
         [name, subject, preheader, body, content, greeting, audience, segmentId, buttonChoice, buttonLabel, buttonUrl],
     );
-    const [savedKey, setSavedKey] = useState(() => JSON.stringify(input));
-    const dirty = JSON.stringify(input) !== savedKey || !campaign;
+    const inputKey = JSON.stringify(input);
+    const [savedKey, setSavedKey] = useState(inputKey);
+    const changed = inputKey !== savedKey;
+    const dirty = changed || !campaign;
 
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+    // The step Clear all (or Convert to blocks) made, and the words it took, until Undo puts them back or Save makes them gone.
+    const undoRef = useRef<{ words: CampaignWords; step: number | null } | null>(null);
+    const latest = useRef(history);
+    useEffect(() => {
+        latest.current = history;
+        // The step a Clear all just made: the toast's Undo is the history's while nothing has changed since.
+        if (undoRef.current && undoRef.current.step === null) undoRef.current.step = history.step;
+    });
+    useEffect(() => () => void toast.dismiss(CLEAR_ALL_TOAST), []);
 
     const save = useCallback(async (): Promise<string | null> => {
         setSaving(true);
@@ -223,26 +273,36 @@ export function CampaignEditor({
         }
     }, [campaign, input, locale, router]);
 
+    // ── Write: tabs, selection, panes ──────────────────────────────────────
+    const [tab, setTab] = useState<"write" | "send">("write");
+    const [selected, setSelected] = useState<string | null>(null);
+    const [pane, setPane] = useState<"write" | "preview">("write");
+    const [addOpen, setAddOpen] = useState(false);
+    // The header and Write: what ⌘Z and ⇧⌘Z reach. The Send tab's fields keep the browser's own undo.
+    const editorArea = useRef<HTMLDivElement>(null);
+
     // ── The preview ────────────────────────────────────────────────────────
-    const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
+    const [device, setDevice] = useState<PreviewDevice>("desktop");
+    const [scheme, setScheme] = useState<PreviewScheme>("light");
+    const [preview, setPreview] = useState<{ subject: string; html: string; from: string | null } | null>(null);
     const [previewError, setPreviewError] = useState<string | null>(null);
     useEffect(() => {
         let live = true;
         const timer = setTimeout(async () => {
-            const res = await previewCampaign(input).catch((e: unknown) => ({ ok: false as const, error: String(e) }));
+            const res = await previewCampaign(input, { forceDark: scheme === "dark" }).catch((e: unknown) => ({ ok: false as const, error: String(e) }));
             if (!live) return;
             if (res.ok) {
-                setPreview({ subject: res.subject, html: res.html });
+                setPreview({ subject: res.subject, html: res.html, from: res.from ?? null });
                 setPreviewError(null);
             } else {
                 setPreviewError("fieldErrors" in res && res.fieldErrors ? Object.values(res.fieldErrors)[0] ?? res.error : res.error);
             }
-        }, 500);
+        }, PREVIEW_AFTER_MS);
         return () => {
             live = false;
             clearTimeout(timer);
         };
-    }, [input]);
+    }, [input, scheme]);
 
     // ── Readiness ──────────────────────────────────────────────────────────
     const campaignId = campaign?.id;
@@ -432,7 +492,8 @@ export function CampaignEditor({
         else setSaveError(res.error);
     };
     const duplicate = async () => {
-        if (!campaign) return;
+        // The copy is of what is saved: changes not saved yet would be left behind.
+        if (!campaign || !guard.confirmLeave()) return;
         setBusy(true);
         const res = await duplicateCampaign(campaign.id);
         setBusy(false);
@@ -442,29 +503,57 @@ export function CampaignEditor({
 
     const sending = progress?.running ?? false;
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
+    const editable = !locked && !sending;
 
-    // ── Clear all (PRD-campaign-email-editor slice 01) ─────────────────────
+    // ── Editing safety (slice 04): one history, ⌘S, the leave guard, the browser's copy ──
+    useHistoryKeys(history, { enabled: editable, within: editorArea });
+    const saveDisabled = saving || sending || (!dirty && Boolean(campaign));
+    const kept: KeptDraft = useMemo(() => ({ email, audience, segmentId }), [email, audience, segmentId]);
+    const guard = useUnsavedGuard<KeptDraft>({
+        dirty: changed,
+        onSave: () => {
+            if (!saveDisabled) void save();
+        },
+        keep: locked ? undefined : { key: keptDraftKey(campaign?.id ?? null), base: campaign?.updatedAt ?? "new", value: kept, parse: keptDraft },
+    });
+    const restoreKept = () => {
+        const k = guard.restore();
+        if (!k) return;
+        history.set(k.email);
+        setAudience(k.audience);
+        setSegmentId(k.segmentId);
+    };
+
+    // ── Clear all (slice 01), one step of the history ──────────────────────
     // Writes nothing: the email is saved, and audited, only by Save.
     const clearBlocker = clearAllBlocker({ locked, sending, words });
     const clearWhy = clearBlocker ? CLEAR_ALL_BLOCKER_TEXT[clearBlocker] : null;
     // Opens only while Clear all is off, to say why; the button stays focusable, so the tree never changes under it.
     const [clearTipOpen, setClearTipOpen] = useState(false);
-    const clearAll = () => {
-        if (clearBlocker) return;
-        const { words: cleared, snapshot } = clearCampaignWords(words);
-        undoRef.current = snapshot;
-        setWords(cleared);
-        toast("Cleared the email.", {
+    /** The toast's Undo: the history's own while nothing has changed since; else the words put back, as a step. */
+    const undoToast = (message: string) =>
+        toast(message, {
             id: CLEAR_ALL_TOAST,
             duration: CLEAR_ALL_UNDO_MS,
             action: {
                 label: "Undo",
                 onClick: () => {
-                    if (undoRef.current) setWords(undoRef.current);
+                    const u = undoRef.current;
                     undoRef.current = null;
+                    if (!u) return;
+                    const h = latest.current;
+                    if (u.step === h.step) h.undo();
+                    else h.set((e) => ({ ...e, ...u.words }));
                 },
             },
         });
+    const clearAll = () => {
+        if (clearBlocker) return;
+        const { words: cleared, snapshot } = clearCampaignWords(words);
+        undoRef.current = { words: snapshot, step: null };
+        history.set((e) => ({ ...e, ...cleared }));
+        setSelected(null);
+        undoToast("Cleared the email.");
     };
     /**
      * *Use the sign-in invitation*: its words and audience as real words, for
@@ -472,11 +561,12 @@ export function CampaignEditor({
      */
     const fillInvitation = () => {
         const invitation = campaignWordsOf(FIRST_CAMPAIGN_DRAFT);
-        setWords(
-            content
+        history.set((e) => ({
+            ...e,
+            ...(e.content
                 ? { ...invitation, body: "", button: { choice: "none", label: "", url: "" }, content: contentFromLegacy(FIRST_CAMPAIGN_DRAFT) }
-                : invitation,
-        );
+                : invitation),
+        }));
         setAudience(FIRST_CAMPAIGN_DRAFT.audience);
     };
     /**
@@ -486,9 +576,9 @@ export function CampaignEditor({
      */
     const convertToBlocks = () => {
         if (locked || sending || content) return;
-        undoRef.current = words;
-        setWords({
-            ...words,
+        undoRef.current = { words, step: null };
+        history.set((e) => ({
+            ...e,
             body: "",
             button: { choice: "none", label: "", url: "" },
             content: contentFromLegacy({
@@ -496,34 +586,284 @@ export function CampaignEditor({
                 body,
                 button: buttonChoice === "none" ? null : { target: buttonChoice, label: buttonLabel, url: buttonChoice === "url" ? buttonUrl : null },
             }),
-        });
-        toast("Converted the message to blocks. Save to keep them.", {
-            id: CLEAR_ALL_TOAST,
-            duration: CLEAR_ALL_UNDO_MS,
-            action: {
-                label: "Undo",
-                onClick: () => {
-                    if (undoRef.current) setWords(undoRef.current);
-                    undoRef.current = null;
-                },
-            },
-        });
+        }));
+        undoToast("Converted the message to blocks. Save to keep them.");
     };
 
-    return (
-        <div className={`space-y-6 ${campaign && (sending || plan) ? mobileStickyActionBarSpacerClassName : ""}`}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <Button variant="ghost" size="sm" className="self-start" asChild>
-                    <Link href={to("/settings/campaigns")}>
-                        <ChevronLeft className="mr-1 h-4 w-4" />
-                        Email campaigns
-                    </Link>
-                </Button>
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h1 className="truncate text-2xl font-semibold tracking-tight">{campaign ? campaign.name : "New campaign"}</h1>
-                    {campaign ? <Badge variant={locked ? "default" : "outline"}>{locked ? "Sending started" : "Draft"}</Badge> : null}
+    const subjectWarn = subject.length > SUBJECT_PHONE ? "may be cut off on phones" : null;
+    const preheaderWarn =
+        preheader && (preheader.length < PREVIEW_LINE_RANGE[0] || preheader.length > PREVIEW_LINE_RANGE[1])
+            ? `${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best`
+            : null;
+    const palette = Boolean(content) && editable;
+    const saveLabel = campaign ? "Save changes" : "Save draft";
+    const sendBar = Boolean(campaign && (sending || (plan && planned > 0)) && (tab === "send" || sending));
+    const writeBar = !sendBar && tab === "write" && !sending;
+
+    const saveButton = (className?: string) => (
+        <Button onClick={() => void save()} disabled={saveDisabled} className={className}>
+            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+            {saveLabel}
+        </Button>
+    );
+
+    // The email's own column: who it goes to, from whom, its subject and preview line, then its blocks.
+    const theEmail = (
+        <Card className="min-w-0">
+            <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Send to" htmlFor="c-audience" error={fieldErrors.segmentId}>
+                        <Select value={audience} onValueChange={(v) => setAudience(v as CampaignAudience)}>
+                            <SelectTrigger id="c-audience" className="w-full justify-between" disabled={locked}>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CAMPAIGN_AUDIENCES.map((a) => (
+                                    <SelectItem key={a} value={a}>
+                                        {CAMPAIGN_AUDIENCE_LABEL[a]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </Field>
+                    {audience === "segment" ? (
+                        <Field
+                            label="Segment"
+                            htmlFor="c-segment"
+                            hint={
+                                segments.length ? (
+                                    <>
+                                        Save segments from the filters on the Customers list.
+                                        {chosenSegmentHref ? (
+                                            <>
+                                                {" "}
+                                                <Link href={chosenSegmentHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                                                    See who is in it
+                                                </Link>
+                                            </>
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    "No segments yet. Save one from the filters on the Customers list."
+                                )
+                            }
+                        >
+                            <Select value={segmentId} onValueChange={setSegmentId}>
+                                <SelectTrigger id="c-segment" className="w-full justify-between" disabled={locked || !segments.length}>
+                                    <SelectValue placeholder="Choose a segment" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {segments.map((s) => (
+                                        <SelectItem key={s.id} value={s.id}>
+                                            {s.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                    ) : null}
                 </div>
-                <div className="flex flex-wrap gap-2 sm:ml-auto">
+                <p className="text-sm">
+                    <span className="font-medium">From</span>{" "}
+                    <span className="break-words text-muted-foreground">
+                        {preview ? (preview.from ?? "Not set up yet: the Send tab says what sending needs.") : "…"}
+                    </span>
+                </p>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="c-subject">Subject</Label>
+                    <Input
+                        id="c-subject"
+                        value={subject}
+                        placeholder={CAMPAIGN_PLACEHOLDERS.subject}
+                        disabled={locked}
+                        maxLength={CAMPAIGN_LIMITS.subject}
+                        aria-describedby="c-subject-count"
+                        aria-invalid={fieldErrors.subject ? true : undefined}
+                        onChange={(e) => edit({ subject: e.target.value }, typingBurst(e, "c-subject"))}
+                    />
+                    {fieldErrors.subject ? <p className="text-xs text-destructive">{fieldErrors.subject}</p> : null}
+                    <CharCount id="c-subject-count" value={subject} warn={subjectWarn} />
+                </div>
+                <div className="space-y-1.5">
+                    <Label htmlFor="c-preheader">Preview line</Label>
+                    <Input
+                        id="c-preheader"
+                        value={preheader}
+                        placeholder={CAMPAIGN_PLACEHOLDERS.preheader}
+                        disabled={locked}
+                        maxLength={CAMPAIGN_LIMITS.preheader}
+                        aria-describedby="c-preheader-count"
+                        onChange={(e) => edit({ preheader: e.target.value }, typingBurst(e, "c-preheader"))}
+                    />
+                    {fieldErrors.preheader ? <p className="text-xs text-destructive">{fieldErrors.preheader}</p> : null}
+                    <CharCount
+                        id="c-preheader-count"
+                        value={preheader}
+                        warn={preheaderWarn}
+                        ok={`Shown after the subject in most inboxes. Optional; ${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best.`}
+                    />
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="c-greeting">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
+                    <Switch id="c-greeting" checked={greeting} disabled={locked} onCheckedChange={(v) => edit({ greeting: v })} />
+                </div>
+
+                {content ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium leading-none">Blocks</span>
+                            {palette ? (
+                                <Button type="button" variant="outline" size="sm" className="lg:hidden" onClick={() => setAddOpen(true)}>
+                                    <Plus className="mr-1 h-4 w-4" />
+                                    Add
+                                </Button>
+                            ) : null}
+                        </div>
+                        <BlockEditor
+                            label="The email's blocks"
+                            empty="No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."
+                            errors={fieldErrors}
+                            errorPath="content.blocks"
+                        />
+                        <VariableFallbacks content={content} lines={[subject, preheader]} onChange={editContent} disabled={!editable} errors={fieldErrors} />
+                    </div>
+                ) : (
+                    <>
+                        <Field
+                            label="Message"
+                            htmlFor="c-body"
+                            error={fieldErrors.body}
+                            hint={
+                                <>
+                                    A blank line starts a new paragraph. Start a line with &ldquo;- &rdquo; for a bullet, or &ldquo;## &rdquo; for a heading.
+                                    Links starting https:// become clickable.
+                                </>
+                            }
+                        >
+                            <Textarea
+                                id="c-body"
+                                rows={14}
+                                value={body}
+                                placeholder={CAMPAIGN_PLACEHOLDERS.body}
+                                disabled={locked}
+                                maxLength={CAMPAIGN_LIMITS.body}
+                                onChange={(e) => edit({ body: e.target.value }, typingBurst(e, "c-body"))}
+                            />
+                        </Field>
+                        <Field label="Button" htmlFor="c-button">
+                            <Select value={buttonChoice} onValueChange={(v) => editButton({ choice: v as CampaignButtonChoice })}>
+                                <SelectTrigger id="c-button" className="w-full justify-between" disabled={locked}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">No button</SelectItem>
+                                    <SelectItem value="sign_in">Sign in to their account</SelectItem>
+                                    <SelectItem value="url">A link</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        {buttonChoice !== "none" ? (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label="Button label" htmlFor="c-button-label" error={fieldErrors["button.label"]}>
+                                    <Input
+                                        id="c-button-label"
+                                        value={buttonLabel}
+                                        placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
+                                        disabled={locked}
+                                        maxLength={CAMPAIGN_LIMITS.buttonLabel}
+                                        onChange={(e) => editButton({ label: e.target.value }, typingBurst(e, "c-button-label"))}
+                                    />
+                                </Field>
+                                {buttonChoice === "url" ? (
+                                    <Field label="Link" htmlFor="c-button-url" error={fieldErrors["button.url"]}>
+                                        <Input
+                                            id="c-button-url"
+                                            value={buttonUrl}
+                                            disabled={locked}
+                                            placeholder="https://"
+                                            onChange={(e) => editButton({ url: e.target.value }, typingBurst(e, "c-button-url"))}
+                                        />
+                                    </Field>
+                                ) : (
+                                    <p className="self-end text-xs text-muted-foreground">
+                                        Imported customers who haven&apos;t signed in get their own link, with their email already filled in.
+                                    </p>
+                                )}
+                            </div>
+                        ) : null}
+                        {/* A message written before blocks: an unsent one can become blocks. */}
+                        {!locked ? (
+                            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                                <span className="min-w-0 flex-1">This email is written as plain text. Blocks add headings, bold, links and two buttons.</span>
+                                <Button type="button" variant="outline" size="sm" onClick={convertToBlocks} disabled={sending}>
+                                    <Blocks className="mr-1 h-4 w-4" />
+                                    Convert to blocks
+                                </Button>
+                            </div>
+                        ) : null}
+                    </>
+                )}
+                {/* A start for an empty email; slice 08's Start panel replaces it. */}
+                {!locked && campaignWordsEmpty(words) ? (
+                    <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={fillInvitation} disabled={sending}>
+                        Use the sign-in invitation
+                    </Button>
+                ) : null}
+
+                {saveError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                        {saveError}
+                    </p>
+                ) : null}
+            </CardContent>
+        </Card>
+    );
+
+    return (
+        <div ref={editorArea} className={cn("space-y-4", (sendBar || writeBar) && mobileStickyActionBarSpacerClassName)}>
+            {/* The header bar: back, the name, the status, then the editor's actions. */}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <Button variant="ghost" size="sm" className="shrink-0 px-2" asChild>
+                        <Link href={to("/settings/campaigns")} aria-label="Email campaigns">
+                            <ChevronLeft className="h-4 w-4" />
+                            <span className="max-sm:sr-only">Email campaigns</span>
+                        </Link>
+                    </Button>
+                    <h1 className="sr-only">{campaign ? campaign.name : "New campaign"}</h1>
+                    <Input
+                        id="c-name"
+                        aria-label="Campaign name"
+                        aria-describedby="c-name-hint"
+                        aria-invalid={fieldErrors.name ? true : undefined}
+                        value={name}
+                        placeholder={CAMPAIGN_PLACEHOLDERS.name}
+                        maxLength={CAMPAIGN_LIMITS.name}
+                        onChange={(e) => edit({ name: e.target.value }, typingBurst(e, "c-name"))}
+                        className="h-9 min-w-0 flex-1 border-transparent px-2 text-lg font-semibold shadow-none hover:border-input md:text-lg"
+                    />
+                    <span id="c-name-hint" className="sr-only">
+                        {fieldErrors.name ?? "Customers never see this."}
+                    </span>
+                    {campaign ? (
+                        <Badge variant={locked ? "default" : "outline"} className="shrink-0">
+                            {locked ? "Sending started" : "Draft"}
+                        </Badge>
+                    ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {editable ? (
+                        <>
+                            <Button type="button" variant="ghost" size="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!history.canUndo} onClick={history.undo}>
+                                <Undo2 className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!history.canRedo} onClick={history.redo}>
+                                <Redo2 className="h-4 w-4" />
+                            </Button>
+                        </>
+                    ) : null}
                     <Tooltip open={clearTipOpen && Boolean(clearWhy)} onOpenChange={setClearTipOpen}>
                         <TooltipTrigger asChild>
                             <Button
@@ -545,470 +885,368 @@ export function CampaignEditor({
                             {clearWhy}
                         </span>
                     ) : null}
+                    {editable && content ? <AiButton disabledReason={GENERATE_NOT_YET}>Generate</AiButton> : null}
                     {campaign ? (
-                        <>
-                            <Button variant="outline" size="sm" onClick={duplicate} disabled={busy || sending}>
-                                <Copy className="mr-1 h-4 w-4" />
-                                Duplicate
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={archive} disabled={busy || sending}>
-                                <Archive className="mr-1 h-4 w-4" />
-                                Archive
-                            </Button>
-                        </>
+                        <DropdownMenu>
+                            {/* A plain button: the motion Button presses on Enter too, which would shut the menu it opens. */}
+                            <DropdownMenuTrigger asChild>
+                                <button type="button" className={buttonVariants({ variant: "outline", size: "icon" })} aria-label="More: duplicate or archive" disabled={busy || sending}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => void duplicate()}>
+                                    <Copy className="h-4 w-4" />
+                                    Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => void archive()}>
+                                    <Archive className="h-4 w-4" />
+                                    Archive
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     ) : null}
+                    {saveButton("max-md:hidden")}
+                    {campaign && !dirty ? <span className="text-xs text-muted-foreground max-md:hidden">Saved</span> : null}
                 </div>
             </div>
 
             {locked ? (
-                <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                <div className="flex flex-wrap items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                    This campaign has started sending, so its email and audience are fixed: everyone gets the same
-                    email. To send a changed one, duplicate it. Customers already sent this one won&apos;t get it again.
-                </p>
-            ) : null}
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">The email</CardTitle>
-                        <CardDescription>Only customers who agreed to marketing email receive it.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Field label="Campaign name" htmlFor="c-name" hint="Customers never see this." error={fieldErrors.name}>
-                            <Input id="c-name" value={name} placeholder={CAMPAIGN_PLACEHOLDERS.name} maxLength={CAMPAIGN_LIMITS.name} onChange={(e) => setName(e.target.value)} />
-                        </Field>
-
-                        <Field label="Send to" htmlFor="c-audience" error={fieldErrors.segmentId}>
-                            <Select value={audience} onValueChange={(v) => setAudience(v as CampaignAudience)}>
-                                <SelectTrigger id="c-audience" className="w-full justify-between" disabled={locked}>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CAMPAIGN_AUDIENCES.map((a) => (
-                                        <SelectItem key={a} value={a}>
-                                            {CAMPAIGN_AUDIENCE_LABEL[a]}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
-                        {audience === "segment" ? (
-                            <Field
-                                label="Segment"
-                                htmlFor="c-segment"
-                                hint={
-                                    segments.length ? (
-                                        <>
-                                            Save segments from the filters on the Customers list.
-                                            {chosenSegmentHref ? (
-                                                <>
-                                                    {" "}
-                                                    <Link href={chosenSegmentHref} className="font-medium text-foreground underline-offset-4 hover:underline">
-                                                        See who is in it
-                                                    </Link>
-                                                </>
-                                            ) : null}
-                                        </>
-                                    ) : (
-                                        "No segments yet. Save one from the filters on the Customers list."
-                                    )
-                                }
-                            >
-                                <Select value={segmentId} onValueChange={setSegmentId}>
-                                    <SelectTrigger id="c-segment" className="w-full justify-between" disabled={locked || !segments.length}>
-                                        <SelectValue placeholder="Choose a segment" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {segments.map((s) => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </Field>
-                        ) : null}
-
-                        <Field label="Subject" htmlFor="c-subject" error={fieldErrors.subject}>
-                            <Input
-                                id="c-subject"
-                                value={subject}
-                                placeholder={CAMPAIGN_PLACEHOLDERS.subject}
-                                disabled={locked}
-                                maxLength={CAMPAIGN_LIMITS.subject}
-                                onChange={(e) => setSubject(e.target.value)}
-                            />
-                        </Field>
-                        <Field label="Preview line" htmlFor="c-preheader" hint="Shown after the subject in most inboxes. Optional." error={fieldErrors.preheader}>
-                            <Input
-                                id="c-preheader"
-                                value={preheader}
-                                placeholder={CAMPAIGN_PLACEHOLDERS.preheader}
-                                disabled={locked}
-                                maxLength={CAMPAIGN_LIMITS.preheader}
-                                onChange={(e) => setPreheader(e.target.value)}
-                            />
-                        </Field>
-
-                        <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="c-greeting">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
-                            <Switch id="c-greeting" checked={greeting} disabled={locked} onCheckedChange={setGreeting} />
-                        </div>
-
-                        {content ? (
-                            <div className="space-y-1.5">
-                                <span className="text-sm font-medium leading-none">Blocks</span>
-                                <BlockList content={content} lines={[subject, preheader]} onChange={setContent} disabled={locked || sending} errors={fieldErrors} />
-                            </div>
-                        ) : (
-                            <>
-                                <Field
-                                    label="Message"
-                                    htmlFor="c-body"
-                                    error={fieldErrors.body}
-                                    hint={
-                                        <>
-                                            A blank line starts a new paragraph. Start a line with &ldquo;- &rdquo; for a bullet, or &ldquo;## &rdquo; for a heading.
-                                            Links starting https:// become clickable.
-                                        </>
-                                    }
-                                >
-                                    <Textarea
-                                        id="c-body"
-                                        rows={14}
-                                        value={body}
-                                        placeholder={CAMPAIGN_PLACEHOLDERS.body}
-                                        disabled={locked}
-                                        maxLength={CAMPAIGN_LIMITS.body}
-                                        onChange={(e) => setBody(e.target.value)}
-                                    />
-                                </Field>
-                                <Field label="Button" htmlFor="c-button">
-                                    <Select value={buttonChoice} onValueChange={(v) => setButtonChoice(v as CampaignButtonChoice)}>
-                                        <SelectTrigger id="c-button" className="w-full justify-between" disabled={locked}>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No button</SelectItem>
-                                            <SelectItem value="sign_in">Sign in to their account</SelectItem>
-                                            <SelectItem value="url">A link</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </Field>
-                                {buttonChoice !== "none" ? (
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                        <Field label="Button label" htmlFor="c-button-label" error={fieldErrors["button.label"]}>
-                                            <Input
-                                                id="c-button-label"
-                                                value={buttonLabel}
-                                                placeholder={CAMPAIGN_PLACEHOLDERS.buttonLabel}
-                                                disabled={locked}
-                                                maxLength={CAMPAIGN_LIMITS.buttonLabel}
-                                                onChange={(e) => setButtonLabel(e.target.value)}
-                                            />
-                                        </Field>
-                                        {buttonChoice === "url" ? (
-                                            <Field label="Link" htmlFor="c-button-url" error={fieldErrors["button.url"]}>
-                                                <Input id="c-button-url" value={buttonUrl} disabled={locked} placeholder="https://" onChange={(e) => setButtonUrl(e.target.value)} />
-                                            </Field>
-                                        ) : (
-                                            <p className="self-end text-xs text-muted-foreground">
-                                                Imported customers who haven&apos;t signed in get their own link, with their email already filled in.
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : null}
-                                {/* A message written before blocks: an unsent one can become blocks. */}
-                                {!locked ? (
-                                    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
-                                        <span className="min-w-0 flex-1">This email is written as plain text. Blocks add headings, bold, links and two buttons.</span>
-                                        <Button type="button" variant="outline" size="sm" onClick={convertToBlocks} disabled={sending}>
-                                            <Blocks className="mr-1 h-4 w-4" />
-                                            Convert to blocks
-                                        </Button>
-                                    </div>
-                                ) : null}
-                            </>
-                        )}
-                        {/* A start for an empty email; slice 08's Start panel replaces it. */}
-                        {!locked && campaignWordsEmpty(words) ? (
-                            <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={fillInvitation} disabled={sending}>
-                                Use the sign-in invitation
-                            </Button>
-                        ) : null}
-
-                        {saveError ? (
-                            <p role="alert" className="text-sm text-destructive">
-                                {saveError}
-                            </p>
-                        ) : null}
-                        <div className="flex items-center gap-3">
-                            <Button onClick={() => void save()} disabled={saving || sending || (!dirty && Boolean(campaign))}>
-                                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                                {campaign ? "Save changes" : "Save draft"}
-                            </Button>
-                            {campaign && !dirty ? <span className="text-xs text-muted-foreground">Saved</span> : null}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="min-w-0">
-                    <CardHeader>
-                        <CardTitle className="text-base">Preview</CardTitle>
-                        <CardDescription className="break-words">
-                            {preview ? (
-                                <>Subject: {preview.subject || <span className="italic">{CAMPAIGN_PLACEHOLDERS.subject}</span>}</>
-                            ) : (
-                                "The email as a customer will see it."
-                            )}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {previewError ? <p className="mb-2 text-xs text-destructive">{previewError}</p> : null}
-                        {preview ? (
-                            <iframe
-                                title="Email preview"
-                                srcDoc={preview.html}
-                                sandbox=""
-                                className="h-[640px] w-full rounded-md border bg-white"
-                            />
-                        ) : (
-                            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rendering…
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            {campaign ? (
-                <div className="grid gap-6 lg:grid-cols-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Send a test</CardTitle>
-                            <CardDescription>
-                                Sends this email to you, with &ldquo;[Test]&rdquo; before the subject. It isn&apos;t counted as sent to anyone.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <Field label="Send to" htmlFor="c-test" hint={`Up to ${MAX_TEST_RECIPIENTS} addresses, separated by commas.`}>
-                                <Input id="c-test" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
-                            </Field>
-                            <Button variant="outline" onClick={sendTest} disabled={testing || sending}>
-                                {testing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
-                                Send test
-                            </Button>
-                            {testResult ? (
-                                <p role="status" className={testResult.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}>
-                                    {testResult.text}
-                                </p>
-                            ) : null}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between gap-2">
-                                <CardTitle className="text-base">Ready to send?</CardTitle>
-                                <Button variant="ghost" size="sm" onClick={runChecks} disabled={checking}>
-                                    {checking ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                                    Check again
-                                </Button>
-                            </div>
-                            <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
-                        </CardHeader>
-                        <CardContent>{checks ? <CheckList checks={checks} /> : <Loader2 className="h-4 w-4 animate-spin" />}</CardContent>
-                    </Card>
+                    <p className="min-w-0 flex-1">
+                        This campaign has started sending, so its email and audience are fixed: everyone gets the same
+                        email. To send a changed one, duplicate it. Customers already sent this one won&apos;t get it again.
+                    </p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void duplicate()} disabled={busy || sending}>
+                        <Copy className="mr-1 h-4 w-4" />
+                        Duplicate to change it
+                    </Button>
                 </div>
             ) : null}
 
-            {campaign ? (
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-1.5">
-                            <CardTitle className="text-base">Send</CardTitle>
-                            <InfoTip label="About sending in waves">
-                                <p>
-                                    Send to a small group first, wait two days, and look at the bounces and spam reports
-                                    before sending to more. Resend&apos;s free plan sends 100 a day, tests included, so a
-                                    bigger audience goes over several days: one wave a day, each no bigger than what is left.
-                                </p>
-                                <p>
-                                    Keep this page open while a wave sends: it sends about two emails a second. If it
-                                    stops, the next wave carries on with the people not yet sent to.
-                                </p>
-                            </InfoTip>
-                        </div>
-                        {stats ? (
-                            <CardDescription>
-                                Sent {n(stats.handed)}, bounced {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed{" "}
-                                {n(stats.failed)}, sign-in link opened {n(stats.linkClicks)}
-                            </CardDescription>
-                        ) : null}
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                        <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
-                            {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, allowance, resume }).map((step) => (
-                                <li key={step.key} className="flex items-start gap-2 text-sm">
-                                    <StatusIcon ok={step.done} advisory={step.advisory} />
-                                    <span className="min-w-0">
-                                        <span className="block font-medium">{step.label}</span>
-                                        <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
-                                    </span>
-                                </li>
-                            ))}
-                        </ol>
-
-                        {rampEnds && !sending ? (
-                            <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm" suppressHydrationWarning>
-                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                                The first wave went out recently. Wait until {formatAdminWeekdayTime(rampEnds)} before the next one,
-                                and look at its bounces and spam reports first.
-                            </p>
-                        ) : null}
-
-                        <div className="flex flex-wrap items-end gap-4">
-                            <Field
-                                label="People in this wave"
-                                htmlFor="c-size"
-                                hint={room !== null ? (room > 0 ? `Up to ${n(Math.min(room, MAX_WAVE_SIZE))} now.` : "None can go now.") : undefined}
-                            >
-                                <Input
-                                    id="c-size"
-                                    type="number"
-                                    min={1}
-                                    max={maxSize}
-                                    className="w-32"
-                                    value={size}
-                                    disabled={sending}
-                                    onChange={(e) => {
-                                        setSizeInput(Math.max(1, Math.min(maxSize, Math.floor(Number(e.target.value) || 1))));
-                                        setPlan(null);
-                                    }}
-                                />
-                            </Field>
-                            {stats && stats.failed > 0 ? (
-                                <label className="flex items-center gap-2 text-sm">
-                                    <Checkbox checked={retryFailed} onCheckedChange={(v) => {
-                                            setRetryFailed(v === true);
-                                            setPlan(null);
-                                        }} disabled={sending} />
-                                    Retry the {n(stats.failed)} failed send{stats.failed === 1 ? "" : "s"} only
-                                </label>
-                            ) : null}
-                            {pauseFailing ? (
-                                <label className="flex items-center gap-2 text-sm">
-                                    <Checkbox checked={resume} onCheckedChange={(v) => {
-                                            setResume(v === true);
-                                            setPlan(null);
-                                        }} disabled={sending} />
-                                    I&apos;ve looked into the bounces or spam reports: send anyway
-                                </label>
-                            ) : null}
-                            <Button variant="outline" onClick={checkAudience} disabled={planning || sending || (dirty && !locked)}>
-                                {planning && !plan ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                                Check who it goes to
-                            </Button>
-                        </div>
-
-                        {planError ? (
-                            <p role="alert" className="text-sm text-destructive">
-                                {planError}
-                            </p>
-                        ) : null}
-
-                        {plan ? (
-                            <div className="space-y-3 rounded-lg border p-4 text-sm">
-                                <p>
-                                    <span className="font-medium">{n(plan.plan.eligible)}</span> of {n(plan.plan.considered)} customers in this
-                                    audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
-                                    {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
-                                </p>
-                                {Object.keys(plan.plan.excluded).length ? (
-                                    <ul className="list-inside list-disc text-muted-foreground">
-                                        {Object.entries(plan.plan.excluded).map(([why, count]) => (
-                                            <li key={why}>
-                                                {n(count ?? 0)} left out: {CAMPAIGN_BLOCKER_TEXT[why as keyof typeof CAMPAIGN_BLOCKER_TEXT] ?? why}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : null}
-                                {plan.plan.eligible > 0 ? (
-                                    <p className="font-medium">
-                                        {waitingSummary({
-                                            selected: planned,
-                                            waiting: plan.waiting,
-                                            limitedBy: plan.limitedBy,
-                                            dailyLimit: plan.readiness.allowance?.limits.daily ?? null,
-                                        })}
-                                    </p>
-                                ) : null}
-                                <Button onClick={() => setConfirmOpen(true)} disabled={planning || sending || !ready || planned === 0}>
-                                    {planning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
-                                    {sendButtonLabel(planned)}
-                                </Button>
-                                {!ready ? <p className="text-xs text-destructive">A step above is not done, so it can&apos;t send yet.</p> : null}
-                            </div>
-                        ) : null}
-
-                        {progress ? (
-                            <div className="space-y-2 rounded-lg border p-4 text-sm">
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="font-medium">
-                                        Wave {progress.wave}: {progress.running ? "sending" : progress.stopped ? "stopped" : "finished"}
-                                    </span>
-                                    {progress.running ? (
-                                        <Button variant="outline" size="sm" onClick={() => (stopRef.current = true)}>
-                                            Stop
-                                        </Button>
-                                    ) : null}
-                                </div>
-                                <Progress
-                                    aria-label={`Wave ${progress.wave}`}
-                                    value={progress.total ? ((progress.sent + progress.failed + progress.skipped) / progress.total) * 100 : 100}
-                                />
-                                {/* Updated once a batch (about every ten seconds), not once an email. */}
-                                <p role="status" aria-live="polite">
-                                    Sent {n(progress.sent)} of {n(progress.total)}, failed {n(progress.failed)}, skipped {n(progress.skipped)}
-                                </p>
-                                {progress.running ? (
-                                    <p className="text-xs text-muted-foreground">Keep this page open until it finishes.</p>
-                                ) : null}
-                                {progress.stopped && !progress.stoppedByStaff ? <p className="text-destructive">Stopped: {progress.stopped}</p> : null}
-                                {progress.errors.length ? (
-                                    <ul className="list-inside list-disc text-xs text-muted-foreground">
-                                        {progress.errors.map((e, i) => (
-                                            <li key={i} className="break-words">
-                                                {e}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : null}
-                                {!progress.running ? (
-                                    <p className="rounded-md bg-muted/50 p-2">
-                                        <span className="font-medium">Next: </span>
-                                        {nextStepAfterWave({
-                                            sent: progress.sent,
-                                            failed: stats?.failed ?? progress.failed,
-                                            stoppedByStaff: progress.stoppedByStaff,
-                                            waiting: progress.waiting,
-                                            allowance,
-                                            rampUntil: rampEnds,
-                                        })}
-                                    </p>
-                                ) : null}
-                            </div>
-                        ) : null}
-
-                        <WaveTable waves={waves} />
-                    </CardContent>
-                </Card>
+            {guard.recovered && editable ? (
+                <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm" suppressHydrationWarning>
+                    <span className="min-w-0 flex-1">Restore your unsaved changes from {formatAdminWeekdayTime(guard.recovered.at)}?</span>
+                    <Button type="button" size="sm" onClick={restoreKept}>
+                        Restore
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={guard.discard}>
+                        Discard
+                    </Button>
+                </div>
             ) : null}
+
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "write" | "send")}>
+                <TabsList>
+                    <TabsTrigger value="write">Write</TabsTrigger>
+                    <TabsTrigger value="send">Send</TabsTrigger>
+                </TabsList>
+
+                {/* Both tabs stay mounted: a wave keeps sending, and the email keeps its history, while the other is open. */}
+                <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
+                    <BlockEditorRoot
+                        blocks={content?.blocks ?? []}
+                        catalogue={CAMPAIGN_BLOCKS}
+                        onChange={setBlocks}
+                        selected={selected}
+                        onSelect={setSelected}
+                        readOnly={!editable}
+                        max={CONTENT_LIMITS.blocks}
+                        newId={newBlockId}
+                    >
+                        <div className="mb-3 lg:hidden">
+                            <PresetPicker
+                                label="Show"
+                                value={pane}
+                                options={[
+                                    { value: "write", label: "Write" },
+                                    { value: "preview", label: "Preview" },
+                                ]}
+                                onChange={setPane}
+                            />
+                        </div>
+                        <div className={cn("grid gap-6", palette ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
+                            {palette ? (
+                                <aside className="max-lg:hidden" aria-label="Palette">
+                                    <div className="sticky top-4">
+                                        <BlockPalette tabs={PALETTE} />
+                                    </div>
+                                </aside>
+                            ) : null}
+                            <section className={cn("min-w-0", pane === "preview" && "max-lg:hidden")} aria-label="The email">
+                                {theEmail}
+                            </section>
+                            <section className={cn("min-w-0", pane === "write" && "max-lg:hidden")} aria-label="Preview">
+                                <div className="lg:sticky lg:top-4">
+                                    <EmailPreview
+                                        html={preview?.html ?? null}
+                                        subject={preview?.subject ?? subject}
+                                        from={preview?.from ?? null}
+                                        error={previewError}
+                                        device={device}
+                                        onDevice={setDevice}
+                                        scheme={scheme}
+                                        onScheme={setScheme}
+                                        selected={selected}
+                                        onSelectBlock={(id) => {
+                                            setSelected(id);
+                                            setPane("write");
+                                            document.querySelector<HTMLElement>(`[data-block-id="${id}"]`)?.scrollIntoView?.({ block: "nearest" });
+                                        }}
+                                    />
+                                </div>
+                            </section>
+                        </div>
+                        {/* Phones: the palette is a sheet, and a tap adds after the selected block. */}
+                        <Sheet open={addOpen} onOpenChange={setAddOpen}>
+                            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+                                <SheetHeader>
+                                    <SheetTitle>Add a block</SheetTitle>
+                                </SheetHeader>
+                                <div className="px-4 pb-6">
+                                    <BlockPalette tabs={PALETTE} draggable={false} onAdded={() => setAddOpen(false)} />
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </BlockEditorRoot>
+                </TabsContent>
+
+                <TabsContent value="send" forceMount data-own-undo className="space-y-6 data-[state=inactive]:hidden">
+                    {campaign ? null : (
+                        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Save the draft first. Then you can test it, check what sending needs, and send it.
+                        </p>
+                    )}
+                    {campaign ? (
+                        <div className="grid gap-6 lg:grid-cols-2">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">Send a test</CardTitle>
+                                    <CardDescription>
+                                        Sends this email to you, with &ldquo;[Test]&rdquo; before the subject. It isn&apos;t counted as sent to anyone.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <Field label="Send to" htmlFor="c-test" hint={`Up to ${MAX_TEST_RECIPIENTS} addresses, separated by commas.`}>
+                                        <Input id="c-test" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                                    </Field>
+                                    <Button variant="outline" onClick={sendTest} disabled={testing || sending}>
+                                        {testing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
+                                        Send test
+                                    </Button>
+                                    {testResult ? (
+                                        <p role="status" className={testResult.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}>
+                                            {testResult.text}
+                                        </p>
+                                    ) : null}
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <CardTitle className="text-base">Ready to send?</CardTitle>
+                                        <Button variant="ghost" size="sm" onClick={runChecks} disabled={checking}>
+                                            {checking ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                                            Check again
+                                        </Button>
+                                    </div>
+                                    <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
+                                </CardHeader>
+                                <CardContent>{checks ? <CheckList checks={checks} /> : <Loader2 className="h-4 w-4 animate-spin" />}</CardContent>
+                            </Card>
+                        </div>
+                    ) : null}
+
+                    {campaign ? (
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center gap-1.5">
+                                    <CardTitle className="text-base">Send</CardTitle>
+                                    <InfoTip label="About sending in waves">
+                                        <p>
+                                            Send to a small group first, wait two days, and look at the bounces and spam reports
+                                            before sending to more. Resend&apos;s free plan sends 100 a day, tests included, so a
+                                            bigger audience goes over several days: one wave a day, each no bigger than what is left.
+                                        </p>
+                                        <p>
+                                            Keep this page open while a wave sends: it sends about two emails a second. If it
+                                            stops, the next wave carries on with the people not yet sent to.
+                                        </p>
+                                    </InfoTip>
+                                </div>
+                                {stats ? (
+                                    <CardDescription>
+                                        Sent {n(stats.handed)}, bounced {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed{" "}
+                                        {n(stats.failed)}, sign-in link opened {n(stats.linkClicks)}
+                                    </CardDescription>
+                                ) : null}
+                            </CardHeader>
+                            <CardContent className="space-y-5">
+                                <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
+                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, allowance, resume }).map((step) => (
+                                        <li key={step.key} className="flex items-start gap-2 text-sm">
+                                            <StatusIcon ok={step.done} advisory={step.advisory} />
+                                            <span className="min-w-0">
+                                                <span className="block font-medium">{step.label}</span>
+                                                <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ol>
+
+                                {rampEnds && !sending ? (
+                                    <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm" suppressHydrationWarning>
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                                        The first wave went out recently. Wait until {formatAdminWeekdayTime(rampEnds)} before the next one,
+                                        and look at its bounces and spam reports first.
+                                    </p>
+                                ) : null}
+
+                                <div className="flex flex-wrap items-end gap-4">
+                                    <Field
+                                        label="People in this wave"
+                                        htmlFor="c-size"
+                                        hint={room !== null ? (room > 0 ? `Up to ${n(Math.min(room, MAX_WAVE_SIZE))} now.` : "None can go now.") : undefined}
+                                    >
+                                        <Input
+                                            id="c-size"
+                                            type="number"
+                                            min={1}
+                                            max={maxSize}
+                                            className="w-32"
+                                            value={size}
+                                            disabled={sending}
+                                            onChange={(e) => {
+                                                setSizeInput(Math.max(1, Math.min(maxSize, Math.floor(Number(e.target.value) || 1))));
+                                                setPlan(null);
+                                            }}
+                                        />
+                                    </Field>
+                                    {stats && stats.failed > 0 ? (
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <Checkbox checked={retryFailed} onCheckedChange={(v) => {
+                                                    setRetryFailed(v === true);
+                                                    setPlan(null);
+                                                }} disabled={sending} />
+                                            Retry the {n(stats.failed)} failed send{stats.failed === 1 ? "" : "s"} only
+                                        </label>
+                                    ) : null}
+                                    {pauseFailing ? (
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <Checkbox checked={resume} onCheckedChange={(v) => {
+                                                    setResume(v === true);
+                                                    setPlan(null);
+                                                }} disabled={sending} />
+                                            I&apos;ve looked into the bounces or spam reports: send anyway
+                                        </label>
+                                    ) : null}
+                                    <Button variant="outline" onClick={checkAudience} disabled={planning || sending || (dirty && !locked)}>
+                                        {planning && !plan ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                                        Check who it goes to
+                                    </Button>
+                                </div>
+
+                                {planError ? (
+                                    <p role="alert" className="text-sm text-destructive">
+                                        {planError}
+                                    </p>
+                                ) : null}
+
+                                {plan ? (
+                                    <div className="space-y-3 rounded-lg border p-4 text-sm">
+                                        <p>
+                                            <span className="font-medium">{n(plan.plan.eligible)}</span> of {n(plan.plan.considered)} customers in this
+                                            audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
+                                            {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
+                                        </p>
+                                        {Object.keys(plan.plan.excluded).length ? (
+                                            <ul className="list-inside list-disc text-muted-foreground">
+                                                {Object.entries(plan.plan.excluded).map(([why, count]) => (
+                                                    <li key={why}>
+                                                        {n(count ?? 0)} left out: {CAMPAIGN_BLOCKER_TEXT[why as keyof typeof CAMPAIGN_BLOCKER_TEXT] ?? why}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : null}
+                                        {plan.plan.eligible > 0 ? (
+                                            <p className="font-medium">
+                                                {waitingSummary({
+                                                    selected: planned,
+                                                    waiting: plan.waiting,
+                                                    limitedBy: plan.limitedBy,
+                                                    dailyLimit: plan.readiness.allowance?.limits.daily ?? null,
+                                                })}
+                                            </p>
+                                        ) : null}
+                                        <Button onClick={() => setConfirmOpen(true)} disabled={planning || sending || !ready || planned === 0}>
+                                            {planning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
+                                            {sendButtonLabel(planned)}
+                                        </Button>
+                                        {!ready ? <p className="text-xs text-destructive">A step above is not done, so it can&apos;t send yet.</p> : null}
+                                    </div>
+                                ) : null}
+
+                                {progress ? (
+                                    <div className="space-y-2 rounded-lg border p-4 text-sm">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium">
+                                                Wave {progress.wave}: {progress.running ? "sending" : progress.stopped ? "stopped" : "finished"}
+                                            </span>
+                                            {progress.running ? (
+                                                <Button variant="outline" size="sm" onClick={() => (stopRef.current = true)}>
+                                                    Stop
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                        <Progress
+                                            aria-label={`Wave ${progress.wave}`}
+                                            value={progress.total ? ((progress.sent + progress.failed + progress.skipped) / progress.total) * 100 : 100}
+                                        />
+                                        {/* Updated once a batch (about every ten seconds), not once an email. */}
+                                        <p role="status" aria-live="polite">
+                                            Sent {n(progress.sent)} of {n(progress.total)}, failed {n(progress.failed)}, skipped {n(progress.skipped)}
+                                        </p>
+                                        {progress.running ? (
+                                            <p className="text-xs text-muted-foreground">Keep this page open until it finishes.</p>
+                                        ) : null}
+                                        {progress.stopped && !progress.stoppedByStaff ? <p className="text-destructive">Stopped: {progress.stopped}</p> : null}
+                                        {progress.errors.length ? (
+                                            <ul className="list-inside list-disc text-xs text-muted-foreground">
+                                                {progress.errors.map((e, i) => (
+                                                    <li key={i} className="break-words">
+                                                        {e}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : null}
+                                        {!progress.running ? (
+                                            <p className="rounded-md bg-muted/50 p-2">
+                                                <span className="font-medium">Next: </span>
+                                                {nextStepAfterWave({
+                                                    sent: progress.sent,
+                                                    failed: stats?.failed ?? progress.failed,
+                                                    stoppedByStaff: progress.stoppedByStaff,
+                                                    waiting: progress.waiting,
+                                                    allowance,
+                                                    rampUntil: rampEnds,
+                                                })}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+
+                                <WaveTable waves={waves} />
+                            </CardContent>
+                        </Card>
+                    ) : null}
+                </TabsContent>
+            </Tabs>
 
             <SendConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} details={confirmation} onConfirm={startWave} />
 
-            {campaign && (sending || (plan && planned > 0)) ? (
+            {sendBar ? (
                 <MobileStickyActionBar>
                     {sending ? (
                         <Button variant="outline" className="w-full" onClick={() => (stopRef.current = true)}>
@@ -1020,6 +1258,11 @@ export function CampaignEditor({
                             {sendButtonLabel(planned)}
                         </Button>
                     )}
+                </MobileStickyActionBar>
+            ) : writeBar ? (
+                <MobileStickyActionBar className="flex items-center gap-3">
+                    {campaign && !dirty ? <span className="text-xs text-muted-foreground">Saved</span> : null}
+                    {saveButton("flex-1")}
                 </MobileStickyActionBar>
             ) : null}
         </div>

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { richTextIn } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -13,7 +14,8 @@ import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-ca
  *
  * A new campaign is written in blocks (slice 03), so Clear all empties its
  * blocks; the saved draft here was written before them and keeps its message
- * box.
+ * box. Clear all is one step of the editor's history (slice 04), so the
+ * toast's Undo is the history's.
  */
 
 const actions = vi.hoisted(() => ({
@@ -34,24 +36,6 @@ vi.mock("next/navigation", () => ({
 
 const { CampaignEditor } = await import("../campaign-editor");
 const { CAMPAIGN_PLACEHOLDERS, FIRST_CAMPAIGN_DRAFT, newCampaignDraft } = await import("@/lib/email-campaigns/rules");
-
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-// What jsdom leaves out and the page's components read: a desktop-width screen, sizes never change.
-window.matchMedia ??= ((media: string) => ({
-  matches: false,
-  media,
-  onchange: null,
-  addEventListener: () => undefined,
-  removeEventListener: () => undefined,
-  addListener: () => undefined,
-  removeListener: () => undefined,
-  dispatchEvent: () => false,
-})) as typeof window.matchMedia;
-globalThis.ResizeObserver ??= class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
 
 const SEGMENT = { id: "5e000000-0000-4000-8000-000000000001", name: "Premium, lapsed", needsReview: false };
 const DRAFT: CampaignDraft = {
@@ -101,10 +85,12 @@ const undo = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast
 const toastText = () => document.querySelector("[data-sonner-toast]")?.textContent ?? "";
 
 const value = (id: string) => (document.getElementById(id) ? field(id).value : null);
-/** Each block's fields, as typed, joined with `|`. */
+/** Each block's fields, as typed, joined with `|`: a text block's words as they read. */
 const blocks = () =>
   [...document.querySelectorAll("[data-block-id]")].map((li) =>
-    [...li.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")].map((f) => f.value).join("|"),
+    [...li.querySelectorAll<HTMLElement>("[data-block-body] input, [data-block-body] textarea, [data-block-body] [role='textbox']")]
+      .map((f) => (f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement ? f.value : [...f.children].map((p) => p.textContent).filter(Boolean).join("\n\n")))
+      .join("|"),
   );
 
 /** The fields Clear all empties, as typed: the message box and button of a draft written before blocks, or the blocks. */
@@ -206,7 +192,8 @@ describe("a new campaign", () => {
     mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
     type(field("c-subject"), "Sleep cooler this December");
     await addBlock("Text");
-    type(document.querySelector("[data-block-id] textarea")!, "Our covers are back.");
+    const input = await richTextIn(document.querySelector("[data-block-id]")!);
+    act(() => void input.commands.insertContent("Our covers are back."));
     await press(document.getElementById("c-greeting")!);
     const typed = words();
     expect(typed.name).toBe(SEGMENT.name);

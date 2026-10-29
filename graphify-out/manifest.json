@@ -3792,9 +3792,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1793255811.1955135,
-    "seen": 1793257083.4598362,
-    "ast_hash": "ecfd19fd3bf1f7bf975ded83cfe787c3",
+    "mtime": 1793264334.2349782,
+    "seen": 1793267053.3304784,
+    "ast_hash": "12f0c12efb47a1cca51952b348f123ed",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -6870,9 +6870,9 @@
     "semantic_hash": ""
   },
   "scripts/bundle-budget.json": {
-    "mtime": 1793088379.2656002,
-    "seen": 1793103694.60709,
-    "ast_hash": "7b18e37572a3dc9ec2a5306be4d089d3",
+    "mtime": 1793266784.397988,
+    "seen": 1793267053.330486,
+    "ast_hash": "2b5db4dbb96cdd68de5e71314fec0765",
     "semantic_hash": ""
   },
   "scripts/bundle-budget.mjs": {
@@ -14208,9 +14208,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/actions.ts": {
-    "mtime": 1793259339.8688037,
-    "seen": 1793259970.6256144,
-    "ast_hash": "a5292c8eea57e740453e0d0bb9385907",
+    "mtime": 1793264990.349697,
+    "seen": 1793267053.3282154,
+    "ast_hash": "64cdbae001e5b9b3b97f3228d08375f0",
     "semantic_hash": ""
   },
   "app/[lang]/settings/email-templates/actions.ts": {
@@ -14304,9 +14304,9 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/sender.ts": {
-    "mtime": 1793258482.3099403,
-    "seen": 1793259970.626627,
-    "ast_hash": "fa252abe4c1d1c97912b344f147aafe3",
+    "mtime": 1793264990.3503056,
+    "seen": 1793267053.329525,
+    "ast_hash": "518d1d155f39cc1d0d434ab4a803a498",
     "semantic_hash": ""
   },
   "lib/email-campaigns/setup.ts": {
@@ -15846,9 +15846,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/04-editor.md": {
-    "mtime": 1793240047.286129,
-    "seen": 1793240626.321874,
-    "ast_hash": "3ecb119c37873dcc7320152eb7d389ed",
+    "mtime": 1793266481.092308,
+    "seen": 1793267053.3309581,
+    "ast_hash": "e574ff9a5580504fa9e73c51916646e4",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/05-images-and-hero.md": {
@@ -15921,18 +15921,6 @@
     "mtime": 1793259373.6068008,
     "seen": 1793259970.6256042,
     "ast_hash": "7bf3f4080228ca349b6afa742439c56d",
-    "semantic_hash": ""
-  },
-  "app/[lang]/settings/campaigns/__tests__/text-source.test.ts": {
-    "mtime": 1793259310.8099449,
-    "seen": 1793259970.6256115,
-    "ast_hash": "5d4c8b10b02ab3c4bf58b58f32f57538",
-    "semantic_hash": ""
-  },
-  "app/[lang]/settings/campaigns/blocks/text-source.ts": {
-    "mtime": 1793259329.5293145,
-    "seen": 1793259970.6256158,
-    "ast_hash": "426b4752650465744d4e2a90bac36943",
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/content.test.ts": {
@@ -16077,6 +16065,30 @@
     "mtime": 1793260325.118835,
     "seen": 1793260733.0262768,
     "ast_hash": "b1adaa54fcb5c9069ee543730129fd72",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/__tests__/preview-matches-test.test.ts": {
+    "mtime": 1793265803.3328245,
+    "seen": 1793267053.3281786,
+    "ast_hash": "97e977da108a5be9ad7b62f8c84b7b96",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/__tests__/runs.test.ts": {
+    "mtime": 1793265735.5630283,
+    "seen": 1793267053.328181,
+    "ast_hash": "dfdfa1fd2d476c9dcf64f541adfe0806",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/blocks/runs.ts": {
+    "mtime": 1793264497.1789842,
+    "seen": 1793267053.328217,
+    "ast_hash": "969fc9463186e630efaccecbdb05fc01",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/campaigns/kept-draft.ts": {
+    "mtime": 1793264780.9509943,
+    "seen": 1793267053.3282192,
+    "ast_hash": "92a475a7c1d1d5f52f458b2ed980c020",
     "semantic_hash": ""
   }
 }
