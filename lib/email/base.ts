@@ -115,6 +115,9 @@ export function darkRules(): Array<[selector: string, declarations: string]> {
     ],
     [".mp-btn-secondary", `color: ${DARK.fg} !important;`],
     ["td, th", `border-color: ${DARK.border} !important;`],
+    // The light plate under an image with transparency (slice 05) keeps its
+    // light fill in dark, so a logo's dark ink never lands on the dark card.
+    [".mp-plate", `background: ${LIGHT.card} !important;`],
     [".mp-logo-light", "display: none !important;"],
     [".mp-logo-dark", "display: block !important;"],
   ];

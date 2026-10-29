@@ -46,6 +46,21 @@ const CONTENT: CampaignContent = {
         { label: "Our story", target: "url", url: "https://custom.mpillow.com/en-US/our-story", style: "secondary" },
       ],
     },
+    {
+      id: "photo",
+      type: "image",
+      image: { asset: "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f", alt: "A FibreCool cover on a bed" },
+      link: { target: "url", url: "https://custom.mpillow.com/en-US/shop" },
+      width: "inset",
+    },
+    {
+      id: "hero",
+      type: "hero",
+      image: { asset: "8a2d3c4b-5e6f-4a7b-8c9d-0e1f2a3b4c5d", alt: "", decorative: true },
+      heading: "Made to measure",
+      line: "In every size.",
+      button: { label: "Book a fitting", target: "book_fitting", style: "secondary" },
+    },
     { id: "line", type: "divider" },
     { id: "room", type: "spacer", size: "l" },
   ],
@@ -101,7 +116,7 @@ describe("CampaignContentSchema", () => {
     expect(refused(withBlock({ id: "b", type: "buttons", buttons: [button, button, button] }))).toBe(true);
     expect(refused(withBlock({ id: "b", type: "buttons", buttons: [{ ...button, label: "x".repeat(41) }] }))).toBe(true);
     expect(refused(withBlock({ id: "b", type: "buttons", buttons: [{ ...button, url: "https://custom.mpillow.com" }] }))).toBe(true);
-    expect(refused({ ...CONTENT, blocks: [CONTENT.blocks[3], CONTENT.blocks[3]] })).toBe(true);
+    expect(refused({ ...CONTENT, blocks: [CONTENT.blocks[5], CONTENT.blocks[5]] })).toBe(true);
     expect(refused(withBlock({ id: "has space", type: "divider" }))).toBe(true);
     const long = "x".repeat(CONTENT_LIMITS.text);
     const big = Array.from({ length: 21 }, (_, i) => ({ id: `t${i}`, type: "text", paragraphs: [{ kind: "p", runs: [{ text: long }] }] }));
@@ -167,7 +182,16 @@ describe("new blocks", () => {
 
 describe("reading the blocks", () => {
   it("reads every word a customer reads, for the points rule", () => {
-    expect(contentWords(CONTENT)).toEqual(["Sleep cooler this December", "Hi {first_name}, our FibreCool covers. CareCoolWashable", "Shop the covers", "Our story"]);
+    expect(contentWords(CONTENT)).toEqual([
+      "Sleep cooler this December",
+      "Hi {first_name}, our FibreCool covers. CareCoolWashable",
+      "Shop the covers",
+      "Our story",
+      "A FibreCool cover on a bed",
+      "Made to measure",
+      "In every size.",
+      "Book a fitting",
+    ]);
   });
 
   it("knows which Variables the blocks use, and whether a button signs in", () => {

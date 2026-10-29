@@ -17,6 +17,7 @@ import {
     AlertTriangle,
     FileText,
     Film,
+    Mail,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
 import { formatAdminDate, formatAdminRelative } from "@/lib/format/admin-date";
@@ -240,7 +241,8 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     const [replacing, setReplacing] = useState(false);
 
     /* Delete confirmation dialog (for in-use images) */
-    const [deleteConfirm, setDeleteConfirm] = useState<{ file: MediaFile; usages: UsageEntry[] } | null>(null);
+    // `deletable` is false when an email campaign uses it: no "Delete anyway" past that.
+    const [deleteConfirm, setDeleteConfirm] = useState<{ file: MediaFile; usages: UsageEntry[]; deletable: boolean } | null>(null);
     const [deleting, setDeleting] = useState(false);
 
     /* Drive paste import */
@@ -659,7 +661,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             const data = await res.json();
 
             if (res.status === 409 && data.usages) {
-                setDeleteConfirm({ file, usages: data.usages });
+                setDeleteConfirm({ file, usages: data.usages, deletable: data.deletable !== false });
                 return;
             }
 
@@ -827,6 +829,8 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             case "landing_section":
             case "partners_page":
                 return <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />;
+            case "email_campaign":
+                return <Mail className="h-3.5 w-3.5 shrink-0" />;
             default:
                 return <ImageIcon className="h-3.5 w-3.5 shrink-0" />;
         }
@@ -845,6 +849,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             case "partners_page": return "Partners page";
             case "item_overlay": return "Item overlay";
             case "item_image": return "Item image";
+            case "email_campaign": return "Email campaign";
             default: return type;
         }
     };
@@ -1534,6 +1539,15 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                                             <ExternalLink className="h-3.5 w-3.5" />
                                                         </a>
                                                     )}
+                                                    {usage.type === "email_campaign" && (
+                                                        <a
+                                                            href={`/en-US/settings/campaigns/${usage.ref_id}`}
+                                                            className="shrink-0 text-muted-foreground hover:text-foreground"
+                                                            title="Open the campaign"
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                        </a>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -1738,7 +1752,10 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         </DialogTitle>
                         <DialogDescription>
                             This image is currently used in {deleteConfirm?.usages.length}{" "}
-                            {deleteConfirm?.usages.length === 1 ? "place" : "places"}. Deleting it will break these references.
+                            {deleteConfirm?.usages.length === 1 ? "place" : "places"}.{" "}
+                            {deleteConfirm?.deletable === false
+                                ? "An email campaign uses it, so it can't be deleted: a sent email shows it for good."
+                                : "Deleting it will break these references."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1756,28 +1773,36 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         ))}
                     </div>
 
-                    <DialogFooter className="flex-col sm:flex-row gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                if (deleteConfirm) {
-                                    setReplaceFile(deleteConfirm.file);
-                                }
-                                setDeleteConfirm(null);
-                            }}
-                        >
-                            <ArrowLeftRight className="mr-2 h-4 w-4" />
-                            Replace first
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleForceDelete}
-                            disabled={deleting}
-                        >
-                            {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Delete anyway
-                        </Button>
-                    </DialogFooter>
+                    {deleteConfirm?.deletable === false ? (
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+                                Close
+                            </Button>
+                        </DialogFooter>
+                    ) : (
+                        <DialogFooter className="flex-col sm:flex-row gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    if (deleteConfirm) {
+                                        setReplaceFile(deleteConfirm.file);
+                                    }
+                                    setDeleteConfirm(null);
+                                }}
+                            >
+                                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                                Replace first
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleForceDelete}
+                                disabled={deleting}
+                            >
+                                {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                Delete anyway
+                            </Button>
+                        </DialogFooter>
+                    )}
                 </DialogContent>
             </Dialog>
 

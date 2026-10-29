@@ -167,6 +167,7 @@ describe("buildUsageMap over the trimmed selects", () => {
     expect(fake.log.map((q) => q.table).sort()).toEqual([
       "blog_posts",
       "categories",
+      "email_campaigns",
       "item_overlay_mappings",
       "items",
       "landing_sections",
@@ -180,5 +181,9 @@ describe("buildUsageMap over the trimmed selects", () => {
     expect(variants?.select).toBe("id, image_url");
     const settings = fake.log.find((q) => q.table === "site_settings");
     expect(settings?.filters).toEqual(["key.like.landing_%"]);
+    // Every campaign with blocks, archived ones included.
+    const campaigns = fake.log.find((q) => q.table === "email_campaigns");
+    expect(campaigns?.select).toBe("id, name, content");
+    expect(campaigns?.filters).toEqual(["not.content.is.null"]);
   });
 });

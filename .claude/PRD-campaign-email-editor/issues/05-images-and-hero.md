@@ -2,7 +2,7 @@
 
 **Issue:** [#359](https://github.com/ivanyeors/mp/issues/359) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** done (rendering in real inboxes, light and dark, is checked in slice 12's matrix)
 **Blocked by:** 03 (04 for the editor UI)
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:email`
 

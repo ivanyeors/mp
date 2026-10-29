@@ -9,7 +9,7 @@ import { darkRules, forceDarkMode, FORCED_DARK_STYLE_ID, renderEmailShell } from
 import { AUTH_TEMPLATE_LABELS } from "../contact-sheet";
 import { EMAIL_REGISTRY } from "../registry";
 import { DARK, LIGHT } from "../theme";
-import { EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
+import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
 import { EMAIL_BLOCK_TYPES, emptyBlock, type CampaignContent } from "@/lib/email-campaigns/content";
 import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
@@ -46,7 +46,7 @@ const NO_DARK_CHANGE: Record<string, string> = {
 };
 
 const ORIGIN = "https://custom.mpillow.com";
-const preview = (c: CampaignDraft) => renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan" }).html;
+const preview = (c: CampaignDraft) => renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan", images: EMAIL_BLOCK_SAMPLE_IMAGES }).html;
 const blocks = (content: CampaignContent): CampaignDraft => ({ ...EMPTY_CAMPAIGN_DRAFT, name: "Blocks", subject: "Sleep cooler", content });
 const AUTH_DIR = join(process.cwd(), "supabase", "templates");
 
@@ -191,10 +191,12 @@ function unreadableWords(html: string, mode: Mode, rules: Rule[] = darkRules()):
 /**
  * Links whose only sign is their colour. A client that inverts colours by
  * itself (Gmail on iOS) is reached by no rule; an underline survives it. A
- * button is its fill's shape, so it needs none.
+ * button is its fill's shape, so it needs none, and a linked image (slice 05)
+ * is its picture, with no words to underline.
  */
 const bareLinks = (html: string) =>
   [...parse(html).body.querySelectorAll("a[href]:not(.mp-btn)")]
+    .filter((a) => !(a.querySelector("img") && !a.textContent?.trim()))
     .filter((a) => !/text-decoration:\s*underline/.test(a.getAttribute("style") ?? ""))
     .map((a) => `"${a.textContent?.trim()}" is not underlined`);
 

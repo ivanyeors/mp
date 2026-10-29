@@ -154,7 +154,7 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/media`
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:368
   - `updateBlogStatus()` [update] — app/[lang]/settings/blogs/actions.ts:29
 - Read by:
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:923
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:977
   - `getAdminBlogPostById()` [select] — lib/blogs.ts:160
   - `getAllBlogPostsRaw()` [select] — lib/blogs.ts:115
   - `getBlogPostBySlugFromDb()` [select] — lib/blogs.ts:103
@@ -330,7 +330,7 @@ Changed from pages: `/settings/discounts/[id]`, `/settings/media`, `/settings/pr
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:373
 - Read by:
   - `categories.ts` [select] — lib/ecommerce/categories.ts:8
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:941
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:995
   - `getCategoryBySlug()` [select] — lib/ecommerce/categories.ts:61
   - `publishAccessoryFamily()` [select] — lib/ecommerce/from-inventory.ts:84
   - `syncBolsterProducts()` [select] — lib/ecommerce/inventory-sync.ts:168
@@ -656,7 +656,7 @@ Changed from pages: `/settings/inventory/configure`
   - `DELETE()` [delete] — app/[lang]/settings/product-builder/mappings/route.ts:78
   - `POST()` [upsert] — app/[lang]/settings/product-builder/mappings/route.ts:60
 - Read by:
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:951
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1005
   - `fetchOverlayMap()` [select] — lib/shop/customization-inventory.ts:17
   - `listOverlayMappingItems()` [select] — lib/product-builder/overlay-mappings.ts:31
 
@@ -728,7 +728,7 @@ Changed from pages: `/settings/inventory`
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/route.ts:69
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:108
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:668
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:957
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1011
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:157
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:244
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:139
@@ -776,7 +776,7 @@ Changed from pages: `/settings/media`, `/settings/page-builder`
   - `PUT()` [select,upsert] — app/api/landing-sections/reorder/route.ts:39
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:370
 - Read by:
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:932
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:986
   - `getLandingSections()` [select] — lib/landing-sections.ts:54
   - `listLandingSectionRows()` [select] — lib/landing-sections.ts:103
   - `listLandingSections()` [select] — lib/landing-sections.ts:79
@@ -784,32 +784,33 @@ Changed from pages: `/settings/media`, `/settings/page-builder`
 ### media_assets
 Defined in supabase/migrations/20260710052303_media_assets.sql:3
 References: `admin_users`, `media_folders`
-Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/discounts/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/media`, `/settings/page-builder`, `/settings/partners`, `/settings/products`, `/settings/products/[id]`
+Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/discounts/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/media`, `/settings/page-builder`, `/settings/partners`, `/settings/products`, `/settings/products/[id]`
 - Written by:
-  - `DELETE()` [delete] — app/api/media/[path]/route.ts:45
-  - `backfillMediaAssetsFromBucket()` [insert,select] — lib/media-assets/index.ts:318
-  - `createMediaAsset()` [insert] — lib/media-assets/index.ts:148
-  - `deleteMediaAsset()` [delete] — lib/media-assets/index.ts:223
-  - `patchMediaAssetHosted()` [update] — lib/media-assets/index.ts:239
-  - `touchLastUsed()` [update] — lib/media-assets/index.ts:291
-  - `updateMediaAsset()` [update] — lib/media-assets/index.ts:168
+  - `backfillMediaAssetsFromBucket()` [insert,select] — lib/media-assets/index.ts:329
+  - `createMediaAsset()` [insert] — lib/media-assets/index.ts:154
+  - `deleteMediaAsset()` [delete] — lib/media-assets/index.ts:229
+  - `patchMediaAssetHosted()` [update] — lib/media-assets/index.ts:245
+  - `touchLastUsed()` [update] — lib/media-assets/index.ts:302
+  - `updateMediaAsset()` [update] — lib/media-assets/index.ts:174
 - Read by:
+  - `DELETE()` [select] — app/api/media/[path]/route.ts:35
   - `GET()` [select] — app/api/results/addons/route.ts:79
+  - `ensureEmailRenditions()` [select] — lib/media-assets/email-renditions.ts:102
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:431
-  - `getMediaAsset()` [select] — lib/media-assets/index.ts:106
-  - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:120
-  - `listMediaAssets()` [select] — lib/media-assets/index.ts:87
+  - `getMediaAsset()` [select] — lib/media-assets/index.ts:112
+  - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:126
+  - `listMediaAssets()` [select] — lib/media-assets/index.ts:93
   - `loadImage()` [select] — lib/ecommerce/item-image-sync.ts:27
 
 ### media_folders
 Defined in supabase/migrations/20260710080000_media_folders.sql:3
-Changed from pages: `/settings/blogs/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/media`, `/settings/page-builder`, `/settings/partners`, `/settings/products`, `/settings/products/[id]`
+Changed from pages: `/settings/blogs/[id]`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/media`, `/settings/page-builder`, `/settings/partners`, `/settings/products`, `/settings/products/[id]`
 - Written by:
-  - `createMediaFolder()` [insert] — lib/media-assets/index.ts:191
-  - `deleteMediaFolder()` [delete] — lib/media-assets/index.ts:218
-  - `updateMediaFolder()` [update] — lib/media-assets/index.ts:207
+  - `createMediaFolder()` [insert] — lib/media-assets/index.ts:197
+  - `deleteMediaFolder()` [delete] — lib/media-assets/index.ts:224
+  - `updateMediaFolder()` [update] — lib/media-assets/index.ts:213
 - Read by:
-  - `listMediaFolders()` [select] — lib/media-assets/index.ts:179
+  - `listMediaFolders()` [select] — lib/media-assets/index.ts:185
 
 ### milestone_bonuses
 Defined in supabase/migrations/20260728030000_milestones.sql:42
@@ -1159,7 +1160,7 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:48
   - `buildPartnerContext()` [select] — lib/auth/partner.ts:90
   - `createHeldCommissionsForOrder()` [select] — lib/commissions/ledger.ts:50
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:944
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:998
   - `getLocation()` [select] — lib/locations/index.ts:91
   - `getPartnerByCode()` [select] — lib/referrals/index.ts:95
   - `getPartnerByReferralCode()` [select] — lib/referrals/index.ts:37
@@ -1179,7 +1180,7 @@ Changed from pages: `/settings/media`, `/settings/partners`
   - `PATCH()` [insert,update] — app/api/partners-page/route.ts:62
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:375
 - Read by:
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:947
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1001
   - `getPartnersPageContent()` [select] — lib/partners/index.ts:53
   - `getPartnersPageRow()` [select] — lib/partners/index.ts:69
 
@@ -1247,7 +1248,7 @@ Changed from pages: `/settings/inventory`, `/settings/media`, `/settings/product
   - `applyGalleryImage()` [delete,insert,select,update] — lib/ecommerce/item-image-sync.ts:43
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:371
 - Read by:
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:935
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:989
   - `setProductBaseImage()` [select] — lib/ecommerce/item-image-sync.ts:131
 
 ### product_options
@@ -1321,7 +1322,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/costi
   - `POST()` [select] — app/api/shop/checkout/route.ts:166
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:301
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:103
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:938
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:992
   - `handleApply()` [select] — app/api/shop/customize/route.ts:566
   - `handleApplyBolster()` [select] — app/api/shop/customize/route.ts:694
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:141
@@ -1596,6 +1597,7 @@ Changed from pages: `/settings/campaigns/[id]`, `/settings/campaigns/new`
   - `lockCampaign()` [update] — lib/email-campaigns/store.ts:138
   - `updateCampaign()` [update] — lib/email-campaigns/store.ts:123
 - Read by:
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1020
   - `getCampaign()` [select] — lib/email-campaigns/store.ts:91
   - `listCampaigns()` [select] — lib/email-campaigns/store.ts:75
 
@@ -1672,6 +1674,14 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:265
 - Read by:
   - `readPaged()` [select] — lib/email-campaigns/store.ts:160
+
+### media_asset_renditions
+Defined in supabase/migrations/20261030050000_media_asset_renditions.sql:20
+References: `media_assets`
+- Written by:
+  - `ensureEmailRenditions()` [select,upsert] — lib/media-assets/email-renditions.ts:91
+- Read by:
+  - `emailRenditionPathsOf()` [select] — lib/media-assets/email-renditions.ts:156
 
 ### migrated_customers
 Defined in supabase/migrations/20261020100000_customer_import.sql:52
@@ -2121,7 +2131,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `GET()` [select] — app/api/appointments/slots/route.ts:63
   - `GET()` [select] — app/api/settings/appointments/events/route.ts:38
   - `POST()` [select] — app/api/appointments/book/route.ts:82
-  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:927
+  - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:981
   - `getSiteSettings()` [select] — lib/site-settings.ts:13
   - `loadCheckupSettings()` [select] — lib/aftercare/checkup-server.ts:126
   - `loadDimensionOverrides()` [select] — lib/spatial-fillings/dimension-overrides.server.ts:29
@@ -2410,7 +2420,7 @@ app/[lang]/settings/blogs/[id]/page.tsx
 - Endpoints: `/api/blogs [POST]`, `/api/blogs/[id] [GET,PATCH]`, `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `getAdminBlogPostById()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `blog_posts`, `media_assets`, `media_folders`, `mp_staff`
-- Reads, through the same: `admin_roles`, `admin_users`, `categories`, `item_overlay_mappings`, `items`, `landing_sections`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `categories`, `email_campaigns`, `item_overlay_mappings`, `items`, `landing_sections`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
 
 ### /settings/campaigns
 app/[lang]/settings/campaigns/page.tsx
@@ -2421,17 +2431,19 @@ app/[lang]/settings/campaigns/page.tsx
 
 ### /settings/campaigns/[id]
 app/[lang]/settings/campaigns/[id]/page.tsx
-- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `marketing_campaign_candidates`, `site_settings`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
 
 ### /settings/campaigns/new
 app/[lang]/settings/campaigns/new/page.tsx
-- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `duplicateCampaign()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
+- Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `listSegments()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `marketing_campaign_candidates`, `site_settings`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
 
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx
@@ -2548,7 +2560,7 @@ app/[lang]/settings/inventory/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/settings/inventory/configure/templates/[templateId] [GET]`
 - Reads: `bolster_bom_lines`, `bom_lines`, `inventory_balances`, `items`, `pillow_products`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `inventory_transactions`, `item_prices`, `items`, `media_assets`, `media_folders`, `mp_staff`, `pillow_products`, `product_images`, `product_variants`
-- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bolster_bom_lines`, `bom_lines`, `categories`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `landing_sections`, `neck_support_dimension_overrides`, `partners`, `partners_page`, `products`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bolster_bom_lines`, `bom_lines`, `categories`, `email_campaigns`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_overlay_mappings`, `landing_sections`, `neck_support_dimension_overrides`, `partners`, `partners_page`, `products`, `site_settings`
 
 ### /settings/inventory/configure
 app/[lang]/settings/inventory/configure/page.tsx
@@ -2556,7 +2568,7 @@ app/[lang]/settings/inventory/configure/page.tsx
 - Loads: `requireAdminPage()`
 - Reads: `bom_lines`, `pillow_products`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `filling_color_overrides`, `filling_dimension_overrides`, `filling_template_placements`, `item_overlay_mappings`, `media_assets`, `media_folders`, `mp_staff`, `neck_support_dimension_overrides`, `pillow_products`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bom_lines`, `categories`, `items`, `landing_sections`, `partners`, `partners_page`, `product_images`, `product_variants`
+- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bom_lines`, `categories`, `email_campaigns`, `items`, `landing_sections`, `partners`, `partners_page`, `product_images`, `product_variants`
 
 ### /settings/inventory/configure/[card]
 app/[lang]/settings/inventory/configure/[card]/page.tsx
@@ -2577,7 +2589,7 @@ app/[lang]/settings/media/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-assets [GET,POST]`, `/api/media-assets/[id] [PATCH]`, `/api/media-assets/[id]/reimport [POST]`, `/api/media-assets/[id]/usage [GET]`, `/api/media-folders [GET,POST]`, `/api/media-folders/[id] [PATCH]`, `/api/media/drive/browse [GET]`, `/api/media/drive/resolve [GET]`, `/api/media/import/drive [POST]`, `/api/media/replace [POST]`, `/api/media/usage [GET]`, `/api/site-settings [DELETE,GET,PUT]`
 - Loads: `loadMediaGallerySeed()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `blog_posts`, `categories`, `landing_sections`, `media_assets`, `media_folders`, `mp_staff`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `item_overlay_mappings`, `items`
+- Reads, through the same: `admin_roles`, `admin_users`, `email_campaigns`, `item_overlay_mappings`, `items`, `media_asset_renditions`
 
 ### /settings/orders
 app/[lang]/settings/orders/page.tsx
@@ -2598,7 +2610,7 @@ app/[lang]/settings/page-builder/page.tsx
 - Endpoints: `/api/landing-sections [GET,POST]`, `/api/landing-sections/[id] [DELETE,PATCH]`, `/api/landing-sections/history [GET,POST]`, `/api/landing-sections/publish [GET]`, `/api/landing-sections/reorder [PUT]`, `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `listLandingSectionRows()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `landing_sections`, `media_assets`, `media_folders`, `mp_staff`
-- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `categories`, `item_overlay_mappings`, `items`, `landing_page_publishes`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `categories`, `email_campaigns`, `item_overlay_mappings`, `items`, `landing_page_publishes`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
 
 ### /settings/partner-applications
 app/[lang]/settings/partner-applications/page.tsx
@@ -2622,7 +2634,7 @@ app/[lang]/settings/partners/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/partners [GET,POST]`, `/api/partners-page [GET,PATCH]`, `/api/partners/[id] [DELETE,PATCH]`, `/api/partners/reorder [PUT]`
 - Loads: `getPartnersPageRow()`, `listAdminLocationRows()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `media_assets`, `media_folders`, `mp_staff`, `partners`, `partners_page`
-- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `categories`, `item_overlay_mappings`, `items`, `landing_sections`, `product_images`, `product_variants`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `categories`, `email_campaigns`, `item_overlay_mappings`, `items`, `landing_sections`, `product_images`, `product_variants`, `site_settings`
 
 ### /settings/partners/hide
 app/[lang]/settings/partners/hide/page.tsx
@@ -2649,14 +2661,14 @@ app/[lang]/settings/products/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/shop/categories [GET,POST]`, `/api/shop/categories/[id] [DELETE,PATCH]`, `/api/shop/products [GET]`, `/api/shop/products/[id] [DELETE]`, `/api/shop/products/accessory-listings [GET,PATCH]`, `/api/shop/products/resync-prices [POST]`, `/api/shop/products/sync-inventory [POST]`
 - Loads: `listAdminProducts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `categories`, `media_assets`, `media_folders`, `mp_staff`, `product_images`, `product_options`, `product_variants`, `products`
-- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bolster_bom_lines`, `bom_lines`, `item_overlay_mappings`, `item_prices`, `items`, `landing_sections`, `partners`, `partners_page`, `pillow_products`, `product_prices`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bolster_bom_lines`, `bom_lines`, `email_campaigns`, `item_overlay_mappings`, `item_prices`, `items`, `landing_sections`, `partners`, `partners_page`, `pillow_products`, `product_prices`, `site_settings`, `variant_stock`
 
 ### /settings/products/[id]
 app/[lang]/settings/products/[id]/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/shop/categories [GET]`, `/api/shop/products [POST]`, `/api/shop/products/[id] [GET,PATCH]`, `/api/shop/products/[id]/images [POST]`, `/api/shop/products/[id]/images/[imageId] [DELETE]`, `/api/shop/products/[id]/images/reorder [PUT]`, `/api/shop/products/[id]/variants [POST]`, `/api/shop/products/[id]/variants/[variantId] [DELETE,PATCH]`, `/api/stripe/payment-link [POST]`, `/api/stripe/sync [POST]`
 - Loads: `getAdminProduct()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `categories`, `media_assets`, `media_folders`, `mp_staff`, `product_images`, `product_variants`, `products`
-- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bom_lines`, `item_overlay_mappings`, `items`, `landing_sections`, `partners`, `partners_page`, `pillow_products`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bom_lines`, `email_campaigns`, `item_overlay_mappings`, `items`, `landing_sections`, `partners`, `partners_page`, `pillow_products`, `site_settings`, `variant_stock`
 
 ### /settings/results
 app/[lang]/settings/results/page.tsx

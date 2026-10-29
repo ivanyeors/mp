@@ -19,7 +19,15 @@ import { FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/
 
 const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
-const HINTS = { heading: "e.g. A heading", text: "Write a few lines.", buttonLabel: "e.g. Shop", empty: "Add a block." };
+const HINTS = {
+  heading: "e.g. A heading",
+  text: "Write a few lines.",
+  buttonLabel: "e.g. Shop",
+  empty: "Add a block.",
+  image: "Choose an image.",
+  imageUnavailable: "Not ready.",
+  line: "e.g. A line",
+};
 
 const data = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> = {}): CampaignBlocksEmailData => ({
   subject: "News",

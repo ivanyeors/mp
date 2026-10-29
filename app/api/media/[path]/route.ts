@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { deleteMediaAssetGuarded, MediaAssetInUseError } from "@/lib/media-assets";
+import { EMAIL_RENDITION_FOLDER } from "@/lib/media-assets/email-renditions";
 import { listImageUsages } from "@/lib/media/image-usages";
 
 export const runtime = "nodejs";
@@ -16,6 +18,10 @@ export async function DELETE(
     if (!path) {
         return NextResponse.json({ error: "No file path provided" }, { status: 400 });
     }
+    // An email rendition goes with its image, never by itself: a sent email points at it.
+    if (path.startsWith(`${EMAIL_RENDITION_FOLDER}/`)) {
+        return NextResponse.json({ error: "An email copy is removed with its image." }, { status: 400 });
+    }
 
     const { searchParams } = new URL(req.url);
     const force = searchParams.get("force") === "true";
@@ -23,6 +29,24 @@ export async function DELETE(
     const admin = supabaseAdmin();
     const { data: publicUrlData } = admin.storage.from("media").getPublicUrl(path);
     const fileUrl = publicUrlData.publicUrl;
+
+    // A file the Asset registry knows goes through its guarded delete, which
+    // also counts the uses by Asset id (an email campaign's) and refuses those.
+    const { data: asset } = await admin.from("media_assets").select("id").eq("hosted_url", fileUrl).maybeSingle();
+    if (asset) {
+        try {
+            await deleteMediaAssetGuarded(asset.id as string, { force });
+            return NextResponse.json({ ok: true });
+        } catch (err) {
+            if (err instanceof MediaAssetInUseError) {
+                return NextResponse.json(
+                    { error: "Image is in use", usages: err.usages, deletable: err.deletable },
+                    { status: 409 }
+                );
+            }
+            return NextResponse.json({ error: err instanceof Error ? err.message : "Delete failed" }, { status: 500 });
+        }
+    }
 
     // Check usage before deleting (unless force=true)
     if (!force) {
@@ -40,9 +64,6 @@ export async function DELETE(
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    // Keep Asset registry in sync with bucket deletes
-    await admin.from("media_assets").delete().eq("hosted_url", fileUrl);
 
     return NextResponse.json({ ok: true });
 }

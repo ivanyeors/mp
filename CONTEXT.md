@@ -896,11 +896,15 @@ _Avoid_: "media" when you mean a landing-page image slot override or a hard-code
 **Hosted URL**:
 The public URL for an image **Media Asset** served on the site (app storage). Storefront and admin use this for display; responsive delivery is handled at serve time.
 
+**Email rendition**:
+The copy of an image **Media Asset** that an email shows (`media_asset_renditions`, the media bucket's `email/`): a JPEG, or a PNG when the image has transparency, at most 1,200px wide, because classic Outlook shows no WebP **Hosted URL**. Made once per Asset, the first time it is placed in an **Email block**, and reused by every campaign and send; a sent email points at it for good. An image with transparency sits on the email's light plate, so it reads in dark mode (PRD-campaign-email-editor slice 05).
+_Avoid_: putting the **Hosted URL** in an email; "thumbnail" (it is full size for the email column)
+
 **Drive provenance**:
 The original Google Drive file id/URL kept on an Asset after a one-time import — for Open in Drive and manual re-import only. No ongoing sync with Drive.
 
 **Used / unused**:
-**Used** = currently referenced by a known consumer (landing slots, blogs, products, categories, partners, page builder; drafts count). Order item image snapshots do not count. **Unused** = no such reference.
+**Used** = currently referenced by a known consumer (landing slots, blogs, products, categories, partners, page builder, **Email campaigns**; drafts count). An **Email campaign**'s use, draft, sent or archived, also stops the Asset being deleted at all, past any "Delete anyway". Order item image snapshots do not count. **Unused** = no such reference.
 
 **Last used**:
 Timestamp of the last attach, replace, or save in a consumer that referenced the Asset — not storefront page views.

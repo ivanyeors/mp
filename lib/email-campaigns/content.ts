@@ -20,7 +20,7 @@ import { bodyLineParts, linkLabel, parseCampaignBody } from "@/lib/email/campaig
 import { placeholdersIn } from "@/lib/email/copy";
 import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type VariableKey } from "./variables";
 
-export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "divider", "spacer"] as const;
+export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
 
 /**
@@ -55,6 +55,17 @@ export const BLOCK_BUTTON_TARGET_LABEL: Record<BlockButtonTarget, string> = {
 export const BUTTON_STYLES = ["primary", "secondary"] as const;
 export const SPACER_SIZES = ["s", "m", "l"] as const;
 
+/**
+ * Where an image can link (slice 05): a page of the site, or a link Staff
+ * type. Never the sign-in, which only a button offers.
+ */
+export const IMAGE_LINK_TARGETS = ["shop", "book_fitting", "customise_mpillow", "customise_mbolster", "url"] as const satisfies readonly BlockButtonTarget[];
+export type ImageLinkTarget = (typeof IMAGE_LINK_TARGETS)[number];
+
+/** An image's width (slice 05): the column's full width, or inset with room either side. Always centred. */
+export const IMAGE_WIDTHS = ["full", "inset"] as const;
+export type ImageWidth = (typeof IMAGE_WIDTHS)[number];
+
 export const CONTENT_VERSION = 1;
 
 export const CONTENT_LIMITS = {
@@ -67,6 +78,10 @@ export const CONTENT_LIMITS = {
   paragraphs: 50,
   items: 30,
   runs: 200,
+  /** An image's alt text: what a screen reader says, and what shows with images off. */
+  alt: 150,
+  /** A hero's one line under its heading. */
+  line: 200,
   /** The stored JSON, in UTF-8 bytes; the table refuses 256,000. */
   bytes: 200_000,
 } as const;
@@ -79,6 +94,10 @@ export const CONTENT_PLACEHOLDERS = {
   heading: "e.g. Sleep cooler this December",
   text: "Write a few lines.",
   empty: "Add a block to start the email: a heading, some text, a button.",
+  image: "Choose an image from the Media Library.",
+  /** An image chosen whose email copy could not be read or made. */
+  imageUnavailable: "This image can't be shown in an email. Choose it again, or another.",
+  line: "e.g. Our coolest covers, back in every size.",
 } as const;
 
 /** Pure — whether `value` is an absolute https link with no spaces. */
@@ -131,6 +150,9 @@ export type Paragraph = z.output<typeof ParagraphSchema>;
 /** A block's id: stable for its life, so the editor can follow it as it moves. */
 const BlockId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "A block id is 1 to 40 letters, digits, - or _.");
 
+/** A Media Asset's id (`media_assets.id`), as Postgres writes a uuid: lower case. */
+const ASSET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 /**
  * The block types. Saving needs every word (`required`); the preview takes
  * them empty, so a new block shows its placeholders.
@@ -145,6 +167,48 @@ function blockSchema({ required }: { required: boolean }) {
       if (unfilled) ctx.addIssue({ code: "custom", message: unfilled });
     });
   };
+
+  // Words that may be left empty, sent as written as a heading is.
+  const optionalWords = (max: number) => {
+    const s = z.string().trim().max(max, most(max)).refine(noTags, NO_TAGS);
+    if (!required) return s;
+    return s.superRefine((v, ctx) => {
+      const unfilled = sentAsWrittenMessage(v);
+      if (unfilled) ctx.addIssue({ code: "custom", message: unfilled });
+    });
+  };
+
+  // An image from the Media Library (slice 05): its asset, empty until one is
+  // chosen, and its alt text, or `decorative` for one that says nothing a
+  // reader would miss (empty alt, role="presentation"). The email shows the
+  // asset's email rendition, which the sender reads at render; the content
+  // holds no URL of its own.
+  const image = z
+    .strictObject({
+      asset: required
+        ? z.string().regex(ASSET_ID, "Choose an image.")
+        : z.string().refine((v) => v === "" || ASSET_ID.test(v), "An image is a Media Asset's id."),
+      alt: optionalWords(CONTENT_LIMITS.alt),
+      decorative: z.boolean().optional(),
+    })
+    .superRefine((im, ctx) => {
+      if (required && !im.decorative && !im.alt) {
+        ctx.addIssue({ code: "custom", path: ["alt"], message: "Describe the image for anyone who can't see it, or mark it decorative." });
+      }
+    });
+
+  const imageLink = z
+    .strictObject({
+      target: z.enum(IMAGE_LINK_TARGETS),
+      url: z.string().trim().max(CONTENT_LIMITS.url, most(CONTENT_LIMITS.url)).optional(),
+    })
+    .superRefine((l, ctx) => {
+      if (l.target === "url") {
+        if (!l.url || !isHttpsUrl(l.url)) ctx.addIssue({ code: "custom", path: ["url"], message: "The image's link must be a full https:// address." });
+      } else if (l.url !== undefined) {
+        ctx.addIssue({ code: "custom", path: ["url"], message: "Only a link has a link of its own." });
+      }
+    });
 
   const button = z
     .strictObject({
@@ -191,6 +255,30 @@ function blockSchema({ required }: { required: boolean }) {
       id: BlockId,
       type: z.literal("buttons"),
       buttons: z.array(button).min(1, "Add a button.").max(2, "At most two buttons side by side."),
+    }),
+    z
+      .strictObject({
+        id: BlockId,
+        type: z.literal("image"),
+        image,
+        link: imageLink.optional(),
+        width: z.enum(IMAGE_WIDTHS),
+      })
+      .superRefine((b, ctx) => {
+        // A linked image's alt is the link's words.
+        if (required && b.link && b.image.decorative) {
+          ctx.addIssue({ code: "custom", path: ["image", "alt"], message: "A linked image needs alt text: it is what the link says." });
+        }
+      }),
+    // The image, then its words as real text below it: never text on the image
+    // (decision 6). Each part but the image may be left out; one kept is written.
+    z.strictObject({
+      id: BlockId,
+      type: z.literal("hero"),
+      image,
+      heading: words(CONTENT_LIMITS.heading, "Write the heading, or remove it.").optional(),
+      line: words(CONTENT_LIMITS.line, "Write the line, or remove it.").optional(),
+      button: button.optional(),
     }),
     z.strictObject({ id: BlockId, type: z.literal("divider") }),
     z.strictObject({ id: BlockId, type: z.literal("spacer"), size: z.enum(SPACER_SIZES) }),
@@ -240,6 +328,12 @@ export type CampaignContent = z.output<typeof CampaignContentSchema>;
 export type EmailBlock = CampaignContent["blocks"][number];
 export type BlockButton = Extract<EmailBlock, { type: "buttons" }>["buttons"][number];
 export type SpacerSize = (typeof SPACER_SIZES)[number];
+export type ImageBlock = Extract<EmailBlock, { type: "image" }>;
+export type HeroBlock = Extract<EmailBlock, { type: "hero" }>;
+/** An image a block places: its Media Asset and alt text. */
+export type BlockImage = ImageBlock["image"];
+/** Where an image goes when tapped. */
+export type BlockLink = NonNullable<ImageBlock["link"]>;
 
 /** No blocks yet: where a new campaign starts. */
 export const EMPTY_CAMPAIGN_CONTENT: CampaignContent = { v: CONTENT_VERSION, blocks: [], fallbacks: {} };
@@ -263,7 +357,8 @@ export function newBlockId(): string {
 /**
  * A new block of `type`: its words empty, on their placeholders (decision 7),
  * never sample words. Its choices start on the plainest: a medium heading,
- * one primary button to the shop, a medium spacer.
+ * one primary button to the shop, a full-width image with no link, a hero
+ * with every part, a medium spacer.
  */
 export function emptyBlock(type: EmailBlockType, id: string = newBlockId()): EmailBlock {
   switch (type) {
@@ -273,12 +368,19 @@ export function emptyBlock(type: EmailBlockType, id: string = newBlockId()): Ema
       return { id, type, paragraphs: [] };
     case "buttons":
       return { id, type, buttons: [{ label: "", target: "shop", style: "primary" }] };
+    case "image":
+      return { id, type, image: { asset: "", alt: "" }, width: "full" };
+    case "hero":
+      return { id, type, image: { asset: "", alt: "" }, heading: "", line: "", button: { label: "", target: "shop", style: "primary" } };
     case "divider":
       return { id, type };
     case "spacer":
       return { id, type, size: "m" };
   }
 }
+
+/** An image's alt text, which a screen reader reads; a decorative image has none. */
+const altWords = (im: BlockImage) => (im.decorative || !im.alt ? [] : [im.alt]);
 
 /** Pure — every word a customer reads in the blocks, a Variable as `{name}`: what the points rule reads. */
 export function contentWords(content: CampaignContent): string[] {
@@ -290,10 +392,23 @@ export function contentWords(content: CampaignContent): string[] {
         return [textWords(b.paragraphs)];
       case "buttons":
         return b.buttons.map((x) => x.label);
+      case "image":
+        return altWords(b.image);
+      case "hero":
+        return [...altWords(b.image), ...[b.heading, b.line, b.button?.label].filter((w): w is string => w !== undefined)];
       default:
         return [];
     }
   });
+}
+
+/**
+ * Pure — every Media Asset the blocks place, once each, in order (slice 05):
+ * whose email renditions the sender reads, and what the Media Library counts
+ * as Used. Any block with an `image` counts, so a later one does too.
+ */
+export function imageAssetsIn(content: CampaignContent): string[] {
+  return [...new Set(content.blocks.flatMap((b) => ("image" in b && b.image.asset ? [b.image.asset] : [])))];
 }
 
 /**
@@ -308,7 +423,9 @@ export function variablesUsed(content: CampaignContent, lines: readonly string[]
 
 /** Pure — a button anywhere in the blocks goes to the recipient's sign-in, so the sender mints Claim links. */
 export function contentSignsIn(content: CampaignContent): boolean {
-  return content.blocks.some((b) => b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in"));
+  return content.blocks.some(
+    (b) => (b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in")) || (b.type === "hero" && b.button?.target === "sign_in"),
+  );
 }
 
 /** Pure — the subject, preview line or a text block names a `{name}` that is not a Variable: the message, or null. */

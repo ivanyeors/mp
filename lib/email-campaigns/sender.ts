@@ -50,7 +50,7 @@ import {
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
 import { forceDarkMode } from "@/lib/email/base";
-import { renderCampaignBlocksEmail, type CampaignBlocksPlaceholders } from "@/lib/email/campaign-blocks";
+import { renderCampaignBlocksEmail, type CampaignBlockImages, type CampaignBlocksPlaceholders } from "@/lib/email/campaign-blocks";
 import { renderComposedCampaignEmail, type ComposedCampaignPlaceholders } from "@/lib/email/campaigns";
 import {
   checkCampaignFrom,
@@ -78,6 +78,7 @@ import {
   type CampaignPlan,
 } from "./rules";
 import { contentSignsIn, CONTENT_PLACEHOLDERS, SITE_BUTTON_PATHS, type BlockButton } from "./content";
+import { campaignImagesProblem, readCampaignImages } from "./images";
 import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
 import { variableValues } from "./variables";
@@ -149,7 +150,7 @@ export function campaignButton(
  * button; for `url` the link Staff typed.
  */
 export function blockButtonHref(
-  b: BlockButton,
+  b: Pick<BlockButton, "target" | "url">,
   campaignName: string,
   { origin, locale, claimUrl }: { origin: string; locale: Locale; claimUrl: string | null },
 ): string | null {
@@ -173,7 +174,9 @@ type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "bod
  * Pure — the Campaign as one recipient gets it: its blocks, or the plain-text
  * body of a campaign written before them, which keeps its own renderer
  * (PRD-campaign-email-editor decision 5). `placeholders` is the editor's
- * preview's alone (`renderCampaignPreview`): no send passes it.
+ * preview's alone (`renderCampaignPreview`): no send passes it. `images` is
+ * each placed image's email rendition (slice 05), read by `readCampaignImages`
+ * before the first recipient: the renderer throws on an image without one.
  */
 export function renderCampaignFor(
   campaign: CampaignEmailParts,
@@ -183,6 +186,7 @@ export function renderCampaignFor(
     locale: Locale;
     claimUrl: string | null;
     unsubscribeUrl: string;
+    images?: CampaignBlockImages;
     placeholders?: CampaignPreviewPlaceholders;
   },
 ): RenderedEmail {
@@ -196,6 +200,7 @@ export function renderCampaignFor(
       values: variableValues({ firstName: p.firstName }, campaign.content.fallbacks),
       buttonHref: (b) => blockButtonHref(b, campaign.name, p),
       unsubscribeUrl: p.unsubscribeUrl,
+      ...(p.images ? { images: p.images } : {}),
       ...(p.placeholders ? { placeholders: p.placeholders } : {}),
     });
   }
@@ -221,11 +226,18 @@ export function renderCampaignFor(
  * shell's own dark rules applied whatever the viewer's setting. The campaign
  * editor's Light / Dark toggle (slice 04) passes it through previewCampaign.
  * Only the preview takes it; nothing a send calls can (sender.test.ts, at the
- * type level).
+ * type level). `images` is what the test send reads too (`readCampaignImages`),
+ * so the preview shows the email it delivers; an image missing from it is
+ * drawn as a hint.
  */
 export function renderCampaignPreview(
   campaign: CampaignEmailParts,
-  { origin, firstName, forceDark = false }: { origin: string; firstName: string | null; forceDark?: boolean },
+  {
+    origin,
+    firstName,
+    forceDark = false,
+    images,
+  }: { origin: string; firstName: string | null; forceDark?: boolean; images?: CampaignBlockImages },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
   const rendered = renderCampaignFor(campaign, {
@@ -234,6 +246,7 @@ export function renderCampaignPreview(
     locale: DEFAULT_LOCALE,
     claimUrl: null,
     unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
+    ...(images ? { images } : {}),
     placeholders: { ...CAMPAIGN_PLACEHOLDERS, ...CONTENT_PLACEHOLDERS },
   });
   return forceDark ? { ...rendered, html: forceDarkMode(rendered.html) } : rendered;
@@ -523,6 +536,13 @@ export async function sendCampaignBatch(
     return result;
   }
   const ids = customerIds.slice(0, room.allowance.remaining);
+  // Every image's email rendition, once for the batch (slice 05): made once per asset and reused.
+  const pictures = await readCampaignImages(setup.admin, campaign.content);
+  const unpictured = campaignImagesProblem(pictures);
+  if (unpictured) {
+    result.stopped = unpictured;
+    return result;
+  }
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const transport = setup.transport!;
@@ -564,6 +584,7 @@ export async function sendCampaignBatch(
         locale,
         claimUrl,
         unsubscribeUrl: unsubscribe.pageUrl,
+        images: pictures.images,
       });
       const sent = await transport.send({
         ...rendered,
@@ -630,12 +651,16 @@ export async function sendCampaignTest(
   const replyTo = emailAddressOf(setup.replyTo)!;
   const unsubscribe = unsubscribeLinks(PROBE_CUSTOMER_ID, { origin, secret: setup.unsubscribeSecret });
   if (!unsubscribe) return { refused: "UNSUBSCRIBE_SECRET is not set, so no unsubscribe link can be signed." };
+  const pictures = await readCampaignImages(setup.admin, campaign.content);
+  const unpictured = campaignImagesProblem(pictures);
+  if (unpictured) return { refused: unpictured };
   const rendered = renderCampaignFor(campaign, {
     firstName,
     origin,
     locale: DEFAULT_LOCALE,
     claimUrl: null,
     unsubscribeUrl: unsubscribe.pageUrl,
+    images: pictures.images,
   });
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));

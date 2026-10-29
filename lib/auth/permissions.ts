@@ -53,7 +53,8 @@ export const PERMISSION_CATALOG = [
   { key: "returns", label: "Returns / RMA", group: "CRM", href: "/settings/rma", surface: "admin-panel" },
   // Sending marketing email to the customer list (PRD-email-marketing). Its own key, held by
   // Owner and Admin only, as `customer-import` is: Manager and Staff hold `customers`.
-  { key: "campaigns", label: "Email campaigns", group: "CRM", href: "/settings/campaigns", surface: "admin-panel" },
+  // Its image blocks choose from the Media Library's picker (campaign email editor slice 05).
+  { key: "campaigns", label: "Email campaigns", group: "CRM", href: "/settings/campaigns", surface: "admin-panel", requires: ["media"] },
   // The words of every email the platform sends (PRD-email-templates): Owner and Admin only.
   { key: "email-templates", label: "Email templates", group: "CRM", href: "/settings/email-templates", surface: "admin-panel" },
 

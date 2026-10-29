@@ -2,7 +2,7 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
+import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
 import { EMAIL_BLOCK_TYPES, emptyBlock, type CampaignContent } from "@/lib/email-campaigns/content";
 import { EMPTY_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
@@ -10,8 +10,8 @@ import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
 /**
  * Each Email block as the editor's preview draws it, in light and with *Dark*
  * on (PRD-campaign-email-editor slice 15): one email per block type with every
- * option it has (EMAIL_BLOCK_SAMPLES), and one with every field on its
- * placeholder. A new block type adds its sample there, and its files appear
+ * option it has (EMAIL_BLOCK_SAMPLES), with its images' renditions
+ * (EMAIL_BLOCK_SAMPLE_IMAGES), and one with every field on its placeholder. A new block type adds its sample there, and its files appear
  * here. Dark is the same document with the shell's dark rules forced on: the
  * words, the subject and the plain text never differ.
  */
@@ -41,8 +41,9 @@ afterAll(() => vi.useRealTimers());
 
 describe("each Email block in the preview, light and dark", () => {
   it.each(CASES)("%s", async (name, content) => {
-    const light = renderCampaignPreview(draft(content), { origin: ORIGIN, firstName: "Wei Ling" });
-    const dark = renderCampaignPreview(draft(content), { origin: ORIGIN, firstName: "Wei Ling", forceDark: true });
+    const images = EMAIL_BLOCK_SAMPLE_IMAGES;
+    const light = renderCampaignPreview(draft(content), { origin: ORIGIN, firstName: "Wei Ling", images });
+    const dark = renderCampaignPreview(draft(content), { origin: ORIGIN, firstName: "Wei Ling", forceDark: true, images });
     await expect(light.html).toMatchFileSnapshot(`./__snapshots__/blocks/${name}.light.html`);
     await expect(dark.html).toMatchFileSnapshot(`./__snapshots__/blocks/${name}.dark.html`);
     await expect(`${light.subject}\n\n${light.text}`).toMatchFileSnapshot(`./__snapshots__/blocks/${name}.txt`);

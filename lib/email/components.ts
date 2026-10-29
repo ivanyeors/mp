@@ -75,6 +75,8 @@ export interface HeadingOptions {
   top?: number;
   /** Space below, in px. Default `LAYOUT.gutter`. */
   bottom?: number;
+  /** Default left. */
+  align?: "left" | "center";
 }
 
 /**
@@ -92,6 +94,7 @@ export function heading(
   return `<h${level} class="mp-fg" style="${typeStyle(variant, {
     color: LIGHT.fg,
     margin: `${opts.top ?? 0}px 0 ${opts.bottom ?? LAYOUT.gutter}px`,
+    "text-align": opts.align === "center" ? "center" : null,
   })}">${escapeHtml(text)}</h${level}>`;
 }
 
@@ -266,6 +269,64 @@ export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
     )}<!--[if mso]></td><td width="50%" valign="top"><![endif]-->${column(buttons[1])}<!--[if mso]></td></tr></table><![endif]-->`,
     css({ "text-align": "center", "font-size": 0 }),
   );
+}
+
+export interface EmailImageOptions {
+  /** The image's absolute URL: an email rendition, JPEG or PNG, never a WebP master. */
+  src: string;
+  /** The width it is shown at, in px, and the height that keeps its shape. */
+  width: number;
+  height: number;
+  /** Plain text: what a screen reader says, and what shows with images off. */
+  alt: string;
+  /** Says nothing a reader would miss: empty alt and role="presentation". */
+  decorative?: boolean;
+  /** Where a tap goes: the image is the link, its alt the link's words. */
+  href?: string | null;
+  /**
+   * It has transparency (a logo, a product cut-out): it sits on the light
+   * plate, a padded panel in the card's light colour that keeps that colour in
+   * dark mode, so dark ink never lands on a dark card.
+   */
+  plate?: boolean;
+}
+
+/** The light plate's padding, in px. */
+const PLATE_PADDING = LAYOUT.gutter;
+
+/**
+ * An image, centred in its row (PRD-campaign-email-editor slice 05). The
+ * `width` and `height` attributes size it in classic Outlook, which reads
+ * them and ignores CSS; everywhere else `max-width:100%;height:auto` lets it
+ * shrink to a phone. The row's `align` attribute centres it for Outlook, its
+ * `text-align` for the rest. A rejected URL draws nothing: a broken image is
+ * worse than none.
+ */
+export function emailImage(opts: EmailImageOptions): string {
+  const src = safeUrl(opts.src);
+  if (!src) return "";
+  const pad = opts.plate ? PLATE_PADDING : 0;
+  const width = Math.max(1, Math.round(opts.width - 2 * pad));
+  const height = Math.max(1, Math.round((opts.height * width) / opts.width));
+  const img = `<img src="${src}" width="${width}" height="${height}" alt="${opts.decorative ? "" : escapeHtml(opts.alt)}"${
+    opts.decorative ? ' role="presentation"' : ""
+  } style="${css({ display: "block", "max-width": "100%", height: "auto", border: 0, outline: "none", "text-decoration": "none", margin: "0 auto" })}" />`;
+  const href = opts.href ? safeUrl(opts.href) : "";
+  const linked = href ? `<a href="${href}" style="text-decoration:none;">${img}</a>` : img;
+  const inner = opts.plate
+    ? `<table ${TABLE_RESET} width="${Math.round(opts.width)}" align="center" class="mp-plate" bgcolor="${LIGHT.card}" style="${TABLE_RESET_STYLE};${css({
+        width: "100%",
+        "max-width": `${Math.round(opts.width)}px`,
+        background: LIGHT.card,
+        "background-color": LIGHT.card,
+        "border-radius": `${RADIUS.xl}px`,
+      })}">
+  <tr><td align="center" style="${css({ padding: pad, "text-align": "center" })}">${linked}</td></tr>
+</table>`
+    : linked;
+  return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
+  <tr><td align="center" style="${css({ "text-align": "center", "padding-bottom": LAYOUT.gutter })}">${inner}</td></tr>
+</table>`;
 }
 
 /** The landing "surface": rounded, 1px border, subtle fill. */

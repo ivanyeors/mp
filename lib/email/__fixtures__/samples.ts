@@ -8,7 +8,7 @@
 // "hostile" fills every free-text field with HOSTILE, which is how
 // escaping.test.ts proves no template interpolates raw user input.
 
-import type { CampaignBlocksEmailData } from "../campaign-blocks";
+import type { CampaignBlockImages, CampaignBlocksEmailData } from "../campaign-blocks";
 import type { CampaignContent, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
@@ -527,6 +527,29 @@ export function sampleCampaignBlocks(fixture: EmailFixture = "happy"): CampaignB
 }
 
 const blockEmail = (...blocks: EmailBlock[]): CampaignContent => ({ v: 1, blocks, fallbacks: { first_name: "there" } });
+
+/** The Media Assets EMAIL_BLOCK_SAMPLES place: a photo, and a cut-out with transparency. */
+export const SAMPLE_PHOTO_ASSET = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
+export const SAMPLE_CUTOUT_ASSET = "8a2d3c4b-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+
+/**
+ * Their email renditions, as the sender reads them (slice 05): a 1,200px
+ * JPEG of the photo, and a PNG of the cut-out, which sits on the light plate.
+ */
+export const EMAIL_BLOCK_SAMPLE_IMAGES: CampaignBlockImages = {
+  [SAMPLE_PHOTO_ASSET]: {
+    url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${SAMPLE_PHOTO_ASSET}.jpg`,
+    width: 1200,
+    height: 800,
+    hasAlpha: false,
+  },
+  [SAMPLE_CUTOUT_ASSET]: {
+    url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${SAMPLE_CUTOUT_ASSET}.png`,
+    width: 900,
+    height: 600,
+    hasAlpha: true,
+  },
+};
 const words = (id: string, text: string): EmailBlock => ({ id, type: "text", paragraphs: [{ kind: "p", runs: [{ text }] }] });
 
 /**
@@ -578,6 +601,31 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
         { label: "Read the care guide", target: "url", url: `${ORIGIN}/en-US/faq`, style: "secondary" },
       ],
     },
+  ),
+  image: blockEmail(
+    {
+      id: "photo",
+      type: "image",
+      image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+      link: { target: "shop" },
+      width: "full",
+    },
+    words("intro", "Our FibreCool covers are back."),
+    { id: "cutout", type: "image", image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" }, width: "inset" },
+    { id: "flourish", type: "image", image: { asset: SAMPLE_PHOTO_ASSET, alt: "", decorative: true }, width: "inset" },
+    words("outro", "Cool to the touch, all night."),
+  ),
+  hero: blockEmail(
+    {
+      id: "hero",
+      type: "hero",
+      image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+      heading: "Sleep cooler this December",
+      line: "Our FibreCool covers are back, in every size.",
+      button: { label: "Shop the covers", target: "shop", style: "primary" },
+    },
+    words("intro", "Cool to the touch, all night."),
+    { id: "second", type: "hero", image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" }, heading: "Made to your measure" },
   ),
   divider: blockEmail(words("above", "Above the line."), { id: "line", type: "divider" }, words("below", "Below the line.")),
   spacer: blockEmail(

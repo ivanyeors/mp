@@ -9,6 +9,7 @@ import {
   CampaignPreviewSchema,
   MAX_TEST_RECIPIENTS,
   type Campaign,
+  type CampaignDraft,
   type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import {
@@ -22,8 +23,10 @@ import {
   type CampaignReadiness,
   type WavePlanResult,
 } from "@/lib/email-campaigns/sender";
+import { campaignImageFieldErrors, readCampaignImages } from "@/lib/email-campaigns/images";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
+import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -70,6 +73,24 @@ const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segm
   blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
 
+/**
+ * Every image the email places has its email rendition (slice 05), made now
+ * if it has none: an image that cannot have one is a field error, so a saved
+ * campaign always has the copies a send shows. Null when all is well.
+ */
+async function imageProblems(admin: ReturnType<typeof supabaseAdmin>, draft: CampaignDraft): Promise<Failure | null> {
+  const fieldErrors = campaignImageFieldErrors(draft.content, await readCampaignImages(admin, draft.content));
+  return Object.keys(fieldErrors).length ? { ok: false, error: "Check the highlighted fields.", fieldErrors } : null;
+}
+
+/** The Media Library's *Last used* for the images a save attaches; a failure there never fails the save. */
+async function touchImages(draft: CampaignDraft): Promise<void> {
+  const assetIds = draft.content ? imageAssetsIn(draft.content) : [];
+  if (!assetIds.length) return;
+  const { touchLastUsed } = await import("@/lib/media-assets");
+  await touchLastUsed({ assetIds }).catch(() => undefined);
+}
+
 /** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */
 export async function saveCampaign(
   id: string | null,
@@ -83,13 +104,21 @@ export async function saveCampaign(
 
   try {
     if (!id) {
+      const unpictured = await imageProblems(admin, parsed.draft);
+      if (unpictured) return unpictured;
       const workingAs = await getWorkingAs(ctx.memberId);
       const newId = await createCampaign(admin, parsed.draft, workingAs?.id ?? null);
       await recordAdminAction({ actor, action: "email_campaign.create", entityType: "email_campaign", entityId: newId, after: auditSnapshot(parsed.draft) });
+      await touchImages(parsed.draft);
       return { ok: true, id: newId };
     }
     const before = await loadCampaign(id);
     if (!before || before.archivedAt) return NOT_FOUND;
+    // A started campaign takes only a new name: its images are as they were sent.
+    if (!before.lockedAt) {
+      const unpictured = await imageProblems(admin, parsed.draft);
+      if (unpictured) return unpictured;
+    }
     await updateCampaign(admin, id, parsed.draft, Boolean(before.lockedAt));
     await recordAdminAction({
       actor,
@@ -99,6 +128,7 @@ export async function saveCampaign(
       before: auditSnapshot(before),
       after: auditSnapshot(before.lockedAt ? { ...before, name: parsed.draft.name } : parsed.draft),
     });
+    if (!before.lockedAt) await touchImages(parsed.draft);
     return { ok: true, id };
   } catch (err) {
     return { ok: false, error: message(err) };
@@ -160,12 +190,38 @@ export async function previewCampaign(
   if (!parsed.ok) return parsed;
   const workingAs = await getWorkingAs(ctx.memberId);
   const setup = campaignSenderSetup();
+  // The images the test send shows: an image without its email copy is drawn as a hint.
+  const { images } = await readCampaignImages(supabaseAdmin(), parsed.draft.content);
   const rendered = renderCampaignPreview(parsed.draft, {
     origin: setup.origin,
     firstName: workingAs?.name.split(/\s+/)[0] ?? null,
     forceDark: forceDark === true,
+    images,
   });
   return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
+}
+
+/** A chosen image's email rendition, as the editor's image card shows it. */
+export type PlacedCampaignImage = { assetId: string; url: string; width: number; height: number; hasAlpha: boolean };
+
+/**
+ * An image chosen in the editor (PRD-campaign-email-editor slice 05): its
+ * email rendition, made now if it has none, so the block places an image an
+ * inbox can show. The editor's card shows the rendition too. Changes no
+ * campaign: the block is saved, and audited, by Save.
+ */
+export async function placeCampaignImage(assetId: string): Promise<{ ok: true; image: PlacedCampaignImage } | Failure> {
+  await assertAdmin("campaigns");
+  if (typeof assetId !== "string" || !UUID.test(assetId)) return { ok: false, error: "That is not an image from the Media Library." };
+  const { ensureEmailRenditions } = await import("@/lib/media-assets/email-renditions");
+  try {
+    const { renditions, failed } = await ensureEmailRenditions(supabaseAdmin(), [assetId]);
+    const r = renditions.get(assetId);
+    if (!r) return { ok: false, error: failed.get(assetId) ?? "That image couldn't be made ready for email." };
+    return { ok: true, image: { assetId, url: r.url, width: r.width, height: r.height, hasAlpha: r.hasAlpha } };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
 }
 
 /** Every check a send must pass, for the page's status panel. Changes nothing. */

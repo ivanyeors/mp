@@ -14,10 +14,15 @@
 // components and every link goes through safeUrl. A run's link shows its own
 // words, never the URL.
 //
-// Pure: the sender fills each Variable for the recipient and resolves each
-// button's target to its link. As with the legacy renderer, only the editor's
-// preview passes `placeholders`, drawn dashed and muted where an empty field's
-// words would go; a send never does.
+// Pure: the sender fills each Variable for the recipient, resolves each
+// button's and image link's target to its link, and reads each image's email
+// rendition (slice 05), which it passes in `images`. As with the legacy
+// renderer, only the editor's preview passes `placeholders`, drawn dashed and
+// muted where an empty field's words would go; a send never does.
+//
+// Every block's outer element carries `data-block-id`, in the preview and in
+// every send alike, so the preview stays the email a test delivers and a click
+// on a block in it selects that block's card (slice 04). An inbox ignores it.
 //
 // Campaigns written before the blocks keep lib/email/campaigns.ts.
 
@@ -28,22 +33,27 @@ import {
   button,
   buttonPair,
   divider,
+  emailImage,
   heading,
   linkHtml,
+  paragraph,
   paragraphHtml,
   placeholderHint,
   spacer,
   type ButtonOptions,
 } from "./components";
 import { fillCopy } from "./copy";
-import { escapeHtml, stripTags } from "./html";
-import { SPACE } from "./theme";
+import { escapeAttr, escapeHtml, stripTags } from "./html";
+import { LAYOUT, SPACE } from "./theme";
 import type { RenderedEmail } from "./types";
 import {
   CampaignContentPreviewSchema,
   type BlockButton,
+  type BlockImage,
+  type BlockLink,
   type CampaignContent,
   type EmailBlock,
+  type ImageWidth,
   type Run,
   type SpacerSize,
 } from "@/lib/email-campaigns/content";
@@ -56,7 +66,29 @@ export interface CampaignBlocksPlaceholders {
   buttonLabel: string;
   /** An email with no blocks yet. */
   empty: string;
+  /** An image block with no image chosen yet. */
+  image: string;
+  /** An image chosen whose email rendition is not in `images`. */
+  imageUnavailable: string;
+  /** A hero's empty line. */
+  line: string;
 }
+
+/**
+ * A placed image as the email shows it: its Media Asset's email rendition
+ * (lib/media-assets/email-renditions.ts), a JPEG or PNG at most 1,200px wide.
+ */
+export interface CampaignBlockImage {
+  /** The rendition's absolute URL. */
+  url: string;
+  width: number;
+  height: number;
+  /** It has transparency, so it sits on the light plate. */
+  hasAlpha: boolean;
+}
+
+/** Each placed Media Asset's email rendition, by asset id. */
+export type CampaignBlockImages = Readonly<Record<string, CampaignBlockImage>>;
 
 export interface CampaignBlocksEmailData {
   /** May write Variables as `{first_name}`. */
@@ -69,8 +101,13 @@ export interface CampaignBlocksEmailData {
   firstName: string | null;
   /** Each Variable's words for this recipient: their own detail, else the campaign's fallback. */
   values: Record<VariableKey, string>;
-  /** A button's link for this recipient; null leaves the button out. */
-  buttonHref: (b: BlockButton) => string | null;
+  /** A button's or an image link's link for this recipient; null leaves the button, or the link, out. */
+  buttonHref: (b: BlockButton | BlockLink) => string | null;
+  /**
+   * Each placed image's email rendition (slice 05). A send must have every
+   * one: an image without its rendition throws. The preview draws a hint.
+   */
+  images?: CampaignBlockImages;
   /** The Customer's unsubscribe confirm page. */
   unsubscribeUrl: string;
   /** The editor's preview only: drawn in place of an empty field. Never set for a send. */
@@ -78,6 +115,15 @@ export interface CampaignBlocksEmailData {
 }
 
 const SPACER_PX: Record<SpacerSize, number> = { s: SPACE.md, m: SPACE["3xl"], l: SPACE["3xl"] * 2 };
+
+/** The card's inner column: the 600px container less the card's padding and its 1px border. */
+const COLUMN_PX = LAYOUT.containerWidth - 2 * LAYOUT.cardPadding - 2;
+
+/** How wide an image is shown, at most: Full is the column's width; Inset leaves room either side. */
+const IMAGE_PX: Record<ImageWidth, number> = { full: COLUMN_PX, inset: 440 };
+
+/** Blocks that can open an email above its greeting: a title, a hero, an image. */
+const opensEmail = (b: EmailBlock) => (b.type === "heading" && b.level === 1) || b.type === "hero" || b.type === "image";
 
 const greet = (firstName: string | null) => {
   const name = firstName?.replace(/\s+/g, " ").trim();
@@ -136,23 +182,63 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
   const content = CampaignContentPreviewSchema.parse(p.content);
   const hint = p.placeholders;
   const values = p.values;
+  const images = p.images ?? {};
   const subject = fillCopy(p.subject, values).replace(/\s+/g, " ").trim();
 
   const html: string[] = [];
   const text: string[] = [];
   const greeting = p.greeting ? greet(p.firstName) : null;
-  // The greeting opens the words: after the title the email opens with, before
-  // any part's heading, where a legacy campaign's greeting sits.
-  const greetAt = content.blocks.findIndex((b) => b.type !== "heading" || b.level !== 1);
+  // The greeting opens the words: after the title (or hero, or image) the email
+  // opens with, before any part's heading, where a legacy campaign's greeting sits.
+  const greetAt = content.blocks.findIndex((b) => !opensEmail(b));
   const greetHere = () => {
     if (!greeting) return;
     html.push(paragraphHtml(escapeHtml(greeting)));
     text.push(greeting, "");
   };
 
-  const render = (b: EmailBlock) => {
+  /**
+   * An image at `width` px at most, never wider than its rendition; null when
+   * there is nothing to draw. Its rendition is the sender's: a send without
+   * one is a bug, so it throws rather than leave a hole in the email.
+   */
+  const imageHtml = (im: BlockImage, width: number, href: string | null): string | null => {
+    if (!im.asset) return hint ? placeholderHint(hint.image) : null;
+    const r = images[im.asset];
+    if (!r) {
+      if (hint) return placeholderHint(hint.imageUnavailable);
+      throw new Error(`No email rendition for image ${im.asset}: read the campaign's images before rendering it.`);
+    }
+    const shown = Math.min(width, r.width);
+    return emailImage({
+      src: r.url,
+      width: shown,
+      height: Math.round((r.height * shown) / r.width),
+      alt: im.alt,
+      decorative: im.decorative,
+      href,
+      plate: r.hasAlpha,
+    });
+  };
+
+  // An email has one title: the first level-1 heading, or the hero that opens it.
+  let titled = false;
+
+  /** One button on a line of its own: a hero's. */
+  const oneButton = (x: BlockButton) => {
+    const href = p.buttonHref(x);
+    const label = x.label.trim();
+    if (!href) return;
+    if (label) {
+      html.push(button({ href, label, variant: x.style }));
+      text.push(`${label}: ${href}`, "");
+    } else if (hint) html.push(placeholderHint(hint.buttonLabel, "button"));
+  };
+
+  const render = (b: EmailBlock, at: number) => {
     switch (b.type) {
       case "heading": {
+        if (b.level === 1) titled = true;
         const top = html.length === 0 ? 0 : 12;
         if (b.text) {
           html.push(heading(b.text, b.level, { top }));
@@ -194,6 +280,33 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
         else for (const x of shown) html.push(x === "hint" ? placeholderHint(hint!.buttonLabel, "button") : button(x));
         return;
       }
+      case "image": {
+        const href = b.link ? p.buttonHref(b.link) : null;
+        const drawn = imageHtml(b.image, IMAGE_PX[b.width], href);
+        if (drawn) html.push(drawn);
+        // The plain-text part has no picture: a linked one is its words and link.
+        if (drawn && href && b.image.alt && !b.image.decorative) text.push(`${b.image.alt}: ${href}`, "");
+        return;
+      }
+      case "hero": {
+        // Stacked, never text on the image (decision 6): the image, then its
+        // heading, line and button as real text and a real link below it. A
+        // hero that opens the email is its title, unless a title came first.
+        const drawn = imageHtml(b.image, COLUMN_PX, null);
+        if (drawn) html.push(drawn);
+        const level = (greetAt === -1 || at < greetAt) && !titled ? 1 : 2;
+        if (level === 1 && b.heading !== undefined) titled = true;
+        if (b.heading) {
+          html.push(heading(b.heading, level, { align: "center" }));
+          text.push(b.heading, "");
+        } else if (b.heading !== undefined && hint) html.push(placeholderHint(hint.heading, level === 1 ? "h1" : "h2"));
+        if (b.line) {
+          html.push(paragraph(b.line, { align: "center" }));
+          text.push(b.line, "");
+        } else if (b.line !== undefined && hint) html.push(placeholderHint(hint.line));
+        if (b.button) oneButton(b.button);
+        return;
+      }
       case "divider":
         html.push(divider());
         text.push("---", "");
@@ -214,7 +327,10 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
       opened = html.length;
       greetHere();
     }
-    render(b);
+    // The block's parts in one element that names it, for the preview's click-to-select.
+    const from = html.length;
+    render(b, i);
+    if (html.length > from) html.push(`<div data-block-id="${escapeAttr(b.id)}">\n${html.splice(from).join("\n")}\n</div>`);
   });
   if (greetAt === -1) {
     opened = html.length;
