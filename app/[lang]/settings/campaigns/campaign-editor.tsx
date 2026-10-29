@@ -56,6 +56,25 @@ import {
     type CampaignButtonChoice,
     type CampaignWords,
 } from "@/lib/email-campaigns/clear-all";
+import {
+    blockLinkList,
+    CHINESE,
+    CHINESE_EDITOR_TEXT,
+    CHINESE_STATUS_TEXT,
+    chineseBlock,
+    chineseBlockStatus,
+    chineseFieldErrors,
+    chineseGaps,
+    chineseLinesStatus,
+    chineseVersionOf,
+    hasChineseErrors,
+    keepChineseBlock,
+    keepChineseLines,
+    withChineseBlocks,
+    withChineseLines,
+    withoutChineseVersion,
+    withoutGoneChinese,
+} from "@/lib/email-campaigns/chinese-version";
 import { CONTENT_LIMITS, contentFromLegacy, contentWords, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
@@ -75,10 +94,10 @@ import {
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
-import { defaultWaveSize, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import { defaultWaveSize, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils";
 import {
@@ -97,6 +116,9 @@ import { useAiDraft } from "./ai/use-ai-draft";
 import { IDEAS_KIND, type IdeasField } from "./ai/refine-state";
 import { useAiRefine } from "./ai/use-ai-refine";
 import { CAMPAIGN_BLOCKS } from "./blocks/catalogue";
+import { ChineseEditingContext, type ChineseEditing } from "./chinese/chinese-context";
+import { LanguageBar } from "./chinese/language-bar";
+import { useAiTranslate } from "./chinese/use-ai-translate";
 import { VariableFallbacks } from "./blocks/fallbacks";
 import { campaignVariables } from "./blocks/runs";
 import { CampaignVariablesTab } from "./blocks/variables";
@@ -242,9 +264,13 @@ export function CampaignEditor({
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
         history.set((e) => ({ ...e, button: { ...e.button, ...patch } }), { burst });
     const editContent = (next: CampaignContent, burst?: string) => history.set((e) => ({ ...e, content: next }), { burst });
-    // A block a person changes is no longer *Drafted with AI* (slice 09).
+    // A block a person changes is no longer *Drafted with AI* (slice 09); a block deleted takes its 中文 words with it (slice 17).
     const setBlocks = (blocks: EmailBlock[], burst?: string) =>
-        history.set((e) => (e.content ? { ...e, content: withEditedBlocks(e.content, blocks) } : e), { burst });
+        history.set((e) => (e.content ? { ...e, content: withoutGoneChinese(withEditedBlocks(e.content, blocks)) } : e), { burst });
+    // In 中文 (slice 17) an edit changes the blocks' 中文 words, and nothing else.
+    const setChineseBlocks = (blocks: EmailBlock[], burst?: string) =>
+        history.set((e) => (e.content ? { ...e, content: withChineseBlocks(e.content, blocks) } : e), { burst });
+    const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });
 
     const setAudience = (v: CampaignAudience) => edit({ audience: v });
     const setSegmentId = (v: string) => edit({ segmentId: v });
@@ -284,6 +310,10 @@ export function CampaignEditor({
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     // The palette's open tab on a laptop: Blocks, or Variables (slice 13).
     const [paletteTab, setPaletteTab] = useState("blocks");
+    // The email's Language (slice 17): English, or its 中文 version, whose words change and whose layout is English's.
+    const [emailLanguage, setEmailLanguage] = useState<Locale>(DEFAULT_LOCALE);
+    const version = chineseVersionOf(content);
+    const inChinese = Boolean(content) && emailLanguage === CHINESE;
 
     // The step Clear all (or Convert to blocks) made, and the words it took, until Undo puts them back or Save makes them gone.
     const undoRef = useRef<{ words: CampaignWords; step: number | null } | null>(null);
@@ -307,6 +337,8 @@ export function CampaignEditor({
                 setFieldErrors(res.fieldErrors ?? {});
                 // A fallback's error shows under the Variables palette's chips (slice 13): open it there.
                 if (Object.keys(res.fieldErrors ?? {}).some((k) => k.startsWith("content.fallbacks."))) setPaletteTab("variables");
+                // A 中文 word's shows on its block in 中文 (slice 17).
+                if (hasChineseErrors(res.fieldErrors ?? {})) setEmailLanguage(CHINESE);
                 return null;
             }
             setFieldErrors({});
@@ -335,8 +367,13 @@ export function CampaignEditor({
     // ── Variables (slice 13): what every text input offers, and the fallbacks the email needs ──
     const variables = useMemo(() => campaignVariables({ pointsLive }), [pointsLive]);
     const lineVariables = content ? variables : NO_VARIABLES;
-    const subjectValue = useMemo(() => richTextFromWords(subject, lineVariables), [subject, lineVariables]);
-    const preheaderValue = useMemo(() => richTextFromWords(preheader, lineVariables), [preheader, lineVariables]);
+    // In 中文 (slice 17) the subject and preview line are the 中文 version's.
+    const subjectShown = inChinese ? (version?.subject ?? "") : subject;
+    const preheaderShown = inChinese ? (version?.preheader ?? "") : preheader;
+    const subjectValue = useMemo(() => richTextFromWords(subjectShown, lineVariables), [subjectShown, lineVariables]);
+    const preheaderValue = useMemo(() => richTextFromWords(preheaderShown, lineVariables), [preheaderShown, lineVariables]);
+    const editLine = (field: "subject" | "preheader", words: string, burst?: string) =>
+        inChinese ? editChinese((c) => withChineseLines(c, { [field]: words }, { subject, preheader }), burst && `${burst}-zh`) : edit({ [field]: words }, burst);
     const usedVariables = useMemo(() => variablesInEmail({ subject, preheader, content, greeting }), [subject, preheader, content, greeting]);
 
     // ── The preview ────────────────────────────────────────────────────────
@@ -349,7 +386,11 @@ export function CampaignEditor({
     useEffect(() => {
         let live = true;
         const timer = setTimeout(async () => {
-            const res = await previewCampaign(input, { forceDark: scheme === "dark", previewAs }).catch((e: unknown) => ({ ok: false as const, error: String(e) }));
+            // In 中文 (slice 17), the 中文 email.
+            const res = await previewCampaign(input, { forceDark: scheme === "dark", previewAs, ...(inChinese ? { language: CHINESE } : {}) }).catch((e: unknown) => ({
+                ok: false as const,
+                error: String(e),
+            }));
             if (!live) return;
             if (res.ok) {
                 setPreview({ subject: res.subject, html: res.html, from: res.from ?? null });
@@ -362,7 +403,7 @@ export function CampaignEditor({
             live = false;
             clearTimeout(timer);
         };
-    }, [input, scheme, previewAs]);
+    }, [input, scheme, previewAs, inChinese]);
 
     // ── Readiness ──────────────────────────────────────────────────────────
     const campaignId = campaign?.id;
@@ -391,6 +432,8 @@ export function CampaignEditor({
 
     // ── Test ───────────────────────────────────────────────────────────────
     const [testTo, setTestTo] = useState(staffEmail);
+    // *Send a test* asks which language, once there is a 中文 version (slice 17).
+    const [testLanguage, setTestLanguage] = useState<Locale>(DEFAULT_LOCALE);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
     const [lastTest, setLastTest] = useState<{ sent: number; at: string } | null>(null);
@@ -401,7 +444,7 @@ export function CampaignEditor({
         try {
             if (dirty && !locked && !(await save())) return;
             const addresses = testTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
-            const res = await sendCampaignTestAction(campaign.id, addresses);
+            const res = await sendCampaignTestAction(campaign.id, addresses, ...(version && testLanguage === CHINESE ? [{ language: CHINESE }] : []));
             if (!res.ok) setTestResult({ ok: false, text: res.error });
             else if (res.failed.length) setTestResult({ ok: false, text: `Sent ${res.sent}. Couldn't send to ${res.failed.map((f) => `${f.to} (${f.error})`).join(", ")}.` });
             else setTestResult({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}. Check the inbox, and the spam folder.` });
@@ -459,6 +502,16 @@ export function CampaignEditor({
 
     /** How many the checked plan sends now: the eligible, less who waits for later waves. */
     const planned = plan ? plan.plan.eligible - plan.waiting : 0;
+    // Who gets which language (slice 17), from the saved campaign the plan is of.
+    const languageLine = plan
+        ? languageSummary({
+              eligible: plan.plan.eligible,
+              eligibleChinese: plan.plan.eligibleChinese,
+              selected: planned,
+              selectedChinese: plan.plan.selectedChinese,
+              hasChinese: Boolean(chineseVersionOf(campaign?.content)),
+          })
+        : null;
     const confirmation: SendConfirmation | null = plan
         ? {
               count: planned,
@@ -569,8 +622,10 @@ export function CampaignEditor({
     const aiDraft = useAiDraft({ history, campaignId: campaign?.id ?? null });
     // ✨ Refine (slice 10): ideas under the subject and preview line, and a rewrite beside a heading or text block.
     const refine = useAiRefine({ history, campaignId: campaign?.id ?? null });
+    // ✨ Translate to Chinese (slice 17): the 中文 version, or what changed, put in as one change; it opens 中文.
+    const translate = useAiTranslate({ history, campaignId: campaign?.id ?? null, onTranslated: () => setEmailLanguage(CHINESE) });
     // One ask at a time: while Claude writes anything, the other ✨ buttons wait.
-    const aiBusy = aiDraft.working || refine.working !== null;
+    const aiBusy = aiDraft.working || refine.working !== null || translate.working !== null;
     // The brief's popover, under ✨ Generate; anything on the page may open it (slice 08's *✨ Write with AI*).
     const [generateOpen, setGenerateOpen] = useState(false);
     const aiHere = ai.on && editable && Boolean(content);
@@ -588,7 +643,7 @@ export function CampaignEditor({
                   reason: (id) =>
                       !ai.configured
                           ? AI_WRITING_NO_CREDENTIALS
-                          : aiDraft.working || (refine.working && !(refine.working === "rewrite" && refine.offer?.blockId === id))
+                          : aiDraft.working || translate.working || (refine.working && !(refine.working === "rewrite" && refine.offer?.blockId === id))
                             ? AI_BUSY
                             : null,
                   offer: refine.offer,
@@ -621,6 +676,46 @@ export function CampaignEditor({
     };
     const aiDrafted = content?.aiDrafted;
     const badges = useMemo(() => Object.fromEntries((aiDrafted ?? []).map((id) => [id, DRAFTED_WITH_AI])), [aiDrafted]);
+
+    // ── 中文 (slice 17): the English blocks with their 中文 words; where each stands; ✨ and *Keep* for one ──
+    const chineseBlocks = useMemo(() => (content && inChinese ? content.blocks.map((b) => chineseBlock(b, version?.blocks[b.id])) : []), [content, inChinese, version]);
+    const chineseStatus = useMemo(() => new Map((content?.blocks ?? []).map((b) => [b.id, chineseBlockStatus(b, version)] as const)), [content, version]);
+    const chineseBadges = useMemo(
+        () => Object.fromEntries([...chineseStatus].flatMap(([id, status]) => (status && status !== "current" ? [[id, CHINESE_STATUS_TEXT[status]]] : []))),
+        [chineseStatus],
+    );
+    const linesStatus = chineseLinesStatus(version, subject, preheader);
+    const translateWorking = translate.working ? CHINESE_EDITOR_TEXT.translating : null;
+    const translateReason = !ai.configured ? AI_WRITING_NO_CREDENTIALS : aiBusy ? AI_BUSY : null;
+    const chineseEditing: ChineseEditing | null =
+        inChinese && content
+            ? {
+                  status: (id) => chineseStatus.get(id) ?? null,
+                  links: (id) => {
+                      const b = content.blocks.find((x) => x.id === id);
+                      return b ? blockLinkList(b) : [];
+                  },
+                  translate: aiHere ? (id) => translate.start({ kind: "block", id }) : null,
+                  reason: translateReason,
+                  working: translate.working?.kind === "block" ? { id: translate.working.id, stage: CHINESE_EDITOR_TEXT.translating } : null,
+                  stop: translate.stop,
+                  keep: (id) => editChinese((c) => keepChineseBlock(c, id)),
+              }
+            : null;
+    const chineseFallbacks = version
+        ? { fallbacks: version.fallbacks, onChange: (fallbacks: typeof version.fallbacks, burst?: string) => editChinese((c) => withChineseLines(c, { fallbacks }), burst) }
+        : null;
+    // *Translate what changed* has these to do: blocks not translated or out of date, and the lines.
+    const chineseChanged = content && version ? chineseGaps(content).length + (linesStatus === "current" ? 0 : 1) : 0;
+    const translateBlockerText = content && !subject.trim() && !emailWords.some((w) => w.trim()) ? CHINESE_EDITOR_TEXT.needsWords : null;
+    const removeChinese = () => {
+        editChinese(withoutChineseVersion);
+        setEmailLanguage(DEFAULT_LOCALE);
+        toast(CHINESE_EDITOR_TEXT.removed);
+    };
+    // Save's errors in 中文 show on the 中文 blocks and lines.
+    const chineseErrors = useMemo(() => (inChinese && content ? chineseFieldErrors(fieldErrors, content) : {}), [inChinese, content, fieldErrors]);
+    const lineError = (field: "subject" | "preheader") => (inChinese ? chineseErrors[field] : fieldErrors[field]);
 
     // ── Editing safety (slice 04): one history, ⌘S, the leave guard, the browser's copy ──
     useHistoryKeys(history, { enabled: editable, within: editorArea });
@@ -705,14 +800,15 @@ export function CampaignEditor({
     };
 
     // Counted as a customer reads them: each Variable as the sample customer's words.
-    const subjectRead = content ? withSampleValues(subject) : subject;
-    const preheaderRead = content ? withSampleValues(preheader) : preheader;
+    const subjectRead = content ? withSampleValues(subjectShown) : subject;
+    const preheaderRead = content ? withSampleValues(preheaderShown) : preheader;
     const subjectWarn = subjectRead.length > SUBJECT_PHONE ? "may be cut off on phones" : null;
     const preheaderWarn =
         preheaderRead && (preheaderRead.length < PREVIEW_LINE_RANGE[0] || preheaderRead.length > PREVIEW_LINE_RANGE[1])
             ? `${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best`
             : null;
-    const palette = Boolean(content) && editable;
+    // In 中文 the layout is English's: no palette (slice 17).
+    const palette = Boolean(content) && editable && !inChinese;
     // The palette: Blocks, then Variables (slice 13), whose chips go in at the cursor of the words last written in.
     const asideTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
@@ -721,7 +817,7 @@ export function CampaignEditor({
             label: "Variables",
             content: (
                 <CampaignVariablesTab>
-                    {content ? <VariableFallbacks used={usedVariables} content={content} onChange={editContent} disabled={!editable} errors={fieldErrors} /> : null}
+                    {content ? <VariableFallbacks used={usedVariables} content={content} onChange={editContent} disabled={!editable} errors={fieldErrors} chinese={chineseFallbacks} /> : null}
                 </CampaignVariablesTab>
             ),
         },
@@ -808,24 +904,45 @@ export function CampaignEditor({
                 {/* One line each, with Variables as chips in a block campaign (slice 13); saved as words with `{first_name}` in them. */}
                 <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Label id="c-subject-label">Subject</Label>
-                        {aiHere ? suggestButton("subject") : null}
+                        <Label id="c-subject-label">{inChinese ? "Subject in 中文" : "Subject"}</Label>
+                        {aiHere && !inChinese ? suggestButton("subject") : null}
                     </div>
                     <RichText
+                        key={emailLanguage}
                         id="c-subject"
                         singleLine
                         aria-labelledby="c-subject-label"
                         aria-describedby="c-subject-count"
-                        aria-invalid={Boolean(fieldErrors.subject)}
+                        aria-invalid={Boolean(lineError("subject"))}
                         value={subjectValue}
                         variables={lineVariables}
-                        placeholder={CAMPAIGN_PLACEHOLDERS.subject}
+                        placeholder={inChinese ? subject || CAMPAIGN_PLACEHOLDERS.subject : CAMPAIGN_PLACEHOLDERS.subject}
                         readOnly={locked}
-                        onChange={(next, how) => edit({ subject: richTextWords(next) }, how.paste ? undefined : "c-subject")}
+                        onChange={(next, how) => editLine("subject", richTextWords(next), how.paste ? undefined : "c-subject")}
                     />
-                    {fieldErrors.subject ? <p className="text-xs text-destructive">{fieldErrors.subject}</p> : null}
+                    {lineError("subject") ? <p className="text-xs text-destructive">{lineError("subject")}</p> : null}
                     <CharCount id="c-subject-count" value={subjectRead} warn={subjectWarn} />
-                    {aiHere && refine.ideas.subject ? (
+                    {inChinese && version && linesStatus === "changed" && editable ? (
+                        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+                            <span className="min-w-0 flex-1">The English subject or preview line changed since this was translated.</span>
+                            {aiHere ? (
+                                <AiButton
+                                    variant="ghost"
+                                    className="h-7 px-2 text-xs"
+                                    working={translateWorking}
+                                    onStop={translate.stop}
+                                    disabledReason={translateReason}
+                                    onClick={() => translate.start({ kind: "changed" })}
+                                >
+                                    {CHINESE_EDITOR_TEXT.blockAgain}
+                                </AiButton>
+                            ) : null}
+                            <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => editChinese((c) => keepChineseLines(c, subject, preheader))}>
+                                {CHINESE_EDITOR_TEXT.keep}
+                            </Button>
+                        </div>
+                    ) : null}
+                    {inChinese ? null : aiHere && refine.ideas.subject ? (
                         <Suspense fallback={null}>
                             <IdeasPanel
                                 id="c-subject-ideas"
@@ -854,29 +971,30 @@ export function CampaignEditor({
                 </div>
                 <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Label id="c-preheader-label">Preview line</Label>
-                        {aiHere ? suggestButton("preheader") : null}
+                        <Label id="c-preheader-label">{inChinese ? "Preview line in 中文" : "Preview line"}</Label>
+                        {aiHere && !inChinese ? suggestButton("preheader") : null}
                     </div>
                     <RichText
+                        key={emailLanguage}
                         id="c-preheader"
                         singleLine
                         aria-labelledby="c-preheader-label"
                         aria-describedby="c-preheader-count"
-                        aria-invalid={Boolean(fieldErrors.preheader)}
+                        aria-invalid={Boolean(lineError("preheader"))}
                         value={preheaderValue}
                         variables={lineVariables}
-                        placeholder={CAMPAIGN_PLACEHOLDERS.preheader}
+                        placeholder={inChinese ? preheader || CAMPAIGN_PLACEHOLDERS.preheader : CAMPAIGN_PLACEHOLDERS.preheader}
                         readOnly={locked}
-                        onChange={(next, how) => edit({ preheader: richTextWords(next) }, how.paste ? undefined : "c-preheader")}
+                        onChange={(next, how) => editLine("preheader", richTextWords(next), how.paste ? undefined : "c-preheader")}
                     />
-                    {fieldErrors.preheader ? <p className="text-xs text-destructive">{fieldErrors.preheader}</p> : null}
+                    {lineError("preheader") ? <p className="text-xs text-destructive">{lineError("preheader")}</p> : null}
                     <CharCount
                         id="c-preheader-count"
                         value={preheaderRead}
                         warn={preheaderWarn}
                         ok={`Shown after the subject in most inboxes. Optional; ${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best.`}
                     />
-                    {aiHere && refine.ideas.preheader ? (
+                    {inChinese ? null : aiHere && refine.ideas.preheader ? (
                         <Suspense fallback={null}>
                             <IdeasPanel
                                 id="c-preheader-ideas"
@@ -918,7 +1036,7 @@ export function CampaignEditor({
                                 </Button>
                             ) : null}
                         </div>
-                        {aiDraft.showBar && aiDraft.run ? (
+                        {aiDraft.showBar && aiDraft.run && !inChinese ? (
                             <Suspense fallback={null}>
                                 <DraftBar
                                     run={aiDraft.run}
@@ -931,14 +1049,22 @@ export function CampaignEditor({
                             </Suspense>
                         ) : null}
                         <BlockEditor
-                            label="The email's blocks"
-                            empty="No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."
-                            errors={fieldErrors}
+                            label={inChinese ? "The email's blocks, in 中文" : "The email's blocks"}
+                            empty={inChinese ? "No blocks yet. Write the email in English first." : "No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."}
+                            errors={inChinese ? chineseErrors : fieldErrors}
                             errorPath="content.blocks"
                         />
                         {/* On a laptop the fallbacks sit under the Variables palette's chips; on a phone, and while the palette is hidden, here. */}
                         <div className={cn(palette && "lg:hidden")}>
-                            <VariableFallbacks used={usedVariables} content={content} onChange={editContent} disabled={!editable} errors={fieldErrors} idPrefix="c-email-fallback" />
+                            <VariableFallbacks
+                                used={usedVariables}
+                                content={content}
+                                onChange={editContent}
+                                disabled={!editable}
+                                errors={fieldErrors}
+                                idPrefix="c-email-fallback"
+                                chinese={chineseFallbacks}
+                            />
                         </div>
                     </div>
                 ) : (
@@ -1097,7 +1223,7 @@ export function CampaignEditor({
                             {clearWhy}
                         </span>
                     ) : null}
-                    {aiHere && content ? (
+                    {aiHere && content && !inChinese ? (
                         ai.configured ? (
                             <Suspense fallback={<AiButton disabledReason={titleBlocker}>Generate</AiButton>}>
                                 <GeneratePopover
@@ -1179,18 +1305,20 @@ export function CampaignEditor({
 
                 {/* Both tabs stay mounted: a wave keeps sending, and the email keeps its history, while the other is open. */}
                 <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
-                    <CampaignAiContext.Provider value={campaignAi}>
+                    <CampaignAiContext.Provider value={inChinese ? null : campaignAi}>
+                        <ChineseEditingContext.Provider value={chineseEditing}>
                         <BlockEditorRoot
-                            blocks={content?.blocks ?? []}
+                            blocks={inChinese ? chineseBlocks : (content?.blocks ?? [])}
                             catalogue={CAMPAIGN_BLOCKS}
-                            onChange={setBlocks}
+                            onChange={inChinese ? setChineseBlocks : setBlocks}
                             selected={selected}
                             onSelect={setSelected}
                             readOnly={!editable}
                             max={CONTENT_LIMITS.blocks}
                             newId={newBlockId}
                             variables={variables}
-                            badges={badges}
+                            badges={inChinese ? chineseBadges : badges}
+                            layoutLocked={inChinese ? CHINESE_EDITOR_TEXT.layout : null}
                         >
                             <div className="mb-3 lg:hidden">
                                 <PresetPicker
@@ -1211,7 +1339,29 @@ export function CampaignEditor({
                                         </div>
                                     </aside>
                                 ) : null}
-                                <section className={cn("min-w-0", pane === "preview" && "max-lg:hidden")} aria-label="The email">
+                                <section className={cn("min-w-0 space-y-3", pane === "preview" && "max-lg:hidden")} aria-label="The email">
+                                    {content ? (
+                                        <LanguageBar
+                                            language={emailLanguage}
+                                            onLanguage={setEmailLanguage}
+                                            hasChinese={Boolean(version)}
+                                            editable={editable}
+                                            translate={
+                                                aiHere
+                                                    ? {
+                                                          reason: translateReason ?? translateBlockerText,
+                                                          working: translate.working && translate.working.kind !== "block" ? translateWorking : null,
+                                                          onStop: translate.stop,
+                                                          start: translate.start,
+                                                          changed: chineseChanged,
+                                                      }
+                                                    : null
+                                            }
+                                            onRemove={removeChinese}
+                                            error={translate.error}
+                                            onDismissError={translate.dismissError}
+                                        />
+                                    ) : null}
                                     {theEmail}
                                 </section>
                                 <section className={cn("min-w-0", pane === "write" && "max-lg:hidden")} aria-label="Preview">
@@ -1255,6 +1405,7 @@ export function CampaignEditor({
                                 </SheetContent>
                             </Sheet>
                         </BlockEditorRoot>
+                        </ChineseEditingContext.Provider>
                     </CampaignAiContext.Provider>
                 </TabsContent>
 
@@ -1277,6 +1428,17 @@ export function CampaignEditor({
                                     <Field label="Send to" htmlFor="c-test" hint={`Up to ${MAX_TEST_RECIPIENTS} addresses, separated by commas.`}>
                                         <Input id="c-test" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
                                     </Field>
+                                    {version ? (
+                                        <PresetPicker
+                                            label="Language"
+                                            value={testLanguage}
+                                            options={[
+                                                { value: DEFAULT_LOCALE, label: CHINESE_EDITOR_TEXT.english },
+                                                { value: CHINESE, label: CHINESE_EDITOR_TEXT.chinese },
+                                            ]}
+                                            onChange={setTestLanguage}
+                                        />
+                                    ) : null}
                                     <Button variant="outline" onClick={sendTest} disabled={testing || sending}>
                                         {testing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
                                         Send test
@@ -1416,6 +1578,7 @@ export function CampaignEditor({
                                                 ))}
                                             </ul>
                                         ) : null}
+                                        {languageLine ? <p>{languageLine}</p> : null}
                                         {plan.plan.eligible > 0 ? (
                                             <p className="font-medium">
                                                 {waitingSummary({

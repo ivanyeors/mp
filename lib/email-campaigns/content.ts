@@ -23,6 +23,19 @@ import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type Va
 export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "image", "hero", "split", "products", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
 
+/** Each block type as Staff know it (the editor's palette names them the same): what a check names a block by, *Block 2, Heading*. */
+export const EMAIL_BLOCK_NAME: Record<EmailBlockType, string> = {
+  heading: "Heading",
+  text: "Text",
+  buttons: "Buttons",
+  image: "Image",
+  hero: "Hero",
+  split: "Image + text",
+  products: "Products",
+  divider: "Divider",
+  spacer: "Spacer",
+};
+
 /**
  * Where a block's button goes. The sender resolves each to an absolute URL on
  * the live origin with the campaign's UTMs: Staff never type a site link.
@@ -103,6 +116,9 @@ export const CONTENT_LIMITS = {
   splitParagraphs: 4,
   /** The products one block shows (slice 07): a row of three is as narrow as a phone's columns go. */
   products: 3,
+  /** A campaign's subject and preview line, in English (rules.ts) and in its 中文 version (slice 17). */
+  subject: 150,
+  preheader: 200,
   /** The stored JSON, in UTF-8 bytes; the table refuses 256,000. */
   bytes: 200_000,
 } as const;
@@ -181,10 +197,10 @@ const ASSET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 const PRODUCT_ID = ASSET_ID;
 
 /**
- * The block types. Saving needs every word (`required`); the preview takes
- * them empty, so a new block shows its placeholders.
+ * A field of words, in English or in the 中文 version (slice 17). Saving
+ * needs every word (`required`); the preview takes them empty.
  */
-function blockSchema({ required }: { required: boolean }) {
+function wordsSchemas({ required }: { required: boolean }) {
   // Words that take Variables (a heading, a hero's line) name only the catalogue's; the rest
   // (a button label) are sent as written: a `{name}` there would reach the customer in braces.
   const words = (max: number, empty: string, { variables = false }: { variables?: boolean } = {}) => {
@@ -205,6 +221,35 @@ function blockSchema({ required }: { required: boolean }) {
       if (unfilled) ctx.addIssue({ code: "custom", message: unfilled });
     });
   };
+  return { words, optionalWords };
+}
+
+/**
+ * A text block's words, wherever they sit (a text block, an image + text, or
+ * either in the 中文 version): at most `max` characters, written on Save, and
+ * no `{name}` that is not a Variable, which the box kept as words and would
+ * be sent in braces.
+ */
+const textChecks =
+  ({ required }: { required: boolean }) =>
+  (max: number) =>
+  (b: { paragraphs: readonly ParagraphOf<WordsRun>[] }, ctx: z.RefinementCtx) => {
+    const all = paragraphRuns(b.paragraphs);
+    const length = all.reduce((n, r) => n + ("text" in r ? r.text.length : 0), 0);
+    if (length > max) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: most(max) });
+    if (required && !all.some((r) => "var" in r || r.text.trim())) {
+      ctx.addIssue({ code: "custom", path: ["paragraphs"], message: "Write the text." });
+    }
+    const unknown = required ? unknownVariableMessage(textWords(b.paragraphs)) : null;
+    if (unknown) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: unknown });
+  };
+
+/**
+ * The block types. Saving needs every word (`required`); the preview takes
+ * them empty, so a new block shows its placeholders.
+ */
+function blockSchema({ required }: { required: boolean }) {
+  const { words, optionalWords } = wordsSchemas({ required });
 
   // An image from the Media Library (slice 05): its asset, empty until one is
   // chosen, and its alt text, or `decorative` for one that says nothing a
@@ -269,19 +314,7 @@ function blockSchema({ required }: { required: boolean }) {
       }
     });
 
-  // A text block's words, wherever they sit: at most `max` characters, written
-  // on Save, and no `{name}` that is not a Variable, which the box kept as
-  // words and would be sent in braces.
-  const paragraphChecks = (max: number) => (b: { paragraphs: Paragraph[] }, ctx: z.RefinementCtx) => {
-    const all = paragraphRuns(b.paragraphs);
-    const length = all.reduce((n, r) => n + ("text" in r ? r.text.length : 0), 0);
-    if (length > max) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: most(max) });
-    if (required && !all.some((r) => "var" in r || r.text.trim())) {
-      ctx.addIssue({ code: "custom", path: ["paragraphs"], message: "Write the text." });
-    }
-    const unknown = required ? unknownVariableMessage(textWords(b.paragraphs)) : null;
-    if (unknown) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: unknown });
-  };
+  const paragraphChecks = textChecks({ required });
 
   return z.discriminatedUnion("type", [
     z.strictObject({
@@ -364,6 +397,104 @@ function blockSchema({ required }: { required: boolean }) {
   ]);
 }
 
+// ---------------------------------------------------------------------------
+// The 中文 version (slice 17)
+// ---------------------------------------------------------------------------
+
+/**
+ * The 中文 version's language (PRD-campaign-email-editor decision 11): the
+ * `customers.locale` of a Customer who reads the site in Chinese, who gets it
+ * when the campaign has one.
+ */
+export const CHINESE = "zh-CN" as const;
+
+/**
+ * Some 中文 words with their marks. A link is its place among the English
+ * block's links (`paragraphLinks`), never an address: the links are the
+ * English's, so a link Staff change in English changes in 中文 too.
+ */
+const ChineseTextRunSchema = z.strictObject({
+  text: z.string().min(1).max(CONTENT_LIMITS.text, most(CONTENT_LIMITS.text)).refine(noTags, NO_TAGS),
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  link: z.number().int().min(0).max(CONTENT_LIMITS.runs).optional(),
+});
+const chineseRuns = z.array(z.union([ChineseTextRunSchema, VariableRunSchema])).min(1).max(CONTENT_LIMITS.runs);
+const ChineseParagraphSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("p"), runs: chineseRuns }),
+  z.strictObject({ kind: z.literal("bullets"), items: z.array(chineseRuns).min(1).max(CONTENT_LIMITS.items) }),
+]);
+
+/** The English words a 中文 block was made from, as a fingerprint (chinese-version.ts `wordsFingerprint`). */
+const Fingerprint = z.string().regex(/^[0-9a-z]{1,16}$/, "A fingerprint is a few letters and digits.");
+
+/**
+ * One block's 中文 words, by its type: only what a customer reads (a
+ * heading's text, a text block's runs, button labels, alt text, a hero's and
+ * an image + text's heading, line and button label, a products block's
+ * label). Everything else, the order, images, products, targets, links and
+ * options, is the English block's: one layout, two sets of words. A part the
+ * English block has but these leave out reads as empty.
+ */
+function chineseWordsSchema({ required }: { required: boolean }) {
+  const { words } = wordsSchemas({ required });
+  const from = Fingerprint;
+  const label = () => words(CONTENT_LIMITS.buttonLabel, "Give the button a label.");
+  const alt = () => words(CONTENT_LIMITS.alt, "Describe the image for anyone who can't see it.");
+  const heading = () => words(CONTENT_LIMITS.heading, "Write the heading.", { variables: true });
+  const paragraphs = (max: number) => z.array(ChineseParagraphSchema).max(max);
+  const text = textChecks({ required });
+  return z.discriminatedUnion("type", [
+    z.strictObject({ type: z.literal("heading"), from, text: heading() }),
+    z.strictObject({ type: z.literal("text"), from, paragraphs: paragraphs(CONTENT_LIMITS.paragraphs) }).superRefine(text(CONTENT_LIMITS.text)),
+    z.strictObject({ type: z.literal("buttons"), from, labels: z.array(label()).max(2) }),
+    // A decorative image says nothing, in either language: no alt to translate.
+    z.strictObject({ type: z.literal("image"), from, alt: alt().optional() }),
+    z.strictObject({
+      type: z.literal("hero"),
+      from,
+      alt: alt().optional(),
+      heading: heading().optional(),
+      line: words(CONTENT_LIMITS.line, "Write the line.", { variables: true }).optional(),
+      buttonLabel: label().optional(),
+    }),
+    z
+      .strictObject({ type: z.literal("split"), from, alt: alt(), heading: heading(), paragraphs: paragraphs(CONTENT_LIMITS.splitParagraphs), buttonLabel: label().optional() })
+      .superRefine(text(CONTENT_LIMITS.splitText)),
+    z.strictObject({ type: z.literal("products"), from, buttonLabel: label() }),
+  ]);
+}
+
+/**
+ * A campaign's 中文 version: its subject and preview line, the Variables'
+ * fallback words in Chinese (*您* for a first name), and each block's words
+ * by block id. `from` is the English subject and preview line it was made
+ * from. A block with no entry is not translated yet; a divider or a spacer
+ * has no words and never needs one.
+ */
+function chineseVersionSchema({ required }: { required: boolean }) {
+  const { words } = wordsSchemas({ required });
+  return z
+    .strictObject({
+      subject: words(CONTENT_LIMITS.subject, "Write the subject.", { variables: true }),
+      preheader: z
+        .string()
+        .trim()
+        .max(CONTENT_LIMITS.preheader, most(CONTENT_LIMITS.preheader))
+        .refine(noTags, NO_TAGS)
+        .superRefine((v, ctx) => {
+          const unknown = required ? unknownVariableMessage(v) : null;
+          if (unknown) ctx.addIssue({ code: "custom", message: unknown });
+        }),
+      from: Fingerprint,
+      fallbacks: z.partialRecord(z.enum(VARIABLE_KEYS), z.string().trim().max(VARIABLE_MAX, most(VARIABLE_MAX)).refine(noTags, NO_TAGS)),
+      blocks: z.record(BlockId, chineseWordsSchema({ required })),
+    })
+    .superRefine((t, ctx) => {
+      if (Object.keys(t.blocks).length > CONTENT_LIMITS.blocks) ctx.addIssue({ code: "custom", path: ["blocks"], message: `At most ${CONTENT_LIMITS.blocks} blocks.` });
+    });
+}
+
 function contentSchema({ required }: { required: boolean }) {
   const blocks = z.array(blockSchema({ required })).max(CONTENT_LIMITS.blocks, `At most ${CONTENT_LIMITS.blocks} blocks.`);
   return z
@@ -377,6 +508,9 @@ function contentSchema({ required }: { required: boolean }) {
       // The blocks Claude wrote that no person has edited or kept yet, shown
       // *Drafted with AI* (slice 09); the send checklist counts any left.
       aiDrafted: z.array(BlockId).max(CONTENT_LIMITS.blocks).optional(),
+      // The 中文 version (slice 17), in the content so the schema, the size
+      // check and the lock cover it: a started campaign's Chinese words are as fixed as its English.
+      translations: z.strictObject({ [CHINESE]: chineseVersionSchema({ required }).optional() }).optional(),
     })
     .superRefine((c, ctx) => {
       const seen = new Set<string>();
@@ -392,6 +526,9 @@ function contentSchema({ required }: { required: boolean }) {
 
 /** One block as saved: every word written. */
 export const EmailBlockSchema = blockSchema({ required: true });
+
+/** One block's 中文 words as saved (slice 17): what a translation's words are checked against, as Save checks them. */
+export const ChineseBlockWordsSchema = chineseWordsSchema({ required: true });
 
 /**
  * What a campaign saves: every check, with every word written. The one
@@ -414,6 +551,12 @@ export type ImageBlock = Extract<EmailBlock, { type: "image" }>;
 export type HeroBlock = Extract<EmailBlock, { type: "hero" }>;
 export type SplitBlock = Extract<EmailBlock, { type: "split" }>;
 export type ProductsBlock = Extract<EmailBlock, { type: "products" }>;
+/** A campaign's 中文 version (slice 17): its subject, preview line, fallbacks and each block's words. */
+export type ChineseVersion = NonNullable<NonNullable<CampaignContent["translations"]>[typeof CHINESE]>;
+/** One block's 中文 words, by its type. */
+export type ChineseBlockWords = ChineseVersion["blocks"][string];
+export type ChineseParagraph = z.output<typeof ChineseParagraphSchema>;
+export type ChineseRun = z.output<typeof ChineseTextRunSchema> | { var: VariableKey };
 /** An image a block places: its Media Asset and alt text. */
 export type BlockImage = ImageBlock["image"];
 /** Where an image goes when tapped. */
@@ -432,13 +575,31 @@ export function aiDraftedBlocks(content: CampaignContent): EmailBlock[] {
   return marked.size ? content.blocks.filter((b) => marked.has(b.id)) : [];
 }
 
+/** Paragraphs and bullets of some kind of run: a text block's, or its 中文 version's (slice 17). */
+export type ParagraphOf<R> = { kind: "p"; runs: R[] } | { kind: "bullets"; items: R[][] };
+
+/** A run as its words read: some words, or a Variable. */
+type WordsRun = { text: string } | { var: VariableKey };
+
 /** Pure — every run of a text block's paragraphs, in order. */
-export function paragraphRuns(paragraphs: readonly Paragraph[]): Run[] {
+export function paragraphRuns<R = Run>(paragraphs: readonly ParagraphOf<R>[]): R[] {
   return paragraphs.flatMap((p) => (p.kind === "p" ? p.runs : p.items.flat()));
 }
 
 /** A text block's words, a Variable as `{name}`. */
-const textWords = (paragraphs: readonly Paragraph[]) => paragraphRuns(paragraphs).map((r) => ("var" in r ? `{${r.var}}` : r.text)).join("");
+const textWords = (paragraphs: readonly ParagraphOf<WordsRun>[]) =>
+  paragraphRuns(paragraphs)
+    .map((r) => ("var" in r ? `{${r.var}}` : r.text))
+    .join("");
+
+/**
+ * Pure — each address a text block's paragraphs link to, once, in order: what
+ * slice 10's rewrite keys `L1`, `L2`, and what a 中文 run's `link` counts
+ * from (slice 17).
+ */
+export function paragraphLinks(paragraphs: readonly Paragraph[]): string[] {
+  return [...new Set(paragraphRuns(paragraphs).flatMap((r) => ("href" in r && r.href ? [r.href] : [])))];
+}
 
 /** A new block's id: twelve random letters and digits, which needs no secure context. */
 export function newBlockId(): string {

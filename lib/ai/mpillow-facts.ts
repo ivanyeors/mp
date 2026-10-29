@@ -25,3 +25,28 @@ export const MPILLOW_FACTS: readonly string[] = [
 
 /** The facts as a prompt's bullet list. */
 export const MPILLOW_FACT_LINES = MPILLOW_FACTS.map((f) => `- ${f}`).join("\n");
+
+/**
+ * How the 中文 site writes Mpillow's names and words (PRD-campaign-email-editor
+ * slice 17), for ✨ Translate: product and brand names stay as written, the
+ * rest as lib/i18n/messages/zh-CN.ts has them. A new entry is a code change,
+ * reviewed with the site's own Chinese.
+ */
+export const MPILLOW_CHINESE_GLOSSARY: readonly (readonly [english: string, chinese: string])[] = [
+  ["Mpillow, Mbolster, Basic Mpillow, Premium Mpillow, Bespoke Mpillow, FibreCool", "as written, in English letters"],
+  ["customise, customised", "定制"],
+  ["a fitting, to measure", "量身"],
+  ["book a fitting", "预约量身"],
+  ["book an appointment", "预约咨询"],
+  ["re-adjustment, retune the fit", "重新调校"],
+  ["cervical pillow", "颈椎枕"],
+  ["bolster", "抱枕"],
+  ["pillow cover", "枕套"],
+  ["the shop", "商城"],
+  ["shop now", "前往商城"],
+  ["points", "积分"],
+  ["back and side sleeping", "仰睡与侧睡"],
+];
+
+/** The glossary as a prompt's bullet list. */
+export const MPILLOW_CHINESE_GLOSSARY_LINES = MPILLOW_CHINESE_GLOSSARY.map(([en, zh]) => `- ${en}: ${zh}`).join("\n");

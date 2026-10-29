@@ -30,6 +30,8 @@ export interface CampaignVariable {
   sample: string;
   /** The words for a customer who has none, when the campaign sets none of its own; null when Staff must write them. */
   fallback: string | null;
+  /** The same in a campaign's 中文 version (slice 17). */
+  chineseFallback: string | null;
   /** A hint for the fallback field when there is no default to start from. */
   example?: string;
   /** Offered only while points are live (`pointsLive`); the points rule counts it as a mention. */
@@ -47,6 +49,7 @@ export const CAMPAIGN_VARIABLES = {
     description: "The customer's first name.",
     sample: "Mei Ling",
     fallback: "there",
+    chineseFallback: "您",
     value: (r) => r.firstName,
   },
   last_name: {
@@ -54,6 +57,7 @@ export const CAMPAIGN_VARIABLES = {
     description: "The customer's last name.",
     sample: "Tan",
     fallback: null,
+    chineseFallback: null,
     value: (r) => r.lastName ?? null,
   },
   points_balance: {
@@ -61,6 +65,7 @@ export const CAMPAIGN_VARIABLES = {
     description: "The points the customer has to spend, as 1,250.",
     sample: "1,250",
     fallback: null,
+    chineseFallback: null,
     example: "some",
     needsPoints: true,
     value: (r) => pointsWords(r.pointsBalance),
@@ -101,25 +106,33 @@ export function variableValue(raw: string | null | undefined): string | null {
   return v || null;
 }
 
+/** Which words a fallback is in: a campaign's English, or its 中文 version's (slice 17). */
+export type FallbackLanguage = { chinese?: boolean };
+
+/** The catalogue's default in that language. */
+const defaultFallback = (key: VariableKey, { chinese = false }: FallbackLanguage) =>
+  chinese ? campaignVariable(key).chineseFallback : campaignVariable(key).fallback;
+
 /**
  * Pure — the fallback words as the campaign has them: its own when it set
  * some (empty too), else the catalogue's default; null when there are none,
- * which Save refuses for a Variable the email uses.
+ * which Save refuses for a Variable the email uses. `fallbacks` are the 中文
+ * version's own, with `chinese` (slice 17).
  */
-export function fallbackWords(key: VariableKey, fallbacks: VariableFallbacks): string | null {
+export function fallbackWords(key: VariableKey, fallbacks: VariableFallbacks, language: FallbackLanguage = {}): string | null {
   const own = fallbacks[key];
-  return variableValue(own !== undefined ? own : campaignVariable(key).fallback);
+  return variableValue(own !== undefined ? own : defaultFallback(key, language));
 }
 
 /** Pure — the words a customer without the detail gets: the campaign's fallback, else the catalogue's. */
-export function variableFallback(key: VariableKey, fallbacks: VariableFallbacks): string {
-  return variableValue(fallbacks[key]) ?? campaignVariable(key).fallback ?? "";
+export function variableFallback(key: VariableKey, fallbacks: VariableFallbacks, language: FallbackLanguage = {}): string {
+  return variableValue(fallbacks[key]) ?? defaultFallback(key, language) ?? "";
 }
 
-/** Pure — every Variable's words for one recipient: their own detail, else the fallback. */
-export function variableValues(recipient: VariableRecipient, fallbacks: VariableFallbacks): Record<VariableKey, string> {
+/** Pure — every Variable's words for one recipient: their own detail, else the fallback (the 中文 version's, with `chinese`). */
+export function variableValues(recipient: VariableRecipient, fallbacks: VariableFallbacks, language: FallbackLanguage = {}): Record<VariableKey, string> {
   const out = {} as Record<VariableKey, string>;
-  for (const key of VARIABLE_KEYS) out[key] = variableValue(campaignVariable(key).value(recipient)) ?? variableFallback(key, fallbacks);
+  for (const key of VARIABLE_KEYS) out[key] = variableValue(campaignVariable(key).value(recipient)) ?? variableFallback(key, fallbacks, language);
   return out;
 }
 

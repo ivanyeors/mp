@@ -9,7 +9,8 @@
 // escaping.test.ts proves no template interpolates raw user input.
 
 import type { CampaignBlockImages, CampaignBlockProducts, CampaignBlocksEmailData } from "../campaign-blocks";
-import type { CampaignContent, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
+import { linesFingerprint, withChineseTranslation, wordsFingerprint, type BlockWords } from "@/lib/email-campaigns/chinese-version";
+import type { CampaignContent, ChineseBlockWords, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
 import type { ChatTranscript } from "../support-chat";
@@ -722,4 +723,107 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
     { id: "l", type: "spacer", size: "l" },
     words("d", "The end."),
   ),
+};
+
+/**
+ * A campaign with a 中文 version (PRD-campaign-email-editor slice 17): every
+ * block type with words, in English, and each block's words in Chinese made
+ * from them, a link and a Variable kept in place. The renderer's 中文
+ * snapshots, the sender's mixed-language test and the editor's 中文 tests
+ * all read it.
+ */
+export const CHINESE_SAMPLE_LINES = {
+  subject: "{first_name}, sleep cooler this December",
+  preheader: "Our FibreCool covers are back, in every size.",
+  chineseSubject: "{first_name}，这个十二月睡得更清凉",
+  chinesePreheader: "FibreCool 枕套回来了，各种尺寸都有。",
+} as const;
+
+const CHINESE_SAMPLE_ENGLISH: CampaignContent = blockEmail(
+  {
+    id: "hero",
+    type: "hero",
+    image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+    heading: "Sleep cooler this December",
+    line: "Our coolest covers, back in every size.",
+    button: { label: "Shop the covers", target: "shop", style: "primary" },
+  },
+  {
+    id: "intro",
+    type: "text",
+    paragraphs: [
+      {
+        kind: "p",
+        runs: [
+          { var: "first_name" },
+          { text: ", warm nights are back. Read the " },
+          { text: "care guide", href: `${ORIGIN}/en-US/faq` },
+          { text: ", or " },
+          { text: "book a fitting", href: `${ORIGIN}/en-US/appointments`, bold: true },
+          { text: "." },
+        ],
+      },
+      { kind: "bullets", items: [[{ text: "Cool to the touch" }], [{ text: "Machine washable" }]] },
+    ],
+  },
+  { id: "why", type: "heading", level: 2, text: "Why FibreCool" },
+  {
+    id: "split",
+    type: "split",
+    image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" },
+    side: "right",
+    heading: "Made to your measure",
+    paragraphs: [{ kind: "p", runs: [{ text: "Your fitting sets its height." }] }],
+    button: { label: "Book a fitting", target: "book_fitting", style: "secondary" },
+  },
+  { id: "products", type: "products", products: [SAMPLE_COVER_PRODUCT], layout: "rows", buttonLabel: "Shop now" },
+  { id: "photo", type: "image", image: { asset: SAMPLE_PHOTO_ASSET, alt: "Two pillows on a bed" }, width: "inset" },
+  { id: "line", type: "divider" },
+  {
+    id: "pair",
+    type: "buttons",
+    buttons: [
+      { label: "Customise yours", target: "customise_mpillow", style: "primary" },
+      { label: "Read the care guide", target: "url", url: `${ORIGIN}/en-US/faq`, style: "secondary" },
+    ],
+  },
+);
+
+/** Each block's 中文 words, without their fingerprints: what a translation of CHINESE_SAMPLE_ENGLISH holds. */
+export const CHINESE_SAMPLE_WORDS: Record<string, BlockWords> = {
+  hero: { type: "hero", alt: "铺好的床上的白色 FibreCool 枕套", heading: "这个十二月，睡得更清凉", line: "我们最清凉的枕套回来了，各种尺寸都有。", buttonLabel: "选购枕套" },
+  intro: {
+    type: "text",
+    paragraphs: [
+      {
+        kind: "p",
+        runs: [{ var: "first_name" }, { text: "，炎热的夜晚又来了。请阅读" }, { text: "保养指南", link: 0 }, { text: "，或" }, { text: "预约量身", link: 1, bold: true }, { text: "。" }],
+      },
+      { kind: "bullets", items: [[{ text: "触感清凉" }], [{ text: "可机洗" }]] },
+    ],
+  },
+  why: { type: "heading", text: "为什么选择 FibreCool" },
+  split: { type: "split", alt: "Mpillow Premium 侧面", heading: "按您的尺寸定制", paragraphs: [{ kind: "p", runs: [{ text: "量身时会为您调好枕头的高度。" }] }], buttonLabel: "预约量身" },
+  products: { type: "products", buttonLabel: "立即选购" },
+  photo: { type: "image", alt: "床上的两个枕头" },
+  pair: { type: "buttons", labels: ["定制您的 Mpillow", "阅读保养指南"] },
+};
+
+/** CHINESE_SAMPLE_ENGLISH with its 中文 version, every block current. */
+export const CHINESE_SAMPLE_CONTENT: CampaignContent = withChineseTranslation(CHINESE_SAMPLE_ENGLISH, {
+  subject: CHINESE_SAMPLE_LINES.chineseSubject,
+  preheader: CHINESE_SAMPLE_LINES.chinesePreheader,
+  from: linesFingerprint(CHINESE_SAMPLE_LINES.subject, CHINESE_SAMPLE_LINES.preheader),
+  fallbacks: { first_name: "您" },
+  blocks: Object.fromEntries(
+    CHINESE_SAMPLE_ENGLISH.blocks.flatMap((b) => {
+      const w = CHINESE_SAMPLE_WORDS[b.id];
+      return w ? [[b.id, { ...w, from: wordsFingerprint(b) } as ChineseBlockWords]] : [];
+    }),
+  ),
+});
+
+/** The cover as the 中文 shop names it: what a reader of Chinese sees in CHINESE_SAMPLE_CONTENT's products block. */
+export const CHINESE_SAMPLE_PRODUCTS: CampaignBlockProducts = {
+  [SAMPLE_COVER_PRODUCT]: { ...EMAIL_BLOCK_SAMPLE_PRODUCTS[SAMPLE_COVER_PRODUCT], title: "FibreCool 凉感枕套" },
 };

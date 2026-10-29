@@ -33,6 +33,7 @@ export const CHECK_LABEL: Record<string, string> = {
   pause: "Bounces and spam reports are low",
   points: "Points are live",
   products: "Every product is still in the shop",
+  chinese: "The 中文 version is complete",
   send_limit: "Room in the sending plan",
   reports: "Bounce and spam reports",
 };
@@ -241,6 +242,20 @@ export function waitingSummary(p: {
   }
   if (p.limitedBy === "monthly") return `${now}, all this month's room allows; ${later}.`;
   return `${now}; ${later}.`;
+}
+
+/**
+ * Pure — who gets which language (PRD-campaign-email-editor slice 17): "214
+ * of 1,830 customers read the site in Chinese and will get the 中文 version".
+ * With no 中文 version, how many readers of Chinese get English; null when
+ * nobody in the audience reads the site in Chinese.
+ */
+export function languageSummary(p: { eligible: number; eligibleChinese: number; selected: number; selectedChinese: number; hasChinese: boolean }): string | null {
+  if (!p.eligibleChinese) return null;
+  const readers = `${n(p.eligibleChinese)} of ${plural(p.eligible, "customer")} ${p.eligibleChinese === 1 ? "reads" : "read"} the site in Chinese`;
+  if (!p.hasChinese) return `${readers}; they get English, as this email has no 中文 version.`;
+  const wave = p.selected < p.eligible ? ` In this wave, ${n(p.selectedChinese)} of ${n(p.selected)} get it.` : "";
+  return `${readers} and will get the 中文 version; everyone else gets English.${wave}`;
 }
 
 // ─── After a wave ────────────────────────────────────────────────────────────

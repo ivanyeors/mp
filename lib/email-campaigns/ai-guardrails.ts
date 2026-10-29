@@ -12,7 +12,7 @@
  * claim, a request for a review, and Shopify.
  */
 import { MPILLOW_ABOUT, MPILLOW_FACTS } from "@/lib/ai/mpillow-facts";
-import { checkBannedClinical } from "@/lib/i18n/copy-bands";
+import { checkBannedClinical, checkBannedClinicalZh } from "@/lib/i18n/copy-bands";
 import type { RewritableBlock } from "./ai-refine-brief";
 import { blockLinks, blockVariables } from "./ai-refine-shape";
 import { contentWords, paragraphRuns, type EmailBlock, type Run } from "./content";
@@ -52,6 +52,13 @@ const healthClaim = (m: string) => `makes a health claim ("${m}"): write about c
 const MONTHS = "january|february|march|april|june|july|august|september|october|november|december";
 const DAYS = "monday|tuesday|wednesday|thursday|friday|saturday|sunday";
 
+// Kinds of words a draft may use only when Staff did: what a translation may use only when its English does (slice 17).
+const OFFER_WORDS =
+  /\b(?:discount(?:s|ed)?|on sale|sale|vouchers?|coupons?|promo(?:tion)?s?|promo codes?|cashback|rebates?|deals?|free (?:shipping|delivery|gifts?)|half off|buy one)\b/gi;
+const URGENT_WORDS =
+  /\b(?:hurry|last chance|final (?:hours|days|call)|ends? (?:soon|tonight|today|tomorrow|this week)|today only|limited[- ]time|act (?:now|fast)|don'?t miss(?: out)?|while stocks? lasts?|selling (?:fast|out)|almost gone|running out|before it'?s gone|expir(?:es|ing)|only \w+ left)\b/gi;
+const MOVE_WORDS = /\b(?:our|the) (?:move|migration|switch)\b|\bmigrat(?:e|ed|ing|ion)\b|\bnew (?:website|site|platform|online store)\b|\bwe(?:'ve| have)? moved\b/gi;
+
 const CHECKS: Check[] = [
   {
     pattern: /https?:\/\/\S+|www\.\S+|\b[a-z0-9-]+\.(?:com|sg|net|org|co|io|my)\b/gi,
@@ -65,12 +72,7 @@ const CHECKS: Check[] = [
     why: (m) => `names a price ("${m}") nobody typed: prices come from a products block`,
   },
   { pattern: /\b\d+(?:\.\d+)?\s?(?:%|per ?cent\b)/gi, unlessTyped: true, why: (m) => `has a percentage ("${m}") nobody typed` },
-  {
-    pattern:
-      /\b(?:discount(?:s|ed)?|on sale|sale|vouchers?|coupons?|promo(?:tion)?s?|promo codes?|cashback|rebates?|deals?|free (?:shipping|delivery|gifts?)|half off|buy one)\b/gi,
-    unlessTyped: true,
-    why: (m) => `offers "${m}", which nobody typed`,
-  },
+  { pattern: OFFER_WORDS, unlessTyped: true, why: (m) => `offers "${m}", which nobody typed` },
   { pattern: /\b[A-Z]{2,}\d+[A-Z\d]*\b|\b\d+[A-Z]{3,}\b/g, unlessTyped: true, why: (m) => `has a code ("${m}") nobody typed` },
   { pattern: /\b\d+(?:[.,:/-]\d+)*\b/g, unlessTyped: true, why: (m) => `has a number ("${m}") nobody gave` },
   { pattern: new RegExp(`\\b(?:${MONTHS}|${DAYS})\\b`, "gi"), unlessTyped: true, why: (m) => `names a date ("${m}") nobody gave` },
@@ -79,12 +81,7 @@ const CHECKS: Check[] = [
     unlessTyped: true,
     why: (m) => `promises "${m}", which nobody typed`,
   },
-  {
-    pattern:
-      /\b(?:hurry|last chance|final (?:hours|days|call)|ends? (?:soon|tonight|today|tomorrow|this week)|today only|limited[- ]time|act (?:now|fast)|don'?t miss(?: out)?|while stocks? lasts?|selling (?:fast|out)|almost gone|running out|before it'?s gone|expir(?:es|ing)|only \w+ left)\b/gi,
-    unlessTyped: true,
-    why: (m) => `rushes the reader ("${m}"), which the brief didn't`,
-  },
+  { pattern: URGENT_WORDS, unlessTyped: true, why: (m) => `rushes the reader ("${m}"), which the brief didn't` },
   {
     // Beside `checkBannedClinical`'s verbs: comfort, fit and sleep, never health.
     pattern:
@@ -98,11 +95,7 @@ const CHECKS: Check[] = [
     why: () => "asks for a review or a rating, which a campaign never does",
   },
   { pattern: /\bshopify\b/gi, unlessTyped: false, why: () => "names Shopify" },
-  {
-    pattern: /\b(?:our|the) (?:move|migration|switch)\b|\bmigrat(?:e|ed|ing|ion)\b|\bnew (?:website|site|platform|online store)\b|\bwe(?:'ve| have)? moved\b/gi,
-    unlessTyped: true,
-    why: (m) => `mentions a move ("${m}")`,
-  },
+  { pattern: MOVE_WORDS, unlessTyped: true, why: (m) => `mentions a move ("${m}")` },
   { pattern: /\{(?!first_name\})[^{}]*\}/g, unlessTyped: false, why: (m) => `uses ${m}: only {first_name} is Claude's to place` },
 ];
 
@@ -184,4 +177,52 @@ export function rewriteProblems(original: RewritableBlock, rewrite: RewritableBl
   for (const k of varsAfter) if (!varsBefore.includes(k)) out.push(`adds the Variable {${k}}, which the original doesn't have`);
   out.push(...wordsProblems(rewriteText(rewrite, new Set([...before.values()].map(squash))), ctx));
   return out.slice(0, MAX_REASONS);
+}
+
+// ---------------------------------------------------------------------------
+// A translation (slice 17)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a 中文 translation may not say that its English does not, in Chinese:
+ * each kind is refused unless the English has its kind too (`english`). A
+ * health claim or a request for a review is refused whatever the English says.
+ */
+const CHINESE_CHECKS: { pattern: RegExp; english?: RegExp; why: (match: string) => string }[] = [
+  { pattern: /疼痛|止痛|医疗|理疗|疗愈/g, why: healthClaim },
+  {
+    pattern: /折扣|打折|折价|优惠|促销|特价|特惠|减价|降价|免运费|免邮|包邮|免费送货|赠品|优惠券|代金券|优惠码|折扣码|返现|买一送一|[一二三四五六七八九两\d]折/g,
+    // An English offer is its words, a percentage or a code.
+    english: new RegExp(`${OFFER_WORDS.source}|\\b\\d+(?:\\.\\d+)?\\s?(?:%|per ?cent\\b)|\\b(?:promo )?codes?\\b`, "gi"),
+    why: (m) => `offers "${m}", which the English doesn't`,
+  },
+  { pattern: /最后机会|限时|赶快|抓紧|售完即止|仅剩|不要错过|别错过|倒计时|即将结束|马上抢/g, english: URGENT_WORDS, why: (m) => `rushes the reader ("${m}"), which the English doesn't` },
+  {
+    pattern: /(?:留下|写下?|给|发表|分享|帮我们|请)[^。！？\n]{0,6}?(?:评价|评论|评分|好评|五星|星级)|给我们(?:打分|评分)|五星好评/g,
+    why: () => "asks for a review or a rating, which a campaign never does",
+  },
+  { pattern: /新网站|新网店|新平台|迁移|搬迁|我们搬/g, english: MOVE_WORDS, why: (m) => `mentions a move ("${m}"), which the English doesn't` },
+  { pattern: /积分/g, english: /\bpoints?\b/gi, why: () => "mentions points, which the English doesn't" },
+];
+
+/**
+ * Pure — what is wrong with some 中文 words Claude translated from `english`
+ * (slice 17), as reasons; none when they pass. The Chinese health words
+ * (`checkBannedClinicalZh`, beside the landing page's list) and the kinds
+ * above, then every check any words Claude writes pass, with the English as
+ * what was typed: a number, a price or a code counts only when the English
+ * has it, so a translation adds no price or offer. The Variables are checked
+ * apart (`translationProblems`): here they read as spaces.
+ */
+export function chineseWordsProblems(text: string, english: string): string[] {
+  const words = text.replace(/\{([a-z_]+)\}/g, (m, k: string) => (isVariableKey(k) ? " " : m));
+  const out = new Set<string>();
+  const clinical = checkBannedClinicalZh("The words", words);
+  if (clinical) out.add(healthClaim(/"([^"]+)"/.exec(clinical)?.[1] ?? clinical));
+  for (const check of CHINESE_CHECKS) {
+    if (check.english && english.search(check.english) !== -1) continue;
+    for (const m of words.matchAll(check.pattern)) out.add(check.why(m[0]));
+  }
+  for (const reason of wordsProblems(words, { staffText: english, pointsLive: true })) out.add(reason);
+  return [...out].slice(0, MAX_REASONS);
 }

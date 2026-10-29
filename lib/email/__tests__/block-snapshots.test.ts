@@ -2,7 +2,14 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLE_PRODUCTS, EMAIL_BLOCK_SAMPLES } from "../__fixtures__/samples";
+import {
+  CHINESE_SAMPLE_CONTENT,
+  CHINESE_SAMPLE_LINES,
+  CHINESE_SAMPLE_PRODUCTS,
+  EMAIL_BLOCK_SAMPLE_IMAGES,
+  EMAIL_BLOCK_SAMPLE_PRODUCTS,
+  EMAIL_BLOCK_SAMPLES,
+} from "../__fixtures__/samples";
 import { EMAIL_BLOCK_TYPES, emptyBlock, type CampaignContent } from "@/lib/email-campaigns/content";
 import { EMPTY_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
@@ -48,6 +55,19 @@ describe("each Email block in the preview, light and dark", () => {
     await expect(light.html).toMatchFileSnapshot(`./__snapshots__/blocks/${name}.light.html`);
     await expect(dark.html).toMatchFileSnapshot(`./__snapshots__/blocks/${name}.dark.html`);
     await expect(`${light.subject}\n\n${light.text}`).toMatchFileSnapshot(`./__snapshots__/blocks/${name}.txt`);
+    expect({ subject: dark.subject, text: dark.text }).toEqual({ subject: light.subject, text: light.text });
+  });
+
+  // The 中文 version (slice 17): every block type with words, its subject and
+  // preview line, and the email's own words in Chinese, light and dark.
+  it("the 中文 version", async () => {
+    const zh: CampaignDraft = { ...draft(CHINESE_SAMPLE_CONTENT), subject: CHINESE_SAMPLE_LINES.subject, preheader: CHINESE_SAMPLE_LINES.preheader, greeting: true };
+    const shown = { images: EMAIL_BLOCK_SAMPLE_IMAGES, products: CHINESE_SAMPLE_PRODUCTS, locale: "zh-CN" as const };
+    const light = renderCampaignPreview(zh, { origin: ORIGIN, firstName: "美玲", ...shown });
+    const dark = renderCampaignPreview(zh, { origin: ORIGIN, firstName: "美玲", forceDark: true, ...shown });
+    await expect(light.html).toMatchFileSnapshot("./__snapshots__/blocks/chinese.light.html");
+    await expect(dark.html).toMatchFileSnapshot("./__snapshots__/blocks/chinese.dark.html");
+    await expect(`${light.subject}\n\n${light.text}`).toMatchFileSnapshot("./__snapshots__/blocks/chinese.txt");
     expect({ subject: dark.subject, text: dark.text }).toEqual({ subject: light.subject, text: light.text });
   });
 });

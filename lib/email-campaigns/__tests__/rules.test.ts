@@ -215,6 +215,7 @@ const cand = (over: Partial<CampaignCandidate> & { customerId: string }): Campai
   since: "2026-10-10T00:00:00Z",
   suppressed: false,
   own: null,
+  locale: "en-US",
   ...over,
 });
 
@@ -267,6 +268,20 @@ describe("nextWaveLabel", () => {
   });
 });
 
+describe("planCampaignWave counts who reads the site in Chinese (PRD-campaign-email-editor slice 17)", () => {
+  it("of everyone who can get it, and of the wave", () => {
+    const list = [
+      cand({ customerId: "a", locale: "zh-CN", ordersCount: 1 }),
+      cand({ customerId: "b" }),
+      cand({ customerId: "c", locale: "zh-CN" }),
+      cand({ customerId: "d", locale: "zh-CN", marketingEmail: "unsubscribed" }),
+    ];
+    const plan = planCampaignWave("subscribed", list, { size: 2 });
+    expect(plan.selection.map((c) => c.customerId)).toEqual(["a", "b"]);
+    expect({ eligible: plan.eligible, eligibleChinese: plan.eligibleChinese, selectedChinese: plan.selectedChinese }).toEqual({ eligible: 3, eligibleChinese: 2, selectedChinese: 1 });
+  });
+});
+
 describe("candidateFromRow", () => {
   it("reads this campaign's send out of the row's sends", () => {
     const row = {
@@ -281,7 +296,8 @@ describe("candidateFromRow", () => {
       suppressed: false,
       campaign_sends: { c1: { status: "failed", wave: "w2", sent_at: "t" }, c2: { status: "sent", wave: "w1", sent_at: "t" } },
     };
-    expect(candidateFromRow(row, "c1")).toMatchObject({ firstName: "Ann", ordersCount: 3, own: { status: "failed", wave: "w2" } });
+    expect(candidateFromRow(row, "c1")).toMatchObject({ firstName: "Ann", ordersCount: 3, own: { status: "failed", wave: "w2" }, locale: "en-US" });
+    expect(candidateFromRow({ ...row, locale: "zh-CN" }, "c1")?.locale).toBe("zh-CN");
     expect(candidateFromRow(row, "c3")?.own).toBeNull();
     expect(candidateFromRow({ ...row, marketing_email: "weird" }, "c1")?.marketingEmail).toBe("not_subscribed");
     expect(candidateFromRow({ email: "x" }, "c1")).toBeNull();

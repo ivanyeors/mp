@@ -19,12 +19,15 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 import {
   CampaignContentPreviewSchema,
   CampaignContentSchema,
+  CHINESE,
+  CONTENT_LIMITS,
   contentWords,
   EMPTY_CAMPAIGN_CONTENT,
   isHttpsUrl,
   unknownVariableMessage,
   variablesUsed,
 } from "./content";
+import { chineseVersionOf, chineseWords } from "./chinese-version";
 import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
 
 export { isHttpsUrl };
@@ -54,8 +57,9 @@ export const MAX_TEST_RECIPIENTS = 3;
 
 export const CAMPAIGN_LIMITS = {
   name: 80,
-  subject: 150,
-  preheader: 200,
+  // The 中文 version's subject and preview line take the same (slice 17).
+  subject: CONTENT_LIMITS.subject,
+  preheader: CONTENT_LIMITS.preheader,
   body: 10000,
   buttonLabel: 40,
   buttonUrl: 500,
@@ -137,12 +141,16 @@ function draftSchema({ required }: { required: boolean }) {
         const unknown = unknownVariableMessage(d[field] ?? "");
         if (unknown) ctx.addIssue({ code: "custom", path: [field], message: unknown });
       }
-      // Every Variable the email uses has words for a customer who has none (slice 13).
+      // Every Variable the email uses has words for a customer who has none (slice 13),
+      // in English and, when it has one, in its 中文 version (slice 17).
       if (!required) return;
+      const chinese = chineseVersionOf(d.content);
       for (const key of variablesInEmail(d)) {
-        if (fallbackWords(key, d.content.fallbacks)) continue;
-        const missing = `Write what to say to a customer with no ${campaignVariable(key).label.toLowerCase()}.`;
-        ctx.addIssue({ code: "custom", path: ["content", "fallbacks", key], message: missing });
+        const missing = `Write what to say to a customer with no ${campaignVariable(key).label.toLowerCase()}`;
+        if (!fallbackWords(key, d.content.fallbacks)) ctx.addIssue({ code: "custom", path: ["content", "fallbacks", key], message: `${missing}.` });
+        if (chinese && !fallbackWords(key, chinese.fallbacks, { chinese: true })) {
+          ctx.addIssue({ code: "custom", path: ["content", "translations", CHINESE, "fallbacks", key], message: `${missing}, in Chinese.` });
+        }
       }
     })
     .transform((d) => ({
@@ -174,9 +182,9 @@ export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
  * sign-in would not grant (PRD-loyalty-points slice 05).
  */
 export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
-  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : [])].join("\n");
-  // *Points balance* (PRD-campaign-email-editor slice 13) is a mention too.
-  return /\bpoints?\b/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
+  const words = [c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : []), ...chineseWords(c.content)].join("\n");
+  // *Points balance* (PRD-campaign-email-editor slice 13) is a mention too, and so is 积分 in the 中文 version (slice 17).
+  return /\bpoints?\b|积分/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
 }
 
 /**
@@ -188,7 +196,9 @@ export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | 
 export function variablesInEmail(c: Pick<CampaignDraft, "subject" | "preheader" | "content" | "greeting">): VariableKey[] {
   if (!c.content) return [];
   const greeting: VariableKey[] = c.greeting ? ["first_name"] : [];
-  return [...new Set([...greeting, ...variablesUsed(c.content, [c.subject, c.preheader ?? ""])])];
+  // The 中文 version's too (slice 17): a translation keeps the English's, but Staff may write one more in it.
+  const chinese = chineseWords(c.content).flatMap((w) => placeholdersIn(w).filter(isVariableKey));
+  return [...new Set([...greeting, ...variablesUsed(c.content, [c.subject, c.preheader ?? ""]), ...chinese])];
 }
 
 /** A Campaign as stored. */
@@ -293,6 +303,8 @@ export interface CampaignCandidate {
   suppressed: boolean;
   /** This Campaign's send to them, if any. */
   own: OwnSend | null;
+  /** The language they use the site in (`customers.locale`): `zh-CN` gets a campaign's 中文 version (slice 17). */
+  locale: string;
 }
 
 /** Why a Customer may not receive a Campaign now, in the order the rule checks. */
@@ -378,6 +390,9 @@ export interface CampaignPlan {
   alreadySent: number;
   /** This Campaign's failed sends, which a retry would send again. */
   failed: number;
+  /** Of `eligible`, and of the wave, those who read the site in Chinese (PRD-campaign-email-editor slice 17). */
+  eligibleChinese: number;
+  selectedChinese: number;
 }
 
 /** Pure — a wave of `size` from every candidate. A retry selects this Campaign's failed sends only. */
@@ -403,14 +418,18 @@ export function planCampaignWave(
   }
   eligible.sort(compareSendOrder);
   const n = Math.max(0, Math.min(MAX_WAVE_SIZE, Math.floor(size)));
+  const selection = eligible.slice(0, n);
+  const readsChinese = (c: CampaignCandidate) => c.locale === CHINESE;
   return {
     considered: candidates.length,
     eligible: eligible.length,
     eligibleBuyers: eligible.filter(isBuyer).length,
-    selection: eligible.slice(0, n),
+    selection,
     excluded,
     alreadySent,
     failed,
+    eligibleChinese: eligible.filter(readsChinese).length,
+    selectedChinese: selection.filter(readsChinese).length,
   };
 }
 
@@ -427,7 +446,7 @@ const isSendStatus = (v: unknown): v is CampaignSendStatus =>
 
 /** The view's columns, in its order. */
 export const CANDIDATE_COLUMNS =
-  "customer_id, email, first_name, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
+  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
 
 /** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
 export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
@@ -454,6 +473,7 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
     since: typeof row.since === "string" ? row.since : "",
     suppressed: row.suppressed === true,
     own,
+    locale: typeof row.locale === "string" ? row.locale : "en-US",
   };
 }
 

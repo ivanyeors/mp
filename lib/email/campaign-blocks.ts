@@ -28,6 +28,12 @@
 // every send alike, so the preview stays the email a test delivers and a click
 // on a block in it selects that block's card (slice 04). An inbox ignores it.
 //
+// A campaign with a 中文 version (slice 17) renders it for a reader of
+// Chinese (`language: "zh-CN"`): the same blocks with their 中文 words
+// (chinese-version.ts `chineseContent`), its 中文 subject and preview line,
+// and the email's own words, the greeting, the footer and the unsubscribe
+// line, from the Chinese set beside the English. Without one, it is English.
+//
 // Campaigns written before the blocks keep lib/email/campaigns.ts.
 
 import { renderEmailShell } from "./base";
@@ -53,6 +59,7 @@ import { money } from "./format";
 import { escapeAttr, escapeHtml, stripTags } from "./html";
 import { css, LAYOUT, LIGHT, SPACE } from "./theme";
 import type { RenderedEmail } from "./types";
+import { CHINESE, chineseContent, chineseVersionOf } from "@/lib/email-campaigns/chinese-version";
 import {
   CampaignContentPreviewSchema,
   fillVariables,
@@ -68,6 +75,7 @@ import {
   type SpacerSize,
 } from "@/lib/email-campaigns/content";
 import type { VariableKey } from "@/lib/email-campaigns/variables";
+import type { Locale } from "@/lib/i18n/locales";
 
 /** What an empty block field shows in the editor's preview. */
 export interface CampaignBlocksPlaceholders {
@@ -129,19 +137,27 @@ export interface CampaignBlockProduct {
 /** Each Listed product the email shows or links to, by id. */
 export type CampaignBlockProducts = Readonly<Record<string, CampaignBlockProduct>>;
 
-/** Pure — a product's price in words, as the email shows it: `from SGD 39.00 (was SGD 49.00)`. */
-export function productPriceText(p: Pick<CampaignBlockProduct, "price" | "compareAt" | "from" | "currency">): string {
+/**
+ * Pure — a product's price in words, as the email shows it: `from SGD 39.00
+ * (was SGD 49.00)`, or in the 中文 version `SGD 39.00 起（原价 SGD 49.00）`.
+ */
+export function productPriceText(p: Pick<CampaignBlockProduct, "price" | "compareAt" | "from" | "currency">, { chinese = false }: { chinese?: boolean } = {}): string {
+  if (chinese) {
+    const now = `${money(p.price, p.currency)}${p.from ? " 起" : ""}`;
+    return p.compareAt === null ? now : `${now}（原价 ${money(p.compareAt, p.currency)}）`;
+  }
   const now = `${p.from ? "from " : ""}${money(p.price, p.currency)}`;
   return p.compareAt === null ? now : `${now} (was ${money(p.compareAt, p.currency)})`;
 }
 
-/** A product's price line as the shop card draws it: *from*, the compare-at struck through and muted, then the price. */
-function productPriceHtml(p: CampaignBlockProduct): string {
+/** A product's price line as the shop card draws it: *from*, the compare-at struck through and muted, then the price; *起* after it in Chinese. */
+function productPriceHtml(p: CampaignBlockProduct, chinese: boolean): string {
   const was =
     p.compareAt === null
       ? ""
       : `<span class="mp-muted" style="${css({ color: LIGHT.mutedFg, "text-decoration": "line-through" })}">${escapeHtml(money(p.compareAt, p.currency))}</span>&nbsp; `;
-  return `${p.from ? "from " : ""}${was}<strong>${escapeHtml(money(p.price, p.currency))}</strong>`;
+  const price = `<strong>${escapeHtml(money(p.price, p.currency))}</strong>`;
+  return chinese ? `${was}${price}${p.from ? " 起" : ""}` : `${p.from ? "from " : ""}${was}${price}`;
 }
 
 export interface CampaignBlocksEmailData {
@@ -174,7 +190,32 @@ export interface CampaignBlocksEmailData {
   unsubscribeUrl: string;
   /** The editor's preview only: drawn in place of an empty field. Never set for a send. */
   placeholders?: CampaignBlocksPlaceholders;
+  /**
+   * The reader's language (slice 17): `zh-CN` renders the campaign's 中文
+   * version when it has one, and `values` are then its 中文 fallbacks'. Any
+   * other, or a campaign without one, is the English email.
+   */
+  language?: Locale;
 }
+
+/**
+ * The email's own words, beside its blocks' (slice 17): the greeting, the note
+ * above the footer and the plain text's unsubscribe line, in English and in
+ * Chinese for the 中文 version. The shell's footer has its own (`lang`).
+ */
+export const CAMPAIGN_OWN_WORDS = {
+  en: {
+    greeting: (name: string | null) => (name ? `Hi ${name},` : "Hi,"),
+    note: COMPOSED_CAMPAIGN_NOTE,
+    unsubscribe: (url: string) => `Unsubscribe: ${url}`,
+  },
+  zh: {
+    // *您* is the 中文 first name's fallback: no name, a polite hello alone.
+    greeting: (name: string | null) => (name && name !== "您" ? `${name}，您好！` : "您好！"),
+    note: "您收到这封邮件，是因为您同意接收 Mpillow 的电子邮件。",
+    unsubscribe: (url: string) => `取消订阅：${url}`,
+  },
+} as const;
 
 const SPACER_PX: Record<SpacerSize, number> = { s: SPACE.md, m: SPACE["3xl"], l: SPACE["3xl"] * 2 };
 
@@ -193,10 +234,7 @@ const productCellPx = (n: number) => Math.floor(STACK_BELOW / n) - LAYOUT.gutter
 /** Blocks that can open an email above its greeting: a title, a hero, an image. */
 const opensEmail = (b: EmailBlock) => (b.type === "heading" && b.level === 1) || b.type === "hero" || b.type === "image";
 
-const greet = (firstName: string | null) => {
-  const name = firstName?.replace(/\s+/g, " ").trim();
-  return name ? `Hi ${name},` : "Hi,";
-};
+const greet = (firstName: string | null, words: (typeof CAMPAIGN_OWN_WORDS)["en" | "zh"]) => words.greeting(firstName?.replace(/\s+/g, " ").trim() || null);
 
 /** A run's words as they read: a Variable is its value for this recipient. */
 const runText = (r: Run, values: Record<VariableKey, string>) => ("var" in r ? values[r.var] : r.text);
@@ -251,14 +289,19 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
   const images = p.images ?? {};
   const products = p.products ?? {};
   // The schema again, whoever called: what does not parse never renders. Then
-  // every Variable in every block's words, as this recipient reads them (slice 13).
-  const content = fillVariables(CampaignContentPreviewSchema.parse(p.content), values);
-  const subject = fillCopy(p.subject, values).replace(/\s+/g, " ").trim();
+  // the 中文 version's words for a reader of Chinese (slice 17), and every
+  // Variable in every block's words, as this recipient reads them (slice 13).
+  const parsed = CampaignContentPreviewSchema.parse(p.content);
+  const chinese = p.language === CHINESE ? chineseVersionOf(parsed) : null;
+  const own = chinese ? CAMPAIGN_OWN_WORDS.zh : CAMPAIGN_OWN_WORDS.en;
+  const content = fillVariables(chinese ? chineseContent(parsed) : parsed, values);
+  const subject = fillCopy(chinese ? chinese.subject : p.subject, values).replace(/\s+/g, " ").trim();
+  const preheaderWords = chinese ? chinese.preheader : p.preheader;
 
   const html: string[] = [];
   const text: string[] = [];
   // One fallback for a first name, wherever it appears: the greeting's is the Variable's.
-  const greeting = p.greeting ? greet(values.first_name) : null;
+  const greeting = p.greeting ? greet(values.first_name, own) : null;
   // The greeting opens the words: after the title (or hero, or image) the email
   // opens with, before any part's heading, where a legacy campaign's greeting sits.
   const greetAt = content.blocks.findIndex((b) => !opensEmail(b));
@@ -321,8 +364,8 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
     const href = p.buttonHref({ label: b.buttonLabel, target: "product", product: id, style: "primary" });
     // A linked photo's alt is what the link says: the product's name.
     const picture = product.image ? (imageHtml({ asset: product.image.asset, alt: product.title }, width, href) ?? "") : "";
-    const words = [heading(product.title, 3, { align, bottom: SPACE.xs }), paragraphHtml(productPriceHtml(product), { align, bottom: 0 })];
-    text.push(product.title, productPriceText(product));
+    const words = [heading(product.title, 3, { align, bottom: SPACE.xs }), paragraphHtml(productPriceHtml(product, Boolean(chinese)), { align, bottom: 0 })];
+    text.push(product.title, productPriceText(product, { chinese: Boolean(chinese) }));
     const label = b.buttonLabel.trim();
     if (href && label) {
       text.push(`${label}: ${href}`);
@@ -495,10 +538,10 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
     greetHere();
   }
   if (!content.blocks.length && hint) html.push(placeholderHint(hint.empty));
-  text.push(COMPOSED_CAMPAIGN_NOTE, `Unsubscribe: ${p.unsubscribeUrl}`);
+  text.push(own.note, own.unsubscribe(p.unsubscribeUrl));
 
   const preheader =
-    (p.preheader ? fillCopy(p.preheader, values).replace(/\s+/g, " ").trim() : "") ||
+    (preheaderWords ? fillCopy(preheaderWords, values).replace(/\s+/g, " ").trim() : "") ||
     stripTags(html.slice(opened).join("\n").replace(OUTLOOK_ONLY, "")).slice(0, 120);
   return {
     subject,
@@ -507,8 +550,9 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
       ...(subject ? { documentTitle: subject } : {}),
       ...(preheader ? { preheader } : {}),
       bodyHtml: html.join("\n"),
-      footer: COMPOSED_CAMPAIGN_NOTE,
+      footer: own.note,
       unsubscribeUrl: p.unsubscribeUrl,
+      ...(chinese ? { lang: CHINESE } : {}),
     }),
     text: text.join("\n"),
   };

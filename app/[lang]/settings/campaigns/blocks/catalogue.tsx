@@ -36,7 +36,9 @@ import {
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { cn } from "@/lib/utils";
 import { useCampaignAi } from "../ai/ai-context";
-import { RewriteOffered, RewriteTool, rewriteOffered } from "../ai/rewrite-tools";
+import { RewriteOffered, rewriteOffered } from "../ai/rewrite-tools";
+import { useChineseEditing } from "../chinese/chinese-context";
+import { BlockTools, ChineseTools } from "../chinese/chinese-tools";
 import { Field } from "../field";
 import { ImageField } from "./image-field";
 import { ProductField, ProductsField } from "./products-field";
@@ -51,6 +53,10 @@ import { useCampaignVariables } from "./variables";
  * and its checks are slice 03's (lib/email-campaigns/content.ts).
  *
  * A new block type is one entry here and its form; slices 05 to 07 add theirs.
+ *
+ * In the editor's 中文 (slice 17) the same forms show the 中文 words, with
+ * `layoutLocked`: each keeps its word fields and fixes its targets, pictures,
+ * parts and options, which are the English's.
  */
 
 type Of<T extends EmailBlock["type"]> = Extract<EmailBlock, { type: T }>;
@@ -115,6 +121,7 @@ function TextRuns({
     error,
     also,
     onSlash,
+    link = isHttpsUrl,
 }: {
     id: string;
     label: string;
@@ -124,6 +131,8 @@ function TextRuns({
     error?: string;
     also?: string | null;
     onSlash?: () => void;
+    /** Which links its words may carry: any https one, or in 中文 only the English block's (slice 17). */
+    link?: (url: string) => boolean;
 }) {
     const variables = useCampaignVariables();
     const value = useMemo(() => richTextOf(paragraphs), [paragraphs]);
@@ -135,7 +144,7 @@ function TextRuns({
                 aria-label={label}
                 aria-invalid={Boolean(shown)}
                 value={value}
-                marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
+                marks={{ bold: true, italic: true, bullets: true, link }}
                 variables={variables}
                 placeholder={CONTENT_PLACEHOLDERS.text}
                 readOnly={readOnly}
@@ -147,9 +156,16 @@ function TextRuns({
     );
 }
 
+/** In 中文 a link is one of the English block's, by its place (slice 17): no other can be added there. */
+function useLinkCheck(id: string): ((url: string) => boolean) | undefined {
+    const zh = useChineseEditing();
+    return zh ? (url) => zh.links(id).includes(url) : undefined;
+}
+
 function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
     // An empty text block offers to be written from the subject (slice 09), while AI writing is on.
     const ai = useCampaignAi();
+    const link = useLinkCheck(b.id);
     const empty = !paragraphRuns(b.paragraphs).some((r) => "var" in r || r.text.trim());
     const writing = ai?.writing?.id === b.id ? ai.writing.stage : null;
     if (rewriteOffered(ai, b.id) && !readOnly) return <RewriteOffered block={b} idPrefix={idPrefix} />;
@@ -163,6 +179,7 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
                 readOnly={readOnly}
                 error={errorAt(errors, "paragraphs")}
                 onSlash={onSlash}
+                link={link}
             />
             {ai && empty && !readOnly ? (
                 <AiButton
@@ -188,8 +205,10 @@ const retarget = (x: BlockButton, target: BlockButtonTarget): BlockButton =>
           ? { label: x.label, target, product: x.product ?? "", style: x.style }
           : { label: x.label, target, style: x.style };
 
-function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"buttons">>) {
+function ButtonsForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Of<"buttons">>) {
     const set = (j: number, x: BlockButton, burst?: string) => onChange({ ...b, buttons: b.buttons.map((y, k) => (k === j ? x : y)) }, burst);
+    // In 中文 (slice 17) the labels change; where each goes is the English's.
+    const fixed = readOnly || Boolean(layoutLocked);
     return (
         <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -220,7 +239,7 @@ function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFo
                             </div>
                             <Field label="Goes to" htmlFor={`${bid}-target`}>
                                 <Select value={x.target} onValueChange={(v) => set(j, retarget(x, v as BlockButtonTarget))}>
-                                    <SelectTrigger id={`${bid}-target`} className="w-full justify-between" disabled={readOnly}>
+                                    <SelectTrigger id={`${bid}-target`} className="w-full justify-between" disabled={fixed}>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -238,7 +257,7 @@ function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFo
                                         id={`${bid}-url`}
                                         value={x.url ?? ""}
                                         placeholder="https://"
-                                        disabled={readOnly}
+                                        disabled={fixed}
                                         onChange={(e) => set(j, { ...x, url: e.target.value }, typingBurst(e, `${bid}-url`))}
                                     />
                                 </Field>
@@ -247,7 +266,7 @@ function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFo
                                 <ProductField
                                     product={x.product ?? ""}
                                     onChange={(product) => set(j, { ...x, product })}
-                                    readOnly={readOnly}
+                                    readOnly={fixed}
                                     error={errors[`buttons.${j}.product`]}
                                 />
                             ) : null}
@@ -256,7 +275,7 @@ function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFo
                                     Imported customers who haven&apos;t signed in get their own link, with their email already filled in.
                                 </p>
                             ) : null}
-                            {b.buttons.length > 1 && !readOnly ? (
+                            {b.buttons.length > 1 && !fixed ? (
                                 <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => onChange({ ...b, buttons: b.buttons.filter((_, k) => k !== j) })}>
                                     Remove this button
                                 </Button>
@@ -266,7 +285,7 @@ function ButtonsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFo
                 })}
             </div>
             <FieldError text={errors.buttons} />
-            {b.buttons.length < 2 && !readOnly ? (
+            {b.buttons.length < 2 && !fixed ? (
                 <Button
                     type="button"
                     variant="link"
@@ -306,8 +325,9 @@ const IMAGE_WIDTH_LABEL: Record<ImageWidth, string> = { full: "Full", inset: "In
 /** Where an image goes when tapped: nowhere, a page of the site, or a link of its own. */
 const NO_LINK = "none";
 
-function ImageForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"image">>) {
+function ImageForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Of<"image">>) {
     const linkId = `${idPrefix}-link`;
+    const fixed = readOnly || Boolean(layoutLocked);
     const relink = (v: string) => {
         const unlinked = { ...b };
         delete unlinked.link;
@@ -324,10 +344,11 @@ function ImageForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                 errors={errors}
                 idPrefix={idPrefix}
                 inset={b.width === "inset"}
+                layoutLocked={layoutLocked}
             />
             <Field label="Links to" htmlFor={linkId}>
                 <Select value={b.link?.target ?? NO_LINK} onValueChange={relink}>
-                    <SelectTrigger id={linkId} className="w-full justify-between" disabled={readOnly}>
+                    <SelectTrigger id={linkId} className="w-full justify-between" disabled={fixed}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -346,7 +367,7 @@ function ImageForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                         id={`${linkId}-url`}
                         value={b.link.url ?? ""}
                         placeholder="https://"
-                        disabled={readOnly}
+                        disabled={fixed}
                         onChange={(e) => onChange({ ...b, link: { target: "url", url: e.target.value } }, typingBurst(e, `${linkId}-url`))}
                     />
                 </Field>
@@ -386,6 +407,7 @@ function OneButtonFields({
     idPrefix,
     name,
     align,
+    layoutLocked = false,
 }: {
     button: BlockButton;
     onChange: (next: BlockButton, burst?: string) => void;
@@ -395,8 +417,11 @@ function OneButtonFields({
     /** What the label box is called: "Hero button". */
     name: string;
     align: "center" | "left";
+    /** In 中文 (slice 17): its label changes, where it goes doesn't. */
+    layoutLocked?: boolean;
 }) {
     const bid = `${idPrefix}-button`;
+    const fixed = readOnly || layoutLocked;
     return (
         <div className="space-y-3">
             <div className={cn(align === "center" && "text-center")}>
@@ -420,7 +445,7 @@ function OneButtonFields({
             </div>
             <Field label="Goes to" htmlFor={`${bid}-target`}>
                 <Select value={x.target} onValueChange={(v) => onChange(retarget(x, v as BlockButtonTarget))}>
-                    <SelectTrigger id={`${bid}-target`} className="w-full justify-between" disabled={readOnly}>
+                    <SelectTrigger id={`${bid}-target`} className="w-full justify-between" disabled={fixed}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -438,13 +463,13 @@ function OneButtonFields({
                         id={`${bid}-url`}
                         value={x.url ?? ""}
                         placeholder="https://"
-                        disabled={readOnly}
+                        disabled={fixed}
                         onChange={(e) => onChange({ ...x, url: e.target.value }, typingBurst(e, `${bid}-url`))}
                     />
                 </Field>
             ) : null}
             {x.target === "product" ? (
-                <ProductField product={x.product ?? ""} onChange={(product) => onChange({ ...x, product })} readOnly={readOnly} error={errors["button.product"]} />
+                <ProductField product={x.product ?? ""} onChange={(product) => onChange({ ...x, product })} readOnly={fixed} error={errors["button.product"]} />
             ) : null}
         </div>
     );
@@ -513,11 +538,13 @@ const NEW_PART = { heading: "", line: "", button: { label: "", target: "shop", s
 
 const PART_NAME: Record<HeroPart, string> = { heading: "heading", line: "line", button: "button" };
 
-function HeroForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Hero>) {
+function HeroForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Hero>) {
     const headingId = `${idPrefix}-heading`;
     const lineId = `${idPrefix}-line`;
+    // In 中文 (slice 17) the parts are the English's: none is added or removed there.
+    const fixed = readOnly || Boolean(layoutLocked);
     const remove = (part: HeroPart) =>
-        readOnly ? null : (
+        fixed ? null : (
             <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => onChange(withoutPart(b, part))}>
                 Remove the {PART_NAME[part]}
             </Button>
@@ -526,7 +553,7 @@ function HeroForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormP
     const x = b.button;
     return (
         <div className="space-y-4">
-            <ImageField image={b.image} onChange={(image, burst) => onChange({ ...b, image }, burst)} readOnly={readOnly} errors={errors} idPrefix={idPrefix} />
+            <ImageField image={b.image} onChange={(image, burst) => onChange({ ...b, image }, burst)} readOnly={readOnly} errors={errors} idPrefix={idPrefix} layoutLocked={layoutLocked} />
             {/* Below the image, never on it: real words and a real button (decision 6). */}
             {b.heading !== undefined ? (
                 <div className="text-center">
@@ -568,11 +595,12 @@ function HeroForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormP
                         idPrefix={idPrefix}
                         name="Hero button"
                         align="center"
+                        layoutLocked={layoutLocked}
                     />
                     {remove("button")}
                 </div>
             ) : null}
-            {missing.length && !readOnly ? (
+            {missing.length && !fixed ? (
                 <div className="flex flex-wrap gap-x-4">
                     {missing.map((part) => (
                         <Button key={part} type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => onChange({ ...b, [part]: NEW_PART[part] })}>
@@ -612,9 +640,11 @@ const splitLength = (b: Split) => paragraphRuns(b.paragraphs).reduce((n, r) => n
  * shows it whichever side it is on. Its words are a heading, a text block's
  * runs and an optional button; its image always says what it shows.
  */
-function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Split>) {
+function SplitForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Split>) {
     const headingId = `${idPrefix}-heading`;
     const x = b.button;
+    const fixed = readOnly || Boolean(layoutLocked);
+    const link = useLinkCheck(b.id);
     return (
         <div className="@container">
             <div className="grid gap-4 @md:grid-cols-2 @md:items-center">
@@ -626,6 +656,7 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                         errors={errors}
                         idPrefix={idPrefix}
                         allowDecorative={false}
+                        layoutLocked={layoutLocked}
                     />
                 </div>
                 <div className="space-y-3">
@@ -650,6 +681,7 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                             readOnly={readOnly}
                             error={errorAt(errors, "paragraphs")}
                             also={splitLength(b) > CONTENT_LIMITS.splitText ? `At most ${CONTENT_LIMITS.splitText} characters.` : null}
+                            link={link}
                         />
                     </div>
                     {x ? (
@@ -662,8 +694,9 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                                 idPrefix={idPrefix}
                                 name="Button beside the image"
                                 align="left"
+                                layoutLocked={layoutLocked}
                             />
-                            {readOnly ? null : (
+                            {fixed ? null : (
                                 <Button
                                     type="button"
                                     variant="link"
@@ -679,7 +712,7 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                                 </Button>
                             )}
                         </div>
-                    ) : readOnly ? null : (
+                    ) : fixed ? null : (
                         <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => onChange({ ...b, button: NEW_PART.button })}>
                             Add a button
                         </Button>
@@ -723,11 +756,12 @@ const PRODUCT_LAYOUT_LABEL: Record<ProductLayout, string> = { rows: "One per row
  * as the email shows it, with the shop's photo, name and price, never typed;
  * then the label every product's button carries.
  */
-function ProductsForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Products>) {
+function ProductsForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Products>) {
     const labelId = `${idPrefix}-button-label`;
     return (
         <div className="space-y-4">
-            <ProductsField products={b.products} layout={b.layout} onChange={(products) => onChange({ ...b, products })} readOnly={readOnly} errors={errors} />
+            {/* In 中文 (slice 17) the products are the English's; their names are the 中文 shop's, at send. */}
+            <ProductsField products={b.products} layout={b.layout} onChange={(products) => onChange({ ...b, products })} readOnly={readOnly || Boolean(layoutLocked)} errors={errors} />
             <div className="text-center">
                 {/* Each product's button, its label typed on it. */}
                 <input
@@ -797,7 +831,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("heading") as Of<"heading">,
         Form: HeadingForm,
         Options: HeadingOptions,
-        Tools: RewriteTool,
+        Tools: BlockTools,
     },
     text: {
         label: "Text",
@@ -805,7 +839,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         icon: Pilcrow,
         create: () => emptyBlock("text") as Of<"text">,
         Form: TextForm,
-        Tools: RewriteTool,
+        Tools: BlockTools,
     },
     buttons: {
         label: "Buttons",
@@ -814,6 +848,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("buttons") as Of<"buttons">,
         Form: ButtonsForm,
         Options: ButtonsOptions,
+        Tools: ChineseTools,
     },
     image: {
         label: "Image",
@@ -822,6 +857,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("image") as Of<"image">,
         Form: ImageForm,
         Options: ImageOptions,
+        Tools: ChineseTools,
     },
     hero: {
         label: "Hero",
@@ -830,6 +866,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("hero") as Hero,
         Form: HeroForm,
         Options: HeroOptions,
+        Tools: ChineseTools,
     },
     split: {
         label: "Image + text",
@@ -838,6 +875,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("split") as Split,
         Form: SplitForm,
         Options: SplitOptions,
+        Tools: ChineseTools,
     },
     products: {
         label: "Products",
@@ -846,6 +884,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("products") as Products,
         Form: ProductsForm,
         Options: ProductsOptions,
+        Tools: ChineseTools,
     },
     divider: {
         label: "Divider",

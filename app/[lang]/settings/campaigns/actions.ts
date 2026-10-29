@@ -15,8 +15,10 @@ import {
 } from "@/lib/email-campaigns/rules";
 import {
   BATCH_SIZE,
+  campaignLanguage,
   campaignReadiness,
   planWave,
+  productsFor,
   readCampaignRenderData,
   renderCampaignPreview,
   sendCampaignBatch,
@@ -33,6 +35,7 @@ import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { readPointsSettings } from "@/lib/points/server";
 import { pointsLive } from "@/lib/points/settings";
 import { getWorkingAs } from "@/lib/staff/working-as";
@@ -214,11 +217,12 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
  * (slice 07), as a send reads them. `previewAs` is *Preview as* (slice 13): a
  * block campaign's Variables as a sample customer's, or every fallback for a
  * customer with no details. A campaign written before blocks greets the Staff
- * member, as it did.
+ * member, as it did. `language` is the editor's Language (slice 17): `zh-CN`
+ * shows the 中文 email, as a reader of Chinese gets it.
  */
 export async function previewCampaign(
   input: CampaignDraftInput,
-  { forceDark = false, previewAs = "customer" }: { forceDark?: boolean; previewAs?: PreviewAs } = {},
+  { forceDark = false, previewAs = "customer", language = DEFAULT_LOCALE }: { forceDark?: boolean; previewAs?: PreviewAs; language?: Locale } = {},
 ): Promise<{ ok: true; subject: string; html: string; text: string; from: string | null } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const parsed = parseDraft(input, CampaignPreviewSchema);
@@ -230,8 +234,16 @@ export async function previewCampaign(
       : SAMPLE_RECIPIENT
     : { firstName: await staffFirstName(ctx.memberId) };
   // The images and products the test send shows: one missing is drawn as a hint.
-  const { images, products } = await readCampaignRenderData(supabaseAdmin(), parsed.draft.content);
-  const rendered = renderCampaignPreview(parsed.draft, { origin: setup.origin, ...recipient, forceDark: forceDark === true, images, products });
+  const shown = await readCampaignRenderData(supabaseAdmin(), parsed.draft.content);
+  const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
+  const rendered = renderCampaignPreview(parsed.draft, {
+    origin: setup.origin,
+    ...recipient,
+    forceDark: forceDark === true,
+    images: shown.images,
+    products: productsFor(shown, campaignLanguage(parsed.draft, locale)),
+    locale,
+  });
   return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
 }
 
@@ -301,10 +313,15 @@ export async function checkCampaignReadiness(id?: string): Promise<CampaignReadi
   return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined });
 }
 
-/** Sends the saved campaign to up to three addresses, with "[Test]" in the subject. Writes nothing to the ledger. */
+/**
+ * Sends the saved campaign to up to three addresses, with "[Test]" in the
+ * subject. Writes nothing to the ledger. `language` is the one Staff chose
+ * (slice 17): `zh-CN` sends the 中文 version.
+ */
 export async function sendCampaignTestAction(
   id: string,
   to: string[],
+  { language = DEFAULT_LOCALE }: { language?: Locale } = {},
 ): Promise<{ ok: true; sent: number; failed: { to: string; error: string }[] } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const campaign = await loadCampaign(id);
@@ -314,7 +331,8 @@ export async function sendCampaignTestAction(
   }
   // A block campaign's test reads as the sample customer gets it (slice 13); one written before blocks greets the Staff member.
   const recipient = campaign.content ? SAMPLE_RECIPIENT : { firstName: await staffFirstName(ctx.memberId) };
-  const result = await sendCampaignTest(campaign, { to: to.filter((t) => typeof t === "string"), ...recipient }, campaignSenderSetup());
+  const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
+  const result = await sendCampaignTest(campaign, { to: to.filter((t) => typeof t === "string"), ...recipient, ...(locale === DEFAULT_LOCALE ? {} : { locale }) }, campaignSenderSetup());
   if ("refused" in result) return { ok: false, error: result.refused };
   await recordAdminAction({
     actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
@@ -322,7 +340,7 @@ export async function sendCampaignTestAction(
     action: CAMPAIGN_TEST_AUDIT_ACTION,
     entityType: "email_campaign",
     entityId: id,
-    after: { sent: result.sent.length, failed: result.failed.length },
+    after: { sent: result.sent.length, failed: result.failed.length, ...(locale === DEFAULT_LOCALE ? {} : { language: locale }) },
   });
   return { ok: true, sent: result.sent.length, failed: result.failed };
 }

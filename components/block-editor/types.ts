@@ -23,6 +23,12 @@ export interface BlockFormProps<B extends EditorBlock> {
   onChange: (next: B, burst?: string) => void;
   /** Shown as it is, not editable: sending has started. */
   readOnly: boolean;
+  /**
+   * The words are editable and nothing else is (`BlockEditorRoot`'s
+   * `layoutLocked`): a form keeps its word fields and fixes every choice of
+   * layout, its targets, pictures and parts. Absent is false.
+   */
+  layoutLocked?: boolean;
   /** Save's errors for this block, keyed from the block: `text`, `buttons.0.label`. */
   errors: Record<string, string>;
   /** Unique to this block: field ids start with it. */

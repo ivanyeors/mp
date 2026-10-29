@@ -16,7 +16,7 @@ import { issueText, paragraphsFrom, wordsAsRuns } from "./ai-draft-shape";
 import { DRAFT_LIMITS } from "./ai-draft-brief";
 import { wordCount } from "./ai-drafted";
 import type { RewritableBlock } from "./ai-refine-brief";
-import { CONTENT_LIMITS, EmailBlockSchema, contentWords, paragraphRuns, type EmailBlock, type Run } from "./content";
+import { CONTENT_LIMITS, EmailBlockSchema, contentWords, paragraphLinks, paragraphRuns, type EmailBlock, type Run } from "./content";
 import { CAMPAIGN_LIMITS } from "./rules";
 import { isVariableKey, type VariableKey } from "./variables";
 
@@ -107,8 +107,7 @@ export const linkKey = (i: number) => `L${i + 1}`;
 
 /** Pure — each address the block links to, once, in order: `L1` is the first. */
 export function blockLinks(block: RewritableBlock): string[] {
-  if (block.type === "heading") return [];
-  return [...new Set(paragraphRuns(block.paragraphs).flatMap((r) => ("href" in r && r.href ? [r.href] : [])))];
+  return block.type === "heading" ? [] : paragraphLinks(block.paragraphs);
 }
 
 /** Pure — the Variables the block's words use, once each, written as runs or as `{name}`. */

@@ -555,7 +555,7 @@ The grey hint an empty field shows (*e.g. Sleep cooler this December*). It is ne
 _Avoid_: calling `{order_number}` a placeholder (it is a **Variable**); words typed into a field so that someone deletes them (there are none, on purpose: owner, 2026-10-29)
 
 **Chinese version**:
-A campaign's words in Simplified Chinese (the editor's 中文), for the **Customers** whose language is Chinese (`customers.locale = 'zh-CN'`). The same blocks, images, products, buttons and **Variables** as the English; only the words differ. Made with ✨ *Translate to Chinese* and edited by **Staff**. A campaign without one sends English to everyone.
+A campaign's words in Simplified Chinese (the editor's 中文), for the **Customers** whose language is Chinese (`customers.locale = 'zh-CN'`). The same blocks, images, products, buttons and **Variables** as the English; only the words differ. Made with ✨ *Translate to Chinese* and edited by **Staff**. A campaign without one sends English to everyone. It is kept in the email's content (`content.translations["zh-CN"]`: its subject, preview line, the Variables' Chinese fallback words, and each block's words by block id), so the lock fixes it with the English. Each block's Chinese remembers the English it was made from: a block added in English is *not translated yet*, one whose English words changed since is *out of date* until it is translated again or kept, and either holds the wave. The layout, the links and the button targets are always the English's.
 _Avoid_: "a second campaign" (it shares the campaign's **Audience**, sends and lock); "localisation"
 
 **AI draft**:

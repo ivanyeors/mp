@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { blockProblems, previewLineProblems, rewriteProblems, subjectProblems, wordsProblems, type GuardrailContext } from "@/lib/email-campaigns/ai-guardrails";
+import {
+  blockProblems,
+  chineseWordsProblems,
+  previewLineProblems,
+  rewriteProblems,
+  subjectProblems,
+  wordsProblems,
+  type GuardrailContext,
+} from "@/lib/email-campaigns/ai-guardrails";
+import { BANNED_CLINICAL_ZH, checkBannedClinicalZh } from "@/lib/i18n/copy-bands";
 import type { RewritableBlock } from "@/lib/email-campaigns/ai-refine-brief";
 import type { Run } from "@/lib/email-campaigns/content";
 
@@ -123,5 +132,43 @@ describe("rewriteProblems (slice 10)", () => {
     const title: RewritableBlock = { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" };
     expect(rewriteProblems(title, { ...title, text: "Sleep cooler, {first_name}" }, ctx)).toEqual([]);
     expect(rewriteProblems(title, { ...title, text: "Sleep cooler" }, ctx)).toEqual(["drops the Variable {first_name}"]);
+  });
+});
+
+describe("chineseWordsProblems (slice 17): a translation says what its English says, in Chinese", () => {
+  const english = "Sleep cooler this December\nThe FibreCool cover is back in all sizes, from SGD 39, with 20% off this week with code COOL20.";
+
+  it("passes a faithful translation, its numbers, price, offer and code the English's own", () => {
+    expect(chineseWordsProblems("这个十二月睡得更清凉。FibreCool 枕套各种尺寸都回来了，SGD 39 起，本周八折优惠，优惠码 COOL20。", english)).toEqual([]);
+    expect(chineseWordsProblems("{first_name}，填充物享有 10 年保修。", "Sleep cooler")).toEqual([]);
+  });
+
+  it("refuses the Chinese health words, whatever the English says", () => {
+    for (const w of ["治疗", "治愈", "疗效", "缓解", "康复", "处方", "临床", "医生推荐"]) {
+      expect(BANNED_CLINICAL_ZH.test(w)).toBe(true);
+      expect(chineseWordsProblems(`枕头可以${w}`, "relieve")).toEqual([`makes a health claim ("${w}"): write about comfort, fit and sleep`]);
+    }
+    expect(chineseWordsProblems("减少颈部疼痛", english)).toEqual(['makes a health claim ("疼痛"): write about comfort, fit and sleep']);
+    expect(checkBannedClinicalZh("The heading", "临床证明")).toBe('The heading contains "临床", which we cannot claim.');
+  });
+
+  it("refuses a price, a number or an offer the English doesn't have", () => {
+    expect(chineseWordsProblems("现在只要 SGD 29", "Sleep cooler")).toEqual(['names a price ("SGD 29") nobody typed: prices come from a products block', 'has a number ("29") nobody gave']);
+    expect(chineseWordsProblems("全场八折", "Sleep cooler")).toEqual(['offers "八折", which the English doesn\'t']);
+    expect(chineseWordsProblems("包邮", "Free shipping on every cover")).toEqual([]);
+    expect(chineseWordsProblems("限时抢购", "Sleep cooler")).toEqual(['rushes the reader ("限时"), which the English doesn\'t']);
+  });
+
+  it("refuses a review request, Shopify, a move, and points the English doesn't mention", () => {
+    expect(chineseWordsProblems("请给我们五星好评", english)).toEqual(["asks for a review or a rating, which a campaign never does"]);
+    expect(chineseWordsProblems("我们从 Shopify 搬到了新网站", "We moved")).toEqual(["names Shopify"]);
+    expect(chineseWordsProblems("欢迎来到我们的新网站", "Sleep cooler")).toEqual(['mentions a move ("新网站"), which the English doesn\'t']);
+    expect(chineseWordsProblems("登录领取积分", "Sign in")).toEqual(["mentions points, which the English doesn't"]);
+    expect(chineseWordsProblems("登录领取积分", "Sign in for points")).toEqual([]);
+  });
+
+  it("reads a Variable as a space, and refuses a {name} that isn't one", () => {
+    expect(chineseWordsProblems("{points_balance} 积分", "Your {points_balance} points")).toEqual([]);
+    expect(chineseWordsProblems("{nickname}，您好", "Hello")).toEqual(["uses {nickname}: only {first_name} is Claude's to place"]);
   });
 });

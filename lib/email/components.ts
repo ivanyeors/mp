@@ -18,6 +18,7 @@
 import { escapeHtml, safeUrl } from "./html";
 import {
   BRAND,
+  FOOTER_WORDS_ZH,
   LIGHT,
   PILL,
   SPACE,
@@ -716,9 +717,13 @@ export function footer(opts: {
   socials?: ReadonlyArray<FooterLink> | false;
   /** Campaign mail only: the Customer's unsubscribe page (migration slice 07). */
   unsubscribeUrl?: string;
+  /** The email's language: `zh-CN` writes the footer's own words in Chinese (a campaign's 中文 version, PRD-campaign-email-editor slice 17). */
+  lang?: string;
 }): string {
   const year = new Date().getFullYear();
   const parts: string[] = [];
+  const zh = opts.lang === "zh-CN";
+  const linkLabel = (l: FooterLink) => (zh ? ((FOOTER_WORDS_ZH.links as Record<string, string>)[l.href] ?? l.label) : l.label);
 
   if (opts.note) {
     parts.push(
@@ -743,7 +748,7 @@ export function footer(opts: {
           color: LIGHT.mutedFg,
           "text-decoration": "underline",
           "white-space": "nowrap",
-        })}">${escapeHtml(l.label)}</a>`;
+        })}">${escapeHtml(linkLabel(l))}</a>`;
       })
       .filter(Boolean)
       .join(`<span class="mp-muted" style="color:${LIGHT.mutedFg};"> &nbsp;·&nbsp; </span>`);
@@ -787,10 +792,10 @@ export function footer(opts: {
         color: LIGHT.mutedFg,
         margin: "0 0 12px",
         "text-align": "center",
-      })}">Don&rsquo;t want these emails? <a class="mp-muted" href="${unsubscribe}" style="${css({
+      })}">${zh ? escapeHtml(FOOTER_WORDS_ZH.unsubscribeAsk) : "Don&rsquo;t want these emails?"} <a class="mp-muted" href="${unsubscribe}" style="${css({
         color: LIGHT.mutedFg,
         "text-decoration": "underline",
-      })}">Unsubscribe</a></p>`,
+      })}">${zh ? escapeHtml(FOOTER_WORDS_ZH.unsubscribe) : "Unsubscribe"}</a></p>`,
     );
   }
 
@@ -799,7 +804,7 @@ export function footer(opts: {
       color: LIGHT.mutedFg,
       margin: 0,
       "text-align": "center",
-    })}">&copy; ${year} ${escapeHtml(BRAND.legalName)}. All rights reserved.</p>`,
+    })}">&copy; ${year} ${escapeHtml(BRAND.legalName)}. ${zh ? escapeHtml(FOOTER_WORDS_ZH.rights) : "All rights reserved."}</p>`,
   );
 
   return parts.join("\n");

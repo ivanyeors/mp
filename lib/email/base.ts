@@ -65,7 +65,7 @@ export interface EmailShellOptions {
   socials?: boolean;
   /** Drives the footer defaults. Default "customer". */
   audience?: EmailAudience;
-  /** <html lang>. Default "en". */
+  /** <html lang>. Default "en". `zh-CN` also writes the footer's own words in Chinese (a campaign's 中文 version). */
   lang?: string;
   /**
    * Campaign mail only (migration slice 07): the Customer's unsubscribe page
@@ -273,7 +273,7 @@ ${ctaHtml}
         </tr>
         <tr>
           <td style="padding:20px 8px 0;">
-${footer({ origin, note: opts.footer, links, socials, unsubscribeUrl: opts.unsubscribeUrl })}
+${footer({ origin, note: opts.footer, links, socials, unsubscribeUrl: opts.unsubscribeUrl, lang })}
           </td>
         </tr>
       </table>

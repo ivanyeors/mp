@@ -44,6 +44,10 @@ import { VariableTargets } from "./variable-targets";
  * inside it, so the page lays out `BlockPalette` and `BlockEditor` (the
  * column) where it wants them; and the page's Variables (slice 13), with the
  * text input inside it that a Variables palette's chip lands in.
+ *
+ * `layoutLocked` is words only (slice 17, a campaign's 中文 version): the
+ * forms stay editable, and nothing moves, is added or removed, and the options
+ * are shown read-only with the page's reason. `readOnly` is everything fixed.
  */
 
 /** The column's end: a drop here lands after the last block. */
@@ -96,6 +100,8 @@ interface BlockEditorContext {
   /** A short label on a block's card, by block id: *Drafted with AI*. */
   badges: Readonly<Record<string, string>>;
   readOnly: boolean;
+  /** Words only: why the layout can't change here, or null when it can. */
+  layoutLocked: string | null;
   /** Why nothing more can be added, or null. */
   full: string | null;
   /** Why these many blocks can't be added (a Starter's), or null when they fit. */
@@ -137,6 +143,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
   newId,
   variables = NO_VARIABLES,
   badges = NO_BADGES,
+  layoutLocked = null,
   children,
 }: {
   blocks: readonly B[];
@@ -163,6 +170,13 @@ export function BlockEditorRoot<B extends EditorBlock>({
    * *Drafted with AI*).
    */
   badges?: Readonly<Record<string, string>>;
+  /**
+   * Words only, with why (slice 17, a campaign's 中文 version: "The layout
+   * is shared with English"): each block's form stays editable; no drag, no
+   * menus, no `+` or `/`, nothing added from the palette, and a selected
+   * block's options read-only, this reason under them. Null is not locked.
+   */
+  layoutLocked?: string | null;
   children: ReactNode;
 }) {
   const blocks = given as readonly EditorBlock[];
@@ -172,13 +186,16 @@ export function BlockEditorRoot<B extends EditorBlock>({
   const [focus, setFocus] = useState<Focus | null>(null);
   const focused = useCallback(() => setFocus(null), []);
   const [drop, setDrop] = useState<number | null>(null);
-  const full = blocks.length >= max ? `At most ${max} blocks: delete one to add another.` : null;
+  const full = layoutLocked ?? (blocks.length >= max ? `At most ${max} blocks: delete one to add another.` : null);
+  // What changes the layout does nothing while it is locked: a palette or a keyboard way included.
+  const fixed = readOnly || Boolean(layoutLocked);
   const label = (b: EditorBlock | undefined) => (b ? (cat[b.type]?.label ?? b.type) : "Block");
 
   const change = (next: EditorBlock[], burst?: string) => onChange(next as B[], burst);
   const room = Math.max(0, max - blocks.length);
   const noRoom = (adds: number) => (adds > room ? (full ?? noRoomText(adds, room, max)) : null);
   const insert = (at: number, added: EditorBlock[]) => {
+    if (fixed) return;
     const next = insertBlocks(blocks, at, added, max);
     if (next === blocks) {
       const why = noRoom(added.length);
@@ -198,6 +215,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
     variables,
     badges,
     readOnly,
+    layoutLocked,
     full,
     noRoom,
     selected,
@@ -208,12 +226,14 @@ export function BlockEditorRoot<B extends EditorBlock>({
       insert(i === -1 ? blocks.length : i + 1, added);
     },
     move: (from, to) => {
+      if (fixed) return;
       const next = moveBlock(blocks, from, to);
       if (next === blocks) return;
       change(next);
       announce(movedText(label(blocks[from]), to, next.length));
     },
     duplicate: (i) => {
+      if (fixed) return;
       const next = duplicateBlock(blocks, i, newId, max);
       if (next === blocks) return;
       change(next);
@@ -222,6 +242,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
       announce(`${label(blocks[i])} duplicated: the copy is at position ${i + 2} of ${next.length}.`);
     },
     remove: (i) => {
+      if (fixed) return;
       const gone = blocks[i];
       const next = removeBlock(blocks, i);
       if (next === blocks) return;
@@ -264,9 +285,10 @@ export function BlockEditorRoot<B extends EditorBlock>({
           if (isPaletteDrag(source?.data)) {
             const at = landing(event) ?? drop;
             setDrop(null);
-            if (!event.canceled && at !== null && !readOnly) insert(at, source.data.palette.blocks());
+            if (!event.canceled && at !== null && !fixed) insert(at, source.data.palette.blocks());
             return;
           }
+          if (fixed) return;
           const from = blocks.findIndex((b) => b.id === source?.id);
           const next = sortableMove(blocks, event, (b) => b.id);
           if (!next || from === -1) return;
@@ -391,10 +413,12 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
   const ctx = useBlockEditor();
   const kind = kindOf(ctx, block);
   const total = ctx.blocks.length;
+  // Words only (`layoutLocked`): the card's form, and nothing that moves, adds or removes it.
+  const fixed = ctx.readOnly || Boolean(ctx.layoutLocked);
   const { ref, handleRef, isDragging } = useSortable({
     id: block.id,
     index,
-    disabled: ctx.readOnly,
+    disabled: fixed,
     data: { label: kind?.label ?? block.type, position: index + 1, of: total } satisfies CardDrag,
   });
   const card = useRef<HTMLLIElement | null>(null);
@@ -428,9 +452,11 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
     block,
     onChange: (next: EditorBlock, burst?: string) => ctx.update(index, next, burst),
     readOnly: ctx.readOnly,
+    layoutLocked: Boolean(ctx.layoutLocked),
     errors,
     idPrefix: `block-${block.id}`,
     onSlash: () => {
+      if (fixed) return;
       back.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setSlash(true);
     },
@@ -453,7 +479,7 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
     >
       {ctx.drop === index ? <DropLine edge="top" /> : null}
       {ctx.drop === total && index === total - 1 ? <DropLine edge="bottom" /> : null}
-      {index > 0 && !ctx.readOnly ? (
+      {index > 0 && !fixed ? (
         <div className="absolute -top-3.5 left-1/2 z-10 -translate-x-1/2 opacity-0 transition-opacity group-hover/card:opacity-100 focus-within:opacity-100 max-lg:hidden">
           <InsertMenu
             at={index}
@@ -472,7 +498,7 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
         </div>
       ) : null}
       <div className="flex items-center gap-1 px-2 pt-1.5">
-        {ctx.readOnly ? null : (
+        {fixed ? null : (
           <button
             ref={handleRef}
             type="button"
@@ -490,7 +516,7 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
             {badge}
           </span>
         ) : null}
-        {ctx.readOnly ? null : (
+        {fixed ? null : (
           <InsertMenu
             at={index + 1}
             open={slash}
@@ -504,7 +530,7 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
             <Tools {...props} name={`${kind.label}, block ${index + 1} of ${total}`} />
           </div>
         ) : null}
-        {ctx.readOnly ? null : (
+        {fixed ? null : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), !Tools && "ml-auto", "h-8 w-8")} aria-label={`Actions for ${kind.label}, block ${index + 1}`}>
@@ -556,7 +582,8 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
       </div>
       {selected && Options && !ctx.readOnly ? (
         <div className="border-t bg-muted/30 px-3 py-2.5" role="group" aria-label={`${kind.label} options`}>
-          <Options {...props} />
+          <Options {...props} readOnly={fixed} />
+          {ctx.layoutLocked ? <p className="mt-1.5 text-xs text-muted-foreground">{ctx.layoutLocked}</p> : null}
         </div>
       ) : null}
     </li>
@@ -576,9 +603,10 @@ function DropLine({ edge }: { edge: "top" | "bottom" }) {
 /** The drop zone after the last block, and *Add block*. */
 function ColumnEnd({ addLabel }: { addLabel: string }) {
   const ctx = useBlockEditor();
-  const { ref, isDropTarget } = useDroppable({ id: END, disabled: ctx.readOnly });
+  const fixed = ctx.readOnly || Boolean(ctx.layoutLocked);
+  const { ref, isDropTarget } = useDroppable({ id: END, disabled: fixed });
   const empty = ctx.blocks.length === 0;
-  if (ctx.readOnly) return null;
+  if (fixed) return null;
   return (
     <div ref={ref} className={cn("relative rounded-lg", empty && ctx.drop === 0 && "ring-2 ring-primary", isDropTarget && !empty && "bg-muted/40")}>
       <InsertMenu

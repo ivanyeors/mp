@@ -30,9 +30,11 @@
  * customer who has not Claimed gets their own Claim link as the sign-in
  * button. A block campaign's Variables are filled for each recipient
  * (PRD-campaign-email-editor slice 13): their names as the claim returns
- * them, and their points balance, read only for an email that says it. About
- * two a second (Resend's default limit); a batch stops after five failures in
- * a row.
+ * them, and their points balance, read only for an email that says it. A
+ * recipient whose `locale` is `zh-CN` gets the campaign's 中文 version when it
+ * has one (slice 17); everyone else, and everyone when it has none, gets
+ * English, one ledger row each as ever. About two a second (Resend's default
+ * limit); a batch stops after five failures in a row.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mintClaimLink } from "@/lib/customer-migration/claim-link";
@@ -86,6 +88,7 @@ import {
   type Campaign,
   type CampaignPlan,
 } from "./rules";
+import { CHINESE, chineseVersionOf, chineseVersionProblems } from "./chinese-version";
 import { contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
 import { campaignImagesProblem, readCampaignImages } from "./images";
 import { campaignProductPhotos, campaignProductsProblem, productsCheck, readCampaignProducts } from "./products";
@@ -184,6 +187,13 @@ export const campaignSignsIn = (campaign: Pick<Campaign, "button" | "content">) 
 export const usesPointsBalance = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
   variablesInEmail(campaign).some((key) => campaignVariable(key).needsPoints);
 
+/**
+ * Pure — the language a reader in `locale` gets the Campaign in (slice 17):
+ * its 中文 version for a reader of Chinese, when it has one; else English.
+ */
+export const campaignLanguage = (campaign: Pick<Campaign, "content">, locale: Locale): Locale =>
+  locale === CHINESE && chineseVersionOf(campaign.content) ? CHINESE : DEFAULT_LOCALE;
+
 /** What an empty field shows in the editor's preview, legacy or blocks. */
 export type CampaignPreviewPlaceholders = ComposedCampaignPlaceholders & CampaignBlocksPlaceholders;
 
@@ -198,7 +208,9 @@ type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "bod
  * each placed image's email rendition (slice 05) and `products` each Listed
  * product as the shop sells it now (slice 07), both read by
  * `readCampaignRenderData` before the first recipient: the renderer throws on
- * an image or a product without one.
+ * an image or a product without one. A recipient whose `locale` is `zh-CN`
+ * gets its 中文 version, when it has one (`campaignLanguage`, slice 17), with
+ * its 中文 fallbacks; `products` are then their 中文 names (`productsFor`).
  */
 export function renderCampaignFor(
   campaign: CampaignEmailParts,
@@ -217,17 +229,19 @@ export function renderCampaignFor(
   },
 ): RenderedEmail {
   if (campaign.content) {
+    const chinese = campaignLanguage(campaign, p.locale) === CHINESE ? chineseVersionOf(campaign.content) : null;
     return renderCampaignBlocksEmail({
       subject: campaign.subject,
       preheader: campaign.preheader,
       content: campaign.content,
       greeting: campaign.greeting,
-      values: variableValues(p, campaign.content.fallbacks),
+      values: chinese ? variableValues(p, chinese.fallbacks, { chinese: true }) : variableValues(p, campaign.content.fallbacks),
       buttonHref: (b) => blockButtonHref(b, campaign.name, p),
       unsubscribeUrl: p.unsubscribeUrl,
       ...(p.images ? { images: p.images } : {}),
       ...(p.products ? { products: p.products } : {}),
       ...(p.placeholders ? { placeholders: p.placeholders } : {}),
+      ...(chinese ? { language: CHINESE } : {}),
     });
   }
   return renderComposedCampaignEmail({
@@ -258,6 +272,8 @@ export function renderCampaignFor(
  *
  * The sample customer is the caller's: *Preview as* (slice 13) passes
  * `SAMPLE_RECIPIENT` for *A customer*, or `NO_DETAILS` to show every fallback.
+ * `locale` is the editor's Language (slice 17): `zh-CN` shows the 中文 email,
+ * as a reader of Chinese gets it, links included.
  */
 export function renderCampaignPreview(
   campaign: CampaignEmailParts,
@@ -269,6 +285,7 @@ export function renderCampaignPreview(
     forceDark = false,
     images,
     products,
+    locale = DEFAULT_LOCALE,
   }: {
     origin: string;
     firstName: string | null;
@@ -277,6 +294,7 @@ export function renderCampaignPreview(
     forceDark?: boolean;
     images?: CampaignBlockImages;
     products?: CampaignBlockProducts;
+    locale?: Locale;
   },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
@@ -285,9 +303,9 @@ export function renderCampaignPreview(
     lastName,
     pointsBalance,
     origin: base,
-    locale: DEFAULT_LOCALE,
+    locale,
     claimUrl: null,
-    unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
+    unsubscribeUrl: `${base}${withLocale("/unsubscribe", locale)}`,
     ...(images ? { images } : {}),
     ...(products ? { products } : {}),
     placeholders: { ...CAMPAIGN_PLACEHOLDERS, ...CONTENT_PLACEHOLDERS },
@@ -299,19 +317,29 @@ export function renderCampaignPreview(
 export interface CampaignRenderData {
   images: CampaignBlockImages;
   products: CampaignBlockProducts;
+  /** The same products with their names as the 中文 shop shows them, for a campaign with a 中文 version (slice 17); else null. */
+  chineseProducts: CampaignBlockProducts | null;
   /** What stops a send: a product not in the shop, by name, or an image with no email copy; null when none. */
   problem: string | null;
 }
 
+/** Pure — the products as a reader in `language` sees them: the 中文 shop's names in the 中文 version. */
+export const productsFor = (shown: Pick<CampaignRenderData, "products" | "chineseProducts">, language: Locale): CampaignBlockProducts =>
+  (language === CHINESE && shown.chineseProducts) || shown.products;
+
 /**
  * Everything the email shows from the platform, read once for a preview, a
- * test or a batch: each product as the shop sells it now (slice 07), then
- * each image's email rendition, the products' photos included (slice 05).
- * Never throws; a preview draws a hint for what is missing, a send stops on
+ * test or a batch: each product as the shop sells it now (slice 07), in
+ * Chinese too for a campaign with a 中文 version (slice 17), then each
+ * image's email rendition, the products' photos included (slice 05). Never
+ * throws; a preview draws a hint for what is missing, a send stops on
  * `problem`.
  */
 export async function readCampaignRenderData(admin: SupabaseClient, content: Campaign["content"]): Promise<CampaignRenderData> {
-  const shop = await readCampaignProducts(admin, content);
+  const [shop, chineseShop] = await Promise.all([
+    readCampaignProducts(admin, content),
+    chineseVersionOf(content) ? readCampaignProducts(admin, content, { locale: CHINESE }) : null,
+  ]);
   const photos = campaignProductPhotos(shop);
   const pictures = await readCampaignImages(admin, content, photos);
   // A product's photo is the shop's, not a block's: name the product it shows.
@@ -326,7 +354,25 @@ export async function readCampaignRenderData(admin: SupabaseClient, content: Cam
       : product
         ? `the photo of ${product.title} has no copy an inbox can show: ${ofProducts[0].reason}`
         : campaignImagesProblem(pictures));
-  return { images: pictures.images, products: shop.products, problem };
+  // A failed 中文 read leaves the English names: a reader of Chinese still gets each product.
+  return { images: pictures.images, products: shop.products, chineseProducts: chineseShop && !chineseShop.error ? chineseShop.products : null, problem };
+}
+
+/**
+ * The 中文 version as a check (slice 17), for a Campaign that has one; null
+ * for one that does not. It fails while a block, the subject or a Variable's
+ * fallback is not translated, or out of date and not kept, naming each.
+ */
+export function chineseCheck(campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">): PreflightCheck | null {
+  if (!chineseVersionOf(campaign.content)) return null;
+  const problems = chineseVersionProblems(campaign.content, { subject: campaign.subject, preheader: campaign.preheader, used: variablesInEmail(campaign) });
+  return {
+    key: "chinese",
+    ok: problems.length === 0,
+    detail: problems.length
+      ? `the 中文 version isn't finished: ${problems.join("; ")}. Translate them, or keep the 中文 words as they are, before sending`
+      : "every block, the subject and the preview line are in Chinese",
+  };
 }
 
 /** The pause rule as a check: the latest wave of any campaign email. */
@@ -343,8 +389,8 @@ export function pauseCheck(stats: readonly CampaignWaveStats[], resume: boolean)
 
 const originOf = (setup: DeliverySetup) => setup.origin.replace(/\/$/, "");
 
-/** What the points rule reads. */
-type CampaignWordsRead = Pick<Campaign, "subject" | "preheader" | "body" | "button" | "content">;
+/** What the points rule and the 中文 check read. */
+type CampaignWordsRead = Pick<Campaign, "subject" | "preheader" | "body" | "button" | "content" | "greeting">;
 
 /**
  * Points as a check, for a Campaign that mentions them; null for one that
@@ -483,6 +529,9 @@ export async function campaignReadiness(
   }
   const points = campaign ? await pointsCheck(setup.admin, campaign) : null;
   if (points) checks.push(points);
+  // The 中文 version, whole and current, before a reader of Chinese gets it (slice 17).
+  const chinese = campaign ? chineseCheck(campaign) : null;
+  if (chinese) checks.push(chinese);
   // Before each wave: a product can be un-listed between waves days apart (slice 07).
   const products = campaign ? await productsCheck(setup.admin, campaign.content) : null;
   if (products) checks.push(products);
@@ -654,6 +703,8 @@ export async function sendCampaignBatch(
     }
 
     const locale: Locale = isSupportedLocale(claim.locale) ? claim.locale : DEFAULT_LOCALE;
+    // Their language: the 中文 version for a reader of Chinese, when there is one (slice 17).
+    const language = campaignLanguage(campaign, locale);
     try {
       const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret });
       if (!unsubscribe) throw new Error("no unsubscribe link could be signed");
@@ -670,7 +721,7 @@ export async function sendCampaignBatch(
         claimUrl,
         unsubscribeUrl: unsubscribe.pageUrl,
         images: shown.images,
-        products: shown.products,
+        products: productsFor(shown, language),
       });
       const sent = await transport.send({
         ...rendered,
@@ -705,22 +756,40 @@ export async function sendCampaignBatch(
 const TEST_PREFIX = "[Test] ";
 
 /**
+ * Pure — why a 中文 test can't go yet (slice 17), or null: there is no 中文
+ * version, or some of it has no words yet. Words out of date still go: a
+ * test is how Staff read them.
+ */
+export function chineseTestBlocker(campaign: Pick<Campaign, "subject" | "preheader" | "content">): string | null {
+  const version = chineseVersionOf(campaign.content);
+  if (!campaign.content || !version) return "This campaign has no 中文 version: translate it first.";
+  const unwritten = chineseVersionProblems(campaign.content, { subject: campaign.subject, preheader: campaign.preheader, used: [] }).filter((p) => /not translated yet/.test(p));
+  return unwritten.length ? `The 中文 version isn't finished: ${unwritten.join("; ")}.` : null;
+}
+
+/**
  * Sends the Campaign as it is now to up to {@link MAX_TEST_RECIPIENTS}
  * addresses, through the same transport and headers as a real send, with
  * "[Test]" before the subject. It writes nothing to the ledger, its
  * unsubscribe link belongs to no Customer, and its sign-in button goes to
  * the account page. Its Variables are filled from `recipient`: the action
  * passes the sample customer for a block campaign (slice 13), so the test
- * reads like the real thing.
+ * reads like the real thing. `locale` is the language Staff ask for (slice
+ * 17): `zh-CN` sends the 中文 version, as a reader of Chinese gets it, once
+ * every block of it has words.
  */
 export async function sendCampaignTest(
   campaign: CampaignEmailParts,
-  { to, ...recipient }: { to: readonly string[] } & VariableRecipient,
+  { to, locale = DEFAULT_LOCALE, ...recipient }: { to: readonly string[]; locale?: Locale } & VariableRecipient,
   setup: CampaignSenderSetup,
 ): Promise<{ sent: string[]; failed: { to: string; error: string }[] } | { refused: string }> {
   const addresses = [...new Set(to.map((t) => emailAddressOf(t)).filter((t): t is string => Boolean(t)))];
   if (addresses.length === 0) return { refused: "Enter an email address to send the test to." };
   if (addresses.length > MAX_TEST_RECIPIENTS) return { refused: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
+  if (locale === CHINESE) {
+    const unwritten = chineseTestBlocker(campaign);
+    if (unwritten) return { refused: unwritten };
+  }
   const notReady = quickChecks(setup);
   if (notReady) return { refused: notReady };
   // Resend counts a test like any send.
@@ -744,11 +813,11 @@ export async function sendCampaignTest(
   const rendered = renderCampaignFor(campaign, {
     ...recipient,
     origin,
-    locale: DEFAULT_LOCALE,
+    locale,
     claimUrl: null,
     unsubscribeUrl: unsubscribe.pageUrl,
     images: shown.images,
-    products: shown.products,
+    products: productsFor(shown, campaignLanguage(campaign, locale)),
   });
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));

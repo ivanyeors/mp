@@ -71,6 +71,7 @@ export function ImageField({
     idPrefix,
     inset = false,
     allowDecorative = true,
+    layoutLocked = false,
 }: {
     image: BlockImage;
     onChange: (next: BlockImage, burst?: string) => void;
@@ -82,6 +83,8 @@ export function ImageField({
     inset?: boolean;
     /** Offer *Decorative*; when not, the image always has alt text. Default true. */
     allowDecorative?: boolean;
+    /** In 中文 (slice 17): its alt text changes, the picture and whether it is decorative don't. */
+    layoutLocked?: boolean;
 }) {
     const shown = usePlaced(image.asset);
     const [placing, setPlacing] = useState(false);
@@ -149,7 +152,7 @@ export function ImageField({
                     </div>
                 )}
             </div>
-            {readOnly ? null : (
+            {readOnly || layoutLocked ? null : (
                 <Suspense fallback={chooseButton(true)}>
                     <ImagePicker onSelect={(s) => void pick(s)}>{chooseButton(placing)}</ImagePicker>
                 </Suspense>
@@ -172,7 +175,7 @@ export function ImageField({
                     <Checkbox
                         id={decorativeId}
                         checked={decorative}
-                        disabled={readOnly}
+                        disabled={readOnly || layoutLocked}
                         onCheckedChange={(v) => onChange(v === true ? { ...image, decorative: true } : { asset: image.asset, alt: image.alt })}
                     />
                     <Label htmlFor={decorativeId} className="font-normal">

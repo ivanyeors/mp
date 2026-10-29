@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { byLabel, choose, click, pointAt, press, richTextIn, settle, typeField, typeInto } from "./dom";
+import { byLabel, choose, click, pointAt, press, richTextIn, settle, typeField, typeInto, until } from "./dom";
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -54,9 +54,9 @@ function NoteForm({ block, onChange, readOnly, idPrefix }: BlockFormProps<Note>)
     />
   );
 }
-function NoteOptions({ block, onChange }: BlockFormProps<Note>) {
+function NoteOptions({ block, onChange, readOnly }: BlockFormProps<Note>) {
   return (
-    <button type="button" onClick={() => onChange({ ...block, tone: block.tone === "loud" ? "plain" : "loud" })}>
+    <button type="button" disabled={readOnly} onClick={() => onChange({ ...block, tone: block.tone === "loud" ? "plain" : "loud" })}>
       Tone: {block.tone}
     </button>
   );
@@ -85,7 +85,7 @@ let seen: B[] = [];
 const report = (blocks: B[]) => {
   seen = blocks;
 };
-function Harness({ initial, readOnly = false, extra }: { initial: B[]; readOnly?: boolean; extra?: ReactNode }) {
+function Harness({ initial, readOnly = false, extra, layoutLocked = null }: { initial: B[]; readOnly?: boolean; extra?: ReactNode; layoutLocked?: string | null }) {
   const history = useEditorHistory<B[]>(initial);
   const [selected, setSelected] = useState<string | null>(null);
   const area = useRef<HTMLDivElement>(null);
@@ -102,6 +102,7 @@ function Harness({ initial, readOnly = false, extra }: { initial: B[]; readOnly?
         readOnly={readOnly}
         max={6}
         newId={nid}
+        layoutLocked={layoutLocked}
       >
         {readOnly ? null : <BlockPalette tabs={PALETTE} />}
         <BlockEditor label="The blocks" empty="Nothing yet." />
@@ -129,11 +130,11 @@ function ManagerProbe() {
 }
 
 let root: Root | null = null;
-function mount(initial: B[], readOnly = false, extra?: ReactNode) {
+function mount(initial: B[], readOnly = false, extra?: ReactNode, layoutLocked: string | null = null) {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<Harness initial={initial} readOnly={readOnly} extra={extra} />));
+  act(() => root!.render(<Harness initial={initial} readOnly={readOnly} extra={extra} layoutLocked={layoutLocked} />));
 }
 afterEach(async () => {
   act(() => root?.unmount());
@@ -361,5 +362,38 @@ describe("read-only", () => {
     expect(byLabel("Add a block before Note, block 2")).toBeNull();
     expect(byLabel("Add block")).toBeNull();
     expect(cards()[0].querySelector("input")!.disabled).toBe(true);
+  });
+});
+
+describe("words only: the layout locked (slice 17, a campaign's 中文 version)", () => {
+  const LOCKED = "The layout is shared with English. Change it there.";
+
+  it("keeps every form's words editable, and nothing that moves, adds or removes a block", async () => {
+    mount(START, false, <EditorProbe />, LOCKED);
+    expect(document.querySelectorAll("[aria-label^='Drag ']")).toHaveLength(0);
+    expect(document.querySelectorAll("[aria-label^='Actions for ']")).toHaveLength(0);
+    expect(document.querySelectorAll("[aria-label^='Add a block before ']")).toHaveLength(0);
+    expect([...document.querySelectorAll("button")].some((b) => b.textContent?.trim() === "Add block")).toBe(false);
+
+    typeField(cards()[0].querySelector("input")!, "睡得更清凉");
+    expect(order()).toEqual(["note:睡得更清凉", "note:Our covers are back"]);
+
+    // Neither the palette, a drop, nor a keyboard way changes the layout.
+    await click(paletteItem("Line"));
+    const drop = dragFromPalette("Line", "block-editor:end");
+    drop.over();
+    drop.drop();
+    act(() => probed.editor!.move(0, 1));
+    act(() => probed.editor!.remove(0));
+    act(() => probed.editor!.duplicate(0));
+    expect(order()).toEqual(["note:睡得更清凉", "note:Our covers are back"]);
+  });
+
+  it("shows a selected block's options read-only, with the page's reason under them", async () => {
+    mount(START, false, undefined, LOCKED);
+    await pointAt(cards()[0]);
+    const options = await until(() => document.querySelector<HTMLElement>("[aria-label='Note options']"));
+    expect(options.querySelector("button")!.disabled).toBe(true);
+    expect(options.textContent).toContain(LOCKED);
   });
 });

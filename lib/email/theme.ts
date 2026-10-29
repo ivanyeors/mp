@@ -6,14 +6,14 @@
 // one design language:
 //   - palette  → app/globals.css `:root` / `.dark` (shadcn "neutral", achromatic)
 //   - radii    → app/globals.css `--radius: 0.625rem` and its derived scale
-//   - fonts    → lib/font-stack.ts, the site's one typeface as a font stack
+//   - fonts    → lib/font-stack.ts, the site's one typeface as a font stack, with the Chinese system fonts
 //   - footer   → components/ui/marketing-footer.tsx (kept in sync by a test)
 //
 // The oklch values in globals.css are the Tailwind `neutral` ramp, so they map
 // to exact hexes. Email clients understand neither oklch nor CSS variables, so
 // the hexes are literal here — this module is the ONLY place they appear.
 
-import { FONT_STACK } from "@/lib/font-stack";
+import { EMAIL_FONT_STACK } from "@/lib/font-stack";
 
 /**
  * Light palette — `:root` in globals.css.
@@ -75,16 +75,16 @@ export const RADIUS = {
 export const TYPE = {
   // tracking matches Tailwind `tracking-tight` (-0.025em), used across the
   // landing sections; weight 600 matches their `font-semibold`.
-  h1: { size: 24, lh: 30, weight: 600, family: FONT_STACK, tracking: "-0.025em" },
-  h2: { size: 18, lh: 26, weight: 600, family: FONT_STACK, tracking: "-0.025em" },
-  h3: { size: 14, lh: 20, weight: 600, family: FONT_STACK, tracking: "0" },
-  body: { size: 14, lh: 22, weight: 400, family: FONT_STACK, tracking: "0" },
-  small: { size: 12, lh: 18, weight: 400, family: FONT_STACK, tracking: "0" },
+  h1: { size: 24, lh: 30, weight: 600, family: EMAIL_FONT_STACK, tracking: "-0.025em" },
+  h2: { size: 18, lh: 26, weight: 600, family: EMAIL_FONT_STACK, tracking: "-0.025em" },
+  h3: { size: 14, lh: 20, weight: 600, family: EMAIL_FONT_STACK, tracking: "0" },
+  body: { size: 14, lh: 22, weight: 400, family: EMAIL_FONT_STACK, tracking: "0" },
+  small: { size: 12, lh: 18, weight: 400, family: EMAIL_FONT_STACK, tracking: "0" },
   /** Large display figure — money callouts. */
-  figure: { size: 24, lh: 30, weight: 600, family: FONT_STACK, tracking: "0" },
-  code: { size: 28, lh: 36, weight: 700, family: FONT_STACK, tracking: "0.2em" },
+  figure: { size: 24, lh: 30, weight: 600, family: EMAIL_FONT_STACK, tracking: "0" },
+  code: { size: 28, lh: 36, weight: 700, family: EMAIL_FONT_STACK, tracking: "0.2em" },
   /** Button label. Sans, matching components/ui/button.tsx (text-sm/medium). */
-  button: { size: 14, lh: 44, weight: 500, family: FONT_STACK, tracking: "0" },
+  button: { size: 14, lh: 44, weight: 500, family: EMAIL_FONT_STACK, tracking: "0" },
 } as const;
 
 export const LAYOUT = {
@@ -138,6 +138,27 @@ export const FOOTER_LINKS = [
   { label: "Contact us", href: "/support" },
   { label: "FAQ", href: "/faq" },
 ] as const;
+
+/**
+ * The footer's own words in Simplified Chinese, for a campaign's 中文 version
+ * (PRD-campaign-email-editor slice 17): the link row by its path, the
+ * unsubscribe line and the copyright. The English ones are written where they
+ * are drawn (components.ts `footer`), and the social row is brand names alone.
+ */
+export const FOOTER_WORDS_ZH = {
+  links: {
+    "/our-partners": "合作伙伴",
+    "/blog": "博客",
+    "/privacy-policy": "隐私政策",
+    "/shipping-refund-policies": "退换与保修",
+    "/terms-of-service": "服务条款",
+    "/support": "联系我们",
+    "/faq": "常见问题",
+  } satisfies Record<(typeof FOOTER_LINKS)[number]["href"], string>,
+  unsubscribeAsk: "不想再收到这些邮件？",
+  unsubscribe: "取消订阅",
+  rights: "保留所有权利。",
+} as const;
 
 /** Partner-facing mail swaps the shopping links for the hub. */
 export const PARTNER_FOOTER_LINKS = [

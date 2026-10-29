@@ -4,8 +4,8 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  * An in-memory stand-in for the service-role client, answering exactly what
  * the campaign sender asks of Postgres:
  *  - the views `marketing_campaign_candidates` (`select`, `eq`, `in`,
- *    `order`, `range`) and `customer_campaign_wave_stats`, computed from the
- *    tables;
+ *    `order`, `range`; with each Customer's `locale`, which slice 17 counts)
+ *    and `customer_campaign_wave_stats`, computed from the tables;
  *  - for the send limit, `customer_campaign_sends` (`in`, `gte`, `order`,
  *    `limit`, a `count: "exact", head: true` select) and `admin_audit_log`'s
  *    test sends;
@@ -96,6 +96,7 @@ function candidates(world: FakeWorld): Row[] {
       customer_id: c.id,
       email: c.email,
       first_name: c.first_name ?? null,
+      locale: c.locale ?? "en-US",
       marketing_email: c.marketing_email ?? "not_subscribed",
       migrated: Boolean(m),
       claimed_at: m?.claimed_at ?? null,

@@ -2,7 +2,7 @@
 
 **Issue:** [#374](https://github.com/ivanyeors/mp/issues/374) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** partial: built and tested against a fake client; the eval's 10 translations still need one run with a real key and the owner's read, and the editor's 中文 mode a look in a browser
 **Blocked by:** 09 (the shared client, facts and checks), 13 (Variables kept through a
 translation), 16 (the settings)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
