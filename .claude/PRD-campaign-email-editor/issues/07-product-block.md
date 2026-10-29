@@ -46,6 +46,9 @@ email is sent (PRD decision 3).
 - [ ] Un-listing a product makes the campaign's checks fail by name, and the wave cannot start.
 - [ ] Side by side becomes one per row below 480px, including in Gmail on Android.
 - [ ] Links carry `utm_source=email_campaign&utm_medium=email&utm_campaign=<name>`.
+- [ ] The product card is readable in light and dark with no setting: its price, name and button
+  follow the shell's dark list (slice 15), and a cut-out product photo sits on slice 05's light
+  plate.
 
 ## Verify
 

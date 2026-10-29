@@ -3,7 +3,7 @@
 **Issue:** [#364](https://github.com/ivanyeors/mp/issues/364) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
-**Blocked by:** 09 (the shared client, facts, schema checks and limits)
+**Blocked by:** 09 (the shared client, facts, schema checks and limits), 16 (the settings)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 
 ## Goal
@@ -23,17 +23,21 @@ the rewrite next to the original before anything changes.
   subject, not repeat it.
 - **Rewrite a block.** On a heading or text block's toolbar: ✨ with labelled choices — Shorter,
   Warmer, Clearer, Fix grammar — and *Something else…* (one line, at most 120 characters, treated
-  as data). The result shows beside the original with **Replace**, **Try again** and **Keep
-  mine**. Replace is undoable (the editor's undo, slice 04).
-- Lower cost per call: `output_config.effort: "low"`, a small schema, `max_tokens` sized to the
-  block. These count toward the same per-Staff limit as slice 09, at a weight of one each.
+  as data). The rewrite shows in the block itself, the original struck through beside it, with
+  **Replace**, **Try again** and **Keep mine**. Replace is one change that Undo removes (the
+  editor's history, slice 04).
+- All of it stays in the editor (PRD decision 9): a suggestion fills a field or a block, never
+  saves, never sends.
+- Lower cost per call: the AI writing settings' **quick actions** effort (slice 16; `low` by
+  default), a small schema, `max_tokens` sized to the block. These count toward the same
+  per-Staff limit as slice 09, at a weight of one each.
 - Labels are words, not just a sparkle (NN/g, *Prompt controls in GenAI*): every AI button has a
   visible or accessible name such as *"Suggest subject lines"*.
 
 ## Acceptance criteria
 
 - [ ] Subject ideas never exceed 150 characters (the schema's limit) and pass the guardrails.
-- [ ] A rewrite keeps every link and the `{first name}` merge field of the original.
+- [ ] A rewrite keeps every link and every Variable of the original.
 - [ ] *Keep mine* leaves the block untouched; *Replace* is undone by Undo.
 - [ ] Each control is keyboard-operable and announced by name.
 
@@ -43,4 +47,4 @@ the rewrite next to the original before anything changes.
 npx vitest run lib/email-campaigns lib/ai "app/[lang]/settings/campaigns"
 ```
 
-The slice 09 eval gains 10 rewrite cases (including a block with a link and a merge field).
+The slice 09 eval gains 10 rewrite cases (including a block with a link and a Variable).

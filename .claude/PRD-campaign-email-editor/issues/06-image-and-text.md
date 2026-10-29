@@ -29,6 +29,8 @@ above the words, in Gmail's app too.
   Apple Mail and new Outlook; two columns held in classic Outlook (slice 12's matrix).
 - [ ] The text side keeps 16px body text and line-height 1.5 when stacked.
 - [ ] The rendered row stays under 3 KB of HTML, so a six-row email is far from Gmail's clip.
+- [ ] Light and dark need no setting: the column's classes are in the shell's dark list and pass
+  slice 15's coverage test.
 
 ## Verify
 
@@ -36,4 +38,5 @@ above the words, in Gmail's app too.
 npx vitest run lib/email
 ```
 
-Renderer snapshots for left and right, with and without a button; a size assertion.
+Renderer snapshots for left and right, with and without a button, light and dark; a size
+assertion.

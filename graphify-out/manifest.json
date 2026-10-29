@@ -15786,87 +15786,117 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/01-clear-all.md": {
-    "mtime": 1793200798.1326497,
-    "seen": 1793200861.5624735,
-    "ast_hash": "2b0ef6d76e0098c3feb820487346a983",
+    "mtime": 1793239974.3501306,
+    "seen": 1793240626.3218675,
+    "ast_hash": "f48fae076e0fdc77e396267f4cbe0041",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/07-product-block.md": {
-    "mtime": 1793200798.1200612,
-    "seen": 1793200861.5624819,
-    "ast_hash": "1db8940ae77a8c4838f646e1ff88ba6a",
+    "mtime": 1793240061.3802805,
+    "seen": 1793240626.3218808,
+    "ast_hash": "ec7b3677a0d08a942ab70dab0011baef",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/08-start-from.md": {
-    "mtime": 1793200798.0999556,
-    "seen": 1793200861.5624835,
-    "ast_hash": "2ae5ba0343b0c5bd537a9be1f21eda1e",
+    "mtime": 1793240080.2541282,
+    "seen": 1793240626.3218837,
+    "ast_hash": "9bbde9ebe1faeeb139c597548a03091f",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/09-ai-generate-draft.md": {
-    "mtime": 1793200798.0930948,
-    "seen": 1793200861.562485,
-    "ast_hash": "42b232a2abb4610c266b09eba5103f23",
+    "mtime": 1793240109.2381275,
+    "seen": 1793240626.3218853,
+    "ast_hash": "ec31c426e36211047e77c0bd95bbbb23",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/10-ai-refine.md": {
-    "mtime": 1793200798.1606855,
-    "seen": 1793200861.5624864,
-    "ast_hash": "39ee2b60a6af880d59b182bb9cc6a15c",
+    "mtime": 1793240552.2644672,
+    "seen": 1793240626.3218873,
+    "ast_hash": "e2aa50640511a21c1408cced2e20369a",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/11-content-checks.md": {
-    "mtime": 1793200798.1671011,
-    "seen": 1793200861.5624878,
-    "ast_hash": "67a52147c6b92d7ab880af83bba1055e",
+    "mtime": 1793240125.3920727,
+    "seen": 1793240626.3218899,
+    "ast_hash": "8b39a569d74299c12a6a2072899ba388",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/12-signoff.md": {
-    "mtime": 1793200798.153037,
-    "seen": 1793200861.5624893,
-    "ast_hash": "4f4c02b377b9169e3c8ea9da4d190e4e",
+    "mtime": 1793240139.8101268,
+    "seen": 1793240626.321892,
+    "ast_hash": "216ff72aca718789bbed60a353d26d8c",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/campaign-email-editor-prd.md": {
-    "mtime": 1793200805.148625,
-    "seen": 1793200861.5624688,
-    "ast_hash": "91e24681ca128ae27addcce4319123e2",
+    "mtime": 1793240420.138124,
+    "seen": 1793240626.3218625,
+    "ast_hash": "67ee5e24acfd2969b9123338984fa13f",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/02-glossary-and-adr.md": {
-    "mtime": 1793200798.1461833,
-    "seen": 1793200861.562475,
-    "ast_hash": "bdc6f324aa9dfa53a797cc6c98a66ee9",
+    "mtime": 1793239999.93413,
+    "seen": 1793240626.3218699,
+    "ast_hash": "70330de1c2af6f8501435244a106b783",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/03-typed-blocks.md": {
-    "mtime": 1793200798.139352,
-    "seen": 1793200861.5624764,
-    "ast_hash": "4eff02e05d936223de46a41dda7ee7dd",
+    "mtime": 1793240021.2859979,
+    "seen": 1793240626.3218715,
+    "ast_hash": "cbedb05b4d9f8d94373f06ee276b4c88",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/04-editor.md": {
-    "mtime": 1793200798.113002,
-    "seen": 1793200861.5624778,
-    "ast_hash": "2b10e1d568ed121be579e6c9fc9839d9",
+    "mtime": 1793240047.286129,
+    "seen": 1793240626.321874,
+    "ast_hash": "3ecb119c37873dcc7320152eb7d389ed",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/05-images-and-hero.md": {
-    "mtime": 1793200798.1066127,
-    "seen": 1793200861.5624788,
-    "ast_hash": "877ca3efaaf12e14818fbf3890e80cd6",
+    "mtime": 1793240061.3795683,
+    "seen": 1793240626.3218763,
+    "ast_hash": "04cf83a8b58b3e8fab6ea14a04a7d6e4",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/06-image-and-text.md": {
-    "mtime": 1793200798.1267061,
-    "seen": 1793200861.5624802,
-    "ast_hash": "4cb24336f3710dc00a717d9760fce4b6",
+    "mtime": 1793240061.3799982,
+    "seen": 1793240626.321878,
+    "ast_hash": "7e3e7299bd63039daf7d21c1fa0f77a7",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/README.md": {
-    "mtime": 1793200798.171991,
-    "seen": 1793200861.5624905,
-    "ast_hash": "5076c3e8d4be8c29c361bf248182eafd",
+    "mtime": 1793240420.1355245,
+    "seen": 1793240626.3219051,
+    "ast_hash": "f7fc17121928a80c8e78835fabc4a683",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-campaign-email-editor/issues/13-variables.md": {
+    "mtime": 1793240420.134832,
+    "seen": 1793240626.3218958,
+    "ast_hash": "2ca3ef1327c86f3b0fd7a0bdeb9eed63",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-campaign-email-editor/issues/14-email-template-variables.md": {
+    "mtime": 1793240420.1342173,
+    "seen": 1793240626.3218977,
+    "ast_hash": "f5c73656c9d01ea068dfed6ae0a85b66",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-campaign-email-editor/issues/15-light-and-dark.md": {
+    "mtime": 1793240420.137096,
+    "seen": 1793240626.3218992,
+    "ast_hash": "f4b684f67c3294d9c65ffbb00cd1bea3",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-campaign-email-editor/issues/16-ai-writing-settings.md": {
+    "mtime": 1793240420.136509,
+    "seen": 1793240626.321901,
+    "ast_hash": "a94c7c5fe3a80e45a6ec9cd392c89a91",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-campaign-email-editor/issues/17-translate-to-chinese.md": {
+    "mtime": 1793240420.1360676,
+    "seen": 1793240626.3219028,
+    "ast_hash": "fcc0fea2a0a9488c1629fa62ea954f6b",
     "semantic_hash": ""
   }
 }

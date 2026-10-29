@@ -30,10 +30,15 @@ Nobody can delete that photo from the library while any campaign uses it.
   with `sharp`: 1,200px wide (2× the 600px column), JPEG at quality 80, or PNG when the image has
   transparency; aimed at under 300 KB.
 - Stored in the media bucket under `email/`, and recorded in a new `media_asset_renditions`
-  table (`asset_id`, `kind = 'email_1200'`, `url`, `width`, `height`, `bytes`), made once per
-  asset and reused.
+  table (`asset_id`, `kind = 'email_1200'`, `url`, `width`, `height`, `bytes`, `has_alpha`),
+  made once per asset and reused.
 - The renderer uses the rendition's absolute https URL with `width` and `height` attributes, and
   `style="display:block;max-width:100%;height:auto"`.
+
+**Light and dark, by itself** (PRD decision 2, slice 15's rules). A photo needs nothing. An image
+with transparency (`has_alpha`: a logo, a product cut-out) sits on a **light plate**, a padded
+panel in the card's light colour that keeps its colour in dark mode, so dark ink never lands on
+a dark background. The plate's class joins the shell's dark list. Nobody chooses any of this.
 
 **Pick and manage:** the existing `ImagePicker` (`components/ui/image-picker.tsx`): library,
 upload, or *Select from Drive*. Its alt text prefills the block's alt (the Media Asset's own alt),
@@ -54,6 +59,8 @@ sent email points at that URL forever.
 - [ ] The Media Library shows the campaign under the image's usages and refuses its deletion.
 - [ ] A hero's heading and button are real text and links below the image, in every client.
 - [ ] A rendition is made once per asset, not once per campaign or per send.
+- [ ] A transparent PNG renders on its light plate in dark mode (Apple Mail, Outlook.com); a
+  photo renders with no plate.
 
 ## Verify
 

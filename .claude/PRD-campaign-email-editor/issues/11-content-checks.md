@@ -3,7 +3,8 @@
 **Issue:** [#366](https://github.com/ivanyeors/mp/issues/366) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
 **Status:** not started
-**Blocked by:** 03, 05. Extends `PRD-campaign-send-flow`'s checklist.
+**Blocked by:** 03, 05. Extends `PRD-campaign-send-flow`'s checklist. Its Variable and 中文 rows
+join when slices 13 and 17 land.
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 
 ## Goal
@@ -24,7 +25,9 @@ warnings beside the block), in *Ready to send?*, and again before each wave. The
 | Every image has alt text | yes | screen readers, and images off by default in some clients |
 | Every image is an email rendition at an absolute https URL (slice 05) | yes | classic Outlook shows no WebP |
 | The rendered HTML is under 100 KB (advisory from 85 KB) | yes | Gmail clips messages over 102 KB, and the clip hides the unsubscribe link |
-| No `[placeholder]` left from a Starter (slice 08) | yes | |
+| No required field still empty, on its placeholder (slices 01, 08) | yes | a placeholder is never sent, so an empty headline would send as nothing |
+| Every Variable has fallback words, and *Points balance* only while points are live (slice 13) | yes | "Hi ," is worse than no greeting |
+| The 中文 version, if there is one, has every block translated and passes every check above (slice 17) | yes | a Chinese reader would get a half-English email |
 | No banned clinical words (`checkBannedClinical`) | yes | the claim rules of the landing page apply to email too |
 | Points only while points are live (`pointsCheck`, today's rule, over every block) | yes | |
 | Every product is still Listed (slice 07) | yes | |
@@ -46,6 +49,7 @@ warnings beside the block), in *Ready to send?*, and again before each wave. The
 - [ ] Advisory checks never block, and say *Recommended:*.
 - [ ] The size check measures the HTML the sender actually sends, not the preview.
 - [ ] The checks run again at the wave, so a link that died since the save is caught.
+- [ ] A Starter left with an empty headline fails by name (*"Block 2, Heading: still empty"*).
 
 ## Verify
 

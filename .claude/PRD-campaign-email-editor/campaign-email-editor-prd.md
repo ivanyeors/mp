@@ -1,13 +1,15 @@
 # PRD — Campaign email editor: proper EDMs, built from blocks, drafted with Claude
 
-**Status:** planned (2026-10-28). Nothing built yet; slices in `issues/`, tracked as
-[#354](https://github.com/ivanyeors/mp/issues/354) and its sub-issues #355–#364, #366, #367. Owner decisions 1–10
-below are recommendations awaiting the owner's yes; the questions under *Open* need answers
-before the slices that name them.
+**Status:** planned (2026-10-28); the owner's answers (2026-10-29) are folded in. The
+decisions below are settled. Nothing built yet; slices are in `issues/`, tracked as
+[#354](https://github.com/ivanyeors/mp/issues/354) and its sub-issues #355–#364, #366, #367
+and, added with the answers, #370–#374. One question is still open (*Open*, D), and one
+assumption needs the owner's confirmation (*Open*, E).
 **Builds on:** `PRD-email-marketing` (Admin Panel → **Email campaigns**, #296),
 `PRD-campaign-send-flow` (waves inside Resend's plan, the Send card), `PRD-media-asset-library`
 (the Media Library and its picker), `PRD-page-builder-redesign` (the editor-with-live-preview
-pattern), and the review-reply drafts in `lib/reviews/draft-reply.ts` (Claude, already
+pattern), `PRD-email-templates` (the Email templates editor and its `{order_number}` values,
+slice 14), and the review-reply drafts in `lib/reviews/draft-reply.ts` (Claude, already
 configured in production). It changes how a campaign is *written*. It adds no second sender, no
 second ledger, no new permission and no new secret.
 **Owner request (2026-10-28):**
@@ -19,18 +21,36 @@ second ledger, no new permission and no new secret.
 > cool AI generate button) in the text area? structure my thoughts, think and research online,
 > and find the best design approach to this. create prd and issues before building"
 
+**Owner answers (2026-10-29)**, to decisions 1–10 and questions A–D of the first draft:
+> "Yeah, we should just build our own email editor, ( enhance on the current basic one we
+> already have) don't duplicate the editors, components it and let it be used for other pages
+> too. 2. Fixed and it must auto work for light/dark mode 3. Yes. Email builder need to have
+> variables a user can drag and build into the email templates / edm 4. Yes 5. Yes enhance it
+> for light/dark mode still 6. Agree 7. The clear all is to clear the "placeholder" as there is
+> text auto generated. I'd rather you make then actually placeholder text instead of real text
+> we delete 8. We need a drag drop block style for easy to use editor. Ready made Layouts
+> should also follow the same so user can tweak them 9. AI button generated in the editor only
+> all stays within editor user needs to press send 10. Make this a setting we can set in our
+> general setting page. English first / but have a translate button to translate into Chinese
+> with the same AI api. No <adv>. Not sure we will test later. Update first"
+
 ## The request, structured
 
 | # | What was asked | What it means here | Slices |
 |---|---|---|---|
-| 1 | **Clear all** on New campaign | One button that empties the email, with Undo. Small and independent: it can ship first, on today's editor. | 01 |
-| 2 | **Proper EDMs, not just text** | Images and a hero, image beside text, product cards, more than one button, dividers and spacing, all in the brand's layout, rendering right in Gmail, Outlook and Apple Mail, on a phone and in dark mode. | 03, 05, 06, 07 |
-| 3 | **Better UX and UI for a marketer** | Write like a document (formatting, `/` to insert, drag to reorder), see the real email beside it (desktop, mobile, dark, the inbox row), start from something (Starters, past campaigns), and be stopped before a broken email goes out. | 04, 08, 11 |
-| 4 | **AI that generates from the title** | ✨ *Generate draft*: Claude writes the email from its subject and an optional brief, into the same blocks the marketer edits. Then smaller helpers: subject ideas, rewrite a block. Always reviewed by a person, never sent by AI, never inventing offers or health claims. | 09, 10 |
+| 1 | **Clear all** on New campaign, because it opens on words someone has to delete | New campaign opens **empty, with placeholder hints** in every field, never prefilled words. Clear all returns the email to those hints, with Undo. Small and independent: it ships first, on today's editor. | 01 |
+| 2 | **Proper EDMs, not just text** | Images and a hero, image beside text, product cards, more than one button, dividers and spacing, all in the brand's layout, rendering right in Gmail, Outlook and Apple Mail, on a phone, and **in light and dark without anyone setting anything**. | 03, 05, 06, 07, 15 |
+| 3 | **Better UX and UI for a marketer** | **Drag and drop**: blocks, Starters (the ready-made layouts) and **Variables** dragged from a palette into the email, then dragged to reorder. Formatting in place, the real email beside it (desktop, mobile, dark, the inbox row), and a stop before a broken email goes out. | 04, 08, 11, 13 |
+| 4 | **AI that generates from the title** | ✨ *Generate* in the editor: Claude writes the email from its subject and an optional brief, straight into the blocks, as one undoable change. Then smaller helpers: subject ideas, rewrite a block. Nothing is saved or sent by AI. The model and limits are settings on General. | 09, 10, 16 |
+| 5 | **English first, a button to translate into Chinese** | ✨ *Translate to Chinese* makes the campaign's 中文 version with the same AI: the same layout with its words translated, sent to customers who use the site in Chinese. | 17 |
+| 6 | **One editor, used by other pages too** | The block editor is one shared component with no email code in it. Campaigns use it first; Email templates use its text input and Variables next; other pages can adopt it rather than grow their own. | 04, 13, 14 |
 
-One principle runs through all four: **freedom in the words, the pictures and the order;
-none in the layout code.** The marketer chooses what to say and show; the platform guarantees
-how it renders.
+Two principles run through all of it:
+
+- **Freedom in the words, the pictures and the order; none in the layout code.** The
+  marketer chooses what to say and show; the platform guarantees how it renders, light and dark.
+- **One editor, not one per page.** Today's campaign editor is enhanced, not replaced by a second
+  page, and its editing parts become shared components any Admin Panel page can use.
 
 ## Problem statement
 
@@ -44,11 +64,19 @@ poorly. A campaign is a subject, a preview line, a plain-text box and one button
 - **It is written in a syntax.** Paragraphs are blank lines, bullets are `- `, headings are
   `## `, links are bare `https://` addresses shown as `mpillow.com/…`. There is no bold, no link
   text, no way to see structure while typing except a preview that re-renders after a pause.
-- **It starts from one fixed email.** *New campaign* opens on the Shopify customers'
-  invitation; anything else means deleting it field by field (the owner's Clear all).
+- **It starts from one fixed email, typed in as real words.** *New campaign* opens on the
+  Shopify customers' invitation, filled into the fields as if someone had written it; anything
+  else means deleting it field by field (the owner's Clear all). Hint text belongs in a
+  placeholder, which disappears when you type and is never sent.
 - **Nobody can write fast.** There is no starting point but that invitation and *Duplicate*, and
   no help with the words. Claude already drafts Google review replies in this codebase; the
   campaign editor, where words matter most, has none.
+- **It speaks one language.** The site is English and Chinese, and every Customer has a
+  `locale` that the campaign sender already reads for its links; the email itself is English
+  for everyone.
+- **Every page grows its own editor.** Campaigns have a plain textarea, Email templates a form
+  of fields with `{order_number}` typed by hand, Blogs a Markdown editor. A better editor built
+  only for campaigns would be one more; the owner asked for one that other pages can use.
 - **Its safety is tuned for plain text.** The plain-text design was deliberate: "Staff type plain
   text, never HTML, so nothing they type becomes markup" (`PRD-email-marketing`). Any redesign has
   to keep that guarantee while adding images, links and layout.
@@ -81,9 +109,12 @@ research passes, 2026-10-28; links are to the sources.
   ([Volanea](https://www.volanea.com/glossary/editor-drag-drop)).
 
   → *A canvas's one advantage, free layout, is exactly what a locked brand switches off. This
-  plan uses the block flow: typed blocks, `/` and `+` to insert, drag to reorder, presets in an
-  inspector, and the live preview beside it (decision 1). It is also the shape of our own Page
-  Builder, which marketers here already use.*
+  plan takes the commerce ESPs' drag and drop and the newer tools' block flow together: blocks
+  and Starters are dragged from a palette into a single column of typed blocks and dragged to
+  reorder; `/` and `+` insert from the keyboard; presets sit under the selected block; the live
+  preview sits beside it (decisions 1 and 8). There is no free canvas: a block drops between
+  blocks, never at an x and y. It is also the shape of our own Page Builder, which marketers
+  here already use.*
 
 ### Build or embed
 
@@ -97,7 +128,9 @@ research passes, 2026-10-28; links are to the sources.
 
 → *Decision 1. The content is versioned JSON of typed blocks, validated by one schema and
 rendered only on the server by our own components. It is also what lets Claude write an email:
-it fills the same schema (below).*
+it fills the same schema (below). The editing parts (the block list, the palette, drag and drop,
+history, the text input with Variables, the ✨ button) are built once, as shared components that
+know nothing about email.*
 
 ### What a proper EDM holds
 
@@ -139,8 +172,11 @@ shell. Later: offer code, testimonial, 3–4 columns, saved sections. Never: an 
   → *Alt text is required; an image-heavy email with almost no words gets an advisory.*
 - **Dark mode** falls into no-change, partial-invert and full-invert clients; Gmail iOS fully
   inverts and cannot be controlled ([Litmus](https://www.litmus.com/blog/the-ultimate-guide-to-dark-mode-for-email-marketers)).
-  → *Never text over an image (decision 6); the preview has a Dark toggle using the shell's own
-  dark rules.*
+  → *Never text over an image (decision 6). Every block's dark rules join the shell's one list,
+  emitted for `prefers-color-scheme` and Outlook.com's `[data-ogsc]` as today; images with
+  transparency sit on a light plate so dark ink never vanishes; a test fails any block class
+  without a dark rule; the preview has a Dark toggle using the shell's own rules (decision 2,
+  slice 15).*
 - **Market share, Sept 2026:** Apple 76.6%, Gmail 16.1%, Outlook desktop 3.5% of opens
   ([Litmus](https://www.litmus.com/email-client-market-share)).
   → *Test in all three (slice 12); Apple Mail is where most customers read.*
@@ -163,6 +199,8 @@ shell. Later: offer code, testimonial, 3–4 columns, saved sections. Never: an 
   → *Clear all is an Undo toast, not a dialog (decision 7).*
 - **Merge fields need a fallback**; a broken "Hi ," is worse than none
   ([Drip](https://www.drip.com/email-marketing-glossary/merge-tags)).
+  → *Variables are chips dragged into the text, each with fallback words set once per campaign
+  (decision 3, slice 13).*
 - **Check before send:** links, images, size ([Mailchimp](https://mailchimp.com/help/preview-and-test-your-email-campaign/),
   [Resend](https://resend.com/docs/dashboard/broadcasts/editor)).
 
@@ -202,105 +240,158 @@ shell. Later: offer code, testimonial, 3–4 columns, saved sections. Never: an 
   intended purpose, and "relieve or manage health conditions" is device language
   ([HSA](https://www.hsa.gov.sg/announcements/how-medical-devices-are-regulated-by-hsa/)).
 
-  → *✨ Generate draft is one button with a short brief, returns the editor's own blocks into a
-  review panel (never straight into the email), offers pick-one subject lines, and is followed by
-  labelled refine actions. Claude gets only the brand's facts, never customers, and code checks
-  every draft for prices, offers, health claims and review requests (decisions 9 and 10).*
+  → *✨ Generate is one button in the editor with a short brief. It writes the editor's own
+  blocks into the email as they arrive, as one change that Undo removes, labelled *Drafted with
+  AI* until a person keeps or edits it; it offers pick-one subject lines and is followed by
+  labelled refine actions. Nothing leaves the editor: AI never saves or sends. Claude gets only
+  the brand's facts, never customers, and code checks every draft for prices, offers, health
+  claims and review requests (decisions 9 and 10).*
 
 ## Solution: what the marketer sees
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│ ← Email campaigns   December cooling launch  [Draft]   ↶ ↷   Clear all  ✨ Generate  Save │
-│  [ Write ]  [ Send ]                                                               │
-├──────────────────────────────────────────┬────────────────────────────────────────┤
-│ From  Mpillow <hello@hello.mpillow.com>  │  Inbox  ▸ Mpillow · Sleep cooler this… │
-│ Subject  Sleep cooler this December  42  │         Our FibreCool covers are back… │
-│ Preview line  Our FibreCool covers…  61  │  [Desktop|Mobile]   [Light|Dark]       │
-│ ☑ Start with "Hi first name,"            │ ┌────────────────────────────────────┐ │
-│                                          │ │            mpillow logo            │ │
-│ ⠿ ▣ Hero      [photo] Sleep cooler…      │ │  ┌──────────────────────────────┐  │ │
-│ ⠿ ¶ Text      Hi there, December in…     │ │  │          hero photo          │  │ │
-│        +                                 │ │  └──────────────────────────────┘  │ │
-│ ⠿ ◧ Image + text  [photo] | Why it…      │ │  Sleep cooler this December        │ │
-│ ⠿ ▤ Products  FibreCool · Neck Support   │ │  …                                 │ │
-│ ⠿ ⎕ Buttons   [Shop the covers]          │ │  [ Shop the covers ]               │ │
-│        +   (or type / in a text line)    │ │  footer · unsubscribe              │ │
-└──────────────────────────────────────────┴────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ ← Email campaigns  December cooling launch [Draft]   ↶ ↷   Clear all   ✨ Generate   Save│
+│ [ Write ] [ Send ]                            Language [ English | 中文 ]  ✨ Translate  │
+├────────────────────┬─────────────────────────────────┬───────────────────────────────────┤
+│ [Blocks|Starters|  │ From     Mpillow <hello@…>      │ Inbox ▸ Mpillow · Mei Ling, sleep…│
+│  Variables]        │ Subject  {First name}, sleep… 41│         Our FibreCool covers are… │
+│ ⠿ ▬ Heading        │ Preview  Our FibreCool cover… 61│ [Desktop|Mobile]   [Light|Dark]   │
+│ ⠿ ¶ Text           │                                 │ ┌───────────────────────────────┐ │
+│ ⠿ ⎕ Buttons        │ ⠿ ▣ Hero   [photo] Sleep cool…  │ │         mpillow logo          │ │
+│ ⠿ ▨ Image          │ ⠿ ¶ Text   Hi {First name}, De… │ │ ┌───────────────────────────┐ │ │
+│ ⠿ ▣ Hero           │   ┄┄┄┄┄┄ drop here ┄┄┄┄┄┄       │ │ │        hero photo         │ │ │
+│ ⠿ ◧ Image + text   │ ⠿ ◧ Image + text [photo] | Why… │ │ └───────────────────────────┘ │ │
+│ ⠿ ▤ Products       │ ⠿ ▤ Products  FibreCool · Neck… │ │ Sleep cooler this December    │ │
+│ ⠿ ― Divider        │ ⠿ ⎕ Buttons  [Shop the covers]  │ │ [ Shop the covers ]           │ │
+│ ⠿ ␣ Spacer         │    +  (or type / in a text line)│ │ footer · unsubscribe          │ │
+└────────────────────┴─────────────────────────────────┴───────────────────────────────────┘
 ```
 
-1. **Start.** *New campaign* asks how to begin: **Blank**, **✨ Write with AI**, a **Starter**
-   (*Product launch*, *Care tips*, *Event*, *A short note*, the sign-in invitation, and later the
-   CRM's Playbooks), or **a past campaign** (slice 08).
-2. **Write.** Subject and preview line with live counts and the inbox row. Blocks in a list:
-   `/` or `+` to insert, a handle to drag, a menu to move, duplicate or delete; text with bold,
-   italic, links, bullets and *first name*; images from the Media Library with alt text; presets
-   for alignment, width and button style (slices 03–07).
-3. **See.** The real email beside the list, re-rendered as they type: desktop or mobile, light or
-   dark. Click a block in the preview to edit it (slice 04).
-4. **Get help.** ✨ *Generate draft* writes the whole email from the subject and a brief; ✨ on the
-   subject suggests lines; ✨ on a block rewrites it shorter, warmer or clearer. Every suggestion
-   is shown before it changes anything, and every change can be undone (slices 09, 10).
-5. **Undo anything.** ⌘Z and ⇧⌘Z for every change, Clear all included. Save is explicit (⌘S),
-   leaving with unsaved changes asks first, and a crashed tab offers to restore them (slice 04).
-6. **Check, test, send.** The *Send* tab is today's send flow, unchanged, with one more
+1. **Start.** *New campaign* opens empty: every field shows a grey placeholder (*e.g. Sleep
+   cooler this December*) that disappears as you type and is never saved or sent. The email
+   offers four starts: **Blank**, **✨ Write with AI**, a **Starter** (*Product launch*, *Care
+   tips*, *Event*, *A short note*, the sign-in invitation, and the CRM's Playbooks), or **a past
+   campaign** (slices 01, 08).
+2. **Build by dragging.** The palette beside the email has three tabs. **Blocks**: drag one to
+   where it goes, between two blocks. **Starters**: drag a whole ready-made layout in, and it
+   lands as ordinary blocks to change, move or delete. **Variables**: drag *First name*, *Last
+   name* or *Points balance* into any text, the subject or the preview line. Every drag has a
+   keyboard way: `/` in a text line, `+` between blocks, `{` for a Variable (slices 04, 08, 13).
+3. **Write.** Subject and preview line with live counts and the inbox row; text with bold,
+   italic, links and bullets; images from the Media Library with alt text; presets for
+   alignment, width and button style (slices 03–07).
+4. **See.** The real email beside the list, re-rendered as they type: desktop or mobile, light
+   or dark, English or 中文, with Variables shown as a sample customer or as their fallbacks.
+   Click a block in the preview to select it (slice 04).
+5. **Get help, in the editor.** ✨ *Generate* writes the whole email from the subject and a
+   brief, straight into the blocks; ✨ on the subject suggests lines; ✨ on a block rewrites it
+   shorter, warmer or clearer; ✨ *Translate* makes the 中文 version. Each is one change that
+   Undo removes. None saves or sends (slices 09, 10, 17).
+6. **Undo anything.** ⌘Z and ⇧⌘Z for every change, Clear all and AI included. Save is explicit
+   (⌘S), leaving with unsaved changes asks first, and a crashed tab offers to restore them
+   (slice 04).
+7. **Check, test, send.** The *Send* tab is today's send flow, unchanged, with one more
    checklist step, **The email**: links answer, images have alt text and are Outlook-safe, the
-   email is under Gmail's clip, no Starter placeholder is left, no banned claim, products still
-   listed (slice 11).
+   email is under Gmail's clip, no required field is still a placeholder, every Variable has a
+   fallback, no banned claim, products still listed, and the 中文 version complete if there is
+   one (slice 11). Only a person presses *Send*.
+
+Behind the scenes, the owner sets the AI's model and limits once, on **Admin Panel → General →
+AI writing** (slice 16).
 
 ## Decisions
 
-Recommendations; the owner confirms or changes each before its slices start.
+Settled with the owner on 2026-10-29. Each names the slices it governs.
 
-1. **Build our own block editor; embed nobody's.** Content is `{ v: 1, blocks: [...] }` JSON,
-   validated by one Zod schema on every write, rendered only on the server by `lib/email/`.
-   TipTap is the input for text blocks only; its JSON is never stored. No HTML block, ever.
-   Recorded as ADR 0036 (slice 02).
-2. **Brand-locked styling.** Presets only (alignment, image width, button primary or secondary,
-   spacer size). No font, colour or size pickers: the shell's design tokens
-   (`lib/email/theme.ts`, mirroring `app/globals.css`) are the brand.
-3. **Products are priced by the shop at send.** A product block stores ids; the price, photo and
-   name are read when the email is rendered, from the Storefront product that Costings prices
-   (ADR 0001). A started campaign's product choice is fixed; its prices follow the shop, as an
-   order email's data does. An unlisted product fails the wave's checks by name.
+1. **One editor, ours, enhanced in place and shared.** Today's campaign editor
+   (`campaign-editor.tsx`) grows into the block editor; there is no second campaign page. Its
+   editing parts are built once in `components/block-editor/` and import nothing from
+   `lib/email*`: the block list and palette, drag and drop, undo and redo, placeholders, the
+   text input with Variables, and the ✨ button with its loading states. A page hands it its own
+   block types and Variables. Campaigns use it first (slice 04); Email templates use its text
+   input and Variables (slice 14); Blogs, Page Builder and others can move onto it later instead
+   of growing editors of their own. Content is `{ v: 1, blocks: [...] }` JSON, validated by one
+   Zod schema on every write, rendered only on the server by `lib/email/`. TipTap is the text
+   input only; its JSON is never stored. No HTML block, ever. Recorded as ADR 0036 (slice 02).
+2. **Brand-locked styling that is right in light and dark by itself.** Presets only
+   (alignment, image width, button primary or secondary, spacer size); no font, colour or size
+   pickers: the shell's design tokens (`lib/email/theme.ts`, mirroring `app/globals.css`) are
+   the brand. There is no dark-mode setting for anyone to get wrong: every block's dark rules
+   join the shell's one list, images with transparency sit on a light plate, and a test fails
+   any block whose classes have no dark rule (slice 15).
+3. **Products are priced by the shop at send; Variables are dragged in.** A product block stores
+   ids; the price, photo and name are read when the email is rendered, from the Storefront
+   product that Costings prices (ADR 0001). A started campaign's product choice is fixed; its
+   prices follow the shop. An unlisted product fails the wave's checks by name. **Variables**
+   are recipient details (*First name*, *Last name*, *Points balance* while points are live)
+   that Staff drag from the palette into any text, the subject or the preview line. Each has
+   fallback words, set once per campaign, used when a customer has none. Email templates'
+   `{order_number}`-style values become the same draggable Variables (slices 13, 14).
 4. **Save stays explicit,** with ⌘S, a leave-page guard and in-browser recovery of unsaved edits.
    Autosave would write an audit entry per pause; the audit log records each save today
-   (`PRD-email-marketing`, *Who can use it*). Revisit if the marketer misses it.
-5. **Legacy campaigns keep their renderer.** Campaigns written as plain text keep `body` and
-   render through `renderComposedCampaignEmail` byte for byte; a started campaign must keep
-   sending the email it started with. An unsent legacy draft can be converted to blocks.
+   (`PRD-email-marketing`, *Who can use it*).
+5. **Legacy campaigns keep their renderer, and get the light and dark work.** Campaigns written
+   as plain text keep `body` and `renderComposedCampaignEmail`: their words, order and links do
+   not change (their plain-text part is the same byte for byte), so a started campaign keeps
+   sending what it started with. Their HTML gains the shell's light and dark improvements, as
+   every email does (slice 15). An unsent legacy draft can be converted to blocks.
 6. **No text on images.** A hero is the image, then its heading, line and button as real text.
    Text in or over an image is lost with images off, unreadable in some dark modes, and fragile
    in classic Outlook.
-7. **Clear all is Undo, not a dialog, and keeps the audience.** It clears what the email says
-   (name, subject, preview line, blocks, button) and keeps who it goes to and the greeting
-   switch. Nothing is saved until Save, so an Undo toast is enough (NN/g).
-8. **Starters live in code,** like Email templates' layouts: reviewed in a pull request, rendered
-   by the real renderer, tested against the schema. Staff-saved templates and reusable sections
-   are later.
-9. **AI drafts land in a review panel, not in the email.** ✨ *Generate draft* needs a subject
-   of 3 or more words; it shows the draft block by block as it arrives, with pick-one subject
-   and preview lines, then **Use this draft** (undoable), **Try again** or **Discard**. Blocks
-   from a draft are marked *Drafted with AI* until a person edits or confirms them; the send
-   checklist counts them as an advisory.
-10. **Claude Opus 5.5, effort `medium`, server-side fallbacks on, as review replies use;**
-    10 drafts per 10 minutes and 60 a day per Staff member; `low` effort for refine actions. An
-    eval on 25 briefs (slice 09) confirms or lowers the effort before merge. Claude receives the
-    brand facts, the subject, the brief and picked product names, **never a customer**.
+7. **Placeholders, not prefilled words.** An empty field shows grey hint text, which is never
+   saved, tested or sent. *New campaign* opens empty instead of on the invitation, which becomes
+   a Starter (one click away until slice 08). **Clear all** returns the email to its
+   placeholders, keeps the audience and the greeting switch, and offers Undo in a toast rather
+   than a dialog, because nothing is saved until Save (NN/g). Starters use placeholders the same
+   way, and the send checks refuse an email with a required field still empty (slices 01, 08, 11).
+8. **Drag-and-drop blocks; Starters are made of the same blocks.** A palette beside the email
+   holds Blocks, Starters and Variables. Drag one to the spot it goes; drag a block to reorder;
+   every drag has a keyboard way. A Starter (the owner's *ready-made layout*) is not a locked
+   template: dropped into an email, or opened from the Start panel, it becomes ordinary blocks
+   that can each be moved, changed or deleted. Starters live in code: reviewed in a pull
+   request, rendered by the real renderer, tested against the schema. Staff-saved Starters are
+   later (slices 04, 08).
+9. **AI works inside the editor, and only there.** ✨ Generate, the refine actions and ✨
+   Translate write into the editor, never anywhere else: each result arrives as one change,
+   with *Keep*, *Try again* and *Undo* beside it. Nothing is saved until Staff press Save, and
+   nothing is sent until they press Send; AI has no reach into the Send tab, the audience or the
+   waves. Blocks it wrote are marked *Drafted with AI* until a person edits or keeps them, and
+   the send checklist counts any left as an advisory (slices 09, 10, 17).
+10. **The AI's settings live on Admin Panel → General.** A new **AI writing** section: on or off,
+    the model (from a list in code), the effort for whole drafts and for quick actions, and the
+    per-Staff limits, with a read-out of this month's use and its estimated cost. Defaults: Opus
+    5.5, `medium` for drafts, `low` for quick actions, 10 in 10 minutes and 60 a day per Staff
+    member. Every change is audit-logged. Review replies keep their own settings in code until
+    someone moves them here (slice 16).
+11. **English first; ✨ Translate makes the 中文 version.** A campaign is written in English. ✨
+    *Translate to Chinese* fills its 中文 version from the English with the same AI settings:
+    the same blocks, images, products, buttons and Variables, with the words translated, then
+    edited like any words. Customers whose language is Chinese (`customers.locale = 'zh-CN'`,
+    which the sender already reads) receive the 中文 version; everyone else receives English. A
+    campaign without a 中文 version sends English to everyone, as today (slice 17).
+12. **No `<ADV>` label.** Campaigns go only to Customers who agreed to them, so they are not the
+    unsolicited email the Spam Control Act's label is for; they carry the unsubscribe link and
+    our details anyway.
 
-### AI guardrails (decision 10, in code as well as in the prompt)
+### AI guardrails (in code as well as in the prompt)
 
 - Facts only from one shared `lib/ai/mpillow-facts.ts`, lifted out of the review-reply prompt so
   both say the same things.
 - No price, percentage, discount, code, date, guarantee or offer unless Staff typed it word for
   word; prices come from product blocks, never from Claude.
 - Comfort, fit and sleep, never health: no treat, cure, relieve, therapy, rehab, clinically,
-  doctor-recommended (`checkBannedClinical`, the landing page's check).
+  doctor-recommended (`checkBannedClinical`, the landing page's check), and the same words in
+  Chinese for a translation (治疗, 治愈, 康复, 处方, 临床 and the rest, slice 17).
 - Never a review or rating request; never Shopify or "our move"; no `Re:`/`Fwd:`, no all-caps
   subject, no false urgency; points only while points are live (`pointsCheck`).
-- No URLs from Claude: button targets come from a fixed list; links are Staff's.
-- The brief is data in tags, JSON-encoded; Claude has no tools. Every draft is in the audit log
-  with the serving model and token counts, never the brief's text.
+- No URLs from Claude: button targets come from a fixed list; links are Staff's. A translation
+  keeps every link, button target and Variable of the English, checked in code.
+- The brief is data in tags, JSON-encoded; Claude has no tools. Every AI call is in the audit
+  log with the serving model and token counts, never the brief's text.
+- The model, effort and limits come from the AI writing settings (decision 10), read on the
+  server at each call. A stored value that no longer parses uses its default; a failed read
+  turns AI writing off for that call, so a read error never turns on what the owner turned off.
 
 ## Rules it keeps
 
@@ -311,12 +402,14 @@ to those plans.
   shared; one ledger, `customer_campaign_sends`; campaign mail only through the campaign
   transport, with `List-Unsubscribe` and `List-Unsubscribe-Post`.
 - The lock: once the first wave is planned, the content cannot change (the trigger now covers
-  `content`); a changed email is a duplicate.
+  `content`, its 中文 version included); a changed email is a duplicate.
 - Waves inside Resend's plan, the pause lines, the confirmation dialog: untouched.
 - Never ask for a review in a campaign; aftercare messages are not campaigns.
 - Nothing names Shopify or a move to customers (owner, 2026-10-21). No new work depends on
   Shopify (`CLAUDE.md`).
-- The `campaigns` permission gates every action, the AI ones included.
+- The `campaigns` permission gates every campaign action, the AI ones included; the AI writing
+  settings sit behind the General page's own permission.
+- No `<ADV>` in subjects (decision 12).
 
 ## Not in this plan
 
@@ -325,37 +418,49 @@ to those plans.
 - **An offer-code block.** A block that shows a real **Discount code** from Discounts, checked
   live at send, is the natural next block; it needs its own rules (which codes, expiry inside the
   wave window). Until then Claude never writes an offer, and Staff type one only in words.
-- **Staff-saved templates, synced sections, 3–4 columns, testimonials, video thumbnails.**
-- **Chinese campaigns.** v1 writes and drafts English only (*Open*, B).
+- **Staff-saved Starters, synced sections, 3–4 columns, testimonials, video thumbnails.**
+- **Moving Blogs, Page Builder or other pages onto the shared editor.** The components are built
+  so they can (decision 1); each move is its own change, planned with that page.
+- **Languages beyond English and Chinese, and translating from Chinese into English.**
 - **A chat agent** that plans audiences and sends (Klaviyo Composer's shape). AI here writes
   words a person reviews; it never chooses an audience or starts a wave.
 - **Images generated by AI.** Staff choose photos from the Media Library.
+- **Review replies on the AI writing settings.** They keep their code settings (decision 10).
 
 ## Open: questions for the owner
 
-- **A. Decisions 1–10.** Confirm, or say which to change.
-- **B. English only for v1?** The site is bilingual; campaigns and AI drafts would be English.
-- **C. The Spam Control Act.** It governs *unsolicited* bulk commercial email (subject `<ADV>`
-  label, unsubscribe, sender details) ([IMDA](https://imda.gov.sg/infocomm-regulation-and-guides/unsolicited-communications/best-practices-for-organisations)).
-  Campaigns go only to Customers who agreed, so they are not unsolicited, and they carry the
-  unsubscribe link and our details anyway. Confirm no `<ADV>` label is wanted.
-- **D. AI spend.** About US$0.05–0.09 a draft (estimate; slice 09 measures it). Set a monthly
-  spend limit in the Anthropic Console that suits you.
+- **D. AI spend.** About US$0.05–0.09 a draft (an estimate). The owner will test it: slice 16
+  shows this month's use and estimated cost, and slice 12 measures real drafts, after which a
+  monthly spend limit can be set in the Anthropic Console.
+- **E. Who receives the 中文 version (assumed).** Customers whose `locale` is `zh-CN` (the
+  language they use the site in, recorded at sign-up and import). If the owner would rather
+  choose per campaign (send the 中文 version to everyone, or to nobody), slice 17 adds that
+  switch.
+
+A, B and C were answered on 2026-10-29: decisions 1–12 above, English first with a Translate
+button, and no `<ADV>` label.
 
 ## Testing
 
 - **Pure tests** (vitest): the content schema (limits, refusals of markup and unknown types),
   the renderer per block (snapshots, light and dark, plain-text part, size), legacy campaigns'
-  HTML unchanged, the column primitive, renditions, the usage resolver, Starters, content
-  checks, the AI request shape and validators against a fake client, the rate limit.
+  words unchanged, the column primitive, renditions, the usage resolver, Starters, Variables
+  and their fallbacks, content checks, the AI request shape and validators against a fake
+  client, the rate limit, the AI settings' parsing and defaults, and translation (every link,
+  target and Variable kept).
+- **A boundary test:** nothing in `components/block-editor/` imports `lib/email*` or
+  `lib/email-campaigns/*` (decision 1).
+- **A dark-rule coverage test:** every `mp-*` class a block renders has a rule in the shell's
+  dark list (decision 2).
 - **SQL asserts:** the one-of check on `body`/`content`, the size check, the lock on `content`.
-- **Component tests:** Clear all and Undo, insert / move / undo in the editor, the TipTap → runs
-  mapping with a paste fixture, the Generate panel's states.
-- **An eval** for AI drafts (slice 09): 25 briefs, every output through the guardrail checks,
-  ten read by the owner.
+- **Component tests:** placeholders and Clear all with Undo; insert, drag from the palette, move
+  and undo in the editor; dropping a Starter and a Variable; the TipTap → runs mapping with a
+  paste fixture; the ✨ button's states.
+- **An eval** for AI drafts and translations (slices 09, 17): 25 briefs and 10 translations,
+  every output through the guardrail checks, ten of each read by the owner.
 - **The owner's inbox matrix** (slice 12): Gmail web, iOS and Android; Outlook classic, new and
-  .com; Apple Mail macOS and iOS; Yahoo; light and dark.
+  .com; Apple Mail macOS and iOS; Yahoo; light and dark; English and 中文.
 
 ## Slices
 
-See [`issues/README.md`](issues/README.md): twelve vertical slices, 01 shippable now.
+See [`issues/README.md`](issues/README.md): seventeen vertical slices, 01 shippable now.
