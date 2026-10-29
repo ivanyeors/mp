@@ -2434,7 +2434,7 @@ app/[lang]/settings/campaigns/page.tsx
 app/[lang]/settings/campaigns/[id]/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
-- Loads: `campaignPointsLive()`, `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`
+- Loads: `campaignAiWriting()`, `campaignPointsLive()`, `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`, `useAiDraft()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
 - Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
@@ -2442,7 +2442,7 @@ app/[lang]/settings/campaigns/[id]/page.tsx
 app/[lang]/settings/campaigns/new/page.tsx
 - Server actions: `archiveCampaignAction()`, `checkCampaignReadiness()`, `describeCampaignProducts()`, `duplicateCampaign()`, `findCampaignProducts()`, `placeCampaignImage()`, `planCampaignWave()`, `previewCampaign()`, `saveCampaign()`, `sendCampaignBatchAction()`, `sendCampaignTestAction()`
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
-- Loads: `campaignPointsLive()`, `listSegments()`, `requireAdminPage()`
+- Loads: `campaignAiWriting()`, `campaignPointsLive()`, `listSegments()`, `requireAdminPage()`, `useAiDraft()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
 - Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 

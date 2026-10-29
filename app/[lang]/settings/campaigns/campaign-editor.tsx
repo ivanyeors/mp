@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -43,6 +43,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AI_WRITING_NO_CREDENTIALS, type AiWritingAvailability } from "@/lib/ai/availability";
+import { DRAFT_STAGE_TEXT, draftBlocker, draftTitle, withEditedBlocks } from "@/lib/email-campaigns/ai-drafted";
 import {
     campaignWordsEmpty,
     campaignWordsOf,
@@ -89,6 +91,8 @@ import {
     sendCampaignTestAction,
     type WaveAnswer,
 } from "./actions";
+import { CampaignAiContext, type CampaignAi } from "./ai/ai-context";
+import { useAiDraft } from "./ai/use-ai-draft";
 import { CAMPAIGN_BLOCKS } from "./blocks/catalogue";
 import { VariableFallbacks } from "./blocks/fallbacks";
 import { campaignVariables } from "./blocks/runs";
@@ -119,8 +123,20 @@ const PREVIEW_AFTER_MS = 400;
 const SUBJECT_PHONE = 60;
 const PREVIEW_LINE_RANGE = [40, 90] as const;
 
-/** Until ✨ Generate is built (slice 09). */
-const GENERATE_NOT_YET = "Coming soon: Claude will draft the email from its subject.";
+/** AI writing off, until the page says otherwise. */
+const AI_OFF: AiWritingAvailability = { on: false, configured: false };
+
+/** While one draft is written, another can't start. */
+const AI_BUSY = "Claude is writing. Wait for it, or press Stop.";
+
+// ✨ Generate's popover, its bar and its ideas load after the page, not with it (slice 09).
+const editorAi = () => import("./ai/editor-ai");
+const GeneratePopover = lazy(() => editorAi().then((m) => ({ default: m.GeneratePopover })));
+const DraftBar = lazy(() => editorAi().then((m) => ({ default: m.DraftBar })));
+const DraftIdeas = lazy(() => editorAi().then((m) => ({ default: m.DraftIdeas })));
+
+/** What a block's card says while Claude's words in it are unread. */
+const DRAFTED_WITH_AI = "Drafted with AI";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -185,6 +201,7 @@ export function CampaignEditor({
     segments,
     staffEmail,
     pointsLive = false,
+    ai = AI_OFF,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -197,6 +214,8 @@ export function CampaignEditor({
     staffEmail: string;
     /** Points are live (`pointsLive`): *Points balance* can be put in (slice 13). */
     pointsLive?: boolean;
+    /** AI writing on, and Claude set up (slice 09): off shows no ✨ at all. */
+    ai?: AiWritingAvailability;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -218,8 +237,9 @@ export function CampaignEditor({
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
         history.set((e) => ({ ...e, button: { ...e.button, ...patch } }), { burst });
     const editContent = (next: CampaignContent, burst?: string) => history.set((e) => ({ ...e, content: next }), { burst });
+    // A block a person changes is no longer *Drafted with AI* (slice 09).
     const setBlocks = (blocks: EmailBlock[], burst?: string) =>
-        history.set((e) => (e.content ? { ...e, content: { ...e.content, blocks } } : e), { burst });
+        history.set((e) => (e.content ? { ...e, content: withEditedBlocks(e.content, blocks) } : e), { burst });
 
     const setAudience = (v: CampaignAudience) => edit({ audience: v });
     const setSegmentId = (v: string) => edit({ segmentId: v });
@@ -540,6 +560,25 @@ export function CampaignEditor({
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
     const editable = !locked && !sending;
 
+    // ── ✨ Generate (slice 09): Claude writes into the email, as one change; only Staff save or send ──
+    const aiDraft = useAiDraft({ history, campaignId: campaign?.id ?? null });
+    // The brief's popover, under ✨ Generate; anything on the page may open it (slice 08's *✨ Write with AI*).
+    const [generateOpen, setGenerateOpen] = useState(false);
+    const aiHere = ai.on && editable && Boolean(content);
+    const titleBlocker = draftBlocker(subject, name);
+    const aiStage = aiDraft.run ? DRAFT_STAGE_TEXT[aiDraft.run.stage] : "";
+    const aiRunScope = aiDraft.working ? aiDraft.run?.where : null;
+    const campaignAi: CampaignAi | null = aiHere
+        ? {
+              writeBlock: (id) => void aiDraft.start({ about: "", goal: null, products: [] }, { scope: "text", target: id }),
+              stop: aiDraft.stop,
+              reason: !ai.configured ? AI_WRITING_NO_CREDENTIALS : aiDraft.working ? AI_BUSY : titleBlocker,
+              writing: aiRunScope?.scope === "text" ? { id: aiRunScope.target, stage: aiStage } : null,
+          }
+        : null;
+    const aiDrafted = content?.aiDrafted;
+    const badges = useMemo(() => Object.fromEntries((aiDrafted ?? []).map((id) => [id, DRAFTED_WITH_AI])), [aiDrafted]);
+
     // ── Editing safety (slice 04): one history, ⌘S, the leave guard, the browser's copy ──
     useHistoryKeys(history, { enabled: editable, within: editorArea });
     const saveDisabled = saving || sending || (!dirty && Boolean(campaign));
@@ -740,6 +779,18 @@ export function CampaignEditor({
                     />
                     {fieldErrors.subject ? <p className="text-xs text-destructive">{fieldErrors.subject}</p> : null}
                     <CharCount id="c-subject-count" value={subjectRead} warn={subjectWarn} />
+                    {aiHere && aiDraft.ideas.subjects.length ? (
+                        <Suspense fallback={null}>
+                            <DraftIdeas
+                                id="c-subject-ideas"
+                                label="Subject ideas"
+                                ideas={aiDraft.ideas.subjects}
+                                phoneWarning
+                                onPick={(idea) => aiDraft.pick("subject", idea)}
+                                onDismiss={() => aiDraft.dismissIdeas("subject")}
+                            />
+                        </Suspense>
+                    ) : null}
                 </div>
                 <div className="space-y-1.5">
                     <Label id="c-preheader-label">Preview line</Label>
@@ -762,6 +813,17 @@ export function CampaignEditor({
                         warn={preheaderWarn}
                         ok={`Shown after the subject in most inboxes. Optional; ${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best.`}
                     />
+                    {aiHere && aiDraft.ideas.preheaders.length ? (
+                        <Suspense fallback={null}>
+                            <DraftIdeas
+                                id="c-preheader-ideas"
+                                label="Preview line ideas"
+                                ideas={aiDraft.ideas.preheaders}
+                                onPick={(idea) => aiDraft.pick("preheader", idea)}
+                                onDismiss={() => aiDraft.dismissIdeas("preheader")}
+                            />
+                        </Suspense>
+                    ) : null}
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
@@ -780,6 +842,18 @@ export function CampaignEditor({
                                 </Button>
                             ) : null}
                         </div>
+                        {aiDraft.showBar && aiDraft.run ? (
+                            <Suspense fallback={null}>
+                                <DraftBar
+                                    run={aiDraft.run}
+                                    onStop={aiDraft.stop}
+                                    onKeep={aiDraft.keep}
+                                    onTryAgain={aiDraft.tryAgain}
+                                    onUndo={aiDraft.undo}
+                                    onDismiss={aiDraft.dismiss}
+                                />
+                            </Suspense>
+                        ) : null}
                         <BlockEditor
                             label="The email's blocks"
                             empty="No blocks yet. Drag a heading, some text and a button in from Blocks, or add one below."
@@ -947,7 +1021,24 @@ export function CampaignEditor({
                             {clearWhy}
                         </span>
                     ) : null}
-                    {editable && content ? <AiButton disabledReason={GENERATE_NOT_YET}>Generate</AiButton> : null}
+                    {aiHere && content ? (
+                        ai.configured ? (
+                            <Suspense fallback={<AiButton disabledReason={titleBlocker}>Generate</AiButton>}>
+                                <GeneratePopover
+                                    open={generateOpen}
+                                    onOpenChange={setGenerateOpen}
+                                    title={draftTitle(subject, name)}
+                                    blocker={aiRunScope?.scope === "text" ? AI_BUSY : titleBlocker}
+                                    hasBlocks={content.blocks.length > 0}
+                                    working={aiRunScope?.scope === "email" ? aiStage : null}
+                                    onStop={aiDraft.stop}
+                                    onGenerate={(brief, mode) => void aiDraft.start(brief, { scope: "email", mode })}
+                                />
+                            </Suspense>
+                        ) : (
+                            <AiButton disabledReason={AI_WRITING_NO_CREDENTIALS}>Generate</AiButton>
+                        )
+                    ) : null}
                     {campaign ? (
                         <DropdownMenu>
                             {/* A plain button: the motion Button presses on Enter too, which would shut the menu it opens. */}
@@ -1007,80 +1098,83 @@ export function CampaignEditor({
 
                 {/* Both tabs stay mounted: a wave keeps sending, and the email keeps its history, while the other is open. */}
                 <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
-                    <BlockEditorRoot
-                        blocks={content?.blocks ?? []}
-                        catalogue={CAMPAIGN_BLOCKS}
-                        onChange={setBlocks}
-                        selected={selected}
-                        onSelect={setSelected}
-                        readOnly={!editable}
-                        max={CONTENT_LIMITS.blocks}
-                        newId={newBlockId}
-                        variables={variables}
-                    >
-                        <div className="mb-3 lg:hidden">
-                            <PresetPicker
-                                label="Show"
-                                value={pane}
-                                options={[
-                                    { value: "write", label: "Write" },
-                                    { value: "preview", label: "Preview" },
-                                ]}
-                                onChange={setPane}
-                            />
-                        </div>
-                        <div className={cn("grid gap-6", palette ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
-                            {palette ? (
-                                <aside className="max-lg:hidden" aria-label="Palette">
-                                    <div className="sticky top-4">
-                                        <BlockPalette tabs={asideTabs} tab={paletteTab} onTab={setPaletteTab} />
-                                    </div>
-                                </aside>
-                            ) : null}
-                            <section className={cn("min-w-0", pane === "preview" && "max-lg:hidden")} aria-label="The email">
-                                {theEmail}
-                            </section>
-                            <section className={cn("min-w-0", pane === "write" && "max-lg:hidden")} aria-label="Preview">
-                                <div className="space-y-3 lg:sticky lg:top-4">
-                                    {content ? (
-                                        <PresetPicker
-                                            label="Preview as"
-                                            value={previewAs}
-                                            options={(Object.keys(PREVIEW_AS_LABEL) as PreviewAs[]).map((v) => ({ value: v, label: PREVIEW_AS_LABEL[v] }))}
-                                            onChange={setPreviewAs}
+                    <CampaignAiContext.Provider value={campaignAi}>
+                        <BlockEditorRoot
+                            blocks={content?.blocks ?? []}
+                            catalogue={CAMPAIGN_BLOCKS}
+                            onChange={setBlocks}
+                            selected={selected}
+                            onSelect={setSelected}
+                            readOnly={!editable}
+                            max={CONTENT_LIMITS.blocks}
+                            newId={newBlockId}
+                            variables={variables}
+                            badges={badges}
+                        >
+                            <div className="mb-3 lg:hidden">
+                                <PresetPicker
+                                    label="Show"
+                                    value={pane}
+                                    options={[
+                                        { value: "write", label: "Write" },
+                                        { value: "preview", label: "Preview" },
+                                    ]}
+                                    onChange={setPane}
+                                />
+                            </div>
+                            <div className={cn("grid gap-6", palette ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
+                                {palette ? (
+                                    <aside className="max-lg:hidden" aria-label="Palette">
+                                        <div className="sticky top-4">
+                                            <BlockPalette tabs={asideTabs} tab={paletteTab} onTab={setPaletteTab} />
+                                        </div>
+                                    </aside>
+                                ) : null}
+                                <section className={cn("min-w-0", pane === "preview" && "max-lg:hidden")} aria-label="The email">
+                                    {theEmail}
+                                </section>
+                                <section className={cn("min-w-0", pane === "write" && "max-lg:hidden")} aria-label="Preview">
+                                    <div className="space-y-3 lg:sticky lg:top-4">
+                                        {content ? (
+                                            <PresetPicker
+                                                label="Preview as"
+                                                value={previewAs}
+                                                options={(Object.keys(PREVIEW_AS_LABEL) as PreviewAs[]).map((v) => ({ value: v, label: PREVIEW_AS_LABEL[v] }))}
+                                                onChange={setPreviewAs}
+                                            />
+                                        ) : null}
+                                        <EmailPreview
+                                            html={preview?.html ?? null}
+                                            subject={preview?.subject ?? subject}
+                                            from={preview?.from ?? null}
+                                            error={previewError}
+                                            device={device}
+                                            onDevice={setDevice}
+                                            scheme={scheme}
+                                            onScheme={setScheme}
+                                            selected={selected}
+                                            onSelectBlock={(id) => {
+                                                setSelected(id);
+                                                setPane("write");
+                                                document.querySelector<HTMLElement>(`[data-block-id="${id}"]`)?.scrollIntoView?.({ block: "nearest" });
+                                            }}
                                         />
-                                    ) : null}
-                                    <EmailPreview
-                                        html={preview?.html ?? null}
-                                        subject={preview?.subject ?? subject}
-                                        from={preview?.from ?? null}
-                                        error={previewError}
-                                        device={device}
-                                        onDevice={setDevice}
-                                        scheme={scheme}
-                                        onScheme={setScheme}
-                                        selected={selected}
-                                        onSelectBlock={(id) => {
-                                            setSelected(id);
-                                            setPane("write");
-                                            document.querySelector<HTMLElement>(`[data-block-id="${id}"]`)?.scrollIntoView?.({ block: "nearest" });
-                                        }}
-                                    />
-                                </div>
-                            </section>
-                        </div>
-                        {/* Phones: the palette is a sheet, and a tap adds after the selected block. */}
-                        <Sheet open={addOpen} onOpenChange={setAddOpen}>
-                            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
-                                <SheetHeader>
-                                    <SheetTitle>Add a block</SheetTitle>
-                                </SheetHeader>
-                                <div className="px-4 pb-6">
-                                    <BlockPalette tabs={sheetTabs} draggable={false} onAdded={() => setAddOpen(false)} />
-                                </div>
-                            </SheetContent>
-                        </Sheet>
-                    </BlockEditorRoot>
+                                    </div>
+                                </section>
+                            </div>
+                            {/* Phones: the palette is a sheet, and a tap adds after the selected block. */}
+                            <Sheet open={addOpen} onOpenChange={setAddOpen}>
+                                <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+                                    <SheetHeader>
+                                        <SheetTitle>Add a block</SheetTitle>
+                                    </SheetHeader>
+                                    <div className="px-4 pb-6">
+                                        <BlockPalette tabs={sheetTabs} draggable={false} onAdded={() => setAddOpen(false)} />
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </BlockEditorRoot>
+                    </CampaignAiContext.Provider>
                 </TabsContent>
 
                 <TabsContent value="send" forceMount data-own-undo className="space-y-6 data-[state=inactive]:hidden">

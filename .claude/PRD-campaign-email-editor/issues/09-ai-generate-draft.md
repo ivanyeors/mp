@@ -2,7 +2,7 @@
 
 **Issue:** [#363](https://github.com/ivanyeors/mp/issues/363) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** partial: the eval (`pnpm ai:eval-drafts`, scripts/eval-campaign-drafts.ts) is built but has not been run, as it needs a real key; its run measures the 20-second target, settles the default effort and records the cost per draft. The popover and bar at 375px want a look in a browser.
 **Blocked by:** 03 (typed blocks), 04 (the editor), 16 (the AI writing settings). 07 for the
 optional product picker.
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`

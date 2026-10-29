@@ -374,6 +374,9 @@ function contentSchema({ required }: { required: boolean }) {
         z.enum(VARIABLE_KEYS),
         z.string().trim().max(VARIABLE_MAX, most(VARIABLE_MAX)).refine(noTags, NO_TAGS),
       ),
+      // The blocks Claude wrote that no person has edited or kept yet, shown
+      // *Drafted with AI* (slice 09); the send checklist counts any left.
+      aiDrafted: z.array(BlockId).max(CONTENT_LIMITS.blocks).optional(),
     })
     .superRefine((c, ctx) => {
       const seen = new Set<string>();
@@ -418,6 +421,16 @@ export type BlockLink = NonNullable<ImageBlock["link"]>;
 
 /** No blocks yet: where a new campaign starts. */
 export const EMPTY_CAMPAIGN_CONTENT: CampaignContent = { v: CONTENT_VERSION, blocks: [], fallbacks: {} };
+
+/**
+ * Pure — the blocks still marked *Drafted with AI* (slice 09), in order: Claude
+ * wrote them and no person has edited or kept them yet. The send checklist's
+ * advisory (slice 11). An id whose block is gone counts for nothing.
+ */
+export function aiDraftedBlocks(content: CampaignContent): EmailBlock[] {
+  const marked = new Set(content.aiDrafted ?? []);
+  return marked.size ? content.blocks.filter((b) => marked.has(b.id)) : [];
+}
 
 /** Pure — every run of a text block's paragraphs, in order. */
 export function paragraphRuns(paragraphs: readonly Paragraph[]): Run[] {

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Columns2, Heading, Image as ImageIcon, Minus, MousePointerClick, PanelTop, Pilcrow, ShoppingBag, StretchVertical } from "lucide-react";
+import { AiButton } from "@/components/block-editor/ai-button";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 import { RichText } from "@/components/block-editor/rich-text";
 import { richTextFromWords, richTextWords } from "@/components/block-editor/rich-text-doc";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/email-campaigns/content";
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { cn } from "@/lib/utils";
+import { useCampaignAi } from "../ai/ai-context";
 import { Field } from "../field";
 import { ImageField } from "./image-field";
 import { ProductField, ProductsField } from "./products-field";
@@ -143,6 +145,10 @@ function TextRuns({
 }
 
 function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
+    // An empty text block offers to be written from the subject (slice 09), while AI writing is on.
+    const ai = useCampaignAi();
+    const empty = !paragraphRuns(b.paragraphs).some((r) => "var" in r || r.text.trim());
+    const writing = ai?.writing?.id === b.id ? ai.writing.stage : null;
     return (
         <div>
             <TextRuns
@@ -154,6 +160,18 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
                 error={errorAt(errors, "paragraphs")}
                 onSlash={onSlash}
             />
+            {ai && empty && !readOnly ? (
+                <AiButton
+                    variant="ghost"
+                    className="mt-1"
+                    onClick={() => ai.writeBlock(b.id)}
+                    working={writing}
+                    onStop={ai.stop}
+                    disabledReason={writing ? null : ai.reason}
+                >
+                    Write this from the subject
+                </AiButton>
+            ) : null}
         </div>
     );
 }

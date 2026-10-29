@@ -14,7 +14,7 @@ import {
 import { Accessibility, defaultPreset, type DragEndEvent, type DragMoveEvent, type DragOverEvent, type DragStartEvent } from "@dnd-kit/dom";
 import { DragDropProvider, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { ArrowDown, ArrowUp, Copy, GripVertical, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, GripVertical, MoreHorizontal, Plus, Sparkles, Trash2 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -50,6 +50,7 @@ import { VariableTargets } from "./variable-targets";
 const END = "block-editor:end";
 
 const NO_VARIABLES: readonly RichTextVariable[] = [];
+const NO_BADGES: Readonly<Record<string, string>> = {};
 
 /** dnd-kit's events, as its handlers receive them. */
 type StartEvent = Parameters<DragStartEvent>[0];
@@ -92,6 +93,8 @@ interface BlockEditorContext {
   catalogue: Record<string, BlockKind<EditorBlock>>;
   /** The page's Variables, which its text inputs offer and the Variables palette lists. */
   variables: readonly RichTextVariable[];
+  /** A short label on a block's card, by block id: *Drafted with AI*. */
+  badges: Readonly<Record<string, string>>;
   readOnly: boolean;
   /** Why nothing more can be added, or null. */
   full: string | null;
@@ -133,6 +136,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
   max = Infinity,
   newId,
   variables = NO_VARIABLES,
+  badges = NO_BADGES,
   children,
 }: {
   blocks: readonly B[];
@@ -153,6 +157,12 @@ export function BlockEditorRoot<B extends EditorBlock>({
    * land in the `RichText` inside that was last written in.
    */
   variables?: readonly RichTextVariable[];
+  /**
+   * A short label on some blocks' cards, by block id, read with the card's
+   * name: a page's mark that a block still wants a person's eye (slice 09's
+   * *Drafted with AI*).
+   */
+  badges?: Readonly<Record<string, string>>;
   children: ReactNode;
 }) {
   const blocks = given as readonly EditorBlock[];
@@ -186,6 +196,7 @@ export function BlockEditorRoot<B extends EditorBlock>({
     blocks,
     catalogue: cat,
     variables,
+    badges,
     readOnly,
     full,
     noRoom,
@@ -410,7 +421,8 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
   const Icon = kind.icon;
   const Form = kind.Form;
   const Options = kind.Options;
-  const name = `${kind.label}, block ${index + 1} of ${total}`;
+  const badge = ctx.badges[block.id];
+  const name = `${kind.label}, block ${index + 1} of ${total}${badge ? `, ${badge}` : ""}`;
   const props = {
     block,
     onChange: (next: EditorBlock, burst?: string) => ctx.update(index, next, burst),
@@ -471,6 +483,12 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
         )}
         <Icon className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs font-medium text-muted-foreground">{kind.label}</span>
+        {badge ? (
+          <span data-block-badge className="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <Sparkles className="h-3 w-3" aria-hidden />
+            {badge}
+          </span>
+        ) : null}
         {ctx.readOnly ? null : (
           <InsertMenu
             at={index + 1}
