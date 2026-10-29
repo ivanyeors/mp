@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Stop hook: a change a person can see is not finished until it has been
+# looked at. When files that render a page changed since the last preview
+# screenshots, send the agent back once to take them and show the user.
+# (It lets the next stop through, so it never loops.)
+input="$(cat 2>/dev/null || true)"
+case "$input" in *'"stop_hook_active":true'* | *'"stop_hook_active": true'*) exit 0 ;; esac
+root="$(git -C "${CLAUDE_PROJECT_DIR:-.}" rev-parse --show-toplevel 2>/dev/null)" || exit 0
+cd "$root" || exit 0
+start=".preview/session-start"
+[ -f "$start" ] || exit 0
+ref="$start"
+[ -f .preview/last-shot ] && [ .preview/last-shot -nt "$start" ] && ref=.preview/last-shot
+
+base="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+git rev-parse --verify -q origin/main >/dev/null && base=origin/main
+changed="$(
+  {
+    git diff --name-only HEAD 2>/dev/null
+    git ls-files --others --exclude-standard 2>/dev/null
+    [ -n "$base" ] && git diff --name-only "$base"...HEAD 2>/dev/null
+  } | sort -u |
+    grep -E '^(app|components|hooks)/.*\.(tsx|jsx|css|scss)$|^app/\[lang\]/.*\.ts$|^lib/.*\.tsx$|^(public|styles)/' |
+    grep -vE '(^|/)__tests__/|\.(test|spec|check|smoke|stories)\.[jt]sx?$|^app/api/|/route\.ts$' |
+    while IFS= read -r f; do [ -f "$f" ] && [ "$f" -nt "$ref" ] && echo "$f"; done
+)"
+[ -z "$changed" ] && exit 0
+
+count="$(printf '%s\n' "$changed" | wc -l | tr -d ' ')"
+list="$(printf '%s\n' "$changed" | head -5 | paste -sd ',' - | sed 's/,/, /g')"
+[ "$count" -gt 5 ] && list="$list and $((count - 5)) more"
+reason="You changed files that render pages people see ($list) and have not looked at them since. Run the preview skill: \`.claude/skills/preview/preview shoot <each page you changed>\` (see .claude/skills/preview/SKILL.md), read the screenshots, fix anything that looks wrong, and send them to the user with SendUserFile before you finish. If nothing visible changed, run \`.claude/skills/preview/preview skip \"<why>\"\` and say so in one line."
+printf '{"decision":"block","reason":%s}\n' "$(printf '%s' "$reason" | sed 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$/"/')"
+exit 0
