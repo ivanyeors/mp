@@ -236,11 +236,12 @@ describe("a product's price in what is sent", () => {
     reprice("cover-s", 35);
     reprice("cover-l", 35);
     const shown = await readCampaignRenderData(s.admin, c.content);
-    expect(renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan", ...shown }).text).toContain(`FibreCool Cover\n${sgd(35)}`);
+    // Both sizes at one price still read from, as the shop card says (shopCardPrice).
+    expect(renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan", ...shown }).text).toContain(`FibreCool Cover\nfrom ${sgd(35)}`);
     const r = await sendCampaignBatch(c, { wave: "W1", customerIds: [BEA, DAN] }, s);
     expect(r).toMatchObject({ sent: 2, stopped: null });
     for (const email of sent.slice(1)) {
-      expect(email.text).toContain(`FibreCool Cover\n${sgd(35)}`);
+      expect(email.text).toContain(`FibreCool Cover\nfrom ${sgd(35)}`);
       expect(email.html).toContain("/en-US/shop/fibrecool-cover?utm_source=email_campaign&amp;utm_medium=email&amp;utm_campaign=december-launch");
     }
     expect(JSON.stringify(c)).toBe(before);

@@ -3,10 +3,11 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
-import { darkRules, forceDarkMode, renderEmailShell } from "../base";
+import { darkRules, forceDarkMode } from "../base";
 import { productPriceText, renderCampaignBlocksEmail, type CampaignBlockProducts, type CampaignBlocksEmailData } from "../campaign-blocks";
 import { money } from "../format";
 import { LAYOUT } from "../theme";
+import { sideBySide, stacked } from "./column-layout";
 import {
   EMAIL_BLOCK_SAMPLE_IMAGES,
   EMAIL_BLOCK_SAMPLE_PRODUCTS,
@@ -59,24 +60,6 @@ const maxWidth = (el: HTMLElement) => Number(/max-width:(\d+)px/.exec(el.getAttr
 const outlook = (html: string) =>
   parse(html.replace(/<!--\[if !mso\]><!-- -->[\s\S]*?<!--<!\[endif\]-->/g, "").replace(/<!--\[if mso\]>|<!\[endif\]-->/g, ""));
 
-// The shell's phone layout, read from its own <style>.
-const SHELL_STYLE = parse(renderEmailShell({ bodyHtml: "" })).querySelector("style")!.textContent!;
-const PHONE_BELOW = Number(/@media only screen and \(max-width: (\d+)px\)/.exec(SHELL_STYLE)![1]);
-const PHONE_PADDING = Number(/\.mp-pad \{ padding: (\d+)px/.exec(SHELL_STYLE)![1]);
-
-/**
- * The card's inner column on a screen `screen` px wide: what a row of columns
- * has to fit in. `mediaQueries` false is Gmail's apps for an account they
- * ignore media queries for: the card keeps its computer padding.
- */
-function columnOn(screen: number, mediaQueries = true): number {
-  const card = Math.min(LAYOUT.containerWidth, screen - 2 * LAYOUT.outerPadding);
-  const padding = mediaQueries && screen <= PHONE_BELOW ? PHONE_PADDING : LAYOUT.cardPadding;
-  return card - 2 * padding - 2;
-}
-const sideBySide = (cols: HTMLElement[], screen: number, mediaQueries = true) =>
-  cols.reduce((n, c) => n + maxWidth(c), 0) <= columnOn(screen, mediaQueries);
-
 const href = (slug: string) => `${ORIGIN}/en-US/shop/${slug}?${UTM}`;
 /** As the HTML writes it. */
 const hrefAttr = (slug: string) => href(slug).replace(/&/g, "&amp;");
@@ -118,7 +101,7 @@ describe("a products block, side by side", () => {
 
   it("is three 160px columns, or two of 240px, that stack below 480px by width alone, Gmail's apps included", () => {
     const three = columnsOf(grid);
-    expect(three.map(maxWidth)).toEqual([160, 160, 160]);
+    expect(three.map((c) => /min-width:(\d+)px/.exec(c.getAttribute("style")!)![1])).toEqual(["160", "160", "160"]);
     const two = columnsOf(row(send(one({ id: "two", type: "products", products: [SAMPLE_COVER_PRODUCT, SAMPLE_NECK_PRODUCT], layout: "side_by_side", buttonLabel: "Shop now" })).html, "two"));
     expect(two.map(maxWidth)).toEqual([240, 240]);
     for (const cols of [three, two]) {
@@ -126,10 +109,9 @@ describe("a products block, side by side", () => {
       for (const c of cols) expect(c.hasAttribute("class")).toBe(false);
       expect(sideBySide(cols, 1280)).toBe(true);
       expect(sideBySide(cols, 600)).toBe(true);
-      // A phone, with media queries and without (Gmail on Android for a non-Google account): one per row.
+      // A phone, with media queries and without (Gmail's apps for a non-Google account): one per row, never two then one.
       for (const mediaQueries of [true, false]) {
-        expect(sideBySide(cols, 375, mediaQueries)).toBe(false);
-        expect(sideBySide(cols, 479, mediaQueries)).toBe(false);
+        for (const screen of [320, 375, 390, 412, 430, 479]) expect(stacked(cols, screen, mediaQueries), `${cols.length} at ${screen}px`).toBe(true);
       }
     }
   });
@@ -169,13 +151,13 @@ describe("a products block, one per row", () => {
       expect(cols[1].querySelector("h3")).not.toBeNull();
       expect(cols[1].querySelector("a.mp-btn")!.textContent).toBe("See it in the shop");
       expect(sideBySide(cols, 600)).toBe(true);
-      expect(sideBySide(cols, 375, false)).toBe(false);
+      expect(stacked(cols, 375, false)).toBe(true);
     }
   });
 });
 
 describe("a product's price", () => {
-  it("is the shop's: from when its Variants differ, the compare-at struck through only when it is on sale", () => {
+  it("is the shop's: from with several active Variants, the compare-at struck through only when it is on sale", () => {
     expect(productPriceText({ price: 39, compareAt: null, from: true, currency: "SGD" })).toBe(`from ${sgd(39)}`);
     expect(productPriceText({ price: 45, compareAt: 59, from: false, currency: "SGD" })).toBe(`${sgd(45)} (was ${sgd(59)})`);
     expect(productPriceText({ price: 29.5, compareAt: null, from: false, currency: "SGD" })).toBe(sgd(29.5));

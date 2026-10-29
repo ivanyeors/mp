@@ -26,8 +26,9 @@ email is sent (PRD decision 3).
   query the shop uses, and shows:
   - its first image, as an email rendition (slice 05);
   - its title;
-  - its price: the lowest active Variant's price, *"from S$39"* when Variants differ, the
-    compare-at price struck through only when the shop shows one. These come from the
+  - its price: the lowest active Variant's price, *"from S$39"* when it has more than one active
+    Variant, the compare-at price struck through only when the shop shows one: the shop card's
+    own rule (`shopCardPrice`, which the card uses too). These come from the
     Storefront product, which Costings sets (ADR 0001): the email never holds a price of its own;
   - a button to its shop page, with the campaign's UTM parameters.
 - **Readiness**: a check that every product in the campaign is still Listed. An unlisted or

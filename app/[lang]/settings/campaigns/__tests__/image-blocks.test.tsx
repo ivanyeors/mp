@@ -156,6 +156,48 @@ describe("an image block", () => {
     expect(savedContent().blocks[1]).toMatchObject({ image: { asset: PHOTO, decorative: true } });
   });
 
+  it("keeps what Staff change while the image's email copy is being made", async () => {
+    const LATE = "7a2d3c4e-5f60-4a7b-8c9d-0e1f2a3b4c5d";
+    picker.assetId = LATE;
+    let ready!: (r: { ok: true; image: typeof RENDITION }) => void;
+    actions.placeCampaignImage.mockImplementationOnce(() => new Promise((r) => (ready = r)));
+    mount(draftWith({ ...CONTENT, blocks: [...CONTENT.blocks, { id: "note", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Back soon." }] }] }] }));
+    await addBlock("Image");
+    await chooseImage();
+    expect(button("Getting it ready for email…")).not.toBeNull();
+
+    // While it is made: the alt text typed, the title changed, a block deleted.
+    const image = card(2);
+    const alt = image.querySelector<HTMLInputElement>('input[id$="-alt"]')!;
+    typeField(alt, "A cover on a made bed");
+    await settle();
+    await retype(card(0).querySelector<HTMLElement>('[aria-label="Title"]')!.id, "Sleep cooler all December");
+    await choose(button("Actions for Text, block 2")!, "Delete");
+    await act(async () => ready({ ok: true, image: { ...RENDITION, assetId: LATE } }));
+    await settle();
+
+    await act(async () => button("Save changes")!.click());
+    await settle();
+    expect(savedContent().blocks).toEqual([
+      { id: "title", type: "heading", level: 1, text: "Sleep cooler all December" },
+      { id: expect.any(String), type: "image", image: { asset: LATE, alt: "A cover on a made bed" }, width: "full" },
+    ]);
+  });
+
+  it("places nothing when its block is deleted while the email copy is made", async () => {
+    const LATE = "8b3e4d5f-6a71-4b8c-9d0e-1f2a3b4c5d6e";
+    picker.assetId = LATE;
+    let ready!: (r: { ok: true; image: typeof RENDITION }) => void;
+    actions.placeCampaignImage.mockImplementationOnce(() => new Promise((r) => (ready = r)));
+    mount(draftWith(CONTENT));
+    await addBlock("Image");
+    await chooseImage();
+    await choose(button("Actions for Image, block 2")!, "Delete");
+    await act(async () => ready({ ok: true, image: { ...RENDITION, assetId: LATE } }));
+    await settle();
+    expect([...document.querySelectorAll<HTMLElement>("li[data-block-id]")].map((li) => li.dataset.blockId)).toEqual(["title"]);
+  });
+
   it("says why an image can't be used, and places nothing", async () => {
     picker.assetId = "99999999-8888-4777-8666-555555555555";
     actions.placeCampaignImage.mockResolvedValueOnce({ ok: false, error: "That image is no longer in the Media Library." } as never);

@@ -249,8 +249,8 @@ export const STACK_BELOW = 480;
 
 export interface ColumnsOptions {
   /**
-   * The narrowest row, in px, that holds the columns side by side. Each is at
-   * most `stackBelow / n` wide, so on anything narrower they stack.
+   * The narrowest row, in px, that holds the columns side by side: each is
+   * `stackBelow / n` wide there, and on anything narrower they stack.
    */
   stackBelow: number;
   /**
@@ -268,12 +268,21 @@ export interface ColumnsOptions {
 
 /**
  * Columns side by side that stack on a phone (PRD-campaign-email-editor
- * slice 06), built the hybrid way: each is an inline-block `div` at most
- * `stackBelow / n` wide, so the row falls to one column by width alone, with
- * no media query (Gmail's apps ignore them for many accounts), inside an MSO
- * ghost table that keeps the columns side by side in classic Outlook, which
- * ignores `max-width`. Stacked, they read in order: whatever has to come
- * first on a phone goes first, and `reverse` moves it to the right.
+ * slice 06), built the hybrid way: each is an inline-block `div` that is
+ * `stackBelow / n` wide while the row is `stackBelow` or wider and the whole
+ * row below it, so the row falls to one column by width alone, with no media
+ * query (Gmail's apps ignore them for many accounts), inside an MSO ghost
+ * table that keeps the columns side by side in classic Outlook, which ignores
+ * `max-width`. Stacked, they read in order: whatever has to come first on a
+ * phone goes first, and `reverse` moves it to the right.
+ *
+ * Two columns need only `max-width: stackBelow / 2`: once both don't fit,
+ * neither shares a line. Three at `stackBelow / 3` would go two, then one, on
+ * a row between two and three of them wide (most phones), so from three on
+ * each column also takes the row's width below `stackBelow` through calc(),
+ * the "Fab Four": `min-width` holds it at its share above, `max-width:100%`
+ * at the whole row below. Where calc() is dropped (Gmail's apps for a
+ * non-Google account, all phones) `width:100%` stands, and they stack.
  *
  * The wrapper's `font-size:0` removes the gap the markup's whitespace would
  * leave between the columns; every component sets its own size. A column
@@ -283,13 +292,14 @@ export function columns(cellsHtml: readonly string[], opts: ColumnsOptions): str
   const valign = opts.valign ?? "top";
   const ltr = opts.reverse ? ' dir="ltr"' : "";
   const inner = opts.gap || opts.textAlign;
+  const share = `${Math.floor(opts.stackBelow / cellsHtml.length)}px`;
+  const style =
+    cellsHtml.length > 2
+      ? css({ display: "inline-block", width: "100%", "min-width": share, "max-width": "100%", "vertical-align": valign }) +
+        `;width:calc((${opts.stackBelow}px - 100%) * ${opts.stackBelow})`
+      : css({ display: "inline-block", width: "100%", "max-width": share, "vertical-align": valign });
   const column = (cellHtml: string) =>
-    `<div${ltr} style="${css({
-      display: "inline-block",
-      width: "100%",
-      "max-width": `${Math.floor(opts.stackBelow / cellsHtml.length)}px`,
-      "vertical-align": valign,
-    })}">${
+    `<div${ltr} style="${style}">${
       inner ? `<div style="${css({ padding: opts.gap ? `0 ${opts.gap / 2}px` : null, "text-align": opts.textAlign })}">${cellHtml}</div>` : cellHtml
     }</div>`;
   const cell = `<td width="${Math.floor(100 / cellsHtml.length)}%" valign="${valign}"${ltr}>`;

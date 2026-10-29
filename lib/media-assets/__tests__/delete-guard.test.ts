@@ -4,8 +4,9 @@ import type { ImageUsageEntry } from "@/lib/media/image-usages";
 /**
  * Deleting a Media Asset (PRD-campaign-email-editor slice 05): an image an
  * email campaign uses cannot be deleted, not even with *Delete anyway*; any
- * other use can be deleted past, as before. When it goes, its email
- * renditions go with it, and the row goes before the files.
+ * other use can be deleted past, as before. The row goes before the master.
+ * Its email rendition stays where it is: a sent email points at it for good,
+ * and a product's photo is sent with no campaign naming the asset.
  */
 
 const ASSET = {
@@ -28,7 +29,8 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => ({
       select: () => ({
         eq: () => {
-          if (table === "media_asset_renditions") return Promise.resolve({ data: [{ storage_path: `email/${ASSET.id}.jpg` }], error: null });
+          // Never read on a delete: before its migration the table is not there.
+          if (table === "media_asset_renditions") return Promise.resolve({ data: null, error: { code: "PGRST205", message: "Could not find the table 'public.media_asset_renditions'" } });
           return { maybeSingle: async () => ({ data: ASSET, error: null }) };
         },
       }),
@@ -76,11 +78,11 @@ describe("deleteMediaAssetGuarded", () => {
     await expect(deleteMediaAssetGuarded(ASSET.id)).rejects.toMatchObject({ usages: [BLOG], deletable: true });
     expect(h.calls).toEqual([]);
     await deleteMediaAssetGuarded(ASSET.id, { force: true });
-    expect(h.calls).toEqual(["delete media_assets", `remove hero_1.webp, email/${ASSET.id}.jpg`]);
+    expect(h.calls).toEqual(["delete media_assets", "remove hero_1.webp"]);
   });
 
-  it("removes the master and its email renditions, after the row", async () => {
+  it("removes the master after the row, and keeps its email rendition for the emails already sent", async () => {
     await deleteMediaAssetGuarded(ASSET.id);
-    expect(h.calls).toEqual(["delete media_assets", `remove hero_1.webp, email/${ASSET.id}.jpg`]);
+    expect(h.calls).toEqual(["delete media_assets", "remove hero_1.webp"]);
   });
 });

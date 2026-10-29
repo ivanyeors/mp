@@ -897,7 +897,7 @@ _Avoid_: "media" when you mean a landing-page image slot override or a hard-code
 The public URL for an image **Media Asset** served on the site (app storage). Storefront and admin use this for display; responsive delivery is handled at serve time.
 
 **Email rendition**:
-The copy of an image **Media Asset** that an email shows (`media_asset_renditions`, the media bucket's `email/`): a JPEG, or a PNG when the image has transparency, at most 1,200px wide, because classic Outlook shows no WebP **Hosted URL**. Made once per Asset, the first time it is placed in an **Email block**, and reused by every campaign and send; a sent email points at it for good. An image with transparency sits on the email's light plate, so it reads in dark mode (PRD-campaign-email-editor slice 05).
+The copy of an image **Media Asset** that an email shows (`media_asset_renditions`, the media bucket's `email/`): a JPEG, or a PNG when the image has transparency, at most 1,200px wide, because classic Outlook shows no WebP **Hosted URL**. Made once per Asset, the first time it is placed in an **Email block**, and reused by every campaign and send; a sent email points at it for good, so its file stays when the Asset is deleted. An image with transparency sits on the email's light plate, so it reads in dark mode (PRD-campaign-email-editor slice 05).
 _Avoid_: putting the **Hosted URL** in an email; "thumbnail" (it is full size for the email column)
 
 **Drive provenance**:

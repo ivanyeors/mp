@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ImageIcon, Loader2 } from "lucide-react";
 import { typingBurst } from "@/components/block-editor/use-editor-history";
 import { Button } from "@/components/ui/button";
@@ -89,16 +89,33 @@ export function ImageField({
     const altId = `${idPrefix}-alt`;
     const decorativeId = `${idPrefix}-decorative`;
     const decorative = allowDecorative && Boolean(image.decorative);
+    // The block as it is now: Staff keep editing while a first rendition is made,
+    // and the choice lands on what they did meanwhile, not on the block as it was.
+    const latest = useRef({ image, onChange });
+    useLayoutEffect(() => {
+        latest.current = { image, onChange };
+    });
+    const live = useRef(true);
+    useEffect(() => {
+        live.current = true;
+        return () => {
+            live.current = false;
+        };
+    }, []);
 
     const pick = async (selection: AssetSelection) => {
+        const altWhenChosen = image.alt;
         setPlacing(true);
         setPickError(null);
         const res = await place(selection.assetId);
+        // Its block was deleted meanwhile: nothing to place it in.
+        if (!live.current) return;
         setPlacing(false);
         if (!res.ok) return setPickError(res.error);
-        // The asset's own alt text when it has some; a first image keeps what was typed.
-        const alt = selection.alt?.trim().slice(0, CONTENT_LIMITS.alt) || (image.asset ? "" : image.alt);
-        onChange({ ...image, asset: selection.assetId, alt });
+        const { image: now, onChange: change } = latest.current;
+        // Alt text typed meanwhile stays; else the asset's own when it has some; a first image keeps what was typed.
+        const alt = now.alt !== altWhenChosen ? now.alt : selection.alt?.trim().slice(0, CONTENT_LIMITS.alt) || (now.asset ? "" : now.alt);
+        change({ ...now, asset: selection.assetId, alt });
     };
     const imageError = pickError ?? errors["image.asset"] ?? (shown && !shown.ok ? shown.error : null);
     const chooseButton = (busy: boolean) => (

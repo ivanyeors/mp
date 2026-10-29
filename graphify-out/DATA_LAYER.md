@@ -340,7 +340,7 @@ Changed from pages: `/settings/discounts/[id]`, `/settings/media`, `/settings/pr
 Defined in supabase/migrations/0028_ecommerce.sql:194
 References: `collections`, `products`
 - Read by:
-  - `getProducts()` [select] — lib/ecommerce/products.ts:139
+  - `getProducts()` [select] — lib/ecommerce/products.ts:141
 
 ### commissions
 Defined in supabase/migrations/20260728020000_commissions.sql:25
@@ -787,19 +787,19 @@ References: `admin_users`, `media_folders`
 Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/discounts/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/media`, `/settings/page-builder`, `/settings/partners`, `/settings/products`, `/settings/products/[id]`
 - Written by:
   - `backfillMediaAssetsFromBucket()` [insert,select] — lib/media-assets/index.ts:329
-  - `createMediaAsset()` [insert] — lib/media-assets/index.ts:154
-  - `deleteMediaAsset()` [delete] — lib/media-assets/index.ts:229
-  - `patchMediaAssetHosted()` [update] — lib/media-assets/index.ts:245
+  - `createMediaAsset()` [insert] — lib/media-assets/index.ts:153
+  - `deleteMediaAsset()` [delete] — lib/media-assets/index.ts:228
+  - `patchMediaAssetHosted()` [update] — lib/media-assets/index.ts:244
   - `touchLastUsed()` [update] — lib/media-assets/index.ts:302
-  - `updateMediaAsset()` [update] — lib/media-assets/index.ts:174
+  - `updateMediaAsset()` [update] — lib/media-assets/index.ts:173
 - Read by:
   - `DELETE()` [select] — app/api/media/[path]/route.ts:35
   - `GET()` [select] — app/api/results/addons/route.ts:79
-  - `ensureEmailRenditions()` [select] — lib/media-assets/email-renditions.ts:102
+  - `ensureEmailRenditions()` [select] — lib/media-assets/email-renditions.ts:103
   - `getItemImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:431
-  - `getMediaAsset()` [select] — lib/media-assets/index.ts:112
-  - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:126
-  - `listMediaAssets()` [select] — lib/media-assets/index.ts:93
+  - `getMediaAsset()` [select] — lib/media-assets/index.ts:111
+  - `getMediaAssetByDriveFileId()` [select] — lib/media-assets/index.ts:125
+  - `listMediaAssets()` [select] — lib/media-assets/index.ts:92
   - `loadImage()` [select] — lib/ecommerce/item-image-sync.ts:27
   - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:127
 
@@ -807,11 +807,11 @@ Changed from pages: `/settings/blogs`, `/settings/blogs/[id]`, `/settings/campai
 Defined in supabase/migrations/20260710080000_media_folders.sql:3
 Changed from pages: `/settings/blogs/[id]`, `/settings/campaigns/[id]`, `/settings/campaigns/new`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/media`, `/settings/page-builder`, `/settings/partners`, `/settings/products`, `/settings/products/[id]`
 - Written by:
-  - `createMediaFolder()` [insert] — lib/media-assets/index.ts:197
-  - `deleteMediaFolder()` [delete] — lib/media-assets/index.ts:224
-  - `updateMediaFolder()` [update] — lib/media-assets/index.ts:213
+  - `createMediaFolder()` [insert] — lib/media-assets/index.ts:196
+  - `deleteMediaFolder()` [delete] — lib/media-assets/index.ts:223
+  - `updateMediaFolder()` [update] — lib/media-assets/index.ts:212
 - Read by:
-  - `listMediaFolders()` [select] — lib/media-assets/index.ts:185
+  - `listMediaFolders()` [select] — lib/media-assets/index.ts:184
 
 ### milestone_bonuses
 Defined in supabase/migrations/20260728030000_milestones.sql:42
@@ -1359,9 +1359,9 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `POST()` [select] — app/api/shop/products/[id]/variants/route.ts:60
   - `getAdminProduct()` [select] — lib/ecommerce/admin/products.ts:92
   - `getComposedProductImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:466
-  - `getFeaturedProducts()` [select] — lib/ecommerce/products.ts:188
-  - `getProductBySlug()` [select] — lib/ecommerce/products.ts:163
-  - `getProducts()` [select] — lib/ecommerce/products.ts:93
+  - `getFeaturedProducts()` [select] — lib/ecommerce/products.ts:190
+  - `getProductBySlug()` [select] — lib/ecommerce/products.ts:165
+  - `getProducts()` [select] — lib/ecommerce/products.ts:95
   - `handleApplyBolster()` [select] — app/api/shop/customize/route.ts:684
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:130
   - `listAdminProducts()` [select] — lib/ecommerce/admin/products.ts:45
@@ -1682,9 +1682,7 @@ Defined in supabase/migrations/20261021100000_email_campaigns.sql:265
 Defined in supabase/migrations/20261030050000_media_asset_renditions.sql:20
 References: `media_assets`
 - Written by:
-  - `ensureEmailRenditions()` [select,upsert] — lib/media-assets/email-renditions.ts:91
-- Read by:
-  - `emailRenditionPathsOf()` [select] — lib/media-assets/email-renditions.ts:156
+  - `ensureEmailRenditions()` [select,upsert] — lib/media-assets/email-renditions.ts:92
 
 ### migrated_customers
 Defined in supabase/migrations/20261020100000_customer_import.sql:52
@@ -2216,7 +2214,7 @@ Defined in supabase/migrations/20260630120000_variant_stock_bolster.sql:10
 - Read by:
   - `GET()` [select] — app/api/shop/stock/route.ts:32
   - `POST()` [select] — app/api/shop/checkout/route.ts:234
-  - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:19
+  - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:21
 
 ## Pages
 
@@ -2592,7 +2590,7 @@ app/[lang]/settings/media/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-assets [GET,POST]`, `/api/media-assets/[id] [PATCH]`, `/api/media-assets/[id]/reimport [POST]`, `/api/media-assets/[id]/usage [GET]`, `/api/media-folders [GET,POST]`, `/api/media-folders/[id] [PATCH]`, `/api/media/drive/browse [GET]`, `/api/media/drive/resolve [GET]`, `/api/media/import/drive [POST]`, `/api/media/replace [POST]`, `/api/media/usage [GET]`, `/api/site-settings [DELETE,GET,PUT]`
 - Loads: `loadMediaGallerySeed()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `blog_posts`, `categories`, `landing_sections`, `media_assets`, `media_folders`, `mp_staff`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`
-- Reads, through the same: `admin_roles`, `admin_users`, `email_campaigns`, `item_overlay_mappings`, `items`, `media_asset_renditions`
+- Reads, through the same: `admin_roles`, `admin_users`, `email_campaigns`, `item_overlay_mappings`, `items`
 
 ### /settings/orders
 app/[lang]/settings/orders/page.tsx

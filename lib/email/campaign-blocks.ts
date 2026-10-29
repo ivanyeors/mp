@@ -121,7 +121,7 @@ export interface CampaignBlockProduct {
   price: number;
   /** That Variant's compare-at price, struck through, when the shop shows one; else null. */
   compareAt: number | null;
-  /** Its active Variants differ in price, so the price is a *from*. */
+  /** It has more than one active Variant, so the price is a *from*, as the shop card says (`shopCardPrice`). */
   from: boolean;
   currency: string;
 }

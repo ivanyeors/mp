@@ -27,6 +27,7 @@ import {
     type EmailBlock,
     type ImageLinkTarget,
     type ImageWidth,
+    type Paragraph,
     type ProductLayout,
     type SpacerSize,
     type SplitSide,
@@ -61,31 +62,20 @@ const FieldError = ({ text }: { text?: string | null }) => (text ? <p className=
 const errorAt = (errors: Record<string, string>, path: string) =>
     errors[path] ?? Object.entries(errors).find(([k]) => k.startsWith(`${path}.`))?.[1];
 
-/**
- * A heading's words as they read, in one line, with Variables as chips (slice
- * 13). Stored as a string, each Variable written `{first_name}`, as the
- * subject is.
- */
+/** A heading's words as they read, in one line, with Variables as chips (`VariableLine`). */
 function HeadingForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"heading">>) {
-    const id = `${idPrefix}-text`;
-    const variables = useCampaignVariables();
-    const value = useMemo(() => richTextFromWords(b.text, variables), [b.text, variables]);
-    const error = errorAt(errors, "text") ?? unknownVariableMessage(b.text);
     return (
         <div>
-            <RichText
-                id={id}
-                singleLine
-                aria-label={b.level === 1 ? "Title" : "Heading"}
-                aria-invalid={Boolean(error)}
-                value={value}
-                variables={variables}
-                placeholder={CONTENT_PLACEHOLDERS.heading}
+            <VariableLine
+                id={`${idPrefix}-text`}
+                label={b.level === 1 ? "Title" : "Heading"}
+                text={b.text}
+                onChange={(text, burst) => onChange({ ...b, text }, burst)}
                 readOnly={readOnly}
-                onChange={(next, how) => onChange({ ...b, text: richTextWords(next) }, how.paste ? undefined : id)}
+                error={errorAt(errors, "text")}
+                placeholder={CONTENT_PLACEHOLDERS.heading}
                 className={cn("border-transparent px-2 py-1 font-semibold tracking-tight shadow-none hover:border-input", b.level === 1 ? "text-2xl md:text-2xl" : "text-lg md:text-lg")}
             />
-            <FieldError text={error} />
         </div>
     );
 }
@@ -105,26 +95,65 @@ function HeadingOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"hea
     );
 }
 
-function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
-    const id = `${idPrefix}-text`;
+/**
+ * A text block's words, in paragraphs and bullets with bold, italic and
+ * links, and Variables as chips (slice 13): a text block's, and the words
+ * beside an image + text's image. `also` is a check of the block's own, shown
+ * after the Variables'.
+ */
+function TextRuns({
+    id,
+    label,
+    paragraphs,
+    onChange,
+    readOnly,
+    error,
+    also,
+    onSlash,
+}: {
+    id: string;
+    label: string;
+    paragraphs: Paragraph[];
+    onChange: (next: Paragraph[], burst?: string) => void;
+    readOnly: boolean;
+    error?: string;
+    also?: string | null;
+    onSlash?: () => void;
+}) {
     const variables = useCampaignVariables();
-    const value = useMemo(() => richTextOf(b.paragraphs), [b.paragraphs]);
-    const error = errorAt(errors, "paragraphs") ?? unknownVariableMessage(richTextWords(value));
+    const value = useMemo(() => richTextOf(paragraphs), [paragraphs]);
+    const shown = error ?? unknownVariableMessage(richTextWords(value)) ?? also;
     return (
-        <div>
+        <>
             <RichText
                 id={id}
-                aria-label="Text"
-                aria-invalid={Boolean(error)}
+                aria-label={label}
+                aria-invalid={Boolean(shown)}
                 value={value}
                 marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
                 variables={variables}
                 placeholder={CONTENT_PLACEHOLDERS.text}
                 readOnly={readOnly}
                 onSlash={onSlash}
-                onChange={(next, how) => onChange({ ...b, paragraphs: paragraphsOf(next) }, how.paste ? undefined : id)}
+                onChange={(next, how) => onChange(paragraphsOf(next), how.paste ? undefined : id)}
             />
-            <FieldError text={error} />
+            <FieldError text={shown} />
+        </>
+    );
+}
+
+function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
+    return (
+        <div>
+            <TextRuns
+                id={`${idPrefix}-text`}
+                label="Text"
+                paragraphs={b.paragraphs}
+                onChange={(paragraphs, burst) => onChange({ ...b, paragraphs }, burst)}
+                readOnly={readOnly}
+                error={errorAt(errors, "paragraphs")}
+                onSlash={onSlash}
+            />
         </div>
     );
 }
@@ -400,9 +429,10 @@ function OneButtonFields({
 }
 
 /**
- * A one-line field of a block's words that takes Variables as chips, as a
- * heading's does (slice 13): a hero's heading and line, an image + text's
- * heading. Stored as a string, each Variable written `{first_name}`.
+ * A one-line field of a block's words that takes Variables as chips (slice
+ * 13): a heading block's, a hero's heading and line, an image + text's
+ * heading. Stored as a string, each Variable written `{first_name}`, as the
+ * subject is.
  */
 function VariableLine({
     id,
@@ -562,13 +592,6 @@ const splitLength = (b: Split) => paragraphRuns(b.paragraphs).reduce((n, r) => n
  */
 function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Split>) {
     const headingId = `${idPrefix}-heading`;
-    const textId = `${idPrefix}-text`;
-    const variables = useCampaignVariables();
-    const value = useMemo(() => richTextOf(b.paragraphs), [b.paragraphs]);
-    const textError =
-        errorAt(errors, "paragraphs") ??
-        unknownVariableMessage(richTextWords(value)) ??
-        (splitLength(b) > CONTENT_LIMITS.splitText ? `At most ${CONTENT_LIMITS.splitText} characters.` : null);
     const x = b.button;
     return (
         <div className="@container">
@@ -597,18 +620,15 @@ function SplitForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockForm
                         />
                     </div>
                     <div>
-                        <RichText
-                            id={textId}
-                            aria-label="Text beside the image"
-                            aria-invalid={Boolean(textError)}
-                            value={value}
-                            marks={{ bold: true, italic: true, bullets: true, link: isHttpsUrl }}
-                            variables={variables}
-                            placeholder={CONTENT_PLACEHOLDERS.text}
+                        <TextRuns
+                            id={`${idPrefix}-text`}
+                            label="Text beside the image"
+                            paragraphs={b.paragraphs}
+                            onChange={(paragraphs, burst) => onChange({ ...b, paragraphs }, burst)}
                             readOnly={readOnly}
-                            onChange={(next, how) => onChange({ ...b, paragraphs: paragraphsOf(next) }, how.paste ? undefined : textId)}
+                            error={errorAt(errors, "paragraphs")}
+                            also={splitLength(b) > CONTENT_LIMITS.splitText ? `At most ${CONTENT_LIMITS.splitText} characters.` : null}
                         />
-                        <FieldError text={textError} />
                     </div>
                     {x ? (
                         <div className="space-y-3">

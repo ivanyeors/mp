@@ -18,9 +18,9 @@ export async function DELETE(
     if (!path) {
         return NextResponse.json({ error: "No file path provided" }, { status: 400 });
     }
-    // An email rendition goes with its image, never by itself: a sent email points at it.
+    // An email rendition is never deleted: a sent email points at it for good.
     if (path.startsWith(`${EMAIL_RENDITION_FOLDER}/`)) {
-        return NextResponse.json({ error: "An email copy is removed with its image." }, { status: 400 });
+        return NextResponse.json({ error: "An email copy stays for the emails that show it." }, { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);

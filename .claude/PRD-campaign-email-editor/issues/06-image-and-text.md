@@ -28,7 +28,9 @@ above the words, in Gmail's app too.
 - [ ] Two columns at 600px; one column at 375px, image first, in Gmail (web, iOS, Android),
   Apple Mail and new Outlook; two columns held in classic Outlook (slice 12's matrix).
 - [ ] The text side keeps 16px body text and line-height 1.5 when stacked.
-- [ ] The rendered row stays under 3 KB of HTML, so a six-row email is far from Gmail's clip.
+- [ ] The rendered row stays under 3 KB of HTML, not counting its button when it has one (the
+  Outlook-safe button every email shares, about 1.5 KB), so six rows, each with a button, stay
+  under 40% of Gmail's 102 KB clip, the shell included.
 - [ ] Light and dark need no setting: the column's classes are in the shell's dark list and pass
   slice 15's coverage test.
 

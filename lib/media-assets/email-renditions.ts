@@ -7,7 +7,8 @@
  * transparency, at most 1,200px wide, stored in the media bucket under
  * `email/` and recorded in `media_asset_renditions`. One per asset, made the
  * first time it is placed and reused by every campaign and every send after:
- * a sent email points at that address for good.
+ * a sent email points at that address for good, so its file stays in the
+ * bucket even when its asset is deleted (`deleteMediaAssetGuarded`).
  *
  * Server only. The client is passed in, so a test can hand it a fake.
  */
@@ -149,11 +150,4 @@ export async function ensureEmailRenditions(
     }
   }
   return { renditions, failed };
-}
-
-/** The bucket objects of an asset's renditions: removed with the asset, which the table's rows follow. */
-export async function emailRenditionPathsOf(admin: SupabaseClient, assetId: string): Promise<string[]> {
-  const { data, error } = await admin.from("media_asset_renditions").select("storage_path").eq("asset_id", assetId);
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as { storage_path: string }[]).map((r) => r.storage_path);
 }

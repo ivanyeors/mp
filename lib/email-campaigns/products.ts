@@ -82,7 +82,7 @@ export function shopProductCard(row: ProductRow, locale: Locale = DEFAULT_LOCALE
     id: row.id,
     title: titleOf(row, locale),
     photoUrl: firstImage(row)?.url ?? null,
-    price: listed && price ? productPriceText({ price: price.price, compareAt: price.compareAt, from: price.varies, currency: price.currency }) : null,
+    price: listed && price ? productPriceText({ price: price.price, compareAt: price.compareAt, from: price.from, currency: price.currency }) : null,
     listed,
   };
 }
@@ -147,7 +147,7 @@ export async function readCampaignProducts(
         image: asset ? { asset } : null,
         price: price.price,
         compareAt: price.compareAt,
-        from: price.varies,
+        from: price.from,
         currency: price.currency,
       };
     }

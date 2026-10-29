@@ -16,7 +16,8 @@ is measured (PRD *Open*, D).
 
 ## Steps
 
-1. **Apply the migrations** from slices 03 and 13 to production. Confirm every existing campaign
+1. **Apply the migrations** from slices 03, 05 and 13 to production (05's makes the email
+   renditions' table; no image can be placed without it). Confirm every existing campaign
    still opens with its words unchanged (the legacy plain-text path), and reads well in dark
    mode (slice 15).
 2. **AI writing settings.** On Admin Panel → General → AI writing (slice 16), check the defaults

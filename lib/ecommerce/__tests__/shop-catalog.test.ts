@@ -31,7 +31,7 @@ describe("isListedShopProduct (CONTEXT.md, Listed)", () => {
   });
 });
 
-describe("shopCardPrice: what components/shop/product-card.tsx shows", () => {
+describe("shopCardPrice: what components/shop/product-card.tsx and an email's products block show", () => {
   const v = (price: number, over: { compare_at_price?: number | null; is_active?: boolean } = {}) => ({
     price,
     compare_at_price: over.compare_at_price ?? null,
@@ -40,12 +40,14 @@ describe("shopCardPrice: what components/shop/product-card.tsx shows", () => {
   });
 
   it("is one Variant's price, as it is", () => {
-    expect(shopCardPrice([v(29.5)])).toEqual({ price: 29.5, compareAt: null, varies: false, currency: "SGD" });
+    expect(shopCardPrice([v(29.5)])).toEqual({ price: 29.5, compareAt: null, from: false, currency: "SGD" });
   });
 
-  it("is the cheapest active Variant's when there are several, and says when they differ", () => {
-    expect(shopCardPrice([v(49), v(39), v(19, { is_active: false })])).toEqual({ price: 39, compareAt: null, varies: true, currency: "SGD" });
-    expect(shopCardPrice([v(39), v(39)])).toMatchObject({ price: 39, varies: false });
+  it("is the cheapest active Variant's when there are several, from that price", () => {
+    expect(shopCardPrice([v(49), v(39), v(19, { is_active: false })])).toEqual({ price: 39, compareAt: null, from: true, currency: "SGD" });
+    // Sizes priced alike still read From, as the card has always said.
+    expect(shopCardPrice([v(39), v(39)])).toMatchObject({ price: 39, from: true });
+    expect(shopCardPrice([v(39), v(49, { is_active: false })])).toMatchObject({ price: 39, from: false });
   });
 
   it("carries that Variant's compare-at only when it is above the price, as the card strikes it through", () => {

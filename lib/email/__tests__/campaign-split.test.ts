@@ -7,6 +7,7 @@ import { darkRules, renderEmailShell } from "../base";
 import { renderCampaignBlocksEmail, type CampaignBlocksEmailData } from "../campaign-blocks";
 import { button, buttonPair, columns, STACK_BELOW, type ButtonOptions } from "../components";
 import { LAYOUT, TYPE } from "../theme";
+import { linesOn, sideBySide, stacked } from "./column-layout";
 import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLES, SAMPLE_CUTOUT_ASSET, SAMPLE_PHOTO_ASSET } from "../__fixtures__/samples";
 import { CONTENT_PLACEHOLDERS, emptyBlock, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
@@ -58,33 +59,39 @@ function sentRow(html: string, id: string): string {
 
 /** A row's columns, as every reader but classic Outlook lays them out: the inline-block divs in its cell. */
 const columnsOf = (rowEl: Element) => [...rowEl.querySelectorAll<HTMLElement>(":scope > table > tbody > tr > td > div")];
-const maxWidth = (el: HTMLElement) => Number(/max-width:(\d+)px/.exec(el.getAttribute("style") ?? "")![1]);
 
-// The shell's phone layout, read from its own <style>.
+// The shell's <style>, for what it does on a phone.
 const SHELL_STYLE = parse(renderEmailShell({ bodyHtml: "" })).querySelector("style")!.textContent!;
-const PHONE_BELOW = Number(/@media only screen and \(max-width: (\d+)px\)/.exec(SHELL_STYLE)![1]);
-const PHONE_PADDING = Number(/\.mp-pad \{ padding: (\d+)px/.exec(SHELL_STYLE)![1]);
-
-/** The card's inner column on a screen `screen` px wide: what a row of columns has to fit in. */
-function columnOn(screen: number): number {
-  const card = Math.min(LAYOUT.containerWidth, screen - 2 * LAYOUT.outerPadding);
-  const padding = screen <= PHONE_BELOW ? PHONE_PADDING : LAYOUT.cardPadding;
-  return card - 2 * padding - 2;
-}
-
-/** Inline-blocks sit side by side while they fit the line, and stack, in their order, when they don't. */
-const sideBySide = (cols: HTMLElement[], screen: number) => cols.reduce((n, c) => n + maxWidth(c), 0) <= columnOn(screen);
 
 describe("the column primitive", () => {
-  it("is hybrid: inline-block columns at most stackBelow / n wide, inside an MSO ghost table", () => {
-    const html = columns(["<p>A</p>", "<p>B</p>", "<p>C</p>"], { stackBelow: 480 });
+  it("is hybrid: two inline-block columns at most stackBelow / 2 wide, inside an MSO ghost table", () => {
+    const html = columns(["<p>A</p>", "<p>B</p>"], { stackBelow: 480 });
     const cols = columnsOf(parse(html).body);
-    expect(cols).toHaveLength(3);
+    expect(cols).toHaveLength(2);
     for (const c of cols) {
-      expect(c.getAttribute("style")).toBe("display:inline-block;width:100%;max-width:160px;vertical-align:top");
+      expect(c.getAttribute("style")).toBe("display:inline-block;width:100%;max-width:240px;vertical-align:top");
     }
     // The wrapper sets no size of its own for words: font-size:0 only closes the gaps between columns.
     expect(parse(html).querySelector("td")!.getAttribute("style")).toBe("text-align:center;font-size:0");
+    const ghost = outlook(html).querySelectorAll("table table td");
+    expect([...ghost].map((td) => [td.getAttribute("width"), td.getAttribute("valign"), td.textContent])).toEqual([
+      ["50%", "top", "A"],
+      ["50%", "top", "B"],
+    ]);
+  });
+
+  it("stacks three or more all at once below stackBelow, never two then one", () => {
+    const html = columns(["<p>A</p>", "<p>B</p>", "<p>C</p>"], { stackBelow: 480 });
+    const cols = columnsOf(parse(html).body);
+    for (const c of cols) {
+      // Each stackBelow / n wide at stackBelow and over, and the whole row below it (calc() drops to the whole row).
+      expect(c.getAttribute("style")).toBe("display:inline-block;width:100%;min-width:160px;max-width:100%;vertical-align:top;width:calc((480px - 100%) * 480)");
+    }
+    expect(linesOn(cols, 1280)).toEqual([3]);
+    expect(linesOn(cols, 600)).toEqual([3]);
+    for (const mediaQueries of [true, false]) {
+      for (const screen of [320, 375, 412, 430, 479, 520]) expect(linesOn(cols, screen, mediaQueries), `${screen}px`).toEqual([1, 1, 1]);
+    }
     const ghost = outlook(html).querySelectorAll("table table td");
     expect([...ghost].map((td) => [td.getAttribute("width"), td.getAttribute("valign"), td.textContent])).toEqual([
       ["33%", "top", "A"],
@@ -144,7 +151,8 @@ describe("an image + text block", () => {
       expect(sideBySide(cols, 1280)).toBe(true);
       expect(sideBySide(cols, 600)).toBe(true);
       // A phone: one column, in the row's order, so the image is on top.
-      expect(sideBySide(cols, 375)).toBe(false);
+      expect(stacked(cols, 375)).toBe(true);
+      expect(stacked(cols, 479)).toBe(true);
       expect(cols[0].querySelector("img")).not.toBeNull();
       expect(cols[1].querySelector("h2")).not.toBeNull();
     }
@@ -205,7 +213,7 @@ describe("an image + text block", () => {
     };
     expect(bytes(sentRow(send(one(goal)).html, "row"))).toBeLessThan(3 * 1024);
     // A button adds the Outlook-safe one every email uses (its VML and its
-    // table, about 1.6 KB): the row around it stays under 3 KB.
+    // table, about 1.5 KB): the row around it stays under 3 KB (slice 06 criterion).
     const withButton = { ...goal, button: { label: "Shop the covers", target: "shop", style: "primary" } } as EmailBlock;
     const cta = button({ href: SHOP, label: "Shop the covers", align: "left", maxWidth: STACK_BELOW / 2 - LAYOUT.gutter });
     const sent = sentRow(send(one(withButton)).html, "row");
