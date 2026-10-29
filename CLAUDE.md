@@ -32,6 +32,23 @@ Design and build for this platform alone:
 - **Shopify-era facts become this platform's data.** Settle them once, during
   the migration. Do not build a feature around Shopify to carry them.
 
+## Show what you changed
+
+After any change a person can see (a page, component, layout, style, chart,
+copy or empty state), use the **preview** skill before you say the work is
+done. It runs the real app on made-up sample data, signs in as an Owner, and
+screenshots each page at desktop and phone width:
+
+```bash
+.claude/skills/preview/preview shoot /settings/orders "/settings/analytics?tab=stock"
+```
+
+Read every screenshot, fix what looks wrong, and send them to the user with
+`SendUserFile`, saying the figures are sample data. A Stop hook sends you back
+once if files that render pages changed since the last screenshots. Options,
+how to add sample data, and what is real in the preview:
+`.claude/skills/preview/SKILL.md`.
+
 ## Commit author
 
 Every commit in this repository is authored as

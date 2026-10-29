@@ -6708,9 +6708,9 @@
     "semantic_hash": ""
   },
   ".claude/settings.json": {
-    "mtime": 1793088377.660938,
-    "seen": 1793255952.4368532,
-    "ast_hash": "76ce4217aca35efe67ce13ed4b059d60",
+    "mtime": 1793266832.6285279,
+    "seen": 1793267125.2771935,
+    "ast_hash": "fe2d317b7d55896c706f57e04b6c8da0",
     "semantic_hash": ""
   },
   "scripts/graphify": {
@@ -6720,9 +6720,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1793255588.2114377,
-    "seen": 1793255952.4417682,
-    "ast_hash": "c3d9a05bd2c88432c4e03d2468a21afb",
+    "mtime": 1793266999.1085377,
+    "seen": 1793267125.2815418,
+    "ast_hash": "b5854ce85842d9faa1c17a1f2d52af4d",
     "semantic_hash": ""
   },
   "scripts/graphify-digest.py": {
@@ -15867,6 +15867,60 @@
     "mtime": 1793255613.4665864,
     "seen": 1793255952.4418967,
     "ast_hash": "24fbc95ccaa4f6075252a9b8c2ecc403",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/analytics.mjs": {
+    "mtime": 1793266779.8805246,
+    "seen": 1793267125.2772176,
+    "ast_hash": "1149ccc972d66172cbca4476716965e7",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/base.mjs": {
+    "mtime": 1793266371.9565005,
+    "seen": 1793267125.27722,
+    "ast_hash": "9ff6121547884b3537a4ee167d7805e9",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/lib/fake-supabase.mjs": {
+    "mtime": 1793267015.0568354,
+    "seen": 1793267125.2772224,
+    "ast_hash": "17a98ab1c357592d26637204d39e64ca",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/lib/postgrest.mjs": {
+    "mtime": 1793266199.9724903,
+    "seen": 1793267125.277227,
+    "ast_hash": "c7e3e705688ccd8cd5246a73f6e13120",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/lib/schema.mjs": {
+    "mtime": 1793266070.3261101,
+    "seen": 1793267125.2772305,
+    "ast_hash": "954e1cdd77c277f6e58b02fc184ad598",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/lib/shoot.mjs": {
+    "mtime": 1793266979.6325366,
+    "seen": 1793267125.2772324,
+    "ast_hash": "2b202909691395c748378b65684788f2",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/preview": {
+    "mtime": 1793266931.0132222,
+    "seen": 1793267125.2772348,
+    "ast_hash": "81aeedc42e03e6759f9b948f8b22de6a",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/selftest.mjs": {
+    "mtime": 1793267015.0575163,
+    "seen": 1793267125.277237,
+    "ast_hash": "ffdcf196561b33fb860e119a57aa8222",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/SKILL.md": {
+    "mtime": 1793266871.53653,
+    "seen": 1793267125.2815022,
+    "ast_hash": "f87da9ab036abc76e0853fd36a6c959b",
     "semantic_hash": ""
   }
 }

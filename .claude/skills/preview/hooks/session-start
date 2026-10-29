@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# SessionStart hook: note when this session began, so stop-check only counts
+# files changed from here on (a fresh clone's files all look new).
+# A compaction continues the same session, so it keeps the earlier stamp.
+input="$(cat 2>/dev/null || true)"
+case "$input" in *'"source":"compact"'* | *'"source": "compact"'*) exit 0 ;; esac
+root="$(git -C "${CLAUDE_PROJECT_DIR:-.}" rev-parse --show-toplevel 2>/dev/null)" || exit 0
+mkdir -p "$root/.preview" && touch "$root/.preview/session-start"
+exit 0
