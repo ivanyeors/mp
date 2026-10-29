@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/scripts/git-identity\""
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/skills/preview/hooks/session-start\""
           }
         ]
       }
@@ -17,6 +21,17 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/scripts/graph-hint\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/skills/preview/hooks/stop-check\"",
+            "timeout": 20
           }
         ]
       }
