@@ -374,9 +374,9 @@ function Chart({
 
 /** The two total rows arrive labelled `total[YYYY-MM-DD]`; show them as a date people read. */
 function readableLabel(row: MovementRow): string {
-  const m = /^total\[(\d{4})-(\d{2})-(\d{2})\]$/.exec(row.label);
+  const m = /^(Opening|Closing) (\d{4})-(\d{2})-(\d{2})$/.exec(row.label);
   if (!m) return row.label;
-  return `Total · ${format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), "d MMM yyyy")}`;
+  return `${m[1]} · ${format(new Date(Number(m[2]), Number(m[3]) - 1, Number(m[4])), "d MMM yyyy")}`;
 }
 
 export function InventoryMovementWaterfallVisx({

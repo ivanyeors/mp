@@ -29,7 +29,7 @@ import {
   buildCheckoutCustomizationSnapshot,
   resolveCustomizationProductType,
 } from "@/lib/ecommerce/customization-product-type";
-import { resolveOrderItemUnitCost } from "@/lib/ecommerce/order-cost";
+import { orderLinesCosts } from "@/lib/ecommerce/order-line-cost";
 import { validateCustomizationConfig } from "@/lib/shop/customization-inventory";
 import { quoteCustomization } from "@/lib/shop/customization-quote";
 import type { ComposedSellableKey } from "@/lib/results/composed-sellable";
@@ -425,100 +425,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // 5c. Load item costs and base BOM quantities for customized items (cost snapshot)
-  const costByItem = new Map<number, number>();
-  const baseQuantitiesByCustomization = new Map<string, Map<number, number>>();
-
-  if (customizedItems.length > 0) {
-    const itemIds = new Set<number>();
-    for (const cfg of customizationMap.values()) {
-      for (const cl of cfg.config_lines as ConfigLine[]) itemIds.add(cl.item_id);
-      for (const fl of cfg.filling_lines as FillingLine[]) itemIds.add(fl.item_id);
-    }
-
-    if (itemIds.size > 0) {
-      const { data: priceRows, error: priceError } = await admin
-        .from("item_prices")
-        .select("item_id, cost_price")
-        .in("item_id", [...itemIds]);
-
-      if (priceError) {
-        return NextResponse.json({ error: "Failed to load item costs" }, { status: 500 });
-      }
-
-      for (const row of priceRows ?? []) {
-        if (row.cost_price != null) {
-          costByItem.set(row.item_id, parseFloat(String(row.cost_price)));
-        }
-      }
-    }
-
-    const pillowProductIds = new Set<number>();
-    const bolsterVariants = new Set<BolsterVariant>();
-    for (const [id, cfg] of customizationMap) {
-      const productType = resolveCustomizationProductType(cfg);
-      if (productType === "pillow" && cfg.pillow_product_id) {
-        pillowProductIds.add(cfg.pillow_product_id);
-      } else if (productType === "bolster" && cfg.bolster_variant) {
-        bolsterVariants.add(cfg.bolster_variant);
-      }
-      baseQuantitiesByCustomization.set(id, new Map());
-    }
-
-    if (pillowProductIds.size > 0) {
-      const { data: bomLines, error: bomError } = await admin
-        .from("bom_lines")
-        .select("product_id, item_id, quantity")
-        .in("product_id", [...pillowProductIds]);
-
-      if (bomError) {
-        return NextResponse.json({ error: "Failed to load base BOM quantities" }, { status: 500 });
-      }
-
-      const baseByPillow = new Map<number, Map<number, number>>();
-      for (const bl of bomLines ?? []) {
-        if (!baseByPillow.has(bl.product_id)) baseByPillow.set(bl.product_id, new Map());
-        baseByPillow.get(bl.product_id)!.set(bl.item_id, bl.quantity);
-      }
-
-      for (const [id, cfg] of customizationMap) {
-        if (resolveCustomizationProductType(cfg) === "pillow" && cfg.pillow_product_id) {
-          baseQuantitiesByCustomization.set(
-            id,
-            new Map(baseByPillow.get(cfg.pillow_product_id) ?? [])
-          );
-        }
-      }
-    }
-
-    if (bolsterVariants.size > 0) {
-      const { data: bomLines, error: bomError } = await admin
-        .from("bolster_bom_lines")
-        .select("variant, item_id, quantity")
-        .in("variant", [...bolsterVariants]);
-
-      if (bomError) {
-        return NextResponse.json({ error: "Failed to load base BOM quantities" }, { status: 500 });
-      }
-
-      const baseByBolster = new Map<BolsterVariant, Map<number, number>>();
-      for (const bl of bomLines ?? []) {
-        const variant = bl.variant as BolsterVariant;
-        if (!baseByBolster.has(variant)) baseByBolster.set(variant, new Map());
-        baseByBolster.get(variant)!.set(bl.item_id, bl.quantity);
-      }
-
-      for (const [id, cfg] of customizationMap) {
-        if (resolveCustomizationProductType(cfg) === "bolster" && cfg.bolster_variant) {
-          baseQuantitiesByCustomization.set(
-            id,
-            new Map(baseByBolster.get(cfg.bolster_variant) ?? [])
-          );
-        }
-      }
-    }
-  }
-
   // 6. Validate every variant has a Price in the account THIS environment uses
   const missingStripePrice = cart.items.some((item) => !stripePriceIdOf(item.variant));
   if (missingStripePrice) {
@@ -787,6 +693,27 @@ export async function POST(req: Request) {
   const taxAmount = tax.taxAmount;
   const total = computeOrderTotal(taxInput, tax);
 
+  // 10b. Each line's COGS is the cost of the stock its sale takes out (the same
+  // build the webhook deducts), frozen on the line when it is created below.
+  const snapshots = cart.items.map((item) => {
+    const cfg = item.customization_id ? customizationMap.get(item.customization_id) : null;
+    return cfg ? buildCheckoutCustomizationSnapshot(cfg) : null;
+  });
+  let lineCosts: Array<{ unit_cost: number | null; total_cost: number | null }>;
+  try {
+    lineCosts = await orderLinesCosts(
+      admin,
+      cart.items.map((item, i) => ({
+        variant: item.variant,
+        quantity: item.quantity,
+        customization_id: item.customization_id,
+        customization_snapshot: snapshots[i] as Record<string, unknown> | null,
+      }))
+    );
+  } catch {
+    return NextResponse.json({ error: "Failed to load item costs" }, { status: 500 });
+  }
+
   // 11. Find or create customer
   const customer = await findOrCreateCustomer(email, { phone: phone ?? undefined });
 
@@ -846,26 +773,12 @@ export async function POST(req: Request) {
   }
 
   // 13. Create order_items from cart items
-  const orderItems = cart.items.map((item) => {
+  const orderItems = cart.items.map((item, i) => {
     const cfg = item.customization_id
       ? customizationMap.get(item.customization_id)
       : null;
     const addonPrice = cfg?.total_addon_price ?? 0;
-    const variantCost =
-      item.variant?.cost_price != null
-        ? parseFloat(String(item.variant.cost_price))
-        : null;
-    const { unit_cost, total_cost } = resolveOrderItemUnitCost({
-      variantCostPrice: variantCost,
-      quantity: item.quantity,
-      customization: cfg
-        ? {
-            config_lines: cfg.config_lines as ConfigLine[],
-            baseQuantities: baseQuantitiesByCustomization.get(item.customization_id!) ?? new Map(),
-            costByItem,
-          }
-        : undefined,
-    });
+    const { unit_cost, total_cost } = lineCosts[i];
 
     return {
       order_id: orderRow.id,
@@ -881,7 +794,7 @@ export async function POST(req: Request) {
       unit_cost,
       total_cost,
       customization_id: item.customization_id ?? null,
-      customization_snapshot: cfg ? buildCheckoutCustomizationSnapshot(cfg) : null,
+      customization_snapshot: snapshots[i],
     };
   });
 

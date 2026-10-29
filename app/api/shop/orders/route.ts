@@ -4,6 +4,7 @@ import { listAdminOrders } from "@/lib/ecommerce/admin/orders-list";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { deductStockWhenSold } from "@/lib/ecommerce/order-stock";
+import { orderLinesCosts } from "@/lib/ecommerce/order-line-cost";
 
 export const runtime = "nodejs";
 
@@ -95,6 +96,32 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { items, ...orderFields } = parsed.data;
 
+  // COGS frozen per line, from the stock its sale takes out, as checkout does.
+  const variantIds = [...new Set(items.map((i) => i.variant_id).filter((id): id is string => !!id))];
+  let costs: Array<{ unit_cost: number | null; total_cost: number | null }>;
+  try {
+    const { data: variants, error: variantError } = variantIds.length
+      ? await admin
+          .from("product_variants")
+          .select("id, pillow_product_id, item_id, track_inventory, option1, cost_price")
+          .in("id", variantIds)
+      : { data: [], error: null };
+    if (variantError) throw new Error(variantError.message);
+    const variantById = new Map((variants ?? []).map((v) => [v.id as string, v]));
+    costs = await orderLinesCosts(
+      admin,
+      items.map((item) => ({
+        variant: (item.variant_id && variantById.get(item.variant_id)) || null,
+        quantity: item.quantity,
+      })),
+    );
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to load item costs" },
+      { status: 500 },
+    );
+  }
+
   const { data: order, error: orderError } = await admin
     .from("orders")
     .insert(orderFields)
@@ -105,7 +132,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: orderError.message }, { status: 500 });
   }
 
-  const itemRows = items.map((item) => ({ ...item, order_id: order.id }));
+  const itemRows = items.map((item, i) => ({ ...item, ...costs[i], order_id: order.id }));
   const { error: itemsError } = await admin.from("order_items").insert(itemRows);
 
   if (itemsError) {

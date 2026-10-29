@@ -1,40 +1,25 @@
 "use server";
 
-import {
-  getChannelSalesSummary,
-  type AnalyticsChannel,
-} from "@/lib/analytics/channel-sales";
+import { loadSalesReport } from "@/lib/analytics/sales-report";
+import { partCategoryLabel } from "@/lib/analytics/sold-lines";
+import { sgDate, sgMonthRange } from "@/lib/analytics/sg-calendar";
 import { assertAdmin } from "@/lib/auth/admin";
+import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export type SalesMetric = "units" | "revenue";
 export type TimelineViewMode = "parts" | "products";
 // ponytail: do not `export type { X }` from "use server" — SWC emits runtime refs (TimelinePoint is not defined)
 
-function parseChannel(raw: string | undefined): AnalyticsChannel {
-  if (raw === "orders" || raw === "shopify" || raw === "all") return raw;
-  return "all";
-}
-
-/** Channel sales timeline from mirror/platform DB (no Admin API). */
-export async function getShopifySalesTimeline(input: {
-  from: string;
-  to: string;
-  channel?: AnalyticsChannel;
-}) {
+/**
+ * Analytics → Sales: this site's Orders as Stripe took their money. Totals, cost
+ * coverage, breakdowns, timeline and cost gaps are all summed from the same
+ * sold lines, so every figure on the tab reconciles with every other.
+ */
+export async function getSalesReport(input: { from: string; to: string }) {
   await assertAdmin("analytics");
-  const res = await getChannelSalesSummary({
-    channel: parseChannel(input.channel),
-    from: input.from,
-    to: input.to,
-  });
-  return {
-    ok: true as const,
-    parts: res.timeline.parts,
-    products: res.timeline.products,
-    currency: res.timeline.currency,
-    totals: res.timeline.totals,
-  };
+  const report = await loadSalesReport({ from: input.from, to: input.to });
+  return { ok: true as const, ...report };
 }
 
 export type InventoryMovementGroup = "category" | "size" | "type";
@@ -73,20 +58,18 @@ export type MpConfigMetricBreakdown = {
 
 export async function getMpConfigMetricsBreakdown(input: { from: string; to: string }) {
   await assertAdmin("analytics");
-  const from = new Date(input.from);
-  const to = new Date(input.to);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-    throw new Error("Invalid date range");
-  }
+  const range = sgMonthRange(input.from, input.to);
 
   const admin = supabaseAdmin();
-  const { data: rows, error } = await admin
-    .from("mp_config_responses")
-    .select("data")
-    .eq("is_final", true)
-    .gte("created_at", from.toISOString())
-    .lte("created_at", to.toISOString());
-  if (error) throw new Error(error.message);
+  const rows = await selectAll(() =>
+    admin
+      .from("mp_config_responses")
+      .select("id,data")
+      .eq("is_final", true)
+      .gte("created_at", range.from.toISOString())
+      .lt("created_at", range.toExclusive.toISOString())
+      .order("id"),
+  );
 
   type MetricConfig = {
     key: MpConfigMetricKey;
@@ -160,7 +143,7 @@ export async function getMpConfigMetricsBreakdown(input: { from: string; to: str
     countsByMetricKey.set(cfg.key, m);
   }
 
-  const responseRows = (rows ?? []) as Array<{ data?: unknown }>;
+  const responseRows = rows as Array<{ data?: unknown }>;
   for (const r of responseRows) {
     const data = (r?.data ?? {}) as Record<string, unknown>;
     for (const cfg of configs) {
@@ -197,24 +180,26 @@ export async function getInventoryMovementWaterfall(input: {
   size?: string | null;
 }) {
   await assertAdmin("analytics");
-  const start = new Date(input.from);
-  const end = new Date(input.to);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    throw new Error("Invalid date range");
-  }
+  // The same Singapore months as the Sales tab: opening stock at the first
+  // instant of the first month, closing stock at the last of the last.
+  const range = sgMonthRange(input.from, input.to);
+  const start = range.from;
 
   const admin = supabaseAdmin();
 
-  const { data: txRows, error: txErr } = await admin
-    .from("inventory_transactions")
-    .select("item_id,quantity_signed,created_at")
-    // We need txns before start as well to compute startQty.
-    .lte("created_at", end.toISOString())
-    .order("created_at", { ascending: true });
-  if (txErr) throw new Error(txErr.message);
+  // Every movement up to the end, including those before the start, which make
+  // up the opening balance. Paged: the ledger is past 1,000 rows, and one page
+  // stopped the closing balance at the 1,000th movement.
+  const txRows = await selectAll(() =>
+    admin
+      .from("inventory_transactions")
+      .select("id,item_id,quantity_signed,created_at")
+      .lt("created_at", range.toExclusive.toISOString())
+      .order("id"),
+  );
 
   type TxRow = { item_id: number | string; quantity_signed: number | string; created_at: string };
-  const txs = (txRows ?? []) as TxRow[];
+  const txs = txRows as TxRow[];
 
   const itemIds = Array.from(
     new Set(
@@ -226,15 +211,14 @@ export async function getInventoryMovementWaterfall(input: {
 
   type ItemRow = { id: number | string; category: string | null; size: string | null; subtype: string | null; name: string | null };
   const itemById = new Map<number, ItemRow>();
-  if (itemIds.length) {
-    const { data, error } = await admin.from("items").select("id,category,size,subtype,name").in("id", itemIds);
-    if (error) throw new Error(error.message);
-    (data ?? []).forEach((r: ItemRow) => {
-      const id = Number(r.id);
-      if (!Number.isFinite(id) || id <= 0) return;
-      itemById.set(id, r);
-    });
-  }
+  const itemRows = (await selectAllIn(itemIds, (chunk) =>
+    admin.from("items").select("id,category,size,subtype,name").in("id", chunk).order("id"),
+  )) as ItemRow[];
+  itemRows.forEach((r) => {
+    const id = Number(r.id);
+    if (!Number.isFinite(id) || id <= 0) return;
+    itemById.set(id, r);
+  });
 
   const requestedCategory = input.category ? String(input.category) : null;
   const requestedSize = input.size ? String(input.size) : null;
@@ -246,7 +230,7 @@ export async function getInventoryMovementWaterfall(input: {
     const name = it.name ? String(it.name) : null;
 
     if (input.group === "category") {
-      return { key: category, label: category };
+      return { key: category, label: partCategoryLabel(category) };
     }
 
     if (input.group === "size") {
@@ -299,7 +283,7 @@ export async function getInventoryMovementWaterfall(input: {
     const createdAt = new Date(tx.created_at);
     if (Number.isNaN(createdAt.getTime())) continue;
 
-    // Always contributes to end balance (since txs are <= end)
+    // Always contributes to end balance (since txs are before the end)
     endBalByItemId.set(itemId, (endBalByItemId.get(itemId) ?? 0) + delta);
     // Contributes to start balance if strictly before start boundary
     if (createdAt < start) {
@@ -343,8 +327,10 @@ export async function getInventoryMovementWaterfall(input: {
   }
 
   const rows: InventoryMovementRow[] = Array.from(groups.values()).map((g): InventoryMovementRow => {
-    const startQty = Math.max(0, Math.round(g.startQty));
-    const endQty = Math.max(0, Math.round(g.endQty));
+    // Signed, as Inventory shows them: an oversold Item's negative balance is
+    // part of the total, so the closing total matches the Inventory page.
+    const startQty = Math.round(g.startQty);
+    const endQty = Math.round(g.endQty);
     const stockIn = Math.max(0, Math.round(g.stockIn));
     const stockOut = Math.max(0, Math.round(g.stockOut));
     const net = Math.round(endQty - startQty);
@@ -362,10 +348,11 @@ export async function getInventoryMovementWaterfall(input: {
 
   rows.sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
 
-  const totalStart = Math.max(0, Math.round(rows.reduce((sum, r) => sum + r.startQty, 0)));
-  const totalEnd = Math.max(0, Math.round(rows.reduce((sum, r) => sum + r.endQty, 0)));
-  const totalLabelStart = `total[${start.toISOString().slice(0, 10)}]`;
-  const totalLabelEnd = `total[${end.toISOString().slice(0, 10)}]`;
+  const totalStart = Math.round(rows.reduce((sum, r) => sum + r.startQty, 0));
+  const totalEnd = Math.round(rows.reduce((sum, r) => sum + r.endQty, 0));
+  // Singapore dates: opening on the 1st, closing on the last day picked.
+  const totalLabelStart = `Opening ${sgDate(start)}`;
+  const totalLabelEnd = `Closing ${sgDate(new Date(range.toExclusive.getTime() - 1))}`;
   const withTotals: InventoryMovementRow[] = [
     {
       key: "__total_start__",
@@ -397,96 +384,6 @@ export async function getInventoryMovementWaterfall(input: {
     category: requestedCategory,
     size: requestedSize,
   };
-}
-
-export type RealizedMarginSummary = {
-  net_revenue: number;
-  cogs: number;
-  gross_margin: number;
-  margin_pct: number | null;
-  order_count: number;
-};
-
-export async function getRealizedMarginSummary(input: {
-  from: string;
-  to: string;
-  channel?: AnalyticsChannel;
-}): Promise<{ ok: true; summary: RealizedMarginSummary }> {
-  await assertAdmin("analytics");
-  // paid_at only via channel-sales (no unpaid-by-created_at).
-  const res = await getChannelSalesSummary({
-    channel: parseChannel(input.channel),
-    from: input.from,
-    to: input.to,
-  });
-  return {
-    ok: true,
-    summary: {
-      net_revenue: res.summary.net_revenue,
-      cogs: res.summary.cogs,
-      gross_margin: res.summary.gross_margin,
-      margin_pct: res.summary.margin_pct,
-      order_count: res.summary.order_count,
-    },
-  };
-}
-
-/**
- * One slice of {@link getAnalyticsDashboard}. Each loader is settled
- * independently so a single failing card surfaces its own error instead of
- * blanking the whole dashboard (which is what the four separate actions did).
- */
-export type AnalyticsDashboardSlice<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string };
-
-/**
- * Combined retrospective dashboard loader.
- *
- * Next.js serialises server actions issued from a single client, so the four
- * loaders below used to run one after another (four sequential round trips on
- * first paint). This runs them concurrently behind a single `assertAdmin`
- * check and hands the client every slice in one round trip. The individual
- * actions stay exported for callers that need just one of them.
- */
-export async function getAnalyticsDashboard(input: {
-  from: string;
-  to: string;
-  channel?: AnalyticsChannel;
-  group: InventoryMovementGroup;
-  category?: string | null;
-  size?: string | null;
-}) {
-  await assertAdmin("analytics");
-
-  const settle = async <T>(run: () => Promise<T>): Promise<AnalyticsDashboardSlice<T>> => {
-    try {
-      return { ok: true, value: await run() };
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : "Request failed" };
-    }
-  };
-
-  const [timeline, metrics, margin, waterfall] = await Promise.all([
-    settle(() =>
-      getShopifySalesTimeline({ from: input.from, to: input.to, channel: input.channel })
-    ),
-    settle(() => getMpConfigMetricsBreakdown({ from: input.from, to: input.to })),
-    settle(() =>
-      getRealizedMarginSummary({ from: input.from, to: input.to, channel: input.channel })
-    ),
-    settle(() =>
-      getInventoryMovementWaterfall({
-        from: input.from,
-        to: input.to,
-        group: input.group,
-        category: input.category,
-        size: input.size,
-      })
-    ),
-  ]);
-
-  return { timeline, metrics, margin, waterfall };
 }
 
 export type JourneyTransitionNode = {

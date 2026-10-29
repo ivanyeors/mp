@@ -44,7 +44,8 @@ flowchart TD
 | In-store | Inventory page cart | Immediately | Warehouse + Filling Template, or parts | Unique `sale_id` × `sale_line` × Item |
 
 Shopify sales take no stock. This platform replaces Shopify, so the Shopify
-webhook only feeds the read-only Shopify order mirror for Analytics.
+webhook only feeds the Shopify order mirror, which Analytics no longer reads
+(it tracks this site's sales only, [analytics.md](analytics.md)).
 
 ## The claim: one deduction per Order
 
@@ -211,7 +212,7 @@ button is disabled while a sale runs.
 - **Services**: re-adjustment fee Orders and measurement fees are
   `kind 'service'` with no Variant.
 - **Orders that never become sold**: `pending`, `cancelled`, `refunded`.
-- **Shopify sales**: mirrored for Analytics only.
+- **Shopify sales**: mirrored only; not counted anywhere.
 
 ## Known gaps
 

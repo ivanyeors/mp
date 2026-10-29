@@ -1,5 +1,9 @@
 # Analytics reads DB channel facts; Shopify Admin API is ingest-only
 
+Status: Superseded in part by ADR 0036 (2026-10-29). Analytics tracks this site's sales only, dated by
+Stripe: the channel toggle and the Shopify mirror are gone from it. The DB-only rule and on-hand KPIs on
+Costings (decision 6) stand.
+
 Staff on Admin Panel → Analytics need trustworthy multi-channel P&L. Live Shopify Admin API charts (list price × qty, silent pagination caps, unpaid-by-`created_at` conflated with sold margin) disagree with platform **Orders** + `order_margins` by construction. On-hand stock value KPIs mixed retrospective sales with as-of-now warehouse state.
 
 ## Decision
