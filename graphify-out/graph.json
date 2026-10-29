@@ -96848,26 +96848,15 @@
       "source_location": "L346"
     },
     {
-      "id": "supabase_migrations_20261029030000_email_campaign_content",
-      "label": "20261029030000_email_campaign_content.sql",
+      "id": "supabase_migrations_20261029090714_ai_writing_settings",
+      "label": "20261029090714_ai_writing_settings.sql",
       "_origin": "ast",
       "community": 1061,
-      "community_name": "20261029030000_email_campaign_content.sql",
+      "community_name": "20261029090714_ai_writing_settings.sql",
       "file_type": "code",
-      "norm_label": "20261029030000_email_campaign_content.sql",
-      "source_file": "supabase/migrations/20261029030000_email_campaign_content.sql",
+      "norm_label": "20261029090714_ai_writing_settings.sql",
+      "source_file": "supabase/migrations/20261029090714_ai_writing_settings.sql",
       "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20261029030000_email_campaign_content_public_email_campaigns_guard",
-      "label": "public.email_campaigns_guard()",
-      "_origin": "ast",
-      "community": 1061,
-      "community_name": "20261029030000_email_campaign_content.sql",
-      "file_type": "code",
-      "norm_label": "public.email_campaigns_guard()",
-      "source_file": "supabase/migrations/20261029030000_email_campaign_content.sql",
-      "source_location": "L49"
     },
     {
       "id": "public_email_campaigns",
@@ -215900,15 +215889,26 @@
       "source_location": "L19"
     },
     {
-      "id": "supabase_migrations_20261029160000_ai_writing_settings",
-      "label": "20261029160000_ai_writing_settings.sql",
+      "id": "supabase_migrations_20261029090701_email_campaign_content",
+      "label": "20261029090701_email_campaign_content.sql",
       "_origin": "ast",
       "community": 949,
-      "community_name": "20261029160000_ai_writing_settings.sql",
+      "community_name": "20261029090701_email_campaign_content.sql",
       "file_type": "code",
-      "norm_label": "20261029160000_ai_writing_settings.sql",
-      "source_file": "supabase/migrations/20261029160000_ai_writing_settings.sql",
+      "norm_label": "20261029090701_email_campaign_content.sql",
+      "source_file": "supabase/migrations/20261029090701_email_campaign_content.sql",
       "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20261029090701_email_campaign_content_public_email_campaigns_guard",
+      "label": "public.email_campaigns_guard()",
+      "_origin": "ast",
+      "community": 949,
+      "community_name": "20261029090701_email_campaign_content.sql",
+      "file_type": "code",
+      "norm_label": "public.email_campaigns_guard()",
+      "source_file": "supabase/migrations/20261029090701_email_campaign_content.sql",
+      "source_location": "L49"
     },
     {
       "id": "app_api_mp_config_responses_route",
@@ -657042,13 +657042,13 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261029030000_email_campaign_content",
-      "target": "supabase_migrations_20261029030000_email_campaign_content_public_email_campaigns_guard",
+      "source": "supabase_migrations_20261029090701_email_campaign_content",
+      "target": "supabase_migrations_20261029090701_email_campaign_content_public_email_campaigns_guard",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261029030000_email_campaign_content.sql",
+      "source_file": "supabase/migrations/20261029090701_email_campaign_content.sql",
       "source_location": "L49",
       "weight": 1.0
     },
@@ -724380,5 +724380,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "dbf0522fe206c4e936c57f1e5bf1ed7d756a6021"
+  "built_at_commit": "fefb8010e923654342c4c6e3751d9e078b00849d"
 }

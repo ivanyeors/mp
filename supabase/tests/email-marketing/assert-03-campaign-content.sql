@@ -1,7 +1,7 @@
 -- Email campaigns built from typed blocks (PRD-campaign-email-editor slice 03):
 -- the one-of check on body and content, the content's version and size, no
 -- button columns on a block campaign, and the lock on content, asserted
--- against real Postgres (20261029030000_email_campaign_content.sql).
+-- against real Postgres (20261029090701_email_campaign_content.sql).
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,

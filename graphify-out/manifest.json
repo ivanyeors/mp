@@ -15965,16 +15965,10 @@
     "ast_hash": "258edf69c9dcf1bcd1d973e9187264a9",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261029030000_email_campaign_content.sql": {
-    "mtime": 1793259045.462789,
-    "seen": 1793259970.6276138,
-    "ast_hash": "e8639c7843b21b6c15525a5d4cede65f",
-    "semantic_hash": ""
-  },
   "supabase/tests/email-marketing/assert-03-campaign-content.sql": {
-    "mtime": 1793259083.7987905,
-    "seen": 1793259970.6276329,
-    "ast_hash": "eff17c14c8ffd47524a9617f683dd6fe",
+    "mtime": 1793270086.5609334,
+    "seen": 1793270123.383538,
+    "ast_hash": "c93b646a3c5727e8fa191b749e74d7b5",
     "semantic_hash": ""
   },
   "app/api/settings/ai-writing/__tests__/route.test.ts": {
@@ -16049,12 +16043,6 @@
     "ast_hash": "8b40fca405de0322ddbd1e662656ca40",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261029160000_ai_writing_settings.sql": {
-    "mtime": 1793260344.7994435,
-    "seen": 1793260733.0253713,
-    "ast_hash": "d4baf25bf57492fbe7713707c95881eb",
-    "semantic_hash": ""
-  },
   "docs/adr/0036-campaign-email-is-typed-blocks.md": {
     "mtime": 1793260325.118835,
     "seen": 1793260733.0262759,
@@ -16107,6 +16095,18 @@
     "mtime": 1793267230.4264996,
     "seen": 1793267622.3399498,
     "ast_hash": "74493a52b3de15e1a0c1e793a6e664bf",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261029090701_email_campaign_content.sql": {
+    "mtime": 1793259045.462789,
+    "seen": 1793270123.3835075,
+    "ast_hash": "e8639c7843b21b6c15525a5d4cede65f",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261029090714_ai_writing_settings.sql": {
+    "mtime": 1793260344.7994435,
+    "seen": 1793270123.3835108,
+    "ast_hash": "d4baf25bf57492fbe7713707c95881eb",
     "semantic_hash": ""
   }
 }
