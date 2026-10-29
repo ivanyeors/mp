@@ -347,6 +347,18 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     expect(CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, subject: "{last_name}" }).success).toBe(true);
   });
 
+  it("refuses a {name} in the blocks' words that the sender never fills, under the field that holds it", () => {
+    const blocks = [
+      { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" },
+      { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi {frist_name}, our covers are back" }] }] },
+    ];
+    const r = CampaignDraftSchema.safeParse({ ...draft, content: { ...content, blocks } });
+    expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
+      "content.blocks.0.text": "{first_name} can go in a text block, the subject or the preview line, not here.",
+      "content.blocks.1.paragraphs": "{frist_name} is not a Variable: only {first_name} is.",
+    });
+  });
+
   it("names each empty block field on save, and previews it empty", () => {
     const empty = { ...draft, content: { ...content, blocks: [{ id: "h", type: "heading", level: 2, text: "" }] } };
     const r = CampaignDraftSchema.safeParse(empty);

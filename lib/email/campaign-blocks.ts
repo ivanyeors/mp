@@ -64,7 +64,7 @@ export interface CampaignBlocksEmailData {
   /** The inbox preview line, which may write Variables too; null uses the start of the email. */
   preheader: string | null;
   content: CampaignContent;
-  /** Open with "Hi <first name>," (or "Hi,"), after the headings the email opens with. */
+  /** Open with "Hi <first name>," (or "Hi,"), after the title the email opens with. */
   greeting: boolean;
   firstName: string | null;
   /** Each Variable's words for this recipient: their own detail, else the campaign's fallback. */
@@ -128,6 +128,9 @@ function runsText(runs: readonly Run[], values: Record<VariableKey, string>): { 
 
 const hasWords = (runs: readonly Run[]) => runs.some((r) => "var" in r || r.text.trim());
 
+/** Outlook's own copy of each button, which no other reader sees: left out of the inbox preview, so a label reads once. */
+const OUTLOOK_ONLY = /<!--\[if mso\]>[\s\S]*?<!\[endif\]-->/g;
+
 export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedEmail {
   // The schema again, whoever called: what does not parse never renders.
   const content = CampaignContentPreviewSchema.parse(p.content);
@@ -138,8 +141,9 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
   const html: string[] = [];
   const text: string[] = [];
   const greeting = p.greeting ? greet(p.firstName) : null;
-  // The greeting opens the words: after the headings the email opens with.
-  const greetAt = content.blocks.findIndex((b) => b.type !== "heading");
+  // The greeting opens the words: after the title the email opens with, before
+  // any part's heading, where a legacy campaign's greeting sits.
+  const greetAt = content.blocks.findIndex((b) => b.type !== "heading" || b.level !== 1);
   const greetHere = () => {
     if (!greeting) return;
     html.push(paragraphHtml(escapeHtml(greeting)));
@@ -202,8 +206,8 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
     }
   };
 
-  // Where the opening headings end: an inbox shows what follows them, as it
-  // shows a legacy campaign's words after its title.
+  // Where the title ends: an inbox shows what follows it, as it shows a
+  // legacy campaign's words after its title.
   let opened = 0;
   content.blocks.forEach((b, i) => {
     if (i === greetAt) {
@@ -220,7 +224,8 @@ export function renderCampaignBlocksEmail(p: CampaignBlocksEmailData): RenderedE
   text.push(COMPOSED_CAMPAIGN_NOTE, `Unsubscribe: ${p.unsubscribeUrl}`);
 
   const preheader =
-    (p.preheader ? fillCopy(p.preheader, values).replace(/\s+/g, " ").trim() : "") || stripTags(html.slice(opened).join("\n")).slice(0, 120);
+    (p.preheader ? fillCopy(p.preheader, values).replace(/\s+/g, " ").trim() : "") ||
+    stripTags(html.slice(opened).join("\n").replace(OUTLOOK_ONLY, "")).slice(0, 120);
   return {
     subject,
     html: renderEmailShell({

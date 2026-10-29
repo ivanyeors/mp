@@ -14286,9 +14286,9 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/rules.test.ts": {
-    "mtime": 1793258965.8672686,
-    "seen": 1793259970.6266193,
-    "ast_hash": "b7732af00eebccf6dbe6cfde183b62d4",
+    "mtime": 1793261765.8228865,
+    "seen": 1793262469.3350608,
+    "ast_hash": "028b19ccaee6c268fb4400e540b9c5a9",
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/sender.test.ts": {
@@ -15936,15 +15936,15 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/content.test.ts": {
-    "mtime": 1793259169.1427937,
-    "seen": 1793259970.626616,
-    "ast_hash": "c63ffc7174c5d1961e371a159a0455b7",
+    "mtime": 1793261758.5468862,
+    "seen": 1793262469.3350556,
+    "ast_hash": "8c33dd1cefa373ae830d1029a78d1ee7",
     "semantic_hash": ""
   },
   "lib/email-campaigns/content.ts": {
-    "mtime": 1793258337.8867638,
-    "seen": 1793259970.6266234,
-    "ast_hash": "a59969961a70056ee5a6751d8a37882b",
+    "mtime": 1793261865.0571945,
+    "seen": 1793262469.335066,
+    "ast_hash": "0da5ad9800d04f94bfd85f05aa2e9ec8",
     "semantic_hash": ""
   },
   "lib/email-campaigns/variables.ts": {
@@ -15954,9 +15954,9 @@
     "semantic_hash": ""
   },
   "lib/email/__tests__/campaign-blocks.test.ts": {
-    "mtime": 1793259253.3771534,
-    "seen": 1793259970.6266332,
-    "ast_hash": "8f2d966c15529add125dc8bf5e2fe523",
+    "mtime": 1793261901.2928832,
+    "seen": 1793262469.335079,
+    "ast_hash": "fd2cdf6536456d049249ffc6adcf9998",
     "semantic_hash": ""
   },
   "lib/email/__tests__/legacy-campaign-html.test.ts": {
@@ -15966,9 +15966,9 @@
     "semantic_hash": ""
   },
   "lib/email/campaign-blocks.ts": {
-    "mtime": 1793259244.192624,
-    "seen": 1793259970.6266685,
-    "ast_hash": "3913701f08d251dfe3b336f60fa194e3",
+    "mtime": 1793261880.1933115,
+    "seen": 1793262469.3351254,
+    "ast_hash": "754bca3df6fbd76892794d18e10ae46a",
     "semantic_hash": ""
   },
   "lib/email/campaign-body.ts": {

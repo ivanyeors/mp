@@ -659,7 +659,7 @@ export function CampaignEditor({
                         {content ? (
                             <div className="space-y-1.5">
                                 <span className="text-sm font-medium leading-none">Blocks</span>
-                                <BlockList content={content} onChange={setContent} disabled={locked || sending} errors={fieldErrors} />
+                                <BlockList content={content} lines={[subject, preheader]} onChange={setContent} disabled={locked || sending} errors={fieldErrors} />
                             </div>
                         ) : (
                             <>

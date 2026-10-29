@@ -17,7 +17,8 @@
  */
 import { z } from "zod";
 import { bodyLineParts, linkLabel, parseCampaignBody } from "@/lib/email/campaign-body";
-import { unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type VariableKey } from "./variables";
+import { placeholdersIn } from "@/lib/email/copy";
+import { isVariableKey, unknownVariablesIn, VARIABLE_KEYS, VARIABLE_MAX, type VariableKey } from "./variables";
 
 export const EMAIL_BLOCK_TYPES = ["heading", "text", "buttons", "divider", "spacer"] as const;
 export type EmailBlockType = (typeof EMAIL_BLOCK_TYPES)[number];
@@ -135,8 +136,15 @@ const BlockId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "A block id is 1 to 40
  * them empty, so a new block shows its placeholders.
  */
 function blockSchema({ required }: { required: boolean }) {
-  const words = (max: number, empty: string) =>
-    (required ? z.string().trim().min(1, empty) : z.string().trim()).max(max, most(max)).refine(noTags, NO_TAGS);
+  const words = (max: number, empty: string) => {
+    const s = (required ? z.string().trim().min(1, empty) : z.string().trim()).max(max, most(max)).refine(noTags, NO_TAGS);
+    // A heading and a button label are sent as written: a `{name}` would reach the customer in braces.
+    if (!required) return s;
+    return s.superRefine((v, ctx) => {
+      const unfilled = sentAsWrittenMessage(v);
+      if (unfilled) ctx.addIssue({ code: "custom", message: unfilled });
+    });
+  };
 
   const button = z
     .strictObject({
@@ -175,6 +183,9 @@ function blockSchema({ required }: { required: boolean }) {
         if (required && !all.some((r) => "var" in r || r.text.trim())) {
           ctx.addIssue({ code: "custom", path: ["paragraphs"], message: "Write the text." });
         }
+        // A `{name}` the box kept as words is sent in braces.
+        const unknown = required ? unknownVariableMessage(textWords(b.paragraphs)) : null;
+        if (unknown) ctx.addIssue({ code: "custom", path: ["paragraphs"], message: unknown });
       }),
     z.strictObject({
       id: BlockId,
@@ -238,6 +249,9 @@ export function paragraphRuns(paragraphs: readonly Paragraph[]): Run[] {
   return paragraphs.flatMap((p) => (p.kind === "p" ? p.runs : p.items.flat()));
 }
 
+/** A text block's words, a Variable as `{name}`. */
+const textWords = (paragraphs: readonly Paragraph[]) => paragraphRuns(paragraphs).map((r) => ("var" in r ? `{${r.var}}` : r.text)).join("");
+
 /** A new block's id: twelve random letters and digits, which needs no secure context. */
 export function newBlockId(): string {
   const bytes = new Uint8Array(12);
@@ -273,7 +287,7 @@ export function contentWords(content: CampaignContent): string[] {
       case "heading":
         return [b.text];
       case "text":
-        return [paragraphRuns(b.paragraphs).map((r) => ("var" in r ? `{${r.var}}` : r.text)).join("")];
+        return [textWords(b.paragraphs)];
       case "buttons":
         return b.buttons.map((x) => x.label);
       default:
@@ -282,10 +296,14 @@ export function contentWords(content: CampaignContent): string[] {
   });
 }
 
-/** Pure — the Variables the blocks use, once each, in order. */
-export function variablesUsed(content: CampaignContent): VariableKey[] {
+/**
+ * Pure — the Variables the email uses, once each, in order: in `lines` (the
+ * subject and preview line, which take the same fallbacks), then in the blocks.
+ */
+export function variablesUsed(content: CampaignContent, lines: readonly string[] = []): VariableKey[] {
+  const written = lines.flatMap((l) => placeholdersIn(l).filter(isVariableKey));
   const used = content.blocks.flatMap((b) => (b.type === "text" ? paragraphRuns(b.paragraphs) : []));
-  return [...new Set(used.flatMap((r) => ("var" in r ? [r.var] : [])))];
+  return [...new Set([...written, ...used.flatMap((r) => ("var" in r ? [r.var] : []))])];
 }
 
 /** Pure — a button anywhere in the blocks goes to the recipient's sign-in, so the sender mints Claim links. */
@@ -293,11 +311,18 @@ export function contentSignsIn(content: CampaignContent): boolean {
   return content.blocks.some((b) => b.type === "buttons" && b.buttons.some((x) => x.target === "sign_in"));
 }
 
-/** Pure — the subject or preview line names a `{name}` that is not a Variable: the message, or null. */
+/** Pure — the subject, preview line or a text block names a `{name}` that is not a Variable: the message, or null. */
 export function unknownVariableMessage(text: string): string | null {
   const unknown = unknownVariablesIn(text);
   if (!unknown.length) return null;
   return `${unknown.map((v) => `{${v}}`).join(", ")} ${unknown.length === 1 ? "is not a Variable" : "are not Variables"}: only {first_name} is.`;
+}
+
+/** Pure — words the sender never fills (a heading, a button label) name a `{name}`: the message, or null. */
+function sentAsWrittenMessage(text: string): string | null {
+  const named = placeholdersIn(text);
+  if (!named.length) return null;
+  return unknownVariableMessage(text) ?? `${named.map((v) => `{${v}}`).join(", ")} can go in a text block, the subject or the preview line, not here.`;
 }
 
 // ---------------------------------------------------------------------------

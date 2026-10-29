@@ -237,6 +237,17 @@ describe("a new campaign's blocks", () => {
     type(fieldsOf(0)[0], "Hi {last_name}");
     expect(blockItems()[0].textContent).toContain("{last_name} is not a Variable: only {first_name} is.");
   });
+
+  it("ask for the first name's fallback words when only the subject or the preview line uses it", async () => {
+    mount(null, newCampaignDraft(undefined, []));
+    await addBlock("Heading");
+    type(field("c-subject"), "{first_name}, sleep cooler this December");
+    expect(field("c-fallback-first_name").placeholder).toBe("e.g. there");
+    type(field("c-subject"), "Sleep cooler this December");
+    expect(document.getElementById("c-fallback-first_name")).toBeNull();
+    type(field("c-preheader"), "For you, {first_name}");
+    expect(document.getElementById("c-fallback-first_name")).not.toBeNull();
+  });
 });
 
 describe("a draft written before blocks", () => {

@@ -123,6 +123,26 @@ describe("CampaignContentSchema", () => {
     expect(CampaignContentPreviewSchema.parse(EMPTY_CAMPAIGN_CONTENT)).toEqual(EMPTY_CAMPAIGN_CONTENT);
   });
 
+  it("refuses on save a {name} that would reach the customer in braces: an unknown one in a text block, any in a heading or a button", () => {
+    const text = (t: string) => withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: t }] }] });
+    const issues = (c: unknown) => CampaignContentSchema.safeParse(c).error?.issues.map((i) => [i.path.join("."), i.message]);
+    expect(issues(text(", our {frist_name} covers"))).toEqual([["blocks.0.paragraphs", "{frist_name} is not a Variable: only {first_name} is."]]);
+    expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" }))).toEqual([
+      ["blocks.0.text", "{first_name} can go in a text block, the subject or the preview line, not here."],
+    ]);
+    expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {firstname}" }))).toEqual([
+      ["blocks.0.text", "{firstname} is not a Variable: only {first_name} is."],
+    ]);
+    expect(issues(withBlock({ id: "b", type: "buttons", buttons: [{ label: "Shop, {first_name}", target: "shop", style: "primary" }] }))).toEqual([
+      ["blocks.0.buttons.0.label", "{first_name} can go in a text block, the subject or the preview line, not here."],
+    ]);
+    // Braces around anything but a name are words.
+    expect(CampaignContentSchema.safeParse(text(", {50% off} today")).success).toBe(true);
+    // The preview still draws it, and a row saved before still opens.
+    expect(CampaignContentPreviewSchema.safeParse(text(", our {frist_name} covers")).success).toBe(true);
+    expect(CampaignContentPreviewSchema.safeParse(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}" })).success).toBe(true);
+  });
+
   it("counts a text block that is only a Variable as written", () => {
     expect(CampaignContentSchema.safeParse(withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ var: "first_name" }] }] })).success).toBe(true);
     expect(CampaignContentSchema.safeParse(withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "  " }] }] })).success).toBe(false);
@@ -153,6 +173,10 @@ describe("reading the blocks", () => {
   it("knows which Variables the blocks use, and whether a button signs in", () => {
     expect(variablesUsed(CONTENT)).toEqual(["first_name"]);
     expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT)).toEqual([]);
+    // The subject and preview line fill theirs from the same fallbacks.
+    expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{first_name}, sleep cooler this December", ""])).toEqual(["first_name"]);
+    expect(variablesUsed(CONTENT, ["{first_name}, {last_name}"])).toEqual(["first_name"]);
+    expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{last_name}"])).toEqual([]);
     expect(contentSignsIn(CONTENT)).toBe(false);
     const signIn = { ...CONTENT, blocks: [{ id: "b", type: "buttons", buttons: [{ label: "Sign in", target: "sign_in", style: "primary" }] } as EmailBlock] };
     expect(contentSignsIn(signIn)).toBe(true);

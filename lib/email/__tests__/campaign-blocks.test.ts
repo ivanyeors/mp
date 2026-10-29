@@ -118,7 +118,7 @@ describe("renderCampaignBlocksEmail", () => {
     expect(r.text).toContain("Hello there!");
   });
 
-  it("opens with the greeting after the headings the email opens with", () => {
+  it("opens with the greeting after the title the email opens with", () => {
     const c = one(
       { id: "h", type: "heading", level: 1, text: "Title" },
       { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Body" }] }] },
@@ -127,6 +127,32 @@ describe("renderCampaignBlocksEmail", () => {
     expect(words(renderCampaignBlocksEmail(data(c, { greeting: true })).html)).toBe("Title Hi Ann, Body Part");
     expect(words(renderCampaignBlocksEmail(data(one({ id: "d", type: "divider" }), { greeting: true, firstName: null })).html)).toBe("Hi,");
     expect(renderCampaignBlocksEmail(data(c)).text).not.toContain("Hi Ann");
+    // After the title, before a part's heading, as a legacy campaign's greeting sits.
+    const parts = one(
+      { id: "h", type: "heading", level: 1, text: "Title" },
+      { id: "s", type: "heading", level: 2, text: "Care" },
+      { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Body" }] }] },
+    );
+    expect(words(renderCampaignBlocksEmail(data(parts, { greeting: true })).html)).toBe("Title Hi Ann, Care Body");
+  });
+
+  it("previews the words after the title in the inbox when there is no preview line, each button once", () => {
+    const c = one(
+      { id: "h", type: "heading", level: 1, text: "News" },
+      { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Short note." }] }] },
+      { id: "b", type: "buttons", buttons: [{ label: "Shop the covers", target: "shop", style: "primary" }] },
+    );
+    const inbox = (html: string) => /mso-hide:all">([^<]*?)&zwnj;/.exec(html)?.[1];
+    expect(inbox(renderCampaignBlocksEmail(data(c, { greeting: true })).html)).toBe("Hi Ann, Short note. Shop the covers");
+    const pair = one(c.blocks[1], {
+      id: "b",
+      type: "buttons",
+      buttons: [
+        { label: "Shop", target: "shop", style: "primary" },
+        { label: "Book", target: "book_fitting", style: "secondary" },
+      ],
+    });
+    expect(inbox(renderCampaignBlocksEmail(data(pair)).html)).toBe("Short note. Shop Book");
   });
 
   it("keeps a line break inside a paragraph, and merges a link's runs into one link", () => {
@@ -185,10 +211,11 @@ describe("a legacy draft converted to blocks", () => {
     }
   });
 
-  it("keeps the words when the message opens with a heading, with the greeting after it", () => {
-    const d = { ...FIRST_CAMPAIGN_DRAFT, body: "## Hello\nOur covers are back." };
-    const sorted = (html: string) => words(html).split(" ").sort();
-    expect(sorted(send(convert(d)).html)).toEqual(sorted(send(d).html));
+  it("keeps the greeting after the title when the message opens with a heading", () => {
+    for (const body of ["## Hello\nOur covers are back.", "## Care\nWash cold.\n\nDry flat."]) {
+      const d = { ...FIRST_CAMPAIGN_DRAFT, body };
+      expect(words(send(convert(d)).html)).toBe(words(send(d).html));
+    }
   });
 
   it("still renders through the legacy renderer until it is converted", () => {

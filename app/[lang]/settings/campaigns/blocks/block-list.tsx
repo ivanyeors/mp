@@ -54,11 +54,14 @@ const errorAt = (errors: Record<string, string>, path: string) =>
 
 export function BlockList({
     content,
+    lines,
     onChange,
     disabled,
     errors,
 }: {
     content: CampaignContent;
+    /** The subject and preview line: their Variables take the same fallbacks. */
+    lines: readonly string[];
     onChange: (next: CampaignContent) => void;
     /** Sending has started, or a wave is sending: shown as it is, not editable. */
     disabled: boolean;
@@ -89,7 +92,7 @@ export function BlockList({
         setBlocks([...blocks, b]);
         setAdded(b.id);
     };
-    const used = variablesUsed(content);
+    const used = variablesUsed(content, lines);
     const full = blocks.length >= CONTENT_LIMITS.blocks;
 
     return (
