@@ -19,8 +19,8 @@ export type DraftStage = keyof typeof DRAFT_STAGE_TEXT;
 /** Pure — what ✨ Generate writes from: the subject, else the campaign name. */
 export const draftTitle = (subject: string, name: string) => (subject.trim() ? subject : name).replace(/\s+/g, " ").trim();
 
-/** Words a reader would count: a Variable written `{first_name}` is one. */
-const wordCount = (text: string) => text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+/** Pure — the words a reader would count: a Variable written `{first_name}` is one. */
+export const wordCount = (text: string) => text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 
 /** Pure — why ✨ Generate can't run yet (a title under 3 words), or null when it can. */
 export function draftBlocker(subject: string, name: string): string | null {

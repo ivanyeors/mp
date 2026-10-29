@@ -45,6 +45,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AI_WRITING_NO_CREDENTIALS, type AiWritingAvailability } from "@/lib/ai/availability";
 import { DRAFT_STAGE_TEXT, draftBlocker, draftTitle, withEditedBlocks } from "@/lib/email-campaigns/ai-drafted";
+import { REFINE_BUTTON_LABEL, REFINE_STAGE_TEXT, ideasBlocker } from "@/lib/email-campaigns/ai-refine-brief";
 import {
     campaignWordsEmpty,
     campaignWordsOf,
@@ -55,7 +56,7 @@ import {
     type CampaignButtonChoice,
     type CampaignWords,
 } from "@/lib/email-campaigns/clear-all";
-import { CONTENT_LIMITS, contentFromLegacy, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
+import { CONTENT_LIMITS, contentFromLegacy, contentWords, newBlockId, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import {
     CAMPAIGN_AUDIENCE_LABEL,
     CAMPAIGN_AUDIENCES,
@@ -93,6 +94,8 @@ import {
 } from "./actions";
 import { CampaignAiContext, type CampaignAi } from "./ai/ai-context";
 import { useAiDraft } from "./ai/use-ai-draft";
+import { IDEAS_KIND, type IdeasField } from "./ai/refine-state";
+import { useAiRefine } from "./ai/use-ai-refine";
 import { CAMPAIGN_BLOCKS } from "./blocks/catalogue";
 import { VariableFallbacks } from "./blocks/fallbacks";
 import { campaignVariables } from "./blocks/runs";
@@ -134,6 +137,8 @@ const editorAi = () => import("./ai/editor-ai");
 const GeneratePopover = lazy(() => editorAi().then((m) => ({ default: m.GeneratePopover })));
 const DraftBar = lazy(() => editorAi().then((m) => ({ default: m.DraftBar })));
 const DraftIdeas = lazy(() => editorAi().then((m) => ({ default: m.DraftIdeas })));
+// ✨ Refine's ideas under the subject and the preview line too (slice 10).
+const IdeasPanel = lazy(() => editorAi().then((m) => ({ default: m.IdeasPanel })));
 
 /** What a block's card says while Claude's words in it are unread. */
 const DRAFTED_WITH_AI = "Drafted with AI";
@@ -562,20 +567,58 @@ export function CampaignEditor({
 
     // ── ✨ Generate (slice 09): Claude writes into the email, as one change; only Staff save or send ──
     const aiDraft = useAiDraft({ history, campaignId: campaign?.id ?? null });
+    // ✨ Refine (slice 10): ideas under the subject and preview line, and a rewrite beside a heading or text block.
+    const refine = useAiRefine({ history, campaignId: campaign?.id ?? null });
+    // One ask at a time: while Claude writes anything, the other ✨ buttons wait.
+    const aiBusy = aiDraft.working || refine.working !== null;
     // The brief's popover, under ✨ Generate; anything on the page may open it (slice 08's *✨ Write with AI*).
     const [generateOpen, setGenerateOpen] = useState(false);
     const aiHere = ai.on && editable && Boolean(content);
     const titleBlocker = draftBlocker(subject, name);
     const aiStage = aiDraft.run ? DRAFT_STAGE_TEXT[aiDraft.run.stage] : "";
     const aiRunScope = aiDraft.working ? aiDraft.run?.where : null;
+    const emailWords = useMemo(() => (content ? contentWords(content) : []), [content]);
     const campaignAi: CampaignAi | null = aiHere
         ? {
               writeBlock: (id) => void aiDraft.start({ about: "", goal: null, products: [] }, { scope: "text", target: id }),
               stop: aiDraft.stop,
-              reason: !ai.configured ? AI_WRITING_NO_CREDENTIALS : aiDraft.working ? AI_BUSY : titleBlocker,
+              reason: !ai.configured ? AI_WRITING_NO_CREDENTIALS : aiBusy ? AI_BUSY : titleBlocker,
               writing: aiRunScope?.scope === "text" ? { id: aiRunScope.target, stage: aiStage } : null,
+              rewrite: {
+                  reason: (id) =>
+                      !ai.configured
+                          ? AI_WRITING_NO_CREDENTIALS
+                          : aiDraft.working || (refine.working && !(refine.working === "rewrite" && refine.offer?.blockId === id))
+                            ? AI_BUSY
+                            : null,
+                  offer: refine.offer,
+                  start: (block, action, instruction) => void refine.rewrite(block, action, instruction),
+                  stop: refine.stop,
+                  replace: refine.replace,
+                  tryAgain: refine.tryAgain,
+                  keepMine: refine.keepMine,
+              },
           }
         : null;
+    /** *✨ Suggest subject lines* or *preview lines*, in the field's label row (slice 10). */
+    const suggestButton = (field: IdeasField) => {
+        const kind = IDEAS_KIND[field];
+        return (
+            <AiButton
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                working={refine.working === kind ? REFINE_STAGE_TEXT[kind] : null}
+                onStop={refine.stop}
+                disabledReason={!ai.configured ? AI_WRITING_NO_CREDENTIALS : aiBusy ? AI_BUSY : ideasBlocker(kind, { subject, words: emailWords })}
+                onClick={() => {
+                    aiDraft.dismissIdeas(field);
+                    void refine.suggest(field);
+                }}
+            >
+                {REFINE_BUTTON_LABEL[kind]}
+            </AiButton>
+        );
+    };
     const aiDrafted = content?.aiDrafted;
     const badges = useMemo(() => Object.fromEntries((aiDrafted ?? []).map((id) => [id, DRAFTED_WITH_AI])), [aiDrafted]);
 
@@ -764,7 +807,10 @@ export function CampaignEditor({
 
                 {/* One line each, with Variables as chips in a block campaign (slice 13); saved as words with `{first_name}` in them. */}
                 <div className="space-y-1.5">
-                    <Label id="c-subject-label">Subject</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Label id="c-subject-label">Subject</Label>
+                        {aiHere ? suggestButton("subject") : null}
+                    </div>
                     <RichText
                         id="c-subject"
                         singleLine
@@ -779,7 +825,21 @@ export function CampaignEditor({
                     />
                     {fieldErrors.subject ? <p className="text-xs text-destructive">{fieldErrors.subject}</p> : null}
                     <CharCount id="c-subject-count" value={subjectRead} warn={subjectWarn} />
-                    {aiHere && aiDraft.ideas.subjects.length ? (
+                    {aiHere && refine.ideas.subject ? (
+                        <Suspense fallback={null}>
+                            <IdeasPanel
+                                id="c-subject-ideas"
+                                label="Subject ideas"
+                                offer={refine.ideas.subject}
+                                phoneWarning
+                                measure={(idea) => withSampleValues(idea).length}
+                                moreReason={aiBusy ? AI_BUSY : null}
+                                onPick={(idea) => refine.pick("subject", idea)}
+                                onMore={() => void refine.suggest("subject", { more: true })}
+                                onDismiss={() => refine.dismissIdeas("subject")}
+                            />
+                        </Suspense>
+                    ) : aiHere && aiDraft.ideas.subjects.length ? (
                         <Suspense fallback={null}>
                             <DraftIdeas
                                 id="c-subject-ideas"
@@ -793,7 +853,10 @@ export function CampaignEditor({
                     ) : null}
                 </div>
                 <div className="space-y-1.5">
-                    <Label id="c-preheader-label">Preview line</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Label id="c-preheader-label">Preview line</Label>
+                        {aiHere ? suggestButton("preheader") : null}
+                    </div>
                     <RichText
                         id="c-preheader"
                         singleLine
@@ -813,7 +876,20 @@ export function CampaignEditor({
                         warn={preheaderWarn}
                         ok={`Shown after the subject in most inboxes. Optional; ${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best.`}
                     />
-                    {aiHere && aiDraft.ideas.preheaders.length ? (
+                    {aiHere && refine.ideas.preheader ? (
+                        <Suspense fallback={null}>
+                            <IdeasPanel
+                                id="c-preheader-ideas"
+                                label="Preview line ideas"
+                                offer={refine.ideas.preheader}
+                                measure={(idea) => withSampleValues(idea).length}
+                                moreReason={aiBusy ? AI_BUSY : null}
+                                onPick={(idea) => refine.pick("preheader", idea)}
+                                onMore={() => void refine.suggest("preheader", { more: true })}
+                                onDismiss={() => refine.dismissIdeas("preheader")}
+                            />
+                        </Suspense>
+                    ) : aiHere && aiDraft.ideas.preheaders.length ? (
                         <Suspense fallback={null}>
                             <DraftIdeas
                                 id="c-preheader-ideas"
@@ -1028,11 +1104,16 @@ export function CampaignEditor({
                                     open={generateOpen}
                                     onOpenChange={setGenerateOpen}
                                     title={draftTitle(subject, name)}
-                                    blocker={aiRunScope?.scope === "text" ? AI_BUSY : titleBlocker}
+                                    blocker={aiRunScope?.scope === "text" || refine.working ? AI_BUSY : titleBlocker}
                                     hasBlocks={content.blocks.length > 0}
                                     working={aiRunScope?.scope === "email" ? aiStage : null}
                                     onStop={aiDraft.stop}
-                                    onGenerate={(brief, mode) => void aiDraft.start(brief, { scope: "email", mode })}
+                                    onGenerate={(brief, mode) => {
+                                        // A draft brings its own ideas: the last ones asked for go.
+                                        refine.dismissIdeas("subject");
+                                        refine.dismissIdeas("preheader");
+                                        void aiDraft.start(brief, { scope: "email", mode });
+                                    }}
                                 />
                             </Suspense>
                         ) : (

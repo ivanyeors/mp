@@ -43,6 +43,12 @@ export interface BlockKind<B extends EditorBlock> {
   Form: ComponentType<BlockFormProps<B>>;
   /** Presets under the selected block (alignment, style, size): never a colour, font or size picker. */
   Options?: ComponentType<BlockFormProps<B>>;
+  /**
+   * Small controls in the card's top row, beside its menu: a page's own
+   * actions on the block (the campaign's ✨ Rewrite, PRD-campaign-email-editor
+   * slice 10). `name` is the card's, "Heading, block 2 of 5", for their labels.
+   */
+  Tools?: ComponentType<BlockFormProps<B> & { name: string }>;
 }
 
 /**

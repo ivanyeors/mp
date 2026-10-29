@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { blockProblems, subjectProblems, wordsProblems, type GuardrailContext } from "@/lib/email-campaigns/ai-guardrails";
+import { blockProblems, previewLineProblems, rewriteProblems, subjectProblems, wordsProblems, type GuardrailContext } from "@/lib/email-campaigns/ai-guardrails";
+import type { RewritableBlock } from "@/lib/email-campaigns/ai-refine-brief";
+import type { Run } from "@/lib/email-campaigns/content";
 
 /**
  * What Claude may write in a campaign, checked in code (PRD-campaign-email-
@@ -80,5 +82,46 @@ describe("blockProblems", () => {
   it("reads every word a customer reads in the block, its button labels included", () => {
     expect(blockProblems({ id: "b", type: "buttons", buttons: [{ label: "Get 20% off", target: "shop", style: "primary" }] }, ctx)).not.toEqual([]);
     expect(blockProblems({ id: "b", type: "heading", level: 1, text: "Sleep cooler this December" }, ctx)).toEqual([]);
+  });
+});
+
+describe("previewLineProblems (slice 10)", () => {
+  it("passes a line that follows the subject, and refuses one that repeats it", () => {
+    expect(previewLineProblems("The FibreCool cover keeps your pillow cool on warm nights.", "Sleep cooler this December", ctx)).toEqual([]);
+    expect(previewLineProblems("Sleep cooler this December, with the FibreCool cover.", "Sleep cooler this December", ctx)).toEqual([
+      "repeats the subject instead of following it",
+    ]);
+    expect(previewLineProblems("Save 20% on every cover.", "Sleep cooler this December", ctx)).not.toEqual([]);
+    // Whole words: a short subject inside a longer word is no repeat.
+    expect(previewLineProblems("This cover keeps your pillow cool.", "Hi", ctx)).toEqual([]);
+  });
+});
+
+describe("rewriteProblems (slice 10)", () => {
+  const URL = "https://mpillow.com/book";
+  const original: RewritableBlock = {
+    id: "t",
+    type: "text",
+    paragraphs: [{ kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", warm nights are back. " }, { text: "Book a fitting", href: URL }] }],
+  };
+  const words = (...runs: Run[]): RewritableBlock => ({ id: "t", type: "text", paragraphs: [{ kind: "p", runs }] });
+
+  it("passes a rewrite that keeps every link and Variable of the original", () => {
+    expect(rewriteProblems(original, words({ text: "Hi " }, { var: "first_name" }, { text: ". " }, { text: "Book now", href: URL }), ctx)).toEqual([]);
+  });
+
+  it("names a dropped link and a dropped or added Variable", () => {
+    expect(rewriteProblems(original, words({ text: "Warm nights are back." }), ctx)).toEqual(['drops the link on "Book a fitting"', "drops the Variable {first_name}"]);
+    expect(rewriteProblems(original, words({ var: "first_name" }, { var: "last_name" }, { text: "Book", href: URL }), ctx)).toEqual([
+      "adds the Variable {last_name}, which the original doesn't have",
+    ]);
+    expect(rewriteProblems(original, words({ var: "first_name" }, { text: "Book", href: "https://evil.example" }), ctx)).toContain("adds a link, which is Staff's to add");
+  });
+
+  it("holds the rewritten words to the guardrails, and a heading's Variables count as kept", () => {
+    expect(rewriteProblems(original, words({ var: "first_name" }, { text: " relieves neck pain. " }, { text: "Book", href: URL }), ctx)).not.toEqual([]);
+    const title: RewritableBlock = { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" };
+    expect(rewriteProblems(title, { ...title, text: "Sleep cooler, {first_name}" }, ctx)).toEqual([]);
+    expect(rewriteProblems(title, { ...title, text: "Sleep cooler" }, ctx)).toEqual(["drops the Variable {first_name}"]);
   });
 });

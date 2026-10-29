@@ -19,10 +19,10 @@
  * Claude reads the brand's facts and Staff's words, never a customer's: the
  * reader's name is the *first name* Variable, filled in at send.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { MessageCreateParamsBase } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { SERVER_SIDE_FALLBACK_BETA } from "@/lib/ai/claude";
+import { SERVER_SIDE_FALLBACK_BETA, claudeCallError, isClaudeAbort } from "@/lib/ai/claude";
 import { MPILLOW_ABOUT, MPILLOW_FACT_LINES } from "@/lib/ai/mpillow-facts";
 import { streamedJson, type JsonPiece } from "@/lib/ai/streamed-json";
 import { aiWritingRequest, type AiWritingSettings } from "@/lib/ai/writing-settings";
@@ -40,15 +40,18 @@ import { blockProblems, subjectProblems, wordsProblems, type GuardrailContext } 
 import { newBlockId, type EmailBlock } from "./content";
 import { CAMPAIGN_LIMITS } from "./rules";
 
+/** How a campaign reads, for every AI writing prompt (slices 09, 10): a draft, an idea and a rewrite sound alike. */
+export const CAMPAIGN_VOICE = `The voice:
+- Warm, plain and confident, like someone at Mpillow writing to a person who bought from us or might. Short sentences and everyday words. No jargon, no hype, no exclamation marks in a row.
+- Write about comfort, fit and sleep, never health. Mpillow makes no medical claims: never write treat, cure, relieve, relief, pain, ache, therapy, therapeutic, rehab, clinical, clinically, medical, heal, prescribe or doctor-recommended, in any form.
+- English as Singapore writes it, with British spelling (colour, personalise, favourite).`;
+
 export const CAMPAIGN_DRAFT_SYSTEM_PROMPT = `You write marketing emails, as the Mpillow team, for ${MPILLOW_ABOUT}. They go to customers who agreed to hear from us. A staff member reads, changes and sends every email: you write a draft into their editor.
 
 About Mpillow — use only these facts and never invent others:
 ${MPILLOW_FACT_LINES}
 
-The voice:
-- Warm, plain and confident, like someone at Mpillow writing to a person who bought from us or might. Short sentences and everyday words. No jargon, no hype, no exclamation marks in a row.
-- Write about comfort, fit and sleep, never health. Mpillow makes no medical claims: never write treat, cure, relieve, relief, pain, ache, therapy, therapeutic, rehab, clinical, clinically, medical, heal, prescribe or doctor-recommended, in any form.
-- English as Singapore writes it, with British spelling (colour, personalise, favourite).
+${CAMPAIGN_VOICE}
 
 What you may say:
 - Only the facts above and what the staff member wrote in the brief. When the email needs a detail you don't have (a date, a time, a place, a price), leave it out and say so in reviewerNotes.
@@ -92,8 +95,8 @@ export function staffTextOf(brief: DraftBrief): string {
   return [r.subject, r.name, r.about, r.goal ? DRAFT_GOAL_LABEL[r.goal] : "", ...brief.products.map((p) => p.title), ...r.existing].join("\n");
 }
 
-/** JSON inside the brief tags: a `<` can't close them. */
-const fenced = (value: unknown) => JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
+/** JSON inside a prompt's tags (`<brief>`, slice 10's `<email>`): a `<` can't close them. */
+export const fenced = (value: unknown) => JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
 
 /** Pure — the request's one user message: the brief, fenced off as data, and why an earlier draft was refused. */
 export function buildDraftPrompt(brief: DraftBrief, refused: readonly string[] = []): string {
@@ -161,15 +164,6 @@ export interface DraftOutcome {
 
 /** One attempt's verdict on what Claude wrote. */
 type Verdict = { ok: true } | { ok: false; refused: string[] };
-
-const isAbort = (e: unknown) => e instanceof Anthropic.APIUserAbortError || (e instanceof Error && e.name === "AbortError");
-
-function apiError(e: unknown): string {
-  if (e instanceof Anthropic.RateLimitError) return "Claude is busy right now. Try again in a minute.";
-  if (e instanceof Anthropic.AuthenticationError) return "Anthropic rejected the credentials.";
-  if (e instanceof Anthropic.APIError) return `Claude API error ${e.status ?? ""}: ${e.message}`.replace(/\s+:/, ":");
-  return e instanceof Error ? e.message : "Drafting failed.";
-}
 
 const trimmed = (v: unknown, max: number) => (typeof v === "string" && v.trim() && v.trim().length <= max ? v.replace(/\s+/g, " ").trim() : null);
 
@@ -288,7 +282,7 @@ export async function runCampaignDraft(
         outcome.outputTokens += partial.usage.output_tokens;
       }
       if (signal?.aborted) return { ...outcome, ok: true, stopped: true };
-      if (!(isAbort(e) && problems.length)) return { ...outcome, ok: false, error: apiError(e) };
+      if (!(isClaudeAbort(e) && problems.length)) return { ...outcome, ok: false, error: claudeCallError(e, "Drafting failed.") };
       verdict = { ok: false, refused: problems };
     }
     if (verdict.ok) return { ...outcome, ok: true };

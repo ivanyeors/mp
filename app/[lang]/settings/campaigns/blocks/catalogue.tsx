@@ -36,6 +36,7 @@ import {
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { cn } from "@/lib/utils";
 import { useCampaignAi } from "../ai/ai-context";
+import { RewriteOffered, RewriteTool, rewriteOffered } from "../ai/rewrite-tools";
 import { Field } from "../field";
 import { ImageField } from "./image-field";
 import { ProductField, ProductsField } from "./products-field";
@@ -66,6 +67,8 @@ const errorAt = (errors: Record<string, string>, path: string) =>
 
 /** A heading's words as they read, in one line, with Variables as chips (`VariableLine`). */
 function HeadingForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"heading">>) {
+    const ai = useCampaignAi();
+    if (rewriteOffered(ai, b.id) && !readOnly) return <RewriteOffered block={b} idPrefix={idPrefix} />;
     return (
         <div>
             <VariableLine
@@ -149,6 +152,7 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
     const ai = useCampaignAi();
     const empty = !paragraphRuns(b.paragraphs).some((r) => "var" in r || r.text.trim());
     const writing = ai?.writing?.id === b.id ? ai.writing.stage : null;
+    if (rewriteOffered(ai, b.id) && !readOnly) return <RewriteOffered block={b} idPrefix={idPrefix} />;
     return (
         <div>
             <TextRuns
@@ -793,6 +797,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         create: () => emptyBlock("heading") as Of<"heading">,
         Form: HeadingForm,
         Options: HeadingOptions,
+        Tools: RewriteTool,
     },
     text: {
         label: "Text",
@@ -800,6 +805,7 @@ export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
         icon: Pilcrow,
         create: () => emptyBlock("text") as Of<"text">,
         Form: TextForm,
+        Tools: RewriteTool,
     },
     buttons: {
         label: "Buttons",

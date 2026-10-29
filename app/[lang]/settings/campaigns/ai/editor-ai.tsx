@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DRAFT_ABOUT_PLACEHOLDER, DRAFT_GOAL_LABEL, DRAFT_GOALS, DRAFT_LIMITS, type DraftGoal } from "@/lib/email-campaigns/ai-draft-brief";
 import { DRAFT_STAGE_TEXT, type DraftMode } from "@/lib/email-campaigns/ai-drafted";
 import { ProductsField } from "../blocks/products-field";
+import type { IdeasOffer } from "./refine-state";
 import type { AiBrief, AiDraftRun } from "./use-ai-draft";
 
 /**
@@ -19,7 +20,7 @@ import type { AiBrief, AiDraftRun } from "./use-ai-draft";
  * 09), one module loaded after the page, not with it: the button with the
  * popover under it that takes the brief; the bar above the blocks while
  * Claude writes and after; and the subject and preview line ideas under
- * their fields.
+ * their fields, a draft's or ✨ Refine's (slice 10).
  */
 
 /** The goal picker's choice for none: a goal is optional. */
@@ -239,6 +240,9 @@ export function DraftIdeas({
   onPick,
   onDismiss,
   phoneWarning = false,
+  measure = (idea) => idea.length,
+  onMore,
+  moreReason = null,
 }: {
   id: string;
   /** "Subject ideas", "Preview line ideas". */
@@ -248,17 +252,30 @@ export function DraftIdeas({
   onDismiss: () => void;
   /** Mark ideas long enough to be cut off on a phone (subjects). */
   phoneWarning?: boolean;
+  /** An idea's length as its field counts it (slice 10: a Variable as the sample customer's words). */
+  measure?: (idea: string) => number;
+  /** *More ideas* (slice 10): asks again, for others. */
+  onMore?: () => void;
+  /** Why *More ideas* can't be pressed now, or null. */
+  moreReason?: string | null;
 }) {
   return (
     <div role="group" aria-labelledby={`${id}-label`} className="space-y-1.5 rounded-md border border-dashed p-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <p id={`${id}-label`} className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           {label} from Claude: pick one to use it
         </p>
-        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onDismiss}>
-          No thanks
-        </Button>
+        <div className="flex items-center gap-1">
+          {onMore ? (
+            <AiButton variant="ghost" className="h-7 px-2 text-xs" disabledReason={moreReason} onClick={onMore}>
+              More ideas
+            </AiButton>
+          ) : null}
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onDismiss}>
+            No thanks
+          </Button>
+        </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {ideas.map((idea) => (
@@ -270,12 +287,67 @@ export function DraftIdeas({
           >
             {idea}
             <span className="ml-1.5 text-xs text-muted-foreground">
-              {idea.length}
-              {phoneWarning && idea.length > SUBJECT_PHONE ? ", may be cut off on phones" : ""}
+              {measure(idea)}
+              {phoneWarning && measure(idea) > SUBJECT_PHONE ? ", may be cut off on phones" : ""}
             </span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Ideas under a field: Claude's, to pick from, or why there are none. */
+export function IdeasPanel({
+  id,
+  label,
+  offer,
+  phoneWarning,
+  measure,
+  moreReason,
+  onPick,
+  onMore,
+  onDismiss,
+}: {
+  id: string;
+  label: string;
+  offer: IdeasOffer;
+  phoneWarning?: boolean;
+  measure?: (idea: string) => number;
+  /** Why *More ideas* can't run now (this ask or another is running), or null. */
+  moreReason: string | null;
+  onPick: (idea: string) => void;
+  onMore: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {offer.status === "failed" ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <p role="alert" className="min-w-0 flex-1 text-destructive">
+            {offer.error}
+          </p>
+          {offer.ideas.length ? null : (
+            <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onDismiss}>
+              Dismiss
+            </Button>
+          )}
+        </div>
+      ) : null}
+      {/* The first ask's progress is the ✨ button's; More ideas keeps the last ones in view meanwhile. */}
+      {offer.ideas.length ? (
+        <DraftIdeas
+          id={id}
+          label={label}
+          ideas={offer.ideas}
+          phoneWarning={phoneWarning}
+          measure={measure}
+          onPick={onPick}
+          onDismiss={onDismiss}
+          onMore={onMore}
+          moreReason={moreReason}
+        />
+      ) : null}
     </div>
   );
 }

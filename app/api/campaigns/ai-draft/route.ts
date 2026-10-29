@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { claudeClient } from "@/lib/ai/claude";
-import { aiWritingLimited } from "@/lib/ai/limits";
-import { readAiWritingSettings } from "@/lib/ai/settings";
 import { aiUsageAuditEntry } from "@/lib/ai/usage";
-import { AI_WRITING_NO_CREDENTIALS, AI_WRITING_SWITCHED_OFF } from "@/lib/ai/availability";
+import { openAiWritingCall } from "@/lib/ai/writing-call";
+import { campaignForAiWriting } from "@/lib/email-campaigns/ai-campaign";
 import { runCampaignDraft, type DraftBrief } from "@/lib/email-campaigns/ai-draft";
 import { DraftRequestSchema, type DraftEvent } from "@/lib/email-campaigns/ai-draft-shape";
 import { draftBlocker } from "@/lib/email-campaigns/ai-drafted";
 import { readCampaignProductCards } from "@/lib/email-campaigns/products";
-import { getCampaign } from "@/lib/email-campaigns/store";
-import { claimBonusOffer } from "@/lib/points/offer";
-import { readPointsSettings } from "@/lib/points/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -50,33 +45,20 @@ export async function POST(req: Request) {
   if (blocked) return NextResponse.json({ error: blocked }, { status: 400 });
 
   const admin = supabaseAdmin();
-  const read = await readAiWritingSettings(admin);
-  if (!read.ok) return NextResponse.json({ error: read.error }, { status: 503 });
-  const { settings } = read;
-  if (!settings.enabled) return NextResponse.json({ error: AI_WRITING_SWITCHED_OFF }, { status: 403 });
-  const client = claudeClient();
-  if (!client) return NextResponse.json({ error: AI_WRITING_NO_CREDENTIALS }, { status: 503 });
-
-  const limited = await aiWritingLimited(settings, ctx.memberId);
-  if (limited) return NextResponse.json({ error: limited }, { status: 429 });
+  const call = await openAiWritingCall(admin, ctx.memberId);
+  if (!call.ok) return NextResponse.json({ error: call.error }, { status: call.status });
+  const { settings, client } = call;
 
   let brief: DraftBrief;
   try {
-    // A started campaign's email is fixed: nothing writes into it, Claude included.
-    if (request.campaignId) {
-      const campaign = await getCampaign(admin, request.campaignId.toLowerCase());
-      if (!campaign) return NextResponse.json({ error: "That campaign does not exist." }, { status: 404 });
-      if (campaign.lockedAt) return NextResponse.json({ error: "Sending has started, so the email is fixed." }, { status: 409 });
-    }
+    const campaign = await campaignForAiWriting(admin, request.campaignId);
+    if (!campaign.ok) return NextResponse.json({ error: campaign.error }, { status: campaign.status });
     const cards = await readCampaignProductCards(admin, request.products);
     const unlisted = cards.find((c) => !c.listed || !c.title);
     if (unlisted) {
       return NextResponse.json({ error: `${unlisted.title ?? "A product"} is no longer in the shop: choose another.` }, { status: 400 });
     }
-    const pointsLive = await readPointsSettings(admin)
-      .then((s) => claimBonusOffer(s).live)
-      .catch(() => false);
-    brief = { request, products: cards.map((c) => ({ id: c.id, title: c.title as string })), pointsLive, adding: request.existing.length > 0 };
+    brief = { request, products: cards.map((c) => ({ id: c.id, title: c.title as string })), pointsLive: campaign.pointsLive, adding: request.existing.length > 0 };
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }

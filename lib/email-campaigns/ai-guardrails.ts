@@ -1,8 +1,8 @@
 /**
  * What Claude may write in a campaign, checked in code as well as asked for
  * in the prompt (PRD-campaign-email-editor *AI guardrails*, slice 09), as
- * `checkReplyText` checks a review reply. Pure. Slices 10 and 17 check their
- * subject ideas, rewrites and translations here too.
+ * `checkReplyText` checks a review reply. Pure. Slice 10 checks its subject
+ * and preview line ideas and its rewrites here, and slice 17 its translations.
  *
  * A draft may say only what the facts (lib/ai/mpillow-facts.ts) and the
  * staff member's own words say. So a price, a percentage, an offer, a code, a
@@ -13,7 +13,10 @@
  */
 import { MPILLOW_ABOUT, MPILLOW_FACTS } from "@/lib/ai/mpillow-facts";
 import { checkBannedClinical } from "@/lib/i18n/copy-bands";
-import { contentWords, type EmailBlock } from "./content";
+import type { RewritableBlock } from "./ai-refine-brief";
+import { blockLinks, blockVariables } from "./ai-refine-shape";
+import { contentWords, paragraphRuns, type EmailBlock, type Run } from "./content";
+import { isVariableKey } from "./variables";
 
 export interface GuardrailContext {
   /** Everything Staff typed for this draft: the subject, the campaign name, the brief, the picked products' names, the email's own words. */
@@ -138,4 +141,47 @@ export function subjectProblems(subject: string, ctx: GuardrailContext): string[
 /** Pure — one block's problems: every word a customer reads in it, its button labels included. */
 export function blockProblems(block: EmailBlock, ctx: GuardrailContext): string[] {
   return wordsProblems(contentWords({ v: 1, blocks: [block], fallbacks: {} }).join("\n"), ctx);
+}
+
+/** Pure — a preview line's problems (slice 10): the words', and repeating the subject it follows. */
+export function previewLineProblems(line: string, subject: string, ctx: GuardrailContext): string[] {
+  const out = wordsProblems(line, ctx);
+  // Whole words only, punctuation aside: "Sleep cooler" is in "Sleep cooler, tonight", "hi" is not in "this".
+  const words = (t: string) => ` ${squash(t.replace(/[^\p{L}\p{N}{}_]+/gu, " "))} `;
+  if (words(subject).trim() && words(line).includes(words(subject))) out.push("repeats the subject instead of following it");
+  return out.slice(0, MAX_REASONS);
+}
+
+/** A run's words, or a space for a Variable or for the original's own link words (Staff's: `mpillow.com/shop`). */
+function rewriteText(block: RewritableBlock, linkWords: ReadonlySet<string>): string {
+  if (block.type === "heading") return block.text.replace(/\{([a-z_]+)\}/g, (m, k: string) => (isVariableKey(k) ? " " : m));
+  const line = (runs: readonly Run[]) => runs.map((r) => ("var" in r ? " " : r.href && linkWords.has(squash(r.text)) ? " " : r.text)).join("");
+  return block.paragraphs.map((p) => (p.kind === "p" ? line(p.runs) : p.items.map(line).join("\n"))).join("\n");
+}
+
+/** The words each address in a text block links, as they read: what a reason names it by. */
+function linkWordsOf(block: RewritableBlock): Map<string, string> {
+  const out = new Map<string, string>();
+  if (block.type === "text") for (const r of paragraphRuns(block.paragraphs)) if ("href" in r && r.href && !out.has(r.href)) out.set(r.href, r.text.trim());
+  return out;
+}
+
+/**
+ * Pure — what is wrong with Claude's rewrite of `original` (slice 10): it
+ * keeps every link and every Variable of the original and adds none, and its
+ * words pass the checks any words Claude writes pass. The original's own
+ * link words are Staff's, so they may stay as they were.
+ */
+export function rewriteProblems(original: RewritableBlock, rewrite: RewritableBlock, ctx: GuardrailContext): string[] {
+  const out: string[] = [];
+  const before = linkWordsOf(original);
+  const after = new Set(blockLinks(rewrite));
+  for (const [href, words] of before) if (!after.has(href)) out.push(`drops the link on "${words}"`);
+  if ([...after].some((href) => !before.has(href))) out.push("adds a link, which is Staff's to add");
+  const varsBefore = blockVariables(original);
+  const varsAfter = blockVariables(rewrite);
+  for (const k of varsBefore) if (!varsAfter.includes(k)) out.push(`drops the Variable {${k}}`);
+  for (const k of varsAfter) if (!varsBefore.includes(k)) out.push(`adds the Variable {${k}}, which the original doesn't have`);
+  out.push(...wordsProblems(rewriteText(rewrite, new Set([...before.values()].map(squash))), ctx));
+  return out.slice(0, MAX_REASONS);
 }

@@ -30,6 +30,17 @@ export const CLAUDE_NOT_CONFIGURED = "Claude is not configured (ANTHROPIC_API_KE
  */
 export const SERVER_SIDE_FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
+/** Pure — the call was stopped from our side (Staff pressed Stop, or the request went away), not failed. */
+export const isClaudeAbort = (e: unknown) => e instanceof Anthropic.APIUserAbortError || (e instanceof Error && e.name === "AbortError");
+
+/** Pure — a failed call, in words for Staff. */
+export function claudeCallError(e: unknown, fallback = "Claude couldn't answer."): string {
+  if (e instanceof Anthropic.RateLimitError) return "Claude is busy right now. Try again in a minute.";
+  if (e instanceof Anthropic.AuthenticationError) return "Anthropic rejected the credentials.";
+  if (e instanceof Anthropic.APIError) return `Claude API error ${e.status ?? ""}: ${e.message}`.replace(/\s+:/, ":");
+  return e instanceof Error ? e.message : fallback;
+}
+
 let cachedClient: Anthropic | null = null;
 
 /** The client, made once per instance; null without credentials. */

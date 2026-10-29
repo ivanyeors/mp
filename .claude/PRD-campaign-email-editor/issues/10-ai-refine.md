@@ -2,7 +2,7 @@
 
 **Issue:** [#364](https://github.com/ivanyeors/mp/issues/364) · **Parent:** [#354](https://github.com/ivanyeors/mp/issues/354)
 **Type:** AFK
-**Status:** not started
+**Status:** partial: the eval's 10 rewrite cases (`pnpm ai:eval-drafts -- --set=rewrites`) are built and ran end to end against a stand-in for the API, but not with a real key; the owner reads them with the drafts. The ✨ buttons, ideas and rewrite at 375px want a look in a browser.
 **Blocked by:** 09 (the shared client, facts, schema checks and limits), 16 (the settings)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 

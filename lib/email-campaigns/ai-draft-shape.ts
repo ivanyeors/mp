@@ -23,9 +23,11 @@ import {
   type EmailBlock,
   type Paragraph,
   type Run,
+  type TextRun,
 } from "./content";
 import { DRAFT_GOALS, DRAFT_LIMITS } from "./ai-draft-brief";
 import { CAMPAIGN_LIMITS } from "./rules";
+import type { VariableKey } from "./variables";
 
 /** A Storefront product id: a lower-case uuid, as content holds it. */
 const PRODUCT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -162,31 +164,50 @@ export function draftOutputSchema({ scope, products }: { scope: DraftRequest["sc
 type DraftRunsIn = z.output<typeof draftRuns>;
 type DraftParagraphsIn = z.output<typeof draftParagraphs>;
 
+/**
+ * Pure — some words Claude wrote, as runs with `marks`: each `{key}` of `keys`
+ * written in them becomes that Variable itself. Slice 10's rewrites pass the
+ * Variables of the block they rewrite.
+ */
+export function wordsAsRuns(text: string, marks: Omit<TextRun, "text">, keys: readonly VariableKey[] = ["first_name"]): Run[] {
+  const named = new Set<string>(keys);
+  return text
+    .split(/(\{[a-z_]+\})/)
+    .filter(Boolean)
+    .map((part): Run => {
+      const key = part.slice(1, -1);
+      return part.startsWith("{") && named.has(key) ? { var: key as VariableKey } : { text: part, ...marks };
+    });
+}
+
 /** A text run's words with `{first_name}` written in them as the Variable itself. */
 function runsOf(runs: DraftRunsIn): Run[] {
   return runs.flatMap((r): Run[] => {
     if ("var" in r) return [{ var: r.var }];
-    const marks = { ...(r.bold ? { bold: true } : {}), ...(r.italic ? { italic: true } : {}) };
-    return r.text
-      .split(/(\{first_name\})/)
-      .filter(Boolean)
-      .map((part) => (part === "{first_name}" ? { var: "first_name" as const } : { text: part, ...marks }));
+    return wordsAsRuns(r.text, { ...(r.bold ? { bold: true } : {}), ...(r.italic ? { italic: true } : {}) });
   });
 }
 
-/** Paragraphs as content holds them; an empty run or paragraph is dropped. */
-function paragraphsOf(paragraphs: DraftParagraphsIn): Paragraph[] {
+/**
+ * Pure — paragraphs Claude wrote, as content holds them, each paragraph's or
+ * bullet's runs mapped by `runs`; an empty run or paragraph is dropped.
+ * Slice 10's rewrites map their own runs, links included.
+ */
+export function paragraphsFrom<R>(paragraphs: readonly ({ kind: "p"; runs: R[] } | { kind: "bullets"; items: R[][] })[], runs: (r: R[]) => Run[]): Paragraph[] {
   return paragraphs.flatMap((p): Paragraph[] => {
     if (p.kind === "p") {
-      const runs = runsOf(p.runs);
-      return runs.length ? [{ kind: "p", runs }] : [];
+      const mapped = runs(p.runs);
+      return mapped.length ? [{ kind: "p", runs: mapped }] : [];
     }
-    const items = p.items.map(runsOf).filter((r) => r.length);
+    const items = p.items.map(runs).filter((r) => r.length);
     return items.length ? [{ kind: "bullets", items }] : [];
   });
 }
 
-const issueText = (e: z.ZodError) => {
+const paragraphsOf = (paragraphs: DraftParagraphsIn) => paragraphsFrom(paragraphs, runsOf);
+
+/** A zod error's first issue, in words: where, and what. */
+export const issueText = (e: z.ZodError) => {
   const issue = e.issues[0];
   return issue ? `${issue.path.length ? `${issue.path.join(".")}: ` : ""}${issue.message}` : "doesn't fit the email";
 };

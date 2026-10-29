@@ -421,6 +421,7 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
   const Icon = kind.icon;
   const Form = kind.Form;
   const Options = kind.Options;
+  const Tools = kind.Tools;
   const badge = ctx.badges[block.id];
   const name = `${kind.label}, block ${index + 1} of ${total}${badge ? `, ${badge}` : ""}`;
   const props = {
@@ -498,10 +499,15 @@ function BlockCard({ block, index, errors }: { block: EditorBlock; index: number
             trigger={<span aria-hidden className="pointer-events-none size-0" />}
           />
         )}
+        {Tools && !ctx.readOnly ? (
+          <div className="ml-auto flex items-center">
+            <Tools {...props} name={`${kind.label}, block ${index + 1} of ${total}`} />
+          </div>
+        ) : null}
         {ctx.readOnly ? null : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "ml-auto h-8 w-8")} aria-label={`Actions for ${kind.label}, block ${index + 1}`}>
+              <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), !Tools && "ml-auto", "h-8 w-8")} aria-label={`Actions for ${kind.label}, block ${index + 1}`}>
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>

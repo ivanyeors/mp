@@ -559,7 +559,7 @@ A campaign's words in Simplified Chinese (the editor's 中文), for the **Custom
 _Avoid_: "a second campaign" (it shares the campaign's **Audience**, sends and lock); "localisation"
 
 **AI draft**:
-Words Claude wrote for a campaign, from the subject and the brief **Staff** gave it, or a translation of its English. Written into the editor as one change Staff keep, change or undo; never saved or sent until Staff press Save and Send. Blocks from it are marked *Drafted with AI* until a person edits or keeps them; the marks are saved with the email (`content.aiDrafted`), so the send checklist can count any left. Claude reads only the brand's facts (`lib/ai/mpillow-facts.ts`) and Staff's words, never a **Customer**.
+Words Claude wrote for a campaign, from the subject and the brief **Staff** gave it, or a translation of its English. Written into the editor as one change Staff keep, change or undo; never saved or sent until Staff press Save and Send. Blocks from it are marked *Drafted with AI* until a person edits or keeps them; the marks are saved with the email (`content.aiDrafted`), so the send checklist can count any left. Claude's smaller help with words Staff wrote themselves (subject and preview line ideas, a rewrite of one heading or text block, shown beside it) is not an AI draft: it is a suggestion Staff pick or reject, and one they pick or *Replace* with is theirs, unmarked. Claude reads only the brand's facts (`lib/ai/mpillow-facts.ts`) and Staff's words, never a **Customer**.
 _Avoid_: "AI-generated email" (no email is generated without a person); calling the brief a prompt in the UI
 
 **Audience**:
