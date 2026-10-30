@@ -25,7 +25,7 @@ A shop listing (`products` + `product_variants`). A projection of inventory: aut
 _Avoid_: listing, SKU (use **Variant** for the priced unit)
 
 **Listed**:
-Whether a **Sellable item** is actually on sale in the shop. Recorded by its **Storefront product** — `products.status = 'active'` with at least one `product_variants.is_active` — which is exactly what the shop query filters on, so there is nothing else to keep in step. Operators flip it per family under Settings → Products → Accessories; un-listing archives to `draft` and never deletes, so re-listing restores the same product rather than minting a duplicate. Items group into one product per (category, name), with sizes as **Variant**s — one switch covers Cervical Neck Support XS–L.
+Whether a **Sellable item** is actually on sale in the shop. Recorded by its **Storefront product** — `products.status = 'active'` with at least one `product_variants.is_active` — which is exactly what the shop query filters on, so there is nothing else to keep in step. Operators flip it per family under Settings → Products → In the shop (`?tab=shop`), which lists every cover, case, protector and accessory in Inventory; un-listing archives to `draft` and never deletes, so re-listing restores the same product rather than minting a duplicate. Items group into one product per (category, name), with sizes as **Variant**s — one switch covers Cervical Neck Support XS–L.
 _Avoid_: a `sell_as_accessory` column on `items` (a second source of truth the projection already answers); "published" (that is the one-time create, not the on/off state); deleting an un-listed product
 
 **Variant**:

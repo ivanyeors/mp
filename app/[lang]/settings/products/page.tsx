@@ -51,7 +51,7 @@ export default async function SettingsProductsPage({
     return (
         <ProductsClient
             initialData={initialData}
-            initialTab={tab === "categories" ? tab : "products"}
+            initialTab={tab === "categories" || tab === "shop" ? tab : "products"}
         />
     );
 }

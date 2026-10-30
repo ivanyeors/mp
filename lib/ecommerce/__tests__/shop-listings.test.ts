@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  compareFamilies,
   familyKey,
   familyTitle,
   isFamilyListed,
@@ -61,6 +62,29 @@ describe("SHOP_LISTABLE_ITEM_CATEGORIES", () => {
     for (const category of ["filling", "packaging", "other"]) {
       expect(SHOP_LISTABLE_ITEM_CATEGORIES).not.toContain(category);
     }
+  });
+});
+
+describe("compareFamilies", () => {
+  it("groups by category in declared order, not alphabetically", () => {
+    const families = [
+      { category: "bolster_protector", name: "Cotton" },
+      { category: "pillow_case", name: "Fibrecool" },
+      { category: "cover", name: "Satin White" },
+      { category: "bolster_case", name: "Camel" },
+      { category: "accessories", name: "Slope Mattress" },
+      { category: "accessories", name: "Ear Comfort Pad" },
+      { category: "pillow_protector", name: "Waterproof Inner" },
+    ];
+    expect([...families].sort(compareFamilies).map((f) => `${f.category}/${f.name}`)).toEqual([
+      "accessories/Ear Comfort Pad",
+      "accessories/Slope Mattress",
+      "cover/Satin White",
+      "pillow_case/Fibrecool",
+      "bolster_case/Camel",
+      "pillow_protector/Waterproof Inner",
+      "bolster_protector/Cotton",
+    ]);
   });
 });
 

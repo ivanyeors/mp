@@ -685,7 +685,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `priceCompanionBolster()` [select] — lib/results/paired-hold.ts:56
   - `publishAllUnpublishedAccessories()` [select] — lib/ecommerce/from-inventory.ts:198
   - `quoteCustomization()` [select] — lib/shop/customization-quote.ts:63
-  - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:321
+  - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:328
   - `syncShopifyPricingFromSupabase()` [select] — lib/shopify/pricing.ts:81
 
 ### item_thresholds
@@ -757,7 +757,7 @@ Changed from pages: `/settings/inventory`
   - `quoteCustomization()` [select] — lib/shop/customization-quote.ts:62
   - `receiveStock()` [select] — app/[lang]/settings/inventory/actions.ts:158
   - `resolveItemId()` [select] — app/api/telegram/webhook/route.ts:202
-  - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:310
+  - `setFamilyListed()` [select] — lib/ecommerce/shop-listings.ts:317
   - `validateComposedBuild()` [select] — lib/shop/customization-inventory.ts:356
   - `withCategories()` [select] — lib/results/composed-sellable.ts:60
 
@@ -1300,9 +1300,9 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/costi
   - `DELETE()` [delete] — app/api/shop/products/[id]/variants/[variantId]/route.ts:83
   - `PATCH()` [update] — app/api/shop/products/[id]/variants/[variantId]/route.ts:51
   - `POST()` [insert,select] — app/api/shop/products/[id]/variants/route.ts:59
-  - `activate()` [update] — lib/ecommerce/shop-listings.ts:273
+  - `activate()` [update] — lib/ecommerce/shop-listings.ts:280
   - `adoptManualProducts()` [update] — lib/ecommerce/inventory-sync.ts:433
-  - `deactivate()` [select,update] — lib/ecommerce/shop-listings.ts:253
+  - `deactivate()` [select,update] — lib/ecommerce/shop-listings.ts:260
   - `deductInventoryForOrder()` [select,update] — lib/ecommerce/inventory-deduction.ts:261
   - `publishAccessoryFamily()` [insert,select] — lib/ecommerce/from-inventory.ts:64
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:372
@@ -1340,11 +1340,11 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 - Written by:
   - `DELETE()` [delete] — app/api/shop/products/[id]/route.ts:97
   - `PATCH()` [select,update] — app/api/shop/products/[id]/route.ts:58
-  - `activate()` [update] — lib/ecommerce/shop-listings.ts:274
+  - `activate()` [update] — lib/ecommerce/shop-listings.ts:281
   - `adoptManualProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:359
   - `archiveUnsellableItemProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:331
   - `createPaymentLink()` [select,update] — lib/stripe/sync.ts:227
-  - `deactivate()` [update] — lib/ecommerce/shop-listings.ts:265
+  - `deactivate()` [update] — lib/ecommerce/shop-listings.ts:272
   - `deleteProduct()` [delete,select] — app/[lang]/settings/products/actions.ts:17
   - `deleteProducts()` [delete] — app/[lang]/settings/products/actions.ts:41
   - `publishAccessoryFamily()` [delete,insert,select] — lib/ecommerce/from-inventory.ts:81
