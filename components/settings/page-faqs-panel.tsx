@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  MoreHorizontal,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -20,6 +21,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -320,7 +328,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
           {(set?.items.length ?? 0) === 0 ? (
             <PageFaqsEmptyState surfaceKey={surfaceKey} />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 max-md:space-y-0 max-md:divide-y max-md:border-y">
               {set!.items.map((item, index) => (
                 <PageItemEditor
                   key={item.id}
@@ -369,10 +377,14 @@ function PageItemEditor({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
+      {/*
+        Phones: a flat row (the list draws the dividers) where the question opens it,
+        and one menu instead of five icons.
+      */}
       <div
-        className={`flex items-center gap-2 rounded-md border px-3 py-2 ${!item.visible ? "opacity-60" : ""}`}
+        className={`flex items-center gap-2 rounded-md border px-3 py-2 max-md:rounded-none max-md:border-0 max-md:px-0 max-md:py-0.5 ${!item.visible ? "opacity-60" : ""}`}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col max-md:hidden">
           <button
             type="button"
             disabled={!canUp}
@@ -395,32 +407,76 @@ function PageItemEditor({
         <button
           type="button"
           onClick={onToggleVisible}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground max-md:hidden"
           aria-label={item.visible ? "Hide question" : "Show question"}
         >
           {item.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
         </button>
         <CollapsibleTrigger asChild>
-          <button type="button" className="min-w-0 flex-1 text-left text-sm">
-            {item.content["en-US"]?.question ?? item.slug}
+          <button
+            type="button"
+            className="min-w-0 flex-1 text-left text-sm max-md:flex max-md:min-h-11 max-md:items-center max-md:gap-2 max-md:rounded-md max-md:px-1 max-md:py-2 max-md:transition-colors max-md:active:bg-press"
+          >
+            <span className="min-w-0 flex-1">
+              {item.content["en-US"]?.question ?? item.slug}
+              {!item.visible ? (
+                <span className="block text-xs text-muted-foreground md:hidden">Hidden</span>
+              ) : null}
+            </span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform md:hidden ${open ? "rotate-180" : ""}`}
+              aria-hidden
+            />
           </button>
         </CollapsibleTrigger>
         <button
           type="button"
           onClick={onDelete}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive max-md:hidden"
           aria-label="Delete question"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
         <CollapsibleTrigger asChild>
-          <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground">
+          <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground max-md:hidden">
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
         </CollapsibleTrigger>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0 text-muted-foreground md:hidden"
+              aria-label="Question actions"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuItem className="min-h-11" disabled={!canUp} onSelect={() => onMove(-1)}>
+              <ChevronUp />
+              Move up
+            </DropdownMenuItem>
+            <DropdownMenuItem className="min-h-11" disabled={!canDown} onSelect={() => onMove(1)}>
+              <ChevronDown />
+              Move down
+            </DropdownMenuItem>
+            <DropdownMenuItem className="min-h-11" onSelect={onToggleVisible}>
+              {item.visible ? <EyeOff /> : <Eye />}
+              {item.visible ? "Hide question" : "Show question"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" className="min-h-11" onSelect={onDelete}>
+              <Trash2 />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <CollapsibleContent>
-        <div className="mt-2 space-y-3 rounded-md border bg-muted/20 p-3">
+        <div className="mt-2 space-y-3 rounded-md border bg-muted/20 p-3 max-md:mb-2 max-md:border-0">
           <div className="space-y-1.5">
             <Label className="text-xs">Slug</Label>
             <Input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} />

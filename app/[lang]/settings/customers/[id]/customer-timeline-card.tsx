@@ -24,6 +24,10 @@ import { formatAdminDateTimeMY } from "@/lib/format/admin-date";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { ShownTimelineEntry, TimelineGroup } from "@/lib/crm/timeline/types";
+import { cn } from "@/lib/utils";
+
+/** Entries a phone shows at first, and how many more each *Show more* adds. */
+const PHONE_STEP = 10;
 
 /** What `GET /api/settings/customers/[id]/timeline` answers. */
 type TimelinePage = {
@@ -84,6 +88,7 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
     const [groups, setGroups] = useState<TimelineGroup[]>([]);
     const [loadingOlder, setLoadingOlder] = useState(false);
     const [olderError, setOlderError] = useState<string | null>(null);
+    const [phoneLimit, setPhoneLimit] = useState(PHONE_STEP);
 
     useEffect(() => {
         let live = true;
@@ -106,6 +111,7 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
     const choose = (key: string | null) => {
         const next = key === null ? [] : selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key];
         setOlderError(null);
+        setPhoneLimit(PHONE_STEP);
         setView({ status: "loading" });
         setSelected(next);
     };
@@ -152,13 +158,18 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
                     <p className="text-xs text-muted-foreground mt-1">Everything that happened, newest first.</p>
                 </div>
                 {groups.length > 1 ? (
-                    <div className="flex flex-wrap gap-2" role="group" aria-label="Show kinds">
+                    // Phones: one row of chips that scrolls sideways, edge to edge of the card.
+                    <div
+                        className="flex gap-2 max-md:-mx-4 max-md:overflow-x-auto max-md:px-4 md:flex-wrap"
+                        role="group"
+                        aria-label="Show kinds"
+                    >
                         <Button
                             type="button"
                             size="sm"
                             variant={selected.length === 0 ? "default" : "outline"}
                             aria-pressed={selected.length === 0}
-                            className="h-7 rounded-full px-3 text-xs"
+                            className="h-7 min-w-11 shrink-0 rounded-full px-3 text-xs"
                             onClick={() => choose(null)}
                         >
                             All
@@ -170,7 +181,7 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
                                 size="sm"
                                 variant={selected.includes(g.key) ? "default" : "outline"}
                                 aria-pressed={selected.includes(g.key)}
-                                className="h-7 rounded-full px-3 text-xs"
+                                className="h-7 shrink-0 rounded-full px-3 text-xs"
                                 onClick={() => choose(g.key)}
                             >
                                 {g.label}
@@ -201,11 +212,20 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
                         {view.page.entries.length === 0 ? (
                             <p className="text-sm text-muted-foreground">Nothing here yet.</p>
                         ) : (
-                            <ul className="space-y-3">
-                                {view.page.entries.map((entry) => {
+                            <ul className="space-y-3 max-md:space-y-1">
+                                {view.page.entries.map((entry, index) => {
                                     const Icon = GROUP_ICONS[entry.group] ?? Clock;
                                     return (
-                                        <li key={entry.id} className="flex gap-3 text-sm">
+                                        // A linked entry is one target on a phone: its link
+                                        // stretches over the row (max-md:after:inset-0).
+                                        <li
+                                            key={entry.id}
+                                            className={cn(
+                                                "flex gap-3 text-sm max-md:relative max-md:-mx-2 max-md:min-h-11 max-md:rounded-md max-md:px-2 max-md:py-1.5",
+                                                entry.ref.href && "max-md:transition-colors max-md:has-[a:active]:bg-press",
+                                                index >= phoneLimit && "max-md:hidden",
+                                            )}
+                                        >
                                             <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-muted/40 text-muted-foreground">
                                                 <Icon className="h-3.5 w-3.5" />
                                             </span>
@@ -214,7 +234,7 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
                                                     {entry.ref.href ? (
                                                         <Link
                                                             href={withLocale(entry.ref.href, locale)}
-                                                            className="font-medium text-primary hover:underline break-words"
+                                                            className="font-medium text-primary hover:underline break-words md:active:opacity-60 max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']"
                                                         >
                                                             {entry.summary}
                                                         </Link>
@@ -241,12 +261,23 @@ export function CustomerTimelineCard({ customerId }: { customerId: string }) {
                                 })}
                             </ul>
                         )}
+                        {view.page.entries.length > phoneLimit ? (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full md:hidden"
+                                onClick={() => setPhoneLimit((n) => n + PHONE_STEP)}
+                            >
+                                Show more
+                            </Button>
+                        ) : null}
                         {olderError ? <p className="text-xs text-destructive">{olderError}</p> : null}
                         {view.page.next ? (
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-full"
+                                // On a phone, Show more first walks through what is already loaded.
+                                className={cn("w-full", view.page.entries.length > phoneLimit && "max-md:hidden")}
                                 onClick={() => void loadOlder()}
                                 disabled={loadingOlder}
                             >

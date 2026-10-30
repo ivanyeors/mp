@@ -118,6 +118,18 @@ describe("finalizeReadjustmentBooking", () => {
     expect(h.booking).toMatchObject({ status: "booked", calendar_event_id: "evt-9", hold_expires_at: null });
   });
 
+  it("adds the Checkout's language preference to the event, and ignores an unknown one", async () => {
+    await finalizeReadjustmentBooking(admin, "bk-1", "mandarin");
+    expect(h.bookCalendarSlot.mock.calls[0][0].notes.slice(-2)).toEqual([
+      "Paid SGD 30.00 · Order #1077",
+      "Language preference: Mandarin",
+    ]);
+
+    h.booking = paidBooking();
+    await finalizeReadjustmentBooking(admin, "bk-1", "klingon");
+    expect(h.bookCalendarSlot.mock.calls[1][0].notes.at(-1)).toBe("Paid SGD 30.00 · Order #1077");
+  });
+
   it("records the event id the moment it exists, before reminders can fail", async () => {
     h.bookCalendarSlot.mockImplementation(async (input: { onEventCreated?: (id: string) => Promise<void> }) => {
       await input.onEventCreated?.("evt-9");

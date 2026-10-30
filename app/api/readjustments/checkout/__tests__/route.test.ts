@@ -186,6 +186,16 @@ describe("POST /api/readjustments/checkout", () => {
     expect(session.expiresAt.getTime()).toBeGreaterThanOrEqual(Date.now() + 30 * 60 * 1000);
   });
 
+  it("carries the language preference to the webhook in the Checkout Session", async () => {
+    await post({ language_preference: "english" });
+    expect(h.createSession.mock.calls[0][0].languagePreference).toBe("english");
+  });
+
+  it("defaults to no language preference", async () => {
+    await post();
+    expect(h.createSession.mock.calls[0][0].languagePreference).toBe("none");
+  });
+
   it("charges the server's fee, whatever the body says", async () => {
     await post({ amount: 1, fee_amount: 1, price: 1 });
     expect(h.createSession.mock.calls[0][0].amount).toBe(30);

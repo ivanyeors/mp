@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# The files that render pages people see, each with its content hash, one
+# "<hash> <path>" per line. stop-check compares this with what was on disk at
+# session start and at each screenshot, so a file counts as changed only when
+# its content is new: a branch switch back to something already seen is not.
+root="$(git -C "${CLAUDE_PROJECT_DIR:-.}" rev-parse --show-toplevel 2>/dev/null)" || exit 0
+cd "$root" || exit 0
+files="$(
+  git ls-files -co --exclude-standard |
+    grep -E '^(app|components|hooks)/.*\.(tsx|jsx|css|scss)$|^app/\[lang\]/.*\.ts$|^lib/.*\.tsx$|^(public|styles)/' |
+    grep -vE '(^|/)__tests__/|\.(test|spec|check|smoke|stories)\.[jt]sx?$|^app/api/|/route\.ts$' |
+    while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done
+)"
+[ -n "$files" ] || exit 0
+paste -d ' ' <(printf '%s\n' "$files" | git hash-object --stdin-paths) <(printf '%s\n' "$files")

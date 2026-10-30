@@ -31,6 +31,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  MobileStickyActionBar,
+  mobileStickyActionBarSpacerClassName,
+} from "@/components/ui/mobile-sticky-action-bar";
 import { formatFillingPreview } from "@/lib/filling-preview";
 import dynamic from "next/dynamic";
 import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
@@ -798,11 +802,18 @@ export default function ConfigureCardPage() {
     }
   };
 
+  // Phones keep Save in a bar above the dock, so it stays in reach down a long BOM.
+  const mobileSaveBar = Boolean(
+    (selectedSize && selectedPillowKind && pillowDrawerTab === "product") ||
+      (bolsterVariant && bolsterDrawerTab === "product"),
+  );
+
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb>
+    <div className={cn("space-y-6", mobileSaveBar && mobileStickyActionBarSpacerClassName)}>
+      {/* The shell breadcrumb already shows this path on a phone. */}
+      <Breadcrumb className="max-md:hidden">
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
@@ -1059,17 +1070,42 @@ export default function ConfigureCardPage() {
               </TabsContent>
             </Tabs>
           {pillowDrawerTab === "product" && (
-            <div className="flex justify-end lg:hidden">
-              <Button
-                onClick={() => {
-                  if (!selectedPillowKind || !selectedSize) return;
-                  saveSelected(selectedPillowKind, selectedSize);
-                }}
-                disabled={saving}
-              >
-                {saving ? 'Saving…' : 'Save changes'}
-              </Button>
-            </div>
+            <>
+              <div className="hidden justify-end md:flex lg:hidden">
+                <Button
+                  onClick={() => {
+                    if (!selectedPillowKind || !selectedSize) return;
+                    saveSelected(selectedPillowKind, selectedSize);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving…' : 'Save changes'}
+                </Button>
+              </div>
+              <MobileStickyActionBar>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">
+                      {pillowSelectedTemplate?.name ?? `${productLabel}: ${sizeLabel}`}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {pillowSelectedTemplate ? 'Saving also updates this template.' : 'No template linked.'}
+                    </div>
+                  </div>
+                  <Button
+                    size="lg"
+                    className="shrink-0"
+                    onClick={() => {
+                      if (!selectedPillowKind || !selectedSize) return;
+                      saveSelected(selectedPillowKind, selectedSize);
+                    }}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </div>
+              </MobileStickyActionBar>
+            </>
           )}
         </>
       )}
@@ -1266,9 +1302,26 @@ export default function ConfigureCardPage() {
               </TabsContent>
             </Tabs>
           {bolsterDrawerTab === "product" && (
-            <div className="flex justify-end lg:hidden">
-              <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            </div>
+            <>
+              <div className="hidden justify-end md:flex lg:hidden">
+                <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+              </div>
+              <MobileStickyActionBar>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">
+                      {bolsterSelectedTemplate?.name ?? `${productLabel}: ${sizeLabel}`}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {bolsterSelectedTemplate ? 'Saving also updates this template.' : 'No template linked.'}
+                    </div>
+                  </div>
+                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
+              </MobileStickyActionBar>
+            </>
           )}
         </>
       )}
@@ -2680,26 +2733,75 @@ function DynamicPartSection({
     upsert(itemId, Number.isFinite(parsed) ? parsed : 0);
   };
 
+  const lineName = (l: BomLine) => {
+    const item = getItem(l.item_id);
+    return item ? getItemBaseName(item) : `Item #${l.item_id}`;
+  };
+
+  const lineQty = (l: BomLine, ariaLabel?: string) => (
+    <Input
+      type="number"
+      min={0}
+      value={l.quantity}
+      aria-label={ariaLabel}
+      onFocus={(e) => requestAnimationFrame(() => e.currentTarget.select())}
+      onClick={(e) => requestAnimationFrame(() => e.currentTarget.select())}
+      onChange={(e) => handleQtyChange(l.item_id, e.target.value)}
+    />
+  );
+
+  const partPicker = (triggerClassName: string) => (
+    <Select
+      value={selectedId === "" ? "" : String(selectedId)}
+      onValueChange={(value) => setSelectedId(value ? Number(value) : "")}
+    >
+      <SelectTrigger className={triggerClassName} disabled={addable.length === 0}>
+        <SelectValue placeholder={addable.length ? "Choose a part to add" : "Every available part is added"} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="" disabled={addable.length === 0}>
+          {addable.length ? "Choose a part to add" : "Every available part is added"}
+        </SelectItem>
+        {addable.map((it) => (
+          <SelectItem key={it.id} value={String(it.id)}>
+            {renderOptionLabel(it)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const newQty = (ariaLabel?: string) => (
+    <Input
+      type="number"
+      min={0}
+      value={quantity}
+      aria-label={ariaLabel}
+      onFocus={(e) => requestAnimationFrame(() => e.currentTarget.select())}
+      onClick={(e) => requestAnimationFrame(() => e.currentTarget.select())}
+      onChange={(e) => {
+        const parsed = Number.parseInt(e.target.value || "0", 10);
+        setQuantity(Number.isFinite(parsed) ? parsed : 0);
+      }}
+    />
+  );
+
+  const addDisabled = selectedId === "" || quantity <= 0 || !Number.isFinite(quantity);
+
   return (
     <Section title={title}>
+      <div className="hidden md:block">
       <ConfigureTable headers={["Part", "Size", "Qty", "Actions"]} pinFirstColumn>
         {lines.map((l) => {
           const item = getItem(l.item_id);
           return (
             <TableRow key={l.item_id}>
               <TableCell className={`${stickyFirstColumnCellClassName} font-medium`}>
-                {item ? getItemBaseName(item) : `Item #${l.item_id}`}
+                {lineName(l)}
               </TableCell>
               <TableCell className="min-w-[7rem] sm:min-w-0">{renderVariant(item)}</TableCell>
               <TableCell className="w-[6.5rem] min-w-[6.5rem] sm:w-[140px]">
-                <Input
-                  type="number"
-                  min={0}
-                  value={l.quantity}
-                  onFocus={(e) => requestAnimationFrame(() => e.currentTarget.select())}
-                  onClick={(e) => requestAnimationFrame(() => e.currentTarget.select())}
-                  onChange={(e) => handleQtyChange(l.item_id, e.target.value)}
-                />
+                {lineQty(l)}
               </TableCell>
               <TableCell className="min-w-[6rem] sm:w-[140px]">
                 <Button size="sm" variant="secondary" onClick={() => remove(l.item_id)}>
@@ -2719,50 +2821,56 @@ function DynamicPartSection({
         <TableRow>
           <TableCell colSpan={2} className="min-w-[14rem] sm:min-w-0">
               <div className="flex items-center gap-2">
-                <Select
-                  value={selectedId === "" ? "" : String(selectedId)}
-                  onValueChange={(value) => setSelectedId(value ? Number(value) : "")}
-                >
-                  <SelectTrigger className="w-full" disabled={addable.length === 0}>
-                    <SelectValue placeholder={addable.length ? "Choose a part to add" : "Every available part is added"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="" disabled={addable.length === 0}>
-                      {addable.length ? "Choose a part to add" : "Every available part is added"}
-                    </SelectItem>
-                    {addable.map((it) => (
-                      <SelectItem key={it.id} value={String(it.id)}>
-                        {renderOptionLabel(it)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {partPicker("w-full")}
               </div>
           </TableCell>
           <TableCell className="w-[6.5rem] min-w-[6.5rem] sm:w-[140px]">
-            <Input
-              type="number"
-              min={0}
-              value={quantity}
-              onFocus={(e) => requestAnimationFrame(() => e.currentTarget.select())}
-              onClick={(e) => requestAnimationFrame(() => e.currentTarget.select())}
-              onChange={(e) => {
-                const parsed = Number.parseInt(e.target.value || "0", 10);
-                setQuantity(Number.isFinite(parsed) ? parsed : 0);
-              }}
-            />
+            {newQty()}
           </TableCell>
           <TableCell className="min-w-[6rem] sm:w-[140px]">
-            <Button
-              size="sm"
-              onClick={handleAdd}
-              disabled={selectedId === "" || quantity <= 0 || !Number.isFinite(quantity)}
-            >
+            <Button size="sm" onClick={handleAdd} disabled={addDisabled}>
               Add part
             </Button>
           </TableCell>
         </TableRow>
       </ConfigureTable>
+      </div>
+      {/* Phones: a four-column table cuts Remove and Add off at the right edge, so each
+          part is a row with its quantity and remove in reach, and the add row sits below. */}
+      <div className="space-y-2 md:hidden">
+        {lines.length ? (
+          <ul className="divide-y rounded-xl border">
+            {lines.map((l) => (
+              <li key={l.item_id} className="flex items-center gap-2 py-1.5 pl-3 pr-1.5">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{lineName(l)}</div>
+                  <div className="text-xs text-muted-foreground">{renderVariant(getItem(l.item_id))}</div>
+                </div>
+                {/* The number Input fills its parent, so this wrapper sets its width. */}
+                <div className="w-20 shrink-0">{lineQty(l, `Quantity of ${lineName(l)}`)}</div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="shrink-0 text-muted-foreground"
+                  aria-label={`Remove ${lineName(l)}`}
+                  onClick={() => remove(l.item_id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No parts added yet.</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {partPicker("w-full basis-full")}
+          <div className="w-20 shrink-0">{newQty("Quantity to add")}</div>
+          <Button className="flex-1" onClick={handleAdd} disabled={addDisabled}>
+            Add part
+          </Button>
+        </div>
+      </div>
     </Section>
   );
 }

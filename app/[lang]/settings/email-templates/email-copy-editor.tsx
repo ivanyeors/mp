@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CopyField, EmailCopy, EmailCopySpec } from "@/lib/email/copy";
@@ -214,7 +215,11 @@ export function EmailCopyEditor({
                         {f.optional ? <span className="font-normal text-muted-foreground"> (optional)</span> : null}
                     </Label>
                     {changed ? (
-                        <button type="button" className="text-xs text-muted-foreground underline" onClick={() => set(k, f.default)}>
+                        <button
+                            type="button"
+                            className="shrink-0 text-xs text-muted-foreground underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                            onClick={() => set(k, f.default)}
+                        >
                             Use the original words
                         </button>
                     ) : null}
@@ -242,18 +247,22 @@ export function EmailCopyEditor({
         );
     };
 
+    // Phones: Save is pinned to the bottom while there is something to save, not 1,000px down the form.
+    const showSaveBar = dirty || busy === "save";
+
     return (
         <VariableTargets>
-            <div className="space-y-6">
+            <div className={cn("space-y-6", showSaveBar && mobileStickyActionBarSpacerClassName)}>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                    <Button variant="ghost" size="sm" className="self-start" asChild>
+                    {/* The shell breadcrumb already links back on a phone. */}
+                    <Button variant="ghost" size="sm" className="self-start max-md:hidden" asChild>
                         <Link href={withLocale("/settings/email-templates", locale)}>
                             <ChevronLeft className="mr-1 h-4 w-4" />
                             Email templates
                         </Link>
                     </Button>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <h1 className="text-2xl font-semibold tracking-tight">{spec.name}</h1>
+                        <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight">{spec.name}</h1>
                         <Badge variant={savedEdited ? "default" : "outline"}>{savedEdited ? "Edited" : "Original words"}</Badge>
                     </div>
                 </div>
@@ -310,7 +319,7 @@ export function EmailCopyEditor({
                                     </p>
                                 ) : null}
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <Button onClick={save} disabled={!dirty || busy !== null}>
+                                    <Button onClick={save} disabled={!dirty || busy !== null} className={showSaveBar ? "max-md:hidden" : undefined}>
                                         {busy === "save" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                                         Save
                                     </Button>
@@ -394,6 +403,15 @@ export function EmailCopyEditor({
                             </div>
                         </SheetContent>
                     </Sheet>
+                ) : null}
+
+                {showSaveBar ? (
+                    <MobileStickyActionBar>
+                        <Button className="w-full" onClick={save} disabled={!dirty || busy !== null}>
+                            {busy === "save" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                            Save
+                        </Button>
+                    </MobileStickyActionBar>
                 ) : null}
             </div>
         </VariableTargets>

@@ -12,7 +12,7 @@ import type { ReferralRow } from "@/lib/commissions/referral-rows";
 const money = (n: number) => `$${n.toFixed(2)}`;
 const dateFmt = new Intl.DateTimeFormat("en-SG", { day: "numeric", month: "short", year: "numeric" });
 
-function releaseLabel(row: ReferralRow): string {
+export function releaseLabel(row: ReferralRow): string {
   switch (row.status) {
     case "released":
       return "Available now";
@@ -28,7 +28,7 @@ function releaseLabel(row: ReferralRow): string {
   }
 }
 
-const statusText: Record<ReferralRow["status"], string> = {
+export const statusText: Record<ReferralRow["status"], string> = {
   held: "Held",
   released: "Released",
   paid: "Paid",

@@ -20,6 +20,8 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { PointsSettingsCard } from "./points-settings-card";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
+import { EmptyState } from "@/components/settings/empty-state";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,16 +139,16 @@ export function DiscountsClient({
     }, [fetchCoupons]);
 
     return (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
             {/* Header */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">Discounts</h1>
                     <InfoTip label="About Discounts">
                         Manage discount codes and loyalty points.
                     </InfoTip>
                 </div>
-                <Button asChild size="sm" className="w-full sm:w-auto">
+                <Button asChild size="sm" className="w-auto">
                     <Link href={to("/settings/discounts/new")}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add discount
@@ -154,7 +156,10 @@ export function DiscountsClient({
                 </Button>
             </div>
 
-            <PointsSettingsCard />
+            {/* Phones show the codes first: the Points form is ~2,400px tall. */}
+            <div className="max-md:order-last">
+                <PointsSettingsCard />
+            </div>
 
             {/* Content */}
             {loading ? (
@@ -162,20 +167,44 @@ export function DiscountsClient({
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
             ) : coupons.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <Tag className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        No discount codes yet.
-                    </p>
-                    <Button asChild size="sm" className="mt-4">
-                        <Link href={to("/settings/discounts/new")}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add discount
-                        </Link>
-                    </Button>
-                </div>
+                <EmptyState
+                    icon={Tag}
+                    action={
+                        <Button asChild size="sm">
+                            <Link href={to("/settings/discounts/new")}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add discount
+                            </Link>
+                        </Button>
+                    }
+                >
+                    No discount codes yet.
+                </EmptyState>
             ) : (
-                <div className="rounded-xl border overflow-hidden">
+                <>
+                <MobileList>
+                    {coupons.map((coupon) => {
+                        const status = getStatus(coupon);
+                        return (
+                            <MobileListRow key={coupon.id} href={to(`/settings/discounts/${coupon.id}`)}>
+                                <div className="flex items-center gap-2">
+                                    <span className="truncate font-medium tracking-wide">{coupon.code}</span>
+                                    <Badge variant={status.variant}>{status.label}</Badge>
+                                </div>
+                                <div className="mt-0.5 text-xs text-muted-foreground">
+                                    {coupon.discount_type === "free_shipping"
+                                        ? formatValue(coupon)
+                                        : `${typeBadgeLabel(coupon.discount_type)} · ${formatValue(coupon)}`}
+                                    {" · "}
+                                    {coupon.usage_limit === null
+                                        ? `${coupon.usage_count} used`
+                                        : `${coupon.usage_count} of ${coupon.usage_limit} used`}
+                                </div>
+                            </MobileListRow>
+                        );
+                    })}
+                </MobileList>
+                <div className="hidden rounded-xl border overflow-hidden md:block">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -247,6 +276,7 @@ export function DiscountsClient({
                         </TableBody>
                     </Table>
                 </div>
+                </>
             )}
 
             {total > 0 && (

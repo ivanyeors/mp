@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# Run the real app on sample data and screenshot it. See SKILL.md.
+#
+#   preview shoot [options] <page>...   start if needed, then screenshot each page
+#   preview start [--scenario NAME]     fake Supabase + next dev, in the background
+#   preview reset [--scenario NAME]     reload the fixtures and drop sample writes
+#   preview skip "<why>"                record that a change needs no screenshots
+#   preview status | logs | stop | selftest
+#
+# Nothing here talks to a real service: Supabase is a local stand-in, and the
+# app's own keys (from .env files or the environment) are withheld.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo="$(cd "$here/../../.." && pwd)"
+state="$repo/.preview"
+app_port="${PREVIEW_PORT:-3100}"
+db_port="${PREVIEW_SUPABASE_PORT:-54329}"
+app_url="http://localhost:$app_port"
+db_url="http://127.0.0.1:$db_port"
+mkdir -p "$state"
+
+up() { (echo >"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+db_up() { curl -sf --max-time 2 "$db_url/__preview/status" >/dev/null 2>&1; }
+
+kill_port() {
+  local pids
+  pids="$(lsof -ti "tcp:$1" -sTCP:LISTEN 2>/dev/null || true)"
+  if [ -n "$pids" ]; then kill $pids 2>/dev/null || true; fi
+}
+
+detach() {
+  # Outlive this shell, so the next command finds the servers still running.
+  if command -v setsid >/dev/null 2>&1; then setsid nohup "$@" </dev/null & else nohup "$@" </dev/null & fi
+}
+
+# The page Next writes for coding agents is not ours to commit.
+drop_agents_md() {
+  if [ -f "$state/agents-md-absent" ] && [ -f "$repo/AGENTS.md" ] && grep -q "BEGIN:nextjs-agent-rules" "$repo/AGENTS.md"; then
+    rm -f "$repo/AGENTS.md"
+  fi
+}
+
+start_db() {
+  local scenario="$1"
+  if db_up; then
+    # A reset reloads fixtures, not the server's own code: restart it when that changed.
+    if [ -n "$(find "$here/lib" -name '*.mjs' -newer "$state/supabase.started" 2>/dev/null)" ] || [ ! -f "$state/supabase.started" ]; then
+      kill_port "$db_port"
+      for _ in $(seq 1 25); do db_up || break; sleep 0.2; done
+    else
+      return 0
+    fi
+  fi
+  touch "$state/supabase.started"
+  detach node "$here/lib/fake-supabase.mjs" --port "$db_port" --scenario "$scenario" >"$state/supabase.log" 2>&1
+  for _ in $(seq 1 50); do db_up && return 0; sleep 0.2; done
+  echo "The fake Supabase did not start; its log:" >&2
+  tail -20 "$state/supabase.log" >&2
+  exit 1
+}
+
+start_app() {
+  if up "$app_port"; then return 0; fi
+  if [ ! -x "$repo/node_modules/.bin/next" ]; then
+    echo "node_modules is missing: run \`pnpm install\` in $repo first." >&2
+    exit 1
+  fi
+  [ -e "$repo/AGENTS.md" ] && rm -f "$state/agents-md-absent" || touch "$state/agents-md-absent"
+
+  # Withhold every key the app could use to reach a real service: unset them,
+  # and blank the ones an .env file would otherwise load (Next does not
+  # override a variable that is already set).
+  local names=() unset_args=() blank_args=() name f
+  for f in .env.example .env .env.local .env.development .env.development.local; do
+    [ -f "$repo/$f" ] || continue
+    while IFS= read -r name; do names+=("$name:$f"); done < <(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$repo/$f" | tr -d '=')
+  done
+  for entry in ${names[@]+"${names[@]}"}; do
+    name="${entry%%:*}"
+    f="${entry#*:}"
+    case "$name" in NEXT_PUBLIC_SUPABASE_URL | NEXT_PUBLIC_SUPABASE_ANON_KEY | SUPABASE_SERVICE_ROLE_KEY | NEXT_PUBLIC_SITE_URL) continue ;; esac
+    unset_args+=(-u "$name")
+    [ "$f" != ".env.example" ] && blank_args+=("$name=")
+  done
+  # Next writes AGENTS.md when it detects a coding agent; hide the markers it looks for.
+  for name in AI_AGENT CLAUDECODE CLAUDE_CODE CLAUDE_CODE_IS_COWORK CODEX_CI CODEX_SANDBOX CODEX_THREAD_ID CURSOR_AGENT CURSOR_TRACE_ID GEMINI_CLI OPENCODE_CLIENT REPL_ID; do
+    unset_args+=(-u "$name")
+  done
+
+  (
+    cd "$repo"
+    detach env "${unset_args[@]}" ${blank_args[@]+"${blank_args[@]}"} \
+      NEXT_PUBLIC_SUPABASE_URL="$db_url" \
+      NEXT_PUBLIC_SUPABASE_ANON_KEY="preview-anon" \
+      SUPABASE_SERVICE_ROLE_KEY="preview-service" \
+      NEXT_PUBLIC_SITE_URL="$app_url" \
+      NEXT_TELEMETRY_DISABLED=1 \
+      NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}" \
+      "$repo/node_modules/.bin/next" dev -p "$app_port" >"$state/next.log" 2>&1
+  )
+  for _ in $(seq 1 180); do
+    if grep -q "Ready in" "$state/next.log" 2>/dev/null && up "$app_port"; then
+      drop_agents_md
+      return 0
+    fi
+    if grep -qiE "another next dev server|EADDRINUSE" "$state/next.log" 2>/dev/null; then
+      echo "next dev could not start: $(grep -iE 'another next dev server|EADDRINUSE' "$state/next.log" | head -1)" >&2
+      echo "Stop the other dev server in this folder, or set PREVIEW_PORT." >&2
+      exit 1
+    fi
+    sleep 1
+  done
+  echo "next dev did not become ready in 3 minutes; its log:" >&2
+  tail -30 "$state/next.log" >&2
+  exit 1
+}
+
+# What the Stop hook compares against: page files as they were when last looked at.
+mark_seen() {
+  "$here/hooks/ui-snapshot" >>"$state/seen"
+  sort -u -o "$state/seen" "$state/seen"
+}
+
+reset_db() {
+  curl -sf -X POST "$db_url/__preview/reset?scenario=$1" >/dev/null
+}
+
+cmd="${1:-help}"
+[ $# -gt 0 ] && shift
+
+case "$cmd" in
+  start)
+    scenario="default"
+    [ "${1:-}" = "--scenario" ] && scenario="$2"
+    start_db "$scenario"
+    start_app
+    reset_db "$scenario"
+    echo "Preview running: app $app_url, fake Supabase $db_url (scenario $scenario)."
+    ;;
+  shoot)
+    scenario="default"
+    keep=0
+    pass=()
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --scenario) scenario="$2"; shift 2 ;;
+        --keep-data) keep=1; shift ;;
+        *) pass+=("$1"); shift ;;
+      esac
+    done
+    start_db "$scenario"
+    start_app
+    [ "$keep" = 1 ] || reset_db "$scenario"
+    status=0
+    touch "$state/shoot-started"
+    PREVIEW_APP_URL="$app_url" PREVIEW_SUPABASE_URL="$db_url" PREVIEW_NEXT_LOG="$state/next.log" PREVIEW_STATE_DIR="$state" \
+      node "$here/lib/shoot.mjs" ${pass[@]+"${pass[@]}"} || status=$?
+    [ "$state/last-shot" -nt "$state/shoot-started" ] && mark_seen
+    [ "$scenario" = "default" ] || reset_db default
+    drop_agents_md
+    exit "$status"
+    ;;
+  reset)
+    scenario="default"
+    [ "${1:-}" = "--scenario" ] && scenario="$2"
+    reset_db "$scenario" && echo "Fixtures reloaded (scenario $scenario)."
+    ;;
+  status)
+    db_up && echo "fake Supabase: up at $db_url $(curl -s "$db_url/__preview/status" | head -c 300)" || echo "fake Supabase: down"
+    up "$app_port" && echo "app: up at $app_url" || echo "app: down"
+    [ -f "$state/last-shot" ] && echo "last screenshots: $(tail -1 "$state/last-shot")"
+    ;;
+  logs)
+    echo "== $state/next.log"; tail -40 "$state/next.log" 2>/dev/null || true
+    echo "== $state/supabase.log"; tail -40 "$state/supabase.log" 2>/dev/null || true
+    ;;
+  stop)
+    kill_port "$app_port"
+    kill_port "$db_port"
+    drop_agents_md
+    echo "Preview stopped."
+    ;;
+  skip)
+    # The Stop hook asks for screenshots after a change to a page; this records why none were needed.
+    [ -n "${1:-}" ] || { echo 'Say why: preview skip "<why nothing visible changed>"' >&2; exit 2; }
+    printf '%s\nskipped: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >"$state/last-shot"
+    mark_seen
+    echo "Noted: no screenshots needed ($*)."
+    ;;
+  selftest)
+    node "$here/selftest.mjs"
+    ;;
+  *)
+    sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+esac

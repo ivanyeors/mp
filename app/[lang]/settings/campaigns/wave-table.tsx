@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import { PAUSE_LINES_TEXT, waveRows, type WaveRow } from "@/lib/email-campaigns/send-flow";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
+import { cn } from "@/lib/utils";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -22,11 +23,11 @@ function StateBadge({ row }: { row: WaveRow }) {
  * spam as counts and percentages against the pause lines, failed, and when
  * each went. A table on a wide screen, one card per wave on a phone.
  */
-export function WaveTable({ waves }: { waves: CampaignWaveStats[] }) {
+export function WaveTable({ waves, className }: { waves: CampaignWaveStats[]; className?: string }) {
     const rows = waveRows(waves);
     if (rows.length === 0) return null;
     return (
-        <div className="space-y-2">
+        <div className={cn("space-y-2", className)}>
             <div className="flex items-center gap-1.5">
                 <h3 className="text-sm font-medium">Waves</h3>
                 <InfoTip label="About the pause lines">
@@ -37,9 +38,9 @@ export function WaveTable({ waves }: { waves: CampaignWaveStats[] }) {
                     </p>
                 </InfoTip>
             </div>
-            <ul className="space-y-2 md:hidden">
+            <ul className="divide-y border-y md:hidden">
                 {rows.map((r) => (
-                    <li key={r.wave} className="space-y-1 rounded-lg border p-3 text-sm">
+                    <li key={r.wave} className="space-y-1 py-3 text-sm">
                         <div className="flex items-center justify-between gap-2">
                             <span className="font-medium">Wave {r.wave}</span>
                             <StateBadge row={r} />

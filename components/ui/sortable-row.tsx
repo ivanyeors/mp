@@ -35,7 +35,7 @@ export function SortableRow({
       ref={handleRef}
       type="button"
       aria-label={`Drag ${label} to reorder`}
-      className="inline-flex min-h-11 min-w-8 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
+      className="inline-flex min-h-11 min-w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:cursor-grabbing active:bg-press"
     >
       <GripVertical className="h-4 w-4" />
     </button>

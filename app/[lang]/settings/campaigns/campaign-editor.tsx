@@ -983,7 +983,10 @@ export function CampaignEditor({
                                         {chosenSegmentHref ? (
                                             <>
                                                 {" "}
-                                                <Link href={chosenSegmentHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                                                <Link
+                                                    href={chosenSegmentHref}
+                                                    className="relative font-medium text-foreground underline-offset-4 hover:underline active:opacity-60 max-md:after:absolute max-md:after:-inset-y-2 max-md:after:inset-x-0 max-md:after:content-['']"
+                                                >
                                                     See who is in it
                                                 </Link>
                                             </>
@@ -1136,7 +1139,7 @@ export function CampaignEditor({
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="c-greeting">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
+                    <Label htmlFor="c-greeting" className="cursor-pointer max-md:min-h-11 max-md:flex-1 max-md:active:opacity-60">Start with &ldquo;Hi &lt;first name&gt;,&rdquo;</Label>
                     <Switch id="c-greeting" checked={greeting} disabled={locked} onCheckedChange={(v) => edit({ greeting: v })} />
                 </div>
 
@@ -1528,14 +1531,15 @@ export function CampaignEditor({
                     </CampaignAiContext.Provider>
                 </TabsContent>
 
-                <TabsContent value="send" forceMount data-own-undo className="space-y-6 data-[state=inactive]:hidden">
+                {/* Flex, not space-y: on a phone a started campaign moves its send results above the test and checks. */}
+                <TabsContent value="send" forceMount data-own-undo className="flex flex-col gap-6 data-[state=inactive]:hidden">
                     {campaign ? null : (
                         <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                             Save the draft first. Then you can test it, check what sending needs, and send it.
                         </p>
                     )}
                     {campaign ? (
-                        <div className="grid gap-6 lg:grid-cols-2">
+                        <div className={cn("grid gap-6 lg:grid-cols-2", locked && "max-md:order-2")}>
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-base">Send a test</CardTitle>
@@ -1589,7 +1593,7 @@ export function CampaignEditor({
                     ) : null}
 
                     {campaign ? (
-                        <Card>
+                        <Card className={locked ? "max-md:order-1" : undefined}>
                             <CardHeader>
                                 <div className="flex items-center gap-1.5">
                                     <CardTitle className="text-base">Send</CardTitle>
@@ -1612,7 +1616,7 @@ export function CampaignEditor({
                                     </CardDescription>
                                 ) : null}
                             </CardHeader>
-                            <CardContent className="space-y-5">
+                            <CardContent className="flex flex-col gap-5">
                                 <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
                                     {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice: readiness?.advice, allowance, resume }).map((step) => (
                                         <li key={step.key} className={cn("flex items-start gap-2 text-sm", step.items && "sm:col-span-2")}>
@@ -1674,7 +1678,7 @@ export function CampaignEditor({
                                         />
                                     </Field>
                                     {stats && stats.failed > 0 ? (
-                                        <label className="flex items-center gap-2 text-sm">
+                                        <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                                             <Checkbox checked={retryFailed} onCheckedChange={(v) => {
                                                     setRetryFailed(v === true);
                                                     setPlan(null);
@@ -1683,7 +1687,7 @@ export function CampaignEditor({
                                         </label>
                                     ) : null}
                                     {pauseFailing ? (
-                                        <label className="flex items-center gap-2 text-sm">
+                                        <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                                             <Checkbox checked={resume} onCheckedChange={(v) => {
                                                     setResume(v === true);
                                                     setPlan(null);
@@ -1787,7 +1791,7 @@ export function CampaignEditor({
                                     </div>
                                 ) : null}
 
-                                <WaveTable waves={waves} />
+                                <WaveTable waves={waves} className={locked ? "max-md:order-first" : undefined} />
                             </CardContent>
                         </Card>
                     ) : null}

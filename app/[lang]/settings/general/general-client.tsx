@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ReviewSlaSection } from "@/components/settings/review-sla-section";
 import { AiWritingSection } from "@/components/settings/ai-writing-section";
+import { EmptyState } from "@/components/settings/empty-state";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import {
   Dialog,
   DialogContent,
@@ -229,7 +231,7 @@ export default function GeneralSettingsPage({
   }
 
   return (
-    <div className="min-w-0 max-w-full space-y-6">
+    <div className="min-w-0 max-w-full space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
@@ -248,52 +250,69 @@ export default function GeneralSettingsPage({
 
       {/* Table */}
       {configs.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          No API configurations yet.
-        </div>
+        <EmptyState>No API configurations yet.</EmptyState>
       ) : (
-        <div className="min-w-0 max-w-full overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Slug</th>
-                <th className="px-4 py-3 text-left font-medium">Base URL</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {configs.map((cfg) => (
-                <tr key={cfg.id} className="border-b last:border-b-0 hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{cfg.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {cfg.slug}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs" title={cfg.base_url ?? ""}>
-                    {truncateUrl(cfg.base_url)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={cfg.is_active ? "default" : "secondary"}>
-                      {cfg.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="min-h-11 min-w-11"
-                      onClick={() => openEdit(cfg)}
-                      aria-label={`Edit ${cfg.name}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </td>
+        <>
+          {/* Phone: the table hides Status and Actions off-screen; each row opens the editor instead. */}
+          <MobileList>
+            {configs.map((cfg) => (
+              <MobileListRow key={cfg.id} onClick={() => openEdit(cfg)} label={`Edit ${cfg.name}`}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-medium">{cfg.name}</span>
+                  <Badge variant={cfg.is_active ? "default" : "secondary"} className="shrink-0">
+                    {cfg.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                  {cfg.slug}
+                  {cfg.base_url ? ` · ${cfg.base_url}` : null}
+                </p>
+              </MobileListRow>
+            ))}
+          </MobileList>
+          <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-lg border md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium">Name</th>
+                  <th className="px-4 py-3 text-left font-medium">Slug</th>
+                  <th className="px-4 py-3 text-left font-medium">Base URL</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {configs.map((cfg) => (
+                  <tr key={cfg.id} className="border-b last:border-b-0 hover:bg-muted/30">
+                    <td className="px-4 py-3 font-medium">{cfg.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {cfg.slug}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs" title={cfg.base_url ?? ""}>
+                      {truncateUrl(cfg.base_url)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={cfg.is_active ? "default" : "secondary"}>
+                        {cfg.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="min-h-11 min-w-11"
+                        onClick={() => openEdit(cfg)}
+                        aria-label={`Edit ${cfg.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Review SLA (relocated from the Results page — slice 06) */}

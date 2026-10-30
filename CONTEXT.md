@@ -238,6 +238,10 @@ _Avoid_: conflating soft “low stock” badges with Pre-order; calling the held
 A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013). A **Re-adjustment appointment** is linked to a **Customer**, a purchase and (when paid) an **Order** through its **Re-adjustment booking**; a **Customisation appointment** is still linked to nothing.
 _Avoid_: Order, Result, Customer journey (a Customisation appointment is not linked to an Order); the retired Google Appointment-Scheduling iframe (booking is now first-party)
 
+**Language preference** (appointments):
+The language a guest would like their **Appointment** in — `english`, `mandarin` or `none` (No preference) — picked on the booking form for both Customisation and Re-adjustment. Staff read it as a `Language preference: …` line in the calendar event description and try to assign someone comfortable with it; the form says "we'll try our best", never a guarantee. Lives only on the event: a **Customisation appointment** has no row, and a paid **Re-adjustment appointment** carries it to the webhook in its Checkout Session metadata. `none` writes no line.
+_Avoid_: "language" alone (the site **locale** is a separate, per-visit UI setting); promising a staff match
+
 **Appointment reminder**:
 A WhatsApp utility message for an **Appointment** — day-before Confirm/Reschedule, optional morning-of nudge, or cancel + rebook link.
 _Avoid_: Result SLA reminder (operator-facing held-Result reminders)
@@ -330,8 +334,12 @@ A shopper's record (`customers` row), created at checkout, at **Sign in**, or by
 _Avoid_: conflating with **Customer preference** (cover/case choices only)
 
 **Order**:
-A paid platform sale in our DB (post Accept + capture when a hold existed). Analytics sales windows for platform **Orders** use **`paid_at`**, not `created_at`. Unpaid checkouts are outside realized margin.
+A paid platform sale in our DB (post Accept + capture when a hold existed). `paid_at` is Stripe's time for the payment, not when our webhook or Accept ran. Analytics counts an **Order** as a **Sale** once Stripe has charged it. Unpaid checkouts are outside realized margin.
 _Avoid_: calling a held **Result** an **Order**; using `created_at` for Analytics sold-margin windows
+
+**Sale**:
+An **Order** Stripe has charged: its money ledger (`order_payments`, written only from Stripe events and the Accept capture) holds a `charge`. Dated by its latest charge's `occurred_at`, Stripe's own time for the money (an event's `created`, or a capture's balance transaction), so an **Order** paid in two parts, a **Balance payment** then the hold's capture, is sold when Stripe holds the whole price. Analytics tracks this site's Sales only (2026-10-29, ADR 0036); a payment that lands on a closed **Order** waits for **Staff** to refund or reinstate it.
+_Avoid_: dating a Sale by `created_at`, by when our webhook ran, or by Accept time; counting a Shopify sale; an Analytics channel toggle
 
 **Checkout code**:
 The one optional code a shopper types at checkout — on shop checkout, in the cart, and on the customisation contact step: a partner's referral code (a **Referral**) or a **Discount code**, in the same field, one per order (ADR 0033). The server decides which: a code a partner holds is a referral code, otherwise one a coupon has is a discount code. Either reads "active" once accepted; a referral changes no price unless Staff pass that partner's unused pool on as a **Partner customer discount** (ADR 0034), and a discount takes its amount off the total shown at once. A code that is neither, or a discount code this order cannot use, never blocks the shopper. A coupon may never be saved under a partner's code.
@@ -341,17 +349,13 @@ _Avoid_: two code fields; "coupon field" or "referral field" for it; a price the
 A coupon (Settings → Discounts) entered as a **Checkout code**: a percentage or fixed amount off the goods, or free shipping. On a **Result** it is checked once, at hold, and the Result keeps its terms (`coupon_terms`); every repricing takes them off the goods priced then, never off **Service fees**, shipping or tax. On a **Paired build** the Mpillow carries it. A live Result holding a code counts as one of its uses until Accept, where its **Order** records it and the coupon's use is counted.
 _Avoid_: re-reading the coupon at Accept (an edit or expiry after the hold never moves an authorised price); "voucher" (the retired Welcome-back voucher); a discount on a Service fee
 
-**Analytics channel**:
-Admin Panel → Analytics view filter: `all` | `orders` | `shopify`. **All** = paid platform **Orders** ∪ **Shopify order mirror** for the same date range. In-store inventory sells without an **Order** are not a revenue channel. Accepted **Results** count only via the **Order** they become.
-_Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-store sell” toggle in v1
-
 **Shopify order mirror**:
-Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only. Shopify sales take no stock: the Shopify sales queue that once committed them to inventory was removed (2026-10-27).
-_Avoid_: deducting stock for a Shopify sale; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). The mirror stays a read-only Analytics input. Shopify customers are imported once (ADR 0029); their orders stay unlinked.
+Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Shopify Admin API is ingest-only (webhook + catch-up). Analytics no longer reads it (2026-10-29): it tracks this site's **Sales** only, so the ingest feeds nothing. Shopify sales take no stock: the Shopify sales queue that once committed them to inventory was removed (2026-10-27).
+_Avoid_: deducting stock for a Shopify sale; treating live API list price × qty as P&L truth; building new features on Shopify — it is ad hoc and not on the roadmap: no linking Shopify orders to **Customers**, no syncing prices to Shopify, no mapping its products (owner, 2026-10-13). Shopify customers are imported once (ADR 0029); their orders stay unlinked.
 
 **Others**:
-Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
-_Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
+Unmapped or uncosted **Shopify order mirror** lines: COGS is unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit. Not read by Analytics since 2026-10-29.
+_Avoid_: dropping unmapped lines from the mirror
 
 ## Shopify customer migration (ADR 0029)
 
@@ -672,8 +676,8 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 - After assign, Admin Panel revisions are what the shopper reviews; on **Accept** or **Decline** the **Result** keeps that **Filling configuration** snapshot for records/analytics. Payment Stripe-capture happens only on Accept (when a hold exists) — not on Decline.
 - One **Filling Template** (or **Filling configuration**) owns all nine **cells**. Pack list / stock / COGS = flattened inventory **Item** lines derived from placements (**A**). Per-**cell** editor: inventory-linked fillings only; UI starts at 1 piece, max 5 pieces per cell in v1.
 - Spatial persistence — resolved (**B** refined / **Q10-A**): dedicated **placement** rows are the “where” source of truth; flat pack list is always derived; **Warehouse template** stays non-filling (ADR 0003).
-- Analytics is retrospective P&L: sales windows use **`paid_at`** on platform **Orders** and the **Shopify order mirror**. On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
-- **Analytics channel** All = paid **Orders** ∪ **Shopify order mirror** only.
+- Analytics is retrospective P&L over this site's **Sales** only, dated by Stripe's time for the money, in Singapore calendar months. Margin % is gross margin over costed revenue; a sale with no cost is reported as uncosted, never as $0 cost (ADR 0036). On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
+- A platform **Order** line's COGS is frozen at sale from the stock it took: the Items its sale deducts, fillings included.
 - A **Visitor** has zero or more **Visits**; each **Visit** has one **Entry source** and may end in a **Drop-off** or a paid **Order**
 - A **Prospect** is a **Visitor** with no paid **Order**; after payment they are no longer a **Prospect**
 - **Entry source** is machine-captured at **Visit** start; **Discovery source** is self-reported later on the **Result** — never the same field
@@ -748,7 +752,7 @@ _Avoid_: putting carrier cost or label URLs on `orders`
 > **Domain expert:** "**X-ray filling editor** — hover the three **Sections**, click to dive into **sub-sections**, place inventory fillings. Guests never see that mode."
 >
 > **Dev:** "Should Analytics pull Shopify sales live from the Admin API?"
-> **Domain expert:** "No — read the **Shopify order mirror**. Unmapped lines stay under **Others** with revenue counted. On-hand stock value belongs on **Costings**, not Analytics."
+> **Domain expert:** "No — Analytics does not read Shopify at all. It tracks this site's **Sales**, dated by Stripe. On-hand stock value belongs on **Costings**, not Analytics."
 >
 > **Dev:** "Is **Entry source** the same as **Discovery source**?"
 > **Domain expert:** "No — **Entry source** is UTM/referrer/Direct at **Visit** start. **Discovery source** is the questionnaire answer on the **Result**."
@@ -1084,8 +1088,8 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Mbolster (i) FAQ dismiss — resolved: **`hideClose` + inline close below the FAQ accordion** (scrolls with content), matching Mpillow FAQ — not a fixed/corner X.
 - Mbolster height “can’t type `.`” — resolved as AFK bug: input round-trips through `parseFloat`/`toDisplayHeight` on every keystroke so intermediate values like `1.` become `1`. Keep a draft display string while typing; normalize/clamp on blur or Continue.
 - Pre-order trade-offs — ADR written: `docs/adr/0005-pre-order-authorization-hold.md`.
-- Orders date-range **sales** report — resolved: filter list + dashboard summary by **`paid_at`** (not `created_at`). Unpaid/pending without `paid_at` fall outside the sales window. Same rule for Analytics platform half and **Shopify order mirror** `paid_at`.
-- Analytics live Shopify API vs DB — resolved: DB-only via **Shopify order mirror**; channel toggle **Analytics channel**; gap lines = **Others**. ADR: `docs/adr/0006-analytics-db-channel-facts.md`. On-hand inventory value KPIs → **Costings** (as-of-now).
+- Orders date-range **sales** report — resolved: filter list + dashboard summary by **`paid_at`** (not `created_at`). Unpaid/pending without `paid_at` fall outside the sales window. Analytics dates a **Sale** by Stripe's charge time in the money ledger (ADR 0036).
+- Analytics live Shopify API vs DB — resolved: DB-only via **Shopify order mirror**; channel toggle; gap lines = **Others**. ADR: `docs/adr/0006-analytics-db-channel-facts.md`. Superseded 2026-10-29: Analytics reads this site's **Sales** only, dated by Stripe (ADR 0036). On-hand inventory value KPIs → **Costings** (as-of-now).
 - Mpillow/Mbolster “Stripe API issue” on deploy — resolved: missing **`STRIPE_SECRET_KEY`** on the deployed Vercel env (localhost had it). Operator fixed env; **no code slice** in this PRD for that failure. Still remove bolster **cover** preference requirement as a separate customise correctness slice.
 - "media" / landing slot images vs **Media Asset** — slot overrides and slide-in config paths are consumers; the library record is the **Media Asset**. Hybrid refs: new attachments prefer Asset id; legacy URL strings still count toward **Used**.
 - “TL;DR” / key takeaways vs **Answer lede** — resolved: same pattern; industry synonym only, no second UI.

@@ -54,7 +54,7 @@ export default function SettingsPage() {
               onChange={() => setTheme("light")}
               className="peer sr-only"
             />
-            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
+            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm active:bg-press peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
               <div className="flex items-center gap-3">
                 <Sun className="h-5 w-5" />
                 <div className="font-medium">Light</div>
@@ -74,7 +74,7 @@ export default function SettingsPage() {
               onChange={() => setTheme("dark")}
               className="peer sr-only"
             />
-            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
+            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm active:bg-press peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
               <div className="flex items-center gap-3">
                 <Moon className="h-5 w-5" />
                 <div className="font-medium">Dark</div>
@@ -94,7 +94,7 @@ export default function SettingsPage() {
               onChange={() => setTheme("system")}
               className="peer sr-only"
             />
-            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
+            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm active:bg-press peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
               <div className="flex items-center gap-3">
                 <Monitor className="h-5 w-5" />
                 <div className="font-medium">System</div>

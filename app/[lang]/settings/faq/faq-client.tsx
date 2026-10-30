@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -60,6 +61,11 @@ export type ItemRow = {
 };
 
 const LOCALES = ["en-US", "zh-CN"] as const;
+
+const iconButtonClassName =
+  "min-h-11 min-w-11 inline-flex shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-press";
+const deleteButtonClassName =
+  "min-h-11 min-w-11 inline-flex shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-destructive active:bg-press";
 
 function slugify(text: string): string {
   return text
@@ -100,10 +106,10 @@ function SortableCategoryRow({
       className={`rounded-lg border bg-card ${isDragging ? "opacity-70 shadow-lg" : ""} ${!category.visible ? "opacity-60" : ""}`}
     >
       <Collapsible open={expanded} onOpenChange={onToggleExpand}>
-        <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="flex items-center gap-2 px-3 py-2.5 max-md:px-1 max-md:py-1">
           <button
             ref={handleRef}
-            className="cursor-grab min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
+            className="cursor-grab min-h-11 min-w-11 inline-flex touch-none items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:cursor-grabbing active:bg-press"
             aria-label="Drag to reorder"
           >
             <GripVertical className="h-4 w-4" />
@@ -111,27 +117,42 @@ function SortableCategoryRow({
           <button
             type="button"
             onClick={onToggleVisible}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+            className={iconButtonClassName}
             aria-label={category.visible ? "Hide category" : "Show category"}
           >
             {category.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </button>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 max-md:hidden">
             <span className="block truncate text-sm font-medium">
               {category.labels["en-US"] ?? category.key}
             </span>
             <span className="text-xs text-muted-foreground">{category.key}</span>
           </div>
+          {/* Phones: the name opens the category, so the chevron's 44px goes to the name. */}
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-1 text-left transition-colors active:bg-press md:hidden"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {category.labels["en-US"] ?? category.key}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">{category.key}</span>
+              </span>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+            </button>
+          </CollapsibleTrigger>
           <button
             type="button"
             onClick={onDelete}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
+            className={deleteButtonClassName}
             aria-label="Delete category"
           >
             <Trash2 className="h-4 w-4" />
           </button>
           <CollapsibleTrigger asChild>
-            <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground">
+            <button type="button" className={`${iconButtonClassName} max-md:hidden`}>
               <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
             </button>
           </CollapsibleTrigger>
@@ -192,34 +213,46 @@ function ItemEditor({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${!item.visible ? "opacity-60" : ""}`}>
+      {/* Phones: a flat row (the list draws the dividers), and the question opens it. */}
+      <div
+        className={`flex items-center gap-2 rounded-md border px-3 py-2 max-md:rounded-none max-md:border-0 max-md:px-0 max-md:py-0.5 ${!item.visible ? "opacity-60" : ""}`}
+      >
         <button
           type="button"
           onClick={onToggleVisible}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+          className={iconButtonClassName}
+          aria-label={item.visible ? "Hide question" : "Show question"}
         >
           {item.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
         </button>
         <CollapsibleTrigger asChild>
-          <button type="button" className="min-w-0 flex-1 text-left text-sm">
-            {item.content["en-US"]?.question ?? item.slug}
+          <button
+            type="button"
+            className="min-w-0 flex-1 text-left text-sm max-md:flex max-md:min-h-11 max-md:items-center max-md:gap-2 max-md:rounded-md max-md:px-1 max-md:py-2 max-md:transition-colors max-md:active:bg-press"
+          >
+            <span className="min-w-0 flex-1">{item.content["en-US"]?.question ?? item.slug}</span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform md:hidden ${open ? "rotate-180" : ""}`}
+              aria-hidden
+            />
           </button>
         </CollapsibleTrigger>
         <button
           type="button"
           onClick={onDelete}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
+          className={deleteButtonClassName}
+          aria-label="Delete question"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
         <CollapsibleTrigger asChild>
-          <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground">
+          <button type="button" className={`${iconButtonClassName} max-md:hidden`}>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
-        <div className="mt-2 space-y-3 rounded-md border bg-muted/20 p-3">
+        <div className="mt-2 space-y-3 rounded-md border bg-muted/20 p-3 max-md:mb-2 max-md:border-0">
           <div className="space-y-1.5">
             <Label className="text-xs">Slug (URL anchor)</Label>
             <Input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} />
@@ -554,15 +587,15 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
           <section className="space-y-6">
             <h2 className="text-lg font-semibold">Questions &amp; Answers</h2>
             {categories.map((cat) => (
-              <div key={cat.id} className="space-y-2 rounded-xl border p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{cat.labels["en-US"] ?? cat.key}</h3>
+              <div key={cat.id} className="space-y-2 rounded-xl border p-4 max-md:px-3 max-md:py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="min-w-0 font-medium">{cat.labels["en-US"] ?? cat.key}</h3>
                   <Button size="sm" variant="outline" onClick={() => addItem(cat.id)}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Add question
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 max-md:space-y-0 max-md:divide-y max-md:border-t">
                   {(itemsByCategory.get(cat.id) ?? []).map((item) => (
                     <ItemEditor
                       key={item.id}
@@ -641,6 +674,11 @@ function AddCategoryDialog({
           <Button className="w-full" onClick={handleCreate} disabled={!key || !enLabel || !zhLabel}>
             Create category
           </Button>
+          <DialogClose asChild>
+            <Button variant="outline" className="w-full">
+              Cancel
+            </Button>
+          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>

@@ -172,6 +172,8 @@ flowchart LR
   `POST /api/shopify/sync`). No sale or receive pushes.
 - **Costings KPIs**: on-hand value (at cost, potential MSRP revenue, margin) is
   read as-of-now from `inventory_balances` on the Costings page, not Analytics.
+  Analytics → Stock & builds charts the ledger's movement over a period; its
+  closing total matches `inventory_balances` ([analytics.md](analytics.md)).
 
 ## Known gaps
 

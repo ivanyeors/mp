@@ -144,7 +144,7 @@ export function CustomerNotesCard({
                 ) : (
                     <ul className="space-y-3">
                         {notes.map((note) => (
-                            <li key={note.id} className="rounded-lg border p-3 text-sm space-y-1.5">
+                            <li key={note.id} className="rounded-lg border p-3 text-sm space-y-1.5 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-0 max-md:pb-3 max-md:last:border-b-0 max-md:last:pb-0">
                                 <div className="flex items-start justify-between gap-2">
                                     <p className="text-xs text-muted-foreground">
                                         {note.legacy ? (

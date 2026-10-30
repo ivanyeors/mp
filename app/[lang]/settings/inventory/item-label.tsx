@@ -78,18 +78,32 @@ export const getInventoryItemDisplayLabel = (item: InventoryItemLike): string =>
 type InventoryItemLabelProps<T extends InventoryItemLike = InventoryItemLike> = {
   item: T;
   className?: string;
+  /**
+   * The list is already grouped under a category heading. On a phone the label
+   * then drops the category ("Cover Covers" reads as "Cover") and runs as text,
+   * so the size badge follows the name instead of wrapping onto a line of its own.
+   */
+  groupedByCategory?: boolean;
 };
 
-export function InventoryItemLabel<T extends InventoryItemLike>({ item, className }: InventoryItemLabelProps<T>) {
+export function InventoryItemLabel<T extends InventoryItemLike>({ item, className, groupedByCategory = false }: InventoryItemLabelProps<T>) {
   const { variant, categoryTitle, sizeLabel } = getInventoryItemLabelParts(item);
-  const baseClass = "flex flex-wrap items-center gap-2 text-sm leading-tight";
+  const baseClass = groupedByCategory
+    ? "flex flex-wrap items-center gap-2 text-sm leading-tight max-md:block"
+    : "flex flex-wrap items-center gap-2 text-sm leading-tight";
   const wrapperClass = className ? `${baseClass} ${className}` : baseClass;
   return (
     <div className={wrapperClass}>
       <span className="font-semibold leading-none">{variant}</span>
-      <span className="leading-none">{categoryTitle}</span>
+      <span className={groupedByCategory ? "leading-none max-md:hidden" : "leading-none"}>{categoryTitle}</span>
       {sizeLabel ? (
-        <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium leading-none">
+        <span
+          className={
+            groupedByCategory
+              ? "inline-flex items-center whitespace-nowrap rounded-full border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium leading-none max-md:ml-1.5 max-md:align-middle"
+              : "inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium leading-none"
+          }
+        >
           {sizeLabel}
         </span>
       ) : null}

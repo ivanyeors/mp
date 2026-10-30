@@ -17,11 +17,9 @@ const dismiss = read("components/ui/overlay-dismiss.tsx");
 const sheet = read("components/ui/sheet.tsx");
 const dialog = read("components/ui/dialog.tsx");
 
-// The dismiss button offers a viewport-pinned variant (for edge-anchored
-// sheets) and an in-flow sticky variant (for centered dialogs).
+// The dismiss button offers a viewport-pinned variant for edge-anchored sheets.
 assert.match(dismiss, /variant === "pinned" && \[\s*"fixed"/);
-assert.match(dismiss, /variant === "sticky" && \[[\s\S]*?max-md:sticky max-md:bottom-/);
-assert.match(dismiss, /variant === "sticky" && \[[\s\S]*?md:absolute md:top-4 md:right-4/);
+assert.doesNotMatch(dismiss, /variant === "sticky"/);
 // 44px mobile hit area is unchanged.
 assert.match(dismiss, /min-h-11 min-w-11/);
 
@@ -36,13 +34,18 @@ assert.match(
 assert.match(sheet, /variant=\{hasPinnedClose \? "pinned" : "corner"\}/);
 assert.doesNotMatch(sheet, /<OverlayDismissButton \/>/);
 
-// Dialog: centered by a transform (which would also capture `fixed`), so the
-// X rides in flow and sticks to the bottom of the mobile scrollport.
-assert.match(dialog, /-translate-x-1\/2 -translate-y-1\/2/);
-assert.match(dialog, /<OverlayDismissButton variant="sticky" \/>/);
-// A grid item's containing block is its own grid area, which gives sticky no
-// travel; the mobile scroll container must be a flex column.
-assert.match(dialog, /max-md:overflow-y-auto max-md:flex max-md:flex-col/);
+// Dialog: below md it is a bottom drawer whose close control is the grab handle,
+// stuck to the top of the scrollport, so no X floats over the last control.
+// Desktop keeps its top-right X.
+assert.match(dialog, /data-slot="dialog-drawer-handle"/);
+assert.match(dialog, /className="sticky top-0 z-10 order-first [^"]*md:hidden"/);
+assert.match(dialog, /<OverlayDismissButton variant="corner" className=\{mobileDrawer \? "max-md:hidden" : undefined\} \/>/);
+assert.match(dialog, /\{mobileDrawer && <DialogDrawerHandle \/>\}/);
+assert.doesNotMatch(dialog, /hideMobileClose/);
+// Sticky needs a flex column scroll container (a grid item's containing block
+// is only its own grid area).
+assert.match(dialog, /max-md:flex /);
+assert.match(dialog, /max-md:flex-col max-md:overflow-y-auto/);
 
 // Mobile bottom sheets span the viewport so the pinned corner is the sheet's,
 // and SheetFooter keeps its actions clear of the pinned X.

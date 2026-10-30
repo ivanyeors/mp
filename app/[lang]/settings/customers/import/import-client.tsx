@@ -145,9 +145,9 @@ export function CustomerImportClient({ history = [] }: { history?: ImportBatchVi
     const stopped = (history ?? []).filter((b) => batchState(b) === "stopped");
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <Button variant="ghost" size="sm" className="self-start" asChild>
+                <Button variant="ghost" size="sm" className="self-start max-md:hidden" asChild>
                     <Link href={to("/settings/customers")}>
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Customers
@@ -661,9 +661,11 @@ function HistoryCard({
             ) : history.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No imports yet.</p>
             ) : (
+                // Phones: each batch is a card (the row turns into a grid), not a table
+                // too wide for the screen. One element per batch keeps #batch-<id> working.
                 <div className="min-w-0 overflow-x-auto rounded-xl border">
-                    <Table>
-                        <TableHeader>
+                    <Table className="max-md:block">
+                        <TableHeader className="max-md:hidden">
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
                                 <TableHead className="px-4">File</TableHead>
                                 <TableHead className="px-4">Run by</TableHead>
@@ -675,7 +677,7 @@ function HistoryCard({
                                 <TableHead className="px-4" />
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="max-md:block">
                             {history.map((b) => (
                                 <HistoryRow key={b.id} batch={b} busy={busy} onChanged={onChanged} />
                             ))}
@@ -692,20 +694,26 @@ function HistoryRow({ batch, busy, onChanged }: { batch: ImportBatchView; busy: 
     const mismatch = batchMismatch(batch);
     // The Customer overview links each batch as /settings/customers/import#batch-<id>.
     return (
-        <TableRow id={`batch-${batch.id}`} className="scroll-mt-20 target:bg-muted/60">
-            <TableCell className="px-4 align-top">
-                <p className="max-w-56 break-all font-medium">{batch.fileName}</p>
+        <TableRow
+            id={`batch-${batch.id}`}
+            className="scroll-mt-20 target:bg-muted/60 max-md:grid max-md:grid-cols-4 max-md:gap-3 max-md:p-4"
+        >
+            <TableCell className="px-4 align-top max-md:col-span-4 max-md:p-0">
+                <p className="max-w-56 break-all font-medium max-md:max-w-none max-md:break-normal max-md:[overflow-wrap:anywhere]">
+                    {batch.fileName}
+                </p>
                 <p className="text-xs text-muted-foreground">
                     {formatAdminDateTimeMY(batch.createdAt)} · {int.format(batch.rowsTotal)} rows
                     {batch.withAddresses ? "" : " · without addresses"}
                 </p>
+                <p className="text-xs text-muted-foreground md:hidden">Run by {batch.runBy ?? "—"}</p>
             </TableCell>
-            <TableCell className="px-4 align-top">{batch.runBy ?? "—"}</TableCell>
-            <TableCell className="px-4 text-right align-top tabular-nums">{int.format(batch.created)}</TableCell>
-            <TableCell className="px-4 text-right align-top tabular-nums">{int.format(batch.merged)}</TableCell>
-            <TableCell className="px-4 text-right align-top tabular-nums">{int.format(batch.alreadyImported)}</TableCell>
-            <TableCell className="px-4 text-right align-top tabular-nums">{int.format(skippedTotal(batch.skipped))}</TableCell>
-            <TableCell className="px-4 align-top">
+            <TableCell className="px-4 align-top max-md:hidden">{batch.runBy ?? "—"}</TableCell>
+            <CountCell label="Created" value={batch.created} />
+            <CountCell label="Merged" value={batch.merged} />
+            <CountCell label="Already imported" value={batch.alreadyImported} />
+            <CountCell label="Skipped" value={skippedTotal(batch.skipped)} />
+            <TableCell className="px-4 align-top max-md:col-span-2 max-md:p-0">
                 <Badge variant={state === "applied" ? "secondary" : "outline"}>
                     {STATE_LABELS[state]}
                 </Badge>
@@ -728,10 +736,20 @@ function HistoryRow({ batch, busy, onChanged }: { batch: ImportBatchView; busy: 
                     </p>
                 )}
             </TableCell>
-            <TableCell className="px-4 text-right align-top">
+            <TableCell className="px-4 text-right align-top max-md:col-span-2 max-md:p-0">
                 {state !== "undone" && <UndoButton batch={batch} disabled={busy} onChanged={onChanged} />}
             </TableCell>
         </TableRow>
+    );
+}
+
+/** A count column; on a phone, a labelled figure in the batch card. */
+function CountCell({ label, value }: { label: string; value: number }) {
+    return (
+        <TableCell className="px-4 text-right align-top tabular-nums max-md:p-0 max-md:text-left">
+            <span className="block text-xs text-muted-foreground md:hidden">{label}</span>
+            {int.format(value)}
+        </TableCell>
     );
 }
 

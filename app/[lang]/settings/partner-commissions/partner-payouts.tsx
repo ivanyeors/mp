@@ -3,6 +3,7 @@ import { settleDueCommissions } from "@/lib/commissions/ledger";
 import { signedImageUrl } from "@/lib/payout-upload";
 import { PAYOUT_IMAGE_ALLOWED_MIME } from "@/lib/payout-upload/limits";
 import { recordPayoutAction } from "./payout-actions";
+import { RecordPayoutToggle } from "./record-payout-toggle";
 import { InfoTip } from "@/components/ui/info-tip";
 
 type PartnerRow = { id: string; name: string | null };
@@ -180,116 +181,149 @@ export async function PartnerPayouts() {
               </div>
 
               {/* Record a payout — native form → server action; proof is a real file input. */}
-              <form
-                action={recordPayoutAction}
-                encType="multipart/form-data"
-                className="mt-4 grid grid-cols-1 gap-3 rounded-md border bg-muted/20 p-3 sm:grid-cols-2"
-              >
-                <input type="hidden" name="partner_id" value={p.id} />
-                <h4 className="text-sm font-medium sm:col-span-2">Record a payout</h4>
+              <RecordPayoutToggle partnerName={p.name ?? "this partner"}>
+                <form
+                  action={recordPayoutAction}
+                  encType="multipart/form-data"
+                  className="mt-4 grid grid-cols-1 gap-3 rounded-md border bg-muted/20 p-3 sm:grid-cols-2 max-md:mt-3 max-md:border-0 max-md:bg-transparent max-md:p-0"
+                >
+                  <input type="hidden" name="partner_id" value={p.id} />
+                  <h4 className="text-sm font-medium sm:col-span-2 max-md:hidden">Record a payout</h4>
 
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted-foreground">Amount (negative for a correction)</span>
-                  <input
-                    type="number"
-                    name="amount"
-                    step="0.01"
-                    defaultValue={bal > 0 ? bal.toFixed(2) : ""}
-                    required
-                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
-                  />
-                </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted-foreground">Amount (negative for a correction)</span>
+                    <input
+                      type="number"
+                      name="amount"
+                      step="0.01"
+                      defaultValue={bal > 0 ? bal.toFixed(2) : ""}
+                      required
+                      className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
+                    />
+                  </label>
 
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted-foreground">Paid on</span>
-                  <input
-                    type="date"
-                    name="paid_on"
-                    defaultValue={today()}
-                    required
-                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
-                  />
-                </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted-foreground">Paid on</span>
+                    <input
+                      type="date"
+                      name="paid_on"
+                      defaultValue={today()}
+                      required
+                      className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
+                    />
+                  </label>
 
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted-foreground">Method</span>
-                  <input
-                    type="text"
-                    name="method"
-                    placeholder="PayNow or bank transfer"
-                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
-                  />
-                </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted-foreground">Method</span>
+                    <input
+                      type="text"
+                      name="method"
+                      placeholder="PayNow or bank transfer"
+                      className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
+                    />
+                  </label>
 
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted-foreground">Reference</span>
-                  <input
-                    type="text"
-                    name="reference"
-                    placeholder="Transaction reference"
-                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
-                  />
-                </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted-foreground">Reference</span>
+                    <input
+                      type="text"
+                      name="reference"
+                      placeholder="Transaction reference"
+                      className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
+                    />
+                  </label>
 
-                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-                  <span className="text-muted-foreground">Proof of payment (image)</span>
-                  <input
-                    type="file"
-                    name="proof"
-                    accept={PAYOUT_IMAGE_ALLOWED_MIME.join(",")}
-                    className="text-sm"
-                  />
-                </label>
+                  <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                    <span className="text-muted-foreground">Proof of payment (image)</span>
+                    <input
+                      type="file"
+                      name="proof"
+                      accept={PAYOUT_IMAGE_ALLOWED_MIME.join(",")}
+                      className="text-sm max-md:min-h-11"
+                    />
+                  </label>
 
-                <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    className="h-9 max-md:min-h-11 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    Record payout
-                  </button>
-                </div>
-              </form>
+                  <div className="sm:col-span-2">
+                    <button
+                      type="submit"
+                      className="h-9 max-md:min-h-11 max-md:w-full rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:bg-primary/80"
+                    >
+                      Record payout
+                    </button>
+                  </div>
+                </form>
+              </RecordPayoutToggle>
 
               {/* History */}
               {history.length > 0 && (
-                <div className="mt-4 min-w-0 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-left text-xs uppercase text-muted-foreground">
-                      <tr>
-                        <th className="py-1 pr-4 font-medium">Paid on</th>
-                        <th className="py-1 pr-4 font-medium">Amount</th>
-                        <th className="py-1 pr-4 font-medium">Method</th>
-                        <th className="py-1 pr-4 font-medium">Reference</th>
-                        <th className="py-1 pr-4 font-medium">Proof</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {history.map((h) => (
-                        <tr key={h.id}>
-                          <td className="py-1.5 pr-4">{h.paid_on}</td>
-                          <td className="py-1.5 pr-4">{money(Number(h.amount))}</td>
-                          <td className="py-1.5 pr-4">{h.method ?? "—"}</td>
-                          <td className="py-1.5 pr-4">{h.reference ?? "—"}</td>
-                          <td className="py-1.5 pr-4">
-                            {proofUrls.get(h.id) ? (
-                              <a
-                                href={proofUrls.get(h.id) as string}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary underline"
-                              >
-                                View
-                              </a>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
+                <>
+                  {/* Phones: one row per payout instead of a five-column table. */}
+                  <ul className="mt-4 divide-y border-t text-sm md:hidden" aria-label="Payout history">
+                    {history.map((h) => {
+                      const proof = proofUrls.get(h.id);
+                      return (
+                        <li key={h.id} className="flex items-center gap-3 py-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="font-medium tabular-nums">{money(Number(h.amount))}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{h.paid_on}</span>
+                            </div>
+                            <p className="break-words text-xs text-muted-foreground">
+                              {h.method ?? "—"} · {h.reference ?? "—"}
+                            </p>
+                          </div>
+                          {proof ? (
+                            <a
+                              href={proof}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex min-h-11 shrink-0 items-center rounded-md px-2 text-primary underline active:opacity-60"
+                            >
+                              Proof
+                            </a>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-4 hidden min-w-0 overflow-x-auto md:block">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-xs uppercase text-muted-foreground">
+                        <tr>
+                          <th className="py-1 pr-4 font-medium">Paid on</th>
+                          <th className="py-1 pr-4 font-medium">Amount</th>
+                          <th className="py-1 pr-4 font-medium">Method</th>
+                          <th className="py-1 pr-4 font-medium">Reference</th>
+                          <th className="py-1 pr-4 font-medium">Proof</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y">
+                        {history.map((h) => (
+                          <tr key={h.id}>
+                            <td className="py-1.5 pr-4">{h.paid_on}</td>
+                            <td className="py-1.5 pr-4">{money(Number(h.amount))}</td>
+                            <td className="py-1.5 pr-4">{h.method ?? "—"}</td>
+                            <td className="py-1.5 pr-4">{h.reference ?? "—"}</td>
+                            <td className="py-1.5 pr-4">
+                              {proofUrls.get(h.id) ? (
+                                <a
+                                  href={proofUrls.get(h.id) as string}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary underline"
+                                >
+                                  View
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           );

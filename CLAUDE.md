@@ -26,10 +26,28 @@ Design and build for this platform alone:
   it, reads from it live, falls back on it, or keeps compatibility with it.
   How Shopify or its apps do something is not a requirement here.
 - **The only Shopify work is leaving it:** the one-time customer import and the
-  cutover (ADR 0029). The **Shopify order mirror** stays the read-only Analytics
-  input it already is (`CONTEXT.md`) and gains no features.
+  cutover (ADR 0029). Analytics does not read the **Shopify order mirror**: it
+  tracks this site's sales only, dated by Stripe (2026-10-29, ADR 0036). The
+  mirror gains no features.
 - **Shopify-era facts become this platform's data.** Settle them once, during
   the migration. Do not build a feature around Shopify to carry them.
+
+## Show what you changed
+
+After any change a person can see (a page, component, layout, style, chart,
+copy or empty state), use the **preview** skill before you say the work is
+done. It runs the real app on made-up sample data, signs in as an Owner, and
+screenshots each page at desktop and phone width:
+
+```bash
+.claude/skills/preview/preview shoot /settings/orders /settings/inventory
+```
+
+Read every screenshot, fix what looks wrong, and send them to the user with
+`SendUserFile`, saying the figures are sample data. A Stop hook sends you back
+once if files that render pages changed since the last screenshots. Options,
+how to add sample data, and what is real in the preview:
+`.claude/skills/preview/SKILL.md`.
 
 ## Commit author
 

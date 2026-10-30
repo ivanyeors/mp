@@ -17,15 +17,9 @@ import { useTheme } from "next-themes";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MAX_META_DESCRIPTION_CHARS } from "@/lib/seo/meta-description";
 import {
-    bold,
-    italic,
-    title,
-    link,
-    quote,
-    unorderedListCommand,
-    orderedListCommand,
-    type ICommand,
-} from "@uiw/react-md-editor/commands";
+    MOBILE_MD_COMMANDS,
+    MOBILE_MD_EXTRA_COMMANDS,
+} from "@/components/settings/markdown-toolbar";
 import { rehypeStripUnsafeHtml } from "@/lib/blog-editor/strip-unsafe-html";
 
 const MDEditor = dynamic(
@@ -36,17 +30,6 @@ const MDEditor = dynamic(
 // The preview parses raw HTML; strip anything that could run script in the
 // Admin Panel (public posts never render raw HTML at all).
 const PREVIEW_OPTIONS = { rehypePlugins: [rehypeStripUnsafeHtml] };
-
-// ponytail: reduced toolbar so it fits a phone without horizontal overflow
-const MOBILE_MD_COMMANDS: ICommand[] = [
-    bold,
-    italic,
-    title,
-    link,
-    quote,
-    unorderedListCommand,
-    orderedListCommand,
-];
 
 type LocaleContent = {
     title: string;
@@ -236,8 +219,9 @@ export default function BlogEditorPage({
             {/* Header */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                    <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
-                        <Link href={to("/settings/blogs")}>
+                    {/* The shell breadcrumb already links back on a phone. */}
+                    <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0 max-md:hidden">
+                        <Link href={to("/settings/blogs")} aria-label="Back to Blogs">
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
@@ -272,9 +256,9 @@ export default function BlogEditorPage({
                         key={loc}
                         type="button"
                         onClick={() => setActiveLocale(loc)}
-                        className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeLocale === loc
+                        className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors max-md:min-h-11 ${activeLocale === loc
                             ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted active:bg-press"
                             }`}
                     >
                         {loc === "en-US" ? "🇺🇸 English" : "🇨🇳 中文"}
@@ -292,12 +276,12 @@ export default function BlogEditorPage({
                         value={slug}
                         onChange={(e) => setSlug(e.target.value)}
                         placeholder="my-blog-post-url"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     {activeContent.title && (
                         <button
                             type="button"
-                            className="text-xs text-primary hover:underline"
+                            className="text-xs text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
                             onClick={() => setSlug(generateSlug(activeContent.title))}
                         >
                             Auto-generate from title
@@ -313,7 +297,7 @@ export default function BlogEditorPage({
                         value={activeContent.title}
                         onChange={(e) => updateActiveContent("title", e.target.value)}
                         placeholder="Blog post title"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                 </div>
 
@@ -325,7 +309,7 @@ export default function BlogEditorPage({
                         value={activeContent.sub_header}
                         onChange={(e) => updateActiveContent("sub_header", e.target.value)}
                         placeholder="A subtitle or tagline"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                 </div>
 
@@ -337,7 +321,7 @@ export default function BlogEditorPage({
                         onChange={(e) => updateActiveContent("description", e.target.value)}
                         placeholder="Meta description for search engines and AI answer engines"
                         rows={2}
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
                     <p
                         className={`text-xs ${activeContent.description.length > MAX_META_DESCRIPTION_CHARS ? "text-destructive" : "text-muted-foreground"}`}
@@ -364,7 +348,7 @@ export default function BlogEditorPage({
                             )
                         }
                         placeholder="keyword1, keyword2, keyword3"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>
@@ -379,6 +363,7 @@ export default function BlogEditorPage({
                         preview="edit"
                         previewOptions={PREVIEW_OPTIONS}
                         commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
+                        extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
                         className="w-full rounded-lg border focus-within:ring-2 focus-within:ring-primary overflow-hidden"
                     />
                     <p className="text-xs text-muted-foreground">Supports Markdown formatting</p>
@@ -394,7 +379,7 @@ export default function BlogEditorPage({
                             type="text"
                             value={author}
                             onChange={(e) => setAuthor(e.target.value)}
-                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -402,7 +387,7 @@ export default function BlogEditorPage({
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary active:bg-press"
                         >
                             <option value="draft">Draft</option>
                             <option value="published">Published</option>
@@ -413,7 +398,8 @@ export default function BlogEditorPage({
 
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">Hero image URL</label>
-                    <div className="flex gap-2">
+                    {/* Wraps at 360px, where Browse Media would otherwise be cut. */}
+                    <div className="flex flex-wrap gap-2">
                         <input
                             type="text"
                             value={imageUrl}
@@ -422,7 +408,7 @@ export default function BlogEditorPage({
                                 setImageAssetId(null);
                             }}
                             placeholder="https://… or /images/blogs/…"
-                            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="min-w-48 flex-1 rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <ImagePicker
                             onSelect={(s) => {
@@ -444,7 +430,7 @@ export default function BlogEditorPage({
                             )
                         }
                         placeholder="sleep, posture, guide"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>

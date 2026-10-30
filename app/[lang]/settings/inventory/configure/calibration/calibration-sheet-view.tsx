@@ -32,6 +32,20 @@ function Section({ title, hint, children }: { title: string; hint: ReactNode; ch
   );
 }
 
+/**
+ * On a phone each table keeps a readable width and scrolls sideways inside its
+ * section, instead of squeezing its columns to one word per line. Print and
+ * desktop are wide enough already.
+ */
+const phoneMinWidth = {
+  budgets: "max-md:min-w-[34rem] max-md:[&_th]:whitespace-nowrap",
+  templates: "max-md:[&_th]:whitespace-nowrap",
+  layers: "max-md:min-w-[54rem] max-md:[&_th]:whitespace-nowrap",
+  squeeze: "max-md:min-w-[36rem] max-md:[&_th]:whitespace-nowrap",
+  settle: "max-md:min-w-[46rem] max-md:[&_th]:whitespace-nowrap",
+  footprints: "max-md:min-w-[60rem] max-md:[&_th]:whitespace-nowrap",
+} as const;
+
 const layerCount = (n: number | null) => (n === null ? "–" : String(n));
 
 /**
@@ -47,7 +61,7 @@ const PRINT_ONLY_SHEET = `@media print {
 
 export function CalibrationSheetView({ sheet, generatedAt }: { sheet: CalibrationSheet; generatedAt: string }) {
   return (
-    <div className="mx-auto max-w-5xl space-y-8 p-4 text-sm print:max-w-none print:p-0 print:text-xs" data-calibration-sheet>
+    <div className="mx-auto max-w-5xl space-y-8 p-4 text-sm max-md:space-y-6 max-md:p-0 print:max-w-none print:p-0 print:text-xs" data-calibration-sheet>
       <style>{PRINT_ONLY_SHEET}</style>
       <header className="space-y-2">
         <h1 className="text-xl font-semibold tracking-tight">X-ray calibration sheet</h1>
@@ -66,7 +80,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
       </header>
 
       <Section title="1. Loft budget per size" hint="The height each section may stand at: the gusset plus the loft allowance. The centre is one inch lower.">
-        <Table>
+        <Table className={phoneMinWidth.budgets}>
           <TableHeader>
             <TableRow>
               <TableHead>Size</TableHead>
@@ -95,7 +109,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
           title="2. Default filling templates"
           hint="Build each one and measure the loft at each section's middle. The x-ray reads the same numbers."
         >
-          <Table>
+          <Table className={phoneMinWidth.templates}>
             <TableHeader>
               <TableRow>
                 <TableHead>Template</TableHead>
@@ -109,7 +123,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
             <TableBody>
               {sheet.templates.map((t) => (
                 <TableRow key={`${t.size}-${t.tier}`}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium max-md:min-w-56">
                     <span className="capitalize">{t.tier}</span> {t.size}
                     <div className="text-xs font-normal text-muted-foreground">{t.name}</div>
                     {t.notes.length > 0 && <div className="mt-1 text-xs text-muted-foreground">{t.notes.join("; ")}</div>}
@@ -132,7 +146,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
         title="3. Layers until it cannot close"
         hint="One pouch type, the same number of layers in the front, middle and back of one section. The x-ray turns amber at the first number and red at the second. Note the layer at which the bench says no. They should agree within one layer."
       >
-        <Table>
+        <Table className={phoneMinWidth.layers}>
           <TableHeader>
             <TableRow>
               <TableHead>Pouch</TableHead>
@@ -171,7 +185,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
 
       {sheet.squeeze.length > 0 && (
         <Section title="4. Five 6D L in one section" hint="Squeeze them in by hand, then check the x-ray says the same and its numbers are credible.">
-          <Table>
+          <Table className={phoneMinWidth.squeeze}>
             <TableHeader>
               <TableRow>
                 <TableHead>Build</TableHead>
@@ -198,7 +212,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
         title="5. Settle: one pouch alone in centre middle, size M"
         hint="Front and back empty. Close the pillow, press once as a head would, open it and measure how far it spread each way and how thick it now is."
       >
-        <Table>
+        <Table className={phoneMinWidth.settle}>
           <TableHeader>
             <TableRow>
               <TableHead>Pouch</TableHead>
@@ -243,7 +257,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
         title="6. Footprints by size"
         hint="Lay the pouch flat in an open chamber and photograph it from above. M is what the Dimensions tab says. The other sizes are scaled from M by the pillow's proportions, so the XS and XL photos check that rule too."
       >
-        <Table>
+        <Table className={phoneMinWidth.footprints}>
           <TableHeader>
             <TableRow>
               <TableHead>Piece</TableHead>

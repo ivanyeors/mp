@@ -6,7 +6,7 @@ import { isSlotFree } from "@/lib/appointments/book-slot";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
-import { SERVICE_LABELS, SERVICE_SKUS } from "@/lib/pricing/service-prices";
+import { SERVICE_LABELS, SERVICE_SKUS, loadServicePrices } from "@/lib/pricing/service-prices";
 import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import {
   CHECKOUT_LIFETIME_MS,
@@ -188,6 +188,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: orderErr?.message ?? "Failed to create order" }, { status: 500 });
   }
 
+  // The service's cost from Costings → Service fees, frozen like a Result's
+  // measurement line, so Analytics reads the same cost for both.
+  let serviceCost: number | null = null;
+  try {
+    serviceCost = (await loadServicePrices(admin)).readjustment.costPrice;
+  } catch {
+    // The fee itself was priced above; a missing cost leaves the line uncosted.
+  }
   const { error: lineErr } = await admin.from("order_items").insert({
     order_id: order.id,
     variant_id: null,
@@ -199,6 +207,8 @@ export async function POST(req: Request) {
     quantity: 1,
     unit_price: fee,
     total_price: fee,
+    unit_cost: serviceCost,
+    total_cost: serviceCost,
   });
   if (lineErr) {
     await abandon(order.id);
@@ -222,6 +232,7 @@ export async function POST(req: Request) {
       orderNumber: order.order_number,
       bookingId: booking.id,
       label,
+      languagePreference: body.language_preference,
       successUrl: `${origin}${withLocale(`/appointments/confirmed?booking=${booking.id}`, locale)}`,
       cancelUrl: `${origin}${withLocale(cancelPath, locale)}`,
       expiresAt: sessionExpiresAt,

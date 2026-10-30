@@ -217,89 +217,94 @@ export function SegmentsRow({
     return (
         <section aria-label="Segments" className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                    <Bookmark className="h-3.5 w-3.5" />
-                    Segments
-                </span>
-                {list.map((s) => {
-                    const isActive = active?.id === s.id;
-                    const emailHref = segmentCampaignHref(newCampaignPath, s);
-                    const hasMenu = canEdit || emailHref !== null;
-                    const href = segmentHref(listPath, s.params);
-                    return (
-                        <span
-                            key={s.id}
-                            className={`inline-flex max-w-full items-center rounded-full border text-sm transition-colors ${
-                                isActive ? "border-primary bg-primary/10" : "bg-background hover:bg-muted"
-                            }`}
-                        >
-                            <a
-                                href={href}
-                                aria-current={isActive ? "true" : undefined}
-                                title={s.needsReview ? `Needs review: ${s.ignored.join(", ")}` : undefined}
-                                onClick={(e) => {
-                                    if (!plainClick(e)) return;
-                                    e.preventDefault();
-                                    onChoose(s);
-                                }}
-                                className={`inline-flex min-h-8 min-w-0 items-center gap-1.5 py-1 pl-3 ${hasMenu ? "pr-1" : "pr-3"}`}
+                {/* Phones: the chips scroll sideways in one row, edge to edge, so a
+                    long list of Segments doesn't push the Customers below the fold;
+                    the save buttons wrap under it. From md it is the one wrapping row. */}
+                <div className="flex items-center gap-2 max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:overflow-x-auto max-md:px-3 md:contents">
+                    <span className="inline-flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
+                        <Bookmark className="h-3.5 w-3.5" />
+                        Segments
+                    </span>
+                    {list.map((s) => {
+                        const isActive = active?.id === s.id;
+                        const emailHref = segmentCampaignHref(newCampaignPath, s);
+                        const hasMenu = canEdit || emailHref !== null;
+                        const href = segmentHref(listPath, s.params);
+                        return (
+                            <span
+                                key={s.id}
+                                className={`inline-flex max-w-full items-center rounded-full border text-sm transition-colors max-md:shrink-0 max-md:overflow-hidden ${
+                                    isActive ? "border-primary bg-primary/10" : "bg-background hover:bg-muted"
+                                }`}
                             >
-                                <span className="truncate font-medium">{s.name}</span>
-                                {s.needsReview ? (
-                                    <Badge
-                                        variant="outline"
-                                        className="border-amber-300 text-[11px] font-normal text-amber-800 dark:text-amber-200"
-                                    >
-                                        Needs review
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="secondary" className="text-[11px] font-normal tabular-nums">
-                                        {formatSegmentCount(s.count)}
-                                    </Badge>
-                                )}
-                            </a>
-                            {hasMenu && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button
-                                            type="button"
-                                            aria-label={`More for ${s.name}`}
-                                            className="mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full hover:bg-muted-foreground/20"
+                                <a
+                                    href={href}
+                                    aria-current={isActive ? "true" : undefined}
+                                    title={s.needsReview ? `Needs review: ${s.ignored.join(", ")}` : undefined}
+                                    onClick={(e) => {
+                                        if (!plainClick(e)) return;
+                                        e.preventDefault();
+                                        onChoose(s);
+                                    }}
+                                    className={`inline-flex min-h-8 min-w-0 items-center gap-1.5 py-1 pl-3 transition-colors active:bg-press max-md:min-h-11 ${hasMenu ? "pr-1 max-md:pr-2" : "pr-3"}`}
+                                >
+                                    <span className="truncate font-medium">{s.name}</span>
+                                    {s.needsReview ? (
+                                        <Badge
+                                            variant="outline"
+                                            className="border-amber-300 text-[11px] font-normal text-amber-800 dark:text-amber-200"
                                         >
-                                            <MoreHorizontal className="h-3.5 w-3.5" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        {emailHref && (
-                                            <DropdownMenuItem asChild>
-                                                <Link href={emailHref}>
-                                                    <Mail className="h-4 w-4" />
-                                                    Email this Segment
-                                                </Link>
-                                            </DropdownMenuItem>
-                                        )}
-                                        {canEdit && (
-                                            <>
-                                                <DropdownMenuItem onSelect={() => openName({ mode: "rename", segment: s })}>
-                                                    Rename
+                                            Needs review
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="text-[11px] font-normal tabular-nums">
+                                            {formatSegmentCount(s.count)}
+                                        </Badge>
+                                    )}
+                                </a>
+                                {hasMenu && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button
+                                                type="button"
+                                                aria-label={`More for ${s.name}`}
+                                                className="mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted-foreground/20 active:bg-press max-md:mr-0 max-md:h-11 max-md:w-11 max-md:rounded-none max-md:border-l"
+                                            >
+                                                <MoreHorizontal className="h-3.5 w-3.5" />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {emailHref && (
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={emailHref}>
+                                                        <Mail className="h-4 w-4" />
+                                                        Email this Segment
+                                                    </Link>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onSelect={() => {
-                                                        setError(null);
-                                                        setArchiving(s);
-                                                    }}
-                                                >
-                                                    Archive
-                                                </DropdownMenuItem>
-                                            </>
-                                        )}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
-                        </span>
-                    );
-                })}
+                                            )}
+                                            {canEdit && (
+                                                <>
+                                                    <DropdownMenuItem onSelect={() => openName({ mode: "rename", segment: s })}>
+                                                        Rename
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        variant="destructive"
+                                                        onSelect={() => {
+                                                            setError(null);
+                                                            setArchiving(s);
+                                                        }}
+                                                    >
+                                                        Archive
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
+                            </span>
+                        );
+                    })}
+                </div>
                 {loadFailed && <span className="text-sm text-muted-foreground">Segments could not be loaded.</span>}
                 {offerSave && (
                     <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => openName({ mode: "create" })}>

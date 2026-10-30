@@ -26,6 +26,7 @@ import {
 import { round2 } from "@/lib/commissions";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
+import { paymentIntentCapturedAt } from "@/lib/stripe/money-time";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
@@ -470,6 +471,23 @@ export async function POST(
     topUpIntentId: topUpPaymentIntentId,
   });
 
+  // When Stripe took each payment, by Stripe's clock: the hold's capture just
+  // above (or by an earlier attempt), and a Balance payment the customer may
+  // have made long before this Accept ran. The sale is made when the last of
+  // them landed, so that is the Order's paid_at and each ledger row's time.
+  const chargedAt = await Promise.all(
+    settlement.charges.map(async (c) => {
+      if (!c.stripeObjectId) return null;
+      try {
+        return await paymentIntentCapturedAt(getStripe(), c.stripeObjectId);
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const nowIso = new Date().toISOString();
+  const paidAt = chargedAt.reduce<string>((latest, at) => (at && at > latest ? at : latest), "") || nowIso;
+
   const productTypeOf = (r: typeof row) => (r.product_type ?? "pillow") as "pillow" | "bolster";
 
   const shippingAddress = (row.shipping_address ?? {
@@ -480,7 +498,7 @@ export async function POST(
     country: "SG",
   }) as Record<string, unknown>;
 
-  const now = new Date().toISOString();
+  const now = nowIso;
   // In-store Results carry no shipping address — that is exactly why the placeholder
   // above exists. Those are handed over at the counter, so capture *is* delivery.
   // Everything else still has to be built and shipped, and must not be born
@@ -523,7 +541,7 @@ export async function POST(
       shipping_address: shippingAddress,
       payment_method: "stripe",
       payment_reference: settlement.paymentReference,
-      paid_at: now,
+      paid_at: paidAt,
       // Only the in-store path has no later "mark delivered" step; a shipped order
       // gets its delivered_at from the Orders fulfilment flow.
       delivered_at: inStoreHandover ? now : null,
@@ -682,13 +700,14 @@ export async function POST(
   // A topped-up order charges two intents; both must be ledgered or a full refund
   // asks Stripe for more than the hold intent ever captured.
   try {
-    for (const charge of settlement.charges) {
+    for (const [i, charge] of settlement.charges.entries()) {
       await recordLedgerEntry(admin, order.id, {
         type: "charge",
         amount: charge.amount,
         currency: row.currency ?? "SGD",
         stripeObjectId: charge.stripeObjectId,
         metadata: { result_id: id },
+        occurredAt: chargedAt[i] ?? now,
       });
     }
     await rollupOrderMoney(admin, order.id);

@@ -28,6 +28,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   ArrowRight,
   ChevronRight,
@@ -106,6 +107,10 @@ const WORLD_H = 400;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 3;
 const PAN_NUDGE = 40;
+/** Below this pane width the graph opens at actual size instead of fitted. */
+const NARROW_W = 640;
+/** Finger travel before a touch stops being a tap and starts a pan. */
+const TOUCH_SLOP = 8;
 
 const edgeTooltipStyles: CSSProperties = {
   ...(defaultStyles as CSSProperties),
@@ -213,6 +218,17 @@ function isTypingTarget(el: EventTarget | null) {
 type LayoutNode = JourneyTransitionNode & { x: number; y: number };
 type PosMap = Record<string, { x: number; y: number }>;
 type Camera = { x: number; y: number; k: number };
+/**
+ * What a finger came down on, kept until it moves (a pan) or lifts (a tap). A
+ * tap inside an open node's panel is left to the panel's own buttons.
+ */
+type TouchTap = {
+  kind: "canvas" | "node" | "edge" | "panel";
+  path: string | null;
+  edge: JourneyTransitionEdge | null;
+  x: number;
+  y: number;
+};
 
 function loadPositions(key: string): PosMap {
   try {
@@ -319,8 +335,9 @@ function nodeHalfSize(expanded: boolean) {
     : { hw: NODE_W / 2, hh: NODE_H / 2 };
 }
 
-function fitCamera(laid: LayoutNode[], vw: number, vh: number, pad = 110): Camera {
+function fitCamera(laid: LayoutNode[], vw: number, vh: number): Camera {
   if (laid.length === 0 || vw <= 0 || vh <= 0) return { x: 0, y: 0, k: 1 };
+  const pad = vw < NARROW_W ? 16 : 110;
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -341,6 +358,29 @@ function fitCamera(laid: LayoutNode[], vw: number, vh: number, pad = 110): Camer
   const x = (vw - bw * k) / 2 - minX * k;
   const y = (vh - bh * k) / 2 - minY * k;
   return { x, y, k };
+}
+
+/**
+ * The first view of the graph. Fitted into a phone-width pane the nodes shrink
+ * to 40px chips with 3px text, so a narrow pane opens at actual size on the
+ * entry column instead; Fit still shows the whole graph.
+ */
+function openCamera(laid: LayoutNode[], vw: number, vh: number): Camera {
+  const fit = fitCamera(laid, vw, vh);
+  if (vw >= NARROW_W || fit.k >= 1 || laid.length === 0) return fit;
+  const { hw, hh } = nodeHalfSize(false);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const n of laid) {
+    minX = Math.min(minX, n.x - hw);
+    minY = Math.min(minY, n.y - hh);
+    maxY = Math.max(maxY, n.y + hh);
+  }
+  // The toolbar floats over the top 60px of the pane; start the graph below it.
+  const top = 68;
+  const y = Math.max(top, (vh - (maxY - minY)) / 2) - minY;
+  return { x: 16 + PORT_R - minX, y, k: 1 };
 }
 
 /** Cubic noodle from source out-port to target in-port. */
@@ -663,7 +703,11 @@ function DigInShell({
   return (
     <div
       className="flex h-full cursor-default flex-col overflow-hidden rounded-md bg-card text-foreground"
-      onPointerDown={(ev) => ev.stopPropagation()}
+      onPointerDown={(ev) => {
+        // A finger still pans and pinches across an open panel; the graph
+        // leaves a tap here to the panel's buttons.
+        if (ev.pointerType !== "touch") ev.stopPropagation();
+      }}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-2.5 py-1.5">
         <p className="truncate text-[10px] font-medium tracking-wide text-muted-foreground">
@@ -671,7 +715,7 @@ function DigInShell({
         </p>
         <button
           type="button"
-          className="cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-press"
           onClick={onClose}
           aria-label="Collapse node"
         >
@@ -762,7 +806,7 @@ function ExpandedEntryDigIn({
       </DigInSection>
       <button
         type="button"
-        className="w-full cursor-pointer rounded-md border px-2 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+        className="w-full cursor-pointer rounded-md border px-2 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted active:bg-press"
         onClick={() => onPickEntrySource(source)}
       >
         {isOther
@@ -832,7 +876,7 @@ function ExpandedPageDigIn({
                           href={exitSectionHref(locale, detailPath, s.sectionId)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
+                          className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline active:opacity-70"
                         >
                           <span className="truncate">#{s.sectionId}</span>
                           <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -1063,6 +1107,9 @@ function JourneyGraph({
   const [fittedKey, setFittedKey] = useState("");
   const [hoverEdgeKey, setHoverEdgeKey] = useState<string | null>(null);
   const [draggingNode, setDraggingNode] = useState(false);
+  /** The node under a finger that has not moved yet, tinted as pressed. */
+  const [pressedPath, setPressedPath] = useState<string | null>(null);
+  const coarse = useMediaQuery("(pointer: coarse)");
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
   const posKey = layoutStorageKey(divePath);
@@ -1091,6 +1138,17 @@ function JourneyGraph({
     origX: number;
     origY: number;
   } | null>(null);
+  // Touch has no space bar or middle button: one finger pans from anywhere,
+  // two fingers pinch, and a touch that never moves is a tap on what it hit.
+  const touchRef = useRef<{
+    pts: Map<number, { x: number; y: number }>;
+    tap: TouchTap | null;
+    pan: { x: number; y: number; camX: number; camY: number } | null;
+    pinch: { d0: number; k0: number; wx: number; wy: number } | null;
+    /** Aborting it removes the gesture's window listeners. */
+    listeners: AbortController;
+  } | null>(null);
+  const onTapRef = useRef<(tap: TouchTap) => void>(() => {});
 
   useEffect(() => {
     setOverrides(loadPositions(posKey));
@@ -1150,7 +1208,7 @@ function JourneyGraph({
     if (laid.length === 0 || viewport.w < 40) return;
     const key = `${laid.map((n) => n.path).join("|")}:${Math.round(viewport.w)}x${Math.round(viewport.h)}`;
     if (key === fittedKey) return;
-    setCamera(fitCamera(laid, viewport.w, viewport.h));
+    setCamera(openCamera(laid, viewport.w, viewport.h));
     setFittedKey(key);
   }, [laid, viewport, fittedKey]);
 
@@ -1221,6 +1279,146 @@ function JourneyGraph({
     };
   }, [onNodePointerMove, onNodePointerUp, onPanMove, onPanUp]);
 
+  const toPane = useCallback((clientX: number, clientY: number) => {
+    const r = svgRef.current?.getBoundingClientRect();
+    return r ? { x: clientX - r.left, y: clientY - r.top } : { x: clientX, y: clientY };
+  }, []);
+
+  const onTouchMove = useCallback(
+    (ev: PointerEvent) => {
+      const t = touchRef.current;
+      if (!t || !t.pts.has(ev.pointerId)) return;
+      t.pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (t.pinch && t.pts.size >= 2) {
+        const [a, b] = [...t.pts.values()];
+        const m = toPane((a.x + b.x) / 2, (a.y + b.y) / 2);
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        const k = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, (t.pinch.k0 * d) / t.pinch.d0));
+        setCamera({ k, x: m.x - t.pinch.wx * k, y: m.y - t.pinch.wy * k });
+        return;
+      }
+      const p = t.pan;
+      if (!p) return;
+      const dx = ev.clientX - p.x;
+      const dy = ev.clientY - p.y;
+      if (t.tap) {
+        if (Math.hypot(dx, dy) < TOUCH_SLOP) return;
+        t.tap = null;
+        setPressedPath(null);
+        setPanning(true);
+      }
+      setCamera((c) => ({ ...c, x: p.camX + dx, y: p.camY + dy }));
+    },
+    [toPane],
+  );
+
+  // pointercancel lands here too: the browser took a vertical swipe to scroll
+  // the page, so the touch ends without a tap.
+  const onTouchEnd = useCallback(
+    (ev: PointerEvent) => {
+      const t = touchRef.current;
+      if (!t || !t.pts.delete(ev.pointerId)) return;
+      if (t.pts.size > 0) {
+        // Lifting one finger of a pinch carries on as a pan from the other.
+        const [rest] = [...t.pts.values()];
+        const cam = cameraRef.current;
+        t.pinch = null;
+        t.pan = { x: rest.x, y: rest.y, camX: cam.x, camY: cam.y };
+        return;
+      }
+      const tap = ev.type === "pointerup" ? t.tap : null;
+      t.listeners.abort();
+      touchRef.current = null;
+      setPanning(false);
+      setPressedPath(null);
+      if (tap) onTapRef.current(tap);
+    },
+    [],
+  );
+
+  useEffect(() => () => touchRef.current?.listeners.abort(), []);
+
+  useEffect(() => {
+    onTapRef.current = (tap) => {
+      if (tap.kind === "panel") return;
+      if (tap.kind === "edge" && tap.edge) {
+        showEdgeTooltip(tap.edge, tap.x, tap.y);
+        return;
+      }
+      clearEdgeTooltip();
+      if (tap.kind === "canvas" || !tap.path) {
+        onClearSelection();
+        return;
+      }
+      if (divePath || !canExpandNode(tap.path)) return;
+      if (!selectedSet.has(tap.path)) revealExpanded(tap.path);
+      onToggleSelect(tap.path);
+    };
+  });
+
+  /**
+   * An open node is 304px wide about its centre, so on a phone one near the
+   * edge opens half off-screen: pan until it is in view, below the toolbar.
+   */
+  function revealExpanded(path: string) {
+    const n = byPath.get(path);
+    if (!n || viewport.w >= NARROW_W) return;
+    const box = expandedNodeBox(
+      path === CONVERTED ? "converted" : isEntryNode(path) ? "entry" : "page",
+      detailsByPath.get(path) ?? null,
+      convertedDetailByPath.get(path) ?? null,
+      groupDetailByPath.get(path) ?? null,
+    );
+    const cam = cameraRef.current;
+    const left = cam.x + (n.x - box.hw) * cam.k;
+    const right = cam.x + (n.x + box.hw) * cam.k;
+    const top = cam.y + (n.y - box.hh) * cam.k;
+    let dx = 0;
+    if (left < 8) dx = 8 - left;
+    else if (right > viewport.w - 8) dx = Math.max(8 - left, viewport.w - 8 - right);
+    const dy = top < 64 ? 64 - top : 0;
+    if (dx || dy) setCamera({ ...cam, x: cam.x + dx, y: cam.y + dy });
+  }
+
+  function onTouchStart(
+    ev: ReactPointerEvent,
+    kind: TouchTap["kind"],
+    path: string | null = null,
+    edge: JourneyTransitionEdge | null = null,
+  ) {
+    ev.stopPropagation();
+    const cam = cameraRef.current;
+    if (!touchRef.current) {
+      const listeners = new AbortController();
+      const { signal } = listeners;
+      window.addEventListener("pointermove", onTouchMove, { signal });
+      window.addEventListener("pointerup", onTouchEnd, { signal });
+      window.addEventListener("pointercancel", onTouchEnd, { signal });
+      touchRef.current = { pts: new Map(), tap: null, pan: null, pinch: null, listeners };
+    }
+    const t = touchRef.current;
+    t.pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (t.pts.size === 1) {
+      t.tap = { kind, path, edge, x: ev.clientX, y: ev.clientY };
+      t.pan = { x: ev.clientX, y: ev.clientY, camX: cam.x, camY: cam.y };
+      if (kind === "node") setPressedPath(path);
+      return;
+    }
+    // A second finger turns the gesture into a pinch about the fingers' midpoint.
+    const [a, b] = [...t.pts.values()];
+    const m = toPane((a.x + b.x) / 2, (a.y + b.y) / 2);
+    t.tap = null;
+    t.pan = null;
+    t.pinch = {
+      d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      k0: cam.k,
+      wx: (m.x - cam.x) / cam.k,
+      wy: (m.y - cam.y) / cam.k,
+    };
+    setPressedPath(null);
+    setPanning(true);
+  }
+
   function startPan(ev: ReactPointerEvent) {
     ev.preventDefault();
     panRef.current = {
@@ -1235,6 +1433,11 @@ function JourneyGraph({
   }
 
   function onNodePointerDown(path: string, ev: ReactPointerEvent) {
+    if (ev.pointerType === "touch") {
+      const inPanel = (ev.target as Element).closest?.("foreignObject");
+      onTouchStart(ev, inPanel ? "panel" : "node", path);
+      return;
+    }
     if (spaceDown || ev.button === 1) {
       startPan(ev);
       return;
@@ -1259,6 +1462,10 @@ function JourneyGraph({
   }
 
   function onCanvasPointerDown(ev: ReactPointerEvent) {
+    if (ev.pointerType === "touch") {
+      onTouchStart(ev, "canvas");
+      return;
+    }
     if (ev.button === 1 || (ev.button === 0 && spaceDown)) {
       startPan(ev);
       return;
@@ -1284,7 +1491,7 @@ function JourneyGraph({
     const next = divePath
       ? (layoutDiveGraph(nodes, WORLD_W, WORLD_H) as LayoutNode[])
       : (layoutJourneyGraph(nodes, edges, WORLD_W, WORLD_H) as LayoutNode[]);
-    setCamera(fitCamera(next, viewport.w, viewport.h));
+    setCamera(openCamera(next, viewport.w, viewport.h));
   }
 
   function showEdgeTooltip(e: JourneyTransitionEdge, clientX: number, clientY: number) {
@@ -1440,15 +1647,16 @@ function JourneyGraph({
     <div ref={shellRef} className={shellClass} tabIndex={0}>
       <div ref={paneRef} className="relative min-w-0 flex-1 overflow-hidden">
       <div className="pointer-events-none absolute inset-x-2 top-[calc(0.5rem+var(--safe-top))] z-30 flex flex-col gap-2">
+        {/* Outside a dive the breadcrumb is one inert word; phones keep the room. */}
         <nav
-          className="pointer-events-auto flex min-h-8 flex-wrap items-center gap-1 rounded-md border bg-background/95 px-2 py-1 text-xs shadow-sm"
+          className={`pointer-events-auto flex min-h-8 flex-wrap items-center gap-1 rounded-md border bg-background/95 px-2 py-1 text-xs shadow-sm ${divePath ? "" : "max-md:hidden"}`}
           aria-label="Journey breadcrumb"
         >
           <button
             type="button"
             className={
               divePath
-                ? "cursor-pointer rounded px-1.5 py-0.5 font-medium text-foreground hover:bg-muted"
+                ? "cursor-pointer rounded px-1.5 py-0.5 font-medium text-foreground hover:bg-muted active:bg-press max-md:min-h-10 max-md:px-3"
                 : "cursor-default rounded px-1.5 py-0.5 font-medium text-foreground"
             }
             onClick={() => {
@@ -1540,7 +1748,7 @@ function JourneyGraph({
         width={viewport.w}
         height={viewport.h}
         viewBox={`0 0 ${viewport.w} ${viewport.h}`}
-        className="h-full w-full touch-none select-none"
+        className={`h-full w-full select-none ${fullscreen ? "touch-none" : "touch-pan-y"}`}
         role="img"
         aria-label="Prospect journey unique-node graph"
         onPointerDown={onCanvasPointerDown}
@@ -1616,17 +1824,25 @@ function JourneyGraph({
                   d={d}
                   fill="none"
                   stroke="transparent"
-                  strokeWidth={Math.max(14, sw + 10)}
+                  strokeWidth={Math.max(coarse ? 24 / camera.k : 14, sw + 10)}
                   style={{ cursor: "pointer", pointerEvents: "stroke" }}
                   onPointerDown={(ev) => {
+                    if (ev.pointerType === "touch") {
+                      onTouchStart(ev, "edge", null, e);
+                      return;
+                    }
                     ev.stopPropagation();
                     showEdgeTooltip(e, ev.clientX, ev.clientY);
                   }}
                   onPointerMove={(ev) => {
+                    if (ev.pointerType === "touch") return;
                     ev.stopPropagation();
                     showEdgeTooltip(e, ev.clientX, ev.clientY);
                   }}
-                  onPointerLeave={clearEdgeTooltip}
+                  onPointerLeave={(ev) => {
+                    // A lifted finger "leaves" right after the tap that opened the tooltip.
+                    if (ev.pointerType !== "touch") clearEdgeTooltip();
+                  }}
                 />
                 <path
                   d={d}
@@ -1705,6 +1921,16 @@ function JourneyGraph({
                   }
                   strokeWidth={expanded ? 1.75 : 1}
                 />
+                {pressedPath === n.path ? (
+                  <rect
+                    x={-hw}
+                    y={-hh}
+                    width={hw * 2}
+                    height={hh * 2}
+                    rx={12}
+                    className="fill-press"
+                  />
+                ) : null}
                 {!isSink ? (
                   <rect
                     x={-hw}
@@ -1772,16 +1998,18 @@ function JourneyGraph({
                 ) : null}
                 {!divePath && !isSink && expandablePaths.includes(n.path) ? (
                   <foreignObject
-                    x={hw - 22}
-                    y={-hh + 2}
-                    width={20}
-                    height={20}
+                    x={hw - (coarse ? 30 : 22)}
+                    y={-hh + (coarse ? 0 : 2)}
+                    width={coarse ? 28 : 20}
+                    height={coarse ? 28 : 20}
                   >
                     <button
                       type="button"
-                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="flex size-full cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground active:bg-press"
                       aria-label="Dive into sections"
                       onPointerDown={(ev) => {
+                        // Touch joins the graph's gesture (a pinch can start here).
+                        if (ev.pointerType === "touch") return;
                         ev.stopPropagation();
                         ev.preventDefault();
                       }}

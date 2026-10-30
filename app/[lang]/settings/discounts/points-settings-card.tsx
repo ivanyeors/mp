@@ -84,13 +84,20 @@ function MilestonesField({
                 </p>
             </div>
             {milestones.length ? (
-                <ol className="space-y-3">
+                // Phones: one row per milestone (earned · bonus · remove) between rules, not a box each.
+                <ol className="max-md:divide-y md:space-y-3">
                     {milestones.map((m, i) => {
                         const c = cost(m.at);
                         return (
-                            <li key={i} className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                            <li
+                                key={i}
+                                className="grid grid-cols-[1fr_1fr_auto] items-end gap-2 py-3 max-md:first:pt-0 md:gap-3 md:rounded-md md:border md:p-3"
+                            >
                                 <div className="space-y-1.5">
-                                    <Label htmlFor={`points-ms-at-${i}`}>Milestone {i + 1}: points earned</Label>
+                                    <Label htmlFor={`points-ms-at-${i}`}>
+                                        <span className="md:hidden">{i + 1}. Points earned</span>
+                                        <span className="max-md:hidden">Milestone {i + 1}: points earned</span>
+                                    </Label>
                                     <Input
                                         id={`points-ms-at-${i}`}
                                         type="number"
@@ -121,7 +128,7 @@ function MilestonesField({
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                                 {c ? (
-                                    <p className="text-xs text-muted-foreground sm:col-span-3">
+                                    <p className="col-span-3 text-xs text-muted-foreground">
                                         {formatPoints(m.bonus)}.{" "}
                                         {c.spend !== null && c.backShare !== null
                                             ? `Reached after about ${formatDollarsShort(c.spend)} spent; with every bonus so far, ${(c.backShare * 100).toFixed(2)}% back.`
@@ -220,7 +227,7 @@ export function PointsSettingsCard() {
                     <>
                         <div className="flex items-center justify-between gap-3">
                             <div>
-                                <Label htmlFor="points-enabled">Points are on</Label>
+                                <Label htmlFor="points-enabled" className="cursor-pointer max-md:-my-[15px] max-md:py-[15px] max-md:active:opacity-60">Points are on</Label>
                                 <p className="text-xs text-muted-foreground">
                                     Off: customers see nothing, and no order earns or spends.
                                 </p>

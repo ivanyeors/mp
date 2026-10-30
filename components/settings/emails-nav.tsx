@@ -30,7 +30,7 @@ export function EmailsNav({
                     href={t.href}
                     aria-current={t.key === current ? "page" : undefined}
                     className={cn(
-                        "rounded-md px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground",
+                        "inline-flex items-center rounded-md px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground active:bg-background/60 max-md:min-h-11",
                         t.key === current && "bg-background text-foreground shadow-sm",
                     )}
                 >

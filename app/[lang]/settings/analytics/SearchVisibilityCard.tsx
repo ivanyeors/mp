@@ -29,6 +29,7 @@ import {
   removeTargetQuery,
 } from "./seo-actions";
 import { InfoTip } from "@/components/ui/info-tip";
+import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
 const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.ChannelMixVisx), { ssr: false });
@@ -166,7 +167,7 @@ export function AiAnswersPanel({
             upload(e.target.files);
             e.target.value = "";
           }}
-          className="block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs"
+          className="block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs max-md:file:min-h-11 active:file:bg-press"
         />
         <div className="text-xs text-muted-foreground">
           Google: Search Console → Performance → Generative AI → Export (all files, including Filters.csv). Bing: Webmaster
@@ -289,7 +290,53 @@ export function QueriesPanel({ queries, onChange }: { queries: Queries; onChange
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="text-sm font-medium">Target searches</div>
-        <div className="overflow-x-auto rounded-md border">
+        {/* Phone: one row per search, so position, clicks and the ranking page stay on screen. */}
+        <MobileList className="rounded-md text-xs tabular-nums">
+          {queries.watchlist.map((w) => (
+            <MobileListRow
+              key={w.query}
+              actions={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-11"
+                  disabled={pending}
+                  onClick={() => remove(w.query)}
+                  aria-label={`Stop tracking ${w.query}`}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              }
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 break-words text-sm font-medium">{w.query}</span>
+                <Sparkline values={w.spark} invert />
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-muted-foreground">
+                <span className="inline-flex items-center gap-1 text-foreground">
+                  <span className="text-muted-foreground">Position</span>
+                  <PositionChange position={w.position} previous={w.previousPosition} />
+                </span>
+                <span>{int.format(w.clicks)} clicks</span>
+                <span>{int.format(w.impressions)} impressions</span>
+              </div>
+              {w.topPage ? (
+                <div className="mt-0.5 flex min-w-0 items-center gap-1 text-muted-foreground">
+                  <span className="truncate" title={w.topPage}>
+                    {shortPath(w.topPage)}
+                  </span>
+                  {w.competingPages.length ? (
+                    <span className="inline-flex shrink-0 items-center gap-0.5">
+                      <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />+
+                      {w.competingPages.length} competing
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </MobileListRow>
+          ))}
+        </MobileList>
+        <div className="hidden overflow-x-auto rounded-md border md:block">
           <table className="w-full min-w-[640px] text-xs tabular-nums">
             <thead className="bg-muted text-left">
               <tr>
@@ -462,7 +509,7 @@ export function AnnotationsPanel({ annotations, onChange }: { annotations: Annot
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           aria-label="Category"
-          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm active:bg-press max-md:h-11"
         >
           {ANNOTATION_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -485,7 +532,7 @@ export function AnnotationsPanel({ annotations, onChange }: { annotations: Annot
 export function CrawlerPanel({ crawlers, annotations }: { crawlers: Crawlers; annotations?: Annotation[] }) {
   if (!crawlers.hasData) {
     return (
-      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground max-md:p-4">
         No crawler hits recorded yet. Counting starts once the <code className="rounded bg-muted px-1">ai_crawler_hits</code>{" "}
         migration is applied and the next deploy is live; AI crawlers usually show up within days.
       </div>
@@ -572,7 +619,29 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
           ))}
         </div>
       ) : null}
-      <div className="overflow-x-auto rounded-md border">
+      {/* Phone: one row per channel; the seven-column table hid its funnel columns off-screen. */}
+      <MobileList className="rounded-md text-xs tabular-nums">
+        {mix.funnel.map((r) => (
+          <MobileListRow key={r.channel}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium">{CHANNEL_LABELS[r.channel]}</span>
+              <span className="shrink-0">
+                {int.format(r.visits)} visits <span className="text-muted-foreground">({rate(r.visits, mix.totalVisits)})</span>
+              </span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap gap-x-3 text-muted-foreground">
+              <span>
+                Configurator {int.format(r.configuratorVisits)} ({rate(r.configuratorVisits, r.visits)})
+              </span>
+              <span>
+                Orders {int.format(r.orders)} ({rate(r.orders, r.visits)})
+              </span>
+              <span>Revenue {r.revenue ? sgd.format(r.revenue) : "—"}</span>
+            </div>
+          </MobileListRow>
+        ))}
+      </MobileList>
+      <div className="hidden overflow-x-auto rounded-md border md:block">
         <table className="w-full min-w-[560px] text-xs tabular-nums">
           <thead className="bg-muted text-left">
             <tr>
@@ -773,7 +842,9 @@ export function VisibilityPanel({
       </figure>
 
       <details className="text-sm">
-        <summary className="cursor-pointer text-muted-foreground">View as table</summary>
+        <summary className="cursor-pointer text-muted-foreground active:opacity-60 max-md:py-3">
+          View as table
+        </summary>
         <div className="mt-2 max-h-72 overflow-auto rounded-md border">
           <table className="w-full text-xs tabular-nums">
             <thead className="sticky top-0 bg-muted text-left">
@@ -952,7 +1023,7 @@ export function SearchVisibilityCard() {
             <Skeleton className="h-[180px]" />
           </div>
         ) : !data?.hasData ? (
-          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground max-md:p-4">
             No Search Console data yet. Once the service account and env vars are set, run{" "}
             <code className="rounded bg-muted px-1">npm run seo:gsc-backfill</code> to load 16 months; the daily cron keeps
             it current after that. Setup steps: <code className="rounded bg-muted px-1">.claude/PRD-search-visibility/GOOGLE-ACCESS-SETUP.md</code>.
@@ -964,7 +1035,7 @@ export function SearchVisibilityCard() {
           </div>
         )}
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">Visits by channel</h3>
             <div className="text-xs text-muted-foreground">Where visits came from, with AI assistants as their own channel.</div>
@@ -978,7 +1049,7 @@ export function SearchVisibilityCard() {
           )}
         </section>
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">AI answers</h3>
             <div className="text-xs text-muted-foreground">
@@ -988,7 +1059,7 @@ export function SearchVisibilityCard() {
           <AiAnswersPanel ai={ai} annotations={annotations} onImported={refreshAi} />
         </section>
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">AI crawlers</h3>
             <div className="text-xs text-muted-foreground">
@@ -1004,7 +1075,7 @@ export function SearchVisibilityCard() {
           )}
         </section>
 
-        <section className="space-y-3 border-t pt-6">
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
             <h3 className="text-sm font-medium">Annotations</h3>
             <div className="text-xs text-muted-foreground">

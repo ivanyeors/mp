@@ -5,7 +5,6 @@
 import { describe, it, expect } from "vitest";
 import { resolveOrderItemUnitCost } from "../order-cost";
 import { computeOrderMargin } from "../order-margins";
-import type { ConfigLine } from "@/lib/types/customization";
 
 describe("Slice 09 acceptance criteria", () => {
   it("AC1: order line stores unit_cost/total_cost frozen at checkout (unaffected by later cost changes)", () => {
@@ -92,26 +91,24 @@ describe("Slice 09 acceptance criteria", () => {
     expect(margin_pct).toBeCloseTo(66.67, 1); // 100 / (100 + 50) product revenue basis
   });
 
-  it("AC5: customized order COGS includes customization BOM addon cost", () => {
-    const coverLine: ConfigLine = {
-      item_id: 101,
-      category: "cover",
-      name: "Premium cover",
-      quantity: 3,
-      is_addon: true,
-      price_delta: 12,
-    };
+  it("AC5: customized order COGS is the cost of the build the sale deducts", () => {
+    // Chosen cover × 3 over a recipe protector, plus the default fillings.
     const result = resolveOrderItemUnitCost({
       variantCostPrice: 45,
       quantity: 1,
-      customization: {
-        config_lines: [coverLine],
-        baseQuantities: new Map([[101, 1]]),
-        costByItem: new Map([[101, 8]]),
-      },
+      buildLines: [
+        { item_id: 101, quantity: 3 },
+        { item_id: 102, quantity: 1 },
+        { item_id: 10, quantity: 10 },
+      ],
+      costByItem: new Map([
+        [101, 8],
+        [102, 12],
+        [10, 2],
+      ]),
     });
-    // base 45 + 2 extra covers × 8 = 61
-    expect(result.unit_cost).toBe(61);
-    expect(result.total_cost).toBe(61);
+    // 3 × 8 + 12 + 10 × 2 = 56, whatever the Variant's own cost_price says
+    expect(result.unit_cost).toBe(56);
+    expect(result.total_cost).toBe(56);
   });
 });
