@@ -18,9 +18,11 @@ import {
   PREVIEW_CARD_PREFIX,
   PREVIEW_REVIEW_ID,
   REVIEW_CALLBACK_PREFIX,
+  SHOP_CARD_HEADER,
   TEAM_NOTE_PREFIX,
   parseReviewCallback,
   type ReviewCallback,
+  type ShopReviewForCard,
   renderGoogleReviewCard,
   renderShopReviewCard,
 } from "@/lib/reviews/cards";
@@ -33,13 +35,19 @@ import {
   skipGoogleReview,
   type Actor,
 } from "@/lib/reviews/google-actions";
-import { moderateShopReview } from "@/lib/reviews/shop-reviews";
+import {
+  getShopReviewByCard,
+  moderateShopReview,
+  removeShopReviewReply,
+  setShopReviewReply,
+} from "@/lib/reviews/shop-reviews";
 import { customerMatchLinkFor } from "@/lib/crm/google-review-match-server";
 
 /**
  * The review half of the Telegram bot: buttons on review cards, replies to a
- * Google card (a review manager's own wording; a reply starting with `//` is a
- * team note and is left alone), and `/link CODE`.
+ * card (on a Google card, a review manager's own wording for the draft; on a
+ * shop card, our public reply under the review; a reply starting with `//` is
+ * a team note and is left alone), and `/link CODE`.
  *
  * Runs before the inventory bot's TELEGRAM_ALLOWED_CHATS check on purpose:
  * this path has its own, stricter gate — cards live only in the measurements
@@ -68,12 +76,15 @@ export type ReviewTelegramUpdate = {
 
 const LINK_COMMAND = /^\/link(?:@\w+)?(?:\s+(.*))?$/i;
 
-/** A Google card, real or preview (PREVIEW line first, header second). */
-function isGoogleCardText(text: string | undefined): boolean {
+/** A card with this header, real or preview (PREVIEW line first, header second). */
+function isCardText(text: string | undefined, header: string): boolean {
   if (!text) return false;
-  if (text.startsWith(GOOGLE_CARD_HEADER)) return true;
-  return text.startsWith(PREVIEW_CARD_PREFIX) && text.split("\n")[1] === GOOGLE_CARD_HEADER;
+  if (text.startsWith(header)) return true;
+  return text.startsWith(PREVIEW_CARD_PREFIX) && text.split("\n")[1] === header;
 }
+
+const isGoogleCardText = (text: string | undefined) => isCardText(text, GOOGLE_CARD_HEADER);
+const isShopCardText = (text: string | undefined) => isCardText(text, SHOP_CARD_HEADER);
 
 /** Does this update belong to the review flow? Cheap: no I/O. */
 export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
@@ -85,7 +96,8 @@ export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
   if (LINK_COMMAND.test(text)) return true;
   // A `//` team note is not a command: claimed here, so the inventory bot never answers it.
   const command = text.startsWith("/") && !text.startsWith(TEAM_NOTE_PREFIX);
-  return message.chat.id === MP_CONFIG_TELEGRAM_CHAT_ID && !command && isGoogleCardText(message.reply_to_message?.text);
+  const card = message.reply_to_message?.text;
+  return message.chat.id === MP_CONFIG_TELEGRAM_CHAT_ID && !command && (isGoogleCardText(card) || isShopCardText(card));
 }
 
 function deniedMessage(
@@ -155,12 +167,25 @@ const PREVIEW_EFFECT: Record<ReviewCallback["action"], string> = {
   skip: "remove this card without replying",
   approve: "show the review on the product page",
   reject: "hide the review from the shop",
+  unreply: "remove our reply from under the review on the product page",
 };
+
+/** Which Telegram action a button needs. Our public reply on a shop review is its own, apart from moderating. */
+function actionFor(cb: ReviewCallback): TelegramAction {
+  if (cb.source === "google") return "telegram.google-review-reply";
+  return cb.action === "unreply" ? "telegram.shop-review-reply" : "telegram.shop-review-moderate";
+}
 
 async function showGoogleCard(row: GoogleReviewRow | undefined, messageId: number): Promise<void> {
   if (!row) return;
   // CRM slice 12: keeps the *Possible customer match* line while a suggestion exists.
   const card = renderGoogleReviewCard(row, { possibleCustomerMatch: await customerMatchLinkFor(row.id) });
+  await editGroupCard(messageId, card.text, card.replyMarkup);
+}
+
+async function showShopCard(review: ShopReviewForCard | null, messageId: number, actedBy?: string | null): Promise<void> {
+  if (!review) return;
+  const card = renderShopReviewCard(review, actedBy);
   await editGroupCard(messageId, card.text, card.replyMarkup);
 }
 
@@ -172,9 +197,7 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
     return;
   }
 
-  const action: TelegramAction =
-    parsed.source === "google" ? "telegram.google-review-reply" : "telegram.shop-review-moderate";
-  const auth = await authorize(cq.from, action);
+  const auth = await authorize(cq.from, actionFor(parsed));
   if (!auth.ok) {
     await answerCallback(cq.id, auth.message, true);
     return;
@@ -191,9 +214,25 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
     return;
   }
 
+  if (parsed.source === "shop" && parsed.action === "unreply") {
+    const result = await removeShopReviewReply(parsed.id);
+    if (!result.review) {
+      await answerCallback(cq.id, "This review no longer exists.", true);
+      return;
+    }
+    await answerCallback(
+      cq.id,
+      result.ok ? "Reply removed — it's gone from the product page." : "There's no reply to remove — check the updated card.",
+      !result.ok,
+    );
+    await showShopCard(result.review, messageId);
+    return;
+  }
+
   if (parsed.source === "shop") {
     const decision = parsed.action === "approve" ? "approved" : "rejected";
-    const result = await moderateShopReview(parsed.id, decision);
+    // The guard above: this card is in the measurements group.
+    const result = await moderateShopReview(parsed.id, decision, { chatId: MP_CONFIG_TELEGRAM_CHAT_ID, messageId });
     if (!result.review) {
       await answerCallback(cq.id, "This review no longer exists.", true);
       return;
@@ -202,8 +241,7 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
       cq.id,
       result.ok ? (decision === "approved" ? "Approved — it's on the product page." : "Rejected.") : `Already ${result.review.status}.`,
     );
-    const card = renderShopReviewCard(result.review, result.ok ? auth.actor.name : null);
-    await editGroupCard(messageId, card.text, card.replyMarkup);
+    await showShopCard(result.review, messageId, result.ok ? auth.actor.name : null);
     return;
   }
 
@@ -235,21 +273,65 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
   if (!result.ok || !(await deleteGroupMessage(messageId))) await showGoogleCard(result.row, messageId);
 }
 
+/**
+ * A reply to a shop card: the words become our public reply under the review,
+ * replacing any earlier one. Same gate as a Google card — the replier needs
+ * the action, and only someone set up hears why not.
+ */
+async function handleShopStaffReply(
+  message: NonNullable<ReviewTelegramUpdate["message"]>,
+  from: TelegramUser,
+  cardId: number,
+  text: string,
+): Promise<void> {
+  const review = await getShopReviewByCard(message.chat.id, cardId);
+  if (!review) return;
+
+  const auth = await authorize(from, "telegram.shop-review-reply");
+  if (!auth.ok) {
+    // People chat under cards; only answer someone who is set up but not allowed.
+    if (auth.linked) await replyInGroup(auth.message, message.message_id);
+    return;
+  }
+
+  const result = await setShopReviewReply(review.id, text, auth.actor);
+  await showShopCard(result.review, cardId);
+  if (!result.ok) {
+    await replyInGroup(result.message ? `❌ ${result.message}` : "This review no longer exists.", message.message_id);
+    return;
+  }
+  await replyInGroup(
+    result.review.status === "approved"
+      ? "💬 Reply posted — it's under the review on the product page. Reply to the card again to change it."
+      : "💬 Reply saved — it shows under the review once the review is approved. Reply to the card again to change it.",
+    message.message_id,
+  );
+}
+
 async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["message"]>): Promise<void> {
   const from = message.from;
   const cardId = message.reply_to_message?.message_id;
   const text = message.text?.trim();
   if (!from || !cardId || !text || text.startsWith(TEAM_NOTE_PREFIX)) return;
+  const shop = isShopCardText(message.reply_to_message?.text);
 
   // A preview card: show what a reply would do, and the replier's access.
   if (message.reply_to_message?.text?.startsWith(PREVIEW_CARD_PREFIX)) {
-    const auth = await authorize(from, "telegram.google-review-reply");
+    const auth = await authorize(from, shop ? "telegram.shop-review-reply" : "telegram.google-review-reply");
+    const effect = shop
+      ? "your wording would become our public reply under the review on the product page (once the review is approved)"
+      : "your wording would replace the draft and you'd tap ✅ Post reply to publish it";
     await replyInGroup(
       auth.ok
-        ? `🧪 On a real card, your wording would replace the draft and you'd tap ✅ Post reply to publish it. You're set up as ${auth.actor.name} (${describeActions(auth.actions)}).`
+        ? `🧪 On a real card, ${effect}. You're set up as ${auth.actor.name} (${describeActions(auth.actions)}).`
         : auth.message,
       message.message_id,
     );
+    return;
+  }
+
+  if (shop) {
+    await handleShopStaffReply(message, from, cardId, text);
     return;
   }
 

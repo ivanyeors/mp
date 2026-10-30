@@ -77,6 +77,7 @@ const MY_ORDER = "11111111-1111-4111-8111-111111111111";
 const THEIR_ORDER = "22222222-2222-4222-8222-222222222222";
 
 const { GET, POST } = await import("@/app/api/shop/reviews/route");
+const author = await import("@/app/api/shop/reviews/author/route");
 const moderation = await import("@/app/api/shop/reviews/[id]/route");
 const { getReviewAggregate, getReviewAggregates } = await import("@/lib/seo/review-aggregate");
 
@@ -131,6 +132,26 @@ describe("GET /api/shop/reviews", () => {
     for (const row of json.rows) {
       expect(row).not.toHaveProperty("customer_id");
       expect(row).not.toHaveProperty("order_id");
+    }
+  });
+
+  it("shows our reply and its time, but never the status, who wrote it, or the Telegram card", async () => {
+    Object.assign(h.tables.product_reviews[0], {
+      store_reply: "Thank you, Ada!",
+      store_reply_at: "2026-09-02T00:00:00Z",
+      store_reply_by_name: "Ivan",
+      telegram_chat_id: -100,
+      telegram_message_id: 7,
+    });
+    // A reply on a pending review stays off the shop with its review.
+    Object.assign(h.tables.product_reviews[1], { store_reply: "Thanks!", store_reply_at: "2026-09-02T00:00:00Z" });
+    const res = await GET(new Request(`http://x/api/shop/reviews?product_id=${PRODUCT}`));
+    const { rows } = await res.json();
+    expect(rows).toEqual([
+      expect.objectContaining({ id: "r-approved", store_reply: "Thank you, Ada!", store_reply_at: "2026-09-02T00:00:00Z" }),
+    ]);
+    for (const key of ["status", "store_reply_by_name", "telegram_chat_id", "telegram_message_id"]) {
+      expect(rows[0]).not.toHaveProperty(key);
     }
   });
 
@@ -226,6 +247,57 @@ describe("reviews edge cases", () => {
     const res = await post({ product_id: PRODUCT, author_name: "Someone Famous", rating: 5 });
     expect(res.status).toBe(201);
     expect(h.inserted[0]).toMatchObject({ author_name: "Jane D." });
+  });
+
+  it("gives a Customer with no name the stand-in byline, whatever name the client sends", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
+    const res = await post({ product_id: PRODUCT, author_name: "Someone Famous", rating: 5 });
+    expect(res.status).toBe(201);
+    expect(h.inserted[0]).toMatchObject({ author_name: "mpillow customer" });
+  });
+
+  it("needs no author_name from the form any more", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
+    h.link.mockResolvedValue({ id: CUSTOMER, first_name: "Jane", last_name: null });
+    const res = await post({ product_id: PRODUCT, rating: 4, title: "Comfy" });
+    expect(res.status).toBe(201);
+    expect(h.inserted[0]).toMatchObject({ author_name: "Jane", rating: 4, title: "Comfy" });
+    expect(h.inserted[0]).not.toHaveProperty("store_reply");
+  });
+});
+
+describe("GET /api/shop/reviews/author", () => {
+  const read = async () => {
+    const res = await author.GET();
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    return res.json();
+  };
+
+  it("says a visitor is signed out, without linking anything", async () => {
+    expect(await read()).toEqual({ signedIn: false });
+    expect(h.link).not.toHaveBeenCalled();
+  });
+
+  it("says an account with no email can't review, as the POST would", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-2", email: undefined });
+    expect(await read()).toEqual({ signedIn: true, canReview: false, reason: "no_email" });
+    expect(h.link).not.toHaveBeenCalled();
+  });
+
+  it("gives a signed-in Customer the byline the POST will store", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
+    h.link.mockResolvedValue({ id: CUSTOMER, first_name: "Jane", last_name: "Doe" });
+    expect(await read()).toEqual({ signedIn: true, canReview: true, byline: "Jane D.", named: true });
+
+    h.link.mockResolvedValue({ id: CUSTOMER, first_name: " ", last_name: "Doe" });
+    expect(await read()).toEqual({ signedIn: true, canReview: true, byline: "mpillow customer", named: false });
+  });
+
+  it("reports a Customer it can't link as unavailable, not an error page", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
+    h.link.mockRejectedValue(new Error("This email belongs to another account"));
+    expect(await read()).toEqual({ signedIn: true, canReview: false, reason: "unavailable" });
   });
 });
 

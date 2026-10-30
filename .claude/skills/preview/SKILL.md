@@ -41,7 +41,7 @@ per screenshot, `ok` or `PROBLEM` with what went wrong.
 | `--as <email>` | Sign in as another fixture user. `staff@preview.local` has no permissions |
 | `--signed-out` | No session, as a visitor sees it |
 | `--scenario <name>` | Load a fixture scenario for this run, e.g. `empty-sales` (no orders) |
-| `--click "<text>"` | Click the first element with this text before the shot. Repeat for several |
+| `--click "<text>"` | Click the first element with this text before the shot (a visible tab named exactly this comes first). Repeat for several |
 | `--wait-for "<text>"` | Wait until this text shows before the shot |
 | `--element "<css>"` | Crop to one element, e.g. `"[data-slot=card]:has-text('Margin')"` |
 | `--viewport-only` | The first screen only, not the full page |

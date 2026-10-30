@@ -86,6 +86,8 @@ export const PERMISSION_CATALOG = [
 
   { key: "telegram.google-review-reply", label: "Reply to Google reviews", group: "Telegram", surface: "telegram" },
   { key: "telegram.shop-review-moderate", label: "Moderate shop reviews", group: "Telegram", surface: "telegram" },
+  // Our public reply under a shop review: speaks for the business, so not part of moderating.
+  { key: "telegram.shop-review-reply", label: "Reply to shop reviews", group: "Telegram", surface: "telegram" },
   { key: "telegram.social-inbox-reply", label: "Answer customer messages", group: "Telegram", surface: "telegram" },
 ] as const satisfies readonly CatalogEntry[];
 

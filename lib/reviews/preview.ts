@@ -29,7 +29,7 @@ export const PREVIEW_INTRO = [
   "🧪 REVIEW & MESSAGE CARDS — PREVIEW",
   "Sample cards showing how new Google Maps and shop reviews, and customer messages from Facebook, Instagram and TikTok, will arrive here. None of them are real, nothing will be posted to Google, and nothing is sent to a customer.",
   "",
-  "Tap any button to check your access: it tells you whether you're set up, and as what. Reply to a Google card with your own wording to see how editing a draft works, or to the Instagram message to see how answering a customer works. Not set up yet? An admin adds you under Settings → Users & permissions → Telegram.",
+  "Tap any button to check your access: it tells you whether you're set up, and as what. Reply to a Google card with your own wording to see how editing a draft works, to a shop card to see how our reply under a website review works, or to the Instagram message to see how answering a customer works. Not set up yet? An admin adds you under Settings → Users & permissions → Telegram.",
 ].join("\n");
 
 export type PreviewCard = { what: string; card: Card };
@@ -188,23 +188,43 @@ export async function buildReviewCardPreview(
     }),
   );
 
-  const shop = marked(
-    "a new shop review",
-    renderShopReviewCard({
-      id: PREVIEW_REVIEW_ID,
-      author_name: "Ada L.",
-      rating: 4,
-      title: "Comfy",
-      body: "My neck feels better after a week. The cover is really soft.",
-      status: "pending",
-      created_at: now.toISOString(),
-      productName: "Mpillow Premium",
-    }),
-  );
+  const shopReview = {
+    id: PREVIEW_REVIEW_ID,
+    author_name: "Ada L.",
+    rating: 4,
+    title: "Comfy",
+    body: "My neck feels better after a week. The cover is really soft.",
+    status: "pending" as const,
+    created_at: now.toISOString(),
+    productName: "Mpillow Premium",
+    store_reply: null,
+    store_reply_at: null,
+    store_reply_by_name: null,
+  };
+  const shopSamples: PreviewCard[] = [
+    { what: "a new shop review", card: renderShopReviewCard(shopReview) },
+    {
+      what: "an approved shop review with our reply under it",
+      card: renderShopReviewCard({
+        ...shopReview,
+        author_name: "Ben T.",
+        rating: 5,
+        title: "Finally sleeping through",
+        body: "Took the fitting on a Saturday. Two weeks in and no more morning stiffness.",
+        status: "approved",
+        created_at: new Date(now.getTime() - 26 * 3_600_000).toISOString(),
+        productName: "Mpillow Basic",
+        store_reply:
+          "Thank you, Ben! We're so glad the fitting paid off and the mornings feel easier. Enjoy the sleep, and we look forward to seeing you again.",
+        store_reply_at: new Date(now.getTime() - 2 * 3_600_000).toISOString(),
+        store_reply_by_name: "Ivan",
+      }),
+    },
+  ];
 
   const cards: PreviewCard[] = [
     ...google.map((card, i) => ({ what: samples[i].what, card })),
-    { what: "a new shop review", card: shop },
+    ...shopSamples.map(({ what, card }) => ({ what, card: marked(what, card) })),
   ];
   return { cards, usedClaude: !!draft && draftErrors.length === 0, draftErrors };
 }

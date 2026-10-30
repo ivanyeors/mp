@@ -485,8 +485,22 @@ export interface ProductReview {
   title: string | null;
   body: string | null;
   status: ReviewStatus;
+  /** Our public reply, set from the review's Telegram card; shown under the review while it is approved. */
+  store_reply: string | null;
+  store_reply_at: string | null;
+  /** The Staff profile who set the reply. Never public. */
+  store_reply_by_name: string | null;
+  /** The review's card in the measurements Telegram group. */
+  telegram_chat_id: number | null;
+  telegram_message_id: number | null;
   created_at: string;
   updated_at: string;
 }
+
+/** A review as GET /api/shop/reviews returns it to the storefront. */
+export type PublicProductReview = Pick<
+  ProductReview,
+  "id" | "rating" | "title" | "body" | "author_name" | "created_at" | "store_reply" | "store_reply_at"
+>;
 
 // (Wishlists removed — tables dropped in migration 0029)

@@ -218,7 +218,11 @@ for (const [vname, vopts] of viewports) {
       status = res?.status() ?? null;
       await settle(page);
       for (const c of shot.clicks ?? []) {
-        await page.getByText(c, { exact: false }).first().click({ timeout: 15_000 });
+        // A visible tab named exactly this wins over earlier text that only contains
+        // it: on a product page "Reviews" is the tab, not "4.5 (2 reviews)" above it.
+        const tab = page.getByRole("tab", { name: c, exact: true }).filter({ visible: true });
+        const target = (await tab.count()) ? tab.first() : page.getByText(c, { exact: false }).first();
+        await target.click({ timeout: 15_000 });
         await settle(page);
       }
       if (shot.waitFor) await page.getByText(shot.waitFor, { exact: false }).first().waitFor({ timeout: 60_000 });
