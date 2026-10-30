@@ -1,4 +1,4 @@
-// Shop reviews on a storefront product page: /shop/ear-comfort-pad, Reviews tab.
+// Shop reviews on pdp.mjs's product page: /shop/ear-comfort-pad, Reviews tab.
 // Two approved reviews (one with our reply under it), and a pending one that
 // must not show. The signed-in preview user is a Customer here ("Jamie L."),
 // so the review form shows who they post as; scenario `reviewer-no-name`
@@ -9,8 +9,8 @@ import { OWNER } from "./base.mjs";
 export default function reviews({ scenario, now }) {
   const nameless = scenario === "reviewer-no-name";
   const ago = (days, hours = 0) => new Date(now.getTime() - (days * 24 + hours) * 3_600_000).toISOString();
-  // A uuid: GET /api/shop/reviews refuses any other product_id.
-  const product = "7e1a0c55-3b2d-4f6e-9a10-5c0ffee0ea12";
+  // The product in pdp.mjs. A uuid: GET /api/shop/reviews refuses any other product_id.
+  const product = "00000000-0000-4000-8000-0000000000e1";
   const review = (id, fields) => ({
     id,
     product_id: product,
@@ -29,47 +29,6 @@ export default function reviews({ scenario, now }) {
 
   return {
     tables: {
-      products: [
-        {
-          id: product,
-          slug: "ear-comfort-pad",
-          product_type: "accessory",
-          status: "active",
-          category_id: null,
-          featured: false,
-          tags: [],
-          content: {
-            "en-US": {
-              title: "Ear Comfort Pad",
-              description: "A soft pad that takes the pressure off your ear when you sleep on your side.",
-            },
-          },
-          published_at: ago(60),
-          created_at: ago(60),
-          updated_at: ago(2),
-        },
-      ],
-      product_variants: [
-        {
-          id: "var-ear-comfort-pad",
-          product_id: product,
-          sku: "EAR-PAD",
-          title: "Ear Comfort Pad",
-          option1: null,
-          option2: null,
-          option3: null,
-          price: 60,
-          compare_at_price: null,
-          currency: "SGD",
-          track_inventory: false,
-          weight_grams: 80,
-          image_url: null,
-          is_active: true,
-          position: 0,
-          item_id: null,
-          pillow_product_id: null,
-        },
-      ],
       product_reviews: [
         review("rev-approved-replied", {
           author_name: "Ada L.",
