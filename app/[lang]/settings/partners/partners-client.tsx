@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  MapPin,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -42,6 +43,13 @@ import {
 import { ImagePicker } from "@/components/ui/image-picker";
 import { SortableRow } from "@/components/ui/sortable-row";
 import { Switch } from "@/components/ui/switch";
+import {
+  PartnerLocationsFields,
+  locationDraftsToPayload,
+  toLocationDrafts,
+  type LocationDraft,
+} from "@/components/partner/partner-locations-fields";
+import { branchesByParent, formatLocationAddress } from "@/lib/locations/branches";
 import {
   DEFAULT_AGREEMENT_MD,
   DEFAULT_WORK_WITH_US,
@@ -93,8 +101,8 @@ type PartnerForm = {
   id?: string;
   name: string;
   type: LocationType;
-  address: string;
-  postal_code: string;
+  /** The main location, then a partner's other clinics (ADR 0037). */
+  locations: LocationDraft[];
   logo_url: string;
   media_asset_id: string | null;
   website_url: string;
@@ -105,8 +113,7 @@ type PartnerForm = {
 const emptyPartnerForm = (): PartnerForm => ({
   name: "",
   type: "partner",
-  address: "",
-  postal_code: "",
+  locations: toLocationDrafts({}),
   logo_url: "",
   media_asset_id: null,
   website_url: "",
@@ -127,6 +134,13 @@ function mergeWorkWithUs(
     };
   }
   return merged;
+}
+
+/** A route's error as text: a message, or the first zod issue's. */
+function errorText(json: { error?: unknown }, fallback: string): string {
+  if (typeof json.error === "string") return json.error;
+  const first = Array.isArray(json.error) ? (json.error[0] as { message?: unknown }) : null;
+  return typeof first?.message === "string" ? first.message : fallback;
 }
 
 /** The `/api/partners-page` + `/api/partners` payloads the page mounts with. */
@@ -164,6 +178,9 @@ export default function PartnersSettingsPage({
   const [partners, setPartners] = useState<PartnerRow[]>(
     initialData?.partners.partners ?? [],
   );
+  // Branches are a partner's other clinics: listed under it, edited in its dialog.
+  const mainRows = useMemo(() => partners.filter((p) => !p.parent_id), [partners]);
+  const branchMap = useMemo(() => branchesByParent(partners), [partners]);
   const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
   const [partnerForm, setPartnerForm] = useState<PartnerForm>(emptyPartnerForm);
   const [savingPartner, setSavingPartner] = useState(false);
@@ -284,8 +301,7 @@ export default function PartnersSettingsPage({
         id: partner.id,
         name: partner.name,
         type: (partner.type ?? "partner") as LocationType,
-        address: partner.address ?? "",
-        postal_code: partner.postal_code ?? "",
+        locations: toLocationDrafts(partner, branchMap.get(partner.id)),
         logo_url: partner.logo_url ?? "",
         media_asset_id: partner.media_asset_id ?? null,
         website_url: partner.website_url ?? "",
@@ -298,6 +314,12 @@ export default function PartnersSettingsPage({
     setPartnerDialogOpen(true);
   };
 
+  const setMainLocation = (patch: Partial<LocationDraft>) =>
+    setPartnerForm((f) => ({
+      ...f,
+      locations: f.locations.map((l, i) => (i === 0 ? { ...l, ...patch } : l)),
+    }));
+
   const handleSavePartner = async () => {
     if (!partnerForm.name.trim()) {
       toast.error("Location name is required");
@@ -305,13 +327,28 @@ export default function PartnersSettingsPage({
     }
 
     const isOwn = partnerForm.type === "own";
+    // An own studio is one place; only a partner lists other clinics.
+    const places = locationDraftsToPayload(isOwn ? partnerForm.locations.slice(0, 1) : partnerForm.locations);
+    if (!places.ok) {
+      toast.error(places.error);
+      return;
+    }
+    const dropping = isOwn ? (branchMap.get(partnerForm.id ?? "")?.length ?? 0) : 0;
+    if (
+      dropping &&
+      !confirm(`An own studio has one address. Remove this partner's other ${dropping} location${dropping === 1 ? "" : "s"}?`)
+    ) {
+      return;
+    }
     setSavingPartner(true);
     try {
       const payload = {
         name: partnerForm.name.trim(),
         type: partnerForm.type,
-        address: partnerForm.address || null,
-        postal_code: partnerForm.postal_code || null,
+        address: places.address,
+        postal_code: places.postal_code,
+        branch_name: isOwn ? null : places.branch_name,
+        branches: isOwn ? [] : places.branches,
         // Own studios never show on /our-partners, so partner-only fields are cleared.
         logo_url: isOwn ? null : partnerForm.logo_url || null,
         media_asset_id: isOwn ? null : partnerForm.media_asset_id,
@@ -334,7 +371,9 @@ export default function PartnersSettingsPage({
 
       const json = await res.json();
       if (!json.ok) {
-        toast.error(typeof json.error === "string" ? json.error : "Couldn't save the location.");
+        toast.error(errorText(json, "Couldn't save the location."));
+        // The main location may have saved before its other clinics were refused.
+        if (partnerForm.id) loadData();
         return;
       }
 
@@ -347,11 +386,15 @@ export default function PartnersSettingsPage({
   };
 
   const handleDeletePartner = async (id: string) => {
-    if (!confirm("Delete this location?")) return;
+    const others = branchMap.get(id)?.length ?? 0;
+    const prompt = others
+      ? `Delete this partner and all ${others + 1} of its locations?`
+      : "Delete this location?";
+    if (!confirm(prompt)) return;
     const res = await fetch(`/api/partners/${id}`, { method: "DELETE" });
     const json = await res.json();
     if (!json.ok) {
-      toast.error("Couldn't delete the location.");
+      toast.error(errorText(json, "Couldn't delete the location."));
       return;
     }
     toast.success("Location deleted");
@@ -372,8 +415,9 @@ export default function PartnersSettingsPage({
     loadData();
   };
 
+  // Only main rows are ordered here; each partner's branches keep their own order.
   const persistPartnerOrder = async (order: PartnerRow[]) => {
-    setPartners(order);
+    setPartners([...order, ...partners.filter((p) => p.parent_id)]);
     const res = await fetch("/api/partners/reorder", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -388,15 +432,15 @@ export default function PartnersSettingsPage({
 
   const movePartner = (index: number, direction: -1 | 1) => {
     const target = index + direction;
-    if (target < 0 || target >= partners.length) return;
-    const order = [...partners];
+    if (target < 0 || target >= mainRows.length) return;
+    const order = [...mainRows];
     const [item] = order.splice(index, 1);
     order.splice(target, 0, item);
     void persistPartnerOrder(order);
   };
 
   const handlePartnerDragEnd = (event: SortableDragEndEvent) => {
-    const order = sortableMove(partners, event, (p) => p.id);
+    const order = sortableMove(mainRows, event, (p) => p.id);
     if (order) void persistPartnerOrder(order);
   };
 
@@ -603,164 +647,190 @@ export default function PartnersSettingsPage({
 
           <DragDropProvider onDragEnd={handlePartnerDragEnd}>
             <div className="space-y-2">
-              {partners.map((partner, index) => (
-                <SortableRow
-                  key={partner.id}
-                  id={partner.id}
-                  index={index}
-                  label={partner.name}
-                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3 max-md:flex-nowrap max-md:gap-1 max-md:px-1 max-md:py-1.5"
-                >
-                  {(grip) => (
-                    <>
-                      {grip}
-                      <div className="flex items-center gap-1 max-md:hidden">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="min-h-11 min-w-11"
-                          disabled={index === 0}
-                          onClick={() => movePartner(index, -1)}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="min-h-11 min-w-11"
-                          disabled={index === partners.length - 1}
-                          onClick={() => movePartner(index, 1)}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </div>
+              {mainRows.map((partner, index) => {
+                const branches = branchMap.get(partner.id) ?? [];
+                const mainAddress = formatLocationAddress(partner.address, partner.postal_code);
+                return (
+                  <SortableRow
+                    key={partner.id}
+                    id={partner.id}
+                    index={index}
+                    label={partner.name}
+                    className="flex flex-wrap items-center gap-3 rounded-lg border p-3 max-md:flex-nowrap max-md:gap-1 max-md:px-1 max-md:py-1.5"
+                  >
+                    {(grip) => (
+                      <>
+                        {grip}
+                        <div className="flex items-center gap-1 max-md:hidden">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="min-h-11 min-w-11"
+                            disabled={index === 0}
+                            onClick={() => movePartner(index, -1)}
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="min-h-11 min-w-11"
+                            disabled={index === mainRows.length - 1}
+                            onClick={() => movePartner(index, 1)}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
 
-                      <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted max-md:hidden">
-                        {partner.logo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={partner.logo_url}
-                            alt=""
-                            className="max-h-8 max-w-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </div>
+                        <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted max-md:hidden">
+                          {partner.logo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={partner.logo_url}
+                              alt=""
+                              className="max-h-8 max-w-full object-contain"
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
 
-                      <div className="min-w-0 flex-1 max-md:py-1">
-                        <div className="flex items-center gap-2 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1">
-                          <span className="font-medium max-md:break-words">{partner.name}</span>
-                          <span className="shrink-0 whitespace-nowrap rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                            {partner.type === "own" ? "Own studio" : "Partner"}
-                          </span>
-                          {partner.type !== "own" && !partner.visible ? (
-                            <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground md:hidden">
-                              Hidden
+                        <div className="min-w-0 flex-1 max-md:py-1">
+                          <div className="flex items-center gap-2 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1">
+                            <span className="font-medium max-md:break-words">{partner.name}</span>
+                            <span className="shrink-0 whitespace-nowrap rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                              {partner.type === "own" ? "Own studio" : "Partner"}
                             </span>
+                            {branches.length ? (
+                              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                                <MapPin className="h-3 w-3" aria-hidden />
+                                {branches.length + 1} locations
+                              </span>
+                            ) : null}
+                            {partner.type !== "own" && !partner.visible ? (
+                              <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground md:hidden">
+                                Hidden
+                              </span>
+                            ) : null}
+                          </div>
+                          {branches.length ? (
+                            <ul className="mt-0.5 space-y-0.5 text-sm text-muted-foreground">
+                              {[partner, ...branches].map((place) => {
+                                const line = formatLocationAddress(place.address, place.postal_code);
+                                return (
+                                  <li key={place.id} className="md:truncate max-md:break-words">
+                                    {place.branch_name ? (
+                                      <span className="text-foreground">{place.branch_name}: </span>
+                                    ) : null}
+                                    {line || "No address"}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : mainAddress || partner.description ? (
+                            <div className="text-sm text-muted-foreground md:truncate max-md:mt-0.5 max-md:break-words">
+                              {mainAddress || partner.description}
+                            </div>
                           ) : null}
                         </div>
-                        {partner.address || partner.description ? (
-                          <div className="text-sm text-muted-foreground md:truncate max-md:mt-0.5 max-md:break-words">
-                            {partner.address ?? partner.description}
-                          </div>
-                        ) : null}
-                      </div>
 
-                      <div className="flex items-center gap-1 max-md:hidden">
-                        {partner.type === "own" ? null : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleToggleVisibility(partner)}
-                            title={partner.visible ? "Hide" : "Show"}
-                          >
-                            {partner.visible ? (
-                              <Eye className="h-4 w-4" />
-                            ) : (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openPartnerDialog(partner)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeletePartner(partner.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-
-                      {/* Phones: one menu instead of five icons on two rows. Non-modal, so Edit can open the dialog. */}
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-11 shrink-0 md:hidden"
-                            aria-label={`Actions for ${partner.name}`}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-48">
-                          <DropdownMenuItem className={menuItemClassName} onSelect={() => openPartnerDialog(partner)}>
-                            <Pencil />
-                            Edit
-                          </DropdownMenuItem>
+                        <div className="flex items-center gap-1 max-md:hidden">
                           {partner.type === "own" ? null : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleToggleVisibility(partner)}
+                              title={partner.visible ? "Hide" : "Show"}
+                            >
+                              {partner.visible ? (
+                                <Eye className="h-4 w-4" />
+                              ) : (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Edit ${partner.name}`}
+                            onClick={() => openPartnerDialog(partner)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete ${partner.name}`}
+                            onClick={() => handleDeletePartner(partner.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+
+                        {/* Phones: one menu instead of five icons on two rows. Non-modal, so Edit can open the dialog. */}
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-11 shrink-0 md:hidden"
+                              aria-label={`Actions for ${partner.name}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-48">
+                            <DropdownMenuItem className={menuItemClassName} onSelect={() => openPartnerDialog(partner)}>
+                              <Pencil />
+                              Edit
+                            </DropdownMenuItem>
+                            {partner.type === "own" ? null : (
+                              <DropdownMenuItem
+                                className={menuItemClassName}
+                                onSelect={() => handleToggleVisibility(partner)}
+                              >
+                                {partner.visible ? <EyeOff /> : <Eye />}
+                                {partner.visible ? "Hide from public page" : "Show on public page"}
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               className={menuItemClassName}
-                              onSelect={() => handleToggleVisibility(partner)}
+                              disabled={index === 0}
+                              onSelect={() => movePartner(index, -1)}
                             >
-                              {partner.visible ? <EyeOff /> : <Eye />}
-                              {partner.visible ? "Hide from public page" : "Show on public page"}
+                              <ChevronUp />
+                              Move up
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            className={menuItemClassName}
-                            disabled={index === 0}
-                            onSelect={() => movePartner(index, -1)}
-                          >
-                            <ChevronUp />
-                            Move up
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className={menuItemClassName}
-                            disabled={index === partners.length - 1}
-                            onSelect={() => movePartner(index, 1)}
-                          >
-                            <ChevronDown />
-                            Move down
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            className={menuItemClassName}
-                            onSelect={() => handleDeletePartner(partner.id)}
-                          >
-                            <Trash2 />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
-                </SortableRow>
-              ))}
+                            <DropdownMenuItem
+                              className={menuItemClassName}
+                              disabled={index === mainRows.length - 1}
+                              onSelect={() => movePartner(index, 1)}
+                            >
+                              <ChevronDown />
+                              Move down
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              className={menuItemClassName}
+                              onSelect={() => handleDeletePartner(partner.id)}
+                            >
+                              <Trash2 />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </>
+                    )}
+                  </SortableRow>
+                );
+              })}
             </div>
           </DragDropProvider>
         </TabsContent>
@@ -802,7 +872,7 @@ export default function PartnersSettingsPage({
       </Tabs>
 
       <Dialog open={partnerDialogOpen} onOpenChange={setPartnerDialogOpen}>
-        <DialogContent>
+        <DialogContent className="md:max-h-[90dvh] md:overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{partnerForm.id ? "Edit location" : "Add location"}</DialogTitle>
           </DialogHeader>
@@ -833,22 +903,41 @@ export default function PartnersSettingsPage({
                 onChange={(e) => setPartnerForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Address</Label>
-              <Textarea
-                value={partnerForm.address}
-                onChange={(e) => setPartnerForm((f) => ({ ...f, address: e.target.value }))}
-                rows={2}
-                placeholder="Street address"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Postal code</Label>
-              <Input
-                value={partnerForm.postal_code}
-                onChange={(e) => setPartnerForm((f) => ({ ...f, postal_code: e.target.value }))}
-              />
-            </div>
+            {partnerForm.type === "own" ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Address</Label>
+                  <Textarea
+                    value={partnerForm.locations[0]?.address ?? ""}
+                    onChange={(e) => setMainLocation({ address: e.target.value })}
+                    rows={2}
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Postal code</Label>
+                  <Input
+                    value={partnerForm.locations[0]?.postal_code ?? ""}
+                    onChange={(e) => setMainLocation({ postal_code: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div>
+                  <Label>Locations</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Every clinic this partner runs. Each one shows on the public page and can be
+                    picked for bookings and Results.
+                  </p>
+                </div>
+                <PartnerLocationsFields
+                  value={partnerForm.locations}
+                  onChange={(locations) => setPartnerForm((f) => ({ ...f, locations }))}
+                  idPrefix="partner-loc"
+                />
+              </div>
+            )}
 
             {partnerForm.type === "partner" ? (
               <>

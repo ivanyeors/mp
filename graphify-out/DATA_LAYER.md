@@ -1097,7 +1097,7 @@ Changed from pages: `/partner/settings`
   - `PATCH()` [upsert] — app/api/partner/payment-details/route.ts:69
   - `POST()` [upsert] — app/api/partner/payment-details/route.ts:40
 - Read by:
-  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:35
+  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:41
   - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:59
 
 ### partner_payouts
@@ -1123,7 +1123,7 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `rejectApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:197
   - `submitApplication()` [insert,select] — app/[lang]/partner/apply/actions.ts:47
 - Read by:
-  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:30
+  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:36
   - `/settings/partner-applications` (page) [select] — app/[lang]/settings/partner-applications/page.tsx:56
   - `/settings/partner-commissions` (page) [select] — components/settings/partner-terms-editor.tsx:33
   - `isSelfReferral()` [select] — lib/referrals/index.ts:62
@@ -1144,16 +1144,18 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
 - Written by:
   - `/partner` (page) [select,update] — components/partner/commission-choice-card.tsx:37
   - `/settings/partners/hide` (page) [select,update] — app/[lang]/settings/partners/hide/page.tsx:37
-  - `DELETE()` [delete] — app/api/partners/[id]/route.ts:80
+  - `DELETE()` [delete] — app/api/partners/[id]/route.ts:101
   - `PATCH()` [update] — app/api/partner/notify/route.ts:29
-  - `PATCH()` [update] — app/api/partner/profile/route.ts:83
-  - `PATCH()` [update] — app/api/partners/[id]/route.ts:38
+  - `PATCH()` [select,update] — app/api/partner/profile/route.ts:96
+  - `PATCH()` [update] — app/api/partners/[id]/route.ts:48
   - `PATCH()` [update] — app/api/settings/appointments/locations/route.ts:52
-  - `POST()` [insert,select] — app/api/partners/route.ts:50
+  - `POST()` [delete,insert,select] — app/api/partners/route.ts:59
   - `PUT()` [update] — app/api/partners/reorder/route.ts:23
   - `approveApplication()` [insert,select,update] — app/[lang]/settings/partner-applications/actions.ts:127
   - `ensureReferralCode()` [select,update] — lib/referrals/index.ts:117
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:374
+  - `savePartnerBranches()` [delete,insert,select,update] — lib/locations/save-branches.ts:51
+  - `syncBranchNames()` [update] — lib/locations/save-branches.ts:126
   - `updatePartnerTerms()` [select,update] — app/[lang]/settings/partner-commissions/actions.ts:31
   - `upsertSelfPurchaseRate()` [update] — app/[lang]/settings/partner-commissions/self-purchase-actions.ts:37
 - Read by:
@@ -1162,15 +1164,15 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `buildPartnerContext()` [select] — lib/auth/partner.ts:90
   - `createHeldCommissionsForOrder()` [select] — lib/commissions/ledger.ts:50
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:998
-  - `getLocation()` [select] — lib/locations/index.ts:91
+  - `getLocation()` [select] — lib/locations/index.ts:104
   - `getPartnerByCode()` [select] — lib/referrals/index.ts:95
   - `getPartnerByReferralCode()` [select] — lib/referrals/index.ts:37
   - `isReferralCodeTaken()` [select] — lib/referrals/index.ts:156
-  - `listAdminLocationRows()` [select] — lib/partners/index.ts:113
+  - `listAdminLocationRows()` [select] — lib/partners/index.ts:137
   - `loadAdminReferralRows()` [select] — lib/commissions/referral-rows.ts:230
   - `loadMilestoneDashboard()` [select] — lib/milestones/ledger.ts:171
   - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:30
-  - `locations/index.ts` [select] — lib/locations/index.ts:56
+  - `locations/index.ts` [select] — lib/locations/index.ts:68
   - `notifyPartnerWhatsApp()` [select] — lib/whatsapp/partner-notify.ts:88
   - `resolveShippingAddress()` [select] — lib/shipping/self-collect.ts:102
 
@@ -1182,8 +1184,8 @@ Changed from pages: `/settings/media`, `/settings/partners`
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:375
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1001
-  - `getPartnersPageContent()` [select] — lib/partners/index.ts:53
-  - `getPartnersPageRow()` [select] — lib/partners/index.ts:69
+  - `getPartnersPageContent()` [select] — lib/partners/index.ts:67
+  - `getPartnersPageRow()` [select] — lib/partners/index.ts:83
 
 ### pillow_products
 Defined in supabase/migrations/0001_inventory.sql:15

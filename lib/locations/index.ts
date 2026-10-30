@@ -1,6 +1,16 @@
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { PartnerRow } from "@/lib/partners/types";
+import { isBranch, locationDisplayName, orderWithBranches } from "./branches";
+
+export {
+  branchesByParent,
+  formatLocationAddress,
+  isBranch,
+  locationDisplayName,
+  locationMapsUrl,
+  orderWithBranches,
+} from "./branches";
 
 // ponytail: Locations live in the legacy `partners` table (additive columns, ADR 0012 —
 // no rename, prod-safe). `type` discriminates own studios from partner clinics.
@@ -20,7 +30,8 @@ export type ResolvedLocation = {
 export function toResolvedLocation(row: LocationRow): ResolvedLocation {
   return {
     id: row.id,
-    name: row.name,
+    // A partner's clinics share its name, so the branch name tells them apart.
+    name: locationDisplayName(row),
     type: (row.type ?? "partner") as LocationType,
     address: row.address ?? null,
     postalCode: row.postal_code ?? null,
@@ -42,12 +53,13 @@ export function selectBookableLocations(rows: ResolvedLocation[]): ResolvedLocat
 
 /**
  * Pure partner projection: own studios never leak to /our-partners, and hidden
- * partners are excluded unless explicitly requested. This is the rule the
- * partner-facing surfaces depend on — locked down by unit tests.
+ * partners are excluded unless explicitly requested. A branch is another clinic
+ * of a partner, not a partner, so it is never a row here (ADR 0037). This is
+ * the rule the partner-facing surfaces depend on — locked down by unit tests.
  */
 export function selectPartnerRows(rows: LocationRow[], includeHidden = false): LocationRow[] {
   return rows.filter(
-    (r) => (r.type ?? "partner") === "partner" && (includeHidden || r.visible),
+    (r) => (r.type ?? "partner") === "partner" && !isBranch(r) && (includeHidden || r.visible),
   );
 }
 
@@ -63,11 +75,12 @@ async function _getLocationRows(): Promise<LocationRow[]> {
     return [];
   }
 
-  return (data as LocationRow[]) ?? [];
+  return orderWithBranches((data as LocationRow[]) ?? []);
 }
 
 /**
- * Single fetch of every location row (own + partner), ordered by position.
+ * Single fetch of every location row (own + partner), ordered by position with
+ * each partner's branches right after it.
  * Locations change rarely and are read on the booking picker, the results list
  * and /our-partners, so the service-role read is cached behind the `locations`
  * tag; every writer of the `partners` table revalidates it.
