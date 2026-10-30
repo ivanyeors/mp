@@ -1041,7 +1041,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [select] — app/api/shop/orders/[id]/mp-config-link/route.ts:50
   - `POST()` [select] — app/api/shop/orders/[id]/restock/route.ts:34
   - `POST()` [select] — app/api/shop/orders/[id]/timeline/route.ts:39
-  - `POST()` [select] — app/api/shop/reviews/route.ts:81
+  - `POST()` [select] — app/api/shop/reviews/route.ts:78
   - `countNotMarkedDelivered()` [select] — lib/aftercare/checkup-server.ts:197
   - `countNotMarkedDelivered()` [select] — lib/aftercare/review-request-server.ts:141
   - `emailStatus()` [select] — app/api/shipping/easyship/webhook/route.ts:121
@@ -1284,13 +1284,17 @@ Changed from pages: `/shop/[slug]`
 - Written by:
   - `DELETE()` [delete] — app/api/shop/reviews/[id]/route.ts:46
   - `PATCH()` [update] — app/api/shop/reviews/[id]/route.ts:29
-  - `POST()` [insert] — app/api/shop/reviews/route.ts:94
-  - `moderateShopReview()` [update] — lib/reviews/shop-reviews.ts:65
+  - `POST()` [insert] — app/api/shop/reviews/route.ts:91
+  - `moderateShopReview()` [update] — lib/reviews/shop-reviews.ts:102
+  - `notifyNewShopReview()` [update] — lib/reviews/shop-reviews.ts:81
+  - `removeShopReviewReply()` [update] — lib/reviews/shop-reviews.ts:140
+  - `setShopReviewReply()` [update] — lib/reviews/shop-reviews.ts:125
 - Read by:
-  - `GET()` [select] — app/api/shop/reviews/route.ts:42
+  - `GET()` [select] — app/api/shop/reviews/route.ts:39
   - `getReviewAggregate()` [select] — lib/seo/review-aggregate.ts:18
   - `getReviewAggregates()` [select] — lib/seo/review-aggregate.ts:38
-  - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:25
+  - `getShopReviewByCard()` [select] — lib/reviews/shop-reviews.ts:64
+  - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:40
   - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:322
   - `sources/reviews.ts` [select] — lib/crm/timeline/sources/reviews.ts:31
   - `topic-reviews-loader.ts` [select] — lib/seo/topic-reviews-loader.ts:11
@@ -1368,7 +1372,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `listAdminProducts()` [select] — lib/ecommerce/admin/products.ts:45
   - `listShopListingFamilies()` [select] — lib/ecommerce/shop-listings.ts:187
   - `loadExistingVariants()` [select] — lib/ecommerce/shop-listings.ts:131
-  - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:31
+  - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:42
   - `main()` [select] — scripts/costings-sync-prices.ts:58
   - `main()` [select] — scripts/stripe-sync-all.ts:73
   - `readCampaignProductCards()` [select] — lib/email-campaigns/products.ts:92
@@ -2741,7 +2745,7 @@ app/[lang]/shop/page.tsx
 
 ### /shop/[slug]
 app/[lang]/shop/[slug]/page.tsx
-- Endpoints: `/api/account/addresses [GET]`, `/api/checkout/code [POST]`, `/api/shop/customize [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/reviews [GET,POST]`, `/api/shop/shipping [GET]`
+- Endpoints: `/api/account/addresses [GET]`, `/api/checkout/code [POST]`, `/api/shop/customize [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/reviews [GET,POST]`, `/api/shop/reviews/author [GET]`, `/api/shop/shipping [GET]`, `/auth/signout`
 - Loads: `getPageFaq()`, `getProductBySlug()`, `getProducts()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customers`, `customization_configs`, `exchange_rates`, `faq_page_items`, `faq_page_sets`, `mp_staff`, `orders`, `partner_users`, `product_reviews`, `shipping_methods`
 - Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_buildable`, `bolster_template_placements`, `bom_lines`, `bom_template_keys`, `bom_templates`, `collection_products`, `coupons`, `filling_color_overrides`, `filling_dimension_overrides`, `filling_template_placements`, `inventory_balances`, `item_overlay_mappings`, `item_prices`, `items`, `mp_config_responses`, `neck_support_dimension_overrides`, `partners`, `pillow_products`, `points_ledger`, `product_buildable`, `product_prices`, `product_variants`, `products`, `site_settings`, `variant_stock`

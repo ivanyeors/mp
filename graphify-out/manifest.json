@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/permissions.test.ts": {
-    "mtime": 1793363204.5983617,
-    "seen": 1793363258.7065744,
-    "ast_hash": "43e55a3f4e34b18d8dd2aaacdbf06747",
+    "mtime": 1793363838.5423994,
+    "seen": 1793363892.4412248,
+    "ast_hash": "133a9d686a233996a14a6ca2279a6780",
     "semantic_hash": ""
   },
   "lib/auth/__tests__/post-auth-redirect.test.ts": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "lib/auth/permissions.ts": {
-    "mtime": 1793363204.5983617,
-    "seen": 1793363258.7066073,
-    "ast_hash": "972b75d411866fa434e5b60b38a4f48c",
+    "mtime": 1793363838.5431306,
+    "seen": 1793363892.4412656,
+    "ast_hash": "251a23ed884d9abcd3a83e7580ade42f",
     "semantic_hash": ""
   },
   "lib/auth/post-auth-redirect.ts": {
@@ -1584,9 +1584,9 @@
     "semantic_hash": ""
   },
   "lib/types/ecommerce.ts": {
-    "mtime": 1793363204.6023617,
-    "seen": 1793363258.7084968,
-    "ast_hash": "e427fc475be9631f23a445a26043f223",
+    "mtime": 1793363838.5463994,
+    "seen": 1793363892.4430182,
+    "ast_hash": "2499ad2b4feccc651c130770cbf527ae",
     "semantic_hash": ""
   },
   "lib/types/landing-sections.ts": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/reviews/route.ts": {
-    "mtime": 1793363204.5968914,
-    "seen": 1793363258.706171,
-    "ast_hash": "e70ea10a5ca3f62fe380de36fd2d17be",
+    "mtime": 1793363838.5408442,
+    "seen": 1793363892.4406958,
+    "ast_hash": "c21a8b0a139ac1b7702bec9e7f4af16b",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/[id]/route.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793363204.5943618,
-    "seen": 1793363258.7101214,
-    "ast_hash": "b9c3f3f8b23e422bd89aa5da9113eed1",
+    "mtime": 1793363838.5402262,
+    "seen": 1793363892.44466,
+    "ast_hash": "7a3da529298c7c02536de1b69cba67e4",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -8364,9 +8364,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/reviews/__tests__/route.test.ts": {
-    "mtime": 1793363204.5968914,
-    "seen": 1793363258.7061696,
-    "ast_hash": "2cfd1f0b6e116c4afe2d02a081a97d56",
+    "mtime": 1793363838.5408442,
+    "seen": 1793363892.4406927,
+    "ast_hash": "020d1c6e63b5bee37c72cbbbf13ed07e",
     "semantic_hash": ""
   },
   "app/api/shopify/__tests__/admin-routes-auth.test.ts": {
@@ -10014,9 +10014,9 @@
     "semantic_hash": ""
   },
   "app/api/telegram/webhook/__tests__/review-routing.test.ts": {
-    "mtime": 1793363204.5968914,
-    "seen": 1793363258.7062466,
-    "ast_hash": "479ec87a7bc58ab7d0217f09a6000d8f",
+    "mtime": 1793363838.5408442,
+    "seen": 1793363892.440784,
+    "ast_hash": "e4df9c9ac882347accdc4b93ae3d617c",
     "semantic_hash": ""
   },
   "app/api/webhooks/google-reviews/__tests__/route.test.ts": {
@@ -10044,9 +10044,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/cards.test.ts": {
-    "mtime": 1793363204.5983617,
-    "seen": 1793363258.7077289,
-    "ast_hash": "4126bb0616d81855e5ae456e679c180f",
+    "mtime": 1793363838.5435312,
+    "seen": 1793363892.442433,
+    "ast_hash": "48d783490fe91e56d28edf3b3e34b4f1",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
@@ -10080,15 +10080,15 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/telegram-handler.test.ts": {
-    "mtime": 1793363204.6000564,
-    "seen": 1793363258.7077482,
-    "ast_hash": "53e3b7b0bb6e113f389777d4e6797039",
+    "mtime": 1793363838.5443628,
+    "seen": 1793363892.4424496,
+    "ast_hash": "b9ce0f084ae884e252d0f75ecaea7422",
     "semantic_hash": ""
   },
   "lib/reviews/cards.ts": {
-    "mtime": 1793363204.6008067,
-    "seen": 1793363258.7077503,
-    "ast_hash": "e861b7ee720b95852ac687c8f900fc49",
+    "mtime": 1793363838.5443628,
+    "seen": 1793363892.4424512,
+    "ast_hash": "fd9f13925c195b34ef06e90833b588ba",
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
@@ -10134,21 +10134,21 @@
     "semantic_hash": ""
   },
   "lib/reviews/shop-reviews.ts": {
-    "mtime": 1793363204.6008067,
-    "seen": 1793363258.707772,
-    "ast_hash": "2d66de5345955f4dd8f27b0f1351407e",
+    "mtime": 1793363838.5454545,
+    "seen": 1793363892.4424706,
+    "ast_hash": "096d423de0b7af648783c1500f09b9d8",
     "semantic_hash": ""
   },
   "lib/reviews/telegram-handler.ts": {
-    "mtime": 1793363204.6008067,
-    "seen": 1793363258.7077768,
-    "ast_hash": "6e8be6f77e9990e4f576e760556c8b72",
+    "mtime": 1793363838.5454545,
+    "seen": 1793363892.4424736,
+    "ast_hash": "ad7a15239e58381c1826559889c60a5e",
     "semantic_hash": ""
   },
   "lib/telegram/__tests__/roles.test.ts": {
-    "mtime": 1793363204.6008067,
-    "seen": 1793363258.7084827,
-    "ast_hash": "817c873cd0e91721635404e50d2474e6",
+    "mtime": 1793363838.5463994,
+    "seen": 1793363892.4430044,
+    "ast_hash": "d44b9c2a7085e98fc6abc41a4da4ab7d",
     "semantic_hash": ""
   },
   "lib/telegram/bot-api.ts": {
@@ -10170,9 +10170,9 @@
     "semantic_hash": ""
   },
   "lib/telegram/roles.ts": {
-    "mtime": 1793363204.6008067,
-    "seen": 1793363258.7084937,
-    "ast_hash": "621d5b81a7bd6eb0bb45a8b455d5b7fa",
+    "mtime": 1793363838.5463994,
+    "seen": 1793363892.4430149,
+    "ast_hash": "00bee76931b879d47b45ce1a773f47db",
     "semantic_hash": ""
   },
   "scripts/google-business-setup.ts": {
@@ -10212,15 +10212,15 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/preview.test.ts": {
-    "mtime": 1793363204.6000564,
-    "seen": 1793363258.7077394,
-    "ast_hash": "d103ad2e7d166c6f06169908289991bd",
+    "mtime": 1793363838.5438497,
+    "seen": 1793363892.4424424,
+    "ast_hash": "5e3bdb0c87ae9dd75dcc3913a11ac0b0",
     "semantic_hash": ""
   },
   "lib/reviews/preview.ts": {
-    "mtime": 1793363206.1511292,
-    "seen": 1793363258.7077627,
-    "ast_hash": "f5a2895ee317ea09c08328dfe49a0fbd",
+    "mtime": 1793363838.5454545,
+    "seen": 1793363892.4424617,
+    "ast_hash": "b971e706e4e190e9a3661322fad39b6f",
     "semantic_hash": ""
   },
   "scripts/telegram-review-preview.ts": {
@@ -15894,9 +15894,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/lib/shoot.mjs": {
-    "mtime": 1793363204.5903618,
-    "seen": 1793363258.705465,
-    "ast_hash": "2b202909691395c748378b65684788f2",
+    "mtime": 1793363838.5343995,
+    "seen": 1793363892.4400277,
+    "ast_hash": "f9edfaa0ac0a4b1965341445795641d4",
     "semantic_hash": ""
   },
   ".claude/skills/preview/preview": {
@@ -15912,9 +15912,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/SKILL.md": {
-    "mtime": 1793363204.5903618,
-    "seen": 1793363258.7100818,
-    "ast_hash": "ea6568043aa183b54e9a0a7a83a11622",
+    "mtime": 1793363838.5343995,
+    "seen": 1793363892.4446228,
+    "ast_hash": "1f8e770f26409100d41b172fafa94db1",
     "semantic_hash": ""
   },
   "supabase/migrations/20261029094659_order_payments_occurred_at.sql": {
@@ -16821,6 +16821,30 @@
     "mtime": 1793362101.198296,
     "seen": 1793363258.7054548,
     "ast_hash": "150d7b5552938472140a5a804bf17203",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/reviews.mjs": {
+    "mtime": 1793363842.8863997,
+    "seen": 1793363892.4400077,
+    "ast_hash": "182bd1f28e93c83f8f1e3683395a7af6",
+    "semantic_hash": ""
+  },
+  "app/api/shop/reviews/author/route.ts": {
+    "mtime": 1793363838.5408442,
+    "seen": 1793363892.4406943,
+    "ast_hash": "1d2afca79a93fde6a16e442ac86c95e5",
+    "semantic_hash": ""
+  },
+  "lib/reviews/shop-review-byline.ts": {
+    "mtime": 1793363838.5454545,
+    "seen": 1793363892.4424684,
+    "ast_hash": "94397c57ceab732f46438bf5ff642d8c",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261030140000_shop_review_replies.sql": {
+    "mtime": 1793363838.5463994,
+    "seen": 1793363892.4436007,
+    "ast_hash": "94ae971686da516c1b91136d59c3af12",
     "semantic_hash": ""
   }
 }
