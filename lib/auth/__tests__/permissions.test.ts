@@ -84,6 +84,7 @@ describe("role → permission matrix", () => {
       "api-configs",
       "telegram.google-review-reply",
       "telegram.shop-review-moderate",
+      "telegram.shop-review-reply",
       "telegram.social-inbox-reply",
     ];
     for (const perm of privileged) {
@@ -236,6 +237,7 @@ describe("permission catalog", () => {
     expect(telegram.map((e) => e.key).sort()).toEqual([
       "telegram.google-review-reply",
       "telegram.shop-review-moderate",
+      "telegram.shop-review-reply",
       "telegram.social-inbox-reply",
     ]);
     for (const e of telegram) expect(e.href).toBeUndefined();

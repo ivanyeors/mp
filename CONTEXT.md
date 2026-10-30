@@ -310,7 +310,7 @@ A named person who works under a **Member** (`mp_staff`). A **Result** is "measu
 _Avoid_: "staff member" (ambiguous with **Staff**); treating a profile as a login
 
 **Telegram link**:
-A **Staff profile**'s bound Telegram user id (redeemed with a one-time `/link` code) plus the **Telegram actions** granted to it (reply to Google reviews, moderate **Shop reviews**). Effective access = the Member's **Role** permissions ∩ the link's granted actions, and only while the profile and the **Member** are both active — deactivating a login silences every Telegram account under it.
+A **Staff profile**'s bound Telegram user id (redeemed with a one-time `/link` code) plus the **Telegram actions** granted to it (reply to Google reviews, moderate **Shop reviews**, write the **Store reply** on them, answer customer messages). Effective access = the Member's **Role** permissions ∩ the link's granted actions, and only while the profile and the **Member** are both active — deactivating a login silences every Telegram account under it.
 _Avoid_: a list of Telegram people separate from logins (the retired **Telegram operator** list); granting a link an action its login's role does not hold
 
 **Staff assist mode**:
@@ -449,15 +449,19 @@ _Avoid_: measuring the window from order/ship date
 ## Reviews (PRD-google-review-replies)
 
 **Google review**:
-A review of the business on Google Maps, kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us. Read through the Google Business Profile API, or, until Google approves that API, through the Places API once a week (`source` `places`, ADR 0035): Google's five most relevant reviews only, answered on Google Maps by hand, and deleted 30 days after they are stored.
+A review of the business on Google Maps, kept as a `google_reviews` row keyed by its resource name. Our public reply goes on Google Maps. Read through the Google Business Profile API, or, until Google approves that API, through the Places API once a week (`source` `places`, ADR 0035): Google's five most relevant reviews only, answered on Google Maps by hand, and deleted 30 days after they are stored.
 _Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read once a week, read-only, never stored)
 
 **Shop review**:
-A review a signed-in **Customer** leaves on a **Storefront product** (`product_reviews`). Starts `pending`; a **Shop moderator** approves it onto the product page or rejects it. No public reply.
-_Avoid_: "product review" when the source matters on a Telegram card — the card says SHOP REVIEW
+A review a signed-in **Customer** leaves on a **Storefront product** (`product_reviews`). Only a signed-in **Customer** can write one (no purchase needed), and its byline is that **Customer**'s name ("Jane D."), never typed in. Starts `pending`; a **Shop moderator** approves it onto the product page or rejects it. It may carry our **Store reply**.
+_Avoid_: "product review" when the source matters on a Telegram card — the card says SHOP REVIEW; a review form for visitors who are not signed in
+
+**Store reply**:
+Our public reply to a **Shop review** (`product_reviews.store_reply`), shown under it on the product page while the review is approved. Set by replying to the review's **Review card** in Telegram (unless the reply is a **Team note**), on a pending or approved review, by someone allowed Reply to shop reviews; it goes up at once, with no draft or Post step. Replying again replaces it; Remove reply on the card takes it down.
+_Avoid_: a Claude draft for it (Google replies only); naming who on the team wrote it on the storefront
 
 **Review card**:
-The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft (unless it is a **Team note**), and nothing reaches Google until someone taps Post on the version they are looking at. A card for a review read through the Places API has Open on Google Maps / Mark replied / Skip instead: the reply is pasted on Google Maps, and Mark replied records the draft on screen as what was posted.
+The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft (unless it is a **Team note**), and nothing reaches Google until someone taps Post on the version they are looking at. A card for a review read through the Places API has Open on Google Maps / Mark replied / Skip instead: the reply is pasted on Google Maps, and Mark replied records the draft on screen as what was posted. A shop card has Approve / Reject while pending; a reply to it sets the **Store reply**, after which it also has Remove reply.
 _Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
 
 **Reply type**:
@@ -465,7 +469,7 @@ Which kind of reply a **Google review** gets, chosen from its star rating in cod
 _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
 
 **Telegram operator**:
-Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards**, or answer **Message cards**, only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action (Reply to Google reviews, Moderate shop reviews, Answer customer messages) can act. The old **Review manager** maps to replying on Google and moderating **Shop reviews**, **Shop moderator** to moderating **Shop reviews** only; nobody has Answer customer messages until a role and a link are given it.
+Retired name for a **Telegram link** (the table is still `telegram_operators`). A person may press buttons on **Review cards**, or answer **Message cards**, only through a **Telegram link** on their **Staff profile**, managed on **Users & permissions** → Telegram. Everyone in the group sees cards; only a linked profile whose **Member** is active and whose **Role** and link both grant the action (Reply to Google reviews, Moderate shop reviews, Reply to shop reviews, Answer customer messages) can act. The old **Review manager** maps to replying on Google and moderating **Shop reviews**, **Shop moderator** to moderating **Shop reviews** only; nobody has Reply to shop reviews or Answer customer messages until a role and a link are given it.
 _Avoid_: a Telegram list separate from logins — access is one tree: **Member** → **Staff profile** → **Telegram link**
 
 ## Customer CRM (ADR 0028)

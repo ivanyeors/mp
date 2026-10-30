@@ -98,6 +98,9 @@ function getStockStatus(variant: ProductVariant | null): "in_stock" | "low_stock
   return "in_stock";
 }
 
+/** The below-fold tabs; each is also the `#hash` that opens it. */
+const DETAIL_TABS = new Set(["description", "specifications", "reviews"]);
+
 interface ProductDetailClientProps {
   product: Product;
   relatedProducts: Product[];
@@ -137,6 +140,24 @@ export function ProductDetailClient({
   } = useApprovedReviews(product.id);
 
   const addToCartRef = useRef<HTMLButtonElement>(null);
+
+  // The tab a `#hash` names opens and scrolls into view: the Reviews tab's
+  // sign-in prompt returns to `#reviews`. Read after mount, since the server
+  // never sees the hash; an inactive tab's panel is unmounted, so the browser
+  // has no element to scroll to on its own.
+  const [detailTab, setDetailTab] = useState("description");
+  const detailTabsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const openFromHash = () => {
+      const named = window.location.hash.slice(1);
+      if (!DETAIL_TABS.has(named)) return;
+      setDetailTab(named);
+      requestAnimationFrame(() => detailTabsRef.current?.scrollIntoView({ block: "start" }));
+    };
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, []);
 
   useEffect(() => {
     const btn = addToCartRef.current;
@@ -495,7 +516,7 @@ export function ProductDetailClient({
 
         {/* Below fold */}
         <div className="mt-12 lg:mt-16 space-y-12">
-          <Tabs defaultValue="description">
+          <Tabs ref={detailTabsRef} value={detailTab} onValueChange={setDetailTab} className="scroll-mt-24">
             <TabsList variant="line">
               <TabsTrigger value="description">Description</TabsTrigger>
               <TabsTrigger value="specifications">Specifications</TabsTrigger>

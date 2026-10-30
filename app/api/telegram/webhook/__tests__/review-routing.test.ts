@@ -106,6 +106,26 @@ describe("Telegram webhook review routing", () => {
     expect(h.handleChat).not.toHaveBeenCalled();
   });
 
+  it("hands a reply to a shop review card to the review handler, never the website chat", async () => {
+    const update = {
+      update_id: 6,
+      message: {
+        message_id: 13,
+        chat: { id: GROUP, type: "supergroup" },
+        from: { id: 111 },
+        text: "Thank you, Ada! Glad the cover suits you.",
+        reply_to_message: { message_id: 12, text: "🛍 SHOP REVIEW · mpillow website\n★★★★☆ 4/5 · Ada L.\n…" },
+      },
+    };
+    const res = await POST(post(update));
+    expect(res.status).toBe(200);
+    expect(h.after).toHaveBeenCalledOnce();
+    await h.after.mock.calls[0][0]();
+    expect(h.handle).toHaveBeenCalledWith(update);
+    expect(h.handleChat).not.toHaveBeenCalled();
+    expect(h.handleInbox).not.toHaveBeenCalled();
+  });
+
   it("hands a reply to a website chat message to the chat handler", async () => {
     const update = {
       update_id: 5,

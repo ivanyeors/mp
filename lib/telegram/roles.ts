@@ -29,6 +29,8 @@ export const TELEGRAM_ACTION_DESCRIPTIONS: Record<TelegramAction, string> = {
   "telegram.google-review-reply":
     "Post replies to Google reviews (and edit a draft by replying to its card). Speaks for the business on Google Maps.",
   "telegram.shop-review-moderate": "Approve or reject reviews left on the website. Nothing outside mpillow.com.",
+  "telegram.shop-review-reply":
+    "Write or remove our public reply under a website review, by replying to its card. Speaks for the business on mpillow.com.",
   "telegram.social-inbox-reply":
     "Answer Facebook, Instagram and TikTok messages by replying to their cards. Speaks to customers for the business.",
 };

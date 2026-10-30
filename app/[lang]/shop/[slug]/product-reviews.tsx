@@ -1,14 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Star, Loader2, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Star, Loader2, CheckCircle2, LogIn, UserRound } from "lucide-react";
 import { ReviewStars } from "@/components/shop/review-stars";
 import { getApiErrorMessage } from "@/lib/utils";
+import { getLocaleOrDefault, withLocale } from "@/lib/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import type { ProductReview } from "@/lib/types/ecommerce";
+import type { PublicProductReview } from "@/lib/types/ecommerce";
+import type { ReviewAuthorState } from "@/lib/reviews/shop-review-byline";
 
 // ---------------------------------------------------------------------------
 // Star display — see components/shop/review-stars.tsx
@@ -21,7 +25,7 @@ export { ReviewStars } from "@/components/shop/review-stars";
 // ---------------------------------------------------------------------------
 
 interface ApprovedReviewsState {
-  reviews: ProductReview[];
+  reviews: PublicProductReview[];
   count: number;
   average: number;
   loading: boolean;
@@ -30,7 +34,7 @@ interface ApprovedReviewsState {
 }
 
 export function useApprovedReviews(productId: string): ApprovedReviewsState {
-  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviews, setReviews] = useState<PublicProductReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [nonce, setNonce] = useState(0);
@@ -49,7 +53,7 @@ export function useApprovedReviews(productId: string): ApprovedReviewsState {
         if (!res.ok) throw new Error("Failed to load reviews");
         return res.json();
       })
-      .then((data: { rows?: ProductReview[] }) => {
+      .then((data: { rows?: PublicProductReview[] }) => {
         if (active) setReviews(data.rows ?? []);
       })
       .catch(() => {
@@ -76,11 +80,158 @@ export function useApprovedReviews(productId: string): ApprovedReviewsState {
 }
 
 // ---------------------------------------------------------------------------
-// Submission form
+// Who may write: only a signed-in Customer (POST /api/shop/reviews enforces it;
+// GET /api/shop/reviews/author lets the form say so before anyone types).
 // ---------------------------------------------------------------------------
 
-function ReviewForm({ productId }: { productId: string }) {
-  const [authorName, setAuthorName] = useState("");
+/** null while loading; "error" when the check itself failed. */
+function useReviewAuthor(): ReviewAuthorState | "error" | null {
+  const [state, setState] = useState<ReviewAuthorState | "error" | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/shop/reviews/author", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to check sign-in");
+        return res.json() as Promise<ReviewAuthorState>;
+      })
+      .then((data) => {
+        if (active) setState(data);
+      })
+      .catch(() => {
+        if (active) setState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return state;
+}
+
+/**
+ * The storefront's sign-in page, coming back to this product's reviews after.
+ * `#reviews` is the Reviews tab's id: it names where the shopper was going.
+ */
+function useSignInHref(): string {
+  const pathname = usePathname() ?? "/";
+  const locale = getLocaleOrDefault(pathname);
+  return withLocale(`/account/login?next=${encodeURIComponent(`${pathname}#reviews`)}`, locale);
+}
+
+function ComposerCard({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-col gap-4 rounded-lg border p-6">{children}</div>;
+}
+
+function SignInPrompt({ note }: { note?: string }) {
+  const signInHref = useSignInHref();
+  return (
+    <ComposerCard>
+      <div className="flex flex-col gap-1.5">
+        <h3 className="font-semibold text-base">Write a review</h3>
+        <p className="text-sm text-muted-foreground">
+          {note ?? "Reviews come from signed-in customers."} Sign in with Google or an email link,
+          and you&apos;ll come straight back to this product.
+        </p>
+      </div>
+      <Button asChild className="self-start">
+        <Link href={signInHref}>
+          <LogIn className="size-4" />
+          Sign in to write a review
+        </Link>
+      </Button>
+    </ComposerCard>
+  );
+}
+
+/** Signed in, but to an account with no email: it links to no Customer. */
+function NoEmailNotice() {
+  const signInHref = useSignInHref();
+  return (
+    <ComposerCard>
+      <div className="flex flex-col gap-1.5">
+        <h3 className="font-semibold text-base">Write a review</h3>
+        <p className="text-sm text-muted-foreground">
+          Reviews are linked to an email address, and the account you&apos;re signed in with
+          doesn&apos;t have one. Sign in with Google or an email link instead to write a review.
+        </p>
+      </div>
+      <form action={`/auth/signout?next=${encodeURIComponent(signInHref)}`} method="post">
+        <Button type="submit" variant="outline">
+          <LogIn className="size-4" />
+          Sign in another way
+        </Button>
+      </form>
+    </ComposerCard>
+  );
+}
+
+function ReviewComposer({ productId }: { productId: string }) {
+  const author = useReviewAuthor();
+  const [sessionEnded, setSessionEnded] = useState(false);
+
+  if (author === null) {
+    return (
+      <ComposerCard>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+          <Loader2 className="size-4 animate-spin" />
+          Checking your account…
+        </div>
+      </ComposerCard>
+    );
+  }
+  if (author === "error") {
+    return (
+      <ComposerCard>
+        <h3 className="font-semibold text-base">Write a review</h3>
+        <p className="text-sm text-muted-foreground">
+          We couldn&apos;t check whether you&apos;re signed in. Refresh the page to try again.
+        </p>
+      </ComposerCard>
+    );
+  }
+  if (!author.signedIn || sessionEnded) {
+    return <SignInPrompt note={sessionEnded ? "You've been signed out." : undefined} />;
+  }
+  if (!author.canReview) {
+    if (author.reason === "no_email") return <NoEmailNotice />;
+    return (
+      <ComposerCard>
+        <h3 className="font-semibold text-base">Write a review</h3>
+        <p className="text-sm text-muted-foreground">
+          We couldn&apos;t load your account just now, so reviews are unavailable. Refresh the
+          page to try again.
+        </p>
+      </ComposerCard>
+    );
+  }
+  return (
+    <ReviewForm
+      productId={productId}
+      byline={author.byline}
+      named={author.named}
+      onSessionEnded={() => setSessionEnded(true)}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Submission form (signed-in Customers only)
+// ---------------------------------------------------------------------------
+
+function ReviewForm({
+  productId,
+  byline,
+  named,
+  onSessionEnded,
+}: {
+  productId: string;
+  /** What the server will store as the review's byline. */
+  byline: string;
+  /** False when the Customer has no name on record and the byline is the stand-in. */
+  named: boolean;
+  onSessionEnded: () => void;
+}) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [title, setTitle] = useState("");
@@ -94,10 +245,6 @@ function ReviewForm({ productId }: { productId: string }) {
       e.preventDefault();
       setError(null);
 
-      if (!authorName.trim()) {
-        setError("Please enter your name.");
-        return;
-      }
       if (rating < 1 || rating > 5) {
         setError("Please select a star rating.");
         return;
@@ -110,12 +257,15 @@ function ReviewForm({ productId }: { productId: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             product_id: productId,
-            author_name: authorName.trim(),
             rating,
             title: title.trim() || null,
             body: body.trim() || null,
           }),
         });
+        if (res.status === 401) {
+          onSessionEnded();
+          return;
+        }
         if (!res.ok) {
           const data = await res.json().catch(() => null);
           throw new Error(
@@ -129,7 +279,7 @@ function ReviewForm({ productId }: { productId: string }) {
         setSubmitting(false);
       }
     },
-    [authorName, rating, title, body, productId]
+    [rating, title, body, productId, onSessionEnded]
   );
 
   if (submitted) {
@@ -146,7 +296,20 @@ function ReviewForm({ productId }: { productId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-lg border p-6">
-      <h3 className="font-semibold text-base">Write a review</h3>
+      <div className="flex flex-col gap-1.5">
+        <h3 className="font-semibold text-base">Write a review</h3>
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <UserRound className="size-4 shrink-0" aria-hidden="true" />
+          <span>
+            Posting as <span className="font-medium text-foreground">{byline}</span>
+          </span>
+        </p>
+        {!named && (
+          <p className="text-xs text-muted-foreground">
+            Your account has no name on it, so your review will show as &ldquo;{byline}&rdquo;.
+          </p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>Rating</Label>
@@ -173,18 +336,6 @@ function ReviewForm({ productId }: { productId: string }) {
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="review-author">Your name</Label>
-        <Input
-          id="review-author"
-          value={authorName}
-          onChange={(e) => setAuthorName(e.target.value)}
-          maxLength={200}
-          placeholder="Jane D."
-          required
-        />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -235,6 +386,19 @@ function formatDate(value: string): string {
   }
 }
 
+/** Our public reply under a review, written from its Telegram card. */
+function StoreReply({ reply, at }: { reply: string; at: string | null }) {
+  return (
+    <div className="mt-1.5 flex flex-col gap-1 rounded-md border-l-2 border-foreground/20 bg-muted/40 px-3 py-2">
+      <p className="text-xs font-medium text-foreground">
+        Reply from the mpillow team
+        {at ? <span className="font-normal text-muted-foreground"> · {formatDate(at)}</span> : null}
+      </p>
+      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{reply}</p>
+    </div>
+  );
+}
+
 export function ProductReviews({
   productId,
   reviews,
@@ -243,7 +407,7 @@ export function ProductReviews({
   loading,
 }: {
   productId: string;
-  reviews: ProductReview[];
+  reviews: PublicProductReview[];
   average: number;
   count: number;
   loading: boolean;
@@ -284,6 +448,9 @@ export function ProductReviews({
                 <p className="text-xs text-muted-foreground">
                   {review.author_name} · {formatDate(review.created_at)}
                 </p>
+                {review.store_reply && (
+                  <StoreReply reply={review.store_reply} at={review.store_reply_at} />
+                )}
               </div>
             ))}
           </div>
@@ -298,7 +465,7 @@ export function ProductReviews({
         </div>
       )}
 
-      <ReviewForm productId={productId} />
+      <ReviewComposer productId={productId} />
     </div>
   );
 }

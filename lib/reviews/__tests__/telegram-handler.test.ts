@@ -1,12 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, GOOGLE_REVIEW_DEFAULTS, type Row } from "./fake-supabase";
 import { hashLinkCode } from "@/lib/telegram/link-codes";
-import { GOOGLE_CARD_HEADER, PREVIEW_CARD_PREFIX, PREVIEW_REVIEW_ID, encodeReviewCallback } from "@/lib/reviews/cards";
+import {
+  GOOGLE_CARD_HEADER,
+  PREVIEW_CARD_PREFIX,
+  PREVIEW_REVIEW_ID,
+  SHOP_CARD_HEADER,
+  encodeReviewCallback,
+} from "@/lib/reviews/cards";
 
 /**
  * The Telegram side of review cards: who may press what (RBAC), that a Post
  * publishes exactly the draft on screen and only once, staff edits by reply,
- * shop moderation, and binding a Telegram account with /link.
+ * shop moderation, our reply under a shop review, and binding a Telegram
+ * account with /link.
  */
 
 const GROUP = -1001279910218;
@@ -17,6 +24,9 @@ const SAM = { id: 222, first_name: "Sam" };
 const STRANGER = { id: 999, first_name: "Who" };
 const REPLY = "telegram.google-review-reply";
 const MODERATE = "telegram.shop-review-moderate";
+const SHOP_REPLY = "telegram.shop-review-reply";
+/** The shop review's card in the group. */
+const SHOP_CARD = 88;
 
 const h = vi.hoisted(() => ({
   db: null as unknown,
@@ -28,6 +38,7 @@ const h = vi.hoisted(() => ({
   deleteGroupMessage: vi.fn(),
   replyInGroup: vi.fn(),
   replyInChat: vi.fn(),
+  sendGroupCard: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
@@ -37,7 +48,7 @@ vi.mock("@/lib/telegram/bot-api", () => ({
   deleteGroupMessage: h.deleteGroupMessage,
   replyInGroup: h.replyInGroup,
   replyInChat: h.replyInChat,
-  sendGroupCard: vi.fn(),
+  sendGroupCard: h.sendGroupCard,
 }));
 vi.mock("@/lib/reviews/draft-reply", async (orig) => ({
   ...(await orig<typeof import("@/lib/reviews/draft-reply")>()),
@@ -50,6 +61,7 @@ vi.mock("@/lib/google/business-profile", async (orig) => ({
 }));
 
 const { handleReviewUpdate, isReviewUpdate } = await import("@/lib/reviews/telegram-handler");
+const { notifyNewShopReview } = await import("@/lib/reviews/shop-reviews");
 const { resetRateLimits } = await import("@/lib/rate-limit");
 
 const reviews = () => h.tables.google_reviews as Row[];
@@ -130,7 +142,21 @@ beforeEach(() => {
       },
     ],
     product_reviews: [
-      { id: SHOP_ID, product_id: "p1", author_name: "Ada L.", rating: 4, title: null, body: "Comfy", status: "pending", created_at: "2026-10-01T00:00:00Z" },
+      {
+        id: SHOP_ID,
+        product_id: "p1",
+        author_name: "Ada L.",
+        rating: 4,
+        title: null,
+        body: "Comfy",
+        status: "pending",
+        created_at: "2026-10-01T00:00:00Z",
+        store_reply: null,
+        store_reply_at: null,
+        store_reply_by_name: null,
+        telegram_chat_id: GROUP,
+        telegram_message_id: SHOP_CARD,
+      },
     ],
     products: [{ id: "p1", slug: "mpillow-basic", content: { "en-US": { title: "Mpillow Basic" } } }],
   };
@@ -152,6 +178,13 @@ describe("isReviewUpdate", () => {
     const preview = { reply_to_message: { message_id: 78, text: `${PREVIEW_CARD_PREFIX}a 5★ review.\n${GOOGLE_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thanks so much!", preview))).toBe(true);
     expect(isReviewUpdate(msg("/help", card))).toBe(false);
+    // A shop card, real or preview, and a team note under it.
+    const shopCard = { reply_to_message: { message_id: SHOP_CARD, text: `${SHOP_CARD_HEADER}\n…` } };
+    expect(isReviewUpdate(msg("Thank you, Ada!", shopCard))).toBe(true);
+    expect(isReviewUpdate(msg("// approve once the photo checks out", shopCard))).toBe(true);
+    expect(isReviewUpdate(msg("/stock", shopCard))).toBe(false);
+    const shopPreview = { reply_to_message: { message_id: 79, text: `${PREVIEW_CARD_PREFIX}a new shop review.\n${SHOP_CARD_HEADER}\n…` } };
+    expect(isReviewUpdate(msg("Thanks!", shopPreview))).toBe(true);
     expect(isReviewUpdate({ message: { message_id: 1, chat: { id: 42 }, from: IVAN, text: "hi", ...card } })).toBe(false);
     expect(isReviewUpdate(msg("12", { reply_to_message: { message_id: 9, text: "Enter quantity for OUT" } }))).toBe(false);
   });
@@ -420,6 +453,137 @@ describe("shop review moderation", () => {
   it("refuses a stranger", async () => {
     await tap(STRANGER, approve);
     expect(h.tables.product_reviews[0].status).toBe("pending");
+  });
+
+  it("records the tapped card, so a card sent before card ids were kept can be replied to", async () => {
+    Object.assign(h.tables.product_reviews[0], { telegram_chat_id: null, telegram_message_id: null });
+    await tap(SAM, approve);
+    expect(h.tables.product_reviews[0]).toMatchObject({ telegram_chat_id: GROUP, telegram_message_id: 77 });
+  });
+
+  it("keeps the new card's message id when the card goes out", async () => {
+    Object.assign(h.tables.product_reviews[0], { telegram_chat_id: null, telegram_message_id: null });
+    h.sendGroupCard.mockResolvedValue({ chatId: GROUP, messageId: 4242 });
+    await notifyNewShopReview(SHOP_ID);
+    expect(h.sendGroupCard).toHaveBeenCalledWith(expect.stringContaining(SHOP_CARD_HEADER), expect.anything());
+    expect(h.tables.product_reviews[0]).toMatchObject({ telegram_chat_id: GROUP, telegram_message_id: 4242 });
+  });
+});
+
+describe("our reply under a shop review", () => {
+  const shopReview = () => h.tables.product_reviews[0] as Row;
+  const replyToCard = (from: { id: number }, text: string) =>
+    say(from, text, { replyTo: SHOP_CARD, replyText: `${SHOP_CARD_HEADER}\n…` });
+  const tapCard = (from: { id: number }, data: string) =>
+    handleReviewUpdate({
+      callback_query: { id: "cq1", from, data, message: { message_id: SHOP_CARD, chat: { id: GROUP } } },
+    });
+  const unreply = encodeReviewCallback({ source: "shop", action: "unreply", id: SHOP_ID });
+
+  beforeEach(() => {
+    // Ivan may reply to shop reviews; Sam's role moderates only.
+    h.tables.telegram_operators[0].actions = [REPLY, MODERATE, SHOP_REPLY];
+  });
+
+  it("sets it from a reply to a pending review's card, says it waits for approval, and redraws the card", async () => {
+    await replyToCard(IVAN, "“Thank you, Ada! Glad the cover suits you.”");
+    expect(shopReview()).toMatchObject({
+      status: "pending",
+      store_reply: "Thank you, Ada! Glad the cover suits you.",
+      store_reply_by_name: "Ivan",
+      store_reply_at: expect.any(String),
+    });
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/Reply saved — it shows under the review once the review is approved/), 500);
+    expect(h.editGroupCard.mock.calls.at(-1)?.[0]).toBe(SHOP_CARD);
+    expect(lastEditText()).toContain("💬 Our reply, by Ivan");
+    expect(lastEditText()).toContain("Thank you, Ada! Glad the cover suits you.");
+    const buttons = (h.editGroupCard.mock.calls.at(-1)?.[2] as { inline_keyboard: { text: string }[][] }).inline_keyboard.flat();
+    expect(buttons.map((b) => b.text)).toEqual(["✅ Approve", "🚫 Reject", "🗑 Remove reply"]);
+  });
+
+  it("goes live on an approved review, and a second reply replaces the first", async () => {
+    shopReview().status = "approved";
+    await replyToCard(IVAN, "Thanks, Ada!");
+    await replyToCard(IVAN, "Thank you, Ada — enjoy the sleep!");
+    expect(shopReview().store_reply).toBe("Thank you, Ada — enjoy the sleep!");
+    expect(h.replyInGroup).toHaveBeenLastCalledWith(expect.stringMatching(/Reply posted — it's under the review on the product page/), 500);
+    expect(lastEditText()).toContain("💬 Our reply on the product page, by Ivan");
+  });
+
+  it("changes nothing on a rejected review, and says so", async () => {
+    shopReview().status = "rejected";
+    await replyToCard(IVAN, "Thanks, Ada!");
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).toHaveBeenCalledWith("❌ This review was rejected, so it isn't on the shop — nothing changed.", 500);
+  });
+
+  it("refuses a reply over the length limit", async () => {
+    await replyToCard(IVAN, "x".repeat(1501));
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/^❌ The reply is 1501 characters/), 500);
+  });
+
+  it("needs its own action: a shop moderator is told, a stranger is ignored", async () => {
+    await replyToCard(SAM, "Thanks!");
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/Shop desk\) doesn't include "reply to shop reviews"/), 500);
+
+    h.replyInGroup.mockClear();
+    await replyToCard(STRANGER, "Nice one!");
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).not.toHaveBeenCalled();
+  });
+
+  it("needs the action on the link too, even when the role allows it", async () => {
+    h.tables.telegram_operators[0].actions = [REPLY, MODERATE];
+    await replyToCard(IVAN, "Thanks, Ada!");
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/Your Telegram access doesn't include "reply to shop reviews"/), 500);
+  });
+
+  it("leaves a // team note under the card alone", async () => {
+    await replyToCard(IVAN, "// shall we thank her for the photo too?");
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).not.toHaveBeenCalled();
+    expect(h.editGroupCard).not.toHaveBeenCalled();
+  });
+
+  it("ignores a reply to a shop card it has no review for", async () => {
+    await say(IVAN, "Thanks!", { replyTo: 12345, replyText: `${SHOP_CARD_HEADER}\n…` });
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).not.toHaveBeenCalled();
+  });
+
+  it("explains a reply to a shop preview card instead of saving it", async () => {
+    await say(IVAN, "Thanks!", { replyTo: 79, replyText: `${PREVIEW_CARD_PREFIX}a new shop review.\n${SHOP_CARD_HEADER}\n…` });
+    expect(shopReview().store_reply).toBeNull();
+    expect(h.replyInGroup).toHaveBeenCalledWith(
+      expect.stringMatching(/our public reply under the review on the product page.*Ivan \(Reply to Google reviews, Moderate shop reviews, Reply to shop reviews\)/),
+      500,
+    );
+  });
+
+  it("Remove reply takes it down once, and needs the reply action", async () => {
+    Object.assign(shopReview(), { status: "approved", store_reply: "Thanks, Ada!", store_reply_at: "2026-10-02T00:00:00Z", store_reply_by_name: "Ivan" });
+
+    await tapCard(SAM, unreply);
+    expect(lastAlert()?.[1]).toMatch(/Shop desk\) doesn't include "reply to shop reviews"/);
+    expect(shopReview().store_reply).toBe("Thanks, Ada!");
+
+    await tapCard(IVAN, unreply);
+    expect(shopReview()).toMatchObject({ store_reply: null, store_reply_at: null, store_reply_by_name: null });
+    expect(lastAlert()).toEqual(["cq1", "Reply removed — it's gone from the product page.", false]);
+    expect(lastEditText()).not.toContain("Our reply");
+    expect(h.editGroupCard.mock.calls.at(-1)?.[2]).toBeUndefined();
+
+    await tapCard(IVAN, unreply);
+    expect(lastAlert()).toEqual(["cq1", "There's no reply to remove — check the updated card.", true]);
+  });
+
+  it("a Remove reply tap on a preview card only reports access", async () => {
+    await tapCard(IVAN, encodeReviewCallback({ source: "shop", action: "unreply", id: PREVIEW_REVIEW_ID }));
+    expect(lastAlert()?.[1]).toMatch(/On a real review, this button would remove our reply from under the review on the product page\./);
+    expect(h.editGroupCard).not.toHaveBeenCalled();
   });
 });
 

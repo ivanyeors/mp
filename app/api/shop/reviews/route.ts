@@ -4,28 +4,25 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { notifyNewShopReview } from "@/lib/reviews/shop-reviews";
+import { shopReviewByline } from "@/lib/reviews/shop-review-byline";
 
 export const runtime = "nodejs";
 
-/** What the storefront may see of a review: never customer_id, order_id or status. */
-const PUBLIC_COLUMNS = "id, rating, title, body, author_name, created_at";
+/**
+ * What the storefront may see of a review: our reply and when it was made, but
+ * never customer_id, order_id, status, or who on the team wrote the reply.
+ */
+const PUBLIC_COLUMNS = "id, rating, title, body, author_name, created_at, store_reply, store_reply_at";
 
+// No author_name: the byline is the Customer record's (shopReviewByline). An
+// older page that still sends one has it stripped, like any unknown key.
 const CreateReviewSchema = z.object({
   product_id: z.string().uuid(),
   order_id: z.string().uuid().nullable().optional().default(null),
-  author_name: z.string().trim().min(1).max(200),
   rating: z.number().int().min(1).max(5),
   title: z.string().trim().max(300).nullable().optional().default(null),
   body: z.string().trim().max(5000).nullable().optional().default(null),
 });
-
-/** Public byline from the Customer record ("Jane D."), so a review can't borrow someone else's name. */
-function bylineFor(customer: { first_name: string | null; last_name: string | null }): string | null {
-  const first = customer.first_name?.trim();
-  if (!first) return null;
-  const initial = customer.last_name?.trim()[0];
-  return (initial ? `${first} ${initial}.` : first).slice(0, 200);
-}
 
 /** Approved reviews for one product. `?status=` is ignored: only approved rows are public. */
 export async function GET(req: Request) {
@@ -93,7 +90,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await admin
     .from("product_reviews")
-    .insert({ ...parsed.data, author_name: bylineFor(customer) ?? parsed.data.author_name, customer_id: customer.id, status: "pending" })
+    .insert({ ...parsed.data, author_name: shopReviewByline(customer), customer_id: customer.id, status: "pending" })
     .select(PUBLIC_COLUMNS)
     .single();
   if (error) {
