@@ -1,0 +1,132 @@
+// What the public shop (/shop, /shop/<slug>, the cart) needs to render: two
+// more Listed products beside `analytics.mjs`'s "Accessories" (one with a
+// single Variant, one with three so its card says "From"), stock for every
+// Variant, SGD exchange rates for the currency picker, one flat Singapore
+// shipping method with a free-shipping threshold, and a discount code
+// (SAMPLE10) for the cart. Every price is made up.
+//
+// Product pages: /shop/slope-mattress and /shop/cervical-neck-support. Their
+// ids are UUIDs because the reviews and shipping-quote endpoints refuse any other.
+
+const SHOP_PRODUCTS = [
+  {
+    id: "00000000-0000-4000-8000-00000000a001",
+    slug: "slope-mattress",
+    title: "Slope Mattress",
+    image: "/IMG_5110.webp",
+    variants: [{ id: "00000000-0000-4000-8000-00000000b001", title: "Default", option1: null, price: 120 }],
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000a002",
+    slug: "cervical-neck-support",
+    title: "Cervical Neck Support",
+    image: "/cns-insert.png",
+    options: [{ name: "Size", values: ["S", "M", "L"] }],
+    variants: [
+      { id: "00000000-0000-4000-8000-00000000b002", title: "S", option1: "S", price: 35 },
+      { id: "00000000-0000-4000-8000-00000000b003", title: "M", option1: "M", price: 35 },
+      { id: "00000000-0000-4000-8000-00000000b004", title: "L", option1: "L", price: 42 },
+    ],
+  },
+];
+
+export default function storefront({ now }) {
+  const created = (daysAgo) => new Date(now.getTime() - daysAgo * 86_400_000).toISOString();
+  return {
+    tables: {
+      products: SHOP_PRODUCTS.map((p, i) => ({
+        id: p.id,
+        slug: p.slug,
+        product_type: "accessory",
+        status: "active",
+        content: { "en-US": { title: p.title, description: `${p.title}, sample copy for the preview.` } },
+        featured: false,
+        tags: [],
+        created_at: created(i + 1),
+        updated_at: created(i + 1),
+      })),
+      product_variants: SHOP_PRODUCTS.flatMap((p) =>
+        p.variants.map((v, position) => ({
+          ...v,
+          product_id: p.id,
+          sku: v.id,
+          option2: null,
+          option3: null,
+          compare_at_price: null,
+          currency: "SGD",
+          track_inventory: true,
+          weight_grams: 500,
+          image_url: null,
+          is_active: true,
+          position,
+          item_id: null,
+          pillow_product_id: null,
+        })),
+      ),
+      product_options: SHOP_PRODUCTS.flatMap((p) =>
+        (p.options ?? []).map((o, position) => ({ id: `${p.id}-opt-${position}`, product_id: p.id, position, ...o })),
+      ),
+      product_images: SHOP_PRODUCTS.map((p) => ({
+        id: `${p.id}-img`,
+        product_id: p.id,
+        variant_id: null,
+        url: p.image,
+        alt_text: p.title,
+        position: 0,
+      })),
+      exchange_rates: [
+        ["MYR", 3.45],
+        ["USD", 0.74],
+        ["CNY", 5.35],
+      ].map(([target_currency, rate]) => ({
+        base_currency: "SGD",
+        target_currency,
+        rate,
+        source: "manual",
+        fetched_at: now.toISOString(),
+      })),
+      // A discount code anyone can apply in the cart: SAMPLE10 takes S$10 off.
+      coupons: [
+        {
+          id: "00000000-0000-4000-8000-00000000c001",
+          code: "SAMPLE10",
+          discount_type: "fixed_amount",
+          discount_value: 10,
+          currency: "SGD",
+          min_order_amount: null,
+          max_discount: null,
+          usage_limit: null,
+          usage_count: 0,
+          per_customer_limit: null,
+          customer_id: null,
+          starts_at: null,
+          expires_at: null,
+          applies_to: null,
+          is_active: true,
+          created_at: created(30),
+          updated_at: created(30),
+        },
+      ],
+      shipping_methods: [
+        {
+          id: "ship-sg-standard",
+          slug: "standard-sg",
+          content: { "en-US": { name: "Standard delivery", description: "", estimated_days: "2-4" } },
+          base_rate: 8,
+          free_above: 150,
+          currency: "SGD",
+          countries: ["SG"],
+          is_active: true,
+          position: 0,
+          rate_source: "flat",
+          created_at: created(30),
+          updated_at: created(30),
+        },
+      ],
+    },
+    views: {
+      // create view variant_stock: what each Variant can sell now.
+      variant_stock: (t) => (t.product_variants ?? []).map((v) => ({ variant_id: v.id, stock_available: 12 })),
+    },
+  };
+}

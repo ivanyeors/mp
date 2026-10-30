@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Truck } from "lucide-react";
-import { PriceDisplay, formatPrice } from "@/components/shop/price-display";
+import { PriceDisplay, useDisplayPrice } from "@/components/shop/price-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +66,7 @@ export function DeliveryEstimator({
   className,
 }: DeliveryEstimatorProps) {
   const m = useMessages(locale).shop.delivery;
+  const displayPrice = useDisplayPrice();
   const [country, setCountry] = useState("SG");
   const [postal, setPostal] = useState("");
   // Quote what was submitted, not every keystroke: a partial postal code is a wasted courier call.
@@ -126,7 +127,7 @@ export function DeliveryEstimator({
       {freeAbove != null && !hideFreeThreshold && (
         <p className={cn("flex items-center gap-2 text-sm", compact ? "text-muted-foreground" : "font-medium")}>
           {compact && <Truck className="size-4 shrink-0" />}
-          {m.freeOver.replace("{amount}", formatPrice(freeAbove, "SGD"))}
+          {m.freeOver.replace("{amount}", displayPrice(freeAbove))}
         </p>
       )}
 

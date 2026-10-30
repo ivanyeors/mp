@@ -1,6 +1,6 @@
 "use client";
 
-import { PriceDisplay, formatPrice } from "@/components/shop/price-display";
+import { PriceDisplay, useDisplayPrice } from "@/components/shop/price-display";
 import type { CartMessages } from "./cart-types";
 
 interface CartSummaryProps {
@@ -18,6 +18,7 @@ export function CartSummary({
   currency,
   messages,
 }: CartSummaryProps) {
+  const displayPrice = useDisplayPrice();
   return (
     <div className="flex flex-col gap-1.5 text-sm">
       <div className="flex items-center justify-between">
@@ -27,7 +28,7 @@ export function CartSummary({
       {couponCode && couponDiscount > 0 && (
         <div className="flex items-center justify-between text-green-600 dark:text-green-400">
           <span>{messages.discount}</span>
-          <span>-{formatPrice(couponDiscount, currency)}</span>
+          <span>-{displayPrice(couponDiscount, currency)}</span>
         </div>
       )}
     </div>

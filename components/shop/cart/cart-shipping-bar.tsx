@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Truck } from "lucide-react";
 import { motion } from "motion/react";
-import { formatPrice } from "@/components/shop/price-display";
+import { useDisplayPrice } from "@/components/shop/price-display";
 import type { CartMessages } from "./cart-types";
 
 interface CartShippingBarProps {
@@ -20,6 +20,7 @@ export function CartShippingBar({
   country = "SG",
 }: CartShippingBarProps) {
   const [freeAbove, setFreeAbove] = useState<number | null>(null);
+  const displayPrice = useDisplayPrice();
 
   useEffect(() => {
     fetch(`/api/shop/shipping?country=${country}`)
@@ -52,7 +53,7 @@ export function CartShippingBar({
           </span>
         ) : (
           <span className="text-muted-foreground">
-            {messages.freeShipping(formatPrice(amountToFreeShipping, currency))}
+            {messages.freeShipping(displayPrice(amountToFreeShipping, currency))}
           </span>
         )}
       </div>
