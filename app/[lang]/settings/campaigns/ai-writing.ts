@@ -10,5 +10,5 @@ import type { AiWritingAvailability } from "@/lib/ai/availability";
  */
 export async function campaignAiWriting(): Promise<AiWritingAvailability> {
   const read = await readAiWritingSettings();
-  return { on: read.settings.enabled, configured: claudeConfigured() };
+  return { on: read.settings.enabled, configured: await claudeConfigured() };
 }

@@ -33,7 +33,8 @@ import {
 
 // PRD-campaign-email-editor slice 16: the owner sets AI writing's model and
 // limits once, here; every ✨ call reads them on the server
-// (/api/settings/ai-writing, lib/ai/settings.ts). No key is entered or stored.
+// (/api/settings/ai-writing, lib/ai/settings.ts). The key is entered in the
+// Claude API key card above (claude-key-section.tsx).
 
 const tokens = (n: number) => n.toLocaleString("en-SG");
 
@@ -127,7 +128,7 @@ export function AiWritingForm({
         ) : (
           <>
             <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-            Set the Anthropic credentials in Vercel to use AI writing
+            Add the Claude API key above to use AI writing
           </>
         )}
       </p>
@@ -232,7 +233,8 @@ export function AiWritingForm({
 
 type LoadedState = { configured: boolean; usage: AiUsageThisMonth | null };
 
-export function AiWritingSection() {
+/** `configured`, when the page knows it, takes the place of what the section loaded, so a key saved above shows here at once. */
+export function AiWritingSection({ configured }: { configured?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AiWritingSettings>(AI_WRITING_DEFAULTS);
   const [loaded, setLoaded] = useState<LoadedState | null>(null);
@@ -304,7 +306,7 @@ export function AiWritingSection() {
           <AiWritingForm
             value={form}
             onChange={setForm}
-            configured={loaded.configured}
+            configured={configured ?? loaded.configured}
             usage={loaded.usage}
             saving={saving}
             onSave={() => void save()}

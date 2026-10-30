@@ -208,7 +208,7 @@ describe("POST /api/campaigns/ai-draft", () => {
     h.claude = null;
     const res = await post();
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ error: "AI writing is off: set the Anthropic credentials in Vercel" });
+    expect(await res.json()).toEqual({ error: "AI writing is off: add the Claude API key on General" });
   });
 
   it("past the per-10-minute limit, refuses the next call with the time it can run again", async () => {

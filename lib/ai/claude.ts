@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { oidcFederationProvider } from "@anthropic-ai/sdk/lib/credentials/oidc-federation";
 import { getVercelOidcToken } from "@vercel/oidc";
+import { readApiConfigs } from "@/lib/settings/api-configs";
 
 /**
  * The one Claude client, and the credentials check, shared by review replies
@@ -8,20 +9,63 @@ import { getVercelOidcToken } from "@vercel/oidc";
  * slices 09, 10 and 17). Lifted out of draft-reply.ts: the check in slice 16,
  * the client in slice 09. Server-only.
  *
- * Credentials: an ANTHROPIC_API_KEY (local scripts), or on Vercel the OIDC
- * federation rule (ANTHROPIC_FEDERATION_RULE_ID + ORGANIZATION/SERVICE_ACCOUNT/
- * WORKSPACE ids) that swaps the function's x-vercel-oidc-token for a
- * short-lived Anthropic token — no long-lived secret in prod. The SDK prefers
- * the key when both are set. Nothing here, and nothing on General → AI
- * writing, stores a key: the credentials stay in Vercel.
+ * Credentials, the first that is set:
+ * 1. The key the owner saved on General → Claude API key, held in the
+ *    `anthropic` row of `api_configs` (service-role only, never sent to the
+ *    browser; lib/ai/claude-key.ts writes it).
+ * 2. An ANTHROPIC_API_KEY in the environment (local scripts, or Vercel).
+ * 3. On Vercel, the OIDC federation rule (ANTHROPIC_FEDERATION_RULE_ID +
+ *    ORGANIZATION/SERVICE_ACCOUNT/WORKSPACE ids) that swaps the function's
+ *    x-vercel-oidc-token for a short-lived Anthropic token.
  */
 
-/** True when Claude can be called: an API key, or a Vercel OIDC federation rule. */
-export function claudeConfigured(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY?.trim() || process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim());
+/** The `api_configs` row that holds the key saved on General. */
+export const ANTHROPIC_CONFIG_SLUG = "anthropic";
+
+/** Where the client's credentials come from: what General's status line names. */
+export type ClaudeCredentialSource = "saved" | "environment" | "federation";
+
+type ClaudeCredentials =
+  | { source: "saved" | "environment"; apiKey: string }
+  | { source: "federation"; federationRuleId: string }
+  | null;
+
+/**
+ * The saved key, when its row is active. Read through the `api-configs` cache,
+ * which saving or removing the key expires. Outside the app (the eval scripts,
+ * tests) there is no cache to read, so the environment's credentials apply.
+ */
+async function savedClaudeKey(): Promise<string | null> {
+  try {
+    const row = (await readApiConfigs()).find((c) => c.slug === ANTHROPIC_CONFIG_SLUG);
+    return (row?.is_active && row.api_key?.trim()) || null;
+  } catch (err) {
+    if (process.env.NEXT_RUNTIME) console.error("[claude] saved key read failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
-export const CLAUDE_NOT_CONFIGURED = "Claude is not configured (ANTHROPIC_API_KEY or ANTHROPIC_FEDERATION_RULE_ID)";
+async function claudeCredentials(): Promise<ClaudeCredentials> {
+  const saved = await savedClaudeKey();
+  if (saved) return { source: "saved", apiKey: saved };
+  const envKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (envKey) return { source: "environment", apiKey: envKey };
+  const federationRuleId = process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim();
+  if (federationRuleId) return { source: "federation", federationRuleId };
+  return null;
+}
+
+/** Where Claude's credentials come from, or null when none are set. */
+export async function claudeCredentialSource(): Promise<ClaudeCredentialSource | null> {
+  return (await claudeCredentials())?.source ?? null;
+}
+
+/** True when Claude can be called: a saved key, an API key, or a Vercel OIDC federation rule. */
+export async function claudeConfigured(): Promise<boolean> {
+  return (await claudeCredentials()) !== null;
+}
+
+export const CLAUDE_NOT_CONFIGURED = "Claude is not configured: add the Claude API key on General";
 
 /**
  * Server-side fallbacks (`fallbacks: "default"`): if a safety classifier
@@ -60,29 +104,34 @@ export function claudeCallError(e: unknown, fallback = "Claude couldn't answer."
   return e instanceof Error ? e.message : fallback;
 }
 
-let cachedClient: Anthropic | null = null;
+let cached: { credential: string; client: Anthropic } | null = null;
 
-/** The client, made once per instance; null without credentials. */
-export function claudeClient(): Anthropic | null {
-  if (!claudeConfigured()) return null;
-  const federationRuleId = process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim();
+/** The client, made again only when its credentials change; null without them. */
+export async function claudeClient(): Promise<Anthropic | null> {
+  const creds = await claudeCredentials();
+  if (!creds) return null;
+  const credential = creds.source === "federation" ? `federation:${creds.federationRuleId}` : `key:${creds.apiKey}`;
+  if (cached?.credential === credential) return cached.client;
   // Bounded wall clock for a serverless function: 45s × (2 retries + 1). A
   // streamed call is bounded by its stream, not this.
-  cachedClient ??= new Anthropic({
+  const client = new Anthropic({
     timeout: 45_000,
     maxRetries: 2,
-    credentials: federationRuleId
-      ? oidcFederationProvider({
-          // Per exchange, inside a request: Vercel re-mints its per-invocation token with Anthropic as the audience.
-          identityTokenProvider: () => getVercelOidcToken({ audience: "https://api.anthropic.com" }),
-          federationRuleId,
-          organizationId: process.env.ANTHROPIC_ORGANIZATION_ID ?? "",
-          serviceAccountId: process.env.ANTHROPIC_SERVICE_ACCOUNT_ID,
-          workspaceId: process.env.ANTHROPIC_WORKSPACE_ID,
-          baseURL: "https://api.anthropic.com",
-          fetch,
-        })
-      : undefined,
+    ...(creds.source === "federation"
+      ? {
+          credentials: oidcFederationProvider({
+            // Per exchange, inside a request: Vercel re-mints its per-invocation token with Anthropic as the audience.
+            identityTokenProvider: () => getVercelOidcToken({ audience: "https://api.anthropic.com" }),
+            federationRuleId: creds.federationRuleId,
+            organizationId: process.env.ANTHROPIC_ORGANIZATION_ID ?? "",
+            serviceAccountId: process.env.ANTHROPIC_SERVICE_ACCOUNT_ID,
+            workspaceId: process.env.ANTHROPIC_WORKSPACE_ID,
+            baseURL: "https://api.anthropic.com",
+            fetch,
+          }),
+        }
+      : { apiKey: creds.apiKey }),
   });
-  return cachedClient;
+  cached = { credential, client };
+  return client;
 }

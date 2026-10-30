@@ -27,7 +27,7 @@ vi.mock("@/lib/auth/admin", () => ({
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 vi.mock("@/lib/cache/invalidate", () => ({ invalidateTag: h.invalidate }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
-vi.mock("@/lib/ai/claude", () => ({ claudeConfigured: () => true }));
+vi.mock("@/lib/ai/claude", () => ({ claudeCredentialSource: async () => "saved" }));
 vi.mock("@/lib/ai/settings", () => ({
   readAiWritingSettings: vi.fn(async () =>
     h.readFails
@@ -71,13 +71,14 @@ describe("AI writing settings route", () => {
     expect(h.save).not.toHaveBeenCalled();
   });
 
-  it("returns the settings, whether Claude is configured, and this month's use", async () => {
+  it("returns the settings, whether Claude is configured and with what, and this month's use", async () => {
     const res = await GET();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       ok: true,
       settings: AI_WRITING_DEFAULTS,
       configured: true,
+      credentials: "saved",
       usage: { since: "2026-09-30T16:00:00.000Z", ...estimateAiUsage([]) },
     });
   });

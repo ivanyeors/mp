@@ -335,7 +335,7 @@ describe("AI writing switched off or not set up", () => {
     for (const label of ["Suggest subject lines", "Rewrite with Claude: Heading, block 1 of 2"]) {
       const b = await until(() => named(label));
       expect(b.getAttribute("aria-disabled")).toBe("true");
-      expect(document.getElementById(b.getAttribute("aria-describedby")!)?.textContent).toBe("AI writing is off: set the Anthropic credentials in Vercel");
+      expect(document.getElementById(b.getAttribute("aria-describedby")!)?.textContent).toBe("AI writing is off: add the Claude API key on General");
     }
   });
 });

@@ -196,7 +196,7 @@ describe("POST /api/campaigns/ai-refine", () => {
     h.claude = null;
     const unset = await post(SUBJECTS);
     expect(unset.status).toBe(503);
-    expect(await unset.json()).toEqual({ error: "AI writing is off: set the Anthropic credentials in Vercel" });
+    expect(await unset.json()).toEqual({ error: "AI writing is off: add the Claude API key on General" });
     expect(fake.calls).toHaveLength(0);
   });
 
