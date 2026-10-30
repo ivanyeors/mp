@@ -37,6 +37,8 @@ assert.match(button, /"active:scale-\[0\.97\] motion-reduce:active:scale-100"/);
 // Tabs: the trigger's hit area covers the list padding; an inactive trigger tints.
 assert.match(tabs, /after:-inset-y-\[5px\]/);
 assert.match(tabs, /data-\[state=inactive\]:active:bg-background\/60/);
+// The `line` variant has no list padding to tint against: it presses to the shared tint.
+assert.match(tabs, /data-\[state=inactive\]:active:bg-press/);
 
 // 16px checkbox and 36×20 switch: 44px hit areas, a halo while pressed.
 assert.match(checkbox, /after:-inset-3\.5/);
