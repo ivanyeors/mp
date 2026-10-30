@@ -496,25 +496,10 @@ export function ProductDetailClient({
         {/* Below fold */}
         <div className="mt-12 lg:mt-16 space-y-12">
           <Tabs defaultValue="description">
-            <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-0">
-              <TabsTrigger
-                value="description"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3 pt-1"
-              >
-                Description
-              </TabsTrigger>
-              <TabsTrigger
-                value="specifications"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3 pt-1"
-              >
-                Specifications
-              </TabsTrigger>
-              <TabsTrigger
-                value="reviews"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3 pt-1"
-              >
-                Reviews
-              </TabsTrigger>
+            <TabsList variant="line">
+              <TabsTrigger value="description">Description</TabsTrigger>
+              <TabsTrigger value="specifications">Specifications</TabsTrigger>
+              <TabsTrigger value="reviews">Reviews</TabsTrigger>
             </TabsList>
 
             <TabsContent value="description" className="pt-6" id="description" data-section="description">
