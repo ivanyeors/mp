@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type MouseEventHandler, type ReactNode } from "react";
+import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { ShoppingBag } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,14 +11,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface CartTriggerProps {
-  className?: string;
+interface CartTriggerProps extends ComponentPropsWithoutRef<"button"> {
   iconClassName?: string;
   badgeClassName?: string;
   /** When inside PopoverTrigger, Radix onClick opens the popover; skip local open logic. */
   suppressOpen?: boolean;
-  onClick?: MouseEventHandler<HTMLButtonElement>;
-  children?: ReactNode;
 }
 
 export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
@@ -30,6 +27,9 @@ export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
       suppressOpen,
       onClick,
       children,
+      // PopoverTrigger's aria-expanded, aria-controls and data-state, so the
+      // button says whether the cart is open.
+      ...rest
     },
     ref
   ) {
@@ -52,7 +52,7 @@ export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
 
     if (children) {
       return (
-        <button ref={ref} type="button" onClick={handleClick} className={className}>
+        <button {...rest} ref={ref} type="button" onClick={handleClick} className={className}>
           {children}
         </button>
       );
@@ -60,6 +60,7 @@ export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
 
     return (
       <button
+        {...rest}
         ref={ref}
         type="button"
         className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative overflow-visible", className)}
