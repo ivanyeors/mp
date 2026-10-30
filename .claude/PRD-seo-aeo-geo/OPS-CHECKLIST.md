@@ -52,3 +52,11 @@ Parent: Slice 00 (`issues/00-domain-migration.md`) + Slice 11 (`issues/11-gsc-an
 - [x] Skip `NEXT_PUBLIC_GA_MEASUREMENT_ID` unless you need gtag outside GTM
 - [x] Confirm pageviews in GTM/GA realtime after green deploy
 - [x] Root layout loads GTM/gtag in production when env is set (`components/seo/google-analytics.tsx`)
+
+## Ahrefs Site Audit (Oct 2026 report)
+
+The code side of the 30 Oct report is fixed in the repo. Two items are Ahrefs settings, not code:
+
+- [ ] **Changed pages not submitted to IndexNow.** Ahrefs counts pages *it* has not submitted. In Site Audit → project settings → IndexNow, paste the key served at `https://custom.mpillow.com/indexnow-key.txt` (`INDEXNOW_KEY`) and turn on automatic submission. The site itself pings IndexNow on blog saves, product saves and Page Builder publishes (`lib/seo/indexnow.ts`).
+- [ ] **HTTP to HTTPS redirect, Redirect chain, the root 3XX and "Redirected page has no incoming internal links".** The crawl starts at `http://custom.mpillow.com/`: Vercel's HTTPS hop, then the locale redirect from `/`. Set the project's start URL to `https://custom.mpillow.com/en-US`. Nothing on the site links to `/` any more.
+- [ ] Re-crawl and confirm the rest cleared.

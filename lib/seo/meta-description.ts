@@ -1,6 +1,9 @@
 /** Google shows roughly the first 155–160 characters of a meta description. */
 export const MAX_META_DESCRIPTION_CHARS = 155;
 
+/** Shorter than this, site audits call a description too thin to fill a search snippet. */
+export const MIN_META_DESCRIPTION_CHARS = 110;
+
 const ENTITIES: Record<string, string> = { "&amp;": "&", "&nbsp;": " ", "&quot;": '"', "&#39;": "'", "&lt;": "<", "&gt;": ">" };
 
 /** Markdown/MDX → one line of plain text: drops headings, images, tags and emphasis; keeps link text. */

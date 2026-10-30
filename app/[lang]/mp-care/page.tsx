@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { englishOnlyPageMetadata } from "@/lib/seo/page-meta";
 import Link from "next/link";
 import { MpCareAftercareSection } from "@/components/mp-care/aftercare-section";
 import {
@@ -22,6 +24,10 @@ import {
 } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  return englishOnlyPageMetadata("mpCare", (await params).lang);
+}
 
 export default async function MpCarePage({
   params,

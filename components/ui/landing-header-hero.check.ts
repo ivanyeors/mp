@@ -23,7 +23,7 @@ const expanded = header.slice(
 );
 assert.match(expanded, /ProfileMenu/);
 assert.ok(
-  expanded.indexOf("<ProfileMenu") < expanded.indexOf("mpillow_logo_2026.png"),
+  expanded.indexOf("<ProfileMenu") < expanded.indexOf("src={LOGO_SRC}"),
   "Profile is left of logo",
 );
 const right = expanded.slice(expanded.indexOf("justify-end"));
@@ -32,7 +32,7 @@ assert.match(right, /ModeToggle/);
 assert.doesNotMatch(right, /ProfileMenu/);
 // The compact pill is just the logo; booking and chat moved to the dock.
 const compact = header.slice(0, expandedStart);
-assert.match(compact, /mpillow_logo_2026-inv\.png/);
+assert.match(compact, /src=\{LOGO_INV_SRC\}/);
 assert.doesNotMatch(header, /openBookAppointment|SUPPORT_WHATSAPP_URL/);
 assert.match(dock, /openBookAppointment/);
 assert.match(dock, /openSupportChat/);

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { LOGO_SRC, LOGO_INV_SRC } from "@/lib/brand-logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
@@ -14,6 +15,10 @@ import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 const FOOTER_LINKS = [
   { label: "Our partners", href: "/our-partners" },
   { label: "Blog", href: "/blog" },
+  // The guides are linked from one blog post each otherwise.
+  { label: "Neck pain guide", href: "/guides/neck-pain" },
+  { label: "Cervical pillow guide", href: "/guides/cervical-pillow" },
+  { label: "Custom pillow guide", href: "/guides/custom-pillow" },
   { label: "Privacy policy", href: "/privacy-policy" },
   { label: "Returns & warranty", href: "/shipping-refund-policies" },
   { label: "Terms of service", href: "/terms-of-service" },
@@ -80,14 +85,16 @@ export function MarketingFooter() {
           <div className="max-w-md space-y-5">
             <Link href={to("/")} className="inline-block">
               <Image
-                src="/mpillow_logo_2026.png"
+                src={LOGO_SRC}
+                unoptimized
                 alt="Mpillow"
                 width={80}
                 height={80}
                 className="h-16 w-16 object-contain dark:hidden"
               />
               <Image
-                src="/mpillow_logo_2026-inv.png"
+                src={LOGO_INV_SRC}
+                unoptimized
                 alt="Mpillow"
                 width={80}
                 height={80}

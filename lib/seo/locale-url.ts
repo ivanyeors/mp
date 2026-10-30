@@ -7,13 +7,18 @@ export function localeUrl(lang: string, path = ""): string {
   return `${getSiteOrigin()}/${lang}${normalized}`;
 }
 
-/** hreflang map for `locales` (all supported by default), plus `x-default` on the default locale when it is one of them. */
+/** Of the locales a page exists in, the one that stands for it: the default locale when it is one of them. */
+export function primaryLocale(locales: readonly string[] = SUPPORTED_LOCALES): string | undefined {
+  return locales.includes(DEFAULT_LOCALE) ? DEFAULT_LOCALE : locales[0];
+}
+
+/** hreflang map for `locales` (all supported by default), plus `x-default` on the primary locale. */
 export function localeAlternates(path = "", locales: readonly string[] = SUPPORTED_LOCALES): Record<string, string> {
   const out: Record<string, string> = {};
   for (const locale of locales) {
     out[locale] = localeUrl(locale, path);
   }
-  const fallback = locales.includes(DEFAULT_LOCALE) ? DEFAULT_LOCALE : locales[0];
+  const fallback = primaryLocale(locales);
   if (fallback) out["x-default"] = localeUrl(fallback, path);
   return out;
 }

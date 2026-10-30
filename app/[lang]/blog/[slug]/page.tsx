@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title: post.title,
         description: resolveMetaDescription(post),
         path: `/blog/${slug}`,
-        lang: post.content_locale,
+        lang: locale,
         alternateLocales: post.locales,
         image: post.image_url,
         keywords: post.seo_keywords,

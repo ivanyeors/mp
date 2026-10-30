@@ -12,14 +12,39 @@ import { getMessages } from "@/lib/i18n/messages";
 import { withLocale } from "@/lib/i18n/routing";
 import { loadServicePrices } from "@/lib/pricing/service-prices";
 import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { PAGE_META } from "@/lib/seo/page-meta";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const sgd = (n: number) => `SGD ${n.toFixed(2)}`;
 
-export const metadata: Metadata = {
-  title: "Book an appointment",
-  description: "Book a customisation or readjustment appointment with Mpillow.",
-};
+const APPOINTMENT_META = {
+  customisation: PAGE_META.appointmentsCustomisation,
+  readjustment: PAGE_META.appointmentsReadjustment,
+} as const;
+
+/**
+ * Each booking type is its own page; any other parameter (`item`) is the same page.
+ * A readjustment is booked by a signed-in Customer for their own purchase, so to a
+ * crawler it is a sign-in prompt: kept out of search, and out of robots.txt's reach.
+ */
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ type?: string }>;
+}): Promise<Metadata> {
+  const [{ lang }, { type }] = await Promise.all([params, searchParams]);
+  const locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+  const appt = parseApptType(type);
+  return buildPageMetadata({
+    ...(appt ? APPOINTMENT_META[appt] : PAGE_META.appointments)[locale],
+    path: appt ? `/appointments?type=${appt}` : "/appointments",
+    lang: locale,
+    noindex: appt === "readjustment",
+  });
+}
 
 export const dynamic = "force-dynamic";
 

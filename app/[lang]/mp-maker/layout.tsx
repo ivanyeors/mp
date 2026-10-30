@@ -1,24 +1,16 @@
-"use client";
-
-import { AnimatePresence, motion } from "framer-motion";
-import { usePathname } from "next/navigation";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { MpMakerPageTransition } from "./page-transition";
 
-/** Page transitions only — cart and currency providers live in the root layout. */
+/**
+ * The legacy builder, superseded by /mp-config and /mbolster-config: nothing
+ * links here and the sitemap leaves it out, so it stays out of search.
+ */
+export const metadata: Metadata = {
+  title: "Build your Mpillow",
+  robots: { index: false, follow: true },
+};
+
 export default function MpMakerLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
+  return <MpMakerPageTransition>{children}</MpMakerPageTransition>;
 }

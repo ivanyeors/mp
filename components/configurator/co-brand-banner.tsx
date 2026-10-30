@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { LOGO_SRC } from "@/lib/brand-logo";
 
 /**
  * Co-brand finish-panel banner for a partner-assisted run (#78): the partner's
@@ -29,7 +30,8 @@ export function CoBrandBanner({
           ×
         </span>
         <Image
-          src="/mpillow_logo_2026.png"
+          src={LOGO_SRC}
+          unoptimized
           alt="Mpillow"
           width={40}
           height={40}

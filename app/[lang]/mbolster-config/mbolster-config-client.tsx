@@ -1351,7 +1351,7 @@ export function MbolsterConfigClient({
             >
               <ArrowLeft className="size-4" />
             </Button>
-            <h1 className="text-sm font-semibold">Your Custom Mbolster</h1>
+            <div role="heading" aria-level={2} className="text-sm font-semibold tracking-tight leading-tight">Your Custom Mbolster</div>
             {isMobile ? (
               <div className="size-8" aria-hidden />
             ) : (
@@ -1947,9 +1947,10 @@ export function MbolsterConfigClient({
 
             <div className="space-y-2">
               <div className="text-sm font-semibold text-muted-foreground">Mbolster</div>
-              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+              {/* Not an h1: the page's one h1 is the crawlable intro in page.tsx. Not an h2 either: marketing pages force every h2 to 28px. */}
+              <div role="heading" aria-level={2} className="text-4xl font-semibold tracking-tight leading-tight md:text-5xl">
                 Customise your Mbolster
-              </h1>
+              </div>
               <p className="mx-auto max-w-2xl text-muted-foreground">
                 Answer a few quick questions, choose a case preference, then authorize
                 payment for operator review. You are not charged until you accept the final build.

@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
+import { englishOnlyPageMetadata } from "@/lib/seo/page-meta";
 import Link from "next/link";
 
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 
 const LAST_UPDATED = "5 July 2026";
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  return englishOnlyPageMetadata("termsOfService", (await params).lang);
+}
 
 export default async function TermsOfServicePage({
   params,

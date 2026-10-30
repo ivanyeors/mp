@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { englishOnlyPageMetadata } from "@/lib/seo/page-meta";
 import Link from "next/link";
 
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -219,6 +221,10 @@ function PolicySectionBlock({ section }: { section: PolicySection }) {
       {section.outro ? <PolicyParagraphs paragraphs={section.outro} /> : null}
     </section>
   );
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  return englishOnlyPageMetadata("privacyPolicy", (await params).lang);
 }
 
 export default async function PrivacyPolicyPage({ params }: { params: Promise<{ lang: string }> }) {

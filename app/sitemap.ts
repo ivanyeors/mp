@@ -1,7 +1,8 @@
 import { getProducts } from "@/lib/ecommerce/products";
 import { getBlogPostsFromDb } from "@/lib/blogs";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/i18n/locales";
-import { getSiteOrigin } from "@/lib/site-url";
+import { localeAlternates, localeUrl } from "@/lib/seo/locale-url";
+import { ENGLISH_ONLY_PAGE_META } from "@/lib/seo/page-meta";
 import type { MetadataRoute } from "next";
 
 // Re-generate at most once an hour; product/blog content changes are not urgent for the sitemap.
@@ -9,7 +10,13 @@ export const revalidate = 3600;
 
 type ChangeFrequency = NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
 
-function entry(
+/**
+ * One <url> per locale the page exists in, each naming all of them plus
+ * x-default, as the page's own hreflang does (`buildPageMetadata`). Listing
+ * only the default locale left every zh-CN page out of the sitemap, and
+ * hreflang that only the sitemap declared had no return tag on the page.
+ */
+function entries(
   path: string,
   options: {
     lastModified?: string | Date;
@@ -18,24 +25,19 @@ function entry(
     /** Locales the page has real content in; defaults to every supported locale. */
     locales?: readonly string[];
   } = {},
-): MetadataRoute.Sitemap[number] {
-  const siteUrl = getSiteOrigin();
+): MetadataRoute.Sitemap {
   const locales: readonly string[] = options.locales?.length ? options.locales : SUPPORTED_LOCALES;
-  const languages: Record<string, string> = {};
-  for (const locale of locales) {
-    languages[locale] = `${siteUrl}/${locale}${path}`;
-  }
-  const primary = locales.includes(DEFAULT_LOCALE) ? DEFAULT_LOCALE : locales[0];
-
-  return {
-    url: `${siteUrl}/${primary}${path}`,
+  const languages = localeAlternates(path, locales);
+  return locales.map((locale) => ({
+    url: localeUrl(locale, path),
     lastModified: options.lastModified,
     changeFrequency: options.changeFrequency,
     priority: options.priority,
     alternates: { languages },
-  };
+  }));
 }
 
+/** Active shop products. A pillow or bolster's page canonicalises to its configurator, listed above. */
 async function getAllActiveProductSlugs(): Promise<{ slug: string; lastModified?: string }[]> {
   const collected: { slug: string; lastModified?: string }[] = [];
   let page = 1;
@@ -52,22 +54,20 @@ async function getAllActiveProductSlugs(): Promise<{ slug: string; lastModified?
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
-    entry("", { changeFrequency: "daily", priority: 1 }),
-    entry("/shop", { changeFrequency: "daily", priority: 0.9 }),
-    entry("/blog", { changeFrequency: "weekly", priority: 0.7 }),
-    entry("/mp-config", { changeFrequency: "weekly", priority: 0.85 }),
-    entry("/mbolster-config", { changeFrequency: "weekly", priority: 0.85 }),
-    entry("/guides/neck-pain", { changeFrequency: "monthly", priority: 0.8 }),
-    entry("/guides/cervical-pillow", { changeFrequency: "monthly", priority: 0.8 }),
-    entry("/guides/custom-pillow", { changeFrequency: "monthly", priority: 0.8 }),
-    entry("/mp-maker", { changeFrequency: "monthly", priority: 0.7 }),
-    entry("/mp-care", { changeFrequency: "monthly", priority: 0.5 }),
-    entry("/support", { changeFrequency: "monthly", priority: 0.4 }),
-    entry("/our-partners", { changeFrequency: "monthly", priority: 0.3 }),
-    entry("/privacy-policy", { changeFrequency: "monthly", priority: 0.3 }),
-    entry("/shipping-refund-policies", { changeFrequency: "monthly", priority: 0.3 }),
-    entry("/terms-of-service", { changeFrequency: "monthly", priority: 0.3 }),
-    entry("/faq", { changeFrequency: "monthly", priority: 0.3 }),
+    ...entries("", { changeFrequency: "daily", priority: 1 }),
+    ...entries("/shop", { changeFrequency: "daily", priority: 0.9 }),
+    ...entries("/blog", { changeFrequency: "weekly", priority: 0.7 }),
+    ...entries("/mp-config", { changeFrequency: "weekly", priority: 0.85 }),
+    ...entries("/mbolster-config", { changeFrequency: "weekly", priority: 0.85 }),
+    ...entries("/guides/neck-pain", { changeFrequency: "monthly", priority: 0.8 }),
+    ...entries("/guides/cervical-pillow", { changeFrequency: "monthly", priority: 0.8 }),
+    ...entries("/guides/custom-pillow", { changeFrequency: "monthly", priority: 0.8 }),
+    ...entries("/appointments?type=customisation", { changeFrequency: "monthly", priority: 0.6 }),
+    ...entries("/our-partners", { changeFrequency: "monthly", priority: 0.3 }),
+    ...entries("/faq", { changeFrequency: "monthly", priority: 0.3 }),
+    ...Object.values(ENGLISH_ONLY_PAGE_META).flatMap(({ path }) =>
+      entries(path, { changeFrequency: "monthly", priority: 0.3, locales: [DEFAULT_LOCALE] }),
+    ),
   ];
 
   let productEntries: MetadataRoute.Sitemap = [];
@@ -75,8 +75,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const products = await getAllActiveProductSlugs();
-    productEntries = products.map((p) =>
-      entry(`/shop/${p.slug}`, {
+    productEntries = products.flatMap((p) =>
+      entries(`/shop/${p.slug}`, {
         lastModified: p.lastModified,
         changeFrequency: "weekly",
         priority: 0.8,
@@ -88,8 +88,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const posts = await getBlogPostsFromDb({ status: "published" });
-    blogEntries = posts.map((post) =>
-      entry(`/blog/${post.slug}`, {
+    blogEntries = posts.flatMap((post) =>
+      entries(`/blog/${post.slug}`, {
         // Editorial edits only: the row's updated_at moves on every bulk sync (slice 17).
         lastModified: post.content_updated_at ?? post.published_at ?? undefined,
         changeFrequency: "monthly",
