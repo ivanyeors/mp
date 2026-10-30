@@ -20,8 +20,17 @@ export function getIndexNowKey(): string | null {
   return key && /^[A-Za-z0-9-]{8,128}$/.test(key) ? key : null;
 }
 
+/** A page's URL in every locale (`""` is the home page). */
+export function localePageUrls(path: string): string[] {
+  return SUPPORTED_LOCALES.map((lang) => localeUrl(lang, path));
+}
+
 export function blogPostUrls(slug: string): string[] {
-  return SUPPORTED_LOCALES.map((lang) => localeUrl(lang, `/blog/${encodeURIComponent(slug)}`));
+  return localePageUrls(`/blog/${encodeURIComponent(slug)}`);
+}
+
+export function productUrls(slug: string): string[] {
+  return localePageUrls(`/shop/${encodeURIComponent(slug)}`);
 }
 
 type FetchLike = (url: string, init: RequestInit) => Promise<Response>;

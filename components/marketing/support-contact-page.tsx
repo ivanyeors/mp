@@ -6,6 +6,7 @@ import { InfoCallout } from "@/components/marketing/info-callout";
 import { OpenChatButton } from "@/components/support/open-chat-button";
 import { SupportChat } from "@/components/support/support-chat";
 import { Separator } from "@/components/ui/separator";
+import { englishOnlyPageMetadata } from "@/lib/seo/page-meta";
 
 const QUICK_LINKS = [
   { href: "#book-appointment", label: "Book appointment" },
@@ -26,12 +27,7 @@ type SupportContactPageProps = {
 };
 
 export async function generateSupportMetadata({ params }: SupportContactPageProps): Promise<Metadata> {
-  await params;
-  return {
-    title: "Contact Us",
-    description:
-      "Book an appointment, chat with our team here or on WhatsApp. Learn how to schedule customisation, adjustments, and fitting sessions at Mpillow.",
-  };
+  return englishOnlyPageMetadata("support", (await params).lang);
 }
 
 export async function SupportContactPage({ params }: SupportContactPageProps) {

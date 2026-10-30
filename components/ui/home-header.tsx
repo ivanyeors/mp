@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { LOGO_SRC, LOGO_INV_SRC } from "@/lib/brand-logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,7 +11,7 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { useCart } from "@/lib/shop/cart-context";
-import { stripLocale } from "@/lib/i18n/routing";
+import { getLocaleOrDefault, stripLocale, withLocale } from "@/lib/i18n/routing";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
 // This header is in the root layout, so anything it imports statically lands in
@@ -30,6 +31,8 @@ const CurrencySelector = dynamic(
 export function HomeHeader() {
   const pathname = usePathname() ?? "/";
   const basePathname = stripLocale(pathname);
+  // The locale home: a bare "/" is a redirect, and every page links to it.
+  const homeHref = withLocale("/", getLocaleOrDefault(pathname));
   const [isCompact, setIsCompact] = React.useState(false);
   const { itemCount } = useCart();
 
@@ -83,9 +86,10 @@ export function HomeHeader() {
             }}
           />
 
-          <Link href="/" className="shrink-0" aria-label="Mpillow home">
+          <Link href={homeHref} className="shrink-0" aria-label="Mpillow home">
             <Image
-              src="/mpillow_logo_2026-inv.png"
+              src={LOGO_INV_SRC}
+              unoptimized
               alt="Mpillow"
               width={48}
               height={48}
@@ -126,7 +130,8 @@ export function HomeHeader() {
             </div>
             <div className="flex justify-center">
               <Image
-                src="/mpillow_logo_2026.png"
+                src={LOGO_SRC}
+                unoptimized
                 alt="Mpillow"
                 width={120}
                 height={120}

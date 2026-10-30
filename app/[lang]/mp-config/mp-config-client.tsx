@@ -14,6 +14,7 @@ import {
   type SetStateAction,
 } from "react";
 import Image from "next/image";
+import { LOGO_SRC } from "@/lib/brand-logo";
 import { usePathname, useRouter } from "next/navigation";
 import { cn, getApiErrorMessage } from "@/lib/utils";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
@@ -3049,7 +3050,7 @@ export function MpConfigClient({
               >
                 <ArrowLeft className="size-4" />
               </Button>
-              <h1 className="text-sm font-semibold">{isBasic ? "Your Basic Mpillow" : "Your Custom Mpillow"}</h1>
+              <div role="heading" aria-level={2} className="text-sm font-semibold tracking-tight leading-tight">{isBasic ? "Your Basic Mpillow" : "Your Custom Mpillow"}</div>
               {isMobile ? (
                 <div className="size-8" aria-hidden />
               ) : (
@@ -3813,17 +3814,19 @@ export function MpConfigClient({
             <div className="flex flex-col items-center justify-center space-y-8 text-center">
               <div className="space-y-4">
                 <Image
-                  src="/mpillow_logo_2026.png"
+                  src={LOGO_SRC}
+                  unoptimized
                   alt="Mpillow Logo"
                   width={200}
                   height={200}
                   className="mx-auto mb-6"
                   priority
                 />
-                <h1 className="text-6xl font-bold tracking-tight">
+                {/* Not an h1: the page's one h1 is the crawlable intro in page.tsx. Not an h2 either: marketing pages force every h2 to 28px. */}
+                <div role="heading" aria-level={2} className="text-6xl font-bold tracking-tight leading-tight">
                   Customise{" "}
                   <span className="text-primary">{isBasic ? "Basic Mpillow" : "Mpillow"}</span>
-                </h1>
+                </div>
                 <p className="text-xl text-muted-foreground">
                   {isBasic
                     ? "A quick fit for Basic Mpillow — one measurement, then checkout"

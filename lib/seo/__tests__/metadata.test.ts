@@ -26,6 +26,24 @@ describe("page metadata", () => {
     });
   });
 
+  it("canonicalises a locale the page has no text in, and declares no hreflang there", () => {
+    const meta = buildPageMetadata({ ...base, lang: "zh-CN", alternateLocales: ["en-US"] });
+    expect(meta.alternates?.canonical).toBe("https://custom.mpillow.com/en-US/blog/x");
+    expect(meta.openGraph?.url).toBe("https://custom.mpillow.com/en-US/blog/x");
+    expect(meta.alternates?.languages).toBeUndefined();
+  });
+
+  it("canonicalises a copy of another page there, with no hreflang", () => {
+    const meta = buildPageMetadata({ ...base, path: "/shop/mbolster", lang: "zh-CN", copyOf: "/mbolster-config" });
+    expect(meta.alternates?.canonical).toBe("https://custom.mpillow.com/zh-CN/mbolster-config");
+    expect(meta.openGraph?.url).toBe("https://custom.mpillow.com/zh-CN/mbolster-config");
+    expect(meta.alternates?.languages).toBeUndefined();
+  });
+
+  it("keeps a noindex page's links followed", () => {
+    expect(buildPageMetadata({ ...base, lang: "en-US", noindex: true }).robots).toEqual({ index: false, follow: true });
+  });
+
   it("falls back to the logo share image when the page has none", () => {
     const meta = buildPageMetadata({ ...base, lang: "en-US" });
     expect(meta.openGraph?.images).toEqual([{ url: "/og-image.png", width: 1200, height: 630, alt: "T" }]);

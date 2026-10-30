@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { listLandingSectionRows } from "@/lib/landing-sections";
 import { summarisePending } from "@/lib/page-builder/draft";
+import { localePageUrls, pingIndexNow } from "@/lib/seo/indexnow";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,9 @@ export async function POST() {
       entityId: typeof data === "string" ? data : null,
       after: pending,
     });
+
+    // The landing page is the home page in every locale.
+    after(() => pingIndexNow(localePageUrls("")));
 
     return NextResponse.json({ ok: true, snapshotId: data, published: pending });
   } catch (err) {

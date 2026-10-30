@@ -11,14 +11,15 @@ import { JsonLdScript } from "@/components/seo/json-ld-script";
 const BLOG_DESCRIPTION =
     "Read our latest articles on improving sleep posture, neck pain relief, and choosing the perfect pillow in Singapore.";
 
-// ?label= and ?q= views share the one canonical /blog URL.
-export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
-    const { lang } = await params;
+// ?label= and ?q= views share the one canonical /blog URL, and so declare no hreflang of their own.
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+    const [{ lang }, query] = await Promise.all([params, searchParams]);
     return buildPageMetadata({
         title: "Better sleep guidance from our blog",
         description: BLOG_DESCRIPTION,
         path: "/blog",
         lang: isSupportedLocale(lang) ? lang : DEFAULT_LOCALE,
+        ...(query?.label || query?.q ? { copyOf: "/blog" } : {}),
     });
 }
 

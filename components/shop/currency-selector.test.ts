@@ -21,7 +21,7 @@ describe("storefront currency selector", () => {
     const expanded = header.slice(header.indexOf('data-slot="home-header-expanded"'));
     const profile = expanded.indexOf("<ProfileMenu />");
     const currency = expanded.indexOf("<CurrencySelector />");
-    const logo = expanded.indexOf("mpillow_logo_2026.png");
+    const logo = expanded.indexOf("src={LOGO_SRC}");
     const cart = expanded.indexOf("<CartButton />");
     expect(profile).toBeGreaterThan(-1);
     expect(currency).toBeGreaterThan(profile);

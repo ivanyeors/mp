@@ -1345,8 +1345,8 @@ Defined in supabase/migrations/0028_ecommerce.sql:45
 References: `categories`
 Changed from pages: `/settings/costings`, `/settings/costings/services`, `/settings/products`, `/settings/products/[id]`
 - Written by:
-  - `DELETE()` [delete] — app/api/shop/products/[id]/route.ts:97
-  - `PATCH()` [select,update] — app/api/shop/products/[id]/route.ts:58
+  - `DELETE()` [delete] — app/api/shop/products/[id]/route.ts:101
+  - `PATCH()` [select,update] — app/api/shop/products/[id]/route.ts:59
   - `activate()` [update] — lib/ecommerce/shop-listings.ts:281
   - `adoptManualProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:359
   - `archiveUnsellableItemProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:331
@@ -1578,7 +1578,7 @@ Defined in supabase/migrations/20261025130000_coupon_usage_decrement.sql:13
 ### discard_landing_draft
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:132
 - Called by:
-  - `DELETE()` — app/api/landing-sections/publish/route.ts:90
+  - `DELETE()` — app/api/landing-sections/publish/route.ts:94
 
 ### drop_off_reasons
 Defined in supabase/migrations/20261027133942_drop_off_reasons.sql:21
@@ -1748,7 +1748,7 @@ Defined in supabase/migrations/20261020110000_customer_import_apply.sql:497
 ### publish_landing_draft
 Defined in supabase/migrations/20260909010000_landing_restore_snapshot.sql:15
 - Called by:
-  - `POST()` — app/api/landing-sections/publish/route.ts:54
+  - `POST()` — app/api/landing-sections/publish/route.ts:55
 
 ### rate_limit_hit
 Defined in supabase/migrations/20261025120000_rate_limit_hits.sql:37

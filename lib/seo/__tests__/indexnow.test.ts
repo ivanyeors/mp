@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
+import { blogPostUrls, localePageUrls, pingIndexNow, productUrls } from "@/lib/seo/indexnow";
 
 describe("pingIndexNow", () => {
   beforeEach(() => {
@@ -25,6 +25,14 @@ describe("pingIndexNow", () => {
       keyLocation: "https://custom.mpillow.com/indexnow-key.txt",
       urlList: ["https://custom.mpillow.com/en-US/blog/how-to-choose", "https://custom.mpillow.com/zh-CN/blog/how-to-choose"],
     });
+  });
+
+  it("names a page in every locale", () => {
+    expect(localePageUrls("")).toEqual(["https://custom.mpillow.com/en-US", "https://custom.mpillow.com/zh-CN"]);
+    expect(productUrls("satin-white-cover")).toEqual([
+      "https://custom.mpillow.com/en-US/shop/satin-white-cover",
+      "https://custom.mpillow.com/zh-CN/shop/satin-white-cover",
+    ]);
   });
 
   it("does nothing outside production or without a valid key", async () => {

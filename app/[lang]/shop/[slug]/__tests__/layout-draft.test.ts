@@ -43,8 +43,8 @@ describe.each(["draft", "archived"])("a %s product", (status) => {
     h.product = { id: "p1", slug: "secret-launch", status, images: [], variants: [] };
   });
 
-  it("gets not-found metadata", async () => {
-    expect(await generateMetadata({ params, children: null })).toEqual({ title: "Product Not Found" });
+  it("gets not-found metadata, without the shop's canonical and hreflang", async () => {
+    expect(await generateMetadata({ params, children: null })).toEqual({ title: "Product Not Found", alternates: null });
     expect(h.buildPageMetadata).not.toHaveBeenCalled();
   });
 

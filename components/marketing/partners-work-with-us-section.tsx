@@ -10,6 +10,16 @@ const DEFAULT_HERO = "/m-pillow-417953-web.webp";
 // ponytail: CTA reuses top hero otherwise; swap when a dedicated ctaImage field exists
 const DEFAULT_CTA_IMAGE = "/images/landing/ambassadors-hero.webp";
 
+/**
+ * The application asks a signed-out visitor to sign in first, by redirect. Link to
+ * sign-in with the application as `next` instead, so this public page does not
+ * link to a redirect; a signed-in visitor is sent straight on from there.
+ */
+function partnerApplyViaSignIn(href: string, locale: Locale): string {
+  if (href !== withLocale("/partner/apply", locale)) return href;
+  return withLocale(`/account/login?next=${encodeURIComponent(href)}`, locale);
+}
+
 type PartnersWorkWithUsSectionProps = {
   content: ResolvedPartnersPage;
   locale: Locale;
@@ -19,7 +29,7 @@ export function PartnersWorkWithUsSection({ content, locale }: PartnersWorkWithU
   const heroImage = content.heroImage || DEFAULT_HERO;
   const ctaHref = content.ctaButtonUrl?.startsWith("http")
     ? content.ctaButtonUrl
-    : withLocale(content.ctaButtonUrl || "/support", locale);
+    : partnerApplyViaSignIn(withLocale(content.ctaButtonUrl || "/support", locale), locale);
 
   return (
     <>

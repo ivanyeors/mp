@@ -6,12 +6,12 @@ import { withLocale } from "@/lib/i18n/routing";
 import { readPointsSettings } from "@/lib/points/server";
 import { POINTS_DEFAULTS, pointsLive } from "@/lib/points/settings";
 import { POINTS_TERMS_UPDATED, pointsTermsSections } from "@/lib/points/terms";
+import { englishOnlyPageMetadata } from "@/lib/seo/page-meta";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-export const metadata: Metadata = {
-  title: "How points work",
-  description: "How Mpillow points work: earning, using, expiry and the rules that apply.",
-};
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  return englishOnlyPageMetadata("points", (await params).lang);
+}
 
 /**
  * The points terms (PRD-loyalty-points slice 08). Linked from checkout, the

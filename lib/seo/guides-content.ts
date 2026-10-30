@@ -52,7 +52,8 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
     },
     "zh-CN": {
       metaTitle: "新加坡颈椎痛枕头指南",
-      metaDescription: "在新加坡寻找缓解颈椎痛的定制枕头。Mpillow 可在家测量，也可到店量身配置。",
+      metaDescription:
+        "在新加坡寻找适合颈椎痛人士的定制枕头。睡眠中的颈部不适，常与枕头高度或软硬不合体型有关。Mpillow 按您的睡姿与肩宽配置枕头，可在家通过在线定制自行测量，也可预约到店量身，侧睡、仰睡与混合睡姿的人都能找到合适的尺寸与高度。",
       keywords: ["新加坡 颈椎痛 枕头"],
       h1: "新加坡颈椎痛枕头指南",
       answerLede:
@@ -103,7 +104,8 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
     },
     "zh-CN": {
       metaTitle: "新加坡颈椎枕指南",
-      metaDescription: "新加坡颈椎支撑枕对比与选购指南。",
+      metaDescription:
+        "新加坡颈椎支撑枕对比与选购指南：了解颈椎枕的高度、形状与软硬如何影响睡姿，以及如何为自己挑选合适的款式。Mpillow 高级款可加配颈部支撑配件，并按您的测量结果量身配置，可在家自行测量，也可以预约到店由我们的团队为您量身。",
       keywords: ["新加坡 颈椎枕"],
       h1: "新加坡最佳颈椎枕",
       answerLede: "颈椎枕支撑颈部自然曲线并保持脊柱对齐。Mpillow Premium 可在家或到店测量，并提供可选颈椎支撑配件。",
@@ -122,7 +124,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
     "en-US": {
       metaTitle: "A guide to customised pillows in Singapore",
       metaDescription:
-        "Order a customised pillow in Singapore. Choose tier, size, cover and case, measured at home or in store.",
+        "Order a customised pillow in Singapore. Choose Basic or Premium, then your size, cover and case, and get measured at home online or in store.",
       keywords: ["customised pillow Singapore", "custom pillow Singapore"],
       h1: "Customised Pillow in Singapore",
       answerLede:
@@ -150,7 +152,8 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
     },
     "zh-CN": {
       metaTitle: "新加坡定制枕头指南",
-      metaDescription: "在新加坡订购定制枕头。选择等级、尺寸和面料。",
+      metaDescription:
+        "在新加坡订购定制枕头：先在基础款与高级款之间选择，再选尺寸、外套面料与枕套，并在家自行测量或预约到店量身。Mpillow 按您的睡姿与体型配置枕头的高度与填充层，之后也可以回到门店重新调整，让枕头一直贴合您的睡姿与体型。",
       keywords: ["新加坡 定制枕头"],
       h1: "新加坡定制枕头",
       answerLede: "Mpillow 是新加坡定制枕头品牌——选择基础款或高级款，在线开始定制，高级款可预约到店试配。",

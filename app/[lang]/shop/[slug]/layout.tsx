@@ -13,6 +13,8 @@ import {
 } from "@/lib/seo";
 import { getPageFaq, productSurfaceKey, stripMarkdownForSchema } from "@/lib/page-faq";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
+import { productMetaDescription } from "@/lib/seo/page-meta";
+import { configuratorPath } from "@/lib/ecommerce/configurator-path";
 import type { Locale } from "@/lib/i18n/locales";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 
@@ -26,26 +28,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductBySlug(slug);
 
   // Same gate as page.tsx: a draft or archived slug 404s, so it must not leak metadata either.
+  // `alternates: null`, or it inherits the shop's canonical and hreflang.
   if (!product || product.status !== "active") {
-    return { title: "Product Not Found" };
+    return { title: "Product Not Found", alternates: null };
   }
 
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const content = resolveProductContent(product, locale);
   const imageUrl = product.images?.[0]?.url;
 
-  const title = content.seo_title || content.title || product.slug;
-  const description =
-    content.seo_description || content.description || `Shop ${content.title} at Mpillow.`;
+  // The shop layout's own title ends the root template, so the brand is added here.
+  const name = content.seo_title || content.title || product.slug;
+  const title = name.includes("Mpillow") ? name : `${name} | Mpillow Singapore`;
 
   return buildPageMetadata({
     title,
-    description,
+    description: productMetaDescription(content, locale),
     path: `/shop/${slug}`,
     lang: locale,
     image: imageUrl,
     keywords: content.seo_keywords ?? [],
     type: "website",
+    // A pillow or bolster is ordered in its configurator, the one page that should rank for it.
+    copyOf: configuratorPath(product.product_type) ?? undefined,
   });
 }
 

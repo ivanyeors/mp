@@ -12,12 +12,14 @@ import { useCart } from "@/lib/shop/cart-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { shopCardPrice } from "@/lib/ecommerce/shop-card-price";
 import { cn } from "@/lib/utils";
+import { withLocale } from "@/lib/i18n/routing";
+import { configuratorPath } from "@/lib/ecommerce/configurator-path";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
-function getProductHref(product: Product): string {
-  if (product.product_type === "pillow") return `/mp-maker?product=pillow`;
-  if (product.product_type === "bolster") return `/mp-maker?product=bolster`;
-  return `/shop/${product.slug}`;
+/** Locale-prefixed: an unprefixed link answers with a redirect. */
+function getProductHref(product: Product, locale: Locale): string {
+  return withLocale(configuratorPath(product.product_type) ?? `/shop/${product.slug}`, locale);
 }
 
 interface ProductCardProps {
@@ -93,7 +95,7 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
     }
   }
 
-  const href = getProductHref(product);
+  const href = getProductHref(product, isSupportedLocale(locale) ? locale : DEFAULT_LOCALE);
 
   return (
     <div

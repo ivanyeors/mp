@@ -20,13 +20,15 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         // Routes are locale-prefixed (e.g. /en-US/settings), so disallow
         // patterns use a wildcard segment to match any locale.
+        // Pages behind sign-in are left out too: to a crawler they are a sign-in prompt.
         disallow: [
           "/api/",
           "/*/settings/",
           "/*/mp-basic",
           "/*/shop/checkout",
           "/*/shop/cart",
-          "/*/account/",
+          "/*/account",
+          "/*/appointments?type=readjustment",
         ],
       },
     ],

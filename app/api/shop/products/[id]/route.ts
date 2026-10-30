@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { requireAdmin } from "@/lib/auth/admin";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 import { stripeProductIdColumn } from "@/lib/stripe/mode";
+import { pingIndexNow, productUrls } from "@/lib/seo/indexnow";
 
 export const runtime = "nodejs";
 
@@ -73,6 +74,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Push name/description/image (and variant prices) to Stripe once a product is
   // active. Drafts stay out of Stripe until published.
   const stripe = data.status === "active" ? await syncProductToStripeSafe(id) : undefined;
+
+  // A live page changed, or a page went live or came down.
+  if (data.status === "active" || parsed.data.status) after(() => pingIndexNow(productUrls(data.slug)));
 
   // The sync writes whichever column this environment's key belongs to, so echo it
   // back under that same key — merging a sandbox id onto `stripe_product_id` would

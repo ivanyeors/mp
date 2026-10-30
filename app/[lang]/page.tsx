@@ -3,6 +3,7 @@ import { getLandingSections } from "@/lib/landing-sections";
 import { LandingSectionsList } from "@/components/sections/landing/landing-sections-list";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { PAGE_META } from "@/lib/seo/page-meta";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
 import type { Metadata } from "next";
@@ -14,11 +15,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  const m = getMessages(locale);
 
   return buildPageMetadata({
-    title: "Custom cervical pillow for neck pain in Singapore",
-    description: m.home.hero.seoAnswer,
+    ...PAGE_META.home[locale],
     path: "",
     lang: locale,
     keywords: [

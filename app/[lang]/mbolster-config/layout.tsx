@@ -7,11 +7,12 @@ const META: Record<Locale, { title: string; description: string }> = {
   "en-US": {
     title: "Customise your Mbolster support bolster in Singapore",
     description:
-      "Design your custom Mbolster support bolster in Singapore. Choose length (short, medium, long), case, and add to cart. Ergonomic side-sleeping support for Singapore homes.",
+      "Design your custom Mbolster support bolster in Singapore. Choose a short, medium or long length and a case, then add it to your cart. For side sleepers.",
   },
   "zh-CN": {
     title: "在新加坡定制您的 Mbolster 支撑抱枕",
-    description: "在新加坡定制您的 Mbolster 支撑抱枕。选择长度、面料并加入购物车。",
+    description:
+      "在新加坡定制您的 Mbolster 支撑抱枕：按身长选择短、中或长尺寸，挑选可洗的枕套面料后加入购物车。Mbolster 为侧睡者设计，环抱时承托髋部与脊柱，也有适合孩子的尺寸，让家里每个人都能找到合适的长度，可在线下单配送到家。",
   },
 };
 

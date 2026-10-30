@@ -31,7 +31,7 @@ const META: Record<Locale, { title: string; description: string; intro: string; 
   "zh-CN": {
     title: "MPillow 常见问题 | 订单与产品帮助",
     description:
-      "查找关于 Mpillow 定制、保养、保修、退货、退款和配送的常见问题解答。新加坡全定制枕头专家为您解答。",
+      "查找关于 Mpillow 定制、保养、保修、退货、退款和配送的常见问题解答：如何量身、多久可以收到枕头、怎样清洗外套与枕套、什么情况下可以调整或退换。新加坡全定制枕头团队为您解答，找不到答案也可以直接在网站上联系我们的客服团队。",
     intro:
       "关于 Mpillow 产品、定制、保养、保修、退货和配送的快速解答。找不到答案？欢迎联系我们的客服团队。",
     cta: "联系客服",
