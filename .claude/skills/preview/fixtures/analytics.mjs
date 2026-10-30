@@ -142,7 +142,8 @@ export default function analytics({ scenario, now }) {
     { variant: "var-ear-pad", item: 41, title: "Ear Comfort Pad", price: 60, cost: 15 },
     { variant: "var-slope", item: 93, title: "Slope Mattress", price: 120, cost: 48 },
   ];
-  for (const a of ADDONS) product_variants.push({ id: a.variant, product_id: "prod-accessory", item_id: a.item, pillow_product_id: null, option1: null, title: a.title });
+  // Active, as in production: the accessories are already in the shop.
+  for (const a of ADDONS) product_variants.push({ id: a.variant, product_id: "prod-accessory", item_id: a.item, pillow_product_id: null, option1: null, title: a.title, is_active: true });
 
   const PRICE = { basic: { XS: 170, S: 190, M: 220, L: 270, XL: 360 }, premium: { XS: 360, S: 400, M: 460, L: 580, XL: 680 } };
   const COST = { basic: { XS: 44, S: 48, M: 53, L: 61, XL: 72 }, premium: { XS: 78, S: 84, M: 92, L: 104, XL: 118 } };

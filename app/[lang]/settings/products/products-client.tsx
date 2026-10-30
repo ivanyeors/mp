@@ -192,6 +192,8 @@ export function ProductsClient({
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
+    const [tab, setTab] = useState(initialTab);
+
     // Type filter (replaces old tab system)
     const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -426,12 +428,21 @@ export function ProductsClient({
 
         if (products.length === 0) {
             return (
-                <EmptyState icon={Package}>
+                <EmptyState
+                    icon={Package}
+                    action={
+                        activeTab === "accessories" ? (
+                            <Button size="sm" variant="outline" onClick={() => setTab("shop")}>
+                                Choose what&apos;s in the shop
+                            </Button>
+                        ) : undefined
+                    }
+                >
                     {debouncedSearch || statusFilter !== "all" || categoryFilter !== "all"
                         ? "No products match your filters."
                         : activeTab === "pillows"
                         ? "No pillows or bolsters yet. Sync from inventory."
-                        : "No accessories are listed yet. Turn one on above."}
+                        : "Nothing is in the shop yet."}
                 </EmptyState>
             );
         }
@@ -718,9 +729,10 @@ export function ProductsClient({
                 </InfoTip>
             </div>
 
-            <Tabs defaultValue={initialTab}>
+            <Tabs value={tab} onValueChange={setTab}>
                 <TabsList>
                     <TabsTrigger value="products">Products</TabsTrigger>
+                    <TabsTrigger value="shop">In the shop</TabsTrigger>
                     <TabsTrigger value="categories">Categories</TabsTrigger>
                 </TabsList>
 
@@ -757,8 +769,6 @@ export function ProductsClient({
                         </Button>
                     </PageActions>
 
-                    {isAccessoriesTab && <ShopListingToggles />}
-
                     {renderToolbar()}
 
                     {/* Bulk actions bar */}
@@ -793,6 +803,10 @@ export function ProductsClient({
 
                     {renderProductTable()}
                     {renderPagination()}
+                </TabsContent>
+
+                <TabsContent value="shop" className="mt-6">
+                    <ShopListingToggles />
                 </TabsContent>
 
                 <TabsContent value="categories" className="mt-6">
