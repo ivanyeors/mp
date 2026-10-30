@@ -130,7 +130,7 @@ export async function draftReviewReply(
   review: ReviewForDraft,
   opts?: { client?: Anthropic },
 ): Promise<DraftResult> {
-  const client = opts?.client ?? claudeClient();
+  const client = opts?.client ?? (await claudeClient());
   if (!client) return { ok: false, error: CLAUDE_NOT_CONFIGURED };
 
   try {

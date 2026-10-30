@@ -15,7 +15,7 @@ export interface AiWritingAvailability {
 }
 
 /** What the editor says in place of a ✨ button when the credentials aren't set (`claudeConfigured()`). */
-export const AI_WRITING_NO_CREDENTIALS = "AI writing is off: set the Anthropic credentials in Vercel";
+export const AI_WRITING_NO_CREDENTIALS = "AI writing is off: add the Claude API key on General";
 
 /** An AI call refused because the owner switched AI writing off on General. */
 export const AI_WRITING_SWITCHED_OFF = "AI writing is switched off on General.";

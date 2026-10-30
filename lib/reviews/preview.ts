@@ -166,7 +166,7 @@ export async function buildReviewCardPreview(
 ): Promise<{ cards: PreviewCard[]; usedClaude: boolean; draftErrors: string[] }> {
   const now = opts.now ?? new Date();
   const draft =
-    opts.draft === undefined ? (claudeConfigured() ? draftReviewReply : null) : opts.draft;
+    opts.draft === undefined ? ((await claudeConfigured()) ? draftReviewReply : null) : opts.draft;
   const draftErrors: string[] = [];
 
   const samples = googleSamples(now);

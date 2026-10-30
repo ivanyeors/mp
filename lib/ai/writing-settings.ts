@@ -7,8 +7,8 @@
  * browser.
  *
  * None of these is a secret (`site_settings` is publicly readable). The
- * Anthropic credentials stay in Vercel. Review replies keep their own settings
- * in code (decision 10).
+ * Claude API key is kept apart, in `api_configs` (lib/ai/claude-key.ts).
+ * Review replies keep their own settings in code (decision 10).
  */
 import { z } from "zod";
 import type { RateLimitOptions } from "@/lib/rate-limit";

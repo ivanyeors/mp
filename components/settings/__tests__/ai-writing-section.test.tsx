@@ -56,11 +56,11 @@ describe("AiWritingForm", () => {
     expect(html).toContain("The Anthropic Console has the bill.");
   });
 
-  it("asks for the credentials in Vercel when Claude is not configured, and holds no key field", () => {
+  it("points to the Claude API key card when Claude is not configured, and holds no key field of its own", () => {
     const html = render({ configured: false });
-    expect(html).toContain("Set the Anthropic credentials in Vercel to use AI writing");
+    expect(html).toContain("Add the Claude API key above to use AI writing");
     expect(html).not.toContain("Claude is configured");
-    expect(html).not.toMatch(/type="password"|api.?key/i);
+    expect(html).not.toContain('type="password"');
   });
 
   it("says what switching off does", () => {

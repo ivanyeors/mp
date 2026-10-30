@@ -11,6 +11,9 @@ import {
 } from "@/lib/reviews/draft-reply";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 
+// No key saved on General: the environment decides.
+vi.mock("@/lib/settings/api-configs", () => ({ readApiConfigs: async () => [] }));
+
 /**
  * The drafting call is one Messages request. These pin its shape — model,
  * effort, the server-side fallback opt-in, the review fenced off as data — and
@@ -146,10 +149,10 @@ describe("draftReviewReply", () => {
   it("explains missing credentials instead of throwing", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     vi.stubEnv("ANTHROPIC_FEDERATION_RULE_ID", "");
-    expect(claudeConfigured()).toBe(false);
+    expect(await claudeConfigured()).toBe(false);
     expect(await draftReviewReply(review)).toEqual({ ok: false, error: CLAUDE_NOT_CONFIGURED });
     vi.stubEnv("ANTHROPIC_FEDERATION_RULE_ID", "fdrl_test");
-    expect(claudeConfigured()).toBe(true);
+    expect(await claudeConfigured()).toBe(true);
     vi.unstubAllEnvs();
   });
 });

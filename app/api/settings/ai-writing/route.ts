@@ -3,7 +3,7 @@ import { invalidateTag } from "@/lib/cache/invalidate";
 import { requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { claudeConfigured } from "@/lib/ai/claude";
+import { claudeCredentialSource } from "@/lib/ai/claude";
 import { readAiWritingSettings, saveAiWritingSettings } from "@/lib/ai/settings";
 import { readAiUsageThisMonth } from "@/lib/ai/usage";
 import { AiWritingSettingsSchema } from "@/lib/ai/writing-settings";
@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * General → AI writing (PRD-campaign-email-editor slice 16): the six
- * `site_settings` AI writing reads, whether Claude's credentials are set, and
+ * `site_settings` AI writing reads, where Claude's credentials come from, and
  * this month's use. Seeing and changing them need `api-configs`, the General
- * page's own key. No credential is read or written here.
+ * page's own key. The Claude API key is saved by /api/settings/claude-key.
  */
 export async function GET() {
   try {
@@ -31,7 +31,8 @@ export async function GET() {
     console.error("[ai-writing] usage read failed:", err instanceof Error ? err.message : err);
     return null;
   });
-  return NextResponse.json({ ok: true, settings: read.settings, configured: claudeConfigured(), usage });
+  const credentials = await claudeCredentialSource();
+  return NextResponse.json({ ok: true, settings: read.settings, configured: credentials !== null, credentials, usage });
 }
 
 export async function PUT(req: Request) {
