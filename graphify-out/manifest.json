@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
-    "mtime": 1793199201.5410106,
-    "seen": 1793325713.555288,
-    "ast_hash": "7c3ede27c2919d9579d7558a70c25bbe",
+    "mtime": 1793360458.7642481,
+    "seen": 1793361034.0673337,
+    "ast_hash": "739c2ada0e0271068b1cfe360d87357d",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/fake-supabase.ts": {
@@ -10092,9 +10092,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
-    "mtime": 1793283403.6396604,
-    "seen": 1793325713.555301,
-    "ast_hash": "c081c9307ef9571b1c7689fa9299de4e",
+    "mtime": 1793360245.5409498,
+    "seen": 1793361034.0673492,
+    "ast_hash": "9e22261dd3b5e897a0c2e87dac069eaf",
     "semantic_hash": ""
   },
   "lib/reviews/google-actions.ts": {
@@ -10218,9 +10218,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/preview.ts": {
-    "mtime": 1793199201.5428455,
-    "seen": 1793325713.555306,
-    "ast_hash": "c54aeef1cf5781a3494a7b8e7ec6e1ce",
+    "mtime": 1793360245.5412133,
+    "seen": 1793361034.067355,
+    "ast_hash": "f5a2895ee317ea09c08328dfe49a0fbd",
     "semantic_hash": ""
   },
   "scripts/telegram-review-preview.ts": {
@@ -15984,9 +15984,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/ai-writing.ts": {
-    "mtime": 1793283403.650806,
-    "seen": 1793325713.5534909,
-    "ast_hash": "c0dba2274bd3954eedfe8bc224c52226",
+    "mtime": 1793360245.5405216,
+    "seen": 1793361034.0654404,
+    "ast_hash": "4694a045280fa91a46a786851e494b8d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/ai/ai-context.ts": {
@@ -16068,9 +16068,9 @@
     "semantic_hash": ""
   },
   "app/api/campaigns/ai-draft/__tests__/route.test.ts": {
-    "mtime": 1793284560.9301507,
-    "seen": 1793325713.5536296,
-    "ast_hash": "57d074de5a0d7cf264e8e3ba26e62f8e",
+    "mtime": 1793360458.7645195,
+    "seen": 1793361034.0655863,
+    "ast_hash": "77669b1ea7a092c005ec213e13700aa8",
     "semantic_hash": ""
   },
   "app/api/campaigns/ai-draft/route.ts": {
@@ -16080,9 +16080,9 @@
     "semantic_hash": ""
   },
   "app/api/campaigns/ai-refine/__tests__/route.test.ts": {
-    "mtime": 1793287056.468388,
-    "seen": 1793325713.553632,
-    "ast_hash": "9caa9dc027710cbc7c4b98870b8285a8",
+    "mtime": 1793360458.7647135,
+    "seen": 1793361034.0655897,
+    "ast_hash": "7e2c8b119e23afe6fa0e5ac022b1ce45",
     "semantic_hash": ""
   },
   "app/api/campaigns/ai-refine/route.ts": {
@@ -16104,15 +16104,15 @@
     "semantic_hash": ""
   },
   "app/api/settings/ai-writing/__tests__/route.test.ts": {
-    "mtime": 1793260344.734726,
-    "seen": 1793325713.553833,
-    "ast_hash": "a2badcb6addeb34a9d5b6d759f32d4d3",
+    "mtime": 1793360468.5707843,
+    "seen": 1793361034.065835,
+    "ast_hash": "0d937cf1b14aee34d3d366786fd1090f",
     "semantic_hash": ""
   },
   "app/api/settings/ai-writing/route.ts": {
-    "mtime": 1793260344.7348108,
-    "seen": 1793325713.5538344,
-    "ast_hash": "e8ea241ab3da2200886aac0ec7a49bd7",
+    "mtime": 1793360245.540226,
+    "seen": 1793361034.0658371,
+    "ast_hash": "d9c8f45f7a1160c7a99435a1269d612e",
     "semantic_hash": ""
   },
   "app/dev/email-preview/__tests__/route.test.ts": {
@@ -16122,9 +16122,9 @@
     "semantic_hash": ""
   },
   "lib/ai/__tests__/claude.test.ts": {
-    "mtime": 1793283403.6396604,
-    "seen": 1793325713.554211,
-    "ast_hash": "aac904534cc80ef99cf873740424ff3f",
+    "mtime": 1793360445.8036914,
+    "seen": 1793361034.0662086,
+    "ast_hash": "201b970051b583a1e01afb371125d35e",
     "semantic_hash": ""
   },
   "lib/ai/__tests__/fake-claude.ts": {
@@ -16170,15 +16170,15 @@
     "semantic_hash": ""
   },
   "lib/ai/availability.ts": {
-    "mtime": 1793283403.6515522,
-    "seen": 1793325713.5542185,
-    "ast_hash": "01b4dde14baccdc8ba937a22fa68a840",
+    "mtime": 1793360245.5414257,
+    "seen": 1793361034.0662217,
+    "ast_hash": "293caed78840987bcbfe0a9c176b9e43",
     "semantic_hash": ""
   },
   "lib/ai/claude.ts": {
-    "mtime": 1793295464.9496677,
-    "seen": 1793325713.5542192,
-    "ast_hash": "d39e3b3617855f5beff440063a033f6e",
+    "mtime": 1793360948.9461222,
+    "seen": 1793361034.066225,
+    "ast_hash": "cd0c651e8c9f6795d23f75e636f20110",
     "semantic_hash": ""
   },
   "lib/ai/limits.ts": {
@@ -16218,15 +16218,15 @@
     "semantic_hash": ""
   },
   "lib/ai/writing-call.ts": {
-    "mtime": 1793287056.468496,
-    "seen": 1793325713.5542254,
-    "ast_hash": "51e724a80a83bb8946770e8d75c9d516",
+    "mtime": 1793360245.5407505,
+    "seen": 1793361034.0662348,
+    "ast_hash": "c3b6b90083e7607e2d30c3043eff5b11",
     "semantic_hash": ""
   },
   "lib/ai/writing-settings.ts": {
-    "mtime": 1793283294.041953,
-    "seen": 1793325713.5542262,
-    "ast_hash": "8b40fca405de0322ddbd1e662656ca40",
+    "mtime": 1793360275.3469079,
+    "seen": 1793361034.066237,
+    "ast_hash": "e25e6ca34685eec0378f84b3eb8adda8",
     "semantic_hash": ""
   },
   "lib/ecommerce/shop-card-price.ts": {
@@ -16602,9 +16602,9 @@
     "semantic_hash": ""
   },
   "scripts/eval-campaign-drafts.ts": {
-    "mtime": 1793295183.1803603,
-    "seen": 1793325713.5557294,
-    "ast_hash": "60b2e2355936296b97bbd41010d0c369",
+    "mtime": 1793360255.7671103,
+    "seen": 1793361034.0678468,
+    "ast_hash": "a598750dfbc8f6fb1b4d8590a747ac79",
     "semantic_hash": ""
   },
   "supabase/migrations/20261029090701_email_campaign_content.sql": {
@@ -16752,9 +16752,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/16-ai-writing-settings.md": {
-    "mtime": 1793260344.7308357,
-    "seen": 1793325713.5561025,
-    "ast_hash": "7507ba5c6a31d98fceadaa81dfd993d4",
+    "mtime": 1793360596.442832,
+    "seen": 1793361034.0682645,
+    "ast_hash": "0a295dd8ddd8094ddf4194a183411e29",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-email-editor/issues/17-translate-to-chinese.md": {
@@ -16779,6 +16779,30 @@
     "mtime": 1793260325.118835,
     "seen": 1793325713.5566802,
     "ast_hash": "b1adaa54fcb5c9069ee543730129fd72",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/settings.mjs": {
+    "mtime": 1793360814.8587658,
+    "seen": 1793361034.0653565,
+    "ast_hash": "7a48263e93f132d644e2fbcab399e733",
+    "semantic_hash": ""
+  },
+  "app/api/settings/claude-key/__tests__/route.test.ts": {
+    "mtime": 1793360488.8683379,
+    "seen": 1793361034.0658486,
+    "ast_hash": "7ae8a3203e43a6828d301376be3d52d7",
+    "semantic_hash": ""
+  },
+  "app/api/settings/claude-key/route.ts": {
+    "mtime": 1793360230.0838706,
+    "seen": 1793361034.06585,
+    "ast_hash": "84a21650a509f680975c8e2432a57333",
+    "semantic_hash": ""
+  },
+  "lib/ai/claude-key.ts": {
+    "mtime": 1793360219.0894637,
+    "seen": 1793361034.0662236,
+    "ast_hash": "c5275452d63e05fcfcc4c214aff80e2f",
     "semantic_hash": ""
   }
 }

@@ -28,7 +28,7 @@ export async function openAiWritingCall(admin: SupabaseClient, memberId: string,
   if (!read.ok) return { ok: false, status: 503, error: read.error };
   const { settings } = read;
   if (!settings.enabled) return { ok: false, status: 403, error: AI_WRITING_SWITCHED_OFF };
-  const client = claudeClient();
+  const client = await claudeClient();
   if (!client) return { ok: false, status: 503, error: AI_WRITING_NO_CREDENTIALS };
   const limited = await aiWritingLimited(settings, memberId, { lead });
   if (limited) return { ok: false, status: 429, error: limited };

@@ -339,7 +339,7 @@ describe("the Start panel", () => {
     // No subject and no name of three words: the card says what Claude needs.
     mount(null, newCampaignDraft(undefined, []), { on: true, configured: false });
     expect((await until(() => choice("Write with AI"))).getAttribute("aria-disabled")).toBe("true");
-    expect(choice("Write with AI")!.textContent).toContain("set the Anthropic credentials");
+    expect(choice("Write with AI")!.textContent).toContain("add the Claude API key");
     act(() => root?.unmount());
     mount(null, newCampaignDraft(undefined, []), { on: true, configured: true });
     expect((await until(() => choice("Write with AI"))).textContent).toContain("Write a subject of at least 3 words");

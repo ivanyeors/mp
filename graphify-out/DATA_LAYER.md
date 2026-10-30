@@ -122,9 +122,12 @@ Changed from pages: `/settings/general`, `/settings/shipping/couriers`
   - `DELETE()` [delete] — app/api/settings/api-configs/route.ts:113
   - `PATCH()` [select,update] — app/api/settings/api-configs/route.ts:84
   - `POST()` [insert] — app/api/settings/api-configs/route.ts:58
+  - `removeClaudeKey()` [delete] — lib/ai/claude-key.ts:57
+  - `saveClaudeKey()` [upsert] — lib/ai/claude-key.ts:42
   - `writeEasyshipConfig()` [upsert] — lib/easyship/store.ts:70
 - Read by:
   - `api-configs.ts` [select] — lib/settings/api-configs.ts:23
+  - `claudeKeySaved()` [select] — lib/ai/claude-key.ts:63
   - `getModelConfig()` [select] — lib/shop/recommendation/model.ts:22
   - `readRow()` [select] — lib/easyship/store.ts:33
 
@@ -2536,7 +2539,7 @@ app/[lang]/settings/forms/page.tsx
 
 ### /settings/general
 app/[lang]/settings/general/page.tsx
-- Endpoints: `/api/results/sla-settings [GET,PUT]`, `/api/settings/ai-writing [GET,PUT]`, `/api/settings/api-configs [DELETE,GET]`
+- Endpoints: `/api/results/sla-settings [GET,PUT]`, `/api/settings/ai-writing [GET,PUT]`, `/api/settings/api-configs [DELETE,GET]`, `/api/settings/claude-key [GET]`
 - Loads: `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `api_configs`, `mp_staff`, `site_settings`
 - Reads, through the same: `admin_roles`, `admin_users`

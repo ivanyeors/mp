@@ -30,9 +30,15 @@ card pattern as `ReviewSlaSection`:
 | Limit per Staff member, per 10 minutes | number, 1–50 | 10 |
 | Limit per Staff member, per day | number, 1–500 | 60 |
 
-- A status line above them: *"Claude is configured"*, or *"Set the Anthropic credentials in Vercel
-  to use AI writing"* (`claudeConfigured()`, slice 09's shared client). No key is entered or
-  stored here: the credentials stay in Vercel and the OIDC federation rule.
+- A status line above them: *"Claude is configured"*, or *"Add the Claude API key above to use AI
+  writing"* (`claudeConfigured()`, slice 09's shared client).
+- *Changed 2026-10-30 (owner: "give me the API key input for AI into our API page"):* a **Claude
+  API key** card on General, above this section, takes the key. It is checked with Anthropic (one
+  models request, no tokens) before it is saved in the `anthropic` row of `api_configs`
+  (service-role only; never sent back to the browser; audited as saved or not, never the key).
+  The client tries that key first, then `ANTHROPIC_API_KEY`, then the Vercel OIDC federation
+  rule; *Remove the saved key* goes back to Vercel's. Code: `lib/ai/claude.ts`,
+  `lib/ai/claude-key.ts`, `/api/settings/claude-key`, `components/settings/claude-key-section.tsx`.
 - **This month**, read-only: AI calls by kind, input and output tokens, and an estimated cost
   (tokens × the model's price in the list), counted from the `email_campaign.ai_*` audit entries
   (slices 09, 10, 17). Labelled as an estimate; the Anthropic Console has the bill. This is how

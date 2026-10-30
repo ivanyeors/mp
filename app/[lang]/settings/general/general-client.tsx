@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ReviewSlaSection } from "@/components/settings/review-sla-section";
 import { AiWritingSection } from "@/components/settings/ai-writing-section";
+import { ClaudeKeySection } from "@/components/settings/claude-key-section";
 import { EmptyState } from "@/components/settings/empty-state";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { InfoTip } from "@/components/ui/info-tip";
+import type { ClaudeCredentialSource } from "@/lib/ai/claude";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -74,10 +76,14 @@ export type GeneralInitialData = ApiConfig[];
 
 export default function GeneralSettingsPage({
   initialData,
+  claudeCredentials = null,
 }: {
   initialData?: GeneralInitialData;
+  /** Where Claude's credentials come from, read on the server. */
+  claudeCredentials?: ClaudeCredentialSource | null;
 }) {
   const [configs, setConfigs] = useState<ApiConfig[]>(initialData ?? []);
+  const [claudeSource, setClaudeSource] = useState(claudeCredentials);
   const [loading, setLoading] = useState(!initialData);
   // The server already loaded the configs; every save still refetches them.
   const skipFirstFetch = useRef(initialData != null);
@@ -315,11 +321,20 @@ export default function GeneralSettingsPage({
         </>
       )}
 
+      {/* The key review replies and AI writing use; saving it adds the Claude row above. */}
+      <ClaudeKeySection
+        source={claudeSource}
+        onChange={(next) => {
+          setClaudeSource(next);
+          void fetchConfigs();
+        }}
+      />
+
       {/* Review SLA (relocated from the Results page — slice 06) */}
       <ReviewSlaSection />
 
       {/* AI writing: the campaign editor's model, effort and limits (PRD-campaign-email-editor slice 16) */}
-      <AiWritingSection />
+      <AiWritingSection configured={claudeSource !== null} />
 
       {/* Edit / Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

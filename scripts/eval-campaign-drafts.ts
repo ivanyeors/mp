@@ -332,7 +332,7 @@ function check(r: Omit<Result, "failures">, ctx: GuardrailContext): string[] {
 }
 
 async function draft(brief: EvalBrief, effort: AiWritingEffort): Promise<Result> {
-  const client = claudeClient();
+  const client = await claudeClient();
   if (!client) throw new Error(CLAUDE_NOT_CONFIGURED);
   const products = (brief.products ?? []).map((title, i) => ({ id: productId(i), title }));
   const request: DraftRequest = {
@@ -385,7 +385,7 @@ interface RewriteResult {
 }
 
 async function rewriteOne(rewrite: EvalRewrite): Promise<RewriteResult> {
-  const client = claudeClient();
+  const client = await claudeClient();
   if (!client) throw new Error(CLAUDE_NOT_CONFIGURED);
   const brief: RefineBrief = {
     request: { kind: "rewrite", campaignId: null, subject: rewrite.subject, name: "", block: rewrite.block, action: rewrite.action, instruction: rewrite.instruction ?? "", exclude: [] },
@@ -417,7 +417,7 @@ interface TranslationResult {
 }
 
 async function translateOne(t: EvalTranslation): Promise<TranslationResult> {
-  const client = claudeClient();
+  const client = await claudeClient();
   if (!client) throw new Error(CLAUDE_NOT_CONFIGURED);
   const started = Date.now();
   const outcome = await runCampaignTranslate(t.request, { client, settings: AI_WRITING_DEFAULTS });
@@ -591,8 +591,9 @@ function report(results: Result[], rewrites: RewriteResult[], translations: Tran
 }
 
 async function main() {
-  if (!claudeClient()) {
-    console.error(`${CLAUDE_NOT_CONFIGURED}. Put ANTHROPIC_API_KEY in .env.local.`);
+  if (!(await claudeClient())) {
+    // The key saved on General is read inside the app only; a script has the environment.
+    console.error("No Anthropic API key. Put ANTHROPIC_API_KEY in .env.local.");
     process.exit(1);
   }
   const briefs = sets.includes("drafts") ? BRIEFS.filter((b) => !only || only.includes(b.n)) : [];
