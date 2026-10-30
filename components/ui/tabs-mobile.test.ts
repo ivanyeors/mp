@@ -36,7 +36,7 @@ describe("components/ui/tabs.tsx", () => {
     // tailwind-merge lets it win over a caller's flex-wrap / overflow-x-auto.
     expect(tabs).toMatch(/TABS_LIST_ROW_GUARD\s*=\s*"[^"]*flex-nowrap[^"]*"/);
     expect(tabs).toMatch(/TABS_LIST_ROW_GUARD\s*=\s*"[^"]*overflow-hidden[^"]*"/);
-    expect(tabs).toMatch(/cn\(\s*TABS_LIST_ROW,\s*className,\s*TABS_LIST_ROW_GUARD/);
+    expect(tabs).toMatch(/cn\(\s*TABS_LIST_ROW\[variant\],\s*className,\s*TABS_LIST_ROW_GUARD/);
   });
 
   it("never turns the strip into a horizontal scroller", () => {
@@ -62,6 +62,51 @@ describe("components/ui/tabs.tsx", () => {
   });
 });
 
+// The underline look is a variant, not call-site overrides: overrides lose to
+// the default trigger's `dark:` active styles, which is how the product page's
+// Description tab became a filled box in dark mode.
+describe('TabsList variant="line"', () => {
+  const lineOf = (constName: string) =>
+    tabs.match(
+      new RegExp(`const ${constName}: Record<TabsVariant, string> = \\{[\\s\\S]*?line:\\s*"([^"]*)"`)
+    )?.[1] ?? "";
+  const row = lineOf("TABS_LIST_ROW");
+  const summary = lineOf("TABS_LIST_SUMMARY");
+  const trigger = lineOf("TABS_TRIGGER");
+
+  it("has its own strings for the row, the collapsed button and the trigger", () => {
+    expect(row).not.toBe("");
+    expect(summary).not.toBe("");
+    expect(trigger).not.toBe("");
+    expect(tabs).toMatch(/cn\(TABS_TRIGGER\[variant\], className\)/);
+  });
+
+  it("never fills, boxes or shadows the active tab", () => {
+    for (const src of [row, summary, trigger]) {
+      expect(src).not.toMatch(/bg-muted|bg-background|bg-input|border-input|shadow-sm|rounded-lg|\bp-1\b/);
+    }
+    expect(trigger).toMatch(/data-\[state=active\]:text-foreground/);
+    expect(trigger).toMatch(/after:bottom-0 after:h-0\.5/);
+    expect(trigger).toMatch(/data-\[state=active\]:after:bg-primary/);
+  });
+
+  it("shows keyboard focus inside the clipped row", () => {
+    expect(trigger).toMatch(/focus-visible:ring-\[3px\] focus-visible:ring-inset/);
+    expect(summary).toMatch(/focus-visible:ring-\[3px\] focus-visible:ring-inset/);
+  });
+
+  it("is a 44px target on a phone, row and collapsed button alike", () => {
+    expect(row).toMatch(/max-md:h-11/);
+    expect(row).toMatch(/items-stretch/);
+    expect(summary).toMatch(/max-md:h-11/);
+  });
+
+  it("still collapses, and an open menu uses the default rows", () => {
+    expect(tabs).toMatch(/TABS_LIST_SUMMARY\[variant\]/);
+    expect(tabs).toMatch(/value=\{showAsMenu \? "default" : variant\}/);
+  });
+});
+
 describe("TabsList call sites", () => {
   const offenders: string[] = [];
 
@@ -78,5 +123,21 @@ describe("TabsList call sites", () => {
 
   it("never ask the strip to wrap or to scroll sideways", () => {
     expect(offenders).toEqual([]);
+  });
+
+  const handRolled: string[] = [];
+  for (const dir of SEARCH_DIRS) {
+    for (const file of collectTsx(join(ROOT, dir))) {
+      const src = readFileSync(file, "utf8");
+      for (const match of src.matchAll(/<TabsTrigger\b[^>]*>/g)) {
+        if (/border-b-2|data-\[state=active\]:border-primary/.test(match[0])) {
+          handRolled.push(`${relative(ROOT, file)}: ${match[0]}`);
+        }
+      }
+    }
+  }
+
+  it('use variant="line" instead of hand-rolling an underline', () => {
+    expect(handRolled).toEqual([]);
   });
 });

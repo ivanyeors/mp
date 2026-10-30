@@ -37,6 +37,8 @@ assert.match(button, /"active:scale-\[0\.97\] motion-reduce:active:scale-100"/);
 // Tabs: the trigger's hit area covers the list padding; an inactive trigger tints.
 assert.match(tabs, /after:-inset-y-\[5px\]/);
 assert.match(tabs, /data-\[state=inactive\]:active:bg-background\/60/);
+// The `line` variant has no list padding to tint against: it presses to the shared tint.
+assert.match(tabs, /data-\[state=inactive\]:active:bg-press/);
 
 // 16px checkbox and 36×20 switch: 44px hit areas, a halo while pressed.
 assert.match(checkbox, /after:-inset-3\.5/);
@@ -48,9 +50,10 @@ assert.match(sortable, /min-h-11 min-w-11[^"]*active:bg-press/);
 assert.match(infoTip, /active:bg-press/);
 assert.match(table, /\[&\.cursor-pointer\]:active:bg-press/);
 
-// A full-width select gives way to its neighbours and never widens its card on a phone.
+// A full-width select gives way to its neighbours and never widens its card on a
+// phone: its value adds no minimum width, yet a content-sized trigger still fits it.
 assert.match(select, /max-w-full shrink items-center/);
-assert.match(select, /truncate text-left max-md:\[contain:inline-size\]/);
+assert.match(select, /truncate text-left max-md:grid max-md:grid-cols-\[minmax\(0,max-content\)\]/);
 
 // Card padding reads variables; the Admin Panel shell tightens them on phones.
 assert.match(card, /py-\[var\(--card-py,1\.5rem\)\]/);

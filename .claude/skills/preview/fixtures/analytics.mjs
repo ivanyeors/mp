@@ -115,6 +115,11 @@ export default function analytics({ scenario, now }) {
     { id: "prod-bolster", title: "Mbolster", product_type: "bolster", status: "active" },
     { id: "prod-accessory", title: "Accessories", product_type: "accessory", status: "active" },
   ];
+  // What the storefront reads in place of `title` (fixtures/storefront.mjs).
+  for (const p of products) {
+    p.slug = p.id.replace(/^prod-/, "");
+    p.content = { "en-US": { title: p.title } };
+  }
   const SIZES = ["XS", "S", "M", "L", "XL"];
   const pillow_products = [];
   const product_variants = [];
@@ -143,7 +148,7 @@ export default function analytics({ scenario, now }) {
     { variant: "var-slope", item: 93, title: "Slope Mattress", price: 120, cost: 48 },
   ];
   // Active, as in production: the accessories are already in the shop.
-  for (const a of ADDONS) product_variants.push({ id: a.variant, product_id: "prod-accessory", item_id: a.item, pillow_product_id: null, option1: null, title: a.title, is_active: true });
+  for (const a of ADDONS) product_variants.push({ id: a.variant, product_id: "prod-accessory", item_id: a.item, pillow_product_id: null, option1: null, title: a.title, is_active: true, price: a.price, currency: "SGD" });
 
   const PRICE = { basic: { XS: 170, S: 190, M: 220, L: 270, XL: 360 }, premium: { XS: 360, S: 400, M: 460, L: 580, XL: 680 } };
   const COST = { basic: { XS: 44, S: 48, M: 53, L: 61, XL: 72 }, premium: { XS: 78, S: 84, M: 92, L: 104, XL: 118 } };
