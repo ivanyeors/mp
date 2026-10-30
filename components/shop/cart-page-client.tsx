@@ -89,16 +89,22 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
     );
   }
 
+  // Both views below are app UI that set their own sizes: `data-typography-scope="app"`
+  // keeps the public-route typography from forcing every <p> to 18px, which put
+  // each line's variant above its product name.
   if (items.length === 0) {
     return (
-      <div className="flex min-h-[50vh] flex-col">
+      <div data-typography-scope="app" className="flex min-h-[50vh] flex-col">
         <CartEmptyState messages={messages} shopHref={shopHref} />
       </div>
     );
   }
 
   return (
-    <div className={cn("relative mx-auto flex w-full max-w-5xl flex-col px-4 py-8", mobileStickyActionBarSpacerClassName, "md:pb-8")}>
+    <div
+      data-typography-scope="app"
+      className={cn("relative mx-auto flex w-full max-w-5xl flex-col px-4 py-8", mobileStickyActionBarSpacerClassName, "md:pb-8")}
+    >
       <div className="mb-4 flex items-center gap-2">
         <h1 className="text-2xl font-bold tracking-tight">{messages.title}</h1>
         {itemCount > 0 && (

@@ -56,6 +56,9 @@ export function CartPopover({ trigger }: CartPopoverProps) {
         sideOffset={8}
         role="dialog"
         aria-label={messages.title}
+        // App UI, not marketing copy: without this the public-route typography
+        // forces the "Your Cart" heading to 28px and each line's variant to 18px.
+        data-typography-scope="app"
         className="w-[min(100vw-2rem,420px)] rounded-xl border p-0 shadow-lg"
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
@@ -78,8 +81,8 @@ export function CartPopover({ trigger }: CartPopoverProps) {
           </Button>
         </div>
 
-          <div className="min-h-[200px] flex max-h-[min(70vh,520px)] flex-col overflow-hidden">
-            <CartContent
+        <div className="min-h-[200px] flex max-h-[min(70vh,520px)] flex-col overflow-hidden">
+          <CartContent
             variant="popover"
             messages={messages}
             locale={locale}
@@ -98,8 +101,8 @@ export function CartPopover({ trigger }: CartPopoverProps) {
             onClose={() => toggleCart(false)}
             shopHref={shopHref}
             checkoutHref={checkoutHref}
-            />
-          </div>
+          />
+        </div>
 
         <div className="flex justify-end border-t px-3 py-2 md:hidden">
           <OverlayDismissButton

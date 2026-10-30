@@ -39,6 +39,12 @@ export function HomeHeader() {
   // Always reachable while shopping; elsewhere it appears only once there is
   // something to go back to, so marketing pages keep an empty icon off-screen.
   const showCart = basePathname.startsWith("/shop") || itemCount > 0;
+  // Mount the cart in whichever header is on screen, never both. Every cart
+  // popover follows the one shared `isOpen`, so two mounted copies open
+  // together, each takes the other's focus for a click outside, and both close
+  // in the same frame: clicking the bag on desktop showed nothing at all.
+  const showCompactCart = showCart && isCompact;
+  const showExpandedCart = showCart && !isCompact;
 
   React.useEffect(() => {
     // Hysteresis so a 1px overscroll or iOS rubber-band cannot flip the header
@@ -68,8 +74,9 @@ export function HomeHeader() {
         {/* Just the logo, which is also the way home: booking and chat live in the
             dock. `dark` pins the cart button to dark-mode tokens in both themes,
             so it stays legible on the blue; its popover portals to <body> and
-            keeps the page theme. */}
-        <div className="dark relative flex max-w-full items-center gap-2 rounded-[35px] px-5 py-1">
+            keeps the page theme. `text-foreground` re-reads the colour here:
+            inherited from <body> it stays the light theme's near-black. */}
+        <div className="dark relative flex max-w-full items-center gap-2 rounded-[35px] px-5 py-1 text-foreground">
           {/* Dock background (matches `components/ui/shadcn-io/dock/index.tsx`) */}
           <div
             className="absolute inset-0 -z-10 rounded-[35px]"
@@ -97,7 +104,7 @@ export function HomeHeader() {
               priority
             />
           </Link>
-          {showCart && <CartButton />}
+          {showCompactCart && <CartButton />}
         </div>
       </div>
 
@@ -140,7 +147,7 @@ export function HomeHeader() {
               />
             </div>
             <div className="flex min-w-0 justify-end gap-1 sm:gap-2">
-              {showCart && <CartButton />}
+              {showExpandedCart && <CartButton />}
               <LanguageToggle />
               <ModeToggle />
             </div>
