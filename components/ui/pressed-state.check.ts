@@ -48,9 +48,10 @@ assert.match(sortable, /min-h-11 min-w-11[^"]*active:bg-press/);
 assert.match(infoTip, /active:bg-press/);
 assert.match(table, /\[&\.cursor-pointer\]:active:bg-press/);
 
-// A full-width select gives way to its neighbours and never widens its card on a phone.
+// A full-width select gives way to its neighbours and never widens its card on a
+// phone: its value adds no minimum width, yet a content-sized trigger still fits it.
 assert.match(select, /max-w-full shrink items-center/);
-assert.match(select, /truncate text-left max-md:\[contain:inline-size\]/);
+assert.match(select, /truncate text-left max-md:grid max-md:grid-cols-\[minmax\(0,max-content\)\]/);
 
 // Card padding reads variables; the Admin Panel shell tightens them on phones.
 assert.match(card, /py-\[var\(--card-py,1\.5rem\)\]/);

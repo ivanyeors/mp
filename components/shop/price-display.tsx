@@ -79,7 +79,22 @@ export function PriceDisplay({
   );
 }
 
-/** Standalone format function for use outside React components */
+/**
+ * A price inside a sentence ("$30.00 away from free shipping"), by the same
+ * rule as `PriceDisplay`: the amount as given while the shopper views the base
+ * currency, else converted to the currency they picked and marked "~".
+ * `formatPrice` below never converts, so a sentence built with it stayed in
+ * SGD after the shopper switched currency.
+ */
+export function useDisplayPrice(): (amountInBase: number, currency?: string) => string {
+  const { currency: displayCurrency, convertFromBase } = useCurrency();
+  return (amountInBase, currency = BASE_CURRENCY) =>
+    displayCurrency === BASE_CURRENCY
+      ? formatAmount(amountInBase, currency)
+      : `~${formatAmount(convertFromBase(amountInBase), displayCurrency)}`;
+}
+
+/** Standalone format function for use outside React components. Never converts: for a shopper-facing price use `PriceDisplay` or `useDisplayPrice`. */
 export function formatPrice(amount: number, currency: string): string {
   return formatAmount(amount, currency);
 }

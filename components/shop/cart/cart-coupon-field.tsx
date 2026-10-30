@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { formatPrice } from "@/components/shop/price-display";
+import { useDisplayPrice } from "@/components/shop/price-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CartMessages } from "./cart-types";
@@ -34,6 +34,7 @@ export function CartCouponField({
   messages,
 }: CartCouponFieldProps) {
   const [couponInput, setCouponInput] = useState(couponCode ?? "");
+  const displayPrice = useDisplayPrice();
 
   useEffect(() => {
     setCouponInput(couponCode ?? "");
@@ -90,7 +91,7 @@ export function CartCouponField({
         <p className="text-xs text-green-600 dark:text-green-400">
           {messages.couponApplied(couponCode!)}
           {couponDiscount > 0 && (
-            <> — {formatPrice(couponDiscount, currency)} off</>
+            <> — {displayPrice(couponDiscount, currency)} off</>
           )}
           {couponFreeShipping && couponDiscount <= 0 && (
             <> — {messages.freeShippingQualified.toLowerCase()}</>

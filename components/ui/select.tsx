@@ -119,10 +119,16 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
           )}
           {...props}
         >
-          {/* On phones, `contain: inline-size` keeps a long value from setting the
-              trigger's minimum width (and so widening its card past the screen); it
-              truncates instead. Desktop keeps content-sized triggers. */}
-          <span className="min-w-0 flex-1 truncate text-left max-md:[contain:inline-size]">{children}</span>
+          {/* On phones the value sits in a one-track `minmax(0, max-content)` grid:
+              a long value adds nothing to the trigger's minimum width (so it cannot
+              widen its card past the screen) and truncates instead, while a trigger
+              sized by its content (`min-w-0`, no width) still fits its value.
+              `contain: inline-size` did the first but sized the value as empty, which
+              collapsed such a trigger to its padding. Desktop keeps content-sized
+              triggers. */}
+          <span className="min-w-0 flex-1 truncate text-left max-md:grid max-md:grid-cols-[minmax(0,max-content)]">
+            <span className="block truncate">{children}</span>
+          </span>
           <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </Trigger>
